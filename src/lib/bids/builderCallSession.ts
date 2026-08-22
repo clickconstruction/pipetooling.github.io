@@ -6,6 +6,7 @@
  */
 
 import { bidLossCategoryLabel, type BidLossCategoryKey } from '../bidLossCategories'
+import { bidTabNoteLine, buildBidTabPatch, hasAnyBidTabValue, type BidTabRow, type BidTabValues } from '../bidTabCapture'
 
 export type CallSessionOutcome = 'still_pending' | 'won' | 'lost' | 'rebid'
 
@@ -17,6 +18,10 @@ export type CallSessionBidDecision = {
   lossReason: string
   /** Structured why-we-lost bucket (v2.1799); only written for 'lost' taps. */
   lossCategory: BidLossCategoryKey | null
+  /** Bid-tab numbers captured on the call (v2.2103); null/absent = no tab discussed. */
+  tab?: BidTabValues | null
+  /** Our own bid value — lets the tab note derive "% over the low"; absent = unknown. */
+  bidValue?: number
 }
 
 export type CallSessionWrites = {
@@ -36,6 +41,13 @@ export type CallSessionWrites = {
   }>
   bidLastContactUpdates: Array<{ bidId: string; last_contact: string }>
   bidOutcomeUpdates: Array<{ bidId: string; outcome: 'won' | 'lost'; loss_reason: string | null; loss_category: string | null }>
+  /** Bid-tab column patches for tabs captured on the call (v2.2103). */
+  bidTabUpdates: Array<{ bidId: string; patch: BidTabRow }>
+}
+
+/** True when this decision has tab numbers worth writing. */
+function decisionHasTab(d: CallSessionBidDecision): boolean {
+  return d.tab != null && hasAnyBidTabValue(d.tab)
 }
 
 export function callSessionOutcomeLabel(d: Pick<CallSessionBidDecision, 'outcome' | 'lossReason' | 'lossCategory'>): string {
@@ -63,7 +75,7 @@ export function buildCallSessionWrites(args: {
   decisions: CallSessionBidDecision[]
 }): CallSessionWrites {
   const { customerId, userId, nowIso } = args
-  const touched = args.decisions.filter((d) => d.outcome !== null || d.note.trim() !== '')
+  const touched = args.decisions.filter((d) => d.outcome !== null || d.note.trim() !== '' || decisionHasTab(d))
   const details = args.summary.trim() || `Call session — ${touched.length} bid${touched.length === 1 ? '' : 's'} reviewed`
   return {
     customerContact: {
@@ -76,10 +88,12 @@ export function buildCallSessionWrites(args: {
     bidEntries: touched.map((d) => {
       const outcomeLabel = callSessionOutcomeLabel(d)
       const note = d.note.trim()
+      const tabLine = decisionHasTab(d) ? bidTabNoteLine(d.tab!, d.bidValue ?? 0) : ''
+      const segments = [outcomeLabel, tabLine, note].filter(Boolean)
       return {
         bid_id: d.bidId,
         contact_method: 'Phone',
-        notes: note && outcomeLabel ? `${outcomeLabel}. ${note}` : note || outcomeLabel,
+        notes: segments.join('. '),
         occurred_at: nowIso,
         created_by: userId,
       }
@@ -94,7 +108,31 @@ export function buildCallSessionWrites(args: {
         // Won on call clears any stale category from an earlier "lost" call.
         loss_category: d.outcome === 'lost' ? d.lossCategory : null,
       })),
+    bidTabUpdates: touched.filter(decisionHasTab).map((d) => ({ bidId: d.bidId, patch: buildBidTabPatch(d.tab!) })),
   }
+}
+
+/**
+ * The muted "what to ask" line under a pending bid in the session (v2.2103):
+ * never contacted since sending → the full opener; sent a while ago with no
+ * tab on file → the tab ask; otherwise nothing. Pure so tests stay dry.
+ */
+export function callSessionAskPrompt(bid: {
+  sentIso: string | null
+  lastContactIso: string | null
+  hasTab: boolean
+  nowIso: string
+}): string | null {
+  if (!bid.sentIso) return null
+  const sent = Date.parse(bid.sentIso)
+  const contact = bid.lastContactIso ? Date.parse(bid.lastContactIso) : Number.NaN
+  const neverContacted = !Number.isFinite(contact) || (Number.isFinite(sent) && contact < sent)
+  if (neverContacted) return 'ask: did our number land? can we get the bid tab?'
+  if (!bid.hasTab) {
+    const ageDays = (Date.parse(bid.nowIso) - sent) / 86_400_000
+    if (Number.isFinite(ageDays) && ageDays >= 21) return 'ask: can we get the bid tab?'
+  }
+  return null
 }
 
 /** Quick-pick helpers for the "Next follow-up" row; returns an ISO at 8am local on the target day. */
