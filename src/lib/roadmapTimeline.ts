@@ -110,7 +110,7 @@ export function paceProjection(rows: ReadonlyArray<TimelineRow>, tasksPerWeek: n
     byWave.set(r.wave, w)
   }
   const waves = [...byWave.keys()].sort((a, b) => a - b)
-  const pace = Math.max(tasksPerWeek, 0.5)
+  const pace = Math.max(tasksPerWeek, 0.1) // guard divide-by-zero; observed paces can honestly be < 1/week
   let cursor = now.getTime()
   const out: TimelineWaveSummary[] = []
   for (const w of waves) {
