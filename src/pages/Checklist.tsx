@@ -21,6 +21,7 @@ import RoadmapTaskContextModal from '../components/checklist/RoadmapTaskContextM
 import { ChecklistTechTreeTab } from '../components/checklist/ChecklistTechTreeTab'
 import { ChecklistInstanceCard } from '../components/checklist/ChecklistInstanceCard'
 import { ChecklistHistoryLedger } from '../components/checklist/ChecklistHistoryLedger'
+import { historyShortDate, splitHistoryItems } from '../lib/checklistHistorySplit'
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActivity'
@@ -1131,7 +1132,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
     const endStr = toLocalDateString(end)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, reviewed_at, reviewed_by, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, reviewed_at, reviewed_by, checklist_items(title, links, repeat_type, created_at), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', selectedUserId)
       .gte('scheduled_date', startStr)
       .lte('scheduled_date', endStr)
@@ -1146,22 +1147,14 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
 
   if (loading) return <p>Loading…</p>
 
-  const byItem = new Map<string, { title: string; links?: string[] | null; dates: Record<string, 'completed' | 'completed_by_other' | 'incomplete'> }>()
-  for (const inst of instances) {
-    const itemId = inst.checklist_item_id
-    const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
-    const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
-    if (!byItem.has(itemId)) byItem.set(itemId, { title, links, dates: {} })
-    const entry = byItem.get(itemId)!
-    let status: 'completed' | 'completed_by_other' | 'incomplete' = 'incomplete'
-    if (inst.completed_at) {
-      status = inst.completed_by_user_id && inst.completed_by_user_id !== selectedUserId ? 'completed_by_other' : 'completed'
-    }
-    entry.dates[inst.scheduled_date] = status
-  }
+  // Repeating rows keep the grid (starting at each task's birthday); one-offs
+  // move to the created → done ledger below it (v2.2091).
+  const { repeating, oneOffs } = splitHistoryItems(instances, selectedUserId, toLocalDateString(new Date()))
 
+  // Grid columns come from repeating instances only — a one-off's lone date no
+  // longer mints a column of dashed boxes for every other row.
   const allDates = new Set<string>()
-  for (const inst of instances) allDates.add(inst.scheduled_date)
+  for (const row of repeating) for (const d of Object.keys(row.dates)) allDates.add(d)
   const sortedDates = Array.from(allDates).sort()
 
   const instanceByKey = new Map<string, { id: string; checklist_item_id: string; scheduled_date: string }>()
@@ -1182,7 +1175,14 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
     })
     if (!proceed) return
     const key = `${itemId}-${date}`
-    const rawStatus = byItem.get(itemId)?.dates[date]
+    const cellInst = instances.find((i) => i.checklist_item_id === itemId && i.scheduled_date === date)
+    const rawStatus = !cellInst
+      ? undefined
+      : cellInst.completed_at
+        ? cellInst.completed_by_user_id && cellInst.completed_by_user_id !== selectedUserId
+          ? ('completed_by_other' as const)
+          : ('completed' as const)
+        : ('incomplete' as const)
     const status = deletedCells.has(key) ? undefined : rawStatus
     setCyclingCell(key)
     setError(null)
@@ -1294,6 +1294,11 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           </span>
         )}
       </div>
+      {!isNarrow && (repeating.length > 0 || oneOffs.length > 0) ? (
+        <p style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+          REPEATING <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>· {repeating.length} task{repeating.length === 1 ? '' : 's'} · rows start at each task’s creation</span>
+        </p>
+      ) : null}
       {isNarrow ? (
         <ChecklistHistoryLedger
           instances={instances}
@@ -1324,7 +1329,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
             </tr>
           </thead>
           <tbody>
-            {Array.from(byItem.entries()).map(([itemId, { title, links, dates }]) => {
+            {repeating.map(({ itemId, title, links, sinceYmd, dates }) => {
               const visibleDates = sortedDates.slice(-60)
               let due = 0
               let done = 0
@@ -1333,12 +1338,20 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
                 if (st === 'completed' || st === 'completed_by_other') { due++; done++ }
                 else if (st === 'incomplete') due++
               }
+              const birthIndex = visibleDates.findIndex((d) => d >= sinceYmd)
               return (
               <tr key={itemId}>
-                <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, background: 'var(--surface)' }} title={title}>
+                <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'sticky', left: 0, zIndex: 1, background: 'var(--surface)' }} title={`${title} — created ${sinceYmd}`}>
                   <ChecklistTitleWithLinks title={title} links={links} />
+                  <span style={{ display: 'block', fontSize: '0.66rem', color: 'var(--text-faint)' }}>since {historyShortDate(sinceYmd)}</span>
                 </td>
                 {visibleDates.map((d, i, arr) => {
+                  const monthBoundaryEarly = i > 0 && (arr[i - 1] ?? '').slice(5, 7) !== d.slice(5, 7)
+                  // Before the task existed there is nothing to grade — no box at all.
+                  if (d < sinceYmd) {
+                    return <td key={d} style={{ padding: 2, borderBottom: '1px solid var(--border)', ...(monthBoundaryEarly ? { borderLeft: '2px solid var(--border-400)' } : {}) }} />
+                  }
+                  const isBirth = i === birthIndex && i > 0
                   const rawStatus = dates[d]
                   const status = deletedCells.has(`${itemId}-${d}`) ? undefined : rawStatus
                   const cellKey = `${itemId}-${d}`
@@ -1366,7 +1379,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
                           : { border: '1.5px dashed var(--border-400)' }),
                   }
                   return (
-                    <td key={d} style={{ padding: 2, borderBottom: '1px solid var(--border)', ...(monthBoundary ? { borderLeft: '2px solid var(--border-400)' } : {}) }}>
+                    <td key={d} style={{ padding: 2, borderBottom: '1px solid var(--border)', ...(monthBoundary ? { borderLeft: '2px solid var(--border-400)' } : {}), ...(isBirth ? { borderLeft: '2px solid #2563eb' } : {}) }} title={isBirth ? `created ${sinceYmd}` : undefined}>
                       <div
                         role={isClickable ? 'button' : undefined}
                         tabIndex={isClickable ? 0 : undefined}
@@ -1390,7 +1403,57 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
         </table>
       </div>
       )}
-      {!isNarrow && byItem.size === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist history in this range.</p>}
+      {!isNarrow && repeating.length === 0 && oneOffs.length > 0 && (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No repeating tasks in this range.</p>
+      )}
+      {!isNarrow && oneOffs.length > 0 && (
+        <div style={{ marginTop: '1.1rem', maxWidth: '46rem' }}>
+          <p style={{ margin: '0 0 0.3rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+            ONE-OFF TASKS{' '}
+            <span style={{ fontWeight: 400, letterSpacing: 0 }}>
+              · {oneOffs.length} in this window · {oneOffs.filter((o) => o.status === 'done' || o.status === 'done_by_other').length} done · newest first
+            </span>
+          </p>
+          {oneOffs.map((o) => {
+            const cellKey = `${o.itemId}-${o.scheduledYmd}`
+            const status = deletedCells.has(cellKey) ? 'open' : o.status
+            const chip =
+              status === 'done'
+                ? { label: '✓ done', style: { background: 'var(--bg-emerald-tint)', color: 'var(--text-emerald-800)' } }
+                : status === 'done_by_other'
+                  ? { label: '✓ else', style: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid #d97706' } }
+                  : status === 'missed'
+                    ? { label: '✗ missed', style: { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' } }
+                    : { label: 'open', style: { border: '1px dashed var(--border-strong)', color: 'var(--text-muted)' } }
+            const meta =
+              status === 'done' || status === 'done_by_other'
+                ? `created ${o.createdYmd ? historyShortDate(o.createdYmd) : '—'} → done ${o.completedYmd ? historyShortDate(o.completedYmd) : historyShortDate(o.scheduledYmd)}${status === 'done_by_other' ? ' by someone else' : ''}`
+                : status === 'missed'
+                  ? `created ${o.createdYmd ? historyShortDate(o.createdYmd) : '—'} · due ${historyShortDate(o.scheduledYmd)}, never done`
+                  : `created ${o.createdYmd ? historyShortDate(o.createdYmd) : '—'} · still open`
+            const clickable = editMode && cyclingCell !== cellKey
+            return (
+              <div key={o.instanceId} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', padding: '0.4rem 0.1rem', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                <span
+                  role={clickable ? 'button' : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  onClick={clickable ? () => handleCycleStatus(o.itemId, o.scheduledYmd) : undefined}
+                  onKeyDown={clickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCycleStatus(o.itemId, o.scheduledYmd) } } : undefined}
+                  title={editMode ? 'Click to cycle status' : undefined}
+                  style={{ flexShrink: 0, fontSize: '0.7rem', fontWeight: 700, padding: '0.14rem 0.5rem', borderRadius: 999, width: '4.8rem', textAlign: 'center', boxSizing: 'border-box', cursor: clickable ? 'pointer' : undefined, opacity: cyclingCell === cellKey ? 0.6 : 1, ...chip.style }}
+                >
+                  {chip.label}
+                </span>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <ChecklistTitleWithLinks title={o.title} links={o.links} />
+                </span>
+                <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: '0.74rem', color: 'var(--text-muted)' }}>{meta}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {!isNarrow && repeating.length === 0 && oneOffs.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist history in this range.</p>}
     </div>
   )
 }

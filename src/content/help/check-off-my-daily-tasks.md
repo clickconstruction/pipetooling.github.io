@@ -46,6 +46,8 @@ Below your Today list you may see a red-framed **Outstanding** section: one-off 
 
 On your phone, **Checklist → History** shows your days newest-first — each day says how many you finished, and every task carries a chip: {{chip:green|✓ 7:58 AM}} done, {{chip:yellow|✓ by Maria}} someone covered it, {{chip:red|✗ Missed}}, or {{chip:yellow|Reopened}}. The strip up top shows your week percentage and streak. Tap any task to read its whole story and add a note.
 
+On a computer, History is two lists. **Repeating** tasks keep the day-by-day grid — each row starts the day the task was created ("since 6/14" under the title, a blue tick on its first day), so there are no empty boxes for days a task didn't exist yet. **One-off tasks** sit below as a simple ledger: {{chip:green|✓ done}} with created → done dates, {{chip:red|✗ missed}}, or open.
+
 ## Sending a task back yourself
 
 Assigned to a task someone else marked done — but it isn't? On **History**, tap the row, write a note saying why (required), and tap {{button:amber|Reopen}}. Whoever completed it gets notified with your reason, and the task returns to **Today → Outstanding** until it's actually finished.
