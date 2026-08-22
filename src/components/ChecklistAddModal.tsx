@@ -67,7 +67,8 @@ type UserRole =
 
 export default function ChecklistAddModal({
   overlayBackground = 'rgba(0,0,0,0.5)',
-}: { overlayBackground?: string } = {}) {
+  goToChecklistKeepsModalOpen = true,
+}: { overlayBackground?: string; goToChecklistKeepsModalOpen?: boolean } = {}) {
   const { user: authUser } = useAuth()
   const navigate = useNavigate()
   const modalContext = useChecklistAddModal()
@@ -372,8 +373,16 @@ export default function ChecklistAddModal({
           <button
             type="button"
             onClick={() => {
-              modalContext.closeModal()
-              navigate('/checklist')
+              // Navigate the page behind but keep the modal (and its draft) open, so a
+              // mis-click costs nothing. The standalone /task shortcut page unmounts on
+              // navigation, so it opts out and keeps the old close-then-go behavior.
+              if (goToChecklistKeepsModalOpen) {
+                navigate('/checklist?tab=today')
+                titleInputRef.current?.focus({ preventScroll: true })
+              } else {
+                modalContext.closeModal()
+                navigate('/checklist')
+              }
             }}
             aria-label="Go to checklist"
             title="Go to checklist"

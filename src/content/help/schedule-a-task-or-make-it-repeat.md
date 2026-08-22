@@ -33,3 +33,7 @@ To see every repeating task in one place, open **Manage** and tap the {{chip:blu
 ## Notifications
 
 **When it's done, notify** is one line: check **Me** to hear when it's completed, and add one more person with the picker. Reminders at a set time of day live under **Advanced**.
+
+## Peek at the checklist without losing your draft
+
+The small checklist icon in the top-right corner of the Add-task window brings up the Checklist page **behind** the window — the window stays open and everything you've typed stays put. Use it to check whether the task already exists, then keep typing; and if you hit it by accident, nothing is lost.
