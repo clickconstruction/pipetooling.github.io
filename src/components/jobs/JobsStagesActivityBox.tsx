@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { buildJobActivityBoxFeed, stripRedundantStampBody, type JobActivityBoxEntry } from '../../lib/jobs/jobActivityBoxFeed'
@@ -17,8 +17,10 @@ function entryMetaLabel(atIso: string): string {
  * The Pipeline row "Job activity" box (viewports ≥1100px): fills the
  * Job cell's dead middle with the job's conversational trail. Anatomy (owner-
  * approved mockup): pinned NEXT line, a SCROLLING feed of numbered entries
- * (1 = oldest — numbers are stable references: "check note 3" never shifts),
- * a floating Post pill, and a sliding composer bar summoned by it. The feed
+ * in chat order — 1 = oldest at the top, newest at the bottom, the box keeps
+ * itself scrolled to the newest (owner request v2.2062; numbers are stable
+ * references: "check note 3" never shifts) —
+ * a floating "+ Add" pill, and a sliding composer bar summoned by it. The feed
  * beyond the latest entry lazy-loads on first pointer interaction via the
  * thread expand's existing loader; posting goes through the same thread-note
  * pipeline as the panel composer (optimistic entry, realtime for others).
@@ -98,6 +100,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
   const [submitting, setSubmitting] = useState(false)
   const requestedLoadRef = useRef(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const feedScrollRef = useRef<HTMLDivElement | null>(null)
 
   const activity = ctx.jobThreadActivityByJobId[job.id]
   const loaded = activity != null
@@ -128,6 +131,13 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
   })()
 
   const empty = loaded ? feed.length === 0 : teaser == null
+
+  // Chat order keeps the newest at the bottom (v2.2062) — pin the scroll
+  // there whenever the feed grows (initial load and each new entry alike).
+  useEffect(() => {
+    const el = feedScrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [feed.length])
 
   const openComposer = () => {
     ensureLoaded()
@@ -238,6 +248,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
         </button>
       ) : null}
       <div
+        ref={feedScrollRef}
         style={{
           maxHeight: 96,
           overflowY: 'auto',
@@ -274,7 +285,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
             e.stopPropagation()
             openComposer()
           }}
-          aria-label="Post a note to this job's activity"
+          aria-label="Add a note to this job's activity"
           style={{
             position: 'absolute',
             right: 8,
@@ -291,7 +302,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
             boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
           }}
         >
-          Post
+          + Add
         </button>
       ) : null}
       {composerOpen ? (
