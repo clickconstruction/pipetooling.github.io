@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { DEFAULT_BID_LEDGER_PREFIX } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
+import { EasterEggHost } from './FloatingEasterEgg'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useNavFitCollapse } from '../hooks/useNavFitCollapse'
 import { useForceReload } from '../contexts/ForceReloadContext'
@@ -1778,6 +1779,7 @@ export default function Layout() {
             </Suspense>
           </RouteChunkBoundary>
         </div>
+        <EasterEggHost userId={authUser?.id ?? null} />
         {authUser?.id && pinModeEnabled && location.pathname !== '/dashboard' && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
           <div
             style={{

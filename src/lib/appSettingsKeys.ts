@@ -256,3 +256,6 @@ export function parseAssistantHoursWindowWeeks(value: number | string | null | u
  * session in Layout). @see `src/lib/jobAddressLocalitySettings.ts`
  */
 export const APP_SETTINGS_KEY_JOB_ADDRESS_EXTRA_LOCALITIES_V1 = 'job_address_extra_localities_v1' as const
+
+/** `app_settings.key` — JSON easter-egg targeting ({ eggs: [...] }); dev writes via Settings → Easter eggs, all authenticated read. Parse/match kernel: src/lib/easterEggsConfig.ts. */
+export const APP_SETTINGS_KEY_EASTER_EGGS = 'easter_eggs_v1' as const
