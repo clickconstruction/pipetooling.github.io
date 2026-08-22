@@ -82,7 +82,7 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '1rem' }}>
       <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Easter eggs</h3>
       <p style={{ margin: '0 0 0.9rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Small visitors for specific people on specific screens. 1-in-50 page opens, a 7-second visit, never clickable, never on reduced-motion. Changes apply instantly — no deploy.
+        Small visitors for specific people on specific screens. First targeted-screen open each day is a guaranteed visit, then 1-in-50 page opens; 7 seconds, never clickable, never on reduced-motion. Changes apply instantly — no deploy.
       </p>
       {Object.entries(EASTER_EGG_SPRITES).map(([key, sprite]) => {
         const cfg = configFor(key)
@@ -93,7 +93,7 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
                 <img src={sprite.asset} alt="" style={{ width: 34, height: 'auto' }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.875rem' }}>{sprite.label}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>1-in-50 page opens · plays 7s · flees the cursor</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>daily debut + 1-in-50 · plays 7s · flees the cursor</div>
                 </div>
               </div>
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer' }}>

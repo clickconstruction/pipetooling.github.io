@@ -15,6 +15,20 @@ export type EasterEggConfig = {
 /** One appearance roll per surface open. */
 export const EASTER_EGG_APPEAR_ODDS = 1 / 50
 
+/**
+ * v2.2077: the first targeted-surface open of each company day is a guaranteed
+ * visit (the daily debut); every later open that day rolls the 1-in-50 dice.
+ * `lastDebutYmd` is the stored company-calendar day of the last debut.
+ */
+export function rollEggAppearance(
+  lastDebutYmd: string | null,
+  todayYmd: string,
+  rand: () => number = Math.random,
+): { appear: boolean; isDailyDebut: boolean } {
+  if (todayYmd && lastDebutYmd !== todayYmd) return { appear: true, isDailyDebut: true }
+  return { appear: rand() < EASTER_EGG_APPEAR_ODDS, isDailyDebut: false }
+}
+
 /** Registry of surfaces an egg can haunt. Adding one = one entry here. */
 export const EASTER_EGG_SURFACES: Record<string, { label: string; matches: (pathname: string, tab: string | null) => boolean }> = {
   followup: {

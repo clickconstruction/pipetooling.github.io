@@ -4,12 +4,13 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { APP_SETTINGS_KEY_EASTER_EGGS } from '../lib/appSettingsKeys'
 import {
-  EASTER_EGG_APPEAR_ODDS,
   EASTER_EGG_SPRITES,
   eggActiveFor,
   parseEasterEggsSetting,
+  rollEggAppearance,
   type EasterEggConfig,
 } from '../lib/easterEggsConfig'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { createEggState, eggOpacity, eggTransform, stepEgg } from '../lib/easterEggMotion'
 
 /** Settings → Easter eggs "Preview here now" fires this to skip the dice. */
@@ -132,7 +133,9 @@ export function EasterEggHost({ userId }: { userId: string | null }) {
     return () => window.removeEventListener(EASTER_EGG_PREVIEW_EVENT, onPreview)
   }, [reducedMotion])
 
-  // The dice: one roll per surface OPEN (entering a targeted surface), not per render.
+  // One appearance decision per surface OPEN (entering a targeted surface),
+  // not per render: the first open of each company day is a guaranteed visit
+  // (v2.2077), every later open rolls the 1-in-50 dice.
   useEffect(() => {
     if (reducedMotion || activeEggKey) return
     const tab = new URLSearchParams(location.search).get('tab')
@@ -142,7 +145,23 @@ export function EasterEggHost({ userId }: { userId: string | null }) {
     lastSurfaceSigRef.current = sig
     if (!sig) return
     const egg = eligible[Math.floor(Math.random() * eligible.length)]!
-    if (Math.random() < EASTER_EGG_APPEAR_ODDS) setActiveEggKey(egg.key)
+    const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+    const debutStorageKey = `easter-egg-debut:${egg.key}:${userId ?? ''}`
+    let lastDebutYmd: string | null = null
+    try {
+      lastDebutYmd = window.localStorage.getItem(debutStorageKey)
+    } catch {
+      /* private mode — dice only */
+    }
+    const roll = rollEggAppearance(lastDebutYmd, todayYmd)
+    if (roll.isDailyDebut) {
+      try {
+        window.localStorage.setItem(debutStorageKey, todayYmd)
+      } catch {
+        /* fine — tomorrow debuts again */
+      }
+    }
+    if (roll.appear) setActiveEggKey(egg.key)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search, configs, userId, reducedMotion])
 
