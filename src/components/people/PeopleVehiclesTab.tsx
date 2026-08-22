@@ -42,6 +42,8 @@ import {
   type FleetValueEntry,
   type VehicleLedgerRowKind,
   type VehicleMaintenanceTask,
+  type MaintenanceChecklistLinkIds,
+  resolveChecklistCleanupIds,
 } from '../../lib/vehicleFleet'
 import { getNextDisplayOrders } from '../../utils/checklistOrder'
 import { ChecklistItemActivity } from '../checklist/ChecklistItemActivity'
@@ -755,7 +757,23 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     loadFleet()
   }
 
+  /**
+   * Local task state can predate an assignment made this same page session
+   * (both checklist ids null in memory while the DB row has them), which used
+   * to orphan the assignee's checklist row on delete. Re-read the row before
+   * any checklist cleanup; local state is only the fallback if the read fails.
+   */
+  async function fetchChecklistLinkIds(t: VehicleMaintenanceTask): Promise<MaintenanceChecklistLinkIds> {
+    const { data } = await supabase
+      .from('vehicle_maintenance_tasks')
+      .select('checklist_item_id, checklist_instance_id')
+      .eq('id', t.id)
+      .maybeSingle()
+    return resolveChecklistCleanupIds((data as MaintenanceChecklistLinkIds | null) ?? null, t)
+  }
+
   async function completeMaintenanceTask(t: VehicleMaintenanceTask) {
+    const links = await fetchChecklistLinkIds(t)
     const nowIso = new Date().toISOString()
     const { error: err } = await supabase
       .from('vehicle_maintenance_tasks')
@@ -765,13 +783,13 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setError(err.message)
       return
     }
-    if (t.checklist_instance_id) {
+    if (links.checklist_instance_id) {
       // Clear it off the assignee's checklist too (the trigger only syncs the
       // other direction).
       await supabase
         .from('checklist_instances')
         .update({ completed_at: nowIso, completed_by_user_id: authUser?.id ?? null })
-        .eq('id', t.checklist_instance_id)
+        .eq('id', links.checklist_instance_id)
     }
     setError(null)
     showToast('Task done.', 'success')
@@ -823,17 +841,20 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   }
 
   async function deleteMaintenanceTask(t: VehicleMaintenanceTask) {
+    // Fetched before the confirm so the "comes off the checklist" warning is
+    // accurate even when the assignment happened this session.
+    const links = await fetchChecklistLinkIds(t)
     if (
       !(await confirmDialog({
-        message: `Delete task "${t.title}"?${t.checklist_instance_id ? ' It also comes off the assignee’s checklist.' : ''}`,
+        message: `Delete task "${t.title}"?${links.checklist_instance_id ? ' It also comes off the assignee’s checklist.' : ''}`,
         confirmLabel: 'Delete',
         danger: true,
       }))
     )
       return
     // Best-effort cleanup of the linked checklist rows first.
-    if (t.checklist_instance_id) await supabase.from('checklist_instances').delete().eq('id', t.checklist_instance_id)
-    if (t.checklist_item_id) await supabase.from('checklist_items').delete().eq('id', t.checklist_item_id)
+    if (links.checklist_instance_id) await supabase.from('checklist_instances').delete().eq('id', links.checklist_instance_id)
+    if (links.checklist_item_id) await supabase.from('checklist_items').delete().eq('id', links.checklist_item_id)
     const { error: err } = await supabase.from('vehicle_maintenance_tasks').delete().eq('id', t.id)
     if (err) {
       setError(err.message)
@@ -860,8 +881,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setAssignSaving(true)
     try {
       // Reassignment replaces the old checklist rows.
-      if (assignTask.checklist_instance_id) await supabase.from('checklist_instances').delete().eq('id', assignTask.checklist_instance_id)
-      if (assignTask.checklist_item_id) await supabase.from('checklist_items').delete().eq('id', assignTask.checklist_item_id)
+      const links = await fetchChecklistLinkIds(assignTask)
+      if (links.checklist_instance_id) await supabase.from('checklist_instances').delete().eq('id', links.checklist_instance_id)
+      if (links.checklist_item_id) await supabase.from('checklist_items').delete().eq('id', links.checklist_item_id)
       // The Checklist Forward pattern: one-off item + assignee + instance.
       const { data: newItem, error: itemErr } = await supabase
         .from('checklist_items')

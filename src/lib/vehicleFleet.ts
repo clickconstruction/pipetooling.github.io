@@ -367,6 +367,27 @@ export function openMaintenanceTasks(tasks: VehicleMaintenanceTask[]): VehicleMa
   return tasks.filter((t) => t.completed_at == null)
 }
 
+export type MaintenanceChecklistLinkIds = {
+  checklist_item_id: string | null
+  checklist_instance_id: string | null
+}
+
+/**
+ * Which checklist rows to touch when completing/deleting/reassigning a
+ * maintenance task. Local component state can predate an assignment made in
+ * the same page session (both ids null in memory while the DB row has them),
+ * so a freshly fetched row wins outright — including its nulls, since after a
+ * reassignment the stale local ids point at rows that no longer belong to
+ * this task. Local state is only the fallback when the fetch failed.
+ */
+export function resolveChecklistCleanupIds(
+  fresh: MaintenanceChecklistLinkIds | null,
+  local: MaintenanceChecklistLinkIds,
+): MaintenanceChecklistLinkIds {
+  const src = fresh ?? local
+  return { checklist_item_id: src.checklist_item_id, checklist_instance_id: src.checklist_instance_id }
+}
+
 export type MaintenanceTaskCounts = { open: number; unassigned: number }
 
 /** Open/unassigned maintenance counts per vehicle for the cards and summary chips. */
