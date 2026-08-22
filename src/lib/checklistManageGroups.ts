@@ -39,3 +39,12 @@ export function openAgeLabel(oldestIncompleteDate: string | undefined, todayStr:
   if (days <= 0) return 'open today'
   return `open ${days === 1 ? '1 day' : `${days} days`}`
 }
+
+/** "next Mon, Aug 24" chip for repeating rows; "next today" → "due today"; '' when nothing upcoming. */
+export function nextOccurrenceLabel(nextOpenDate: string | undefined, todayStr: string): string {
+  if (!nextOpenDate) return ''
+  if (nextOpenDate === todayStr) return 'due today'
+  const d = new Date(nextOpenDate + 'T12:00:00')
+  if (isNaN(d.getTime())) return ''
+  return `next ${d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}`
+}
