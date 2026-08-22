@@ -146,7 +146,7 @@ function StandaloneCreateInner() {
           </button>
         </div>
       )}
-      <ChecklistAddModal overlayBackground="transparent" />
+      <ChecklistAddModal overlayBackground="transparent" goToChecklistKeepsModalOpen={false} />
     </>
   )
 }
