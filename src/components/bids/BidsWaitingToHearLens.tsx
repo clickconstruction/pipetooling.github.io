@@ -7,17 +7,14 @@ import { bidAddressMapsUrl } from '../../lib/buildBidPricingPackageHtml'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
   PENDING_CHASE_ACTIONS,
-  PENDING_CHASE_DEFAULT_WINDOW_KEY,
-  PENDING_CHASE_WINDOWS,
+  PENDING_CHASE_STALE_CONTACT_DAYS,
   bidNeedsChase,
-  bidSentWithinWindow,
   buildPendingChaseActionWrites,
   buildPendingChaseRollup,
   groupPendingChaseByBuilder,
   nextPendingChaseBidIndex,
   type PendingChaseActionKey,
   type PendingChaseBid,
-  type PendingChaseWindowKey,
 } from '../../lib/bidPendingChase'
 import { BID_LOSS_CATEGORIES, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
@@ -104,7 +101,6 @@ export function BidsWaitingToHearLens({
   onReloadBids,
   onOpenBuilderCard,
 }: BidsWaitingToHearLensProps) {
-  const [windowKey, setWindowKey] = useState<PendingChaseWindowKey>(PENDING_CHASE_DEFAULT_WINDOW_KEY)
   const [chaseSearchQuery, setChaseSearchQuery] = useState('')
   const [selectedBuilderKey, setSelectedBuilderKey] = useState<string | null>(null)
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
@@ -118,9 +114,8 @@ export function BidsWaitingToHearLens({
 
   // One instant per mount keeps every memo on the same clock.
   const nowIso = useMemo(() => new Date().toISOString(), [])
-  const windowDays = PENDING_CHASE_WINDOWS.find((w) => w.key === windowKey)?.days ?? null
 
-  const allPendingLensBids = useMemo<LensBid[]>(() => {
+  const lensBids = useMemo<LensBid[]>(() => {
     return bids
       .filter(
         (b) =>
@@ -154,13 +149,8 @@ export function BidsWaitingToHearLens({
       })
   }, [bids, lastContactFromEntries, ledgerPrefixMap, localTouches, localResolved])
 
-  const lensBids = useMemo(
-    () => allPendingLensBids.filter((b) => bidSentWithinWindow(b, windowDays, nowIso)),
-    [allPendingLensBids, windowDays, nowIso],
-  )
-
   // Search narrows the queue (sidebar + bids), never the rollup headline —
-  // "N to chase" stays a status of the window, not of the query.
+  // "N to chase" stays a status of the whole queue, not of the query.
   const searchedLensBids = useMemo(() => {
     const q = chaseSearchQuery.trim().toLowerCase()
     if (!q) return lensBids
@@ -313,35 +303,7 @@ export function BidsWaitingToHearLens({
     return () => window.removeEventListener('keydown', onKeyDown)
   })
 
-  const windowPills = (
-    <div style={{ display: 'inline-flex', gap: '0.25rem' }} role="group" aria-label="Sent within">
-      {PENDING_CHASE_WINDOWS.map((w) => {
-        const active = w.key === windowKey
-        return (
-          <button
-            key={w.key}
-            type="button"
-            aria-pressed={active}
-            onClick={() => { setWindowKey(w.key); setSelectedBuilderKey(null); setSelectedBidId(null) }}
-            style={{
-              fontSize: '0.75rem',
-              padding: '0.2rem 0.6rem',
-              borderRadius: 999,
-              cursor: 'pointer',
-              border: `1px solid ${active ? 'var(--border-strong)' : 'var(--border)'}`,
-              background: active ? 'var(--surface)' : 'transparent',
-              color: 'var(--text-700)',
-              fontWeight: active ? 600 : 400,
-            }}
-          >
-            {w.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-
-  if (allPendingLensBids.length === 0) {
+  if (lensBids.length === 0) {
     return (
       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
         No sent bids are waiting on an answer in this trade — nothing to chase.
@@ -364,9 +326,13 @@ export function BidsWaitingToHearLens({
         >
           {rollup.needsCount > 0
             ? `${rollup.needsCount} sent bid${rollup.needsCount === 1 ? '' : 's'} to chase`
-            : 'Every recent sent bid has a fresh touch'}
+            : 'All caught up — every open bid touched this week'}
         </span>
-        {windowPills}
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          {`of ${rollup.pendingCount} still open · $${formatCurrency(rollup.pendingValue)} waiting on an answer`}
+          {rollup.untouchedCount > 0 ? ` · ${rollup.untouchedCount} never called` : ''}
+          {rollup.oldestUntouchedDays != null ? `, oldest ${rollup.oldestUntouchedDays}d` : ''}
+        </span>
         <input
           type="text"
           value={chaseSearchQuery}
@@ -392,18 +358,15 @@ export function BidsWaitingToHearLens({
             {chasedThisSession} chased this session
           </span>
         ) : null}
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-          Sent within the window, newest first · arrows move between bids
-        </span>
       </div>
+      <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        Every sent bid still waiting on an answer, newest first. A bid needs a chase when nobody's talked to the GC in
+        over {PENDING_CHASE_STALE_CONTACT_DAYS} days — tap what happened to log the call. Arrow keys move between bids.
+      </p>
 
-      {lensBids.length === 0 ? (
+      {searchedLensBids.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          Nothing sent in the last {windowDays} days is still open — widen the window to see older pending bids.
-        </p>
-      ) : searchedLensBids.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          No bids match “{chaseSearchQuery.trim()}” in this window — clear the search or widen the window.
+          No open sent bids match “{chaseSearchQuery.trim()}” — clear the search to see the whole queue.
         </p>
       ) : (
         <div
@@ -415,7 +378,11 @@ export function BidsWaitingToHearLens({
             marginBottom: '1rem',
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }} aria-label="Builder chase queue">
+          {/* Scrolls on its own — with every open bid in the queue the full list can run to dozens of builders. */}
+          <div
+            style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: 'min(72vh, 42rem)', overflowY: 'auto' }}
+            aria-label="Builder chase queue"
+          >
             {groups.map((g) => {
               const active = selectedGroup?.builderKey === g.builderKey
               return (
@@ -441,7 +408,7 @@ export function BidsWaitingToHearLens({
                     )}
                   </span>
                   <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {g.needsCount === 0 ? 'fresh' : `$${formatCurrency(g.needsValue)} waiting`}
+                    {g.needsCount === 0 ? 'all caught up' : `$${formatCurrency(g.needsValue)} waiting`}
                     {` · sent ${shortDate(g.newestSentIso)}`}
                   </span>
                 </button>
@@ -464,9 +431,21 @@ export function BidsWaitingToHearLens({
                     </a>
                   ) : null
                 })()}
-                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {selectedBids.filter((b) => !bidNeedsChase(b, nowIso)).length} of {selectedBids.length} fresh
-                </span>
+                {(() => {
+                  const needs = selectedBids.filter((b) => bidNeedsChase(b, nowIso)).length
+                  return (
+                    <span
+                      style={{
+                        marginLeft: 'auto',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: needs > 0 ? 'var(--text-amber-800)' : 'var(--text-emerald-800)',
+                      }}
+                    >
+                      {needs > 0 ? `${needs} of ${selectedBids.length} need a chase` : 'all caught up'}
+                    </span>
+                  )
+                })()}
               </div>
 
               {looksLikeCombinedGcName(selectedGroup.builderName) ? (
@@ -484,7 +463,8 @@ export function BidsWaitingToHearLens({
                   primary GC, and add the others under <strong>Also sent to</strong> — then each real GC gets its own queue entry.
                 </p>
               ) : null}
-              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginBottom: '0.6rem' }} aria-label="This builder's pending bids">
+              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.6rem' }} aria-label="This builder's pending bids">
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginRight: '0.15rem' }}>Their open bids</span>
                 {selectedBids.map((b) => {
                   const fresh = !bidNeedsChase(b, nowIso)
                   const current = b.id === selectedBid.id
@@ -612,7 +592,10 @@ export function BidsWaitingToHearLens({
                   </button>
                 </div>
               ) : (
-                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.6rem' }} aria-label="Chase outcomes">
+                <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.6rem' }} aria-label="Chase outcomes">
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    What happened?
+                  </span>
                   {PENDING_CHASE_ACTIONS.map((a) => {
                     const emphasis = a.key === 'won' ? 'var(--bg-emerald-tint)' : a.key === 'lost' ? 'var(--bg-red-tint)' : 'var(--surface)'
                     const fg = a.key === 'won' ? 'var(--text-emerald-800)' : a.key === 'lost' ? 'var(--text-red-800)' : 'var(--text-700)'
@@ -695,18 +678,6 @@ export function BidsWaitingToHearLens({
         </div>
       )}
 
-      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.9rem', background: 'var(--surface)' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Waiting to hear</span>
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            {rollup.pendingCount} sent still open · ${formatCurrency(rollup.pendingValue)}
-            {rollup.untouchedCount > 0
-              ? ` · never chased since sending: ${rollup.untouchedCount} · $${formatCurrency(rollup.untouchedValue)}`
-              : ''}
-            {rollup.oldestUntouchedDays != null ? ` · oldest untouched ${rollup.oldestUntouchedDays}d` : ''}
-          </span>
-        </div>
-      </div>
     </div>
   )
 }
