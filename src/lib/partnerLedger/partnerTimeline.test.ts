@@ -3,10 +3,10 @@ import type { JournalRow } from './partnerLedgerJournal'
 import { buildPartnerTimeline, chargeTypeLabel, filterPartnerTimeline, type TimelineEventInputs } from './partnerTimeline'
 
 const journal: JournalRow[] = [
-  { date: '2026-08-15', label: 'Labor — 40.5 h (week of 2026-08-09)', detail: null, amount: 1755, balance: 1755, kind: 'labor', pay_stub_id: 's1' },
-  { date: '2026-08-15', label: 'Profit share — Job 781', detail: null, amount: 1051.05, balance: 2806.05, kind: 'addition', pay_stub_id: 's1' },
-  { date: '2026-08-15', label: 'Back-charge — return trip', detail: null, amount: -150, balance: 2656.05, kind: 'deduction', pay_stub_id: 's1' },
-  { date: '2026-08-16', label: 'Paid out', detail: 'CashApp', amount: -1625, balance: 1031.05, kind: 'payout', pay_stub_id: 's1' },
+  { date: '2026-08-15', label: 'Labor — 40.5 h (week of 2026-08-09)', detail: null, amount: 1755, balance: 1755, kind: 'labor', pay_stub_id: 's1', offset_id: null },
+  { date: '2026-08-15', label: 'Profit share — Job 781', detail: null, amount: 1051.05, balance: 2806.05, kind: 'addition', pay_stub_id: 's1', offset_id: null },
+  { date: '2026-08-15', label: 'Back-charge — return trip', detail: null, amount: -150, balance: 2656.05, kind: 'deduction', pay_stub_id: 's1', offset_id: null },
+  { date: '2026-08-16', label: 'Paid out', detail: 'CashApp', amount: -1625, balance: 1031.05, kind: 'payout', pay_stub_id: 's1', offset_id: null },
 ]
 
 const events: TimelineEventInputs = {

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
 export type PayStubViewModalProps = {
   /** Dialog title, e.g. "Pay report — Taunya (6/22 – 6/28)". */
@@ -16,6 +16,16 @@ export type PayStubViewModalProps = {
  */
 export function PayStubViewModal({ title, html, zIndex, onClose }: PayStubViewModalProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
+
+  // Document-level Escape: the dialog's own onKeyDown only fires with focus
+  // inside it, which a click-opened modal doesn't have.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   function handlePrint() {
     const win = iframeRef.current?.contentWindow

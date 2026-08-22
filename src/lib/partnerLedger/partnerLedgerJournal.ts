@@ -18,7 +18,13 @@ export type JournalStub = {
 export type JournalAdditionalLine = { pay_stub_id: string; description: string; line_total: number }
 export type JournalDeduction = { pay_stub_id: string; description: string; amount: number }
 export type JournalPayment = { pay_stub_id: string; amount: number; paid_at: string; memo: string | null }
-export type JournalPendingOffset = { type: string; amount: number; occurred_date: string; description: string | null }
+export type JournalPendingOffset = {
+  id?: string
+  type: string
+  amount: number
+  occurred_date: string
+  description: string | null
+}
 
 export type JournalRow = {
   /** ISO date the row is booked under */
@@ -31,6 +37,8 @@ export type JournalRow = {
   balance: number
   kind: 'labor' | 'addition' | 'deduction' | 'payout'
   pay_stub_id: string | null
+  /** person_offsets id when the row came from a dated charge — the drill-in key */
+  offset_id: string | null
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -41,7 +49,7 @@ export const POSITIVE_OFFSET_TYPES = new Set(['profit_share', 'employee_credit']
 /** A dated charge (or credit) booked directly at its own date — the
  * charges-at-date convention: an offset hits the balance when it happened,
  * not when a statement later lists it. Signed amount (charges −). */
-export type JournalCharge = { date: string; label: string; amount: number }
+export type JournalCharge = { date: string; label: string; amount: number; offset_id?: string }
 
 /**
  * Build the dated journal, oldest first, with a running balance.
@@ -66,6 +74,7 @@ export function buildPartnerJournal(input: {
       amount: round2(c.amount),
       kind: c.amount >= 0 ? 'addition' : 'deduction',
       pay_stub_id: null,
+      offset_id: c.offset_id ?? null,
     })
   }
   const stubsAsc = [...input.stubs].sort((a, b) => a.period_start.localeCompare(b.period_start))
@@ -77,6 +86,7 @@ export function buildPartnerJournal(input: {
       amount: round2(s.gross_pay),
       kind: 'labor',
       pay_stub_id: s.id,
+      offset_id: null,
     })
     for (const a of input.additional.filter((x) => x.pay_stub_id === s.id)) {
       events.push({
@@ -86,6 +96,7 @@ export function buildPartnerJournal(input: {
         amount: round2(a.line_total),
         kind: 'addition',
         pay_stub_id: s.id,
+        offset_id: null,
       })
     }
     for (const d of input.deductions.filter((x) => x.pay_stub_id === s.id)) {
@@ -96,6 +107,7 @@ export function buildPartnerJournal(input: {
         amount: -round2(d.amount),
         kind: 'deduction',
         pay_stub_id: s.id,
+        offset_id: null,
       })
     }
   }
@@ -108,6 +120,7 @@ export function buildPartnerJournal(input: {
       amount: -round2(p.amount),
       kind: 'payout',
       pay_stub_id: p.pay_stub_id,
+      offset_id: null,
     })
   }
   // Stable merge by date; same-date rows keep insertion order (labor before
@@ -160,6 +173,8 @@ export type PendingJournalRow = {
   balance: null
   kind: 'pending'
   pay_stub_id: null
+  /** person_offsets id backing this pending row — the drill-in key */
+  offset_id: string | null
 }
 
 export type JournalDisplayRow = JournalRow | PendingJournalRow
@@ -243,6 +258,7 @@ export function mergePendingIntoJournal(rows: JournalRow[], pending: JournalPend
       balance: null,
       kind: 'pending',
       pay_stub_id: null,
+      offset_id: o.id ?? null,
     }))
   const merged: JournalDisplayRow[] = [...rows, ...pendingRows]
   const tier = (r: JournalDisplayRow) => (r.kind === 'pending' ? 1 : 0)
