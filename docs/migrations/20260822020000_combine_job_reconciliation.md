@@ -1,4 +1,4 @@
-# 20260822010000_combine_job_reconciliation.sql (2026-08-22, v2.2068)
+# 20260822020000_combine_job_reconciliation.sql (2026-08-22, v2.2068)
 
 `ALTER TABLE job_status_events ADD COLUMN IF NOT EXISTS source_job_id uuid` (nullable, **no FK** —
 the source row is deleted in the same transaction, so the id is forensic, not relational) +

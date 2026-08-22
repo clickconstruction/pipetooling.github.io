@@ -10,7 +10,7 @@
  *
  * 1. The combine thread note the RPC now posts on the target:
  *    `Combined "<name>" (Job #<number>) into this job — source was <Status> at <pct>%`
- *    Composed server-side in 20260822010000_combine_job_reconciliation.sql;
+ *    Composed server-side in 20260822020000_combine_job_reconciliation.sql;
  *    composeCombineNoteBody mirrors that SQL byte-for-byte (tests pin it) and
  *    parseCombineNoteBody is the reader. Change the format in both places.
  *

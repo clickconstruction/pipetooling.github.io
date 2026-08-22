@@ -7,7 +7,7 @@ import {
 } from './jobCombineNote'
 
 describe('composeCombineNoteBody', () => {
-  it('matches the SQL format from 20260822010000_combine_job_reconciliation.sql', () => {
+  it('matches the SQL format from 20260822020000_combine_job_reconciliation.sql', () => {
     // Pinned against what the RPC's format()/to_char produces — the two
     // composers are a contract; change them together.
     expect(
