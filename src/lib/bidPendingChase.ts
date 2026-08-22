@@ -1,7 +1,7 @@
 /**
- * "Waiting to hear" pending-bid chase: window filter + call-mode grouping +
- * rollup for the Followup tab's fourth lens. The queue is sent bids with no
- * outcome yet — the recent ones first, because that's where bid tabs and real
+ * "Waiting to hear" pending-bid chase: call-mode grouping + rollup for the
+ * Followup tab's fourth lens. The queue is every sent bid with no outcome
+ * yet — the recent ones first, because that's where bid tabs and real
  * feedback still live (estimator ask, 2026-08-21).
  *
  * Sibling of `bidLossCategories.ts` (the Why we lost lens kernel).
@@ -11,24 +11,6 @@
 
 import { callSessionOutcomeLabel } from './bids/builderCallSession'
 import type { BidLossCategoryKey } from './bidLossCategories'
-
-export type PendingChaseWindowKey = '30' | '60' | '90' | 'all'
-
-export type PendingChaseWindow = {
-  key: PendingChaseWindowKey
-  label: string
-  /** Sent-within window in days; null = no limit. */
-  days: number | null
-}
-
-export const PENDING_CHASE_WINDOWS: readonly PendingChaseWindow[] = [
-  { key: '30', label: '30 days', days: 30 },
-  { key: '60', label: '60 days', days: 60 },
-  { key: '90', label: '90 days', days: 90 },
-  { key: 'all', label: 'All', days: null },
-]
-
-export const PENDING_CHASE_DEFAULT_WINDOW_KEY: PendingChaseWindowKey = '60'
 
 /** A bid counts as chased while its last contact is at most this many days old. */
 export const PENDING_CHASE_STALE_CONTACT_DAYS = 7
@@ -54,13 +36,6 @@ export function pendingChaseDaysBetween(fromIso: string, toIso: string): number 
   const to = Date.parse(toIso)
   if (!Number.isFinite(from) || !Number.isFinite(to)) return 0
   return Math.floor((to - from) / DAY_MS)
-}
-
-/** True when the bid was sent within `windowDays` of now (null window = always true). */
-export function bidSentWithinWindow(b: Pick<PendingChaseBid, 'sentIso'>, windowDays: number | null, nowIso: string): boolean {
-  if (windowDays == null) return true
-  const age = pendingChaseDaysBetween(b.sentIso, nowIso)
-  return age <= windowDays
 }
 
 /**

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   PENDING_CHASE_STALE_CONTACT_DAYS,
   bidNeedsChase,
-  bidSentWithinWindow,
   buildPendingChaseActionWrites,
   buildPendingChaseRollup,
   groupPendingChaseByBuilder,
@@ -31,14 +30,6 @@ describe('pendingChaseDaysBetween', () => {
     expect(pendingChaseDaysBetween('2026-08-10', NOW)).toBe(11)
     expect(pendingChaseDaysBetween(NOW, NOW)).toBe(0)
     expect(pendingChaseDaysBetween('garbage', NOW)).toBe(0)
-  })
-})
-
-describe('bidSentWithinWindow', () => {
-  it('filters by sent age; null window admits everything', () => {
-    expect(bidSentWithinWindow({ sentIso: '2026-08-10' }, 30, NOW)).toBe(true)
-    expect(bidSentWithinWindow({ sentIso: '2026-05-01' }, 60, NOW)).toBe(false)
-    expect(bidSentWithinWindow({ sentIso: '2025-01-01' }, null, NOW)).toBe(true)
   })
 })
 

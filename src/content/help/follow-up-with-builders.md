@@ -10,7 +10,7 @@ The **Followup** tab (Bids → Followup) is where bid follow-up lives. It has th
 - **By builder** — the call queue. One card per builder, sorted so the builder you've ignored longest is on top. This is the lens for phone mornings: call one GC, walk through all their bids at once.
 - **By status** — the outcome tables (Unsent, Not yet won or lost, Won, Started or Complete, Lost) with the per-person followup sheets, {{button:outline|Print}}/{{button:outline|PDF}}, and call scripts.
 - **Why we lost** — record and review loss reasons, one GC call at a time (below).
-- **Waiting to hear** — chase your recently sent bids for answers and bid tabs, newest first (below). Search by bid #, project name, GC/Builder, or address to jump straight to one — the "N to chase" chip keeps counting the whole window while you search.
+- **Waiting to hear** — chase your sent bids for answers and bid tabs, newest first (below). Search by bid #, project name, GC/Builder, or address to jump straight to one — the "N to chase" chip keeps counting the whole queue while you search.
 
 Flip between them with the {{button:blue|By builder}} / {{button:outline|By status}} / {{button:outline|Why we lost}} / {{button:outline|Waiting to hear}} toggle at the top. The **Stale after N days** box is shared between the first two — set it once and both lenses highlight the same bids in red.
 
@@ -78,17 +78,16 @@ Below the queue, the **Why we lost** rollup counts every categorized loss by rea
 
 ## Chase the bids you just sent
 
-The **Waiting to hear** lens is the other half of the Friday calls: instead of old lost bids, the queue is every **sent bid with no outcome yet** — and the *recent* ones come first, because that's where the feedback is still fresh and a bid tab is still gettable. The **Sent within** pills (30 / 60 / 90 days / All, default 60) keep the queue to the recent past.
+The **Waiting to hear** lens is the other half of the Friday calls: instead of old lost bids, the queue is every **sent bid with no outcome yet** — and the *recent* ones come first, because that's where the feedback is still fresh and a bid tab is still gettable. The header says it all in one line: how many bids **need a chase** (nobody's talked to the GC in over a week), how many are still open and their dollars, and how many were **never called** since sending.
 
-The left rail lists builders holding your open bids, most recently sent on top. Pick one and their pending bids become the same **street-name pills** as the Why we lost lens — green means someone touched that bid in the last week, plain means it's waiting on a chase. Each bid card shows the dollars, **when it was sent and how long ago**, the due date, and the line that matters: **"Never contacted since sending"** in amber when nobody has followed up at all. The builder's phone number is tappable, the address opens Google Maps, and **open their builder card →** jumps to the By builder lens for contacts, notes, and a full call session.
+The left rail lists builders holding your open bids, most recently sent on top (it scrolls on its own when the list runs long; a builder whose bids were all touched this week shows **all caught up**). Pick one and their pending bids become the same **street-name pills** as the Why we lost lens — green means someone touched that bid in the last week, plain means it's waiting on a chase. Each bid card shows the dollars, **when it was sent and how long ago**, the due date, and the line that matters: **"Never contacted since sending"** in amber when nobody has followed up at all. The builder's phone number is tappable, the address opens Google Maps, and **open their builder card →** jumps to the By builder lens for contacts, notes, and a full call session.
 
 :::example the ask on every call
 "Morning — we sent our number on Saginaw two weeks ago. Did it land? Are we in the hunt? Can I get the bid tab when it's out?" Tap through their pills with the arrow keys; {{button:outline|Skip →}} moves on.
 :::
 
-Log the answer without leaving the card — one tap per bid: **Left message** · **Still pending** · **Bid tab received** · **Rebid / RFQ** · **Won** · **Lost…**. Every tap writes a bid note and stamps **Last Contact** (the pill goes green and the next bid opens), so the Bid Board and By builder queue stay current for free. **Lost…** reveals the same six reason chips as the Why we lost lens — a loss you learn about on the chase call gets its reason recorded on the spot and never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
+Log the answer without leaving the card — the **What happened?** chips, one tap per bid: **Left message** · **Still pending** · **Bid tab received** · **Rebid / RFQ** · **Won** · **Lost…**. Every tap writes a bid note and stamps **Last Contact** (the pill goes green and the next bid opens), so the Bid Board and By builder queue stay current for free. **Lost…** reveals the same six reason chips as the Why we lost lens — a loss you learn about on the chase call gets its reason recorded on the spot and never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
 
-Below the queue, the **Waiting to hear** rollup keeps you honest: how much sent work is still open, how many bids were **never chased since sending** (count and dollars), and the age of the oldest untouched one.
 
 ## One bid, several GCs — every queue knows
 
