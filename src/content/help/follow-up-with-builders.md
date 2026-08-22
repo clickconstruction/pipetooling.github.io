@@ -52,6 +52,8 @@ Once you promise dates, **Oldest first** stops being just "who waited longest": 
 
 The **Why we lost** lens turns loss reasons into a one-tap habit instead of a blank text box. A red {{chip:red|N need a reason}} chip on the other lenses shows how many lost bids have no reason recorded — click it to jump in. And once **5 or more** lost bids are waiting, the **dashboard** shows a banner with the count and the dollars unexplained — {{button:blue|Start call mode →}} drops you straight into the lens.
 
+A **bids by** select in the header scopes the whole lens to one estimator — headline count, builder rail, and the keyboard queue all become "my Friday list"; All estimators is one tap back.
+
 The left rail is a call queue: builders with unexplained lost bids first, biggest dollars on top. Pick whoever you have on the phone and their lost bids become a row of **project-name pills** — "Take 5 Dickinson," not a street fragment three other bids share. Hover a pill for the full name and address, and when the GC talks in streets, the open bid's **address button (opens Google Maps)** is right below. Six reason chips:
 
 **GC lost the project** · **Price too high** · **Went with another sub** · **Project died / on hold** · **Never finished bid** · **No answer**
