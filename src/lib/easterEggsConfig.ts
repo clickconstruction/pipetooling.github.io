@@ -13,11 +13,11 @@ export type EasterEggConfig = {
 }
 
 /** One appearance roll per surface open. */
-export const EASTER_EGG_APPEAR_ODDS = 1 / 50
+export const EASTER_EGG_APPEAR_ODDS = 1 / 15
 
 /**
  * v2.2077: the first targeted-surface open of each company day is a guaranteed
- * visit (the daily debut); every later open that day rolls the 1-in-50 dice.
+ * visit (the daily debut); every later open that day rolls the 1-in-15 dice.
  * `lastDebutYmd` is the stored company-calendar day of the last debut.
  */
 export function rollEggAppearance(

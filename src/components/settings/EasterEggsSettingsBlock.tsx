@@ -17,8 +17,8 @@ type UserRow = { id: string; name: string | null }
 /**
  * Settings → Easter eggs (dev, v2.2074): one card per sprite — on/off, who
  * (targeted users), where (surface registry), and a Preview button that plays
- * the visit right here without the 1-in-50 roll. The whole admin is those
- * three choices; frequency (1-in-50) and personality (7s visit, flee radius)
+ * the visit right here without the 1-in-15 roll. The whole admin is those
+ * three choices; frequency (1-in-15) and personality (7s visit, flee radius)
  * are hard-coded gentle defaults on purpose.
  */
 export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] }) {
@@ -82,7 +82,7 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem 1.25rem', marginTop: '1rem' }}>
       <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem' }}>Easter eggs</h3>
       <p style={{ margin: '0 0 0.9rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Small visitors for specific people on specific screens. First targeted-screen open each day is a guaranteed visit, then 1-in-50 page opens; 7 seconds, never clickable, never on reduced-motion. Changes apply instantly — no deploy.
+        Small visitors for specific people on specific screens. First targeted-screen open each day is a guaranteed visit, then 1-in-15 page opens; 7 seconds, never clickable, never on reduced-motion. Changes apply instantly — no deploy.
       </p>
       {Object.entries(EASTER_EGG_SPRITES).map(([key, sprite]) => {
         const cfg = configFor(key)
@@ -93,7 +93,7 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
                 <img src={sprite.asset} alt="" style={{ width: 34, height: 'auto' }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.875rem' }}>{sprite.label}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>daily debut + 1-in-50 · plays 7s · flees the cursor</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>daily debut + 1-in-15 · plays 7s · flees the cursor</div>
                 </div>
               </div>
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer' }}>
@@ -158,7 +158,7 @@ export default function EasterEggsSettingsBlock({ users }: { users: UserRow[] })
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent(EASTER_EGG_PREVIEW_EVENT, { detail: { key } }))}
                 style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', color: 'var(--text-700)', cursor: 'pointer', marginLeft: 'auto' }}
-                title="Play the 7-second visit on this screen, skipping the 1-in-50 roll"
+                title="Play the 7-second visit on this screen, skipping the 1-in-15 roll"
               >
                 Preview here now
               </button>
