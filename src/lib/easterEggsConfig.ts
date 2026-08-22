@@ -5,6 +5,8 @@
  * with the callers; this module is testable without supabase.
  */
 
+import { eggSurfaceMatches, normalizeEggSurfaces } from './easterEggSurfaceTree'
+
 export type EasterEggConfig = {
   key: string
   enabled: boolean
@@ -29,13 +31,8 @@ export function rollEggAppearance(
   return { appear: rand() < EASTER_EGG_APPEAR_ODDS, isDailyDebut: false }
 }
 
-/** Registry of surfaces an egg can haunt. Adding one = one entry here. */
-export const EASTER_EGG_SURFACES: Record<string, { label: string; matches: (pathname: string, tab: string | null) => boolean }> = {
-  followup: {
-    label: 'Followup',
-    matches: (pathname, tab) => pathname.startsWith('/bids') && (tab === 'builder-review' || tab === 'submission-followup'),
-  },
-}
+// Surfaces (v2.2082): any screen in the app, keyed per `easterEggSurfaceTree.ts`
+// (`p:<path>` pages, `t:/bids:<tab>` Bids tabs; legacy `followup` normalizes).
 
 /** The eggs that exist. Config rows are matched to these by key; unknown keys are dropped. */
 export const EASTER_EGG_SPRITES: Record<string, { label: string; asset: string }> = {
@@ -60,7 +57,7 @@ export function parseEasterEggsSetting(text: string | null | undefined): EasterE
         key: e.key as string,
         enabled: e.enabled === true,
         targetUserIds: asStringArray(e.targetUserIds),
-        surfaces: asStringArray(e.surfaces).filter((s) => s in EASTER_EGG_SURFACES),
+        surfaces: normalizeEggSurfaces(asStringArray(e.surfaces)),
       }))
   } catch {
     return []
@@ -80,5 +77,5 @@ export function eggActiveFor(
 ): boolean {
   if (!egg.enabled || !userId) return false
   if (!egg.targetUserIds.includes(userId)) return false
-  return egg.surfaces.some((s) => EASTER_EGG_SURFACES[s]?.matches(pathname, tab) ?? false)
+  return egg.surfaces.some((s) => eggSurfaceMatches(s, pathname, tab))
 }
