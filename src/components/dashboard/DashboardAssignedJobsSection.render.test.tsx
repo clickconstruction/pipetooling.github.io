@@ -84,6 +84,23 @@ describe('DashboardAssignedJobsSection (extracted)', () => {
     expect(screen.getByRole('button', { name: /Leave Report/ })).toBeTruthy()
   })
 
+  it('mobile card (v2.2067): report-due rows get the amber rail and the count renders as a labeled chip', () => {
+    const { container } = renderWithProviders(
+      <DashboardAssignedJobsSection
+        {...assignedProps({
+          leaveReportReminderForJobRow: () => true,
+          reportCountByJobId: { 'job-1': 3 },
+        })}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /Report due/ })).toBeTruthy()
+    const railCard = [...container.querySelectorAll('div')].find(
+      (d) => d.style.borderLeftWidth === '4px',
+    )
+    expect(railCard).toBeTruthy()
+    expect(screen.getByRole('button', { name: /View 3 reports/ })).toBeTruthy()
+  })
+
   it('shows the search-empty note when a search hides every row', () => {
     renderWithProviders(
       <DashboardAssignedJobsSection
