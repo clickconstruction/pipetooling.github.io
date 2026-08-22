@@ -44,6 +44,14 @@ type PipelineOverviewProps = {
   /** Payment chase card (v2.2025): null/undefined hides it (non-office roles, or nothing anywhere). */
   chase?: PaymentChaseSummary | null
   onStartChase?: () => void
+  /**
+   * Personal statement rounds (v2.2072). `held` = GCs over the threshold
+   * waiting on certification (the certifier's card); `ready` = the current
+   * user's certified, unsent queue (the sender's card). Null/zero hides each.
+   */
+  gcRound?: { held: { count: number; total: number } | null; ready: { count: number; total: number } | null } | null
+  onCertifyRound?: () => void
+  onStartRound?: () => void
 }
 
 const cardBase: CSSProperties = {
@@ -142,6 +150,9 @@ export function PipelineOverview({
   onFixup,
   chase,
   onStartChase,
+  gcRound,
+  onCertifyRound,
+  onStartRound,
 }: PipelineOverviewProps) {
   if (!stats) {
     return (
@@ -171,6 +182,9 @@ export function PipelineOverview({
     'allocate-deposits': onOpenAr,
     'fix-dates': onFixDates,
   }
+  const roundHeld = gcRound?.held && gcRound.held.count > 0 ? gcRound.held : null
+  const roundReady = gcRound?.ready && gcRound.ready.count > 0 ? gcRound.ready : null
+  const gcRoundVisible = roundHeld != null || roundReady != null
   return (
     <div style={{ marginBottom: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
       {/* min 160px (v2.1971): lets phones show the story 2×2 instead of a
@@ -199,13 +213,13 @@ export function PipelineOverview({
             gap: '0.5rem',
             padding: '0.45rem 0.85rem',
             background: 'var(--bg-subtle)',
-            borderBottom: moves.length > 0 || fixups.length > 0 || chase ? '1px solid var(--border)' : 'none',
+            borderBottom: moves.length > 0 || fixups.length > 0 || chase || gcRoundVisible ? '1px solid var(--border)' : 'none',
           }}
         >
           <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
             Today&#8217;s Money Opportunities:
           </span>
-          {moves.length === 0 && fixups.length === 0 && !chase && (
+          {moves.length === 0 && fixups.length === 0 && !chase && !gcRoundVisible && (
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>nothing needs a move right now — the pipeline is clean ✅</span>
           )}
         </div>
@@ -214,7 +228,7 @@ export function PipelineOverview({
             phones — full-width rows left a desert of empty space between
             claim and button on desktop. min(300px, 100%) guards ultra-narrow
             containers from horizontal overflow. */}
-        {(moves.length > 0 || fixups.length > 0 || chase != null) && (
+        {(moves.length > 0 || fixups.length > 0 || chase != null || gcRoundVisible) && (
           <div
             style={{
               display: 'grid',
@@ -284,6 +298,72 @@ export function PipelineOverview({
                 </button>
               </div>
             ))}
+            {/* Personal statement rounds (v2.2072), two stages: the certifier's
+                held card, then the sender's ready card once released. */}
+            {roundHeld && onCertifyRound ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.3rem',
+                  minWidth: 0,
+                  padding: '0.55rem 0.7rem',
+                  border: '1px solid var(--border)',
+                  borderLeft: '3px solid #d97706',
+                  borderRadius: 8,
+                  background: 'var(--bg-amber-tint)',
+                }}
+              >
+                <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
+                  <span aria-hidden style={{ fontSize: '0.95rem' }}>🔏</span>
+                  <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
+                    {roundHeld.count} statement round{roundHeld.count === 1 ? '' : 's'} wait on sign-off — {formatUsdNoCents(roundHeld.total)}
+                  </span>
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
+                  certify each GC and their statement lands in the sender’s round — a personal email, never the system’s
+                </span>
+                <button
+                  type="button"
+                  onClick={onCertifyRound}
+                  style={{ alignSelf: 'flex-end', height: 26, padding: '0 0.65rem', border: '1px solid var(--border-400)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-blue-700)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                >
+                  Certify in GC Review
+                </button>
+              </div>
+            ) : null}
+            {roundReady && onStartRound ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.3rem',
+                  minWidth: 0,
+                  padding: '0.55rem 0.7rem',
+                  border: '1px solid var(--border)',
+                  borderLeft: '3px solid #2563eb',
+                  borderRadius: 8,
+                  background: 'var(--bg-blue-tint)',
+                }}
+              >
+                <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
+                  <span aria-hidden style={{ fontSize: '0.95rem' }}>📬</span>
+                  <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
+                    Your statement round — {roundReady.count} GC{roundReady.count === 1 ? '' : 's'}, {formatUsdNoCents(roundReady.total)}
+                  </span>
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
+                  certified and ready · a personal email from you, not the system
+                </span>
+                <button
+                  type="button"
+                  onClick={onStartRound}
+                  style={{ alignSelf: 'flex-end', height: 26, padding: '0 0.65rem', border: 'none', borderRadius: 9999, background: '#2563eb', color: '#ffffff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                >
+                  Start round →
+                </button>
+              </div>
+            ) : null}
             {/* Payment chase card (v2.2025): who owes us a phone call about
                 money. Office-only (the parent passes null otherwise); hidden
                 when nobody owes a call and nothing is waiting. */}
