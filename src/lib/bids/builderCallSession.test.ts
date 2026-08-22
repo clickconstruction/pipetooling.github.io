@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCallSessionWrites, callSessionOutcomeLabel, nextFollowupQuickPickIso, type CallSessionBidDecision } from './builderCallSession'
+import { buildCallSessionWrites, callSessionAskPrompt, callSessionOutcomeLabel, nextFollowupQuickPickIso, type CallSessionBidDecision } from './builderCallSession'
 import { compareCustomersForCallQueue, nextFollowupBadge } from './callQueueOrdering'
 
 const NOW = '2026-08-04T17:00:00Z'
@@ -130,5 +130,68 @@ describe('nextFollowupBadge', () => {
     expect(nextFollowupBadge('2026-08-11T08:00:00Z', nowMs)?.overdue).toBe(false)
     expect(nextFollowupBadge(undefined, nowMs)).toBeNull()
     expect(nextFollowupBadge('garbage', nowMs)).toBeNull()
+  })
+})
+
+describe('bid tabs on the call (v2.2103)', () => {
+  const TAB = { low: 230_000, high: 310_000, rankFromLow: 2, bidderCount: 6 }
+
+  it('a tab alone makes the bid touched; patch + note line come along', () => {
+    const w = buildCallSessionWrites({
+      customerId: 'c1',
+      userId: 'u1',
+      nowIso: NOW,
+      summary: '',
+      decisions: [decision({ bidId: 'b1', tab: TAB, bidValue: 274_249 })],
+    })
+    expect(w.bidEntries).toHaveLength(1)
+    expect(w.bidEntries[0]!.notes).toMatch(/^Bid tab recorded — low \$230,000/)
+    expect(w.bidEntries[0]!.notes).toContain('19% over the low')
+    expect(w.bidLastContactUpdates).toHaveLength(1)
+    expect(w.bidTabUpdates).toEqual([
+      { bidId: 'b1', patch: { bid_tab_low: 230_000, bid_tab_high: 310_000, bid_tab_rank_from_low: 2, bid_tab_bidder_count: 6 } },
+    ])
+  })
+
+  it('tab line stacks with an outcome and a note', () => {
+    const w = buildCallSessionWrites({
+      customerId: 'c1',
+      userId: 'u1',
+      nowIso: NOW,
+      summary: '',
+      decisions: [decision({ bidId: 'b1', outcome: 'still_pending', note: 'deciding friday', tab: TAB, bidValue: 274_249 })],
+    })
+    expect(w.bidEntries[0]!.notes).toMatch(/^Still pending\. Bid tab recorded — .*\. deciding friday$/)
+  })
+
+  it('empty tab values write nothing', () => {
+    const w = buildCallSessionWrites({
+      customerId: 'c1',
+      userId: 'u1',
+      nowIso: NOW,
+      summary: '',
+      decisions: [decision({ bidId: 'b1', tab: { low: null, high: null, rankFromLow: null, bidderCount: null } })],
+    })
+    expect(w.bidEntries).toHaveLength(0)
+    expect(w.bidTabUpdates).toHaveLength(0)
+  })
+})
+
+describe('callSessionAskPrompt', () => {
+  it('never contacted since sending → the full opener', () => {
+    expect(callSessionAskPrompt({ sentIso: '2026-07-17', lastContactIso: null, hasTab: false, nowIso: NOW })).toMatch(/did our number land/)
+    expect(callSessionAskPrompt({ sentIso: '2026-07-17', lastContactIso: '2026-07-01T00:00:00Z', hasTab: false, nowIso: NOW })).toMatch(/did our number land/)
+  })
+
+  it('contacted but no tab after 21 days → the tab ask; fresh sends stay quiet', () => {
+    expect(callSessionAskPrompt({ sentIso: '2026-07-01', lastContactIso: '2026-07-20T00:00:00Z', hasTab: false, nowIso: NOW })).toBe(
+      'ask: can we get the bid tab?',
+    )
+    expect(callSessionAskPrompt({ sentIso: '2026-08-01', lastContactIso: '2026-08-03T00:00:00Z', hasTab: false, nowIso: NOW })).toBeNull()
+  })
+
+  it('tab on file or never sent → nothing to ask', () => {
+    expect(callSessionAskPrompt({ sentIso: '2026-07-01', lastContactIso: '2026-07-20T00:00:00Z', hasTab: true, nowIso: NOW })).toBeNull()
+    expect(callSessionAskPrompt({ sentIso: null, lastContactIso: null, hasTab: false, nowIso: NOW })).toBeNull()
   })
 })

@@ -8,6 +8,7 @@ import { formatBidNameWithValue, formatDateYYMMDD, formatTimeSinceLastContact } 
 import { getSubmissionSectionKey } from '../../lib/bids/submissionSections'
 import {
   buildCallSessionWrites,
+  callSessionAskPrompt,
   callSessionOutcomeLabel,
   nextFollowupQuickPickIso,
   type CallSessionBidDecision,
@@ -15,6 +16,8 @@ import {
 } from '../../lib/bids/builderCallSession'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { BID_LOSS_CATEGORIES } from '../../lib/bidLossCategories'
+import { bidTabSummary, bidTabValuesFromRow, hasAnyBidTabValue } from '../../lib/bidTabCapture'
+import { BidTabCapturePanel } from './BidTabCapturePanel'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerContactPerson = Database['public']['Tables']['customer_contact_persons']['Row']
@@ -64,9 +67,15 @@ export function BuilderCallSessionModal({
   const [followupPick, setFollowupPick] = useState<'tomorrow' | 'next-week' | 'two-weeks' | 'none' | 'custom'>('next-week')
   const [followupCustomDate, setFollowupCustomDate] = useState('')
   const [saving, setSaving] = useState(false)
+  const [tabOpenBidId, setTabOpenBidId] = useState<string | null>(null)
+  // One instant per mount keeps the ask prompts on the same clock.
+  const nowIso = useMemo(() => new Date().toISOString(), [])
 
   const touchedCount = useMemo(
-    () => Object.values(decisions).filter((d) => d.outcome !== null || d.note.trim() !== '').length,
+    () =>
+      Object.values(decisions).filter(
+        (d) => d.outcome !== null || d.note.trim() !== '' || (d.tab != null && hasAnyBidTabValue(d.tab)),
+      ).length,
     [decisions],
   )
   const dirty = touchedCount > 0 || summary.trim() !== ''
@@ -137,6 +146,9 @@ export function BuilderCallSessionModal({
           async () => supabase.from('bids').update({ outcome: u.outcome, loss_reason: u.loss_reason, loss_category: u.loss_category }).eq('id', u.bidId),
           'call session: outcome',
         )
+      }
+      for (const u of writes.bidTabUpdates) {
+        await withSupabaseRetry(async () => supabase.from('bids').update(u.patch).eq('id', u.bidId), 'call session: bid tab')
       }
       await withSupabaseRetry(
         async () =>
@@ -212,6 +224,17 @@ export function BuilderCallSessionModal({
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 {sectionKey === 'unsent' ? `unsent · due ${formatDateYYMMDD(bid.bid_due_date)}` : `sent ${formatDateYYMMDD(bid.bid_date_sent)}`}
               </span>
+              {(() => {
+                const prompt = callSessionAskPrompt({
+                  sentIso: bid.bid_date_sent,
+                  lastContactIso: bid.last_contact,
+                  hasTab: bidTabValuesFromRow(bid).low != null,
+                  nowIso,
+                })
+                return prompt ? (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{prompt}</span>
+                ) : null
+              })()}
               {d.outcome !== null && (
                 <span style={{ fontSize: '0.74rem', fontWeight: 800, color: d.outcome === 'lost' ? 'var(--text-red-600)' : 'var(--text-green-600)', whiteSpace: 'nowrap' }}>
                   ✓ {callSessionOutcomeLabel(d)}
@@ -276,6 +299,23 @@ export function BuilderCallSessionModal({
                   />
                 </>
               )}
+              <button
+                type="button"
+                onClick={() => setTabOpenBidId(tabOpenBidId === bid.id ? null : bid.id)}
+                aria-pressed={tabOpenBidId === bid.id}
+                title="Record the bid tab the GC reads you — saved with End call"
+                style={{
+                  fontSize: '0.78rem',
+                  padding: '0.28rem 0.7rem',
+                  borderRadius: 999,
+                  border: `1px solid ${tabOpenBidId === bid.id ? 'var(--text-link)' : 'var(--border-strong)'}`,
+                  background: 'var(--surface)',
+                  color: 'var(--text-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                Bid tab…
+              </button>
               <input
                 type="text"
                 value={d.note}
@@ -284,6 +324,44 @@ export function BuilderCallSessionModal({
                 style={{ flex: 1, minWidth: 150, padding: '0.32rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.8rem' }}
               />
             </div>
+            {(() => {
+              const buffered = d.tab != null && hasAnyBidTabValue(d.tab) ? d.tab : null
+              const onFile = bidTabValuesFromRow(bid)
+              const ourValue = Number(bid.bid_value) || 0
+              if (tabOpenBidId === bid.id) {
+                return (
+                  <div style={{ padding: '0 0.8rem 0.6rem' }}>
+                    <BidTabCapturePanel
+                      key={bid.id}
+                      ourValue={ourValue}
+                      initial={buffered ?? onFile}
+                      saving={false}
+                      onSave={(values) => {
+                        setDecision(bid.id, { tab: values, bidValue: ourValue })
+                        setTabOpenBidId(null)
+                      }}
+                      secondaryLabel="Cancel"
+                      onSecondary={() => setTabOpenBidId(null)}
+                    />
+                  </div>
+                )
+              }
+              if (buffered) {
+                return (
+                  <p style={{ margin: '0 0 0.55rem', padding: '0 0.8rem', fontSize: '0.78rem', color: 'var(--text-emerald-800)' }}>
+                    {'✓'} bid tab noted — {bidTabSummary(buffered, ourValue)} <span style={{ color: 'var(--text-muted)' }}>(saved with End call)</span>
+                  </p>
+                )
+              }
+              if (hasAnyBidTabValue(onFile)) {
+                return (
+                  <p style={{ margin: '0 0 0.55rem', padding: '0 0.8rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    bid tab on file — {bidTabSummary(onFile, ourValue)}
+                  </p>
+                )
+              }
+              return null
+            })()}
           </div>
         )
       })}
