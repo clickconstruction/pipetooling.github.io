@@ -47,10 +47,19 @@ import { useSettingsMyReports } from '../hooks/useSettingsMyReports'
 import { useSettingsAccount } from '../hooks/useSettingsAccount'
 import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { SETTINGS_ZONE_LABELS, SETTINGS_ZONE_ORDER, getZonedSettingsGroups, type SettingsGroupDef } from '../lib/settingsGroups'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
 import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCadenceSettingsBlock'
 import EasterEggsSettingsBlock from '../components/settings/EasterEggsSettingsBlock'
+import OfficeAddressSettingsBlock from '../components/settings/OfficeAddressSettingsBlock'
+import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSettingsBlock'
+import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
+import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
+import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
+import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
+import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
+import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import SettingsSearchBar from '../components/settings/SettingsSearchBar'
 import { pollScrollToSettingsAnchor } from '../lib/settingsSearch'
 
@@ -122,65 +131,60 @@ function SettingsGroup({
   )
 }
 
+/**
+ * Zone-aware tab bar (v2.2088, reorg mockup A): rows per zone with a small
+ * caps label — "You", "Company — by page", "System", "Help". Empty zones
+ * (role-gated away) render nothing; a lone-zone bar still shows its label so
+ * techs learn the vocabulary too.
+ */
 function SettingsTabBar({
   groups,
   activeId,
   onSelect,
 }: {
-  groups: { id: string; label: string }[]
+  groups: readonly SettingsGroupDef[]
   activeId: string
   onSelect: (id: string) => void
 }) {
   if (groups.length === 0) return null
   return (
-    <nav
-      aria-label="Settings sections"
-      role="tablist"
-      style={{
-        display: 'flex',
-        gap: '0.25rem',
-        marginBottom: '1.5rem',
-        borderBottom: '1px solid var(--border)',
-        overflowX: 'auto',
-      }}
-    >
-      {groups.map((g) => (
-        <button
-          key={g.id}
-          type="button"
-          role="tab"
-          aria-selected={activeId === g.id}
-          onClick={() => onSelect(g.id)}
-          style={pageTabStyle(activeId === g.id)}
-        >
-          {g.label}
-        </button>
-      ))}
+    <nav aria-label="Settings sections" style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+      {SETTINGS_ZONE_ORDER.map((zone) => {
+        const zoneGroups = groups.filter((g) => g.zone === zone)
+        if (zoneGroups.length === 0) return null
+        return (
+          <div key={zone} style={{ marginTop: zone === SETTINGS_ZONE_ORDER.find((z) => groups.some((g) => g.zone === z)) ? 0 : '0.6rem' }}>
+            <div
+              style={{
+                fontSize: '0.6875rem',
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'var(--text-faint)',
+                marginBottom: '0.3rem',
+              }}
+            >
+              {SETTINGS_ZONE_LABELS[zone]}
+            </div>
+            <div role="tablist" aria-label={SETTINGS_ZONE_LABELS[zone]} style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+              {zoneGroups.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeId === g.id}
+                  onClick={() => onSelect(g.id)}
+                  style={pageTabStyle(activeId === g.id)}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
     </nav>
   )
-}
-
-function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: string }[] {
-  if (myRole == null) return []
-  const r = myRole
-  const groups: { id: string; label: string }[] = []
-  groups.push({ id: 'settings-recent-push', label: 'Notifications' })
-  groups.push({ id: 'settings-account', label: 'Your account' })
-  groups.push({ id: 'settings-dashboard', label: 'Dashboard & alerts' })
-  if (r === 'dev' || r === 'master_technician') {
-    groups.push({ id: 'settings-people', label: 'People & accounts' })
-  }
-  if (r === 'dev') {
-    groups.push({ id: 'settings-emails', label: 'Email & notifications' })
-    groups.push({ id: 'settings-data', label: 'Data & migration' })
-    groups.push({ id: 'settings-jobs', label: 'Jobs & dispatch' })
-  }
-  if (r === 'dev' || r === 'estimator') groups.push({ id: 'settings-catalogs', label: 'Catalogs & trades' })
-  if (r === 'dev') groups.push({ id: 'settings-templates', label: 'Templates & testing' })
-  if (!isSubcontractorLikeRole(r)) groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
-  groups.push({ id: 'settings-guides', label: 'Guides' })
-  groups.push({ id: 'settings-release-notes', label: 'Release notes' })
-  return groups
 }
 
 
@@ -992,7 +996,11 @@ export default function Settings() {
     setSelectedServiceTypeForAssemblies((prev) => (prev && visibleIds.includes(prev) ? prev : visibleIds[0]!))
   }, [myRole, estimatorServiceTypeIds, serviceTypes])
 
-  const settingsJumpGroups = useMemo(() => getSettingsJumpGroups(myRole), [myRole])
+  const settingsJumpGroups = useMemo(() => getZonedSettingsGroups(myRole), [myRole])
+  // Titles + page-hint lines come from the zoned group defs (one source of truth).
+  const settingsGroupMeta = useMemo(() => new Map(settingsJumpGroups.map((g) => [g.id, g])), [settingsJumpGroups])
+  const settingsGroupTitle = (id: string, fallback: string) => settingsGroupMeta.get(id)?.label ?? fallback
+  const settingsGroupHint = (id: string) => settingsGroupMeta.get(id)?.pagesHint
 
   // Deep links into Settings: /settings?tab=<group-id> and /settings#<section-anchor>
   // (dashboard banners + Calendar). Applied once per unique URL value, re-attempted
@@ -1132,7 +1140,7 @@ export default function Settings() {
       </div>
 
       {myRole === 'dev' && (
-        <SettingsGroup id="settings-emails" hidden={activeSettingsTab !== 'settings-emails'} title="Email & notifications">
+        <SettingsGroup id="settings-emails" hidden={activeSettingsTab !== 'settings-emails'} title={settingsGroupTitle('settings-emails', 'Emails & reports')} description={settingsGroupHint('settings-emails')}>
           {activeSettingsTab === 'settings-emails' && <SettingsEmailStreamsSection focus={emailStreamFocus} />}
         </SettingsGroup>
       )}
@@ -1182,10 +1190,22 @@ export default function Settings() {
           testNotificationSending={testNotificationSending}
           testNotificationSuccess={testNotificationSuccess}
         />
-        {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator') && (
-          <SettingsCompanyDocumentsSection isDev={myRole === 'dev'} />
-        )}
       </SettingsGroup>
+
+      {/* v2.2088 (reorg mockup A): the Company tab — documents, office address,
+          and the Map's default view, gathered from Your account + Templates. */}
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator') && (
+        <SettingsGroup
+          id="settings-company"
+          hidden={activeSettingsTab !== 'settings-company'}
+          title={settingsGroupTitle('settings-company', 'Company')}
+          description={settingsGroupHint('settings-company')}
+        >
+          <SettingsCompanyDocumentsSection isDev={myRole === 'dev'} />
+          {myRole === 'dev' && <OfficeAddressSettingsBlock />}
+          {myRole === 'dev' && <MapDefaultViewSettingsBlock />}
+        </SettingsGroup>
+      )}
 
       {activeSettingsTab === 'settings-account' && authUser?.id && (
         <SettingsAccountSchedulingTab
@@ -1209,7 +1229,7 @@ export default function Settings() {
       )}
       {activeSettingsTab === 'settings-account' && authUser?.id && <SettingsMyEmailScheduleSection />}
 
-      <SettingsGroup id="settings-dashboard" hidden={activeSettingsTab !== 'settings-dashboard'} title="Dashboard & alerts">
+      <SettingsGroup id="settings-dashboard" hidden={activeSettingsTab !== 'settings-dashboard'} title={settingsGroupTitle('settings-dashboard', 'Your dashboard')} description={settingsGroupHint('settings-dashboard')}>
         <SettingsDashboardTab
           apTotal={apTotal}
           authUser={authUser}
@@ -1321,11 +1341,9 @@ export default function Settings() {
           toggleReportNotificationTemplate={toggleReportNotificationTemplate}
           users={users}
         />
-        {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
-        {myRole === 'dev' && <EasterEggsSettingsBlock users={users} />}
       </SettingsGroup>
 
-      <SettingsGroup id="settings-people" hidden={activeSettingsTab !== 'settings-people'} title="People & accounts">
+      <SettingsGroup id="settings-people" hidden={activeSettingsTab !== 'settings-people'} title={settingsGroupTitle('settings-people', 'People & teams')} description={settingsGroupHint('settings-people')}>
       {myRole === 'dev' && (
         <SettingsPeopleTab
           additionalPeopleSectionOpen={additionalPeopleSectionOpen}
@@ -1389,9 +1407,12 @@ export default function Settings() {
         <TeamFeedbackMasterAggregates />
       )}
 
+      {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
+      {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
+
       </SettingsGroup>
 
-      <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title="Data & migration">
+      <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>
       {myRole === 'dev' && (
         <SettingsDataTab
           dataBackupSectionOpen={dataBackupSectionOpen}
@@ -1422,7 +1443,7 @@ export default function Settings() {
       )}
       </SettingsGroup>
 
-      <SettingsGroup id="settings-jobs" hidden={activeSettingsTab !== 'settings-jobs'} title="Jobs & dispatch">
+      <SettingsGroup id="settings-jobs" hidden={activeSettingsTab !== 'settings-jobs'} title={settingsGroupTitle('settings-jobs', 'Jobs & billing')} description={settingsGroupHint('settings-jobs')}>
       {myRole === 'dev' && (
         <SettingsJobsTab
           jobOwnerOverridesSectionOpen={jobOwnerOverridesSectionOpen}
@@ -1452,6 +1473,20 @@ export default function Settings() {
           setDefaultLaborRate={setDefaultLaborRate}
           defaultLaborRateSaving={defaultLaborRateSaving}
         />
+      )}
+      {/* v2.2088 (reorg mockup A): job numbering + billing identity live with
+          the page they affect — moved from Dashboard & alerts / Templates.
+          Job Book keeps its pre-reorg reach (dev + master + assistant-like). */}
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
+        <JobBookSettingsSection onDbError={(msg) => setError(msg)} />
+      )}
+      {myRole === 'dev' && (
+        <>
+          <StripeInvoiceFooterDevSettingsBlock />
+          <PhysicalInvoiceIssuerDevSettingsBlock />
+          <PhysicalInvoiceFooterDevSettingsBlock />
+          <BillCustomerMemoDevSettingsBlock />
+        </>
       )}
       </SettingsGroup>
 
@@ -1501,7 +1536,7 @@ export default function Settings() {
 
 
 
-      <SettingsGroup id="settings-catalogs" hidden={activeSettingsTab !== 'settings-catalogs'} title="Catalogs & trades">
+      <SettingsGroup id="settings-catalogs" hidden={activeSettingsTab !== 'settings-catalogs'} title={settingsGroupTitle('settings-catalogs', 'Bids & materials')} description={settingsGroupHint('settings-catalogs')}>
       {(myRole === 'dev' || myRole === 'estimator') && (
         <SettingsCatalogsTab
           assemblyTypeAssemblyCounts={assemblyTypeAssemblyCounts}
@@ -1620,9 +1655,11 @@ export default function Settings() {
           visibleServiceTypesForMaterials={visibleServiceTypesForMaterials}
         />
       )}
+      {/* v2.2088: the bid cover letter belongs with Bids, not Templates. */}
+      {myRole === 'dev' && <BidCoverLetterDefaultsSettingsBlock />}
       </SettingsGroup>
 
-      <SettingsGroup id="settings-templates" hidden={activeSettingsTab !== 'settings-templates'} title="Templates & testing">
+      <SettingsGroup id="settings-templates" hidden={activeSettingsTab !== 'settings-templates'} title={settingsGroupTitle('settings-templates', 'Email templates & testing')} description={settingsGroupHint('settings-templates')}>
       {myRole === 'dev' && (
         <SettingsTemplatesTab
           authUser={authUser}
@@ -1630,6 +1667,7 @@ export default function Settings() {
           setError={setError}
         />
       )}
+      {myRole === 'dev' && <EasterEggsSettingsBlock users={users} />}
       </SettingsGroup>
 
       {!isSubcontractorLikeRole(myRole) && (

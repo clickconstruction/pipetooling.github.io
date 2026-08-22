@@ -25,4 +25,4 @@ Everything inside the window works exactly as before — the clock strip, sessio
 
 ## Changing the window (dev)
 
-Go to **Settings → People & accounts → Assistant hours visibility**. Set **Weeks visible** to any number (the current week counts as one), or check **No limit** to give assistants the full history again. {{button:blue|Save}} applies org-wide the next time each assistant loads the Hours tab.
+Go to **Settings → People & teams → Assistant hours visibility**. Set **Weeks visible** to any number (the current week counts as one), or check **No limit** to give assistants the full history again. {{button:blue|Save}} applies org-wide the next time each assistant loads the Hours tab.

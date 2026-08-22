@@ -29,7 +29,6 @@ import type { UserRole } from '../../hooks/useAuth'
 import type { UserRow } from '../../types/settingsRows'
 import type { ReportForEdit } from '../ReportEditModal'
 import type { ReportForMyReports } from '../MyReportsModal'
-import JobBookSettingsSection from './JobBookSettingsSection'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
@@ -1083,9 +1082,7 @@ export default function SettingsDashboardTab({
         </div>
       )}
 
-      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
-        <JobBookSettingsSection onDbError={(msg) => setError(msg)} />
-      )}
+      {/* v2.2088: Job Book moved to Settings → Jobs & billing. */}
 
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <p style={{ marginBottom: '2rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>

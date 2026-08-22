@@ -11,7 +11,7 @@ It works for **any role**, not just assistants: use it for a new hire finding th
 
 ## Turn it on
 
-1. Open the **Active Accounts** panel (Settings → People & accounts, or **Manage accounts** on People → Users).
+1. Open the **Active Accounts** panel (Settings → People & teams, or **Manage accounts** on People → Users).
 2. Find the person's row. In the **Last login** column, tick the {{chip:yellow|Read-only}} checkbox under their last-login time.
 
 :::example What they experience

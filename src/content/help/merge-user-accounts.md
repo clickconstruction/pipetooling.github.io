@@ -9,7 +9,7 @@ When the same person ends up with two accounts (a re-invite, a typo'd email, an 
 
 ## Where
 
-Open the **Active Accounts** panel (Settings → People & accounts, or the **Manage accounts** button on People → Users) and click {{button:red|Merge users}}.
+Open the **Active Accounts** panel (Settings → People & teams, or the **Manage accounts** button on People → Users) and click {{button:red|Merge users}}.
 
 ## The rules
 

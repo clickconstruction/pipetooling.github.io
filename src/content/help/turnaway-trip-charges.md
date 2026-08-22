@@ -49,7 +49,7 @@ The job itself is untouched — it stays in its normal pipeline and gets resched
 
 ## Setting the default amounts
 
-Devs set the per-reason default amounts in **Settings → Jobs & dispatch → Turnaway Trip Charges**:
+Devs set the per-reason default amounts in **Settings → Jobs & billing → Turnaway Trip Charges**:
 
 :::example Settings → Turnaway Trip Charges (dev)
 Client not home ($): `95` &nbsp;&nbsp; Site not ready ($): `95` &nbsp;&nbsp; {{button:blue|Save}}

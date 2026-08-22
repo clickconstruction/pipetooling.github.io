@@ -40,7 +40,7 @@ Your own reports are available under **My Reports**, and you can edit a report w
 
 ## Getting notified
 
-Don't poll the Reports tab — subscribe. In **Settings → Dashboard & alerts → Report notifications**, check the types you want and {{button:blue|Save report notification preferences}}. You'll get a push the moment one is filed (enable push notifications first — see Settings Basics).
+Don't poll the Reports tab — subscribe. In **Settings → Your dashboard → Report notifications**, check the types you want and {{button:blue|Save report notification preferences}}. You'll get a push the moment one is filed (enable push notifications first — see Settings Basics).
 
 ## Special reports
 
