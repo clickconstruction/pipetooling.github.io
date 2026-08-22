@@ -7,9 +7,11 @@ import { useEffect, useState, type ReactNode } from 'react'
  * `headerRight` renders in the title row's top-right corner (link-styled controls).
  *
  * Collapsible mode (v2.840): pass `collapseStorageKey` to make the title a
- * ▶/▼ toggle. `defaultCollapsed` seeds the state when localStorage has no
+ * ▶/▼ toggle. `defaultCollapsed` seeds the state when storage has no
  * saved choice; the user's last choice persists per key. `headerRight` stays
- * visible while collapsed.
+ * visible while collapsed. `sessionScoped` (v2.2070) keeps the choice in
+ * sessionStorage instead — it survives reloads but resets to
+ * `defaultCollapsed` when the app is closed and reopened.
  */
 export function DashboardGroupCard({
   id,
@@ -17,6 +19,7 @@ export function DashboardGroupCard({
   headerRight,
   collapseStorageKey,
   defaultCollapsed = false,
+  sessionScoped = false,
   expandRequestKey,
   children,
 }: {
@@ -25,15 +28,21 @@ export function DashboardGroupCard({
   headerRight?: ReactNode
   collapseStorageKey?: string
   defaultCollapsed?: boolean
+  /** Persist expand/collapse only for this app session (sessionStorage) — a fresh launch starts back at `defaultCollapsed`. */
+  sessionScoped?: boolean
   /** Bump to force the card open (e.g. a headerRight search button, v2.1550); persisted like a manual expand. */
   expandRequestKey?: number
   children: ReactNode
 }) {
   const collapsible = collapseStorageKey != null
+  const store = (): Storage | null => {
+    if (typeof window === 'undefined') return null
+    return sessionScoped ? window.sessionStorage : window.localStorage
+  }
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (!collapsible) return false
     try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem(collapseStorageKey) : null
+      const stored = store()?.getItem(collapseStorageKey) ?? null
       if (stored !== null) return stored === 'true'
     } catch {
       /* ignore */
@@ -44,17 +53,18 @@ export function DashboardGroupCard({
     if (!expandRequestKey || !collapsible) return
     setCollapsed(false)
     try {
-      localStorage.setItem(collapseStorageKey!, 'false')
+      store()?.setItem(collapseStorageKey!, 'false')
     } catch {
       /* ignore */
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expandRequestKey, collapsible, collapseStorageKey])
 
   const toggle = () => {
     setCollapsed((prev) => {
       const next = !prev
       try {
-        localStorage.setItem(collapseStorageKey!, String(next))
+        store()?.setItem(collapseStorageKey!, String(next))
       } catch {
         /* ignore */
       }
