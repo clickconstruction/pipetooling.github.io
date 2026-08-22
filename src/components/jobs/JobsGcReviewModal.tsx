@@ -25,10 +25,12 @@ import {
   buildGcReviewShareAllEmailHtml,
   buildGcReviewShareAllEmailText,
   buildGcStatementEmailHtml,
+  buildGcStatementEmailPreviewHtml,
   buildGcStatementEmailText,
   gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
+import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import {
   gcGroupCertStatus,
@@ -979,6 +981,21 @@ export function JobsGcReviewModal({
               <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{emailError}</p>
             ) : null}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              {/* Preview (v2.2061): the exact email the recipient gets, in a new window — nothing sends. */}
+              <button
+                type="button"
+                onClick={() => {
+                  const g = emailDialogGroup
+                  const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  const subject = emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr)
+                  if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy }))) {
+                    setEmailError('Allow pop-ups to preview the statement.')
+                  }
+                }}
+                style={{ marginRight: 'auto', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
+              >
+                Preview
+              </button>
               <button
                 type="button"
                 disabled={emailSending}

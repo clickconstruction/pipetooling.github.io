@@ -134,6 +134,26 @@ export function buildGcReviewShareAllEmailText(
   ].join('\n')
 }
 
+/**
+ * Standalone document for the Email… dialog's Preview window (v2.2061): the
+ * exact email body the recipient gets, headed by the subject line, on a plain
+ * light page (email clients render light regardless of app theme).
+ */
+export function buildGcStatementEmailPreviewHtml(
+  group: GcReviewGroup,
+  subject: string,
+  opts?: { dateStr?: string; groupBy?: GcReviewGroupBy },
+): string {
+  return `<!doctype html><html><head><meta charset="utf-8" /><title>Statement preview — ${escapeHtml(group.gcName)}</title></head>
+<body style="margin:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif">
+  <div style="max-width:640px;margin:0 auto;padding:20px 16px">
+    <p style="margin:0 0 2px;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">Preview — what the recipient sees</p>
+    <p style="margin:0 0 14px;font-size:13px;color:#374151"><strong>Subject:</strong> ${escapeHtml(subject)}</p>
+    <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;padding:20px">${buildGcStatementEmailHtml(group, opts)}</div>
+  </div>
+</body></html>`
+}
+
 /** Plain-text fallback for text-only paste targets. */
 export function buildGcStatementEmailText(
   group: GcReviewGroup,
