@@ -1,5 +1,7 @@
 import { BidLossCategoryChips } from './BidLossCategoryChips'
+import { BidLossLearnPanel } from './BidLossLearnPanel'
 import { BidTabCapturePanel, BidTabRecordedLine } from './BidTabCapturePanel'
+import type { BidLossLearnRow } from '../../lib/bidLossLearn'
 import {
   EMPTY_BID_TAB_VALUES,
   bidTabValuesFromRow,
@@ -148,6 +150,23 @@ export function BidsWhyWeLostLens({
     if (!estimatorFilter) return allLensBids
     return allLensBids.filter((b) => (b.estimatorName ?? 'No estimator') === estimatorFilter)
   }, [allLensBids, estimatorFilter])
+
+  // One instant per mount keeps the Learn panel's window slicing on one clock.
+  const nowIso = useMemo(() => new Date().toISOString(), [])
+
+  /** Lost bids (same estimator scope) as the Learn panel sees them. */
+  const learnRows = useMemo<BidLossLearnRow[]>(
+    () =>
+      lensBids.map((b) => ({
+        id: b.id,
+        builderKey: b.builderKey,
+        builderName: b.builderName,
+        value: b.value,
+        sentIso: b.raw.bid_date_sent ?? null,
+        tab: bidTabValuesFromRow(b.raw),
+      })),
+    [lensBids],
+  )
 
   // Per-GC copies: a bid sent to three GCs gets a queue entry under each.
   // The outcome is per-bid, so recording it under any GC clears every copy.
@@ -694,6 +713,8 @@ export function BidsWhyWeLostLens({
           ) : null}
         </div>
       </div>
+
+      <BidLossLearnPanel rows={learnRows} nowIso={nowIso} />
     </div>
   )
 }

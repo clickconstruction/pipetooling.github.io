@@ -190,6 +190,26 @@ export function buildBidTabPatch(v: BidTabValues): BidTabRow {
 }
 
 /**
+ * The estimated margin (as a 0–100 pct) a bid would have needed to MATCH a
+ * recorded tab's low: price = low ⇒ margin = (low − estCost) / low. Null when
+ * either number is missing/non-positive or the cost already exceeds the low
+ * (no margin could have matched it). Feeds the Workbench calibration strip.
+ */
+export function marginPctToMatchTabLow(tabLow: number | null | undefined, estCost: number): number | null {
+  if (tabLow == null || tabLow <= 0 || estCost <= 0 || estCost >= tabLow) return null
+  return ((tabLow - estCost) / tabLow) * 100
+}
+
+/**
+ * How many recorded tabs a candidate margin would have matched or beaten:
+ * our price ≤ that tab's low exactly when our margin ≤ its match-margin
+ * (half-point tolerance, mirroring the strip's other counts).
+ */
+export function countTabsMatchedOrBeaten(curMarginPct: number, matchPcts: readonly number[]): number {
+  return matchPcts.filter((m) => curMarginPct <= m + 0.5).length
+}
+
+/**
  * Where our bid sits between low and high as a 0–100 position for the range
  * strip; null without both ends (or a degenerate range). Clamped so a bid
  * outside the shared range still renders at an end instead of escaping.

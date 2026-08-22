@@ -78,6 +78,8 @@ Dale from Knight picks up. Six pills. "1, 1, 2" — with "6k over" typed before 
 
 Below the queue, the **Why we lost** rollup counts every categorized loss by reason — count and dollars — and shows two loss rates: the raw one, and the one **excluding "GC lost the project"** (when your GC doesn't win, you never had a shot — that's not a competitive loss). The gap between those two numbers is how much of your loss rate isn't really yours.
 
+Under the rollup, **Why we lose on price — what the tabs say** turns your recorded bid tabs into the numbers that change future bids: the headline — *"when we lose on price, we're typically 7.4% over the low"* — with an honest coverage count, three small charts (**how far over the low** the misses run, **where we land on the tab** — mostly #2 means close races, not blowouts — and the **median by quarter**, so you can see the pencil sharpening), and a **per-GC table sorted closest-first**: the top rows are GCs where a small price move flips outcomes; a "far off" row is a costing question, not a discount question. It follows the **bids by** estimator scope, has its own time-range pills, and sharpens with every tab you record.
+
 ## Chase the bids you just sent
 
 The **Waiting to hear** lens is the other half of the Friday calls: instead of old lost bids, the queue is every **sent bid with no outcome yet** — and the *recent* ones come first, because that's where the feedback is still fresh and a bid tab is still gettable. The header says it all in one line: how many bids **need a chase** (nobody's talked to the GC in over a week), how many are still open and their dollars, and how many were **never called** since sending.
