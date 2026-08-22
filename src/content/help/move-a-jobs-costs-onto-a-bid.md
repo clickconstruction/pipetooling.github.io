@@ -38,7 +38,7 @@ The window lists all of this — with counts — before you confirm. Read that b
 The costs now sit on the bid, and you'll see them in **Bids → Bid Costs** alongside the clocked labor that was already there. The bid's real cost goes up, which is the point: next time you price similar work, the number you're comparing against is honest.
 
 :::example This cannot be undone from the bid side
-Moving the costs is one-way. A dev can restore the whole deleted job for 90 days from **Settings → Data & migration → Recently deleted** ([recover a deleted job or bid](recover-a-deleted-job)), but anything already moved onto the bid stays on the bid.
+Moving the costs is one-way. A dev can restore the whole deleted job for 90 days from **Settings → Data & recovery → Recently deleted** ([recover a deleted job or bid](recover-a-deleted-job)), but anything already moved onto the bid stays on the bid.
 :::
 
 ## If you only want to fix future work

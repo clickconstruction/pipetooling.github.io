@@ -68,12 +68,22 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Takeoff, Labor, and Price book names', keywords: ['books', 'price book', 'labor book', 'takeoff book'], tabId: 'settings-catalogs' },
   { label: 'Counts quick-add names', keywords: ['count sheet'], tabId: 'settings-catalogs' },
   { label: 'Duplicate materials', keywords: ['dedupe parts', 'find duplicates'], tabId: 'settings-catalogs' },
-  { label: 'Company documents', keywords: ['docs', 'files', 'w9', 'insurance certificate'], tabId: 'settings-catalogs' },
+  { label: 'Company documents', keywords: ['docs', 'files', 'w9', 'insurance certificate'], tabId: 'settings-company' },
   // Templates & testing (dev)
   { label: 'Report templates', keywords: ['status report fields', 'report questions'], tabId: 'settings-templates' },
   { label: 'Email templates', keywords: ['resend', 'email design'], tabId: 'settings-templates' },
   { label: 'Easter eggs', keywords: ['floaty', 'fun'], tabId: 'settings-templates' },
   { label: 'Fix app', keywords: ['clear cache', 'stale bundle', 'white screen', 'reload'], tabId: 'settings-templates' },
+  // Company
+  { label: 'Office address', keywords: ['company address', 'shop address'], tabId: 'settings-company' },
+  { label: 'Map default view', keywords: ['map center', 'map zoom'], tabId: 'settings-company' },
+  // Jobs & billing (moved from Templates in v2.2088)
+  { label: 'Invoice footers & issuer', keywords: ['stripe footer', 'paper invoice', 'invoice identity', 'billing footer'], tabId: 'settings-jobs' },
+  { label: 'Bill-Customer memo', keywords: ['invoice memo', 'billing note'], tabId: 'settings-jobs' },
+  // Bids (moved from Templates in v2.2088)
+  { label: 'Bid cover letter defaults', keywords: ['cover letter', 'bid letter'], tabId: 'settings-catalogs' },
+  // People & teams
+  { label: 'Team review cadence', keywords: ['reviews', 'feedback schedule'], tabId: 'settings-people' },
   // Advanced
   { label: 'Claim code', keywords: ['redeem code', 'advanced tools'], tabId: 'settings-advanced-tools' },
   // Guides

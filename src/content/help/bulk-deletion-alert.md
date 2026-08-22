@@ -26,7 +26,7 @@ Each burst gets its own line — who, how many records, and when. With several b
 
 ## Deal with it
 
-- **Review deletions** opens Settings → Data & migration with **Recently deleted** already expanded and loaded, scrolled into view. While the alert is active, the section leads with an **Active bulk-deletion alert** box carrying the same Snooze/Dismiss buttons — review, restore if needed, and clear the notice without going back to the Dashboard.
+- **Review deletions** opens Settings → Data & recovery with **Recently deleted** already expanded and loaded, scrolled into view. While the alert is active, the section leads with an **Active bulk-deletion alert** box carrying the same Snooze/Dismiss buttons — review, restore if needed, and clear the notice without going back to the Dashboard.
 - While the alert is active, the deletions from that burst **group under an amber burst header** — who, when, and how many — with an amber stripe and an {{chip:yellow|in alert window}} tag on each card, so you review one burst at a time. Anything older sits below under "Outside the active alert windows".
 - Every card describes itself in plain words (a clock session shows whose it was, the hours, the note, and its approval state) and carries **warning chips** for what deserves a second look: {{chip:red|$4,520 in invoices}} money removed, {{chip:red|created 4h before deletion}} short-lived records (or "existed 4 months" for erased history), {{chip:red|approved session deleted}}, and {{chip:blue|belonged to Paige}} when someone deleted a record that wasn't theirs.
 - Each deletion is labeled by what it was — a job by its number and name, a clock session by whose it was, a partial delete by the job or customer it was under — with count chips for everything that went with it (money records like invoices and payments highlighted) and the first few contents lines shown right on the card. **What's inside?** expands the complete archived rows in plain words (fixture names, payment amounts, dates), with the full raw record one more click down. Use the search box or the type / deleted-by filters to cut straight to what you're checking.
@@ -35,7 +35,7 @@ Each burst gets its own line — who, how many records, and when. With several b
 
 ## Change the thresholds
 
-Settings → **Data & migration** → **Bulk-deletion alert (dev)**. You can turn it off, change how many records or rows trigger it, how tightly clustered they must be, and how far back the notice looks. Leave a box blank to use the default shown.
+Settings → **Data & recovery** → **Bulk-deletion alert (dev)**. You can turn it off, change how many records or rows trigger it, how tightly clustered they must be, and how far back the notice looks. Leave a box blank to use the default shown.
 
 ## Good to know
 

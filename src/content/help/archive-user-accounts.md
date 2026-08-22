@@ -9,7 +9,7 @@ Archiving is how you offboard someone's login. It never deletes anything — the
 
 ## How to archive
 
-Everything happens in one dialog in the **Active Accounts** panel (Settings → People & accounts, or **Manage accounts** on People → Users). In the Manage accounts modal, use the search bar at the top to jump straight to the account — it matches name, email, or role and filters the archived list too. Two ways in, same dialog:
+Everything happens in one dialog in the **Active Accounts** panel (Settings → People & teams, or **Manage accounts** on People → Users). In the Manage accounts modal, use the search bar at the top to jump straight to the account — it matches name, email, or role and filters the archived list too. Two ways in, same dialog:
 
 1. **From the top** — click {{button:red|Archive user}} and pick the account from the dropdown.
 2. **From a row** — click {{button:outline|Edit}} on the account, then the red {{button:red|Archive}} button at the end of the actions; the dialog opens with that account already selected.

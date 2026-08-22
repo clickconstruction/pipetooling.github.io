@@ -37,4 +37,4 @@ In **Settings → Guides**, the "Viewing guides for" chips flip the guide list t
 
 ## Setting someone up
 
-Add the account in Settings → People & accounts, pick the role, and (for subs and helpers) optionally restrict them to service types. For subs who'll get paid per step, link their roster row to their login so their work orders and money reach them.
+Add the account in Settings → People & teams, pick the role, and (for subs and helpers) optionally restrict them to service types. For subs who'll get paid per step, link their roster row to their login so their work orders and money reach them.

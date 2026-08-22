@@ -5,7 +5,7 @@ file: docs/SETTINGS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the Settings.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what is ALREADY extracted (Settings shrank ~12k → ~5.1k lines without a map) and what remains inline in src/pages/Settings.tsx (state, loaders, handlers, supabase tables/RPCs, role gates, coupling), to drive the remaining multi-PR extraction.
 audience: Developers, AI Agents
-last_updated: 2026-08-03
+last_updated: 2026-08-22
 ---
 
 ## Overview
@@ -39,6 +39,10 @@ Each tab lists: render location (symbol anchors; line numbers are "as of v2.735"
 - Treat line numbers as approximate anchors — search for the symbol (`loadData`, the section h2 text, the state name) when in doubt.
 
 ---
+
+## v2.2088 reorg (2026-08-22) — zoned tabs by page
+
+The tab list was reorganized per the owner's mockup-A pick: zones **You / Company — by page / System / Help**, with per-tab `pagesHint` lines. Group data moved to the tested kernel [`src/lib/settingsGroups.ts`](../src/lib/settingsGroups.ts) (`getZonedSettingsGroups`); `getSettingsJumpGroups` in the page is gone. **All group ids survived** (deep links/search unaffected); `settings-company` is new; the default landing tab is now `settings-account`. Labels: Notifications→Activity logs, Dashboard & alerts→Your dashboard, People & accounts→People & teams, Email & notifications→Emails & reports, Data & migration→Data & recovery, Jobs & dispatch→Jobs & billing, Catalogs & trades→Bids & materials, Templates & testing→Email templates & testing. Blocks re-homed (parent-rendered): Job Book + invoice footers/issuer/memo → settings-jobs; bid cover letter → settings-catalogs; company documents + office address + map view → settings-company; review cadence → settings-people; easter eggs → settings-templates. The dossiers below predate this and describe the old tab homes for those blocks.
 
 ## Master summary table
 

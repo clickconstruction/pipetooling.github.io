@@ -19,13 +19,6 @@ import {
   WORKFLOW_FN_EMAIL_TEST_OPTIONS,
   type WorkflowFnEmailTemplateType,
 } from '../../lib/settingsTemplates'
-import StripeInvoiceFooterDevSettingsBlock from './StripeInvoiceFooterDevSettingsBlock'
-import PhysicalInvoiceFooterDevSettingsBlock from './PhysicalInvoiceFooterDevSettingsBlock'
-import BillCustomerMemoDevSettingsBlock from './BillCustomerMemoDevSettingsBlock'
-import MapDefaultViewSettingsBlock from './MapDefaultViewSettingsBlock'
-import OfficeAddressSettingsBlock from './OfficeAddressSettingsBlock'
-import PhysicalInvoiceIssuerDevSettingsBlock from './PhysicalInvoiceIssuerDevSettingsBlock'
-import BidCoverLetterDefaultsSettingsBlock from './BidCoverLetterDefaultsSettingsBlock'
 
 type TemplatesTabUserRow = { id: string; name: string; email: string; role: string }
 
@@ -123,13 +116,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
   const { showToast } = useToastContext()
   return (
     <>
-          <StripeInvoiceFooterDevSettingsBlock />
-          <PhysicalInvoiceIssuerDevSettingsBlock />
-          <PhysicalInvoiceFooterDevSettingsBlock />
-          <BillCustomerMemoDevSettingsBlock />
-          <BidCoverLetterDefaultsSettingsBlock />
-          <OfficeAddressSettingsBlock />
-          <MapDefaultViewSettingsBlock />
+          {/* v2.2088: invoice/bid/company/map blocks moved to their page tabs (Jobs & billing, Bids & materials, Company). */}
           <div
             style={{
               marginBottom: '1.5rem',
