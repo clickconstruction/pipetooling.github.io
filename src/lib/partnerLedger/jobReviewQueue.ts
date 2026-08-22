@@ -3,8 +3,11 @@
  *
  * Pure shaping behind the Partnerships → Job review tab: defensive parsing of
  * the get_partner_job_review_queue RPC payload, the hours-share suggestion
- * math, and row ordering. The share is a SUGGESTION only — the human toggle is
- * the §3 "majority of the work" decision; no automatic threshold exists.
+ * math, row ordering, and (v2.2107) the automatic-threshold eligibility rule.
+ * By default the share is a suggestion and the human toggle is the §3
+ * "majority of the work" decision; a partnership may opt into an automatic
+ * threshold, whose adds are stamped as automatic and whose rule never
+ * overrides a human clear (auto_exempt).
  */
 
 export type PartnerJobReviewRow = {
@@ -16,6 +19,10 @@ export type PartnerJobReviewRow = {
   partner_person_id: string | null
   confirmed_at: string | null
   confirmed_by_name: string | null
+  /** Set when the confirm was made by the auto-threshold rule (the percent it fired at). */
+  confirmed_auto_pct: number | null
+  /** True when a human cleared this job — the auto rule must never re-add it. */
+  auto_exempt: boolean
 }
 
 export type PartnerJobReviewQueue = {
@@ -58,6 +65,8 @@ export function parseReviewQueue(payload: unknown): PartnerJobReviewQueue {
       partner_person_id: typeof r.partner_person_id === 'string' ? r.partner_person_id : null,
       confirmed_at: typeof r.confirmed_at === 'string' ? r.confirmed_at : null,
       confirmed_by_name: typeof r.confirmed_by_name === 'string' ? r.confirmed_by_name : null,
+      confirmed_auto_pct: typeof r.confirmed_auto_pct === 'number' && Number.isFinite(r.confirmed_auto_pct) ? r.confirmed_auto_pct : null,
+      auto_exempt: r.auto_exempt === true,
     })
   }
   return {
@@ -65,6 +74,27 @@ export function parseReviewQueue(payload: unknown): PartnerJobReviewQueue {
     partner_person_id: typeof obj.partner_person_id === 'string' ? obj.partner_person_id : null,
     rows,
   }
+}
+
+/** Valid saved threshold: an integer percent from 1 to 100 (NULL/junk = rule off). */
+export function isValidThreshold(pct: unknown): pct is number {
+  return typeof pct === 'number' && Number.isInteger(pct) && pct >= 1 && pct <= 100
+}
+
+/**
+ * Jobs the automatic threshold rule would add right now: share at/above the
+ * threshold, not confirmed for anyone (the rule never overrides a person),
+ * and never explicitly cleared by a human (auto_exempt). Used both to fire
+ * the rule on tab load and as the editor's "this would add …" preview.
+ */
+export function jobsToAutoConfirm(
+  rows: PartnerJobReviewRow[],
+  thresholdPct: number | null,
+): PartnerJobReviewRow[] {
+  if (!isValidThreshold(thresholdPct)) return []
+  return rows.filter(
+    (r) => r.partner_person_id == null && !r.auto_exempt && shareOfHours(r.partner_hours, r.total_hours) >= thresholdPct,
+  )
 }
 
 /** Unreviewed first (most partner hours first), then confirmed (same order). */
