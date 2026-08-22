@@ -1,40 +1,34 @@
 import { describe, it, expect } from 'vitest'
-import { buildStatementJobLinks } from './portalStatementJobLinks'
+import { buildStatementBillRows } from './portalStatementJobLinks'
 
 const jobs = [
-  { id: 'j746', hcp_number: '746', click_number: null },
-  { id: 'j964', hcp_number: '964', click_number: null },
+  { id: 'j898', hcp_number: '898', click_number: null },
+  { id: 'j789', hcp_number: '789', click_number: null },
   { id: 'jC12', hcp_number: '', click_number: 'C12' },
 ]
 
-describe('buildStatementJobLinks', () => {
-  it('maps statement rows to jobs in order, keeping trade tags', () => {
-    const links = buildStatementJobLinks(
+describe('buildStatementBillRows', () => {
+  it('mirrors the statement: one row per bill, order and duplicates preserved', () => {
+    const rows = buildStatementBillRows(
       [
-        { jobNumber: '746', serviceTag: 'plum', amount: 855 },
-        { jobNumber: '964', serviceTag: 'plum', amount: 3013.3 },
+        { jobNumber: '898', serviceTag: 'plum', amount: 1200, billedOn: '2026-07-31', payUrl: 'https://pay/898a' },
+        { jobNumber: '789', serviceTag: 'plum', amount: 462, billedOn: '2026-07-31', payUrl: 'https://pay/789' },
+        { jobNumber: '898', serviceTag: 'plum', amount: 3600, billedOn: '2026-07-06', payUrl: null },
       ],
       jobs,
     )
-    expect(links).toEqual([
-      { jobId: 'j746', jobNumber: '746', serviceTag: 'plum', amount: 855 },
-      { jobId: 'j964', jobNumber: '964', serviceTag: 'plum', amount: 3013.3 },
+    expect(rows.map((r) => [r.jobNumber, r.amount, r.payUrl])).toEqual([
+      ['898', 1200, 'https://pay/898a'],
+      ['789', 462, 'https://pay/789'],
+      ['898', 3600, null],
     ])
-  })
-
-  it('collapses multiple bills on one job into one chip with summed amount', () => {
-    const links = buildStatementJobLinks(
-      [
-        { jobNumber: '746', amount: 100.1 },
-        { jobNumber: '746', amount: 0.2 },
-      ],
-      jobs,
-    )
-    expect(links).toEqual([{ jobId: 'j746', jobNumber: '746', serviceTag: null, amount: 100.3 }])
+    expect(rows[0]?.jobId).toBe('j898')
+    expect(rows[2]?.jobId).toBe('j898')
+    expect(rows[0]?.billedOn).toBe('2026-07-31')
   })
 
   it('skips numberless rows and numbers with no matching office job', () => {
-    const links = buildStatementJobLinks(
+    const rows = buildStatementBillRows(
       [
         { jobNumber: '', amount: 5 },
         { jobNumber: '999', amount: 6 },
@@ -42,6 +36,8 @@ describe('buildStatementJobLinks', () => {
       ],
       jobs,
     )
-    expect(links).toEqual([{ jobId: 'jC12', jobNumber: 'C12', serviceTag: null, amount: 7 }])
+    expect(rows).toEqual([
+      { jobId: 'jC12', jobNumber: 'C12', serviceTag: null, amount: 7, billedOn: null, payUrl: null },
+    ])
   })
 })
