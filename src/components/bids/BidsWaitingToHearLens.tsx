@@ -17,6 +17,14 @@ import {
   type PendingChaseBid,
 } from '../../lib/bidPendingChase'
 import { BID_LOSS_CATEGORIES, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import {
+  bidTabValuesFromRow,
+  buildBidTabPatch,
+  hasAnyBidTabValue,
+  type BidTabRow,
+  type BidTabValues,
+} from '../../lib/bidTabCapture'
+import { BidTabCapturePanel, BidTabRecordedLine } from './BidTabCapturePanel'
 import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
 import {
   type LedgerPrefixMap,
@@ -106,6 +114,7 @@ export function BidsWaitingToHearLens({
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
   const [noteDraft, setNoteDraft] = useState('')
   const [lostPickerOpen, setLostPickerOpen] = useState(false)
+  const [tabCaptureOpen, setTabCaptureOpen] = useState(false)
   const [savingBidId, setSavingBidId] = useState<string | null>(null)
   // Optimistic layers over props so taps feel instant while the reload catches up.
   const [localTouches, setLocalTouches] = useState<Record<string, string>>({})
@@ -197,6 +206,7 @@ export function BidsWaitingToHearLens({
   useEffect(() => {
     setNoteDraft('')
     setLostPickerOpen(false)
+    setTabCaptureOpen(false)
   }, [selectedBid?.id])
 
   function selectBuilder(key: string) {
@@ -204,7 +214,12 @@ export function BidsWaitingToHearLens({
     setSelectedBidId(null)
   }
 
-  function runAction(b: LensBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null) {
+  function runAction(
+    b: LensBid,
+    action: PendingChaseActionKey,
+    lossCategory: BidLossCategoryKey | null = null,
+    tab: { values: BidTabValues; noteLine: string } | null = null,
+  ) {
     if (!authUserId) {
       onError('You must be signed in to log a chase.')
       return
@@ -218,6 +233,11 @@ export function BidsWaitingToHearLens({
       note: noteDraft,
       lossCategory,
     })
+    if (tab) {
+      // Tab numbers replace the plain "Bid tab received" label in the history note.
+      const trimmed = noteDraft.trim()
+      writes.entry.notes = trimmed ? `${tab.noteLine}. ${trimmed}` : tab.noteLine
+    }
     // Optimistic: resolved bids leave the queue, contact-only taps go fresh.
     if (writes.outcomeUpdate) {
       setLocalResolved((prev) => ({ ...prev, [b.id]: writes.outcomeUpdate!.outcome }))
@@ -227,6 +247,7 @@ export function BidsWaitingToHearLens({
     setChasedThisSession((n) => n + 1)
     setNoteDraft('')
     setLostPickerOpen(false)
+    setTabCaptureOpen(false)
     setSavingBidId(b.id)
     advanceFrom(b.id)
     void (async () => {
@@ -235,7 +256,8 @@ export function BidsWaitingToHearLens({
           async () => supabase.from('bids_submission_entries').insert(writes.entry),
           'log chase note',
         )
-        const bidPatch: Record<string, string | null> = { last_contact: writes.lastContact }
+        const bidPatch: Record<string, string | number | null> = { last_contact: writes.lastContact }
+        if (tab) Object.assign(bidPatch, buildBidTabPatch(tab.values))
         if (writes.outcomeUpdate) {
           bidPatch.outcome = writes.outcomeUpdate.outcome
           bidPatch.loss_reason = writes.outcomeUpdate.loss_reason
@@ -536,6 +558,17 @@ export function BidsWaitingToHearLens({
                     : 'Never contacted since sending'}
                 </p>
                 {(() => {
+                  const tabValues = bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)
+                  if (!hasAnyBidTabValue(tabValues) || tabCaptureOpen) return null
+                  return (
+                    <BidTabRecordedLine
+                      values={tabValues}
+                      ourValue={selectedBid.value}
+                      onEdit={() => { setTabCaptureOpen(true); setLostPickerOpen(false) }}
+                    />
+                  )
+                })()}
+                {(() => {
                   const recips = recipientsByBidId[selectedBid.id] ?? []
                   if (recips.length === 0 && !selectedBid.viaRecipient) return null
                   const primaryName =
@@ -603,7 +636,14 @@ export function BidsWaitingToHearLens({
                       <button
                         key={a.key}
                         type="button"
-                        onClick={() => (a.key === 'lost' ? setLostPickerOpen(true) : runAction(selectedBid, a.key))}
+                        aria-pressed={a.key === 'bid_tab' ? tabCaptureOpen : undefined}
+                        onClick={() =>
+                          a.key === 'lost'
+                            ? setLostPickerOpen(true)
+                            : a.key === 'bid_tab'
+                              ? setTabCaptureOpen((v) => !v)
+                              : runAction(selectedBid, a.key)
+                        }
                         disabled={savingBidId != null}
                         style={{
                           fontSize: '0.8125rem',
@@ -612,7 +652,7 @@ export function BidsWaitingToHearLens({
                           cursor: 'pointer',
                           background: emphasis,
                           color: fg,
-                          border: '1px solid var(--border-strong)',
+                          border: `1px solid ${a.key === 'bid_tab' && tabCaptureOpen ? 'var(--text-link)' : 'var(--border-strong)'}`,
                           opacity: savingBidId != null ? 0.6 : 1,
                         }}
                       >
@@ -622,6 +662,18 @@ export function BidsWaitingToHearLens({
                   })}
                 </div>
               )}
+
+              {tabCaptureOpen ? (
+                <BidTabCapturePanel
+                  key={selectedBid.id}
+                  ourValue={selectedBid.value}
+                  initial={bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)}
+                  saving={savingBidId != null}
+                  onSave={(values, noteLine) => runAction(selectedBid, 'bid_tab', null, { values, noteLine })}
+                  secondaryLabel="Log without numbers"
+                  onSecondary={() => runAction(selectedBid, 'bid_tab')}
+                />
+              ) : null}
 
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <input

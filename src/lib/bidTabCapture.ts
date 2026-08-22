@@ -28,12 +28,17 @@ export type BidTabRow = {
   bid_tab_bidder_count: number | null
 }
 
-export function bidTabValuesFromRow(row: Partial<BidTabRow>): BidTabValues {
+export function bidTabValuesFromRow(row: Partial<Record<keyof BidTabRow, number | string | null>>): BidTabValues {
+  const num = (x: number | string | null | undefined): number | null => {
+    if (x == null) return null
+    const n = Number(x)
+    return Number.isFinite(n) ? n : null
+  }
   return {
-    low: row.bid_tab_low ?? null,
-    high: row.bid_tab_high ?? null,
-    rankFromLow: row.bid_tab_rank_from_low ?? null,
-    bidderCount: row.bid_tab_bidder_count ?? null,
+    low: num(row.bid_tab_low),
+    high: num(row.bid_tab_high),
+    rankFromLow: num(row.bid_tab_rank_from_low),
+    bidderCount: num(row.bid_tab_bidder_count),
   }
 }
 
