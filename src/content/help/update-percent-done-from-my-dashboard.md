@@ -29,7 +29,9 @@ What got done? (optional) &nbsp; {{button:blue|Save 65%}}
 
 ## What happens when you save
 
-The new % shows up everywhere immediately: your schedule card (with today's ▲ movement), the office's Jobs Pipeline **% done**, and the job's activity history.
+**Saving files a real report.** Your percent and note land on a Status Report — it shows up in the job's reports list (the **N reports** chip), the office gets the same notification as any other report, and it clears a **Report due** reminder just like Leave Report does. So a quick % update and a written report are the same flow now — the stepper is just the fast door.
+
+The new % also shows up everywhere immediately: your schedule card (with today's ▲ movement), the office's Jobs Pipeline **% done**, and the job's activity history.
 
 **Saving 100% on a Working job** asks one more question: whether to move the job to **Ready to bill**, the same two checkboxes as the report flow. That tells the office the job is ready to invoice — so only confirm it when the work is truly wrapped.
 

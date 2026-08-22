@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import {
@@ -8,6 +9,8 @@ import {
   fieldPctDeltaLabel,
   fieldPctStartValue,
 } from '../../lib/jobs/fieldPctUpdate'
+import { propagateReportPctToJob } from '../../lib/propagateReportPctToJob'
+import { submitStatusReportFromStepper } from '../../lib/reports/submitStatusReportFromStepper'
 import { MarkJobReadyToBillPrompt } from '../jobs/MarkJobReadyToBillPrompt'
 import AutosizeTextarea from '../AutosizeTextarea'
 
@@ -19,12 +22,18 @@ const BAR_DROP_COLOR = '#d97706'
  * Field "% done" stepper (v2.1806): subs and helpers move a job's percent
  * complete from their My Schedule cards — ±1/±5/±20 chips, a live
  * "45% → 65% (▲ 20)" preview over the same blue/green bar idiom as the card,
- * and an optional note. Saves through the set_job_pct_from_field RPC
- * (v2.1805), which posts the "N% complete — <note>" thread note as the caller
- * and writes jobs_ledger.pct_complete atomically, so Stages activity and the
- * card's day-delta layer light up on their own. Saving 100% on a Working job
- * chains into the existing MarkJobReadyToBillPrompt (helpers are authorized
- * via update_job_status).
+ * and an optional note.
+ *
+ * Since v2.2078 (owner decision) a save FILES A STATUS REPORT — the percent
+ * and note land on the Status Report template via
+ * `submitStatusReportFromStepper`, then the shared report pipeline runs:
+ * `propagateReportPctToJob` mirrors the % into jobs_ledger (thread note, day
+ * deltas, Stages), and 100% on a Working job chains into the same
+ * MarkJobReadyToBillPrompt as Leave Report. So both doors — the stepper and
+ * the report modal — are one flow: report → % mirror → Ready to Bill. The
+ * report clears the Report-due reminder and counts in the reports chip.
+ * If no Status Report template exists, the save falls back to the legacy
+ * bare-% write (set_job_pct_from_field) so the field never strands.
  *
  * The saved-from base is fetched fresh on open — the card's cached % can lag
  * another crew member's update.
@@ -47,6 +56,7 @@ export default function FieldPctUpdateModal({
   onSaved: (newPct: number) => void
 }) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
   const [base, setBase] = useState<number | null>(null)
   const [jobStatus, setJobStatus] = useState<string | null>(null)
   const [next, setNext] = useState<number | null>(null)
@@ -94,24 +104,54 @@ export default function FieldPctUpdateModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [rtbJob, onClose])
 
+  /** Legacy bare-% write — the pre-v2.2078 path, kept as the no-template fallback. */
+  const saveLegacyPctOnly = async () => {
+    const data = await withSupabaseRetry(
+      async () =>
+        supabase.rpc('set_job_pct_from_field', {
+          p_job_id: job.id,
+          p_pct: next!,
+          p_note: note.trim() || undefined,
+        }),
+      'field pct update',
+    )
+    const r = data as { ok?: boolean; error?: string } | null
+    if (!r?.ok) throw new Error(r?.error || 'Could not save the update')
+  }
+
   const save = async () => {
     if (base == null || next == null || saving) return
     setSaving(true)
     setError(null)
     try {
-      const data = await withSupabaseRetry(
-        async () =>
-          supabase.rpc('set_job_pct_from_field', {
-            p_job_id: job.id,
-            p_pct: next,
-            p_note: note.trim() || undefined,
-          }),
-        'field pct update',
-      )
-      const r = data as { ok?: boolean; error?: string } | null
-      if (!r?.ok) throw new Error(r?.error || 'Could not save the update')
-      showToast(`Saved — ${job.hcpNumber} is now ${next}% done.`, 'success')
-      if (next === 100 && jobStatus === 'working') {
+      let effectiveStatus: string | null = jobStatus
+      if (authUser?.id) {
+        const res = await submitStatusReportFromStepper({
+          authUserId: authUser.id,
+          jobId: job.id,
+          pct: next,
+          note,
+        })
+        if (res.ok) {
+          // Shared report pipeline: mirror the % into jobs_ledger (thread note,
+          // Stages, day deltas). The report itself is already saved.
+          const { jobStatus: freshStatus, pctError } = await propagateReportPctToJob(job.id, res.fieldValues)
+          if (pctError) {
+            showToast(`Report saved, but the job's % done could not update: ${pctError}`, 'warning')
+          }
+          effectiveStatus = freshStatus ?? jobStatus
+          showToast(`Report saved — ${job.hcpNumber} is now ${next}% done.`, 'success')
+        } else if (res.reason === 'no_template') {
+          await saveLegacyPctOnly()
+          showToast(`Saved — ${job.hcpNumber} is now ${next}% done.`, 'success')
+        } else {
+          throw new Error(res.message)
+        }
+      } else {
+        await saveLegacyPctOnly()
+        showToast(`Saved — ${job.hcpNumber} is now ${next}% done.`, 'success')
+      }
+      if (next === 100 && effectiveStatus === 'working') {
         setSavedPct(next)
         setRtbJob({ id: job.id, hcpNumber: job.hcpNumber, jobName: job.jobName })
         return
@@ -245,7 +285,9 @@ export default function FieldPctUpdateModal({
         </div>
 
         <label style={{ display: 'block', marginTop: '0.9rem' }}>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>What got done? (optional)</span>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+            What got done? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional — saving files a report for the office)</span>
+          </span>
           <AutosizeTextarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
