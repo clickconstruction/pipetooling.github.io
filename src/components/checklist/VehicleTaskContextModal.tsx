@@ -127,7 +127,7 @@ export default function VehicleTaskContextModal({
               {ctx ? vehicleDisplayName(ctx.vehicle) : 'Vehicle'}
             </div>
             {ctx?.vehicle.vin ? (
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>VIN …{vinTail(ctx.vehicle.vin)}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>VIN {vinTail(ctx.vehicle.vin)}</div>
             ) : null}
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', font: 'inherit', fontSize: '1.05rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.1rem 0.3rem' }}>
