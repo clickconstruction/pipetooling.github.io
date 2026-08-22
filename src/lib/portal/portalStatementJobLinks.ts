@@ -1,14 +1,18 @@
 /**
- * Office-only job shortcuts under the globe modal's live preview (v2.2054):
- * match the statement's bill rows (public payload — job NUMBERS only, no ids
- * by design) to the office's own jobs_ledger rows, yielding one Edit-Job
- * chip per job. Pure kernel; the modal does the two fetches.
+ * Office-only bill rows under the globe modal's live preview (v2.2054;
+ * statement-mirror rework v2.2064): match the statement's bill rows (public
+ * payload — job NUMBERS only, no ids by design) to the office's own
+ * jobs_ledger rows. ONE ROW PER BILL, in statement order with dates and pay
+ * links, so the strip reads as the statement's mirror. Pure kernel; the
+ * modal does the two fetches.
  */
 
 export type StatementBillPick = {
   jobNumber: string
   serviceTag?: string | null
   amount: number
+  billedOn?: string | null
+  payUrl?: string | null
 }
 
 export type StatementJobPick = {
@@ -17,48 +21,44 @@ export type StatementJobPick = {
   click_number: string | null
 }
 
-export type StatementJobLink = {
+export type StatementBillRow = {
   jobId: string
   jobNumber: string
   serviceTag: string | null
-  /** Sum of the job's open statement rows — a job can carry several bills. */
   amount: number
+  billedOn: string | null
+  payUrl: string | null
 }
 
 /**
- * One chip per job, in statement order, amounts summed across a job's bills.
- * Bills whose number matches no office job (or has no number) are skipped —
- * a chip that can't open Edit Job is worse than no chip.
+ * One row per statement bill, statement order preserved (duplicated job
+ * numbers included — that's what makes it a mirror). Bills whose number
+ * matches no office job (or has no number) are skipped — a row that can't
+ * open Edit Job is worse than no row.
  */
-export function buildStatementJobLinks(
+export function buildStatementBillRows(
   bills: StatementBillPick[],
   jobs: StatementJobPick[],
-): StatementJobLink[] {
+): StatementBillRow[] {
   const jobByNumber = new Map<string, string>()
   for (const j of jobs) {
     const n = (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim()
     if (n && !jobByNumber.has(n)) jobByNumber.set(n, j.id)
   }
-  const out: StatementJobLink[] = []
-  const byJobId = new Map<string, StatementJobLink>()
+  const out: StatementBillRow[] = []
   for (const b of bills) {
     const n = (b.jobNumber ?? '').trim()
     if (!n) continue
     const jobId = jobByNumber.get(n)
     if (!jobId) continue
-    const held = byJobId.get(jobId)
-    if (held) {
-      held.amount = Math.round((held.amount + b.amount) * 100) / 100
-      continue
-    }
-    const link: StatementJobLink = {
+    out.push({
       jobId,
       jobNumber: n,
       serviceTag: b.serviceTag ?? null,
       amount: b.amount,
-    }
-    byJobId.set(jobId, link)
-    out.push(link)
+      billedOn: b.billedOn ?? null,
+      payUrl: b.payUrl ?? null,
+    })
   }
   return out
 }

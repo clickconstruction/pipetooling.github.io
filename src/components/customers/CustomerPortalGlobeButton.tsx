@@ -21,8 +21,8 @@ import {
   suggestSlugFromName,
 } from '../../lib/portal/portalSlug'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShortOrigin'
-import { formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
-import { buildStatementJobLinks, type StatementJobLink } from '../../lib/portal/portalStatementJobLinks'
+import { formatPortalDate, formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
+import { buildStatementBillRows, type StatementBillRow } from '../../lib/portal/portalStatementJobLinks'
 import { setPortalMainOff, usePortalLinkOff } from '../../hooks/usePortalOffStates'
 import type {
   MarkCustomerPortalSlugSharedResult,
@@ -79,7 +79,8 @@ export default function CustomerPortalGlobeButton({
   const diceBase = useRef<{ base: string; out: string } | null>(null)
   const mainOff = usePortalLinkOff(customerId)
   const navigate = useNavigate()
-  const [jobLinks, setJobLinks] = useState<StatementJobLink[]>([])
+  const [billRows, setBillRows] = useState<StatementBillRow[]>([])
+  const [previewExpanded, setPreviewExpanded] = useState(false)
 
   // Office-only Edit-Job chips under the live preview (v2.2054): the public
   // payload carries job NUMBERS only (no ids, by design), so match them to
@@ -88,7 +89,7 @@ export default function CustomerPortalGlobeButton({
   const activeToken = main.kind === 'active' ? main.token : null
   useEffect(() => {
     if (!open || !activeToken) {
-      setJobLinks([])
+      setBillRows([])
       return
     }
     let cancelled = false
@@ -104,7 +105,7 @@ export default function CustomerPortalGlobeButton({
           .select('id, hcp_number, click_number')
           .or(`customer_id.eq.${customerId},gc_customer_id.eq.${customerId}`)
         if (cancelled || !jobRows) return
-        setJobLinks(buildStatementJobLinks(payload.bills, jobRows))
+        setBillRows(buildStatementBillRows(payload.bills, jobRows))
       } catch {
         // Preview strip only — stay silent.
       }
@@ -457,8 +458,9 @@ export default function CustomerPortalGlobeButton({
 
   const guess = slugInput.replace(/-+$/, '') ? slugGuessability(slugInput.replace(/-+$/, '')) : null
 
-  const PREVIEW_SCALE = 0.62
-  const PREVIEW_HEIGHT = 300
+  // Expand grows the preview in place (v2.2064); Full screen opens a tab.
+  const previewScale = previewExpanded ? 0.85 : 0.62
+  const previewHeight = previewExpanded ? 560 : 300
 
   const gearRow = (label: string, body: React.ReactNode) => (
     <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '0.7rem', padding: '0.6rem 0', borderTop: '1px solid var(--border)' }}>
@@ -713,20 +715,39 @@ export default function CustomerPortalGlobeButton({
                 )}
 
                 <div style={{ marginTop: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.4rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.4rem' }}>
                     <span style={{ fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 600 }}>
                       Live preview — what this link opens
                     </span>
+                    <span style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewExpanded((v) => !v)}
+                        aria-pressed={previewExpanded}
+                        title={previewExpanded ? 'Shrink the preview' : 'Grow the preview inside this modal'}
+                        style={{ ...secondaryBtn, padding: '0.15rem 0.5rem', fontSize: '0.7rem' }}
+                      >
+                        {previewExpanded ? '⤡ Shrink' : '⤢ Expand'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.open(tokenUrl, '_blank', 'noopener')}
+                        title="Open the portal page full screen in a new tab"
+                        style={{ ...secondaryBtn, padding: '0.15rem 0.5rem', fontSize: '0.7rem' }}
+                      >
+                        Full screen ↗
+                      </button>
+                    </span>
                   </div>
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: PREVIEW_HEIGHT, background: '#f6f3ec' }}>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: previewHeight, background: '#f6f3ec' }}>
                     <iframe
                       src={tokenUrl}
                       title={`Portal preview — ${customerName}`}
                       sandbox="allow-scripts allow-same-origin allow-popups"
                       style={{
-                        width: `${100 / PREVIEW_SCALE}%`,
-                        height: PREVIEW_HEIGHT / PREVIEW_SCALE,
-                        transform: `scale(${PREVIEW_SCALE})`,
+                        width: `${100 / previewScale}%`,
+                        height: previewHeight / previewScale,
+                        transform: `scale(${previewScale})`,
                         transformOrigin: 'top left',
                         border: 'none',
                         display: 'block',
@@ -736,9 +757,9 @@ export default function CustomerPortalGlobeButton({
                   </div>
                 </div>
 
-                {jobLinks.length > 0 && (
-                  <div style={{ marginTop: '0.6rem', border: '1px dashed var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem 0.6rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                {billRows.length > 0 && (
+                  <div style={{ marginTop: '0.6rem', border: '1px dashed var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem 0.15rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
                       <span style={{ fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-faint)', fontWeight: 600 }}>
                         Jobs on this statement
                       </span>
@@ -746,41 +767,49 @@ export default function CustomerPortalGlobeButton({
                         only you see this — not on their page
                       </span>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                      {jobLinks.map((l) => (
+                    {/* One row per statement bill, same order — the strip is the statement's mirror (v2.2064). */}
+                    {billRows.map((l, i) => (
+                      <div
+                        key={`${l.jobId}-${i}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.32rem 0.1rem', borderTop: i > 0 ? '1px solid var(--border)' : 'none', fontSize: '0.75rem' }}
+                      >
+                        <span style={{ color: 'var(--text-faint)', width: 46, flex: 'none' }}>
+                          {formatPortalDate(l.billedOn)?.replace(/, \d{4}$/, '') ?? '—'}
+                        </span>
+                        {l.serviceTag && (
+                          <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.07em', color: PORTAL_TRADE_COLORS[l.serviceTag as PortalTradeTag] ?? 'var(--text-faint)' }}>
+                            {l.serviceTag.toUpperCase()}
+                          </span>
+                        )}
+                        <span style={{ fontWeight: 700 }}>{l.jobNumber}</span>
+                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(l.amount)}</span>
+                        <span style={{ flex: 1 }} />
+                        {l.payUrl ? (
+                          <a
+                            href={l.payUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open this bill's Stripe pay page"
+                            style={{ color: '#635bff', fontWeight: 700, fontSize: '0.72rem', textDecoration: 'none' }}
+                          >
+                            Pay ↗
+                          </a>
+                        ) : (
+                          <span style={{ color: 'var(--text-faint)', fontSize: '0.68rem', fontStyle: 'italic' }}>no pay link</span>
+                        )}
                         <button
-                          key={l.jobId}
                           type="button"
                           title={`Open Job ${l.jobNumber} in Edit Job`}
                           onClick={() => {
                             setOpen(false)
                             navigate(`/jobs?tab=stages&edit=${encodeURIComponent(l.jobId)}`)
                           }}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            border: '1px solid var(--border)',
-                            background: 'var(--surface)',
-                            borderRadius: 7,
-                            padding: '0.28rem 0.6rem',
-                            fontSize: '0.75rem',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                            color: 'var(--text-700)',
-                          }}
+                          style={{ border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 6, padding: '0.18rem 0.55rem', fontSize: '0.72rem', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--text-link)', fontWeight: 700 }}
                         >
-                          {l.serviceTag && (
-                            <span style={{ fontSize: '0.6rem', fontWeight: 800, letterSpacing: '0.07em', color: PORTAL_TRADE_COLORS[l.serviceTag as PortalTradeTag] ?? 'var(--text-faint)' }}>
-                              {l.serviceTag.toUpperCase()}
-                            </span>
-                          )}
-                          <span style={{ fontWeight: 700 }}>{l.jobNumber}</span>
-                          <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(l.amount)}</span>
-                          <span style={{ color: 'var(--text-link)', fontWeight: 700 }}>Edit ↗</span>
+                          Edit ↗
                         </button>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </>
