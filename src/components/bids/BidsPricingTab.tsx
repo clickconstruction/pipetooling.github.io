@@ -312,6 +312,8 @@ export function BidsPricingTab({
   // Iteration 3 — win/loss calibration history (null = loading/unavailable).
   const [wbHistory, setWbHistory] = useState<BidPricingHistoryRow[] | null>(null)
   const [wbCloning, setWbCloning] = useState(false)
+  /** The "Try a variant…" door (v2.2104): one button asking "price experiment or scope change?" */
+  const [wbVariantDoorOpen, setWbVariantDoorOpen] = useState(false)
   // Disables the toolbar price-book dropdown while a clone/switch is in flight (avoids double-submit).
   const [pricebookSwitchBusy, setPricebookSwitchBusy] = useState(false)
   const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
@@ -1168,7 +1170,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-scenarios',
       title: 'Scenarios — same counts, different prices',
-      body: 'Click a card to view it. The ★ starred scenario is what the customer sees — Cover Letter, Share, and the bid value all use it — and nothing changes that except "☆ Make customer-facing…".',
+      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "Try a variant…" adds a second scenario (price experiment) or a whole new version (scope change).',
     },
     {
       anchor: 'workbench-summary',
@@ -2499,7 +2501,7 @@ export function BidsPricingTab({
                       const scenarios = owned.length > 0
                         ? owned
                         : selectedPricingVersionId
-                          ? [{ id: selectedPricingVersionId, name: 'Current pricing (shared)', sort_order: 0 } as (typeof owned)[number]]
+                          ? [{ id: selectedPricingVersionId, name: 'Standard prices', sort_order: 0 } as (typeof owned)[number]]
                           : []
                       if (scenarios.length === 0) return null
                       const activeVersionName = bidVersions.find((b) => b.id === selectedBidVersionId)?.name ?? null
@@ -2512,6 +2514,121 @@ export function BidsPricingTab({
                           : scenarios.find((s) => s.id !== selectedPricingVersionId && (revOf(s.id) ?? 0) > 0) ?? null
                       const labelStyle: React.CSSProperties = { fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }
                       const cardBtnStyle: React.CSSProperties = { font: 'inherit', fontSize: '0.72rem', padding: '0.18rem 0.5rem', borderRadius: 5, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', cursor: 'pointer' }
+                      // v2.2104: one creation door for both variant kinds, and the whole
+                      // hierarchy collapses to a single line while it has nothing to say.
+                      const doorBtn = (
+                        <button
+                          type="button"
+                          onClick={() => setWbVariantDoorOpen(true)}
+                          disabled={wbCloning}
+                          style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.85rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', cursor: wbCloning ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {wbCloning ? 'Duplicating…' : 'Try a variant…'}
+                        </button>
+                      )
+                      const doorOptStyle: React.CSSProperties = { display: 'flex', gap: '0.7rem', alignItems: 'flex-start', width: '100%', textAlign: 'left', font: 'inherit', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.8rem', background: 'var(--surface)', cursor: 'pointer', marginBottom: '0.55rem' }
+                      const doorModal = wbVariantDoorOpen ? (
+                        <div
+                          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+                          onClick={() => setWbVariantDoorOpen(false)}
+                        >
+                          <div
+                            role="dialog"
+                            aria-label="Try a variant"
+                            style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 440, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Try a variant</h3>
+                            <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>What changed?</p>
+                            <button
+                              type="button"
+                              style={doorOptStyle}
+                              onClick={() => {
+                                setWbVariantDoorOpen(false)
+                                void duplicateWorkbenchScenario()
+                              }}
+                            >
+                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>💲</span>
+                              <span>
+                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Same job, different price</b>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                  Duplicates this price scenario — counts stay shared, you get a second sheet to experiment on. Star it later if it wins.
+                                </span>
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              style={doorOptStyle}
+                              onClick={() => {
+                                setWbVariantDoorOpen(false)
+                                window.dispatchEvent(new Event('bid-version-picker-open-new'))
+                              }}
+                            >
+                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>📐</span>
+                              <span>
+                                <b style={{ display: 'block', fontSize: '0.92rem' }}>The plans or scope changed</b>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                  New <b>version</b> with its own takeoff — re-count what changed; current pricing can be cloned onto it.
+                                </span>
+                              </span>
+                            </button>
+                            <div style={{ textAlign: 'right' }}>
+                              <button
+                                type="button"
+                                onClick={() => setWbVariantDoorOpen(false)}
+                                style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.35rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null
+                      const solo = scenarios.length === 1 && bidVersions.length <= 1
+                      if (solo) {
+                        const v = scenarios[0]!
+                        const rev = revOf(v.id)
+                        const m = rev != null && rev > 0 ? (rev - totalCost) / rev : null
+                        const unpriced = rev === 0
+                        const isCustomerFacing = v.id === customerFacingPricingId
+                        return (
+                          <>
+                            <div
+                              data-tour="workbench-scenarios"
+                              style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.9rem', marginBottom: '0.9rem' }}
+                            >
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One takeoff · one price scenario</span>
+                              {isCustomerFacing ? (
+                                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-green-600)' }}>★ customer sees</span>
+                              ) : null}
+                              <b style={{ fontSize: '0.85rem' }}>{v.name}</b>
+                              {unpriced ? (
+                                <>
+                                  <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.1rem 0.5rem' }}>
+                                    No prices yet
+                                  </span>
+                                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>— price below or use the solver</span>
+                                </>
+                              ) : (
+                                <>
+                                  <b style={{ fontSize: '0.9rem', fontVariantNumeric: 'tabular-nums' }}>{rev != null ? fmtM(rev) : '…'}</b>
+                                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                    {m == null ? '' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
+                                  </span>
+                                </>
+                              )}
+                              {!isCustomerFacing ? (
+                                <button type="button" onClick={() => void makeScenarioCustomerFacing(v, rev)} style={cardBtnStyle}>
+                                  ☆ Make customer-facing…
+                                </button>
+                              ) : null}
+                              <span style={{ flex: 1 }} />
+                              {doorBtn}
+                            </div>
+                            {doorModal}
+                          </>
+                        )
+                      }
                       return (
                         <>
                           <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', flexWrap: 'wrap' }}>
@@ -2595,15 +2712,9 @@ export function BidsPricingTab({
                                 </div>
                               )
                             })}
-                            <button
-                              type="button"
-                              onClick={() => void duplicateWorkbenchScenario()}
-                              disabled={wbCloning}
-                              style={{ flex: '0 0 auto', alignSelf: 'center', font: 'inherit', fontSize: '0.8rem', padding: '0.45rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: wbCloning ? 'wait' : 'pointer' }}
-                            >
-                              {wbCloning ? 'Duplicating…' : '+ Duplicate scenario'}
-                            </button>
+                            <div style={{ flex: '0 0 auto', alignSelf: 'center' }}>{doorBtn}</div>
                           </div>
+                          {doorModal}
                         </>
                       )
                     })()}

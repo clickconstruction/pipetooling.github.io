@@ -100,6 +100,16 @@ export function BidVersionPicker({
     setModalOpen(true)
   }
 
+  // The Workbench's "Try a variant…" door (v2.2104) opens this picker's
+  // new-version modal from below via a window event — no prop drilling
+  // through Bids.tsx.
+  useEffect(() => {
+    const open = () => openNewVersion()
+    window.addEventListener('bid-version-picker-open-new', open)
+    return () => window.removeEventListener('bid-version-picker-open-new', open)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUnsplit])
+
   const pricingSource = currentPricingId ?? fallbackPricingSourceId ?? null
 
   async function submitNewVersion() {
