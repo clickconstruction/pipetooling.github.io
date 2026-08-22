@@ -301,11 +301,15 @@ export function PipelineOverview({
                   background: 'var(--surface)',
                 }}
               >
+                {/* Compact anatomy (v2.2059, owner request): claim — why —
+                    button, same as every neighbor card. The badge carries the
+                    count; the old chip row folds into the why line as plain
+                    text (only non-zero tiers speak). */}
                 <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
                   <span aria-hidden style={{ fontSize: '0.95rem' }}>📞</span>
                   <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0, color: chase.dueCustomers > 0 ? 'inherit' : 'var(--text-muted)' }}>
                     {chase.dueCustomers > 0
-                      ? `Ask ${chase.dueCustomers} customer${chase.dueCustomers === 1 ? '' : 's'} when they'll pay — ${formatUsdNoCents(chase.dueDollars)}`
+                      ? `Ask when they'll pay — ${formatUsdNoCents(chase.dueDollars)}`
                       : 'Payment follow-up · everyone asked'}
                   </span>
                   {chase.dueCustomers > 0 ? (
@@ -328,30 +332,17 @@ export function PipelineOverview({
                     </span>
                   ) : null}
                 </span>
-                <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.68rem', fontWeight: 600 }}>
-                  {chase.askCount > 0 ? (
-                    <span style={{ padding: '0.1rem 0.5rem', borderRadius: 6, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }}>
-                      Never asked · {chase.askCount}
-                    </span>
-                  ) : null}
-                  {chase.brokenCount > 0 ? (
-                    <span style={{ padding: '0.1rem 0.5rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
-                      Broken promise · {chase.brokenCount}
-                    </span>
-                  ) : null}
-                  {chase.waitingCount > 0 ? (
-                    <span style={{ padding: '0.1rem 0.5rem', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)' }}>
-                      Waiting · {chase.waitingCount}
-                    </span>
-                  ) : null}
-                  {chase.disputeCount > 0 ? (
-                    <span style={{ padding: '0.1rem 0.5rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
-                      Dispute · {chase.disputeCount}
-                    </span>
-                  ) : null}
-                </span>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
-                  bills past their expected date with no promise — plus broken promises to chase
+                  {[
+                    chase.askCount > 0
+                      ? `${chase.askCount} customer${chase.askCount === 1 ? '' : 's'} past expected, never asked`
+                      : null,
+                    chase.brokenCount > 0 ? `${chase.brokenCount} broken promise${chase.brokenCount === 1 ? '' : 's'}` : null,
+                    chase.waitingCount > 0 ? `${chase.waitingCount} waiting` : null,
+                    chase.disputeCount > 0 ? `${chase.disputeCount} dispute${chase.disputeCount === 1 ? '' : 's'}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
                 <button
                   type="button"
