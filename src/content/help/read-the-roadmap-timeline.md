@@ -24,3 +24,9 @@ When stages block each other, small dots on the calendar mark when each later wa
 :::example Why the dates say ≈
 88 tasks left at your recent pace of 7/week ≈ 13 weeks — so the flag sits in November and reads "≈ Nov". The chart never claims a date you didn't earn; it shows where your real pace is taking you.
 :::
+
+## The what-if dial
+
+The **what if** slider next to the calendar lets you dream without lying to yourself. It starts at your real pace — the little amber **▲ you** tick never moves — and dragging it draws a dashed **what-if** line on the calendar next to the solid 🎯 flag: "at our real pace, ≈ Jul; at 10/week, ≈ Oct." The gap between the two flags is what the faster pace would actually buy. The dial resets every time you open the page and **clear** snaps it away — only completing tasks moves the solid flag.
+
+On a brand-new roadmap with no completed tasks yet, there's no real pace to project from, so the dial is all you have: its dashed flag gives you a first horizon, clearly marked as a what-if.

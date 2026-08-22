@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendarBand, observedPace, paceLabel } from './roadmapCalendar'
+import { bandFraction, calendarBand, observedPace, paceLabel } from './roadmapCalendar'
 
 const NOW = new Date('2026-08-22T12:00:00')
 const done = (iso: string) => ({ completed_at: iso })
@@ -73,6 +73,15 @@ describe('calendarBand', () => {
     expect(band.runway).toBeNull()
     expect(band.months).toHaveLength(3)
     expect(band.todayLeft).toBeGreaterThan(0)
+  })
+
+  it('exposes the horizon so extra dates can be placed on the band', () => {
+    const band = calendarBand([wave('2026-10-15T00:00:00', 88)], NOW)
+    expect(band.horizonStart).toEqual(new Date(2026, 7, 1))
+    expect(band.horizonEnd).toEqual(new Date(2026, 10, 1))
+    expect(bandFraction(band, new Date(2026, 7, 1))).toBe(0)
+    expect(bandFraction(band, new Date(2026, 8, 16))).toBeCloseTo(0.5, 1)
+    expect(bandFraction(band, new Date(2027, 5, 1))).toBe(1) // beyond the horizon clamps
   })
 
   it('marks intermediate waves only when they are far enough from today, each other, and the goal', () => {

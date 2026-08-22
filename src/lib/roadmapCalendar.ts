@@ -55,8 +55,16 @@ export type CalendarBand = {
   /** Intermediate wave finishes (projection indices 1..len-2) that are far enough apart to label. */
   markers: CalendarMarker[]
   goal: { left: number; label: string; clamped: boolean } | null
-  /** End of the visible range — lets the view say what pace would finish inside it. */
+  /** Visible range bounds — for placing extra dates (what-if ghost flag) and the needed-pace caption. */
+  horizonStart: Date
   horizonEnd: Date
+}
+
+/** Fraction of the band where a date falls, clamped to [0, 1]. */
+export function bandFraction(band: Pick<CalendarBand, 'horizonStart' | 'horizonEnd'>, d: Date): number {
+  const start = band.horizonStart.getTime()
+  const span = band.horizonEnd.getTime() - start
+  return Math.min(Math.max((d.getTime() - start) / span, 0), 1)
 }
 
 const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1)
@@ -113,6 +121,7 @@ export function calendarBand(
     runway: goalLeft == null ? null : { left: todayLeft, width: Math.max(goalLeft - todayLeft, 0) },
     markers,
     goal,
+    horizonStart: start,
     horizonEnd: end,
   }
 }
