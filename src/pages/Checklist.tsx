@@ -26,7 +26,7 @@ import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActi
 import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
-import { openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
+import { nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { goalsStageRows, goalsStripRows, lockedStageHint, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
@@ -2817,8 +2817,12 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   const [oldestOpenByItem, setOldestOpenByItem] = useState<Map<string, string>>(new Map())
   const [openMenuItemId, setOpenMenuItemId] = useState<string | null>(null)
   const [completedOpen, setCompletedOpen] = useState(false)
-  /** Card expanded to show its activity spine (history + notes), v2.NNNN. */
+  /** Card expanded to show its activity spine (history + notes), v2.2010. */
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
+  /** View pills (v2.2066): Repeating gets a front door instead of living below 28 one-offs. */
+  const [manageView, setManageView] = useState<'all' | 'one_offs' | 'repeating' | 'completed'>('all')
+  /** Next upcoming open occurrence per item — the green "next Mon, Aug 24" chip. */
+  const [nextOpenByItem, setNextOpenByItem] = useState<Map<string, string>>(new Map())
 
   useEffect(() => {
     setLoading(true)
@@ -2868,6 +2872,8 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
       .in('checklist_item_id', ids)
     const completion = new Map<string, { total: number; hasIncomplete: boolean }>()
     const oldestOpen = new Map<string, string>()
+    const nextOpen = new Map<string, string>()
+    const todayForNext = new Date().toLocaleDateString('en-CA')
     for (const inst of (instData ?? []) as Array<{ checklist_item_id: string; completed_at: string | null; scheduled_date: string }>) {
       const cur = completion.get(inst.checklist_item_id) ?? { total: 0, hasIncomplete: false }
       cur.total += 1
@@ -2875,11 +2881,16 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
         cur.hasIncomplete = true
         const prev = oldestOpen.get(inst.checklist_item_id)
         if (!prev || inst.scheduled_date < prev) oldestOpen.set(inst.checklist_item_id, inst.scheduled_date)
+        if (inst.scheduled_date >= todayForNext) {
+          const prevNext = nextOpen.get(inst.checklist_item_id)
+          if (!prevNext || inst.scheduled_date < prevNext) nextOpen.set(inst.checklist_item_id, inst.scheduled_date)
+        }
       }
       completion.set(inst.checklist_item_id, cur)
     }
     setItemCompletion(completion)
     setOldestOpenByItem(oldestOpen)
+    setNextOpenByItem(nextOpen)
   }
 
   async function performDeleteChecklistItem(id: string) {
@@ -2979,6 +2990,11 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
             {openAge ? (
               <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>
                 {openAge}
+              </span>
+            ) : null}
+            {isRepeating(item) && nextOccurrenceLabel(nextOpenByItem.get(item.id), todayLocalStr) ? (
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }}>
+                {nextOccurrenceLabel(nextOpenByItem.get(item.id), todayLocalStr)}
               </span>
             ) : null}
             {item.reminder_time ? (
@@ -3154,7 +3170,63 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
           ＋ New task
         </button>
       </div>
-      {filteredItems.length > 0 ? (
+      {/* View pills (v2.2066): same grammar as Review's range filter. */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '1rem' }}>
+        {(
+          [
+            ['all', 'All', null],
+            ['one_offs', 'One-offs', incompleteItems.length],
+            ['repeating', '↻ Repeating', repeatingItems.length],
+            ['completed', '✓ Completed', completeItems.length],
+          ] as const
+        ).map(([key, label, count]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setManageView(key)}
+            aria-pressed={manageView === key}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '0.3rem 0.8rem',
+              borderRadius: 999,
+              border: manageView === key ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+              background: manageView === key ? '#2563eb' : 'var(--surface)',
+              color: manageView === key ? 'white' : 'var(--text-700)',
+              fontSize: '0.8125rem',
+              fontWeight: manageView === key ? 600 : 400,
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+            {count != null ? (
+              <span
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '0 7px',
+                  borderRadius: 999,
+                  background: manageView === key ? 'rgba(255,255,255,0.25)' : 'var(--bg-muted)',
+                  color: manageView === key ? 'white' : 'var(--text-muted)',
+                }}
+              >
+                {count}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+      {filteredItems.length > 0 && manageView === 'one_offs'
+        ? librarySection(`ONE-OFFS · ${incompleteItems.length} open`, incompleteItems, true)
+        : null}
+      {filteredItems.length > 0 && manageView === 'repeating'
+        ? librarySection(`REPEATING · ${repeatingItems.length}`, repeatingItems, false)
+        : null}
+      {filteredItems.length > 0 && manageView === 'completed'
+        ? librarySection(`✓ COMPLETED ONE-OFFS · ${completeItems.length}`, completeItems, false)
+        : null}
+      {filteredItems.length > 0 && manageView === 'all' ? (
         <>
           {librarySection(`ONE-OFFS · ${incompleteItems.length} open`, incompleteItems, true)}
           {librarySection(`REPEATING · ${repeatingItems.length}`, repeatingItems, false)}

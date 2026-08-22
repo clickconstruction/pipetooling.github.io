@@ -28,6 +28,8 @@ Two kinds:
 
 Repeating tasks stay stocked about five weeks ahead automatically and keep going until their end date — set one, or they run forever.
 
+To see every repeating task in one place, open **Manage** and tap the {{chip:blue|↻ Repeating}} pill — each row shows its schedule and a green chip with its next occurrence.
+
 ## Notifications
 
 **When it's done, notify** is one line: check **Me** to hear when it's completed, and add one more person with the picker. Reminders at a set time of day live under **Advanced**.
