@@ -40,6 +40,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 |---|---|---|---|---|---|---|---|---|
 | `bid-board` | Bid Board | thin wrapper | ~633 | extracted (`BidsBidBoardTab` + `BidBoardEstimatingHealthSection`) | ~4 (deep-link + sectionOpen + lost-summary, in parent) | med-high | No | Done |
 | `builder-review` | Builder Review | thin wrapper | ~377 | extracted (`BidsBuilderReviewTab`) | 2 (deep-link, in parent) | medium | No | Done |
+| `call-queue` | Call queue (Followup "new" lens, v2.2105) | thin wrapper | ~12 | extracted from birth (`BidsCallQueueTab` + pure `src/lib/bids/callQueue.ts`) | 0 | low | No | Done |
 | `working` | Unsent / Working | thin wrapper (`activeTab === 'working'`) | ~22 | mostly extracted (wraps `BidsWorkingBoard`; archive-confirm extracted 2026-05-29 as `WorkingBoardArchiveConfirmDialog`, state deliberately parent-owned — shared with `BidFormModal`) | 4 (deep-link) | low-med | No | Nearly done; only the deep-link glue remains parent-side |
 | `bid-costs` | Bid Costs | thin wrapper | ~76 (dev-only) | extracted (`BidsBidCostsTab`) | 0 | low | No | Done |
 | `estimators` | Estimators | thin wrapper | ~11 | extracted (`BidsEstimatorsTab`) | 0 | low | No | Done |

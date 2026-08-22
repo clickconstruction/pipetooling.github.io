@@ -63,6 +63,7 @@ export const EGG_PAGES: EggPage[] = [
  */
 export const EGG_BIDS_TABS: { key: string; label: string; section?: 'Followup' }[] = [
   { key: 'bid-board', label: 'Bid Board' },
+  { key: 'call-queue', label: 'Call queue', section: 'Followup' },
   { key: 'builder-review', label: 'By builder', section: 'Followup' },
   { key: 'submission-followup', label: 'By status', section: 'Followup' },
   { key: 'why-we-lost', label: 'Why we lost', section: 'Followup' },
