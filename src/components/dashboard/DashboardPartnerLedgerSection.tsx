@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
-import { mergeNotesIntoDisplay, netPosition, type LedgerDisplayRow } from '../../lib/partnerLedger/partnerLedgerJournal'
+import { mergeNotesIntoDisplay, type LedgerDisplayRow } from '../../lib/partnerLedger/partnerLedgerJournal'
 import {
-  buildWeekCards,
+  buildJournalWeekCards,
   parsePartnerLedgerNotes,
   parsePartnerLedgerOffsets,
   parsePartnerLedgerStubs,
@@ -17,9 +17,14 @@ import { DashboardGroupCard } from './DashboardGroupCard'
 /**
  * "Your ledger" — the partner's own dashboard window (PARTNERSHIPS_PLAN.md
  * PR 4). Week-to-week ‹ › navigation: the live week first (balance so far,
- * pending-approval hours as no-dollar lines), then each generated statement
- * week with its lines and opening/closing chain. Statement acknowledgment
- * (§9b) and a light-pinned print of the selected week.
+ * pending-approval hours as no-dollar lines), then every week with activity
+ * back to the start of the partnership. Statement acknowledgment (§9b) and a
+ * light-pinned print of the selected week.
+ *
+ * v2.2111: the week cards are a weekly view over the SAME journal as Full
+ * ledger (one full-history fetch shared by both) — back-charges appear in the
+ * week they happened and every closing equals the journal's running balance,
+ * so the math flows card to card with no invisible wedge.
  *
  * Self-fetching via the get_my_partner_* SECURITY DEFINER RPCs — renders
  * nothing for non-partners, and fail-softs to nothing if the PR 4 migration
@@ -28,6 +33,8 @@ import { DashboardGroupCard } from './DashboardGroupCard'
 
 const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const signedMoney = (n: number) => `${n < 0 ? '−' : '+'}${money(n)}`
+/** Balance readout: minus only when negative (openings can be either sign). */
+const signedBalance = (n: number) => `${n < 0 ? '−' : ''}${money(n)}`
 
 export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnershipId?: string } = {}) {
   const [summary, setSummary] = useState<PartnerSummary | null>(null)
@@ -37,7 +44,6 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
   const [loaded, setLoaded] = useState(false)
   const [fullRows, setFullRows] = useState<LedgerDisplayRow[] | null>(null)
   const [fullOpen, setFullOpen] = useState(false)
-  const [fullLoading, setFullLoading] = useState(false)
 
   const load = useCallback(async () => {
     // Lens mode (asPartnershipId): dev-only *_as RPCs share the exact inner
@@ -53,11 +59,16 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
     const s = parsePartnerSummary(sumRes.data)
     setSummary(s)
     if (s) {
+      // One full-history fetch feeds BOTH the week cards and Full ledger —
+      // same journal, so the two views can never disagree.
       const ledRes = asPartnershipId
-        ? await supabase.rpc('get_partner_ledger_as', { p_partnership_id: asPartnershipId, p_weeks: 8 })
-        : await supabase.rpc('get_my_partner_ledger', { p_weeks: 8 })
+        ? await supabase.rpc('get_partner_ledger_as', { p_partnership_id: asPartnershipId, p_weeks: 520 })
+        : await supabase.rpc('get_my_partner_ledger', { p_weeks: 520 })
       const stubs = ledRes.error ? [] : parsePartnerLedgerStubs(ledRes.data)
-      setCards(buildWeekCards(s, stubs))
+      const offsets = ledRes.error ? [] : parsePartnerLedgerOffsets(ledRes.data)
+      const visibleNotes = ledRes.error ? [] : parsePartnerLedgerNotes(ledRes.data)
+      setCards(buildJournalWeekCards(s, stubs, offsets))
+      setFullRows(mergeNotesIntoDisplay(partnerStubsToJournal(stubs, offsets).rows, visibleNotes))
     }
     setLoaded(true)
   }, [asPartnershipId])
@@ -74,23 +85,8 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
 
   if (!loaded || !summary || !summary.modules.weekly_statement || cards.length === 0) return null
 
-  async function toggleFullLedger() {
-    if (fullOpen) {
-      setFullOpen(false)
-      return
-    }
-    setFullOpen(true)
-    if (fullRows == null) {
-      setFullLoading(true)
-      const res = asPartnershipId
-        ? await supabase.rpc('get_partner_ledger_as', { p_partnership_id: asPartnershipId, p_weeks: 520 })
-        : await supabase.rpc('get_my_partner_ledger', { p_weeks: 520 })
-      const stubs = res.error ? [] : parsePartnerLedgerStubs(res.data)
-      const offsets = res.error ? [] : parsePartnerLedgerOffsets(res.data)
-      const visibleNotes = res.error ? [] : parsePartnerLedgerNotes(res.data)
-      setFullRows(mergeNotesIntoDisplay(partnerStubsToJournal(stubs, offsets).rows, visibleNotes))
-      setFullLoading(false)
-    }
+  function toggleFullLedger() {
+    setFullOpen((prev) => !prev)
   }
 
   async function acknowledge(stubId: string) {
@@ -114,9 +110,9 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         <div style="font-size:19px;font-weight:700;">Partner weekly statement</div>
         <div style="color:#6d6759;font-size:12px;margin:2px 0 14px;">${summary?.display_name ?? ''} · Week of ${c.weekStart}${c.weekEnd ? ` – ${c.weekEnd}` : ' (in progress)'}</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <tr><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;">Opening balance</td><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;text-align:right;font-weight:600;">${c.opening != null ? money(c.opening) : '—'}</td></tr>
+          <tr><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;">Opening balance</td><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;text-align:right;font-weight:600;">${c.opening != null ? signedBalance(c.opening) : '—'}</td></tr>
           ${rows}
-          <tr><td style="padding:8px 0;border-top:2px solid #211d16;font-weight:800;">Closing balance</td><td style="padding:8px 0;border-top:2px solid #211d16;text-align:right;font-weight:800;">${money(c.closing)}</td></tr>
+          <tr><td style="padding:8px 0;border-top:2px solid #211d16;font-weight:800;">Closing balance</td><td style="padding:8px 0;border-top:2px solid #211d16;text-align:right;font-weight:800;">${signedBalance(c.closing)}</td></tr>
         </table>
         <p style="color:#6d6759;font-size:11px;">${c.companyAckAt ? `Company acknowledged ${new Date(c.companyAckAt).toLocaleString()}. ` : ''}${c.partnerAckAt ? `Partner acknowledged ${new Date(c.partnerAckAt).toLocaleString()}.` : ''}</p>
       </div>`,
@@ -180,7 +176,10 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
           )}
         </div>
         {(() => {
-          const total = card ? (card.open ? netPosition(card.closing, summary.pending_offsets.net) : card.closing) : null
+          // The chain already books charges at their dates (same journal as
+          // Full ledger), so the card's closing IS the settle-up position —
+          // no separate pending wedge to add.
+          const total = card ? card.closing : null
           if (total == null) return null
           const direction = total >= 0 ? 'Click owes you' : 'you owe Click'
           return (
@@ -237,13 +236,13 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
       <div style={{ marginTop: '0.6rem', paddingTop: '0.55rem', borderTop: '1px solid var(--border)' }}>
         <button
           type="button"
-          onClick={() => void toggleFullLedger()}
+          onClick={toggleFullLedger}
           style={{ display: 'block', margin: '0 auto', font: 'inherit', fontSize: '0.78rem', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer' }}
         >
           {fullOpen ? '▾ Hide full ledger' : '▸ Full ledger'}
         </button>
         {fullOpen ? (
-          fullLoading || fullRows == null ? (
+          fullRows == null ? (
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.4rem 0 0' }}>Loading…</p>
           ) : fullRows.length === 0 ? (
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.4rem 0 0' }}>Nothing posted yet.</p>
