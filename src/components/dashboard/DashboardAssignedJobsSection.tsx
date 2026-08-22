@@ -113,6 +113,9 @@ export function DashboardAssignedJobsSection({
           title={`Assigned Jobs (${assignedJobs.length})`}
           collapseStorageKey="dash-assigned-jobs-collapsed"
           defaultCollapsed
+          // v2.2070 (owner request): an expand lasts the session only — every
+          // fresh app launch starts with the list collapsed again.
+          sessionScoped
           expandRequestKey={searchExpandKey}
           headerRight={
             <button
@@ -336,7 +339,10 @@ export function DashboardAssignedJobsSection({
                               View Reports
                             </button>
                           )}
-                          {role !== 'helpers' && (
+                          {/* v2.2070: field crew (sub-like) no longer get Send to Billing —
+                              a 100% report walks them through Ready to Bill with the same
+                              attestations, so the extra door only added confusion. */}
+                          {!isSubcontractorLikeRole(role) && (
                             <button
                               type="button"
                               onClick={() => {
@@ -520,7 +526,8 @@ export function DashboardAssignedJobsSection({
                           )
                         )
                       })()}
-                      {role !== 'helpers' ? (
+                      {/* v2.2070: hidden for sub-like roles — the 100% report flow covers it. */}
+                      {!isSubcontractorLikeRole(role) ? (
                       <button
                         type="button"
                         onClick={() => {

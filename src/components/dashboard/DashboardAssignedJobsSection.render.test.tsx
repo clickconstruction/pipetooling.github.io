@@ -38,9 +38,10 @@ function makeRow(p: Partial<DashboardTeamAssignedJobRow> = {}): DashboardTeamAss
 
 const noop = () => {}
 
-// The section's DashboardGroupCard is defaultCollapsed; expand it for render smokes.
+// The section's DashboardGroupCard is defaultCollapsed; expand it for render
+// smokes. v2.2070: the card is sessionScoped, so the seed lives in sessionStorage.
 beforeEach(() => {
-  localStorage.setItem('dash-assigned-jobs-collapsed', 'false')
+  sessionStorage.setItem('dash-assigned-jobs-collapsed', 'false')
 })
 
 function assignedProps(over: Partial<Parameters<typeof DashboardAssignedJobsSection>[0]> = {}) {
@@ -68,14 +69,19 @@ function assignedProps(over: Partial<Parameters<typeof DashboardAssignedJobsSect
 }
 
 describe('DashboardAssignedJobsSection (extracted)', () => {
-  it('renders the section title, row, and both action buttons (sub, mobile)', () => {
+  it('renders the section title, row, and Leave Report — but no Send to Billing for subs (v2.2070)', () => {
     renderWithProviders(<DashboardAssignedJobsSection {...assignedProps()} />)
     expect(screen.getByText(/Assigned Jobs \(1\)/)).toBeTruthy()
     expect(screen.getByText(/Willow Brook Apartments/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Send to Billing/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Send to Billing/ })).toBeNull()
     expect(screen.getByRole('button', { name: /Leave Report/ })).toBeTruthy()
     // v2.997 compact meta line: two-unit age, no "Last Activity" prefix
     expect(screen.getByText(/Open \d/)).toBeTruthy()
+  })
+
+  it('office roles keep Send to Billing', () => {
+    renderWithProviders(<DashboardAssignedJobsSection {...assignedProps({ role: 'master_technician' })} />)
+    expect(screen.getByRole('button', { name: /Send to Billing/ })).toBeTruthy()
   })
 
   it('helpers see Leave Report but never Send to Billing', () => {
