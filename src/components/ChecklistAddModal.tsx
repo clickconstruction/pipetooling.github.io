@@ -8,7 +8,8 @@ import { SearchableMultiSelect } from './SearchableMultiSelect'
 import { SearchableSelect } from './SearchableSelect'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
-import { materializeDates } from '../lib/checklistMaterialize'
+import { MATERIALIZE_HORIZON_DAYS, materializeDates } from '../lib/checklistMaterialize'
+import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistScheduleSummary'
 import { ymdAddDays } from '../utils/dateUtils'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
@@ -98,6 +99,9 @@ export default function ChecklistAddModal({
     reminder_time: '',
     reminder_scope: '' as 'today_only' | 'today_and_overdue' | '',
   })
+  /** The When control (v2.2058): scheduling is first-class, not "Advanced". */
+  const [when, setWhen] = useState<'today' | 'date' | 'repeat'>('today')
+  const [repeatMode, setRepeatMode] = useState<'weekly' | 'after_done'>('weekly')
 
   const assignToSelectOptions = useMemo(
     () =>
@@ -203,6 +207,8 @@ export default function ChecklistAddModal({
       })
       setFormError(null)
       setLinksSectionOpen(presetLinks.length > 0)
+      setWhen('today')
+      setRepeatMode('weekly')
     }
   }, [
     modalContext?.isOpen,
@@ -248,7 +254,10 @@ export default function ChecklistAddModal({
         repeat_end_date: item.repeat_end_date || null,
       },
       item.start_date,
-      ymdAddDays(item.start_date, 104 * 7),
+      // Rolling horizon (v2.2056): create only the near window; the nightly
+      // cron top-up keeps weekly items stocked ahead forever — no more
+      // two-year cliff, no more years of empty future rows.
+      ymdAddDays(item.start_date, MATERIALIZE_HORIZON_DAYS),
     )
 
     for (const scheduledDate of instanceDates) {
@@ -282,8 +291,17 @@ export default function ChecklistAddModal({
       setFormError('Select at least one assignee.')
       return
     }
-    if (form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length === 0) {
-      setFormError('Select at least one day of the week.')
+    // The When control maps onto the stored repeat fields (v2.2058).
+    const effRepeatType: 'once' | 'day_of_week' | 'days_after_completion' =
+      when === 'repeat' ? (repeatMode === 'weekly' ? 'day_of_week' : 'days_after_completion') : 'once'
+    const effStartDate = when === 'today' ? toLocalDateString(new Date()) : form.start_date
+    const effShowUntil = when === 'repeat' ? false : form.show_until_completed
+    if (when === 'date' && !form.start_date) {
+      setFormError('Pick a date.')
+      return
+    }
+    if (effRepeatType === 'day_of_week' && form.repeat_days_of_week.length === 0) {
+      setFormError('Pick at least one weekday.')
       return
     }
     setSubmitting(true)
@@ -294,12 +312,12 @@ export default function ChecklistAddModal({
           title: trimmedTitle,
           links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
           created_by_user_id: authUser.id,
-          repeat_type: form.repeat_type,
-          repeat_days_of_week: form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
-          repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
-          repeat_end_date: form.repeat_end_date || null,
-          start_date: form.start_date,
-          show_until_completed: form.show_until_completed,
+          repeat_type: effRepeatType,
+          repeat_days_of_week: effRepeatType === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
+          repeat_days_after: effRepeatType === 'days_after_completion' ? form.repeat_days_after : null,
+          repeat_end_date: effRepeatType === 'day_of_week' ? form.repeat_end_date || null : null,
+          start_date: effStartDate,
+          show_until_completed: effShowUntil,
           notify_on_complete_user_id: form.notify_on_complete_user_id || null,
           notify_creator_on_complete: form.notify_creator_on_complete,
           reminder_time: form.reminder_time || null,
@@ -321,7 +339,7 @@ export default function ChecklistAddModal({
             display_order: nextOrders.get(uid) ?? 1,
           }))
         )
-        await generateInstances(newId, form)
+        await generateInstances(newId, { ...form, repeat_type: effRepeatType, start_date: effStartDate, repeat_end_date: effRepeatType === 'day_of_week' ? form.repeat_end_date : '' })
       }
       modalContext.onSaved?.()
       modalContext.closeModal()
@@ -628,17 +646,216 @@ export default function ChecklistAddModal({
             )}
           </div>
           <div style={{ marginBottom: '1rem' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '0.75rem',
-                flexWrap: 'wrap',
-                width: '100%',
-                boxSizing: 'border-box',
-              }}
-            >
+            {/* ── When (v2.2058): scheduling is a first-class question ── */}
+            <div style={{ marginTop: '0.85rem' }}>
+              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>When</span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {([['today', 'Today'], ['date', 'On a date'], ['repeat', 'Repeats']] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setWhen(key)}
+                    aria-pressed={when === key}
+                    style={{
+                      ...{ flex: '1 1 90px', padding: '0.45rem 0.5rem', fontSize: '0.875rem', borderRadius: 9, cursor: 'pointer' },
+                      border: when === key ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
+                      background: when === key ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      color: when === key ? 'var(--text-blue-800)' : 'var(--text-700)',
+                      fontWeight: when === key ? 600 : 400,
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {when === 'date' ? (
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem' }}>
+                  <span>Do on</span>
+                  <input
+                    type="date"
+                    value={form.start_date}
+                    onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                    style={{ padding: '0.4rem' }}
+                  />
+                </label>
+              ) : null}
+              {when !== 'repeat' ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.show_until_completed}
+                    onChange={(e) => setForm((f) => ({ ...f, show_until_completed: e.target.checked }))}
+                  />
+                  <span>Stays on the list until done</span>
+                </label>
+              ) : null}
+              {when === 'repeat' ? (
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {([['weekly', 'Weekly on\u2026'], ['after_done', "\u2014 days after it's done"]] as const).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setRepeatMode(key)}
+                        aria-pressed={repeatMode === key}
+                        style={{
+                          ...{ flex: '1 1 90px', padding: '0.45rem 0.5rem', fontSize: '0.875rem', borderRadius: 9, cursor: 'pointer' },
+                          flex: '0 1 auto',
+                          border: repeatMode === key ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
+                          background: repeatMode === key ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                          color: repeatMode === key ? 'var(--text-blue-800)' : 'var(--text-700)',
+                          fontWeight: repeatMode === key ? 600 : 400,
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {repeatMode === 'weekly' ? (
+                    <>
+                      <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Days of the week">
+                        {DAYS.map((name, i) => {
+                          const on = form.repeat_days_of_week.includes(i)
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              aria-pressed={on}
+                              aria-label={name}
+                              onClick={() =>
+                                setForm((f) => ({
+                                  ...f,
+                                  repeat_days_of_week: on
+                                    ? f.repeat_days_of_week.filter((d) => d !== i)
+                                    : [...f.repeat_days_of_week, i].sort((a, b) => a - b),
+                                }))
+                              }
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                padding: '0.35rem 0',
+                                borderRadius: 8,
+                                fontSize: '0.8125rem',
+                                fontWeight: on ? 700 : 400,
+                                border: on ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
+                                background: on ? '#2563eb' : 'var(--surface)',
+                                color: on ? 'white' : 'var(--text-muted)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {name[0]}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Starts</span>
+                          <input
+                            type="date"
+                            value={form.start_date}
+                            onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                            style={{ padding: '0.4rem' }}
+                          />
+                        </label>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Ends (optional)</span>
+                          <input
+                            type="date"
+                            value={form.repeat_end_date}
+                            onChange={(e) => setForm((f) => ({ ...f, repeat_end_date: e.target.value }))}
+                            style={{ padding: '0.4rem' }}
+                          />
+                        </label>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>Repeat</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={form.repeat_days_after}
+                          onChange={(e) => setForm((f) => ({ ...f, repeat_days_after: Number(e.target.value) || 1 }))}
+                          style={{ padding: '0.4rem', width: 64 }}
+                        />
+                        <span>days after it's completed</span>
+                      </label>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Starts</span>
+                        <input
+                          type="date"
+                          value={form.start_date}
+                          onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
+                          style={{ padding: '0.4rem' }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              <div
+                role="status"
+                style={{
+                  marginTop: '0.6rem',
+                  padding: '0.5rem 0.7rem',
+                  borderRadius: 9,
+                  background: 'var(--bg-green-100)',
+                  border: '1px solid #16a34a',
+                  color: 'var(--text-green-700)',
+                  fontSize: '0.85rem',
+                }}
+              >
+                {checklistScheduleSummary({
+                  when,
+                  repeatMode,
+                  startDate: form.start_date,
+                  todayStr: toLocalDateString(new Date()),
+                  daysOfWeek: form.repeat_days_of_week,
+                  daysAfter: form.repeat_days_after,
+                  endDate: form.repeat_end_date || null,
+                  staysUntilDone: form.show_until_completed,
+                  assigneeNames: form.assigned_to_user_ids.map(
+                    (id) => users.find((u) => u.id === id)?.name?.trim() || users.find((u) => u.id === id)?.email || '\u2026',
+                  ),
+                })}
+                {when === 'repeat' && repeatMode === 'weekly' && startNotOnChosenDay(form.start_date, form.repeat_days_of_week)
+                  ? ' First occurrence lands on the next chosen day.'
+                  : ''}
+              </div>
+            </div>
+
+            {/* ── Notify: one line, chips-style (v2.2058) ── */}
+            <div style={{ marginTop: '0.75rem' }}>
+              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>When it's done, notify</span>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    id="checklist-add-notify-creator"
+                    type="checkbox"
+                    checked={form.notify_creator_on_complete}
+                    onChange={(e) => setForm((f) => ({ ...f, notify_creator_on_complete: e.target.checked }))}
+                  />
+                  Me
+                </label>
+                <div style={{ minWidth: 200, flex: '1 1 200px' }}>
+                  <SearchableSelect
+                    id="checklist-add-notify-on-complete"
+                    value={form.notify_on_complete_user_id}
+                    onChange={(id) => setForm((f) => ({ ...f, notify_on_complete_user_id: id }))}
+                    options={assignToSelectOptions}
+                    emptyOption={{ value: '', label: '\u2014 add someone else \u2014' }}
+                    placeholder="\u2014 add someone else \u2014"
+                    listAriaLabel="Also notify when completed"
+                    searchReplacesTrigger
+                    hideEmptyOptionInListWhenUnset
+                  />
+                </div>
+              </div>
+            </div>
+
+            {role === 'dev' ? (
               <button
                 type="button"
                 onClick={() => setAdvancedSectionOpen((o) => !o)}
@@ -646,6 +863,7 @@ export default function ChecklistAddModal({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
+                  marginTop: '0.75rem',
                   padding: '0.25rem 0',
                   background: 'none',
                   border: 'none',
@@ -653,118 +871,13 @@ export default function ChecklistAddModal({
                   fontWeight: 500,
                   fontSize: '1rem',
                   color: 'var(--text-faint)',
-                  flexShrink: 0,
                 }}
               >
-                {advancedSectionOpen ? '\u25BC' : '\u25B6'} Advanced
+                {advancedSectionOpen ? '\u25BC' : '\u25B6'} Advanced — reminders
               </button>
-              <label
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  minWidth: 0,
-                }}
-              >
-                <input
-                  id="checklist-add-notify-creator"
-                  type="checkbox"
-                  checked={form.notify_creator_on_complete}
-                  onChange={(e) => setForm((f) => ({ ...f, notify_creator_on_complete: e.target.checked }))}
-                />
-                Push notify me once complete
-              </label>
-            </div>
+            ) : null}
             {advancedSectionOpen && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-                <label>
-                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Push notify once complete</span>
-                  <div style={{ minWidth: 0 }}>
-                    <SearchableSelect
-                      id="checklist-add-notify-on-complete"
-                      value={form.notify_on_complete_user_id}
-                      onChange={(id) => setForm((f) => ({ ...f, notify_on_complete_user_id: id }))}
-                      options={assignToSelectOptions}
-                      emptyOption={{ value: '', label: '— Select user —' }}
-                      placeholder="— Select user —"
-                      listAriaLabel="Push notify once complete"
-                      searchReplacesTrigger
-                      hideEmptyOptionInListWhenUnset
-                    />
-                  </div>
-                </label>
-                <label>
-                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat start date</span>
-                  <input
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                    style={{ padding: '0.5rem' }}
-                  />
-                </label>
-                <label>
-                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat</span>
-                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <label><input type="radio" name="repeat" checked={form.repeat_type === 'once'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'once' }))} /> Once</label>
-                    <label><input type="radio" name="repeat" checked={form.repeat_type === 'day_of_week'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'day_of_week' }))} /> Day of week</label>
-                    <label><input type="radio" name="repeat" checked={form.repeat_type === 'days_after_completion'} onChange={() => setForm((f) => ({ ...f, repeat_type: 'days_after_completion' }))} /> Days after completion</label>
-                  </div>
-                </label>
-                {form.repeat_type === 'day_of_week' && (
-                  <label>
-                    <span style={{ display: 'block', marginBottom: '0.25rem' }}>Days of week</span>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                      {DAYS.map((name, i) => (
-                        <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <input
-                            type="checkbox"
-                            checked={form.repeat_days_of_week.includes(i)}
-                            onChange={(e) => {
-                              setForm((f) => ({
-                                ...f,
-                                repeat_days_of_week: e.target.checked
-                                  ? [...f.repeat_days_of_week, i].sort((a, b) => a - b)
-                                  : f.repeat_days_of_week.filter((d) => d !== i),
-                              }))
-                            }}
-                          />
-                          {name}
-                        </label>
-                      ))}
-                    </div>
-                  </label>
-                )}
-                {form.repeat_type === 'days_after_completion' && (
-                  <label>
-                    <span style={{ display: 'block', marginBottom: '0.25rem' }}>Days after completion</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={form.repeat_days_after}
-                      onChange={(e) => setForm((f) => ({ ...f, repeat_days_after: Number(e.target.value) || 1 }))}
-                      style={{ padding: '0.5rem', width: 80 }}
-                    />
-                  </label>
-                )}
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={form.show_until_completed}
-                    onChange={(e) => setForm((f) => ({ ...f, show_until_completed: e.target.checked }))}
-                  />
-                  <span>Show up until completed</span>
-                </label>
-                <label>
-                  <span style={{ display: 'block', marginBottom: '0.25rem' }}>Repeat end date (optional)</span>
-                  <input
-                    type="date"
-                    value={form.repeat_end_date}
-                    onChange={(e) => setForm((f) => ({ ...f, repeat_end_date: e.target.value }))}
-                    style={{ padding: '0.5rem' }}
-                  />
-                </label>
                 {role === 'dev' && (
                   <>
                     <label>

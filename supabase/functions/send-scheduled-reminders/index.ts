@@ -37,6 +37,77 @@ function getTodayCst(): string {
   return str // "YYYY-MM-DD" for en-CA
 }
 
+// ── Weekly materialization top-up (v2.2056) ──────────────────────────────
+// Mirrors src/lib/checklistMaterialize.ts (keep in sync): string-YMD math,
+// noon anchor for weekday. Runs on the 03:00 CST slot (or when the request
+// body passes materialize: true, for post-deploy verification) and keeps
+// every active weekly item stocked MATERIALIZE_HORIZON_DAYS ahead — the
+// rolling replacement for the old create-104-weeks-at-save cliff.
+const MATERIALIZE_HORIZON_DAYS = 35
+
+function ymdAddDaysStr(ymd: string, days: number): string {
+  const d = new Date(ymd + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
+function dowOfYmdStr(ymd: string): number {
+  return new Date(ymd + 'T12:00:00Z').getUTCDay()
+}
+
+// deno-lint-ignore no-explicit-any
+async function topUpWeeklyInstances(adminClient: any, todayCst: string): Promise<number> {
+  const horizonEnd = ymdAddDaysStr(todayCst, MATERIALIZE_HORIZON_DAYS)
+  const { data: weeklyItems } = await adminClient
+    .from('checklist_items')
+    .select('id, start_date, repeat_days_of_week, repeat_end_date')
+    .eq('repeat_type', 'day_of_week')
+    .or(`repeat_end_date.is.null,repeat_end_date.gte.${todayCst}`)
+  let created = 0
+  for (const item of (weeklyItems ?? []) as Array<{ id: string; start_date: string; repeat_days_of_week: number[] | null; repeat_end_date: string | null }>) {
+    const days = new Set<number>(item.repeat_days_of_week ?? [])
+    if (days.size === 0) continue
+    const from = item.start_date > todayCst ? item.start_date : todayCst
+    const to = item.repeat_end_date && item.repeat_end_date < horizonEnd ? item.repeat_end_date : horizonEnd
+    const wanted: string[] = []
+    for (let d = from; d <= to; d = ymdAddDaysStr(d, 1)) {
+      if (days.has(dowOfYmdStr(d))) wanted.push(d)
+    }
+    if (wanted.length === 0) continue
+    const { data: existing } = await adminClient
+      .from('checklist_instances')
+      .select('scheduled_date')
+      .eq('checklist_item_id', item.id)
+      .gte('scheduled_date', from)
+      .lte('scheduled_date', to)
+    const have = new Set(((existing ?? []) as Array<{ scheduled_date: string }>).map((r) => r.scheduled_date))
+    const missing = wanted.filter((d) => !have.has(d))
+    if (missing.length === 0) continue
+    const { data: assignees } = await adminClient
+      .from('checklist_item_assignees')
+      .select('user_id')
+      .eq('checklist_item_id', item.id)
+    const assigneeIds = ((assignees ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)
+    for (const scheduledDate of missing) {
+      const { data: inst } = await adminClient
+        .from('checklist_instances')
+        .upsert(
+          { checklist_item_id: item.id, scheduled_date: scheduledDate },
+          { onConflict: 'checklist_item_id,scheduled_date' },
+        )
+        .select('id')
+        .single()
+      if (inst?.id && assigneeIds.length > 0) {
+        await adminClient
+          .from('checklist_instance_assignees')
+          .insert(assigneeIds.map((uid: string) => ({ checklist_instance_id: inst.id, user_id: uid })))
+      }
+      created++
+    }
+  }
+  return created
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -53,9 +124,11 @@ serve(async (req) => {
 
     const headerSecret = req.headers.get('X-Cron-Secret')
     let bodySecret: string | undefined
+    let forceMaterialize = false
     try {
       const body = await req.json().catch(() => ({}))
       bodySecret = body?.cron_secret
+      forceMaterialize = body?.materialize === true
     } catch {
       // ignore
     }
@@ -89,6 +162,17 @@ serve(async (req) => {
     const targetTime = getCstTimeRounded()
     const todayCst = getTodayCst()
 
+    // Nightly weekly top-up (v2.2056): 03:00 CST slot, or forced via body.
+    let materialized: number | null = null
+    if (targetTime === '03:00:00' || forceMaterialize) {
+      try {
+        materialized = await topUpWeeklyInstances(adminClient, todayCst)
+        console.log(`materialize top-up: created ${materialized} instances`)
+      } catch (e) {
+        console.error('materialize top-up failed', e)
+      }
+    }
+
     const { data: items } = await adminClient
       .from('checklist_items')
       .select('id, title, reminder_time, reminder_scope')
@@ -96,7 +180,7 @@ serve(async (req) => {
 
     if (!items || items.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, message: 'No items with reminder_time', sent: 0 }),
+        JSON.stringify({ success: true, message: 'No items with reminder_time', sent: 0, materialized }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -110,7 +194,7 @@ serve(async (req) => {
 
     if (matchingItems.length === 0) {
       return new Response(
-        JSON.stringify({ success: true, message: 'No items matching current time', sent: 0 }),
+        JSON.stringify({ success: true, message: 'No items matching current time', sent: 0, materialized }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
