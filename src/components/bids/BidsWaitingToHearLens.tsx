@@ -27,6 +27,7 @@ import {
   formatBidLedgerNumberLabel,
   resolveBidLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
+import { bidTriagePillLabel } from '../../lib/bids/bidFormatting'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 export type BidsWaitingToHearLensProps = {
@@ -64,12 +65,6 @@ function bidLensLabel(bid: BidWithBuilder, prefixMap: LedgerPrefixMap): string {
   const num = (bid.bid_number ?? '').trim()
   if (!num) return (bid.project_name ?? '').trim() || bid.id.slice(0, 8)
   return formatBidLedgerNumberLabel(resolveBidLedgerPrefix(bid.service_type_id, prefixMap), num)
-}
-
-function streetPillLabel(b: LensBid): string {
-  const street = (b.address ?? '').split(',')[0]?.replace(/^\d+\s*/, '').trim()
-  if (street) return street.length > 18 ? `${street.slice(0, 18)}…` : street
-  return b.label
 }
 
 function estimatorNameOf(bid: BidWithBuilder): string | null {
@@ -498,7 +493,7 @@ export function BidsWaitingToHearLens({
                       key={b.id}
                       type="button"
                       onClick={() => setSelectedBidId(b.id)}
-                      title={`${b.label} · ${b.address ?? 'no address'}`}
+                      title={`${b.label} · ${b.project}${b.address ? ` — ${b.address}` : ''}`}
                       aria-pressed={current}
                       style={{
                         fontSize: '0.75rem',
@@ -511,7 +506,7 @@ export function BidsWaitingToHearLens({
                         fontWeight: current ? 600 : 400,
                       }}
                     >
-                      {fresh ? `✓ ` : ''}{streetPillLabel(b)}
+                      {fresh ? `✓ ` : ''}{bidTriagePillLabel(b)}
                     </button>
                   )
                 })}

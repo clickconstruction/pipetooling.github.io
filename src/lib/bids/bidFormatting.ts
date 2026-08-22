@@ -164,3 +164,21 @@ export function getCustomerDisplay(c: Customer): string {
   if (c.address) return `${c.name} - ${c.address}`
   return c.name
 }
+
+/**
+ * Bid pill label for the call lenses (Why we lost, Waiting to hear) — v2.2052.
+ * The project name is what everyone calls the job, so it leads; the street
+ * (old behavior) is the fallback for unnamed bids, and the ledger label is the
+ * last resort. Street-only pills collided constantly ("s. access rd." × 3).
+ */
+export function bidTriagePillLabel(
+  b: { project: string | null; address: string | null; label: string },
+  max = 26,
+): string {
+  const trim = (s: string) => (s.length > max ? `${s.slice(0, max)}…` : s)
+  const name = (b.project ?? '').trim()
+  if (name && name !== '—') return trim(name)
+  const street = (b.address ?? '').split(',')[0]?.replace(/^\d+\s*/, '').trim()
+  if (street) return trim(street)
+  return b.label
+}

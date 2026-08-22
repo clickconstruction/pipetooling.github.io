@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
+import { bidTriagePillLabel,
   marginFlag,
   formatAmountFromString,
   formatCompactCurrency,
@@ -109,5 +109,17 @@ describe('design drawing plan date formatters', () => {
   it('returns empty string for blank input', () => {
     expect(formatDesignDrawingPlanDate('')).toBe('')
     expect(formatDesignDrawingPlanDateLabel('   ')).toBe('')
+  })
+})
+
+describe('bidTriagePillLabel', () => {
+  it('leads with the project name, ellipsized', () => {
+    expect(bidTriagePillLabel({ project: 'Take 5 Dickinson', address: '484 w fm 646 rd Dickinson, TX', label: 'BP251' })).toBe('Take 5 Dickinson')
+    expect(bidTriagePillLabel({ project: 'Bastrop County Community Development Services Building', address: null, label: 'BP1' })).toBe('Bastrop County Community D…')
+  })
+
+  it('falls back to the street for unnamed bids, then the ledger label', () => {
+    expect(bidTriagePillLabel({ project: '—', address: '400 S SAGINAW BLVD, SAGINAW, TX', label: 'BP342' })).toBe('S SAGINAW BLVD')
+    expect(bidTriagePillLabel({ project: '', address: null, label: 'BP342' })).toBe('BP342')
   })
 })
