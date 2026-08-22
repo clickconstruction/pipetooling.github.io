@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
-import type { Database, Json } from '../../types/database'
+import type { Json } from '../../types/database'
 import {
   isConfirmedForPartner,
   isValidThreshold,
@@ -96,7 +96,7 @@ export function PartnershipJobReviewTab({
     const thrRes = await supabase.from('partnerships').select('auto_threshold_pct').eq('id', partnershipId).single()
     if (!thrRes.error) {
       ready = true
-      const raw = (thrRes.data as unknown as { auto_threshold_pct: number | null } | null)?.auto_threshold_pct
+      const raw = thrRes.data?.auto_threshold_pct
       threshold = isValidThreshold(raw) ? raw : null
     }
     setThresholdReady(ready)
@@ -117,14 +117,11 @@ export function PartnershipJobReviewTab({
       const eligible = jobsToAutoConfirm(parsed.rows, threshold)
       if (eligible.length > 0) {
         for (const r of eligible) {
-          await supabase.rpc(
-            'set_job_partner_majority',
-            {
-              p_job_id: r.job_id,
-              p_person_id: parsed.partner_person_id,
-              p_auto_pct: threshold,
-            } as { p_job_id: string; p_person_id?: string },
-          )
+          await supabase.rpc('set_job_partner_majority', {
+            p_job_id: r.job_id,
+            p_person_id: parsed.partner_person_id,
+            p_auto_pct: threshold,
+          })
         }
         await supabase.from('partnership_events').insert({
           partnership_id: partnershipId,
@@ -198,7 +195,7 @@ export function PartnershipJobReviewTab({
         auto_threshold_pct: next,
         updated_at: new Date().toISOString(),
         updated_by: authUser?.id ?? null,
-      } as Database['public']['Tables']['partnerships']['Update'])
+      })
       .eq('id', partnershipId)
     if (error) {
       setActionError(error.message)
