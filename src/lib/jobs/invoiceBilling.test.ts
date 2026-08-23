@@ -10,6 +10,7 @@ import {
   printBilledRowReferenceDate,
   sortStageRowsForTotalByNameDetail,
   stageRowBilledAgeDays,
+  stageRowBilledAgeReference,
   stageRowBilledLineLabel,
   stageRowBilledRemainingAmount,
   stagesJobLevelStripeEmailedHintInvoice,
@@ -128,6 +129,18 @@ describe('stageRowBilledAgeDays', () => {
   })
   it('returns null for a future date', () => {
     expect(stageRowBilledAgeDays({ kind: 'invoice', job: job({}), inv: inv({ estimated_bill_date: '2026-06-10' }) } as StageRow, now)).toBe(null)
+  })
+  it('falls back to billed_at (Chicago calendar day) when no est. bill date is set (v2.2130)', () => {
+    // 2026-05-21T02:30Z is still May 20 in Chicago → 11 days, not 10.
+    expect(stageRowBilledAgeDays({ kind: 'invoice', job: job({}), inv: inv({ billed_at: '2026-05-21T02:30:00Z' }) } as StageRow, now)).toBe(11)
+    expect(stageRowBilledAgeDays({ kind: 'invoice', job: job({}), inv: inv({ billed_at: '2026-05-21T15:00:00Z' }) } as StageRow, now)).toBe(10)
+  })
+  it('a hand-set est. bill date overrides billed_at', () => {
+    const r = { kind: 'invoice', job: job({}), inv: inv({ billed_at: '2026-05-28T15:00:00Z', estimated_bill_date: '2026-03-01' }) } as StageRow
+    expect(stageRowBilledAgeDays(r, now)).toBe(91)
+    expect(stageRowBilledAgeReference(r)).toEqual({ ymd: '2026-03-01', handSet: true })
+    expect(stageRowBilledAgeReference({ kind: 'invoice', job: job({}), inv: inv({ billed_at: '2026-05-28T15:00:00Z' }) } as StageRow)).toEqual({ ymd: '2026-05-28', handSet: false })
+    expect(stageRowBilledAgeReference({ kind: 'invoice', job: job({}), inv: inv({}) } as StageRow)).toBeNull()
   })
 })
 
@@ -270,6 +283,14 @@ describe('billedStageRowAgingBucket', () => {
 
   it('rows with nothing left to pay never age', () => {
     expect(billedStageRowAgingBucket(rowFor('2026-03-01', 0), NOW)).toBeNull()
+  })
+
+  it('buckets by billed_at when no est. bill date is set (v2.2130)', () => {
+    const j = job({ id: 'j1', status: 'billed', revenue: 500, payments_made: 0 })
+    const rowAt = (billedAt: string) => ({ kind: 'invoice' as const, inv: inv({ id: 'i1', status: 'billed', billed_at: billedAt, amount: 500 }), job: j })
+    expect(billedStageRowAgingBucket(rowAt('2026-06-01T15:00:00Z'), NOW)).toBe('30_90')
+    expect(billedStageRowAgingBucket(rowAt('2026-03-01T15:00:00Z'), NOW)).toBe('90')
+    expect(billedStageRowAgingBucket(rowAt('2026-07-10T15:00:00Z'), NOW)).toBeNull()
   })
 
   it('job-shell rows have no reference date and never age', () => {

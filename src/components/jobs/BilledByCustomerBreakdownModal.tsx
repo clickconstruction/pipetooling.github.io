@@ -39,8 +39,8 @@ export default function BilledByCustomerBreakdownModal({
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(new Set())
   const cellStyle: React.CSSProperties = { padding: '0.5rem 0.75rem' }
 
-  function ageChip(days: number | null) {
-    if (days == null) return <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no date</span>
+  function ageChip(days: number | null, handSet = false) {
+    if (days == null) return <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no bill line</span>
     const style: React.CSSProperties = {
       fontSize: '0.75rem',
       fontWeight: 600,
@@ -54,7 +54,17 @@ export default function BilledByCustomerBreakdownModal({
           ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
           : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }),
     }
-    return <span style={style}>{days}d</span>
+    // The dot marks an age counted from a hand-set est. bill date (a correction)
+    // rather than the billed date the app stamped — see stageRowBilledAgeReference.
+    return (
+      <span
+        style={style}
+        title={handSet ? `${days} days — from the hand-set est. bill date` : `${days} days since billed`}
+        aria-label={handSet ? `${days} days, hand-set bill date` : `${days} days`}
+      >
+        {days}d{handSet ? <span aria-hidden style={{ marginLeft: 3, opacity: 0.7 }}>·</span> : null}
+      </span>
+    )
   }
 
   return (
@@ -155,7 +165,7 @@ function FragmentRows({
   group: ReturnType<typeof buildBilledByCustomerBreakdown>[number]
   open: boolean
   onToggle: () => void
-  ageChip: (days: number | null) => React.ReactNode
+  ageChip: (days: number | null, handSet?: boolean) => React.ReactNode
   cellStyle: React.CSSProperties
   onOpenBill: (bill: BilledBreakdownBill) => void
 }) {
@@ -173,7 +183,7 @@ function FragmentRows({
           {g.customerName}
         </td>
         <td style={{ ...cellStyle, textAlign: 'center', color: 'var(--text-muted)' }}>{g.count}</td>
-        <td style={{ ...cellStyle, textAlign: 'center' }}>{ageChip(g.worstAgeDays)}</td>
+        <td style={{ ...cellStyle, textAlign: 'center' }}>{ageChip(g.worstAgeDays, g.worstAgeHandSet)}</td>
         <td style={{ ...cellStyle, textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
           {formatUsdNoCents(g.total)}
         </td>
@@ -194,7 +204,7 @@ function FragmentRows({
                 View
               </button>
             </td>
-            <td style={{ ...cellStyle, textAlign: 'center' }}>{ageChip(b.ageDays)}</td>
+            <td style={{ ...cellStyle, textAlign: 'center' }}>{ageChip(b.ageDays, b.ageHandSet)}</td>
             <td style={{ ...cellStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(b.amount)}</td>
           </tr>
         ))}
