@@ -40,6 +40,7 @@ import {
   buildGcStatementEmailText,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
+import { getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import StagesSectionToolsIcon from '../icons/StagesSectionToolsIcon'
@@ -4144,8 +4145,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     // Outlook / Apple Mail; plain text covers everything else.
                     const html =
                       `<p style="margin:0 0 10px;font-size:12px;color:#6b7280"><strong>Subject:</strong> ${subject}</p>` +
-                      buildGcStatementEmailHtml(group, { dateStr })
-                    const text = `Subject: ${subject}\n\n${buildGcStatementEmailText(group, { dateStr })}`
+                      buildGcStatementEmailHtml(group, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone })
+                    const text = `Subject: ${subject}\n\n${buildGcStatementEmailText(group, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone })}`
                     void copyRichHtmlToClipboard(html, text).then(
                       () => showToast(`Copied the ${group.gcName} statement — paste it into your email.`, 'success'),
                       () => showToast('Could not copy — try again.', 'error'),

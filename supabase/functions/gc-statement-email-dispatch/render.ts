@@ -46,6 +46,12 @@ export const GC_STATEMENT_COMPANY_NAME = 'Click Plumbing and Electrical'
 export const GC_STATEMENT_FOOTER_LINE =
   'Questions about a bill? Reply to this email or call the office.'
 
+/** Mirror of gcStatementFooterLine (v2.2133): office number from app_settings physical_invoice_issuer_v1.phone. */
+export function gcStatementFooterLine(officePhone?: string | null): string {
+  const phone = (officePhone ?? '').trim()
+  return phone ? `Questions about a bill? Reply to this email or call the office at ${phone}.` : GC_STATEMENT_FOOTER_LINE
+}
+
 const escapeHtml = (s: string) =>
   (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -100,7 +106,7 @@ const tableHeadHtml = `<thead><tr>
     </tr></thead>`
 
 /** Single-GC (or single-development) statement — mirror of buildGcStatementEmailHtml. */
-export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: string): string {
+export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null): string {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
   <p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
   <p style="margin:2px 0 12px;font-size:13px;color:#4b5563">Statement for ${escapeHtml(group.entity_name)} · ${escapeHtml(dateStr)}</p>
@@ -113,11 +119,11 @@ export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: s
       </tr>
     </tbody>
   </table>
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(GC_STATEMENT_FOOTER_LINE)}</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(officePhone))}</p>
 </div>`
 }
 
-export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: string): string {
+export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null): string {
   const lines = group.rows.map((r) => {
     const num = (r.display_number ?? '').trim()
     const sub = [num ? `Job ${num}` : '', (r.job_name ?? '').trim()].filter(Boolean).join(' · ')
@@ -132,12 +138,12 @@ export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: s
     '',
     `Total owed: $${formatCurrency(group.subtotal)}`,
     '',
-    GC_STATEMENT_FOOTER_LINE,
+    gcStatementFooterLine(officePhone),
   ].join('\n')
 }
 
 /** Whole-report email — mirror of buildGcReviewShareAllEmailHtml. */
-export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: string): string {
+export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: string, officePhone?: string | null): string {
   const scope = payload.group_by === 'development' ? 'development' : 'GC'
   const sectionsHtml = payload.groups
     .map(
@@ -160,11 +166,11 @@ export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: strin
       </tr>
     </tbody>
   </table>
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(GC_STATEMENT_FOOTER_LINE)}</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(officePhone))}</p>
 </div>`
 }
 
-export function renderGcShareAllText(payload: GcStatementPayload, dateStr: string): string {
+export function renderGcShareAllText(payload: GcStatementPayload, dateStr: string, officePhone?: string | null): string {
   const scope = payload.group_by === 'development' ? 'development' : 'GC'
   const sections = payload.groups.flatMap((g) => [
     `${g.entity_name} · ${g.job_count} job${g.job_count === 1 ? '' : 's'} · $${formatCurrency(g.subtotal)}`,
@@ -183,6 +189,6 @@ export function renderGcShareAllText(payload: GcStatementPayload, dateStr: strin
     ...sections,
     `Total owed: $${formatCurrency(payload.grand_total)}`,
     '',
-    GC_STATEMENT_FOOTER_LINE,
+    gcStatementFooterLine(officePhone),
   ].join('\n')
 }

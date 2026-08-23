@@ -20,6 +20,18 @@ export const GC_STATEMENT_SUBJECT_NAME = 'Click Plumbing'
 export const GC_STATEMENT_FOOTER_LINE =
   'Questions about a bill? Reply to this email or call the office.'
 
+/**
+ * Footer line (v2.2133, owner copy): names the office number from Settings →
+ * Company → invoice issuer (`physical_invoice_issuer_v1.phone`). Falls back to
+ * the bare line when no number is configured.
+ */
+export function gcStatementFooterLine(officePhone?: string | null): string {
+  const phone = (officePhone ?? '').trim()
+  return phone ? `Questions about a bill? Reply to this email or call the office at ${phone}.` : GC_STATEMENT_FOOTER_LINE
+}
+
+export type GcStatementEmailOpts = { dateStr?: string; groupBy?: GcReviewGroupBy; officePhone?: string | null }
+
 const escapeHtml = (s: string) =>
   (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -49,7 +61,7 @@ const statementTableHeadHtml = `<thead><tr>
 /** The email body as an HTML fragment (for clipboard + the send pipeline wraps it itself). */
 export function buildGcStatementEmailHtml(
   group: GcReviewGroup,
-  opts?: { dateStr?: string; groupBy?: GcReviewGroupBy },
+  opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
@@ -64,7 +76,7 @@ export function buildGcStatementEmailHtml(
       </tr>
     </tbody>
   </table>
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(GC_STATEMENT_FOOTER_LINE)}</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(opts?.officePhone))}</p>
 </div>`
 }
 
@@ -82,7 +94,7 @@ export function gcReviewShareAllEmailSubject(groupBy: GcReviewGroupBy, dateStr: 
 
 export function buildGcReviewShareAllEmailHtml(
   report: { groups: GcReviewGroup[]; grandTotal: number },
-  opts?: { dateStr?: string; groupBy?: GcReviewGroupBy },
+  opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const scope = opts?.groupBy === 'development' ? 'development' : 'GC'
@@ -107,13 +119,13 @@ export function buildGcReviewShareAllEmailHtml(
       </tr>
     </tbody>
   </table>
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(GC_STATEMENT_FOOTER_LINE)}</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(opts?.officePhone))}</p>
 </div>`
 }
 
 export function buildGcReviewShareAllEmailText(
   report: { groups: GcReviewGroup[]; grandTotal: number },
-  opts?: { dateStr?: string; groupBy?: GcReviewGroupBy },
+  opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const scope = opts?.groupBy === 'development' ? 'development' : 'GC'
@@ -132,7 +144,7 @@ export function buildGcReviewShareAllEmailText(
     ...sections,
     `Total owed: $${formatCurrency(report.grandTotal)}`,
     '',
-    GC_STATEMENT_FOOTER_LINE,
+    gcStatementFooterLine(opts?.officePhone),
   ].join('\n')
 }
 
@@ -144,7 +156,7 @@ export function buildGcReviewShareAllEmailText(
 export function buildGcStatementEmailPreviewHtml(
   group: GcReviewGroup,
   subject: string,
-  opts?: { dateStr?: string; groupBy?: GcReviewGroupBy },
+  opts?: GcStatementEmailOpts,
 ): string {
   return `<!doctype html><html><head><meta charset="utf-8" /><title>Statement preview — ${escapeHtml(group.gcName)}</title></head>
 <body style="margin:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif">
@@ -159,7 +171,7 @@ export function buildGcStatementEmailPreviewHtml(
 /** Plain-text fallback for text-only paste targets. */
 export function buildGcStatementEmailText(
   group: GcReviewGroup,
-  opts?: { dateStr?: string },
+  opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   const lines = group.rows.map((r) => {
@@ -174,6 +186,6 @@ export function buildGcStatementEmailText(
     '',
     `Total owed: $${formatCurrency(group.subtotal)}`,
     '',
-    GC_STATEMENT_FOOTER_LINE,
+    gcStatementFooterLine(opts?.officePhone),
   ].join('\n')
 }

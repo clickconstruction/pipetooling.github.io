@@ -136,6 +136,20 @@ serve(async (req) => {
       }
     }
 
+    // Office number for the footer line (v2.2133) — Settings → Company → invoice issuer.
+    let officePhone: string | null = null
+    try {
+      const { data: issuerRow } = await admin
+        .from('app_settings')
+        .select('value_text')
+        .eq('key', 'physical_invoice_issuer_v1')
+        .maybeSingle()
+      const parsed = issuerRow?.value_text ? (JSON.parse(issuerRow.value_text) as { phone?: unknown }) : null
+      officePhone = parsed && typeof parsed.phone === 'string' ? parsed.phone : null
+    } catch {
+      officePhone = null
+    }
+
     for (const row of rows) {
       try {
         const entityId = row.gc_customer_id ?? row.development_id
@@ -164,8 +178,8 @@ serve(async (req) => {
         }
 
         const subject = isSingle ? gcStatementSubject(dateStr) : gcShareAllSubject(payload.group_by, dateStr)
-        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr) : renderGcShareAllHtml(payload, dateStr)
-        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr) : renderGcShareAllText(payload, dateStr)
+        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone) : renderGcShareAllHtml(payload, dateStr, officePhone)
+        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone) : renderGcShareAllText(payload, dateStr, officePhone)
 
         const { data: requester } = await admin
           .from('users')

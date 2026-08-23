@@ -7,6 +7,7 @@ import {
   buildGcStatementEmailText,
   gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
+  gcStatementFooterLine,
 } from './gcStatementEmail'
 import type { GcReviewGroup } from '../gcReviewRollup'
 
@@ -150,5 +151,18 @@ describe('buildGcStatementEmailPreviewHtml', () => {
     const html = buildGcStatementEmailPreviewHtml(group({ gcName: 'A & B <Builders>' }), 'Re: <script>', {})
     expect(html).not.toContain('<script>')
     expect(html).toContain('A &amp; B &lt;Builders&gt;')
+  })
+})
+
+describe('gcStatementFooterLine (v2.2133)', () => {
+  it('names the office number from Settings when configured', () => {
+    expect(gcStatementFooterLine('(210) 555-0100')).toBe('Questions about a bill? Reply to this email or call the office at (210) 555-0100.')
+    expect(buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026', officePhone: ' 210-555-0100 ' })).toContain('call the office at 210-555-0100.')
+    expect(buildGcStatementEmailText(group(), { dateStr: 'Jul 31, 2026', officePhone: '210-555-0100' })).toContain('call the office at 210-555-0100.')
+  })
+  it('falls back to the bare line when no number is set', () => {
+    expect(gcStatementFooterLine('')).toBe('Questions about a bill? Reply to this email or call the office.')
+    expect(gcStatementFooterLine(null)).toBe('Questions about a bill? Reply to this email or call the office.')
+    expect(buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026' })).toContain('call the office.')
   })
 })
