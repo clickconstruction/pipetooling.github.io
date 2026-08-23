@@ -275,7 +275,7 @@ export default function CustomerForm() {
 
       {deleteOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Delete customer</h2>
             <p style={{ marginBottom: '1rem' }}>Type the customer name <strong>{name}</strong> to confirm.</p>
             <input

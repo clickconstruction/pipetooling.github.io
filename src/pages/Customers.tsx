@@ -1146,7 +1146,7 @@ export default function Customers() {
           }}
           onClick={() => setViewingBidsForCustomer(null)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,

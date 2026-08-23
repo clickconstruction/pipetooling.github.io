@@ -187,7 +187,7 @@ export default function ReportViewModal({ open, report, onClose, viewerRole, zIn
     >
       {/* This panel is the scroller — the title bar sticks so the × stays reachable
           on a phone instead of scrolling away down a long report (v2.990 pattern). */}
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           borderRadius: 8,

@@ -2755,7 +2755,7 @@ export default function Prospects() {
           }}
           onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,
@@ -2883,7 +2883,7 @@ export default function Prospects() {
           }}
           onClick={() => !saving && setCallbackModalOpen(false)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,
@@ -2960,7 +2960,7 @@ export default function Prospects() {
           }}
           onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,
@@ -3096,7 +3096,7 @@ export default function Prospects() {
           }}
           onClick={() => setCopyBlankFieldsModalOpen(false)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,
@@ -3141,7 +3141,7 @@ export default function Prospects() {
           }}
           onClick={() => setTimerHistoryModalOpen(false)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,
@@ -3215,7 +3215,7 @@ export default function Prospects() {
           }}
           onClick={() => setMyTimeModalOpen(false)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,
@@ -3294,7 +3294,7 @@ export default function Prospects() {
           }}
           onClick={() => !saving && setNewProspectModalOpen(false)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,

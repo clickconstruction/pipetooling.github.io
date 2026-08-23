@@ -186,7 +186,7 @@ export default function TurnawayModal({
         zIndex: 65,
       }}
     >
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Turnaway</h2>

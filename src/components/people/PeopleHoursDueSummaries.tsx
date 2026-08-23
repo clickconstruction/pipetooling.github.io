@@ -100,7 +100,7 @@ export function PeopleHoursDueSummaries({
             }}
             onClick={() => setTeamLedgerModalTeam(null)}
           >
-            <div
+            <div role="dialog" aria-modal="true"
               style={{
                 background: 'var(--surface)',
                 borderRadius: 8,

@@ -243,7 +243,7 @@ export function BidsTakeoffMaterialsSummarySection({
           }}
           onClick={() => setCostEstimatePOModalPoId(null)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,

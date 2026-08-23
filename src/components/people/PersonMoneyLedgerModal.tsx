@@ -319,7 +319,7 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
-      <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(680px, 94vw)', maxHeight: '88vh', overflowY: 'auto' }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(680px, 94vw)', maxHeight: '88vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
           <h3 style={{ margin: 0 }}>{personName}</h3>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>

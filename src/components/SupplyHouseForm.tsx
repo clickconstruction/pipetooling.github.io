@@ -182,7 +182,7 @@ export function SupplyHouseForm({
   if (variant === 'modal') {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-        <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%' }}>
+        <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%' }}>
           {formContent}
         </div>
       </div>

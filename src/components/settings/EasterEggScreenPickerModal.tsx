@@ -89,7 +89,7 @@ export default function EasterEggScreenPickerModal({
       onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }}
     >
-      <div
+      <div role="dialog" aria-modal="true"
         onClick={(e) => e.stopPropagation()}
         style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(30rem, 100%)', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >

@@ -373,7 +373,7 @@ export default function SettingsCatalogsTab({
 
           {serviceTypeFormOpen && (
             <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: '500px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: '500px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>
                   {editingServiceType ? 'Edit Service Type' : 'Add Service Type'}
                 </h3>
@@ -640,7 +640,7 @@ export default function SettingsCatalogsTab({
 
           {partTypeFormOpen && (
             <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
                 <h2 style={{ marginBottom: '1rem' }}>{editingPartType ? 'Edit Material Part Type' : 'Add Material Part Type'}</h2>
                 
                 <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
@@ -849,7 +849,7 @@ export default function SettingsCatalogsTab({
 
           {assemblyTypeFormOpen && (
             <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
                 <h2 style={{ marginBottom: '1rem' }}>{editingAssemblyType ? 'Edit Assembly Type' : 'Add Assembly Type'}</h2>
                 
                 <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
@@ -1036,7 +1036,7 @@ export default function SettingsCatalogsTab({
 
           {fixtureTypeFormOpen && (
             <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
                 <h2 style={{ marginBottom: '1rem' }}>{editingFixtureType ? 'Edit Book Name' : 'Add Book Name'}</h2>
                 
                 <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
@@ -1169,7 +1169,7 @@ export default function SettingsCatalogsTab({
           )}
           {countsFixtureGroupFormOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>{editingCountsFixtureGroup ? 'Edit Group' : 'Add Group'}</h3>
                 {countsFixtureGroupError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureGroupError}</div>}
                 <form onSubmit={saveCountsFixtureGroup}>
@@ -1185,7 +1185,7 @@ export default function SettingsCatalogsTab({
           )}
           {countsFixtureItemFormOpen && editingCountsFixtureGroupForItem && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>{editingCountsFixtureItem ? 'Edit Fixture' : 'Add Fixture'}</h3>
                 <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Group: {editingCountsFixtureGroupForItem.label}</p>
                 {countsFixtureItemError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureItemError}</div>}
@@ -1222,7 +1222,7 @@ export default function SettingsCatalogsTab({
 
       {viewingOrphanPrices && (
         <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: '900px', width: '95%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: '900px', width: '95%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ margin: 0 }}>Orphaned material prices</h2>
                         <button

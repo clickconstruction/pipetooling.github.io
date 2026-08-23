@@ -1097,7 +1097,7 @@ export function DashboardMyInboxCard({
           }}
           onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,

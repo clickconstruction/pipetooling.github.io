@@ -2125,7 +2125,7 @@ export function BidsLaborTab({
           }}
           onClick={closeLaborVersionForm}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2175,7 +2175,7 @@ export function BidsLaborTab({
           }}
           onClick={closeLaborEntryForm}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2261,7 +2261,7 @@ export function BidsLaborTab({
           }}
           onClick={() => setAddMissingFixtureModalOpen(false)}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               borderRadius: 8,

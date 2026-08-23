@@ -142,7 +142,7 @@ export default function PersonLicenseHoursLogModal({ personName, userId, onClose
       }}
       onClick={onClose}
     >
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           borderRadius: 8,

@@ -285,7 +285,7 @@ export function PartFormModal({
 
   return (
     <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: MODAL_Z_INDEX }}>
-      <div style={{ background: 'var(--surface)', padding: '1.5rem 1.75rem', borderRadius: 8, maxWidth: 560, width: '92%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem 1.75rem', borderRadius: 8, maxWidth: 560, width: '92%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>{editingPart ? 'Edit Part' : 'Add Part'}</h2>
           {!editingPart && (

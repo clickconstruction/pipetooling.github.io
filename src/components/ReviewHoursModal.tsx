@@ -388,7 +388,7 @@ export function ReviewHoursModal({
     >
       {/* This panel is the scroller — the week-nav bar sticks so the × stays
           reachable down a long roster instead of scrolling away (v2.990 pattern). */}
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           borderRadius: 8,

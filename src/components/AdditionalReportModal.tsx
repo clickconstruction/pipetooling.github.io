@@ -336,7 +336,7 @@ export default function AdditionalReportModal({
           scrolling modals): the panel is the scroller and the × used to scroll
           away with it. See stickyModalHeaderStyle.ts for why the panel carries
           no top padding. */}
-      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
+      <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',

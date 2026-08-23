@@ -681,7 +681,7 @@ export function HostedStripeBillPanel({
                 zIndex: voidConfirmOverlayZIndex,
               }}
             >
-              <div
+              <div role="dialog" aria-modal="true"
                 style={{
                   background: 'var(--surface)',
                   padding: '1.25rem',

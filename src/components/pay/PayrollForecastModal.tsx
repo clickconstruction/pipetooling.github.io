@@ -192,7 +192,7 @@ export function PayrollForecastModal(props: {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           padding: '1.25rem 1.5rem',

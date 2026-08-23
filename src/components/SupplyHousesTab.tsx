@@ -1134,7 +1134,7 @@ export function SupplyHousesTab({
 
       {invoiceFormOpen && selectedSupplyHouseForDetail && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <h3 style={{ margin: '0 0 1rem 0' }}>{editingInvoice ? 'Edit Invoice' : 'Add Invoice'}</h3>
             <form onSubmit={saveInvoice}>
               <div style={{ marginBottom: '0.75rem' }}>
@@ -1266,7 +1266,7 @@ export function SupplyHousesTab({
       {invoiceJobSearchModal && (
         /* Above the Add/Edit Invoice modal (1003) that spawns it — at 1001 it opened BEHIND its parent. */
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1004 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%' }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%' }}>
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Add job for invoice</h3>
             <input
               type="search"
@@ -1316,7 +1316,7 @@ export function SupplyHousesTab({
 
       {applyPaymentFormOpen && selectedSupplyHouseForDetail && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <h3 style={{ margin: '0 0 1rem 0' }}>Apply Payment</h3>
             <form onSubmit={applyPayment}>
               <div style={{ marginBottom: '0.75rem' }}>

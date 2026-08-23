@@ -819,7 +819,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {inviteOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Invite via email</h2>
             <form onSubmit={handleInvite}>
               <div style={{ marginBottom: '1rem' }}>
@@ -898,7 +898,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {manualAddOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Manually add user</h2>
             <form onSubmit={handleManualAdd}>
               <div style={{ marginBottom: '1rem' }}>
@@ -998,7 +998,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
           archiveConfirmCustomerCount != null && archiveConfirmCustomerCount > 0 && archiveReassignMode === 'reassign'
         return (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
             <h2 style={{ marginTop: 0 }}>
               {archiveConfirmUser
                 ? `Archive ${archiveConfirmUser.name || archiveConfirmUser.email}?`
@@ -1143,7 +1143,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
         const movedEntries = mergePreview ? Object.entries(mergePreview.moved) : []
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-            <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 540, maxHeight: '85vh', overflow: 'auto' }}>
+            <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 540, maxHeight: '85vh', overflow: 'auto' }}>
               <h2 style={{ marginTop: 0 }}>Merge users</h2>
               <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
                 Moves everything the merged-away account owns (clock time, reports, job and bid
@@ -1285,7 +1285,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {setPasswordUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Set password for {setPasswordUser.email}</h2>
             <form onSubmit={handleSetPassword}>
               <div style={{ marginBottom: '1rem' }}>

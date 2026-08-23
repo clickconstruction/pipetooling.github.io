@@ -227,7 +227,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           padding: '1.5rem',

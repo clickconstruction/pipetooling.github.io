@@ -623,7 +623,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
           const dateStr = inspectionsSelectedDay.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
           return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={() => setInspectionsSelectedDay(null)}>
-              <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: 400, width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} onClick={(e) => e.stopPropagation()}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: 400, width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} onClick={(e) => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.125rem' }}>{dateStr}</h3>
                   <button type="button" onClick={() => setInspectionsSelectedDay(null)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Close</button>
@@ -647,7 +647,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
         })()}
         {inspectionTypesModalOpen && (
           <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+            <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
               {inspectionTypeFormOpen ? (
                 <>
                   <h3 style={{ margin: '0 0 1rem 0' }}>{editingInspectionTypeName ? 'Edit inspection type' : 'Add inspection type'}</h3>
@@ -695,7 +695,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
         )}
         {quickLinksModalOpen && (
           <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+            <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
               {quickLinkFormOpen ? (
                 <>
                   <h3 style={{ margin: '0 0 1rem 0' }}>{editingQuickLinkId ? 'Edit portal' : 'Add portal'}</h3>

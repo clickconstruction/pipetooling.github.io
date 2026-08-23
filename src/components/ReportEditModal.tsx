@@ -120,7 +120,7 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
     >
       {/* This panel is the scroller — the title bar sticks so the × stays reachable
           on a phone instead of scrolling away once the form fills in (v2.990 pattern). */}
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           borderRadius: 8,

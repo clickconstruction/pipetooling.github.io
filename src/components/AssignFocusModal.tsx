@@ -95,7 +95,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
       }}
       onClick={onClose}
     >
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           borderRadius: 8,

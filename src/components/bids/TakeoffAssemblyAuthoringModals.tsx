@@ -847,7 +847,7 @@ export function TakeoffAssemblyAuthoringModals({
           }}
           onClick={closeAddPartsToTemplateModal}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               padding: '1.5rem',
@@ -968,7 +968,7 @@ export function TakeoffAssemblyAuthoringModals({
           }}
           onClick={closeEditTemplateModal}
         >
-          <div
+          <div role="dialog" aria-modal="true"
             style={{
               background: 'var(--surface)',
               padding: '2rem',

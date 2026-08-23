@@ -1097,7 +1097,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
       onClick={() => !busy && onClose()}
     >
-      <div
+      <div role="dialog" aria-modal="true"
         style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: opts?.wide ? 680 : 420, width: opts?.wide ? '95%' : '90%', maxHeight: 'min(90vh, 100%)', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
         onClick={(e) => e.stopPropagation()}
       >
