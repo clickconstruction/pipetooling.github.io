@@ -54,22 +54,24 @@ describe('sanitizeCsvFilenamePart', () => {
 
 describe('buildCountsCsv', () => {
   it('emits a header row even with no data', () => {
-    expect(buildCountsCsv([])).toBe('Count,Fixture or Tie-in,Group/Tag,Plan Page')
+    expect(buildCountsCsv([])).toBe('Count,Unit,Fixture or Tie-in,Group/Tag,Plan Page')
   })
 
   it('renders rows with null group/page as empty fields', () => {
     const csv = buildCountsCsv([
       row({ count: 5, fixture: 'Toilet', group_tag: 'Bath', page: 'A-101' }),
       row({ count: 2, fixture: 'Sink', group_tag: null, page: null }),
+      row({ count: 148.5, fixture: 'ft of 2in Copper', group_tag: null, page: '1' }),
+      row({ count: 30, fixture: '2in copper', group_tag: null, page: null, unit: 'ft' }),
     ])
     expect(csv).toBe(
-      'Count,Fixture or Tie-in,Group/Tag,Plan Page\n5,Toilet,Bath,A-101\n2,Sink,,',
+      'Count,Unit,Fixture or Tie-in,Group/Tag,Plan Page\n5,ea,Toilet,Bath,A-101\n2,ea,Sink,,\n148.5,ft,ft of 2in Copper,,1\n30,ft,2in copper,,',
     )
   })
 
   it('escapes fixture fields that contain commas', () => {
     const csv = buildCountsCsv([row({ count: 1, fixture: 'Tee, 2in' })])
-    expect(csv).toBe('Count,Fixture or Tie-in,Group/Tag,Plan Page\n1,"Tee, 2in",,')
+    expect(csv).toBe('Count,Unit,Fixture or Tie-in,Group/Tag,Plan Page\n1,ea,"Tee, 2in",,')
   })
 })
 

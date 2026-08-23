@@ -22,7 +22,7 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens } from '../../lib/bids/countSheet'
-import { COUNT_UNIT_LABEL, effectiveCountUnit, formatUnitTotal, formatUnitTotals, summarizeRowsByUnit } from '../../lib/bids/countRowUnit'
+import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, summarizeRowsByUnit, type CountUnit } from '../../lib/bids/countRowUnit'
 
 type BidsCountsTabProps = {
   bids: BidWithBuilder[]
@@ -126,6 +126,8 @@ export function BidsCountsTab({
   const [qaCount, setQaCount] = useState('1')
   const [qaFixture, setQaFixture] = useState('')
   const [qaPage, setQaPage] = useState('')
+  /** Quick-add unit: null = follow the name ("ft of …" → ft); a click pins one explicitly. */
+  const [qaUnit, setQaUnit] = useState<CountUnit | null>(null)
   const [qaBusy, setQaBusy] = useState(false)
   const [sheetPendingDeleteId, setSheetPendingDeleteId] = useState<string | null>(null)
   const [sheetChips, setSheetChips] = useState<string[]>([])
@@ -172,6 +174,7 @@ export function BidsCountsTab({
     setQaFixture('')
     setQaCount('1')
     setQaPage('')
+    setQaUnit(null)
   }, [selectedBidForCounts?.id])
 
   async function sheetQuickAdd() {
@@ -193,14 +196,16 @@ export function BidsCountsTab({
     }
     setQaBusy(true)
     try {
-      const { error } = await insertCountRows(bid.id, [{ fixture, count, group_tag: null, page: qaPage.trim() || null }])
+      const unit = qaUnit ?? classifyCountRowUnit(fixture)
+      const { error } = await insertCountRows(bid.id, [{ fixture, count, group_tag: null, page: qaPage.trim() || null, unit }])
       if (error) {
         showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
         return
       }
-      showToast(`${count} × ${fixture} added${qaPage.trim() ? ` (p. ${qaPage.trim()})` : ''}`, 'success')
+      showToast(`${count}${unit === 'ea' ? ' ×' : ` ${COUNT_UNIT_LABEL[unit]}`} ${fixture} added${qaPage.trim() ? ` (p. ${qaPage.trim()})` : ''}`, 'success')
       setQaFixture('')
       setQaCount('1')
+      setQaUnit(null)
       refreshAfterCountsChange()
       qaCountRef.current?.focus()
       qaCountRef.current?.select()
@@ -214,10 +219,15 @@ export function BidsCountsTab({
    * then the same single-row update the Old view's editor does. Returns false
    * when the value was rejected so the input can revert.
    */
-  async function sheetSaveRowEdit(row: BidCountRow, field: 'count' | 'fixture' | 'group_tag' | 'page', raw: string): Promise<boolean> {
+  async function sheetSaveRowEdit(row: BidCountRow, field: 'count' | 'fixture' | 'group_tag' | 'page' | 'unit', raw: string): Promise<boolean> {
     const trimmed = raw.trim()
-    let patch: Partial<Pick<BidCountRow, 'count' | 'fixture' | 'group_tag' | 'page'>>
-    if (field === 'count') {
+    let patch: Partial<Pick<BidCountRow, 'count' | 'fixture' | 'group_tag' | 'page' | 'unit'>>
+    if (field === 'unit') {
+      // Explicit unit: pins the row so a later rename can't flip it back to the name guess.
+      if (!isCountUnit(trimmed)) return false
+      if (effectiveCountUnit(row) === trimmed && row.unit === trimmed) return true
+      patch = { unit: trimmed }
+    } else if (field === 'count') {
       const num = parseFloat(trimmed)
       if (!Number.isFinite(num) || num <= 0) {
         showToast('Count must be a number above zero.', 'error')
@@ -387,7 +397,7 @@ export function BidsCountsTab({
 
   async function insertCountRows(
     bidId: string,
-    rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }>
+    rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null; unit?: CountUnit | null }>
   ): Promise<{ inserted: number; error?: string }> {
     const { data: maxSeqData } = await supabase
       .from('bids_count_rows')
@@ -407,6 +417,8 @@ export function BidsCountsTab({
         group_tag: row.group_tag,
         page: row.page,
         sequence_order: maxSeq + 1 + i,
+        // Explicit when the caller knows (import stamps from the name; quick add from its toggle); NULL = infer.
+        unit: row.unit ?? null,
       })
       if (error) return { inserted, error: error.message }
       inserted++
@@ -652,11 +664,17 @@ export function BidsCountsTab({
                 <td style={{ ...sheetCell, width: '6.4rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                     {sheetEditCell(r, 'count', String(r.count), { numeric: true, ariaLabel: `Count for ${r.fixture}` })}
-                    {effectiveCountUnit(r) !== 'ea' ? (
-                      <span title={effectiveCountUnit(r) === 'px' ? 'Unscaled — pixel length, not feet' : `Measured in ${COUNT_UNIT_LABEL[effectiveCountUnit(r)]}`} style={{ fontSize: '0.66rem', fontWeight: 700, color: effectiveCountUnit(r) === 'px' ? 'var(--text-red-700)' : 'var(--text-muted)', flex: '0 0 auto' }}>
-                        {COUNT_UNIT_LABEL[effectiveCountUnit(r)]}
-                      </span>
-                    ) : null}
+                    <select
+                      key={`unit-${r.id}-${r.unit ?? ''}`}
+                      defaultValue={effectiveCountUnit(r)}
+                      aria-label={`Unit for ${r.fixture}`}
+                      title={effectiveCountUnit(r) === 'px' ? 'Unscaled — pixel length, not feet. Set the scale in CountTooling and re-copy.' : r.unit ? `Unit: ${COUNT_UNIT_LABEL[effectiveCountUnit(r)]} (set on this row)` : `Unit: ${COUNT_UNIT_LABEL[effectiveCountUnit(r)]} (from the name — pick one to pin it)`}
+                      className={`count-sheet-unit${effectiveCountUnit(r) === 'ea' ? ' count-sheet-unit--ea' : ''}`}
+                      style={{ color: effectiveCountUnit(r) === 'px' ? 'var(--text-red-700)' : undefined }}
+                      onChange={(e) => { void sheetSaveRowEdit(r, 'unit', e.target.value) }}
+                    >
+                      {COUNT_UNITS.map((u) => <option key={u} value={u}>{COUNT_UNIT_LABEL[u]}</option>)}
+                    </select>
                   </div>
                 </td>
                 <td style={sheetCell}>{sheetEditCell(r, 'fixture', r.fixture, { ariaLabel: `Fixture name for ${r.fixture}` })}</td>
@@ -750,6 +768,9 @@ export function BidsCountsTab({
                   .count-sheet-input:focus { outline: none; border-color: #3b82f6; background: var(--surface); box-shadow: 0 0 0 1px #3b82f6; }
                   .count-sheet-input--nopage:not(:focus) { border-bottom: 1.5px dashed var(--text-red-700); border-radius: 5px 5px 0 0; }
                   .count-sheet-input--nopage::placeholder { color: var(--text-red-700); font-weight: 600; opacity: 1; }
+                  .count-sheet-unit { font: inherit; font-size: 0.66rem; font-weight: 700; color: var(--text-muted); background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 0.05rem 0.1rem; cursor: pointer; appearance: none; -webkit-appearance: none; flex: 0 0 auto; }
+                  .count-sheet-unit--ea { opacity: 0.35; }
+                  .count-sheet-row:hover .count-sheet-unit, .count-sheet-unit:focus { opacity: 1; border-color: var(--border); background: var(--surface); }
                   .count-sheet-trash { opacity: 0.35; transition: opacity 0.12s; }
                   .count-sheet-row:hover .count-sheet-trash, .count-sheet-trash:focus-visible { opacity: 1; }
                   @media (hover: none) { .count-sheet-trash { opacity: 1; } }
@@ -820,6 +841,27 @@ export function BidsCountsTab({
                       aria-label="Count"
                       style={{ width: '4.4rem', font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, textAlign: 'right', background: 'var(--surface)', color: 'var(--text-strong)' }}
                     />
+                    {(() => {
+                      const auto = classifyCountRowUnit(qaFixture)
+                      const eff = qaUnit ?? auto
+                      const choices: CountUnit[] = ['ea', 'ft', ...(eff !== 'ea' && eff !== 'ft' ? [eff] : [])]
+                      return (
+                        <div role="radiogroup" aria-label="Unit" title={qaUnit ? 'Unit pinned for this row' : `Unit follows the name (${COUNT_UNIT_LABEL[auto]}) — click to pin`} style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+                          {choices.map((u) => (
+                            <button
+                              key={u}
+                              type="button"
+                              role="radio"
+                              aria-checked={eff === u}
+                              onClick={() => setQaUnit(u === auto ? null : u)}
+                              style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '0.38rem 0.5rem', border: 'none', cursor: 'pointer', background: eff === u ? '#3b82f6' : 'var(--surface)', color: eff === u ? '#fff' : 'var(--text-muted)' }}
+                            >
+                              {COUNT_UNIT_LABEL[u]}
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    })()}
                     <input
                       value={qaFixture}
                       onChange={(e) => setQaFixture(e.target.value)}

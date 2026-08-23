@@ -1,4 +1,5 @@
 import type { BidCountRow } from '../../types/bids'
+import { effectiveCountUnit } from './countRowUnit'
 
 export function csvEscapeField(value: string): string {
   const s = value ?? ''
@@ -15,12 +16,13 @@ export function sanitizeCsvFilenamePart(s: string): string {
 
 /** Builds the counts CSV body (no BOM). Caller prepends `\uFEFF` for Excel. */
 export function buildCountsCsv(rows: BidCountRow[]): string {
-  const headerLabels = ['Count', 'Fixture or Tie-in', 'Group/Tag', 'Plan Page']
+  const headerLabels = ['Count', 'Unit', 'Fixture or Tie-in', 'Group/Tag', 'Plan Page']
   const lines = [headerLabels.map((h) => csvEscapeField(h)).join(',')]
   for (const row of rows) {
     lines.push(
       [
         String(row.count),
+        effectiveCountUnit(row),
         csvEscapeField(row.fixture),
         csvEscapeField(row.group_tag ?? ''),
         csvEscapeField(row.page ?? ''),

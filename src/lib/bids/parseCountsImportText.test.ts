@@ -5,22 +5,22 @@ describe('parseCountsImportText', () => {
   it('parses tab-delimited 4-column rows (fixture, count, group, page)', () => {
     const { rows, skippedCount } = parseCountsImportText('Toilet\t5\tBath\tA-101')
     expect(skippedCount).toBe(0)
-    expect(rows).toEqual([{ fixture: 'Toilet', count: 5, group_tag: 'Bath', page: 'A-101' }])
+    expect(rows).toEqual([{ fixture: 'Toilet', count: 5, group_tag: 'Bath', page: 'A-101', unit: 'ea' }])
   })
 
   it('parses comma-delimited rows', () => {
     const { rows } = parseCountsImportText('Sink,3,Kitchen,P-2')
-    expect(rows).toEqual([{ fixture: 'Sink', count: 3, group_tag: 'Kitchen', page: 'P-2' }])
+    expect(rows).toEqual([{ fixture: 'Sink', count: 3, group_tag: 'Kitchen', page: 'P-2', unit: 'ea' }])
   })
 
   it('treats 3 columns as fixture, count, page (no group_tag)', () => {
     const { rows } = parseCountsImportText('Sink\t3\tP-2')
-    expect(rows).toEqual([{ fixture: 'Sink', count: 3, group_tag: null, page: 'P-2' }])
+    expect(rows).toEqual([{ fixture: 'Sink', count: 3, group_tag: null, page: 'P-2', unit: 'ea' }])
   })
 
   it('handles a bare fixture + count (page null)', () => {
     const { rows } = parseCountsImportText('Sink\t3')
-    expect(rows).toEqual([{ fixture: 'Sink', count: 3, group_tag: null, page: null }])
+    expect(rows).toEqual([{ fixture: 'Sink', count: 3, group_tag: null, page: null, unit: 'ea' }])
   })
 
   it('skips blank lines without counting them', () => {
@@ -37,13 +37,18 @@ describe('parseCountsImportText', () => {
 
   it('skips non-numeric and negative counts', () => {
     const { rows, skippedCount } = parseCountsImportText('Toilet\tabc\nSink\t-2\nTub\t4')
-    expect(rows).toEqual([{ fixture: 'Tub', count: 4, group_tag: null, page: null }])
+    expect(rows).toEqual([{ fixture: 'Tub', count: 4, group_tag: null, page: null, unit: 'ea' }])
     expect(skippedCount).toBe(2)
   })
 
   it('accepts fractional counts and treats empty group/page as null', () => {
     const { rows } = parseCountsImportText('Pipe,2.5, ,')
-    expect(rows).toEqual([{ fixture: 'Pipe', count: 2.5, group_tag: null, page: null }])
+    expect(rows).toEqual([{ fixture: 'Pipe', count: 2.5, group_tag: null, page: null, unit: 'ea' }])
+  })
+
+  it('stamps the unit from the name convention', () => {
+    const { rows } = parseCountsImportText('WC\t12\t1\nft of 2in Copper\t148.5\t1\npx of 1in Gas\t367\t2\n[Rough-In] ft of 4in PVC\t60\t3')
+    expect(rows.map((r) => r.unit)).toEqual(['ea', 'ft', 'px', 'ft'])
   })
 
   it('returns sourceLink null when there is no footer (backward compatible)', () => {
@@ -63,9 +68,9 @@ describe('parseCountsImportText', () => {
     expect(sourceLink).toBe('https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
     expect(skippedCount).toBe(0)
     expect(rows).toEqual([
-      { fixture: 'Water Closet', count: 12, group_tag: null, page: '1, 2, 3' },
-      { fixture: '[Rough-In] ft of 2in Copper', count: 148.5, group_tag: null, page: '1, 2' },
-      { fixture: 'ft of 4in PVC', count: 60, group_tag: null, page: '3' },
+      { fixture: 'Water Closet', count: 12, group_tag: null, page: '1, 2, 3', unit: 'ea' },
+      { fixture: '[Rough-In] ft of 2in Copper', count: 148.5, group_tag: null, page: '1, 2', unit: 'ft' },
+      { fixture: 'ft of 4in PVC', count: 60, group_tag: null, page: '3', unit: 'ft' },
     ])
   })
 
@@ -75,7 +80,7 @@ describe('parseCountsImportText', () => {
       'https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21\nToilet\t5'
     )
     expect(sourceLink).toBe('https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
-    expect(rows).toEqual([{ fixture: 'Toilet', count: 5, group_tag: null, page: null }])
+    expect(rows).toEqual([{ fixture: 'Toilet', count: 5, group_tag: null, page: null, unit: 'ea' }])
   })
 
   it('matches the t= param in any query position and on any host (stored as-is)', () => {
@@ -94,7 +99,7 @@ describe('parseCountsImportText', () => {
     const { rows, skippedCount, sourceLink } = parseCountsImportText(
       'Toilet\t5\nView link:\thttps://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21'
     )
-    expect(rows).toEqual([{ fixture: 'Toilet', count: 5, group_tag: null, page: null }])
+    expect(rows).toEqual([{ fixture: 'Toilet', count: 5, group_tag: null, page: null, unit: 'ea' }])
     expect(skippedCount).toBe(0)
     expect(sourceLink).toBe('https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
   })

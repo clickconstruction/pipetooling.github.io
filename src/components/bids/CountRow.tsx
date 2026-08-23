@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidCountRow } from '../../types/bids'
+import { COUNT_UNITS, COUNT_UNIT_LABEL, effectiveCountUnit, type CountUnit } from '../../lib/bids/countRowUnit'
 
 export function SortableCountRow({ row, highlight, onUpdate, onDelete }: {
   row: BidCountRow
@@ -55,6 +56,7 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
   const [count, setCount] = useState(String(row.count))
   const [groupTag, setGroupTag] = useState(row.group_tag ?? '')
   const [page, setPage] = useState(row.page ?? '')
+  const [unit, setUnit] = useState<CountUnit>(effectiveCountUnit(row))
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const confirmDialog = useConfirmDialog()
@@ -63,7 +65,7 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
     setSaving(true)
     const num = parseFloat(count)
     if (isNaN(num)) { setSaving(false); return }
-    const { error } = await supabase.from('bids_count_rows').update({ fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null }).eq('id', row.id)
+    const { error } = await supabase.from('bids_count_rows').update({ fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, unit }).eq('id', row.id)
     if (error) { setSaving(false); return }
     setEditing(false)
     onUpdate()
@@ -92,6 +94,9 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
         {dragHandle != null && <td style={{ padding: '0.75rem', width: 32, verticalAlign: 'middle' }}>{dragHandle}</td>}
         <td style={{ padding: '0.75rem', width: 132, textAlign: 'center' }}>
           <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }} />
+          <select value={unit} onChange={(e) => setUnit(e.target.value as CountUnit)} aria-label="Unit" title="Unit this row is counted in" style={{ width: '100%', boxSizing: 'border-box', marginTop: '0.25rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8rem', background: 'var(--surface)' }}>
+            {COUNT_UNITS.map((u) => <option key={u} value={u}>{COUNT_UNIT_LABEL[u]}</option>)}
+          </select>
         </td>
         <td style={{ padding: '0.75rem', width: '50%' }}>
           <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
@@ -112,7 +117,14 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
   return (
     <tr ref={trRef} style={mergedStyle}>
       {dragHandle != null && <td style={{ padding: '0.75rem', width: 32, verticalAlign: 'middle' }}>{dragHandle}</td>}
-      <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
+      <td style={{ padding: '0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+        {row.count}
+        {effectiveCountUnit(row) !== 'ea' ? (
+          <span title={effectiveCountUnit(row) === 'px' ? 'Unscaled — pixel length, not feet' : `Measured in ${COUNT_UNIT_LABEL[effectiveCountUnit(row)]}`} style={{ marginLeft: '0.3rem', fontSize: '0.72rem', fontWeight: 700, color: effectiveCountUnit(row) === 'px' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+            {COUNT_UNIT_LABEL[effectiveCountUnit(row)]}
+          </span>
+        ) : null}
+      </td>
       <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
       <td style={{ padding: '0.75rem' }}>{row.group_tag ?? '—'}</td>
       <td style={{ padding: '0.75rem' }}>{row.page ?? '—'}</td>
