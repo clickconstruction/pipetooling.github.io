@@ -1033,7 +1033,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     countStagesExclusions(stagesExcludeFilters) > 0 ||
     Boolean(stagesGcFilter) ||
     Boolean(stagesDevelopmentFilter) ||
-    Boolean(stagesAccountManFilter)
+    Boolean(stagesAccountManFilter) ||
+    // Billed aging / no-line filter (v2.2155): billed lines hang on working
+    // and waiting jobs too, and the board routes them into Billed only once
+    // their job's scope is loaded — with Working collapsed, "Show 90+" listed
+    // 2 bills while the card (company-wide lean stats) promised 3.
+    Boolean(billedAgingFilter)
   useEffect(() => {
     if (!active) return
     if (!stagesNeedsAllScopesForModal && !stagesHasActiveDisplayFilter) return
