@@ -1617,7 +1617,11 @@ function OutstandingByPersonSortableRow({
   )
   return (
     <li ref={setNodeRef} style={style}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
+      {/* Two-line phone rows (v2.2201): desktop keeps the single line; under 720px the grip hides,
+          the ✓ becomes a boxed 34px target spanning both lines, the title takes the full width and
+          the meta cluster (roadmap chip · age · notes · 🗑) drops to its own line. Styles: .obp-* in
+          OutstandingByPersonSortableList. */}
+      <div className={`obp-row${isDev ? '' : ' obp-row--nocheck'}`}>
         {canManageChecklists && (
           <button
             type="button"
@@ -1630,6 +1634,7 @@ function OutstandingByPersonSortableRow({
             }}
             title="Drag to reorder"
             aria-label={`Drag to reorder: ${title}`}
+            className="obp-grip"
             style={{
               flexShrink: 0,
               padding: '0.125rem',
@@ -1649,7 +1654,7 @@ function OutstandingByPersonSortableRow({
           </button>
         )}
         {isDev && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
+          <span className="obp-check" style={{ display: 'inline-flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
             <button
               type="button"
               onClick={(e) => {
@@ -1659,6 +1664,7 @@ function OutstandingByPersonSortableRow({
               disabled={completingInstanceId === inst.id}
               title="Mark complete"
               aria-label="Mark complete"
+              className="obp-check-btn"
               style={{
                 padding: '0.25rem',
                 background: 'none',
@@ -1692,72 +1698,70 @@ function OutstandingByPersonSortableRow({
               onToggleExpanded(inst.id)
             }
           }}
+          className="obp-main"
           style={{
-            flex: 1,
-            minWidth: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.45rem',
-            padding: '0.3rem 0.35rem',
             borderRadius: 8,
             cursor: 'pointer',
             background: expanded ? 'var(--bg-muted)' : undefined,
           }}
         >
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <ChecklistTitleWithLinks title={title} links={inst.checklist_items?.links} />{' '}
-            {roadmapGoalChip(inst.checklist_items, onOpenRoadmapContext)}
+          <span className="obp-title" style={{ minWidth: 0 }}>
+            <ChecklistTitleWithLinks title={title} links={inst.checklist_items?.links} />
           </span>
-          {notesCount > 0 ? (
-            <span
-              style={{
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                padding: '0.1rem 0.45rem',
-                borderRadius: 7,
-                background: 'var(--bg-blue-tint)',
-                color: 'var(--text-blue-800)',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {'\uD83D\uDCAC'} {notesCount}
-            </span>
-          ) : null}
-          <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))}</span>
-        </div>
-        {isDev && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDeleteInstance(inst)
-            }}
-            disabled={deletingInstanceId === inst.id}
-            title="Delete"
-            aria-label="Delete"
-            style={{
-              flexShrink: 0,
-              padding: '0.25rem',
-              background: 'none',
-              border: 'none',
-              cursor: deletingInstanceId === inst.id ? 'not-allowed' : 'pointer',
-              color: 'var(--text-muted)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
+          <span className="obp-meta">
+            {roadmapGoalChip(inst.checklist_items, onOpenRoadmapContext)}
+            {notesCount > 0 ? (
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  padding: '0.1rem 0.45rem',
+                  borderRadius: 7,
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-blue-800)',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {'\uD83D\uDCAC'} {notesCount}
+              </span>
+            ) : null}
+            <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))}</span>
+            <span className="obp-sp" aria-hidden />
+            {isDev && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteInstance(inst)
+                }}
+                disabled={deletingInstanceId === inst.id}
+                title="Delete"
+                aria-label="Delete"
+                style={{
+                  flexShrink: 0,
+                  padding: '0.25rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: deletingInstanceId === inst.id ? 'not-allowed' : 'pointer',
+                  color: 'var(--text-muted)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
               <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
             </svg>
-          </button>
-        )}
+              </button>
+            )}
+          </span>
+        </div>
       </div>
       {expanded ? (
         <div
+          className="obp-expanded"
           style={{
-            margin: canManageChecklists ? '0.15rem 0 0.5rem 1.9rem' : '0.15rem 0 0.5rem 0.5rem',
             padding: '0.5rem 0.65rem 0.6rem',
             background: 'var(--bg-muted)',
             borderRadius: 10,
@@ -1855,6 +1859,28 @@ function OutstandingByPersonSortableList({
   return (
     <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={instances.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        {/* Two-line phone rows (v2.2201): desktop = one line (grip · ✓ · title · meta); under 720px the
+            grip hides, the ✓ boxes up and spans both lines, the title runs edge to edge, and the meta
+            cluster (chip · age · 💬 · spacer · 🗑) becomes the second line. */}
+        <style>{`
+          .obp-row { display: flex; align-items: center; gap: 0.125rem; }
+          .obp-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.45rem; padding: 0.3rem 0.35rem; }
+          .obp-title { flex: 1; min-width: 0; }
+          .obp-meta { display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
+          .obp-sp { display: none; }
+          .obp-expanded { margin: 0.15rem 0 0.5rem 1.9rem; }
+          @media (max-width: 719px) {
+            .obp-row { align-items: flex-start; gap: 0.4rem; }
+            .obp-grip { display: none !important; }
+            .obp-check { align-self: flex-start; margin-top: 0.15rem; }
+            .obp-check-btn { width: 34px; height: 34px; border: 1.5px solid var(--border-strong) !important; border-radius: 10px !important; background: var(--surface) !important; }
+            .obp-main { flex-wrap: wrap; gap: 0.25rem 0; padding: 0.25rem 0.1rem; }
+            .obp-title { flex: 1 1 100%; }
+            .obp-meta { flex: 1 1 100%; display: flex; min-height: 28px; }
+            .obp-sp { display: block; flex: 1; }
+            .obp-expanded { margin: 0.15rem 0 0.5rem 0; }
+          }
+        `}</style>
         <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
           {instances.map((inst) => (
             <OutstandingByPersonSortableRow
@@ -2907,10 +2933,10 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                             padding: '0 0.8rem',
                             fontSize: '0.8125rem',
                             fontWeight: 600,
-                            border: 'none',
+                            border: '1px dashed var(--border-strong)',
                             borderRadius: 8,
-                            background: '#2563eb',
-                            color: 'white',
+                            background: 'none',
+                            color: 'var(--text-link)',
                             cursor: 'pointer',
                           }}
                         >
