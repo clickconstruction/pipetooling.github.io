@@ -11,9 +11,9 @@ New to it? Click the **?** beside the New pill for a guided tour — it spotligh
 
 ## Versions, scenarios, and the star
 
-One sentence covers it: a **version** is a separate bid you can send — its own counts, its own prices, its own GC — and a **price scenario** is the same bid at a different price point. Versions bundle into the cover letter as their own priced sections (base bid + alternates, or several buildings), each optionally addressed to its own GC.
+One sentence covers it: a **version** is a separate bid you can send — its own takeoff, its own prices, its own GC, over the same counts — and a **price scenario** is the same bid at a different price point. Versions bundle into the cover letter as their own priced sections (base bid + alternates, or several buildings), each optionally addressed to its own GC.
 
-Most bids have one version and one price, so the Workbench shows just one quiet line — your price, the star, and {{button:outline|＋ New price or version…}}. That button offers the two moves: **Another price point** (same counts, different price — star the winner) or **Another bid to send** (a new version with its own counts). Once a second price or version exists, the full structure bar and scenario cards appear, and the picker at the top shows **Bids in this package** with each one's cover-letter status and GC.
+Most bids have one version and one price, so the Workbench shows just one quiet line — your price, the star, and {{button:outline|＋ New price or version…}}. That button offers the two moves: **Another price point** (same counts, different price — star the winner) or **Another bid to send** (a new version — same counts, its own takeoff and prices). Once a second price or version exists, the full structure bar and scenario cards appear, and the picker at the top shows **Bids in this package** with each one's cover-letter status and GC.
 
 Clicking a scenario card just **views** it — the {{chip:green|★ Customer sees this}} scenario is what the Cover Letter, Share, and the bid value use, and it only changes when you press {{button:outline|☆ Make customer-facing…}} and confirm. A scenario showing {{chip:yellow|No prices yet}} offers a one-click **copy prices from** your priced scenario, or price it with the solver.
 

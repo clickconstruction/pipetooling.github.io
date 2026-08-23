@@ -1170,7 +1170,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-scenarios',
       title: 'Scenarios — same counts, different prices',
-      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "＋ New price or version…" adds another price point — or another sendable bid (a version with its own counts).',
+      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "＋ New price or version…" adds another price point — or another sendable bid (a version — same counts, its own takeoff and prices).',
     },
     {
       anchor: 'workbench-summary',
@@ -2568,7 +2568,7 @@ export function BidsPricingTab({
                               <span>
                                 <b style={{ display: 'block', fontSize: '0.92rem' }}>Another bid to send</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  A new <b>version</b> — own counts, own GC, its own section in the cover letter.
+                                  A new <b>version</b> — same counts; its own takeoff, prices, GC, and cover-letter section.
                                 </span>
                               </span>
                             </button>

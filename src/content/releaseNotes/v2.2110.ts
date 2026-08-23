@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'The version picker now says what versions are for: "Bids in this package — each sends on its own," and every chip shows whether it\'s in the cover letter and which GC it goes to.',
-    'The Workbench button is now "＋ New price or version…" with two plain moves: Another price point (same counts, different price) or Another bid to send (own counts, own GC, its own cover-letter section).',
+    'The Workbench button is now "＋ New price or version…" with two plain moves: Another price point (same counts, different price) or Another bid to send (same counts; its own takeoff, prices, GC, and cover-letter section).',
     'Splitting a bid now reads like what it is: "Split into two sendable bids" — name this bid, name the new bid.',
     'A "Send… →" button on the picker jumps straight to the Cover Letter, where your versions bundle into one submission.',
   ],
