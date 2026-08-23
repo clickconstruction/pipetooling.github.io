@@ -31,7 +31,8 @@ import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
-import { goalsStageRows, goalsStripRows, lockedStageHint, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
+import { goalsStageRows, goalsStripRows, lockedStageHint, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
+import { goalsLedgerTaskRows, type GoalsLedgerTaskRow } from '../lib/roadmapGoalsLedger'
 import { canSeeRoadmapTab } from '../lib/roadmapVisibility'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
@@ -1917,6 +1918,10 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null)
   /** "N more locked stages" fold, reset each time a goal expands. */
   const [showAllLockedStages, setShowAllLockedStages] = useState(false)
+  /** Per-roadmap → per-stage task rows behind the ledger's unfold (v2.2167). */
+  const [goalTaskRows, setGoalTaskRows] = useState<Map<string, Map<string, GoalsLedgerTaskRow[]>>>(new Map())
+  /** The one stage row currently unfolded to its tasks (v2.2167). */
+  const [expandedStageId, setExpandedStageId] = useState<string | null>(null)
   const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
   const onOpenReqCount = useCallback((n: number) => setOpenReqCount(n), [])
 
@@ -1938,26 +1943,52 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
         supabase.from('checklist_tech_tree_edges').select('from_group_id, to_group_id'),
       ])
       if (cancelled || !rms || rms.length === 0 || !grps || grps.length === 0) return
-      const { data: tsks } = await supabase
-        .from('checklist_tech_tree_group_tasks')
-        .select('id, group_id, completed_at, checklist_tech_tree_task_assignees(user_id)')
-        .in('group_id', grps.map((g) => g.id))
+      // v2.2167: title / order / pin / assignee ids ride along so a stage row can
+      // unfold to its tasks; names + bridge rows are two small extra reads.
+      const [{ data: tsks }, { data: usrs }] = await Promise.all([
+        supabase
+          .from('checklist_tech_tree_group_tasks')
+          .select('id, group_id, title, sort_index, completed_at, pinned_at, checklist_tech_tree_task_assignees(user_id)')
+          .in('group_id', grps.map((g) => g.id)),
+        supabase.from('users').select('id, name, email').is('archived_at', null),
+      ])
       if (cancelled) return
-      const mappedTasks = (tsks ?? []).map((t) => ({
+      const taskIds = (tsks ?? []).map((t) => t.id)
+      const { data: bridgeRows } = taskIds.length
+        ? await supabase
+            .from('checklist_items')
+            .select('roadmap_group_task_id, checklist_instances(id, completed_at, reviewed_at)')
+            .in('roadmap_group_task_id', taskIds)
+        : { data: [] as unknown[] }
+      if (cancelled) return
+      const bridgeByTaskId = new Map<string, BridgeState>()
+      for (const row of (bridgeRows ?? []) as Array<{ roadmap_group_task_id: string | null; checklist_instances: Array<{ id: string; completed_at: string | null; reviewed_at: string | null }> | null }>) {
+        const inst = (row.checklist_instances ?? [])[0]
+        if (row.roadmap_group_task_id && inst) bridgeByTaskId.set(row.roadmap_group_task_id, { instanceCompletedAt: inst.completed_at, reviewedAt: inst.reviewed_at, instanceId: inst.id })
+      }
+      const nameById = new Map((usrs ?? []).map((u) => [u.id, (u.name ?? '').trim() || u.email]))
+      const fullTasks = (tsks ?? []).map((t) => ({
         id: t.id,
         group_id: t.group_id,
+        title: t.title,
+        sort_index: t.sort_index,
         completed_at: t.completed_at,
-        assigneeCount: ((t as { checklist_tech_tree_task_assignees?: Array<{ user_id: string }> | null }).checklist_tech_tree_task_assignees ?? []).length,
+        pinned_at: (t as { pinned_at?: string | null }).pinned_at ?? null,
+        assigneeIds: ((t as { checklist_tech_tree_task_assignees?: Array<{ user_id: string }> | null }).checklist_tech_tree_task_assignees ?? []).map((a) => a.user_id),
       }))
+      const mappedTasks = fullTasks.map((t) => ({ id: t.id, group_id: t.group_id, completed_at: t.completed_at, assigneeCount: t.assigneeIds.length }))
       const mappedEdges = (edgs ?? []).map((e) => ({ fromGroupId: e.from_group_id, toGroupId: e.to_group_id }))
       setGoalRows(goalsStripRows({ roadmaps: rms, groups: grps, tasks: mappedTasks, edges: mappedEdges }))
       const stageMap = new Map<string, GoalsStageRow[]>()
+      const taskMap = new Map<string, Map<string, GoalsLedgerTaskRow[]>>()
       for (const rm of rms) {
         const rmGroups = grps.filter((g) => g.roadmap_id === rm.id)
         if (rmGroups.length === 0) continue
         stageMap.set(rm.id, goalsStageRows({ groups: rmGroups, tasks: mappedTasks, edges: mappedEdges }))
+        taskMap.set(rm.id, goalsLedgerTaskRows({ groups: rmGroups, tasks: fullTasks, edges: mappedEdges, nameById, bridgeByTaskId }))
       }
       setGoalStageRows(stageMap)
+      setGoalTaskRows(taskMap)
     })()
     return () => {
       cancelled = true
@@ -2433,6 +2464,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
             const toggleGoal = () => {
               setExpandedGoalId((prev) => (prev === g.roadmapId ? null : g.roadmapId))
               setShowAllLockedStages(false)
+              setExpandedStageId(null)
             }
             return (
               <div
@@ -2518,48 +2550,111 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                         </button>
                       ) : null}
                     </div>
-                    {visibleStages.map(({ row: s, index }) => (
-                      <div key={s.groupId} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.28rem 0.1rem', fontSize: '0.8125rem' }}>
-                        <span style={{ width: '1.35rem', textAlign: 'right', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', flexShrink: 0, fontSize: '0.72rem' }}>{index + 1}</span>
-                        <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: s.state === 'locked' ? 'var(--text-faint)' : 'var(--text-strong)' }}>{s.title}</span>
-                        {s.state === 'complete' ? (
-                          <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: '#16a34a', color: 'white' }}>✓ done</span>
-                        ) : s.state === 'current' ? (
-                          <>
-                            <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>current</span>
-                            {s.openAssigned > 0 ? (
-                              <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }}>
-                                {s.openAssigned} on {s.openAssigned === 1 ? 'list' : 'lists'}
-                              </span>
-                            ) : null}
-                          </>
-                        ) : s.state === 'unplanned' ? (
-                          <span
-                            title="No tasks and nothing leading into it — add tasks on the roadmap, or link a stage into it"
-                            style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', border: '1px dashed var(--border-strong)', color: 'var(--text-muted)' }}
+                    {visibleStages.map(({ row: s, index }) => {
+                      // v2.2167: rows wrap on phones (title never collapses) and unfold in
+                      // place to their tasks; a task opens the "Where this task fits" sheet.
+                      const stageTasks = goalTaskRows.get(g.roadmapId)?.get(s.groupId) ?? []
+                      const canOpen = stageTasks.length > 0
+                      const stageOpen = canOpen && expandedStageId === s.groupId
+                      return (
+                        <div key={s.groupId} className={`goal-stage${stageOpen ? ' goal-stage--open' : ''}`}>
+                          <button
+                            type="button"
+                            className="goal-stage-row"
+                            disabled={!canOpen}
+                            aria-expanded={canOpen ? stageOpen : undefined}
+                            aria-label={`Stage ${index + 1}: ${s.title}${canOpen ? (stageOpen ? ' — hide tasks' : ' — show tasks') : ''}`}
+                            onClick={() => {
+                              if (canOpen) setExpandedStageId(stageOpen ? null : s.groupId)
+                            }}
                           >
-                            not planned yet
-                          </span>
-                        ) : (
-                          <span
-                            title={lockedStageHint(s.blockedBy, s.openAssigned > 0) ?? undefined}
-                            style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-muted)', color: 'var(--text-faint)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                          >
-                            🔒{s.blockedBy[0] ? ` after “${s.blockedBy[0]}”` : ''}
-                          </span>
-                        )}
-                        <span style={{ width: 110, height: 7, borderRadius: 4, background: 'var(--bg-muted)', overflow: 'hidden', flexShrink: 0 }}>
-                          {s.total > 0 ? (
-                            <span style={{ display: 'block', height: '100%', width: `${Math.round((s.done / s.total) * 100)}%`, background: s.state === 'complete' ? '#16a34a' : '#2563eb' }} />
-                          ) : s.state === 'complete' ? (
-                            <span style={{ display: 'block', height: '100%', width: '100%', background: '#16a34a' }} />
+                            <span className="goal-stage-n">{index + 1}</span>
+                            <span className="goal-stage-title" style={{ color: s.state === 'locked' ? 'var(--text-faint)' : s.state === 'unplanned' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.title}</span>
+                            <span className="goal-stage-count">
+                              {s.total > 0 ? `${s.done}/${s.total}` : '\u2014'}
+                              {canOpen ? <span aria-hidden className="goal-stage-car">{stageOpen ? '▾' : '▸'}</span> : null}
+                            </span>
+                            <span className="goal-stage-meta">
+                              {s.state === 'complete' ? (
+                                <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: '#16a34a', color: 'white' }}>✓ done</span>
+                              ) : s.state === 'current' ? (
+                                <>
+                                  <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>current</span>
+                                  {s.openAssigned > 0 ? (
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' }}>
+                                      {s.openAssigned} on {s.openAssigned === 1 ? 'list' : 'lists'}
+                                    </span>
+                                  ) : null}
+                                </>
+                              ) : s.state === 'unplanned' ? (
+                                <span
+                                  title="No tasks and nothing leading into it — add tasks on the roadmap, or link a stage into it"
+                                  style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', border: '1px dashed var(--border-strong)', color: 'var(--text-muted)' }}
+                                >
+                                  not planned yet
+                                </span>
+                              ) : (
+                                <span
+                                  title={lockedStageHint(s.blockedBy, s.openAssigned > 0) ?? undefined}
+                                  style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-muted)', color: 'var(--text-faint)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                >
+                                  🔒{s.blockedBy[0] ? ` after “${s.blockedBy[0]}”` : ''}
+                                </span>
+                              )}
+                              {s.total > 0 || s.state === 'complete' ? (
+                                <span className="goal-stage-bar">
+                                  {s.total > 0 ? (
+                                    <span style={{ display: 'block', height: '100%', width: `${Math.round((s.done / s.total) * 100)}%`, background: s.state === 'complete' ? '#16a34a' : '#2563eb' }} />
+                                  ) : (
+                                    <span style={{ display: 'block', height: '100%', width: '100%', background: '#16a34a' }} />
+                                  )}
+                                </span>
+                              ) : null}
+                            </span>
+                          </button>
+                          {stageOpen ? (
+                            <ul className="goal-stage-tasks" aria-label={`Tasks in stage ${index + 1}`}>
+                              {stageTasks.map((t) => (
+                                <li key={t.id}>
+                                  <button
+                                    type="button"
+                                    className={`goal-task${t.done ? ' goal-task--done' : ''}`}
+                                    onClick={() => setRoadmapContextTaskId(t.id)}
+                                    aria-label={`Open task ${t.number} ${t.title}`}
+                                  >
+                                    <span className="goal-task-num">{t.number}</span>
+                                    <span className={`goal-task-g${t.done ? ' goal-task-g--done' : ''}`} aria-hidden>{t.done ? '✓' : '○'}</span>
+                                    <span style={{ minWidth: 0 }}>
+                                      <span className="goal-task-title">{t.title}</span>
+                                      {!t.done && (t.pinned || t.nextUp || t.assigneeNames.length > 0 || t.chip) ? (
+                                        <span className="goal-task-sub">
+                                          {t.pinned ? <span className="goal-task-mark">★ pinned</span> : t.nextUp ? <span className="goal-task-mark">⚡ next up</span> : null}
+                                          {t.assigneeNames.length > 0 ? <span>{t.assigneeNames.join(', ')}</span> : <span>unassigned</span>}
+                                          {t.chip ? (
+                                            <span
+                                              className="goal-task-chip"
+                                              style={
+                                                t.chip === 'in_review'
+                                                  ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', borderColor: 'transparent' }
+                                                  : t.chip === 'signed_off'
+                                                    ? { background: '#16a34a', color: 'white', borderColor: 'transparent' }
+                                                    : undefined
+                                              }
+                                            >
+                                              {t.chip === 'in_review' ? 'in review' : t.chip === 'signed_off' ? 'signed off' : 'on list'}
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
                           ) : null}
-                        </span>
-                        <span style={{ width: 46, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', flexShrink: 0, fontSize: '0.75rem' }}>
-                          {s.total > 0 ? `${s.done}/${s.total}` : '\u2014'}
-                        </span>
-                      </div>
-                    ))}
+                        </div>
+                      )
+                    })}
                     {foldLocked ? (
                       <button
                         type="button"
