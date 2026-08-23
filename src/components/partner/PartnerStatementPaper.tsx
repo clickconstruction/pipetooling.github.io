@@ -225,12 +225,7 @@ export function PartnerStatementPaper(p: PartnerStatementPaperProps) {
         )}
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', paddingTop: 18, fontSize: 11, color: MUTED }}>
-        <span>
-          Questions about a line? Text the office — <i>the Click team</i>
-        </span>
-        <span style={{ color: FAINT, fontSize: 10 }}>Private to you · only approved hours post · every closing opens the next week</span>
-      </div>
+      <div style={{ paddingTop: 18, fontSize: 10, color: FAINT }}>Private to you · only approved hours post · every closing opens the next week</div>
     </div>
   )
 }
