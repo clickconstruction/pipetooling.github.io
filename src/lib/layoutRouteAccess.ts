@@ -11,6 +11,7 @@ const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/calendar', '/
 
 const PRIMARY_PATHS = [
   '/dashboard',
+  '/my-statement',
   '/materials',
   '/estimates',
   '/documents',
