@@ -909,6 +909,12 @@ export default function Bids() {
       // v2.2133: bids adopted into another bid's package leave every list (the row stays for history).
       .is('adopted_into_bid_id', null)
     if (sid) q = q.eq('service_type_id', sid)
+    // Primary scoping (v2.2174): a primary's board is the bids they are estimator,
+    // account manager, or creator on — the same predicate RLS now enforces
+    // (primary_scope_* policies), stated here so the board filters on purpose.
+    if (myRole === 'primary' && authUser) {
+      q = q.or(`estimator_id.eq.${authUser.id},account_manager_id.eq.${authUser.id},created_by.eq.${authUser.id}`)
+    }
     const { data, error } = await q.order('bid_due_date', { ascending: false, nullsFirst: true })
     if (error) {
       setError(`Failed to load bids: ${error.message}`)
