@@ -49,6 +49,8 @@ import { getNextDisplayOrders } from '../../utils/checklistOrder'
 import { ChecklistItemActivity } from '../checklist/ChecklistItemActivity'
 import { readingCatchUpRows, type ReadingCatchUpRow } from '../../lib/vehicleCatchUp'
 import { VehicleReadingsCatchUpModal, VehicleTasksCatchUpModal } from './VehicleCatchUpModals'
+import { VehiclesFleetSummary } from './VehiclesFleetSummary'
+import { buildFleetAttentionItems, fleetFactsLine } from '../../lib/vehicleFleetAttention'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -1243,9 +1245,6 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Vehicles</h2>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => setPlansOpen(true)} style={{ ...actionBtn, whiteSpace: 'nowrap' }}>
-              Insurance plans
-            </button>
             <button
               type="button"
               onClick={() => openVehicleForm()}
@@ -1261,32 +1260,25 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             placeholder="Search vehicles or people"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ padding: '0.45rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', minWidth: 200 }}
+            style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, fontSize: '0.9rem', width: '100%', maxWidth: 440, boxSizing: 'border-box' }}
           />
         </div>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-          <span style={chipStyle('plain')}>{summary.total} vehicle{summary.total === 1 ? '' : 's'}</span>
-          {summary.motorPool > 0 && <span style={chipStyle('plain')}>{summary.motorPool} in motor pool</span>}
-          {summary.unassigned > 0 && <span style={chipStyle('amber')}>{summary.unassigned} unassigned</span>}
-          {uninsuredCount > 0 && <span style={chipStyle('amber')}>{uninsuredCount} not on insurance</span>}
-          {summary.staleReadings > 0 && (
-            <button type="button" onClick={openReadingsCatchUp} title="Open the odometer catch-up list" style={{ ...chipStyle('amber'), font: 'inherit', border: '1px solid var(--border-amber-soft, var(--border-amber-soft))', cursor: 'pointer' }}>
-              {summary.staleReadings} need a reading
-            </button>
-          )}
-          {oilCounts.dueSoon > 0 && <span style={chipStyle('amber')}>{oilCounts.dueSoon} oil due soon</span>}
-          {oilCounts.overdue > 0 && <span style={chipStyle('red')}>{oilCounts.overdue} oil overdue</span>}
-          {(() => {
-            const totalOpen = Object.values(openProblemsByVehicle).reduce((s, n) => s + n, 0)
-            return totalOpen > 0 ? <span style={chipStyle('red')}>{totalOpen} open problem{totalOpen === 1 ? '' : 's'}</span> : null
-          })()}
-          {openTaskTotal > 0 && (
-            <button type="button" onClick={() => setTasksCatchUpOpen(true)} title="Open the maintenance-task list" style={{ ...chipStyle('amber'), font: 'inherit', border: '1px solid var(--border-amber-soft, var(--border-amber-soft))', cursor: 'pointer' }}>
-              {openTaskTotal} maintenance task{openTaskTotal === 1 ? '' : 's'}
-            </button>
-          )}
-          {weeklyTotal > 0 && <span style={chipStyle('plain')}>${formatCurrency(weeklyTotal)}/wk ins+reg</span>}
-        </div>
+        {/* Fleet strip (v2.2169): facts as one line, to-dos as a short list — see VehiclesFleetSummary. */}
+        <VehiclesFleetSummary
+          facts={fleetFactsLine({ total: summary.total, motorPool: summary.motorPool, weeklyInsReg: weeklyTotal }, formatCurrency)}
+          onInsurancePlans={() => setPlansOpen(true)}
+          items={buildFleetAttentionItems({
+            unassigned: summary.unassigned,
+            uninsured: uninsuredCount,
+            staleReadings: summary.staleReadings,
+            oilDueSoon: oilCounts.dueSoon,
+            oilOverdue: oilCounts.overdue,
+            openProblems: Object.values(openProblemsByVehicle).reduce((acc, n) => acc + n, 0),
+            openTasks: openTaskTotal,
+          })}
+          onOpenReadings={openReadingsCatchUp}
+          onOpenTasks={() => setTasksCatchUpOpen(true)}
+        />
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         {loading ? (
           <p style={{ color: 'var(--text-muted)' }}>Loading…</p>

@@ -87,8 +87,9 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getByText('Unassigned')).toBeTruthy()
     expect(screen.getByText('3 vehicles')).toBeTruthy()
     expect(await screen.findByText(/121,480 mi · today/)).toBeTruthy()
-    expect(screen.getByText('1 unassigned')).toBeTruthy()
-    expect(screen.getByText('2 need a reading')).toBeTruthy()
+    // Fleet strip (v2.2169): to-dos are rows (count + label), the two catch-up rows are buttons.
+    expect(screen.getByTestId('fleet-attn-unassigned').textContent).toMatch(/^1\s*unassigned$/)
+    expect(screen.getByRole('button', { name: '2 need a reading' })).toBeTruthy()
     expect(screen.getAllByRole('button', { name: 'Hand off' }).length).toBe(2)
     expect(screen.getAllByRole('button', { name: 'Assign' }).length).toBe(1)
 
@@ -109,13 +110,13 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getAllByText(/on plan since/).length).toBe(2)
     expect(screen.getByText('Not on insurance')).toBeTruthy()
     expect(screen.getByText(/off since/)).toBeTruthy()
-    expect(screen.getByText('1 not on insurance')).toBeTruthy()
+    expect(screen.getByTestId('fleet-attn-uninsured').textContent).toMatch(/^1\s*not on insurance$/)
     expect(screen.getByText(/still insured while parked/)).toBeTruthy()
 
     // Maintenance tasks (fleet phase 8): the card wears an open-task chip and
     // the summary row totals them (completed t3 doesn't count).
     expect(screen.getByText('2 tasks')).toBeTruthy()
-    expect(screen.getByText('2 maintenance tasks')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '2 maintenance tasks' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Insurance plans' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add to plan' })).toBeTruthy()
     expect(screen.getAllByRole('button', { name: 'Change' }).length).toBe(2)
