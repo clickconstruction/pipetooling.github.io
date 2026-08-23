@@ -20,6 +20,8 @@ type BidVersionPickerProps = {
   reloadVersions: () => Promise<void>
   /** "Send… →" jump to the Cover Letter tab, where versions bundle into the submission (v2.2110). */
   onGoToCoverLetter?: () => void
+  /** Scenario names by id (bid pricings + templates), so the split modal can say which name the clone keeps (v2.2123). */
+  pricingSourceNames?: Record<string, string>
 }
 
 const chipBase: React.CSSProperties = {
@@ -46,6 +48,7 @@ export function BidVersionPicker({
   onSwitch,
   reloadVersions,
   onGoToCoverLetter,
+  pricingSourceNames,
 }: BidVersionPickerProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -114,6 +117,8 @@ export function BidVersionPicker({
   }, [isUnsplit])
 
   const pricingSource = currentPricingId ?? fallbackPricingSourceId ?? null
+  /** Name of the scenario the new version's prices start from (v2.2123: the clone keeps this name). */
+  const pricingSourceName = pricingSourceNames?.[pricingSource ?? ''] ?? null
 
   async function submitNewVersion() {
     const variantName = newName.trim()
@@ -345,7 +350,7 @@ export function BidVersionPicker({
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
             <input type="checkbox" checked={clonePricing} onChange={(e) => setClonePricing(e.target.checked)} />
-            Start its prices from this bid&apos;s
+            Start its prices from this bid&apos;s ★{pricingSourceName ? <> — <strong>{pricingSourceName}</strong> stays named {pricingSourceName}</> : null}
           </label>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button type="button" onClick={() => setModalOpen(false)} disabled={busy} style={btnGhost}>Cancel</button>

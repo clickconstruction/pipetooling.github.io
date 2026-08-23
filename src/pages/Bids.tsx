@@ -3123,6 +3123,7 @@ export default function Bids() {
             isExactMaterials={selectedBidForTakeoff.materials_model === 'exact'}
             onSwitch={(versionId) => switchActiveVersion(selectedBidForTakeoff.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForTakeoff.id), loadBidPricings(selectedBidForTakeoff.id)]).then(() => {})}
+            pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
           />
         )}
         <BidsTakeoffTab
@@ -3276,6 +3277,7 @@ export default function Bids() {
             isExactMaterials={selectedBidForPricing.materials_model === 'exact'}
             onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
+            pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
           />
         )}
         <BidsPricingTab
@@ -3358,6 +3360,7 @@ export default function Bids() {
             isExactMaterials={selectedBidForPricing.materials_model === 'exact'}
             onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
+            pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
           />
         )}
         <BidsCoverLetterTab
