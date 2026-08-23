@@ -1,13 +1,12 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
 import { SectionDock } from '../components/SectionDock'
 import { markStampInitial, markStampTime } from '../lib/quickfillMarkStamp'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
+import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
@@ -22,12 +21,11 @@ import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/Quickf
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
 import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection'
 import { BankingSortingSnapshotSection } from '../components/quickfill/BankingSortingSnapshotSection'
-import { HoursSection } from '../components/quickfill/HoursSection'
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
 import { QuickfillUnassignedFieldTimeSection } from '../components/quickfill/QuickfillUnassignedFieldTimeSection'
 import { QuickfillVehicleOdometersSection } from '../components/quickfill/QuickfillVehicleOdometersSection'
 import { QuickfillDifficultPeopleSection } from '../components/quickfill/QuickfillDifficultPeopleSection'
-import { QuickfillEmailInboxSection } from '../components/quickfill/QuickfillEmailInboxSection'
+import { QuickfillEmailSection } from '../components/quickfill/QuickfillEmailSection'
 import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
 import { QuickfillPhysicalInboxSection } from '../components/quickfill/QuickfillPhysicalInboxSection'
 import { QuickfillOfficeSection } from '../components/quickfill/QuickfillOfficeSection'
@@ -54,10 +52,6 @@ import { useQuickfillCompleteNoBillJobs } from '../hooks/useQuickfillCompleteNoB
 import { matchesQuickfillSectionSearch } from '../lib/quickfillSectionSearch'
 import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStagesJobsWithoutCustomer'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
-import {
-  canRoleSeeArBankUnallocatedOrgNudge,
-  useArBankUnallocatedCount,
-} from '../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -69,7 +63,6 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
   { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
   { id: 'quickfill-my-inbox', sectionId: 'my-inbox', label: 'My Inbox' },
-  { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
   { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours' },
   {
     id: 'quickfill-unassigned-field-time',
@@ -96,9 +89,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
     sectionId: 'tomorrow-schedule',
     label: "Tomorrow's Schedule",
   },
-  { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email Inbox' },
-  { id: 'quickfill-email-next-actions', sectionId: 'email-next-actions', label: 'Email: Next Actions' },
-  { id: 'quickfill-email-follow-up', sectionId: 'email-follow-up', label: 'Email: Follow Up' },
+  { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
   { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
   { id: 'quickfill-physical-inbox', sectionId: 'physical-inbox', label: 'Physical inbox' },
   { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
@@ -109,11 +100,6 @@ const APP_SETTINGS_KEY_QUICKFILL_MIN_HCP = 'quickfill_jobs_billing_min_hcp'
 const APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER = 'quickfill_section_order'
 const APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS = 'quickfill_section_banners'
 const QUICKFILL_SECTION_BANNER_MAX_CHARS = 800
-const SCHEDULE_SECTION_DEFAULT_BANNER = 'Are there any obvious schedule conflicts?'
-const TOMORROW_SCHEDULE_SECTION_DEFAULT_BANNER = 'Who is on what job tomorrow?'
-/** Jobs Cleanup (v2.2145): unlinked sub labor + the Pipeline's money cards. */
-const JOBS_CLEANUP_SECTION_DEFAULT_BANNER =
-  "Is every sub labor sheet attached to a job, and is today's money moving? Link each sheet, then work the cards — they're the same ones on Jobs → Pipeline."
 const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 
 const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
@@ -189,14 +175,11 @@ function capQuickfillBannerText(s: string): string {
   return t.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? t.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : t
 }
 
-/** Stored custom banner only; schedule falls back in `effectiveQuickfillSectionBanner`. */
+/** Stored custom banner wins; otherwise every section has a default question (v2.2189). */
 function effectiveQuickfillSectionBanner(sectionId: string, banners: Record<string, string>): string | null {
   const custom = banners[sectionId]?.trim()
   if (custom) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
-  if (sectionId === 'schedule') return SCHEDULE_SECTION_DEFAULT_BANNER
-  if (sectionId === 'tomorrow-schedule') return TOMORROW_SCHEDULE_SECTION_DEFAULT_BANNER
-  if (sectionId === 'jobs-cleanup') return JOBS_CLEANUP_SECTION_DEFAULT_BANNER
-  return null
+  return defaultQuickfillSectionBanner(sectionId)
 }
 
 type ButtonColor = 'red' | 'yellow' | 'green'
@@ -360,13 +343,10 @@ function QuickfillDevSectionSortableRow({
           value={bannerDraft}
           onChange={(e) => onBannerDraftChange(meta.sectionId, e.target.value)}
           onBlur={() => onBannerCommit(meta.sectionId, bannerDraft)}
-          placeholder={
-            meta.sectionId === 'schedule'
-              ? `Default: ${SCHEDULE_SECTION_DEFAULT_BANNER}`
-              : meta.sectionId === 'tomorrow-schedule'
-                ? `Default: ${TOMORROW_SCHEDULE_SECTION_DEFAULT_BANNER}`
-                : 'Shown at top of section when expanded'
-          }
+          placeholder={(() => {
+            const d = defaultQuickfillSectionBanner(meta.sectionId)
+            return d ? `Default: ${d}` : 'Shown at top of section when expanded'
+          })()}
           maxLength={QUICKFILL_SECTION_BANNER_MAX_CHARS}
           aria-label={`Optional banner for ${meta.label}, shown at top of section when expanded`}
           style={{
@@ -417,7 +397,6 @@ function QuickfillDevSectionSortableRow({
 }
 
 function QuickfillPage() {
-  const navigate = useNavigate()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const { showToast } = useToastContext()
   const {
@@ -464,12 +443,6 @@ function QuickfillPage() {
     transactionCount: staleTallyStaffTxCount,
     refetch: refetchStaleTallyStaffFollowUp,
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
-  const arBankCountEnabled = Boolean(authUser?.id) && canRoleSeeArBankUnallocatedOrgNudge(role)
-  const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
-    enabled: arBankCountEnabled,
-    authUserId: authUser?.id,
-    authRole: role,
-  })
   const [warningsModalOpen, setWarningsModalOpen] = useState(false)
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
@@ -880,26 +853,13 @@ function QuickfillPage() {
             onOpenNow={() => openSectionNow('warnings')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'warnings', label: 'Warnings' })}
           >
-            <QuickfillMetricReporter
-              sectionId="ar-bank-unallocated"
-              count={arBankCountEnabled ? arBankUnallocatedCount : null}
-              loading={arBankCountEnabled && arBankUnallocatedCount === null}
-            />
+            {/* v2.2189: the unallocated-deposits banner left Warnings — it's the
+                "Allocate N bank deposits" card in Jobs Cleanup now. */}
             <QuickfillMetricReporter
               sectionId="warnings"
               count={typeof staleTallyStaffTxCount === 'number' ? staleTallyStaffTxCount : null}
               loading={staleTallyStaffTxCount === null}
             />
-            {arBankCountEnabled && (
-              <DashboardArBankUnallocatedBanner
-                count={arBankUnallocatedCount ?? 0}
-                loading={arBankUnallocatedCount === null}
-                onGoToAr={() => {
-                  showToast('Opening Accounts Receivable…', 'info', 2800)
-                  navigate('/accounts-receivable')
-                }}
-              />
-            )}
             <DashboardTallyStaleStaffBanner
               peopleCount={typeof staleTallyStaffPeopleCount === 'number' ? staleTallyStaffPeopleCount : 0}
               transactionCount={typeof staleTallyStaffTxCount === 'number' ? staleTallyStaffTxCount : 0}
@@ -974,24 +934,6 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'office-leaving', label: 'Office Leaving' })}
           >
             <QuickfillOfficeSection variant="leaving" />
-          </QuickfillSectionWrapper>
-        )
-      case 'hours':
-        return (
-          <QuickfillSectionWrapper
-            id={id}
-            sectionId={sectionId}
-            label={label}
-            bannerText={bannerText}
-            withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['hours']?.marked_at ?? null)}
-            collapsed={isCollapsed('hours') && !forceExpandedSections.has('hours')}
-            mark={sectionMarks['hours']}
-            onMarkUpToDate={() => markSectionUpToDate('hours')}
-            onOpenNow={() => openSectionNow('hours')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'hours', label: 'People Hours (Old)' })}
-          >
-            <HoursSection />
           </QuickfillSectionWrapper>
         )
       case 'people-hours-new':
@@ -1402,75 +1344,15 @@ function QuickfillPage() {
             omitDefaultMarkButton
             onMarkUpToDate={() => undefined}
             onOpenNow={() => openSectionNow('email-inbox')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email Inbox' })}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email' })}
           >
-            <QuickfillEmailInboxSection
+            <QuickfillEmailSection
               metricSectionId="email-inbox"
               markButtonPalette={{
                 bg: BUTTON_BG[getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)],
                 border: BUTTON_BORDER[getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)],
               }}
               onConfirmMark={(note) => void markSectionUpToDate('email-inbox', { noteText: note })}
-            />
-          </QuickfillSectionWrapper>
-        )
-      case 'email-next-actions':
-        return (
-          <QuickfillSectionWrapper
-            id={id}
-            sectionId={sectionId}
-            label={label}
-            bannerText={bannerText}
-            withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)}
-            collapsed={isCollapsed('email-next-actions') && !forceExpandedSections.has('email-next-actions')}
-            mark={sectionMarks['email-next-actions']}
-            omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
-            onOpenNow={() => openSectionNow('email-next-actions')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-next-actions', label: 'Email: Next Actions' })}
-          >
-            <QuickfillEmailInboxSection
-              metricSectionId="email-next-actions"
-              fieldLabel="Still in Next Actions"
-              description=" - Before marking complete, list what is still in Next Actions (one item per line or free text)."
-              markButtonLabel="Mark Next Actions up to date!"
-              emptyNoteToast="List what is still in Next Actions before marking complete."
-              markButtonPalette={{
-                bg: BUTTON_BG[getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)],
-                border: BUTTON_BORDER[getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)],
-              }}
-              onConfirmMark={(note) => void markSectionUpToDate('email-next-actions', { noteText: note })}
-            />
-          </QuickfillSectionWrapper>
-        )
-      case 'email-follow-up':
-        return (
-          <QuickfillSectionWrapper
-            id={id}
-            sectionId={sectionId}
-            label={label}
-            bannerText={bannerText}
-            withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)}
-            collapsed={isCollapsed('email-follow-up') && !forceExpandedSections.has('email-follow-up')}
-            mark={sectionMarks['email-follow-up']}
-            omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
-            onOpenNow={() => openSectionNow('email-follow-up')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-follow-up', label: 'Email: Follow Up' })}
-          >
-            <QuickfillEmailInboxSection
-              metricSectionId="email-follow-up"
-              fieldLabel="Still in Follow Up"
-              description=" - Before marking complete, list what is still in Follow Up (one item per line or free text)."
-              markButtonLabel="Mark Follow Up up to date!"
-              emptyNoteToast="List what is still in Follow Up before marking complete."
-              markButtonPalette={{
-                bg: BUTTON_BG[getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)],
-                border: BUTTON_BORDER[getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)],
-              }}
-              onConfirmMark={(note) => void markSectionUpToDate('email-follow-up', { noteText: note })}
             />
           </QuickfillSectionWrapper>
         )
@@ -1685,6 +1567,10 @@ function QuickfillPage() {
               ✕
             </button>
           )}
+          {/* v2.2189: what the header count means, once, where every section's count is read. */}
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+            <b style={{ fontWeight: 600 }}>open</b> = items waiting on someone in the office · — = this section has no count
+          </div>
         </div>
       )}
       {noSectionsMatchSearch && (
