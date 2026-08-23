@@ -49,7 +49,7 @@ export function gcStatementPortalCardHtml(portalUrl: string | null | undefined):
   return `<table role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px"><tr>
     <td style="border:1px solid #ddd6c8;border-left:4px solid #b0662f;background:#fbf7f0;border-radius:6px;padding:12px 14px">
       <p style="margin:0;font-size:14px;font-weight:bold;color:#16283c">Your account, any time</p>
-      <p style="margin:3px 0 0;font-size:13px;color:#5a6b7e;line-height:1.4">This statement stays current at <a href="${escapeHtml(url)}" style="color:#b0662f;font-weight:bold;text-decoration:none">${escapeHtml(shown)}</a> — pay any bill there by card or ACH.</p>
+      <p style="margin:3px 0 0;font-size:13px;color:#5a6b7e;line-height:1.4">This statement stays current at <a href="${escapeHtml(url)}" style="color:#b0662f;font-weight:bold;text-decoration:none">${escapeHtml(shown)}</a></p>
     </td>
   </tr></table>`
 }
@@ -57,7 +57,7 @@ export function gcStatementPortalCardHtml(portalUrl: string | null | undefined):
 /** Plain-text counterpart of the portal card. */
 export function gcStatementPortalLineText(portalUrl: string | null | undefined): string | null {
   const url = (portalUrl ?? '').trim()
-  return url ? `Your account, any time: this statement stays current at ${url} — pay any bill there by card or ACH.` : null
+  return url ? `Your account, any time: this statement stays current at ${url}` : null
 }
 
 const escapeHtml = (s: string) =>
