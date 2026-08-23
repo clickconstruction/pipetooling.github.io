@@ -28,6 +28,8 @@ import {
 import { SAFETY_ORANGE, SAFETY_ORANGE_BORDER, bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { getSubmissionSectionKey } from '../../lib/bids/submissionSections'
+import type { GcPacket } from '../../lib/bids/gcPackets'
+import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
 import { formatBidStaffDisplayName } from '../../lib/bids/bidBoardStaffOutcomes'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useBidPreview } from '../../contexts/BidPreviewModalContext'
@@ -54,8 +56,13 @@ type SubmissionSectionOpenState = {
 
 const SUBMISSION_UNSENT_SECTION_LABEL = 'Unsent / Working Bids'
 
+/** One list row = one bid × one GC (Bids by GC, v2.2178). `gc` is the row's resolved packet. */
+type SectionRow = { bid: BidWithBuilder; gc: GcOutcomeRow; rowKey: string }
+
 type BidSubmissionFollowupTabProps = {
   bids: BidWithBuilder[]
+  /** Bids by GC: per-bid GC packets — the status lists show one row per GC, in that GC's bucket. */
+  gcPacketsByBid: Record<string, GcPacket[]>
   authUser: User | null
   selectedBid: BidWithBuilder | null
   onSelectBid: (bid: BidWithBuilder) => void
@@ -86,6 +93,7 @@ type BidSubmissionFollowupTabProps = {
 
 export function BidSubmissionFollowupTab({
   bids,
+  gcPacketsByBid,
   authUser,
   selectedBid,
   onSelectBid,
@@ -250,20 +258,75 @@ export function BidSubmissionFollowupTab({
   const submissionUnsent = filteredBidsForSubmission.filter(
     (b) => bidEligibleForWorkingBoardArchive(b) && !b.working_board_archived_at,
   )
-  const submissionPending = filteredBidsForSubmission.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
-  const submissionWon = filteredBidsForSubmission
-    .filter((b) => b.outcome === 'won')
+  // Bids by GC (v2.2178): one row per GC the bid went to, in the bucket that GC's packet resolves to.
+  // Single-GC bids yield exactly one row with the bid's own outcome (as before).
+  const sectionRows = useMemo<SectionRow[]>(
+    () =>
+      filteredBidsForSubmission.flatMap((b) => {
+        const builderName = (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
+        const builderKey = b.customer_id ?? b.gc_builder_id ?? builderName
+        return gcOutcomeRowsForBid(b, { key: builderKey, name: builderName }, gcPacketsByBid[b.id]).map((gc) => ({
+          bid: b,
+          gc,
+          rowKey: gc.packetKey ? `${b.id}:${gc.gcKey}` : b.id,
+        }))
+      }),
+    [filteredBidsForSubmission, gcPacketsByBid],
+  )
+  const submissionPending = sectionRows.filter((r) => r.gc.outcome === 'pending')
+  // "Started or Complete" is the bid's own state: its primary-GC row lists there; a packet win for
+  // another GC lists under Won.
+  const isStartedRow = (r: SectionRow) =>
+    r.gc.outcome === 'won' && r.bid.outcome === 'started_or_complete' && (r.gc.siblings.length === 0 || r.gc.gcKey === (r.bid.customer_id ?? r.bid.gc_builder_id ?? ''))
+  const submissionWon = sectionRows
+    .filter((r) => r.gc.outcome === 'won' && !isStartedRow(r))
     .sort((a, b) => {
       // Handle null dates - put them at the end
-      if (!a.estimated_job_start_date && !b.estimated_job_start_date) return 0
-      if (!a.estimated_job_start_date) return 1
-      if (!b.estimated_job_start_date) return -1
-      
+      if (!a.bid.estimated_job_start_date && !b.bid.estimated_job_start_date) return 0
+      if (!a.bid.estimated_job_start_date) return 1
+      if (!b.bid.estimated_job_start_date) return -1
+
       // Sort by date ascending (earliest first)
-      return a.estimated_job_start_date.localeCompare(b.estimated_job_start_date)
+      return a.bid.estimated_job_start_date.localeCompare(b.bid.estimated_job_start_date)
     })
-  const submissionStartedOrComplete = filteredBidsForSubmission.filter((b) => b.outcome === 'started_or_complete')
-  const submissionLost = filteredBidsForSubmission.filter((b) => b.outcome === 'lost')
+  const submissionStartedOrComplete = sectionRows.filter(isStartedRow)
+  const submissionLost = sectionRows.filter((r) => r.gc.outcome === 'lost')
+
+  /** The GC cell for a list row: the row's GC, and — when the bid went to several — where else it went. */
+  function renderRowGcCell(r: SectionRow) {
+    const { bid, gc } = r
+    const multi = gc.siblings.length > 0 || gc.sharedLetter
+    const name = multi ? gc.gcName : (bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—')
+    if (!multi && !(bid.customers || bid.bids_gc_builders)) return '—'
+    const outcomeWord = (o: string) => (o === 'pending' ? 'waiting' : o)
+    const outcomeColor = (o: string) => (o === 'won' ? 'var(--text-emerald-800)' : o === 'lost' ? 'var(--text-red-800)' : 'var(--text-muted)')
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.1rem' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+          <button type="button" onClick={(e) => { e.stopPropagation(); if (multi && onOpenBuilderLens && gc.gcKey !== (bid.customer_id ?? '')) onOpenBuilderLens(gc.gcKey); else onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+            {name}
+          </button>
+          {onOpenBuilderLens && (multi ? gc.gcKey : bid.customer_id) && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(multi ? gc.gcKey : (bid.customer_id as string)) }}
+              title="Open this builder on the By-builder lens (all their bids + contact log)"
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
+            >
+              ↗
+            </button>
+          )}
+        </span>
+        {multi ? (
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }} title={gc.sharedLetter ? 'On the bid’s “Also sent to” list — same letter as the bid’s GC' : 'This bid went to more than one GC; this row is this GC’s packet'}>
+            {gc.sharedLetter ? 'same letter · ' : ''}also to {gc.siblings.length > 0 ? gc.siblings.map((sb, i) => (
+              <span key={sb.gcKey}>{i > 0 ? ', ' : ''}{sb.gcName} <span style={{ color: outcomeColor(sb.outcome), fontWeight: 600 }}>{outcomeWord(sb.outcome)}</span></span>
+            )) : '—'}
+          </span>
+        ) : null}
+      </span>
+    )
+  }
 
   const submissionFollowupStaleDaysThresholdParsed = useMemo(() => {
     const t = Number.parseInt(submissionFollowupStaleDaysInput.trim(), 10)
@@ -324,13 +387,14 @@ export function BidSubmissionFollowupTab({
     const list: BidWithBuilder[] =
       sectionKey === 'unsent'
         ? submissionUnsent
-        : sectionKey === 'pending'
+        : (sectionKey === 'pending'
           ? submissionPending
           : sectionKey === 'won'
             ? submissionWon
             : sectionKey === 'startedOrComplete'
               ? submissionStartedOrComplete
               : submissionLost
+        ).map((r) => r.bid).filter((b, i, arr) => arr.findIndex((x) => x.id === b.id) === i)
     const currentIndex = list.findIndex((b) => b.id === selectedBid.id)
     const total = list.length
     const inList = currentIndex >= 0
@@ -1678,10 +1742,10 @@ export function BidSubmissionFollowupTab({
               {submissionPending.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
               ) : (
-                submissionPending.map((bid) => (
+                submissionPending.map(({ bid, gc, rowKey }) => (
                   <tr
-                    key={bid.id}
-                    id={`submission-row-${bid.id}`}
+                    key={rowKey}
+                    id={gc.siblings.length === 0 || gc.gcKey === (bid.customer_id ?? bid.gc_builder_id ?? '') ? `submission-row-${bid.id}` : undefined}
                     onClick={() => onSelectBid(bid)}
                     style={{
                       borderBottom: '1px solid var(--border)',
@@ -1722,25 +1786,7 @@ export function BidSubmissionFollowupTab({
                       </div>
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
-                      {(bid.customers || bid.bids_gc_builders) ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                          </button>
-                          {onOpenBuilderLens && bid.customer_id && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
-                              title="Open this builder on the By-builder lens (all their bids + contact log)"
-                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
-                            >
-                              ↗
-                            </button>
-                          )}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
+                      {renderRowGcCell({ bid, gc, rowKey })}
                     </td>
                     <td style={{ padding: '0.75rem' }}>
                       {(() => {
@@ -1827,10 +1873,10 @@ export function BidSubmissionFollowupTab({
               {submissionWon.length === 0 ? (
                 <tr><td colSpan={9} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
               ) : (
-                submissionWon.map((bid) => (
+                submissionWon.map(({ bid, gc, rowKey }) => (
                   <tr
-                    key={bid.id}
-                    id={`submission-row-${bid.id}`}
+                    key={rowKey}
+                    id={gc.siblings.length === 0 || gc.gcKey === (bid.customer_id ?? bid.gc_builder_id ?? '') ? `submission-row-${bid.id}` : undefined}
                     onClick={() => onSelectBid(bid)}
                     style={{
                       borderBottom: '1px solid var(--border)',
@@ -1885,25 +1931,7 @@ export function BidSubmissionFollowupTab({
                     <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid, submissionLedgerPrefixMap)}</td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.estimated_job_start_date)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
-                      {(bid.customers || bid.bids_gc_builders) ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                          </button>
-                          {onOpenBuilderLens && bid.customer_id && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
-                              title="Open this builder on the By-builder lens (all their bids + contact log)"
-                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
-                            >
-                              ↗
-                            </button>
-                          )}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
+                      {renderRowGcCell({ bid, gc, rowKey })}
                     </td>
                     <td style={{ padding: '0.75rem' }}>
                       {(() => {
@@ -1974,10 +2002,10 @@ export function BidSubmissionFollowupTab({
               {submissionStartedOrComplete.length === 0 ? (
                 <tr><td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
               ) : (
-                submissionStartedOrComplete.map((bid) => (
+                submissionStartedOrComplete.map(({ bid, gc, rowKey }) => (
                   <tr
-                    key={bid.id}
-                    id={`submission-row-${bid.id}`}
+                    key={rowKey}
+                    id={gc.siblings.length === 0 || gc.gcKey === (bid.customer_id ?? bid.gc_builder_id ?? '') ? `submission-row-${bid.id}` : undefined}
                     onClick={() => onSelectBid(bid)}
                     style={{
                       borderBottom: '1px solid var(--border)',
@@ -1987,25 +2015,7 @@ export function BidSubmissionFollowupTab({
                   >
                     <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid, submissionLedgerPrefixMap)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
-                      {(bid.customers || bid.bids_gc_builders) ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
-                            {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
-                          </button>
-                          {onOpenBuilderLens && bid.customer_id && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); onOpenBuilderLens(bid.customer_id as string) }}
-                              title="Open this builder on the By-builder lens (all their bids + contact log)"
-                              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.8rem', lineHeight: 1 }}
-                            >
-                              ↗
-                            </button>
-                          )}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
+                      {renderRowGcCell({ bid, gc, rowKey })}
                     </td>
                     <td style={{ padding: '0.75rem' }}>
                       {(() => {
@@ -2082,13 +2092,16 @@ export function BidSubmissionFollowupTab({
             {submissionLost.length === 0 ? (
               <tr><td colSpan={4} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
             ) : (
-              submissionLost.flatMap((bid) => {
-                const lostCategory = isBidLossCategoryKey(bid.loss_category) ? bid.loss_category : null
+              submissionLost.flatMap(({ bid, gc, rowKey }) => {
+                // Multi-GC rows carry the packet's reason (inferred "GC lost the project" beside a sibling win); single-GC rows the bid's.
+                const packetScoped = gcRowIsPacketScoped(gc)
+                const lostCategory = isBidLossCategoryKey(gc.lossCategory) ? gc.lossCategory : null
                 const lostChip = BID_LOSS_CATEGORIES.find((c) => c.key === lostCategory) ?? null
+                const lostNote = packetScoped ? gc.lossNote : (bid as { loss_reason?: string | null }).loss_reason?.trim() || null
                 return [
                 <tr
-                  key={bid.id}
-                  id={`submission-row-${bid.id}`}
+                  key={rowKey}
+                  id={gc.siblings.length === 0 || gc.gcKey === (bid.customer_id ?? bid.gc_builder_id ?? '') ? `submission-row-${bid.id}` : undefined}
                   onClick={() => onSelectBid(bid)}
                   style={{
                     borderBottom: '1px solid var(--border)',
@@ -2096,7 +2109,10 @@ export function BidSubmissionFollowupTab({
                     background: selectedBid?.id === bid.id ? '#eff6ff' : undefined,
                   }}
                 >
-                  <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                  <td style={{ padding: '0.75rem' }}>
+                    <div>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</div>
+                    {gc.siblings.length > 0 || gc.sharedLetter ? <div style={{ fontSize: '0.8rem', marginTop: '0.1rem' }}>{renderRowGcCell({ bid, gc, rowKey })}</div> : null}
+                  </td>
                   <td style={{ padding: '0.75rem' }}>
                     {formatDateYYMMDD(bid.bid_due_date)}
                     {formatBidDueTime(bid.bid_due_time) ? (
@@ -2108,7 +2124,7 @@ export function BidSubmissionFollowupTab({
                       {lostChip ? (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setLostReasonPanelBidId((prev) => (prev === bid.id ? null : bid.id)) }}
+                          onClick={(e) => { e.stopPropagation(); setLostReasonPanelBidId((prev) => (prev === rowKey ? null : rowKey)) }}
                           title="Change the loss reason"
                           style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 700, padding: '0.08rem 0.5rem', borderRadius: 999, border: 'none', cursor: 'pointer', background: lostChip.chipBg, color: lostChip.chipFg, whiteSpace: 'nowrap' }}
                         >
@@ -2117,15 +2133,16 @@ export function BidSubmissionFollowupTab({
                       ) : (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setLostReasonPanelBidId((prev) => (prev === bid.id ? null : bid.id)) }}
+                          onClick={(e) => { e.stopPropagation(); setLostReasonPanelBidId((prev) => (prev === rowKey ? null : rowKey)) }}
                           title="Record why this bid was lost"
                           style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.08rem 0.5rem', borderRadius: 999, border: '1px solid var(--border)', cursor: 'pointer', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', whiteSpace: 'nowrap' }}
                         >
                           why? →
                         </button>
                       )}
-                      {(bid as { loss_reason?: string | null }).loss_reason?.trim() ? (
-                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>“{(bid as { loss_reason?: string | null }).loss_reason?.trim()}”</span>
+                      {lostChip && gc.reasonInferred ? <span title="Recorded when another GC on this bid was marked won" style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 3, padding: '0 0.25rem' }}>auto</span> : null}
+                      {lostNote ? (
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>“{lostNote}”</span>
                       ) : null}
                     </span>
                   </td>
@@ -2161,13 +2178,14 @@ export function BidSubmissionFollowupTab({
                     )}
                   </td>
                 </tr>,
-                ...(lostReasonPanelBidId === bid.id
+                ...(lostReasonPanelBidId === rowKey
                   ? [
-                      <tr key={`${bid.id}-reason-panel`}>
+                      <tr key={`${rowKey}-reason-panel`}>
                         <td colSpan={4} style={{ padding: '0 0.75rem 0.5rem' }}>
                           <BidLostQuickPopover
                             bid={bid}
-                            onSaved={onReloadBids}
+                            packet={packetScoped ? { versionIds: gc.versionIds, gcName: gc.gcName, lossCategory: gc.lossCategory, note: gc.lossNote } : undefined}
+                            onSaved={() => { onReloadBids(); window.dispatchEvent(new Event('bid-gc-outcome-changed')) }}
                             onClose={() => setLostReasonPanelBidId(null)}
                           />
                         </td>
