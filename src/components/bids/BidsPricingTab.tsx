@@ -35,6 +35,7 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { MyBidsToggle } from './MyBidsToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
+import { AdoptBidModal } from './AdoptBidModal'
 import {
   printPricingPage as printPricingPageDoc,
   printAllPricingPages as printAllPricingPagesDoc,
@@ -334,6 +335,8 @@ export function BidsPricingTab({
   // the fly (no view switch), so "the ★ is what the customer sees — Cover Letter, Share, Print,
   // and the bid value all use it" is finally true end to end.
   const [starChooser, setStarChooser] = useState<'share' | 'print' | 'csv' | null>(null)
+  // F6b (v2.2133): "Adopt an existing bid" — fold a board bid into this package as a version.
+  const [adoptOpen, setAdoptOpen] = useState(false)
   const [starChoice, setStarChoice] = useState<'star' | 'viewed'>('star')
   const [starBusy, setStarBusy] = useState(false)
   const [shareOverride, setShareOverride] = useState<{ pricingId: string; name: string; rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null>(null)
@@ -2669,7 +2672,23 @@ export function BidsPricingTab({
                               <span>
                                 <b style={{ display: 'block', fontSize: '0.92rem' }}>Another bid to send</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  The customer sees it — its own section or letter. Same counts; own takeoff and prices.
+                                  The customer sees it — its own section or letter. Starts as a copy of this bid's counts, takeoff and prices.
+                                </span>
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              style={doorOptStyle}
+                              onClick={() => {
+                                setWbVariantDoorOpen(false)
+                                setAdoptOpen(true)
+                              }}
+                            >
+                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>⤵</span>
+                              <span>
+                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Adopt an existing bid</b>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                  Pull a bid already on the board in as one of this package's bids. Its counts, prices and sent history come with it; its old row retires.
                                 </span>
                               </span>
                             </button>
@@ -4069,6 +4088,17 @@ export function BidsPricingTab({
         }}
       />
 
+      {adoptOpen && selectedBidForPricing ? (
+        <AdoptBidModal
+          targetBid={selectedBidForPricing}
+          onClose={() => setAdoptOpen(false)}
+          onAdopted={async () => {
+            setAdoptOpen(false)
+            window.dispatchEvent(new Event('bid-version-picker-reload'))
+            await loadBids()
+          }}
+        />
+      ) : null}
       {starChooser && selectedBidForPricing ? (() => {
         const starId = selectedBidForPricing.selected_price_book_version_id ?? null
         const starName = priceBookVersions.find((v) => v.id === starId)?.name ?? '—'
