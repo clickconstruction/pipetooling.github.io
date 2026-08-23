@@ -246,14 +246,10 @@ export function BidVersionPicker({
     <div style={{ marginBottom: '1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
-          Bids in this package
-          {!isUnsplit ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> — each sends on its own</span> : null}
+          {isUnsplit ? 'One bid' : 'Bids in this package'}
+          {!isUnsplit ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> — each goes to the customer on its own</span> : null}
         </span>
-        {isUnsplit ? (
-          <span style={{ ...chipBase, background: 'var(--bg-blue-200)', border: '1px solid #3b82f6', cursor: 'default', fontWeight: 600 }}>
-            Current
-          </span>
-        ) : (
+        {isUnsplit ? null : (
           bidVersions.map((v) => {
             const active = selectedBidVersionId === v.id
             return (

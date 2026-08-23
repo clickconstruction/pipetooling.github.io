@@ -423,7 +423,7 @@ export function BidsLaborTab({
   async function deleteLaborVersion(v: LaborBookVersion) {
     if (
       !(await confirmDialog({
-        message: `Delete labor book "${v.name}"? This will delete all entries in this version.`,
+        message: `Delete labor book "${v.name}"? This will delete all entries in this book.`,
         confirmLabel: 'Delete',
         danger: true,
       }))
@@ -484,7 +484,7 @@ export function BidsLaborTab({
   async function saveLaborEntry(e: React.FormEvent) {
     e.preventDefault()
     if (!laborBookEntriesVersionId) {
-      setError('No labor book version selected')
+      setError('No labor book selected')
       return
     }
     const fixtureName = laborEntryFixtureName.trim()
@@ -1098,7 +1098,7 @@ export function BidsLaborTab({
                 <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>HOURS</h3>
                 <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Labor book version</label>
+                    <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Labor book</label>
                     <select
                       value={selectedLaborBookVersionId ?? ''}
                       onChange={(e) => {
@@ -2051,7 +2051,7 @@ export function BidsLaborTab({
                   type="button"
                   onClick={() => openEditLaborVersion(v)}
                   style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                  title="Edit version name"
+                  title="Edit book name"
                 >
                   ✎
                 </button>
@@ -2062,7 +2062,7 @@ export function BidsLaborTab({
               onClick={openNewLaborVersion}
               style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
-              Add version
+              Add book
             </button>
           </div>
           {laborBookEntriesVersionId && (
@@ -2129,7 +2129,7 @@ export function BidsLaborTab({
             style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ margin: '0 0 1rem' }}>{editingLaborVersion ? 'Edit version' : 'New version'}</h3>
+            <h3 style={{ margin: '0 0 1rem' }}>{editingLaborVersion ? 'Edit book' : 'New book'}</h3>
             <form onSubmit={saveLaborVersion}>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
               <input

@@ -1887,7 +1887,7 @@ export function BidsTakeoffTab({
                     title={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? undefined}
                     style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '12rem' }}
                   >
-                    <option value="">— Select version —</option>
+                    <option value="">— Select a book —</option>
                     {takeoffBookVersions.map((v) => (
                       <option key={v.id} value={v.id}>{v.name}</option>
                     ))}
