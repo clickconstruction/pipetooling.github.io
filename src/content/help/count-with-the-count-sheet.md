@@ -9,11 +9,11 @@ The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}}
 
 ## Read it like an audit
 
-- The strip up top totals **Items**, then **Counts** (rows counted each — fixtures, tie-ins, fittings) and **Line feet** (rows measured in feet — the takeoff's `ft of …` line types) **separately**, so 12 water closets never get added to 148 ft of copper. It also counts rows with **no plan page** (red — click the tile to see just those) and how many plan pages the count cites.
+- The strip up top totals **Items**, then **Counts** (rows counted each — fixtures, tie-ins, fittings) and **Line feet** (rows measured in feet — the takeoff's `ft of …` line types) **separately**, so 12 water closets never get added to 148 ft of copper. The **Plan pages cited** tile shows how many plan pages the count cites and, in red, how many rows have **no plan page** — `1 (4 no pages)` — click it to see just those rows, click again to show all.
 - Every row has a **unit** beside its count — **ea** (faint until you hover), **ft**, **sq ft**, or **px**. It follows the fixture name (`ft of …` is feet) until you pick one from the little dropdown; a picked unit sticks even if you rename the row. Lines copied from CountTooling without a scale come in as `px of …` — they get a red **Unscaled** tile and a red **px** tag: set the page scale in CountTooling and copy again rather than pricing pixels.
 
 :::example What the strip says
-Items 35 · Counts 1,122 ea · 29 items · Line feet 444.74 ft · 6 line types · No plan page 4 · Plan pages cited 1 — the bid has 29 counted things and six pipe runs totalling 445 feet.
+Items 35 · Counts 1,122 ea · 29 items · Line feet 444.74 ft · 6 line types · Plan pages cited 1 (4 no pages) — the bid has 29 counted things and six pipe runs totalling 445 feet, and four rows still need a page.
 :::
 - Flip to **By plan page** and the sheet regroups under each page — "Plan page 26 — 13 items, 12 ea · 148.5 ft" — with a red **No plan page** bucket at the bottom to clean up before submitting.
 
