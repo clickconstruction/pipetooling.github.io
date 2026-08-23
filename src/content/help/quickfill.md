@@ -41,6 +41,8 @@ Search sections… `bill` → shows **Jobs Billing**, **Billed Awaiting Payment*
 
 The jump buttons above the box always show every section, and the floating section bar follows the search. The filter resets when you leave the page.
 
+On a phone the jump buttons are a single row you flick sideways, with a one-line tally under it — **3 of 19 fresh · 16 need a look · oldest 2d** — so the first section starts right under the search box. Every section header also carries a small {{button:red|✓ Mark}} that does the same thing as the big button at the foot, so a long list never stands between you and marking it (sections that ask for a note first — Texts, Email, Physical inbox — keep just their own button).
+
 ## What's on the page
 
 The sections cover the office's recurring review surfaces — among them:

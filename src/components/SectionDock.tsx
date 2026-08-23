@@ -93,7 +93,8 @@ export function SectionDock({
     <div
       style={{
         position: 'fixed',
-        bottom: 12,
+        // Above the Dispatch / Job mode footer when one is showing (v2.2184 — it was hidden behind it).
+        bottom: 'calc(var(--app-bottom-chrome, 0px) + 12px)',
         // Expanded: centered pill. Collapsed: small stub parked at the screen's right edge.
         ...(collapsed
           ? { right: 12 }

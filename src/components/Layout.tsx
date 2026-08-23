@@ -1791,6 +1791,12 @@ export default function Layout() {
             dispatchModeActive || jobModeFooterActive
               ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
               : undefined,
+          // v2.2184: fixed page chrome (the Quickfill / Dashboard section dock)
+          // reads this to sit ABOVE the Dispatch / Job mode footer instead of behind it.
+          ['--app-bottom-chrome' as string]:
+            dispatchModeActive || jobModeFooterActive
+              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
+              : '0px',
         }}
       >
         <div
