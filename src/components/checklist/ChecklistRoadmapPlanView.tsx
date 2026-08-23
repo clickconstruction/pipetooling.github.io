@@ -9,8 +9,10 @@ import {
   type PlanTask,
 } from '../../lib/roadmapPlanView'
 import { lockedStageHint } from '../../lib/roadmapBridge'
+import { nextUpPicks } from '../../lib/roadmapNextUp'
 import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
+import { ChecklistRoadmapNextUpPanel } from './ChecklistRoadmapNextUpPanel'
 import type { TechTreeEdge } from '../../lib/checklistTechTreeGraph'
 
 type UserRow = { id: string; name: string; email: string }
@@ -147,6 +149,12 @@ export function ChecklistRoadmapPlanView({
     () => goalMilestones({ groups, tasksByGroup, completeIds, edges }),
     [groups, tasksByGroup, completeIds, edges],
   )
+  // "Next up" shortlist (v2.2129): pick, don't sort — lanes of ≤5 with reasons
+  const nextUp = useMemo(
+    () => nextUpPicks({ groups, tasksByGroup, edges, unlockedIds, completeIds }),
+    [groups, tasksByGroup, edges, unlockedIds, completeIds],
+  )
+  const tasksById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks])
 
   const focusData = useMemo(
     () => (focus ? planFocusRows({ nowStages, tasksByGroup, focus }) : null),
@@ -254,6 +262,11 @@ export function ChecklistRoadmapPlanView({
           <div style={{ width: `${Math.max(pct, stats.done > 0 ? 2 : 0)}%`, height: '100%', background: '#16a34a' }} />
         </div>
       </div>
+
+      {!focus ? (
+        // Hidden while a focus lens is up — the lens is already a worklist.
+        <ChecklistRoadmapNextUpPanel lanes={nextUp} tasksById={tasksById} taskNumbers={taskNumbers} nameById={nameById} onOpenTask={onOpenTask} />
+      ) : null}
 
       {focus && focusData ? (
         <div
