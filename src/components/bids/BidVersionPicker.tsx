@@ -273,7 +273,9 @@ export function BidVersionPicker({
                   {v.name}
                   {/* Purpose facts (v2.2110): whether this bid version rides in the cover letter, and its GC. */}
                   <span style={{ display: 'block', fontSize: '0.625rem', color: v.include_in_submission ? 'var(--text-green-600)' : 'var(--text-muted)', fontWeight: 600 }}>
-                    {v.include_in_submission ? 'in cover letter ✓' : 'not in cover letter'}
+                    {v.include_in_submission
+                      ? `in letter ✓ · ${(v as BidVersion & { is_alternate?: boolean | null }).is_alternate ? 'alternate' : 'base'}`
+                      : 'not in letter'}
                   </span>
                   {v.customer_id ? (
                     <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-blue-800)', fontWeight: 600 }}>
@@ -300,7 +302,11 @@ export function BidVersionPicker({
         {!isUnsplit ? (
           <button
             type="button"
-            onClick={() => onGoToCoverLetter?.()}
+            onClick={() => {
+              // v2.2117: "Send… →" lands on the Cover Letter's New view (the one that bundles bids).
+              try { window.localStorage.setItem('bids_cover_letter_view_v1', 'new') } catch { /* device just won't remember */ }
+              onGoToCoverLetter?.()
+            }}
             style={{ marginLeft: 'auto', padding: '0.35rem 0.6rem', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-700)' }}
             title="Bundle and send these from the Cover Letter"
           >

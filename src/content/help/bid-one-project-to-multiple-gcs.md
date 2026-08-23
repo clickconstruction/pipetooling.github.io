@@ -21,7 +21,7 @@ Typical setup: one version per GC (e.g. "Turner" and "DPR"), each with its own p
 
 ## Generate the documents
 
-1. On the **Cover Letter** page, tick the versions to include under **Versions in this submission**.
+1. On the **Cover Letter** page (New), tick the bids to include under **In this cover letter** — each goes in at its ★ price. (On Old, tick price scenarios under *Versions in this submission*.)
 2. When the included versions point at more than one GC, a **Documents by GC** box appears — one card per GC, showing which versions land in that GC's document.
 3. Click a card to select it: the preview, {{button:blue|Print}}, and copy buttons all follow the selected GC.
 

@@ -41,7 +41,9 @@ import type {
   BidCountRowCustomPrice,
   BidCountRowSubmissionHide,
   BidPaymentScheduleRow,
+  BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
+import { bundleSummary, letterTotal, planLetterSections, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -50,6 +52,11 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 
 const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
+
+/** bid_versions + the two F1 columns (v2.2117); typed locally until the generated types catch up. */
+type BidVersionLetter = BidVersion & { is_alternate?: boolean | null; starred_price_book_version_id?: string | null }
+type BundleSection = { name: string; bidVersionId: string | null; revenueSum: number; fixtureRows: { fixture: string; count: number }[]; isAlternate: boolean }
+const COVER_LETTER_VIEW_KEY = 'bids_cover_letter_view_v1'
 
 type BidsCoverLetterTabProps = {
   bids: BidWithBuilder[]
@@ -73,6 +80,9 @@ type BidsCoverLetterTabProps = {
   bidPricings: PriceBookVersion[]
   /** Reload the bid's Pricings after an include/reorder change so the bundle recomputes. */
   reloadBidPricings: () => Promise<void>
+  /** The selected bid's Versions — the New view bundles these, each at its ★ scenario (v2.2117). */
+  bidVersions: BidVersion[]
+  reloadBidVersions: () => Promise<void>
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
   // Parent-owned *ByBid maps (also read by downloadApprovalPdf)
   coverLetterInclusionsByBid: Record<string, string>
@@ -115,6 +125,8 @@ export function BidsCoverLetterTab({
   versionGcFingerprint,
   bidPricings,
   reloadBidPricings,
+  bidVersions,
+  reloadBidVersions,
   loadBids,
   coverLetterInclusionsByBid,
   setCoverLetterInclusionsByBid,
@@ -149,6 +161,24 @@ export function BidsCoverLetterTab({
   const [applyingBidValue, setApplyingBidValue] = useState(false)
   const [bidValueAppliedSuccess, setBidValueAppliedSuccess] = useState(false)
   const [bidSubmissionQuickAddSuccess, setBidSubmissionQuickAddSuccess] = useState<string | null>(null)
+  // Old / New pills (v2.2117), like Pricing's: Old = today's letter (bundles checked price
+  // scenarios); New = bundles the bid's VERSIONS, each at its ★ scenario, base + alternates.
+  // Per-device; default New. "Send… →" on the version picker always lands on New.
+  const [coverLetterView, setCoverLetterView] = useState<'old' | 'new'>(() => {
+    try {
+      return window.localStorage.getItem(COVER_LETTER_VIEW_KEY) === 'old' ? 'old' : 'new'
+    } catch {
+      return 'new'
+    }
+  })
+  const switchCoverLetterView = (next: 'old' | 'new') => {
+    setCoverLetterView(next)
+    try {
+      window.localStorage.setItem(COVER_LETTER_VIEW_KEY, next)
+    } catch {
+      /* device just won't remember */
+    }
+  }
 
   // Reset quick-add when the selected bid changes
   useEffect(() => {
@@ -300,7 +330,7 @@ export function BidsCoverLetterTab({
   // data is loaded by the engine, so for the bundle we fetch each INCLUDED Pricing's entries +
   // overlays here and compute revenue (cost inputs are irrelevant to the cover letter, so they're
   // passed as zeros). Precomputed into state so Print / Copy stay synchronous (clipboard gesture).
-  const [bundlePricings, setBundlePricings] = useState<{ name: string; bidVersionId: string | null; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }[]>([])
+  const [bundlePricings, setBundlePricings] = useState<BundleSection[]>([])
   // Multi-GC (v2.1159): per-version GC overrides for the selected bid, and
   // which GC packet the preview/Print/Copy act on when there are several.
   const [versionGcById, setVersionGcById] = useState<Record<string, GcPacketCustomer | null>>({})
@@ -326,35 +356,50 @@ export function BidsCoverLetterTab({
   }, [selectedBidForPricing?.id, versionGcFingerprint])
   useEffect(() => {
     const bid = selectedBidForPricing
-    const included = bidPricings
-      .filter((p) => p.include_in_submission)
-      .sort((a, b) => a.sort_order - b.sort_order)
-    if (!bid || included.length <= 1 || pricingCountRows.length === 0) {
+    // What goes in the document, by view:
+    //  • New (v2.2117): the bid's VERSIONS flagged in-letter, base first then alternates, each at
+    //    its ★ scenario. A split bid bundles even a single included version (the letter follows
+    //    what's checked, not what's active); an unsplit bid has no versions → single letter.
+    //  • Old: the checked price scenarios, 2+ of them, one letter each (unchanged).
+    const plans: Array<{ name: string; bidVersionId: string | null; pricingId: string | null; isAlternate: boolean }> =
+      coverLetterView === 'new'
+        ? (bidVersions.length > 0
+            ? planLetterSections(bidVersions as BidVersionLetter[], bidPricings).map((p) => ({ name: p.name, bidVersionId: p.versionId, pricingId: p.pricingId, isAlternate: p.isAlternate }))
+            : [])
+        : (() => {
+            const included = bidPricings.filter((p) => p.include_in_submission).sort((a, b) => a.sort_order - b.sort_order)
+            return included.length > 1 ? included.map((p) => ({ name: p.name, bidVersionId: p.bid_version_id ?? null, pricingId: p.id as string | null, isAlternate: false })) : []
+          })()
+    if (!bid || plans.length === 0 || pricingCountRows.length === 0) {
       setBundlePricings([])
       return
     }
     let cancelled = false
-    const versionIds = included.map((p) => p.id)
+    const versionIds = plans.map((p) => p.pricingId).filter((id): id is string => !!id)
     void (async () => {
-      const [entriesRes, assignRes, customRes, hidesRes] = await Promise.all([
-        supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
-        supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
-        supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
-        supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
-      ])
+      const [entriesRes, assignRes, customRes, hidesRes] = versionIds.length > 0
+        ? await Promise.all([
+            supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
+            supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+            supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+            supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+          ])
+        : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }]
       if (cancelled) return
       const allEntries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
       const allAssign = (assignRes.data as BidPricingAssignment[]) ?? []
       const allCustom = (customRes.data as BidCountRowCustomPrice[]) ?? []
       const allHides = (hidesRes.data as BidCountRowSubmissionHide[]) ?? []
-      const sections = included.map((p) => {
-        const entries = allEntries.filter((e) => e.version_id === p.id)
+      const sections: BundleSection[] = plans.map((p) => {
+        if (!p.pricingId) return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: 0, fixtureRows: [], isAlternate: p.isAlternate }
+        const pid = p.pricingId
+        const entries = allEntries.filter((e) => e.version_id === pid)
         const customMap = new Map<string, number>()
-        for (const c of allCustom) if (c.price_book_version_id === p.id) customMap.set(c.count_row_id, Number(c.unit_price))
+        for (const c of allCustom) if (c.price_book_version_id === pid) customMap.set(c.count_row_id, Number(c.unit_price))
         const result = computeBidPricingRows({
           countRows: pricingCountRows,
           assignments: allAssign
-            .filter((a) => a.price_book_version_id === p.id)
+            .filter((a) => a.price_book_version_id === pid)
             .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
           entries,
           customUnitPriceByCountRowId: customMap,
@@ -363,15 +408,15 @@ export function BidsCoverLetterTab({
           laborRate: 0,
           taxPercent: 0,
           materialsFromTakeoffByCountRowId: {},
-          hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, p.id),
+          hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, pid),
         })
         const totals = coverLetterTotalsFromPricingRows(result.rows)
-        return { name: p.name, bidVersionId: p.bid_version_id ?? null, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows }
+        return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows, isAlternate: p.isAlternate }
       })
       setBundlePricings(sections)
     })()
     return () => { cancelled = true }
-  }, [selectedBidForPricing?.id, bidPricings, pricingCountRows])
+  }, [selectedBidForPricing?.id, bidPricings, bidVersions, pricingCountRows, coverLetterView])
 
   // Which versions are in the bundled submission, and in what order. Writes the pricing facet's
   // flags (what the bundle reads) and mirrors onto the parent bid_versions row for consistency.
@@ -391,6 +436,33 @@ export function BidsCoverLetterTab({
     if (p.bid_version_id) await supabase.from('bid_versions').update({ sort_order: other.sort_order }).eq('id', p.bid_version_id)
     if (other.bid_version_id) await supabase.from('bid_versions').update({ sort_order: p.sort_order }).eq('id', other.bid_version_id)
     await reloadBidPricings()
+  }
+
+  // New view (v2.2117): the letter flag lives on the VERSION. Old reads the scenario flags, so
+  // while both views exist the version's ★ scenario mirrors the version's flag (its other
+  // scenarios are never bundled) — the picker badge and the New bundle can't disagree.
+  async function toggleVersionInclude(v: BidVersionLetter) {
+    const next = !v.include_in_submission
+    await supabase.from('bid_versions').update({ include_in_submission: next }).eq('id', v.id)
+    const starId = starredPricingIdForVersion(v, bidPricings)
+    await supabase.from('price_book_versions').update({ include_in_submission: false }).eq('bid_version_id', v.id)
+    if (next && starId) await supabase.from('price_book_versions').update({ include_in_submission: true }).eq('id', starId)
+    await Promise.all([reloadBidVersions(), reloadBidPricings()])
+  }
+  async function setVersionAlternate(v: BidVersionLetter, isAlternate: boolean) {
+    if (!!v.is_alternate === isAlternate) return
+    const patch = { is_alternate: isAlternate } as unknown as Partial<BidVersion>
+    await supabase.from('bid_versions').update(patch).eq('id', v.id)
+    await reloadBidVersions()
+  }
+  async function reorderVersion(v: BidVersionLetter, dir: -1 | 1) {
+    const sorted = [...bidVersions].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = sorted.findIndex((x) => x.id === v.id)
+    const other = sorted[idx + dir]
+    if (!other) return
+    await supabase.from('bid_versions').update({ sort_order: other.sort_order }).eq('id', v.id)
+    await supabase.from('bid_versions').update({ sort_order: v.sort_order }).eq('id', other.id)
+    await reloadBidVersions()
   }
 
   function printCoverLetterDocument(combinedHtml: string) {
@@ -463,6 +535,26 @@ export function BidsCoverLetterTab({
     background: on ? '#3b82f6' : 'var(--surface)',
     color: on ? '#fff' : 'var(--text-muted)',
   })
+  const studioSegBtnStyle = (on: boolean, enabled: boolean): React.CSSProperties => ({
+    fontSize: '0.68rem',
+    padding: '0.15rem 0.45rem',
+    border: 'none',
+    background: on ? 'var(--bg-muted)' : 'var(--surface)',
+    color: on ? 'var(--text-strong)' : 'var(--text-muted)',
+    fontWeight: on ? 600 : 400,
+    cursor: enabled ? 'pointer' : 'default',
+    opacity: enabled ? 1 : 0.45,
+  })
+  const studioPillStyle = (on: boolean): React.CSSProperties => ({
+    padding: '0.2rem 0.6rem',
+    borderRadius: 999,
+    border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+    background: on ? '#3b82f6' : 'var(--surface)',
+    color: on ? '#fff' : 'var(--text-muted)',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+  })
   const studioFieldLabelStyle: React.CSSProperties = {
     display: 'block',
     fontSize: '0.75rem',
@@ -524,7 +616,13 @@ export function BidsCoverLetterTab({
         const customAmountStr = (coverLetterCustomAmountByBid[bid.id] ?? '').replace(/,/g, '').trim()
         const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
         const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
-        const isBidValueSynced = bid.bid_value != null && bid.bid_value === effectiveRevenue
+        // New view on a split bid: the headline is the LETTER TOTAL (sum of base bids at their ★),
+        // not the active scenario's revenue — that's what "Apply to Bid Value" writes.
+        const newBundleActive = coverLetterView === 'new' && bidVersions.length > 0 && bundlePricings.length > 0
+        const newLetterTotal = letterTotal(bundlePricings)
+        const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? newLetterTotal : coverLetterRevenue
+        const headlineNumber = `$${formatCurrency(headlineAmount)}`
+        const isBidValueSynced = bid.bid_value != null && bid.bid_value === headlineAmount
         const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
         const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
         const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
@@ -552,9 +650,14 @@ export function BidsCoverLetterTab({
           name: customerName,
           address: customerAddress,
         }
-        const gcPackets = bundlePricings.length > 1
+        // Old: 2+ scenarios make a bundle. New: any included version does (a split bid's letter
+        // follows what's checked, even when that's one version that isn't the active one).
+        const gcPackets = bundlePricings.length > (coverLetterView === 'new' ? 0 : 1)
           ? groupSectionsByEffectiveGc(bundlePricings, versionGcById, bidGcPacketCustomer)
           : []
+        const baseSectionNames = bundlePricings.filter((sec) => !sec.isAlternate).map((sec) => sec.name)
+        const bundleLabel = (sec: { name: string; isAlternate: boolean }) =>
+          coverLetterView === 'new' ? sectionLabel(sec, baseSectionNames) : `Pricing: ${sec.name}`
         // Default packet follows the ACTIVE Version (v2.1762) — falling back to
         // gcPackets[0] addressed every letter to the first section's GC (the bid
         // default) no matter which Version chip was selected.
@@ -584,12 +687,12 @@ export function BidsCoverLetterTab({
           buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing)
         const finalCoverLetterHtml = selectedGcPacket
           ? selectedGcPacket.sections.length > 1
-            ? buildCombinedCoverLetterDocument(selectedGcPacket.sections.map((s) => ({ label: `Pricing: ${s.name}`, html: packetSectionHtml(s) })))
+            ? buildCombinedCoverLetterDocument(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), html: packetSectionHtml(s) })))
             : packetSectionHtml(selectedGcPacket.sections[0]!)
           : combinedHtml
         const finalCoverLetterText = selectedGcPacket
           ? selectedGcPacket.sections.length > 1
-            ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: `Pricing: ${s.name}`, text: packetSectionText(s) })))
+            ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
             : packetSectionText(selectedGcPacket.sections[0]!)
           : combinedText
         const now = new Date()
@@ -643,12 +746,19 @@ export function BidsCoverLetterTab({
                 marginBottom: '1rem',
               }}
             >
-              <BidWorkflowTabTitleWithPreview
-                bid={bid}
-                previewEnabled={bidPreview != null}
-                onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)}
-                {...(narrowViewport640 ? { h2Style: { margin: 0 } } : {})}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
+                <BidWorkflowTabTitleWithPreview
+                  bid={bid}
+                  previewEnabled={bidPreview != null}
+                  onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)}
+                  {...(narrowViewport640 ? { h2Style: { margin: 0 } } : {})}
+                />
+                {/* Old / New pills (v2.2117) — same device-remembered pattern as Pricing. */}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} title="Old = today's letter (checked price scenarios). New = the bids in this package, each at its ★.">
+                  <button type="button" onClick={() => switchCoverLetterView('old')} style={studioPillStyle(coverLetterView === 'old')}>Old</button>
+                  <button type="button" onClick={() => switchCoverLetterView('new')} style={studioPillStyle(coverLetterView === 'new')}>New</button>
+                </span>
+              </div>
               <div
                 style={{
                   display: 'flex',
@@ -706,7 +816,47 @@ export function BidsCoverLetterTab({
                         {' · '}
                         {projectNameVal}
                       </div>
-                      {bidPricings.length > 1 ? (
+                      {coverLetterView === 'new' ? (
+                        <div style={{ marginBottom: '0.7rem' }}>
+                          <span style={studioFieldLabelStyle}>In this cover letter</span>
+                          {bidVersions.length === 0 ? (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                              One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong></> : null}. To offer an alternate, make it a bid to send (＋ Another bid to send… at the top).
+                            </div>
+                          ) : (
+                            <>
+                              {[...bidVersions].sort((a, b) => a.sort_order - b.sort_order).map((v, i, arr) => {
+                                const vx = v as BidVersionLetter
+                                const starId = starredPricingIdForVersion(vx, bidPricings)
+                                const starName = bidPricings.find((p) => p.id === starId)?.name ?? null
+                                const sec = bundlePricings.find((x) => x.bidVersionId === v.id)
+                                const isAlt = !!vx.is_alternate
+                                return (
+                                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', padding: '0.2rem 0', flexWrap: 'wrap' }}>
+                                    <input type="checkbox" checked={v.include_in_submission} onChange={() => void toggleVersionInclude(vx)} style={{ cursor: 'pointer', margin: 0 }} aria-label={`${v.name} in the letter`} />
+                                    <span style={{ flex: 1, minWidth: 0 }}>
+                                      <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{v.name}</span>
+                                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                        {starName ? <>★ {starName}{sec ? ` · $${formatCurrency(sec.revenueSum)}` : ''}</> : 'no prices yet'}
+                                      </span>
+                                    </span>
+                                    <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden' }}>
+                                      <button type="button" disabled={!v.include_in_submission} onClick={() => void setVersionAlternate(vx, false)} style={studioSegBtnStyle(!isAlt, v.include_in_submission)} title="Adds to the letter total">Base</button>
+                                      <button type="button" disabled={!v.include_in_submission} onClick={() => void setVersionAlternate(vx, true)} style={studioSegBtnStyle(isAlt, v.include_in_submission)} title="Offered in lieu of the base bids">Alternate</button>
+                                    </span>
+                                    <button type="button" onClick={() => void reorderVersion(vx, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▲</button>
+                                    <button type="button" onClick={() => void reorderVersion(vx, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▼</button>
+                                  </div>
+                                )
+                              })}
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                Checked bids go in the letter, each at its ★ price. Base bids add up; alternates are offered instead. Change a bid's price on the Pricing tab.
+                                {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : bidPricings.length > 1 ? (
                         <div style={{ marginBottom: '0.7rem' }}>
                           <span style={studioFieldLabelStyle}>Versions in this submission</span>
                           {[...bidPricings].sort((a, b) => a.sort_order - b.sort_order).map((p, i, arr) => (
@@ -721,19 +871,19 @@ export function BidsCoverLetterTab({
                         </div>
                       ) : null}
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', background: 'var(--bg-green-tint)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
-                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{revenueNumber}</span>
+                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{headlineNumber}</span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {useCustomAmount ? 'custom amount' : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
+                          {useCustomAmount ? 'custom amount' : newBundleActive ? `letter total · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
                         </span>
                         {isBidValueSynced ? (
                           <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-green-600)', fontWeight: 600 }}>✓ matches Bid Value</span>
                         ) : (
                           <button
                             type="button"
-                            onClick={() => applyProposedAmountToBidValue(bid.id, effectiveRevenue)}
-                            disabled={applyingBidValue || effectiveRevenue === 0}
+                            onClick={() => applyProposedAmountToBidValue(bid.id, headlineAmount)}
+                            disabled={applyingBidValue || headlineAmount === 0}
                             title="Apply this amount to Bid Value"
-                            style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: applyingBidValue || effectiveRevenue === 0 ? 'not-allowed' : 'pointer' }}
+                            style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: applyingBidValue || headlineAmount === 0 ? 'not-allowed' : 'pointer' }}
                           >
                             {applyingBidValue ? 'Applying…' : 'Apply to Bid Value'}
                           </button>
@@ -760,7 +910,7 @@ export function BidsCoverLetterTab({
                             style={{ width: '8rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box' }}
                           />
                         )}
-                        {bid.bid_value != null && bid.bid_value !== coverLetterRevenue && (
+                        {bid.bid_value != null && bid.bid_value !== headlineAmount && (
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Current Bid Value: ${formatCurrency(bid.bid_value)}</span>
                         )}
                       </div>
@@ -938,7 +1088,9 @@ export function BidsCoverLetterTab({
                       </div>
                     ) : bundlePricings.length > 1 ? (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)' }}>
-                        Bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')} — one letter each.
+                        {coverLetterView === 'new'
+                          ? <>In the letter: {bundleSummary(bundlePricings)} — {bundlePricings.map((p) => (p.isAlternate ? `${p.name} (alternate)` : p.name)).join(', ')} — one section each.</>
+                          : <>Bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')} — one letter each.</>}
                       </div>
                     ) : null}
                     <div
