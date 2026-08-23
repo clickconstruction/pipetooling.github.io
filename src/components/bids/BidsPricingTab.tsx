@@ -821,7 +821,7 @@ export function BidsPricingTab({
     const expected = pricingVersionToDelete.name.trim()
     const typed = deletePricingVersionNameInput.trim()
     if (typed !== expected) {
-      setDeletePricingVersionError('Name does not match. Type the version name exactly to confirm.')
+      setDeletePricingVersionError('Name does not match. Type the scenario name exactly to confirm.')
       return
     }
 
@@ -1156,7 +1156,7 @@ export function BidsPricingTab({
     const teamLaborCost = teamLaborCostByBidId.get(ctx.bid.id) ?? 0
     const result = buildPricingCsvForBid(ctx, teamLaborCost)
     if (!result) {
-      showToast('Select a price book version and ensure Counts and Labor are set up.', 'info')
+      showToast('Select a price scenario and ensure Counts and Labor are set up.', 'info')
       return
     }
     const blob = new Blob([`\uFEFF${result.csv}`], { type: 'text/csv;charset=utf-8' })
@@ -1270,8 +1270,8 @@ export function BidsPricingTab({
   const WORKBENCH_TOUR_STEPS: SpotlightTourStep[] = [
     {
       anchor: 'workbench-scenarios',
-      title: 'Scenarios — same counts, different prices',
-      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, Print, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "＋ New price or version…" adds another price point — or another sendable bid (a version — same counts, its own takeoff and prices).',
+      title: 'Scenarios — for you to compare',
+      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, Print, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "＋ New price or version…" adds another price point (for you) — or another bid to send (the customer sees it).',
     },
     {
       anchor: 'workbench-summary',
@@ -2396,7 +2396,7 @@ export function BidsPricingTab({
                                         savingPricingAssignment === row.countRow.id ?
                                           'Saving…'
                                         : !row.canToggleOmitSubmission ?
-                                          'Select a price book version to change submission visibility.'
+                                          'Select a price scenario to change submission visibility.'
                                         : undefined
                                       }
                                     >
@@ -2640,7 +2640,7 @@ export function BidsPricingTab({
                             onClick={(e) => e.stopPropagation()}
                           >
                             <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>New price or version</h3>
-                            <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>What changed?</p>
+                            <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>What do you want?</p>
                             <button
                               type="button"
                               style={doorOptStyle}
@@ -2653,7 +2653,7 @@ export function BidsPricingTab({
                               <span>
                                 <b style={{ display: 'block', fontSize: '0.92rem' }}>Another price point</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Same counts, different price. Star the winner.
+                                  For you to compare. The customer only ever sees the ★.
                                 </span>
                               </span>
                             </button>
@@ -2669,7 +2669,7 @@ export function BidsPricingTab({
                               <span>
                                 <b style={{ display: 'block', fontSize: '0.92rem' }}>Another bid to send</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  A new <b>version</b> — same counts; its own takeoff, prices, GC, and cover-letter section.
+                                  The customer sees it — its own section or letter. Same counts; own takeoff and prices.
                                 </span>
                               </span>
                             </button>
@@ -2734,7 +2734,7 @@ export function BidsPricingTab({
                         <>
                           <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', flexWrap: 'wrap' }}>
                             <div style={{ padding: '0.5rem 0.9rem', borderRight: '1px solid var(--border)', minWidth: '13rem' }}>
-                              <div style={labelStyle}>This bid — {bidVersions.length > 1 ? `one of ${bidVersions.length} in the package, ` : ''}sends on its own</div>
+                              <div style={labelStyle}>This bid{bidVersions.length > 1 ? ` — one of ${bidVersions.length} in the package` : ''}</div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem' }}>
                                 <span style={{ border: '1px solid #3b82f6', background: 'var(--bg-subtle)', color: 'var(--text-strong)', borderRadius: 5, padding: '0.08rem 0.55rem', fontSize: '0.8rem', fontWeight: 600 }}>
                                   {activeVersionName ?? 'Current'}
@@ -2742,10 +2742,16 @@ export function BidsPricingTab({
                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeVersionName ? 'switch at the top of the page' : 'this bid has one takeoff'}</span>
                               </div>
                             </div>
-                            <div style={{ padding: '0.5rem 0.9rem', flex: 1, minWidth: '18rem' }}>
-                              <div style={labelStyle}>Its price points — same counts, star the one the customer sees</div>
+                            <div style={{ padding: '0.5rem 0.9rem', flex: 1, minWidth: '18rem', borderRight: '1px solid var(--border)' }}>
+                              <div style={labelStyle}>Its price points — for you to compare</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                The <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★ starred</span> scenario is what the customer sees — Cover Letter, Share, Print, and the bid value all use it.
+                                The customer sees the <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> — Cover Letter, Share, Print, and the bid value all use it.
+                              </div>
+                            </div>
+                            <div style={{ padding: '0.5rem 0.9rem', minWidth: '12rem', maxWidth: '16rem' }}>
+                              <div style={labelStyle}>Labor &amp; cost</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                                Shared by the whole package. Switching bids changes revenue, not cost.
                               </div>
                             </div>
                           </div>
@@ -3689,7 +3695,7 @@ export function BidsPricingTab({
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', position: 'relative' }} data-add-pricing-menu>
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>This version has no pricing yet.</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No prices yet for this bid.</span>
                 <button
                   type="button"
                   onClick={() => setAddPricingMenuOpen((o) => !o)}
@@ -3702,7 +3708,7 @@ export function BidsPricingTab({
                     <button type="button" onClick={openAddBlankPricing} style={addPricingMenuItemStyle}>Blank pricing</button>
                     {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).length > 0 && (
                       <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>Duplicate another version's pricing</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>Copy prices from another scenario</div>
                         {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).map((p) => (
                           <button key={p.id} type="button" onClick={() => openClonePricing(p.id, p.name)} style={addPricingMenuItemStyle}>{p.name}</button>
                         ))}
@@ -3895,14 +3901,14 @@ export function BidsPricingTab({
               style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-red-700)' }}>Delete price book version</h3>
+              <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-red-700)' }}>Delete price scenario</h3>
               <p style={{ margin: '0 0 0.75rem', color: 'var(--text-700)', fontSize: '0.9rem' }}>
-                This will delete the price book version <strong>{pricingVersionToDelete.name}</strong> and all entries
+                This will delete the price scenario <strong>{pricingVersionToDelete.name}</strong> and all entries
                 it contains. A dev can put it back for 90 days from <strong>Settings → Data &amp; migration → Recently
                 deleted</strong>.
               </p>
               <p style={{ margin: '0 0 0.5rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
-                Type the name of this price book version to confirm:
+                Type the name of this price scenario to confirm:
               </p>
               <input
                 type="text"

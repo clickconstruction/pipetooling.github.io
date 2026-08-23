@@ -318,7 +318,7 @@ export function TakeoffBookAdminSection({
                       type="button"
                       onClick={() => openEditTakeoffBookVersion(v)}
                       style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                      title="Edit version name"
+                      title="Edit book name"
                     >
                       ✎
                     </button>
@@ -327,7 +327,7 @@ export function TakeoffBookAdminSection({
                         type="button"
                         onClick={() => deleteTakeoffBookVersion(v)}
                         style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-800)', fontSize: '0.875rem' }}
-                        title="Delete version"
+                        title="Delete book"
                       >
                         ×
                       </button>
@@ -339,7 +339,7 @@ export function TakeoffBookAdminSection({
                   onClick={openNewTakeoffBookVersion}
                   style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                 >
-                  Add version
+                  Add book
                 </button>
               </div>
               {takeoffBookEntriesVersionId && (
@@ -401,7 +401,7 @@ export function TakeoffBookAdminSection({
                 style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 style={{ margin: '0 0 1rem' }}>{editingTakeoffBookVersion ? 'Edit version' : 'New version'}</h3>
+                <h3 style={{ margin: '0 0 1rem' }}>{editingTakeoffBookVersion ? 'Edit book' : 'New book'}</h3>
                 <form onSubmit={saveTakeoffBookVersion}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
                   <input
