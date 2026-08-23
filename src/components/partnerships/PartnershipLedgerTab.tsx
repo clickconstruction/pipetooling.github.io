@@ -23,6 +23,8 @@ import {
 import { buildPartnerPayReportHtml, type PartnerPayReportDay } from '../../lib/partnerLedger/partnerPayReportHtml'
 import { PayStubViewModal } from '../pay/PayStubViewModal'
 import { PersonOffsetFormModal, type PersonOffsetEditingRow } from '../pay/PersonOffsetFormModal'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { postingLabel, shortDate } from '../../lib/partnerLedger/partnerLedgerFormat'
 
 /**
  * Partnerships → Ledger tab (PARTNERSHIPS_PLAN.md PR 3): the append-only
@@ -76,6 +78,8 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)
   const [hoverDate, setHoverDate] = useState<string | null>(null)
   const memoInputRef = useRef<HTMLInputElement | null>(null)
+  const isMobile = useIsMobile()
+  const nowYear = new Date().getFullYear()
 
   const load = useCallback(async () => {
     const stubsRes = await supabase
@@ -426,7 +430,10 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
           {net < 0 ? '−' : ''}{money(net)}
         </span>
         {pending.count === 0 ? (
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>current balance (all postings − payouts)</span>
+          // Phones: headline + "+ note" share the first line, caption sits under them.
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...(isMobile ? { flexBasis: '100%', order: 3, marginTop: '-0.25rem' } : {}) }}>
+            current balance (all postings − payouts)
+          </span>
         ) : null}
         {!notesUnavailable ? (
           <button
@@ -486,7 +493,9 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
             </button>
           ) : null}
           <span style={{ flexBasis: '100%', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-            Tip: click any ledger row to place your note above that date — the dashed draft row shows where it lands. Dragging a note’s grey triangle onto a row works too.
+            {isMobile
+              ? 'Tip: tap any ledger row to place your note above that date — the dashed draft row shows where it lands.'
+              : 'Tip: click any ledger row to place your note above that date — the dashed draft row shows where it lands. Dragging a note’s grey triangle onto a row works too.'}
           </span>
           {noteError ? <span style={{ flexBasis: '100%', fontSize: '0.75rem', color: 'var(--text-red-600)' }}>{noteError}</span> : null}
         </div>
@@ -500,6 +509,106 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
           Nothing posted yet — generate the first statement from the Statements tab.
         </p>
+      ) : isMobile ? (
+        // Phones (v2.2152): the four-column table pushed the running balance
+        // (and the card) off-screen. Same stacked shape as the partner's Full
+        // ledger — date · posting left, amount over balance right — plus the
+        // office affordances: tap-to-drill chevron, tap-to-edit notes,
+        // tap-to-place while the composer is open. Wide screens keep the table.
+        <div style={{ fontSize: '0.84rem' }}>
+          {[...displayRows].reverse().map((r, i) => {
+            const dropStyle =
+              (dragOverDate === r.date || hoverDate === r.date) && noteDraft
+                ? { borderTop: '2px solid var(--text-amber-700)' }
+                : {}
+            const rowBase: React.CSSProperties = {
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.5rem 0',
+              borderBottom: '1px solid var(--border)',
+              ...dropStyle,
+            }
+            // Labor rows put "week of Aug 9" on the muted date line, so the
+            // posting line stays a short unit ("Labor · 12.85 h").
+            const weekStart = r.kind === 'labor' && r.pay_stub_id ? stubsById.get(r.pay_stub_id)?.period_start : undefined
+            const dateEl = (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem', whiteSpace: 'nowrap' }}>
+                {shortDate(r.date, nowYear)}
+                {weekStart ? ` · week of ${shortDate(weekStart, nowYear)}` : ''}
+              </span>
+            )
+            if (r.kind === 'note' && r.note.id === DRAFT_NOTE_PREVIEW_ID) {
+              return (
+                <div
+                  key="draft-preview"
+                  onClick={() => memoInputRef.current?.focus()}
+                  title="your note will land here — Save to keep it"
+                  style={{ ...rowBase, borderBottom: '1px dashed var(--border-strong)', opacity: 0.75, cursor: 'text', fontStyle: 'italic', color: r.label ? 'var(--text-700)' : 'var(--text-muted)' }}
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontStyle: 'normal' }}>{dateEl}</span> · {r.label || '(your note)'}
+                    {r.note.partner_visible ? (
+                      <span style={{ marginLeft: '0.5rem', fontStyle: 'normal', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', color: '#16a34a', border: '1px solid var(--border)', borderRadius: 999, padding: '0.05rem 0.45rem', whiteSpace: 'nowrap' }}>
+                        partner sees
+                      </span>
+                    ) : null}
+                    <span style={{ marginLeft: '0.5rem', fontStyle: 'normal', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)', borderRadius: 999, padding: '0.05rem 0.45rem', whiteSpace: 'nowrap' }}>
+                      draft
+                    </span>
+                  </span>
+                </div>
+              )
+            }
+            if (r.kind === 'note') {
+              return (
+                <div
+                  key={`note-${r.note.id}`}
+                  onClick={() => openEditor(r.note)}
+                  title="tap to edit this note"
+                  {...dropDateHandlers(r.date)}
+                  style={{ ...rowBase, background: 'var(--bg-muted)', margin: '0 -0.25rem', padding: '0.5rem 0.25rem', fontStyle: 'italic', color: 'var(--text-700)', cursor: 'pointer' }}
+                >
+                  <span style={{ minWidth: 0 }}>
+                    <span style={{ fontStyle: 'normal' }}>{dateEl}</span> · {r.label}
+                    {r.note.partner_visible ? (
+                      <span style={{ marginLeft: '0.5rem', fontStyle: 'normal', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', color: '#16a34a', border: '1px solid var(--border)', borderRadius: 999, padding: '0.05rem 0.45rem', whiteSpace: 'nowrap' }}>
+                        partner sees
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+              )
+            }
+            const rowKey = `${r.kind}-${i}`
+            const label = r.kind === 'labor' ? postingLabel(r) : r.label
+            const detail = r.kind === 'labor' ? null : r.detail
+            const busy = r.kind === 'labor' && payReportBusy != null && payReportBusy === r.pay_stub_id
+            const handlers = { ...dropDateHandlers(r.date), ...pickDateHandlers(r.date), ...drillHandlers(r, rowKey) } as React.HTMLAttributes<HTMLDivElement>
+            return (
+              <div key={rowKey} {...handlers} style={{ ...rowBase, ...(handlers.style ?? {}) }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {dateEl}
+                  <span style={{ display: 'block', lineHeight: 1.3 }}>
+                    {label}
+                    {detail ? <span style={{ color: 'var(--text-muted)' }}> · {detail}</span> : null}
+                  </span>
+                </span>
+                <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ display: 'block', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', opacity: r.kind === 'pending' ? 0.85 : 1 }}>
+                    {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                  </span>
+                  <span style={{ display: 'block', fontSize: '0.7rem', color: r.kind === 'pending' ? 'var(--text-amber-700)' : 'var(--text-muted)' }}>
+                    {r.kind === 'pending' ? 'pending' : `bal ${r.balance < 0 ? '−' : ''}${money(r.balance)}`}
+                  </span>
+                </span>
+                {!noteDraft ? (
+                  <span aria-hidden style={{ color: 'var(--text-faint)', width: 10, textAlign: 'right' }}>{busy ? '…' : '›'}</span>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
