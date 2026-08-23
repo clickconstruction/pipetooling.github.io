@@ -36,6 +36,7 @@ import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { MyBidsToggle } from './MyBidsToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
 import { AdoptBidModal } from './AdoptBidModal'
+import { PricingShareMenu } from './PricingShareMenu'
 import {
   printPricingPage as printPricingPageDoc,
   printAllPricingPages as printAllPricingPagesDoc,
@@ -1693,67 +1694,22 @@ export function BidsPricingTab({
                 h2Style={{ margin: 0, flex: '0 0 auto' }}
               />
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
-                {canPackageAndSendBidPricing ? (
-                  <button
-                    type="button"
-                    onClick={() => requestWithStarCheck('share')}
-                    disabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
-                    title={
-                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
-                        ? 'Select a price book and ensure Counts and Labor exist'
-                        : 'Share pricing (Job Plans + 4-column table) with a teammate'
-                    }
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background:
-                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'var(--bg-200)' : '#16a34a',
-                      color:
-                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'var(--text-faint)' : 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor:
-                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    Share
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => downloadPricingCsv()}
-                  disabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
-                  title={
+                {/* v2.2198 (option A, artifact df8daa33): Share keeps one click; Print / CSV / review live in the ▾ menu. */}
+                <PricingShareMenu
+                  canShare={canPackageAndSendBidPricing}
+                  shareDisabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
+                  shareTitle={
                     !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
                       ? 'Select a price book and ensure Counts and Labor exist'
-                      : 'Download pricing grid as CSV'
+                      : 'Share pricing (Job Plans + 4-column table) with a teammate'
                   }
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background:
-                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'var(--bg-200)' : 'var(--bg-muted)',
-                    color: 'var(--text-strong)',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    cursor:
-                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={() => printPricingPage()}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Print
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void printAllPricingPages()}
-                  style={{ padding: '0.5rem 1rem', background: '#f97316', color: 'black', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}
-                >
-                  Review
-                </button>
+                  onShare={() => requestWithStarCheck('share')}
+                  csvDisabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
+                  csvTitle="Select a price book and ensure Counts and Labor exist"
+                  onPrint={() => printPricingPage()}
+                  onCsv={() => downloadPricingCsv()}
+                  onReview={() => void printAllPricingPages()}
+                />
                 {!narrowViewport640 ? (
                   <button
                     type="button"
