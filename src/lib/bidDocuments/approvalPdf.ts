@@ -75,6 +75,13 @@ async function loadPOTotal(poId: string): Promise<number> {
 
 export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void> {
   const b = ctx.bid
+  // v2.2132: count rows belong to the bid's active version (null = unsplit bid).
+  const { data: versionsForCounts } = await supabase.from('bid_versions').select('id, sort_order').eq('bid_id', b.id)
+  const countsVersionId = pickActiveVersion({ savedVersionId: b.selected_bid_version_id ?? null, bidVersions: (versionsForCounts ?? []) as Array<{ id: string; sort_order: number }> })
+  const countRowsQuery = () => {
+    const base = supabase.from('bids_count_rows').select('*').eq('bid_id', b.id)
+    return countsVersionId ? base.eq('bid_version_id', countsVersionId) : base.is('bid_version_id', null)
+  }
   const priceBookVersions = ctx.priceBookVersions
   const bidId = b.id
   const margin = 20
@@ -172,7 +179,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   let reviewPdfLaborRows: CostEstimateLaborRow[] = []
   let reviewPdfTotalMaterials = 0
   let reviewPdfLaborRate = 0
-  const { data: countDataReview } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
+  const { data: countDataReview } = await countRowsQuery().order('sequence_order', { ascending: true })
   const countRowsReview = (countDataReview as BidCountRow[]) ?? []
   const { data: estForReview } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
   const estForReviewData = estForReview as CostEstimate | null
@@ -301,7 +308,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
 
   let approvalPricingForCover: ComputeBidPricingRowsResult | null = null
   const versionId = b.selected_price_book_version_id ?? null
-  const { data: countData } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
+  const { data: countData } = await countRowsQuery().order('sequence_order', { ascending: true })
   const countRows = (countData as BidCountRow[]) ?? []
   const pricingContent = 'No price book selected or no count rows.'
   if (versionId && countRows.length > 0) {
@@ -400,7 +407,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
       est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
       est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
       est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
-      supabase.from('bids_count_rows').select('id').eq('bid_id', bidId),
+      countRowsQuery(),
     ])
     const laborRows = (laborRes.data as CostEstimateLaborRow[]) ?? []
     const countRowsForEst = (countRes.data as { id: string }[]) ?? []

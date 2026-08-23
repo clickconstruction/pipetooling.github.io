@@ -97,6 +97,7 @@ type LedgerBidRow = Pick<
   | 'updated_at'
   | 'bid_submission_link'
   | 'drive_link'
+  | 'selected_bid_version_id'
 > & {
   customers: { name: string | null; address: string | null } | null
   service_type: { name: string } | null
@@ -944,7 +945,7 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
           await supabase
             .from('bids')
             .select(
-              'id, project_name, address, bid_number, service_type_id, bid_value, bid_date_sent, outcome, updated_at, bid_submission_link, drive_link, customers(name, address), service_type:service_types(name)',
+              'id, project_name, address, bid_number, service_type_id, bid_value, bid_date_sent, outcome, updated_at, bid_submission_link, selected_bid_version_id, drive_link, customers(name, address), service_type:service_types(name)',
             )
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(200),
@@ -958,19 +959,32 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
         setCountRowsByBidId(new Map())
         return
       }
-      const countData = await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('bids_count_rows')
-            .select('bid_id, fixture, count')
-            .in('bid_id', ids)
-            .order('sequence_order', { ascending: true })
-            .order('id', { ascending: true }),
-        'load documents bid count rows',
-      )
+      const [countData, versionData] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('bids_count_rows')
+              .select('bid_id, bid_version_id, fixture, count')
+              .in('bid_id', ids)
+              .order('sequence_order', { ascending: true })
+              .order('id', { ascending: true }),
+          'load documents bid count rows',
+        ),
+        withSupabaseRetry(
+          async () => await supabase.from('bid_versions').select('id, bid_id, sort_order').in('bid_id', ids).order('sort_order'),
+          'load documents bid versions',
+        ),
+      ])
+      // v2.2132: counts are per version — show each bid's ACTIVE version's rows (saved choice, else
+      // its first version, else the unsplit rows).
+      const firstVersionByBid = new Map<string, string>()
+      for (const v of (versionData ?? []) as Array<{ id: string; bid_id: string }>) if (!firstVersionByBid.has(v.bid_id)) firstVersionByBid.set(v.bid_id, v.id)
+      const wantedVersionByBid = new Map<string, string | null>()
+      for (const b of list) wantedVersionByBid.set(b.id, b.selected_bid_version_id ?? firstVersionByBid.get(b.id) ?? null)
       const byBid = new Map<string, Array<{ fixture: string; count: number }>>()
       for (const r of countData ?? []) {
-        const row = r as { bid_id: string; fixture: string; count: number }
+        const row = r as { bid_id: string; bid_version_id: string | null; fixture: string; count: number }
+        if ((row.bid_version_id ?? null) !== (wantedVersionByBid.get(row.bid_id) ?? null)) continue
         const arr = byBid.get(row.bid_id) ?? []
         arr.push({ fixture: row.fixture ?? '', count: Number(row.count) })
         byBid.set(row.bid_id, arr)

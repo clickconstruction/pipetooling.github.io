@@ -192,18 +192,18 @@ serve(async (req) => {
     // Price book version (display name).
     const { data: versionRow, error: versionErr } = await userClient
       .from('price_book_versions')
-      .select('id, name')
+      .select('id, name, bid_version_id')
       .eq('id', versionId)
-      .maybeSingle<{ id: string; name: string | null }>()
+      .maybeSingle<{ id: string; name: string | null; bid_version_id: string | null }>()
     if (versionErr || !versionRow) return jsonResponse(404, { ok: false, error: 'Price book version not found' })
 
     // Source data (user-scoped; bid_count_rows / pricing assignments policies must allow it).
     const [countRowsRes, assignmentsRes, customPricesRes, hidesRes, entriesRes] = await Promise.all([
-      userClient
-        .from('bids_count_rows')
-        .select('id, fixture, count')
-        .eq('bid_id', bidId)
-        .order('created_at', { ascending: true }),
+      // v2.2132: count rows belong to the scenario's version (null = unsplit bid).
+      (versionRow.bid_version_id
+        ? userClient.from('bids_count_rows').select('id, fixture, count').eq('bid_id', bidId).eq('bid_version_id', versionRow.bid_version_id)
+        : userClient.from('bids_count_rows').select('id, fixture, count').eq('bid_id', bidId).is('bid_version_id', null)
+      ).order('created_at', { ascending: true }),
       userClient
         .from('bid_pricing_assignments')
         .select('count_row_id, price_book_entry_id, is_fixed_price, unit_price_override')

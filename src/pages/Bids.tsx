@@ -3085,9 +3085,25 @@ export default function Bids() {
 
       {/* Counts Tab */}
       {activeTab === 'counts' && (
+        <>
+        {selectedBidForCounts && (
+          <BidVersionPicker
+            onGoToCoverLetter={() => selectBidsTab('cover-letter')}
+            bidId={selectedBidForCounts.id}
+            bidVersions={bidVersions}
+            selectedBidVersionId={selectedBidVersionId}
+            currentPricingId={selectedPricingVersionId}
+            fallbackPricingSourceId={defaultPriceBookTemplateId}
+            isExactMaterials={selectedBidForCounts.materials_model === 'exact'}
+            onSwitch={(versionId) => switchActiveVersion(selectedBidForCounts.id, versionId)}
+            reloadVersions={() => Promise.all([loadBidVersions(selectedBidForCounts.id), loadBidPricings(selectedBidForCounts.id)]).then(() => {})}
+            pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
+          />
+        )}
         <BidsCountsTab
           bids={bids}
           selectedBidForCounts={selectedBidForCounts}
+          activeBidVersionId={selectedBidVersionId}
           narrowViewport640={narrowViewport640}
           bidPreview={bidPreview}
           countRows={countRows}
@@ -3107,6 +3123,7 @@ export default function Bids() {
             if (fresh && selectedBidForCounts?.id === bidId) setSelectedBidForCounts(fresh)
           }}
         />
+        </>
       )}
 
       {/* Takeoffs Tab */}

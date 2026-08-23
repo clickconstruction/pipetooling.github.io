@@ -1125,6 +1125,7 @@ export type Database = {
       bids_count_rows: {
         Row: {
           bid_id: string
+          bid_version_id: string | null
           count: number
           created_at: string | null
           fixture: string
@@ -1136,6 +1137,7 @@ export type Database = {
         }
         Insert: {
           bid_id: string
+          bid_version_id?: string | null
           count?: number
           created_at?: string | null
           fixture: string
@@ -1147,6 +1149,7 @@ export type Database = {
         }
         Update: {
           bid_id?: string
+          bid_version_id?: string | null
           count?: number
           created_at?: string | null
           fixture?: string
@@ -1157,6 +1160,13 @@ export type Database = {
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bids_count_rows_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bids_count_rows_bid_id_fkey"
             columns: ["bid_id"]

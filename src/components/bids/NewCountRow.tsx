@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { NumericEntryPad } from '../NumericEntryPad'
 import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, type CountUnit } from '../../lib/bids/countRowUnit'
 
-export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother, showDragHandleColumn }: { bidId: string; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void; showDragHandleColumn?: boolean }) {
+export function NewCountRow({ bidId, bidVersionId = null, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother, showDragHandleColumn }: { bidId: string; /** v2.2132: the version that owns the new row (null = unsplit bid). */ bidVersionId?: string | null; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void; showDragHandleColumn?: boolean }) {
   const { showToast } = useToastContext()
   const countInputRef = useRef<HTMLInputElement>(null)
   const [fixture, setFixture] = useState('')
@@ -58,7 +58,7 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
     setSaving(true)
     const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1, unit: unitChoice ?? classifyCountRowUnit(fixture) })
+    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, bid_version_id: bidVersionId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1, unit: unitChoice ?? classifyCountRowUnit(fixture) })
     if (error) { setSaving(false); showToast(error.message, 'error'); return }
     onSaved()
   }
@@ -69,7 +69,7 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
     setSaving(true)
     const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1, unit: unitChoice ?? classifyCountRowUnit(fixture) })
+    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, bid_version_id: bidVersionId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1, unit: unitChoice ?? classifyCountRowUnit(fixture) })
     if (error) {
       setSaving(false)
       showToast(error.message, 'error')
