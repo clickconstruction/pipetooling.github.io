@@ -2833,6 +2833,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                             {' · '}
                             <span
                               style={{
+                                // Wrap as one unit on phones: "oldest 118 days" moves to its own line whole, never "oldest 118 / days".
+                                whiteSpace: 'nowrap',
                                 color:
                                   oldestSeverity === 'late'
                                     ? 'var(--text-red-700)'
