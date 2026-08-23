@@ -1097,10 +1097,13 @@ button:focus-visible {
     display: none !important;
   }
 
-  /* /customers: stack Projects and Bids links vertically on mobile */
+  /* /customers (v2.2176): on a phone the signal chips + money rail drop UNDER the
+     name as one wrapping row instead of squeezing beside it — the old column
+     stack pushed the 258px PAID/BILLED/UNBILLED rail past the screen edge. */
   .customers-projects-bids-links {
-    flex-direction: column !important;
-    align-items: flex-end;
+    flex: 1 1 100%;
+    justify-content: flex-start !important;
+    margin-top: 0.35rem;
   }
 
   /* People Pay: cost matrix date headers on two lines (Mon / 2/16) */
