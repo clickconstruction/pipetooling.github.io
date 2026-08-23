@@ -94,6 +94,7 @@ import BilledAgingChartModal from './BilledAgingChartModal'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import PaymentChaseModal from './PaymentChaseModal'
 import { buildPaymentChaseQueue, parseChaseTouchesRpc, summarizePaymentChase, type ChaseTouch } from '../../lib/jobs/paymentChase'
+import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import FixBillLinesModal from './FixBillLinesModal'
 import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
 import BilledByCustomerBreakdownModal from './BilledByCustomerBreakdownModal'
@@ -246,6 +247,8 @@ export type JobsStagesTabHandle = {
   openWeeklyMoney: () => void
   /** `?showBilledTotalByName=` deep link: open the Total by Name modal. */
   showBilledTotalByName: () => void
+  /** `?stagesMove=` deep link (v2.2145): open what a Today's Money Opportunities card opens (Quickfill → Jobs Cleanup). */
+  openMoneyMove: (key: StagesMoneyMoveKey) => void
 }
 
 export type JobsStagesTabProps = {
@@ -1850,6 +1853,37 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
       openWeeklyMoney: () => setWeeklyMoneyModalOpen(true),
       showBilledTotalByName: () => setBilledTotalByNameModalOpen(true),
+      openMoneyMove: (key: StagesMoneyMoveKey) => {
+        // Mirrors the PipelineOverview callbacks above (v2.1960: clear a live search first).
+        setStagesSearchQuery('')
+        switch (key) {
+          case 'capable':
+            setCapableToBillModalOpen(true)
+            return
+          case 'chase90':
+            setBilledAgingFilter('90')
+            focusStagesSection('billed')
+            return
+          case 'fixDates':
+            setBilledAgingFilter('no_line')
+            focusStagesSection('billed')
+            return
+          case 'ar':
+            setBankPaymentsModalOpen(true)
+            return
+          case 'chase':
+            setChaseModalOpen(true)
+            return
+          case 'gcRoundCertify':
+            setGcReviewStartRound(false)
+            setGcReviewModalOpen(true)
+            return
+          case 'gcRoundStart':
+            setGcReviewStartRound(true)
+            setGcReviewModalOpen(true)
+            return
+        }
+      },
     }),
     [followMovedJob, focusStagesSection, applyStagesInvoiceFocus, jobs, showToast],
   )
