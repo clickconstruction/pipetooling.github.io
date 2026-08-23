@@ -87,3 +87,23 @@ describe('nextMonthlyPaymentDueYmd', () => {
     expect(nextMonthlyPaymentDueYmd(31, '2026-04-01')).toBe('2026-04-30')
   })
 })
+
+describe('phone helpers (v2.2191)', async () => {
+  const { countSupplyHousesPastDue60, supplyHouseAgingPhoneNote } = await import('./supplyHouseAging')
+  const row = (buckets: Partial<Record<string, number>>) => ({
+    supplyHouseId: 'x',
+    name: 'X',
+    total: 0,
+    buckets: { current: 0, past1_30: 0, past30_60: 0, past60_90: 0, past90plus: 0, noDueDate: 0, ...buckets },
+  })
+  it('counts houses 60+ past due', () => {
+    const m = { rows: [row({ past60_90: 5 }), row({ past90plus: 1 }), row({ past1_30: 100 })], totals: row({}).buckets, grandTotal: 0, missingDueDateCount: 0 }
+    expect(countSupplyHousesPastDue60(m)).toBe(2)
+  })
+  it('writes the phone note: 90+ first, else largest bucket, else all current', () => {
+    expect(supplyHouseAgingPhoneNote(row({ past1_30: 25551, past90plus: 583, current: 10065 }))).toBe('most in 1–30 · $583 at 90+')
+    expect(supplyHouseAgingPhoneNote(row({ past90plus: 13184, past30_60: 192 }))).toBe('$13,184 at 90+')
+    expect(supplyHouseAgingPhoneNote(row({ current: 8524 }))).toBe('all current')
+    expect(supplyHouseAgingPhoneNote(row({ noDueDate: 2 }))).toBe('most in no due date')
+  })
+})

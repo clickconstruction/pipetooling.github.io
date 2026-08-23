@@ -14,6 +14,8 @@ import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
 import {
   AGING_BUCKETS,
   buildSupplyHouseAgingMatrix,
+  countSupplyHousesPastDue60,
+  supplyHouseAgingPhoneNote,
   daysPastDue,
   nextMonthlyPaymentDueYmd,
   type AgingBucketKey,
@@ -24,6 +26,8 @@ import type { Database } from '../types/database'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
@@ -345,6 +349,23 @@ export function SupplyHousesTab({
   }, [invoiceJobAllocations, invoiceJobDetailsMap])
 
   const canAccess = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
+  const agingTodayYmd = new Date().toLocaleDateString('en-CA')
+  const agingMatrix = buildSupplyHouseAgingMatrix(
+    supplyHouseSummary.map((r) => ({ id: r.supply_house_id, name: r.name })),
+    agingUnpaidInvoices,
+    agingTodayYmd,
+  )
+  // Phone layout + the Quickfill "N open" metric (v2.2191). Hooks live above the
+  // access gate (rules-of-hooks); the metric no-ops outside the Quickfill
+  // provider (this tab also lives on /materials).
+  const narrowAging = useNarrowViewport640()
+  const housesPastDue60 = countSupplyHousesPastDue60(agingMatrix)
+  useReportQuickfillSectionMetric(
+    'supply-houses',
+    !canAccess || supplyHouseSummaryLoading ? null : housesPastDue60,
+    canAccess && supplyHouseSummaryLoading,
+  )
+
   if (!canAccess) return null
 
   function closeSupplyHouseForm() {
@@ -644,12 +665,6 @@ export function SupplyHousesTab({
     }
   }
 
-  const agingTodayYmd = new Date().toLocaleDateString('en-CA')
-  const agingMatrix = buildSupplyHouseAgingMatrix(
-    supplyHouseSummary.map((r) => ({ id: r.supply_house_id, name: r.name })),
-    agingUnpaidInvoices,
-    agingTodayYmd,
-  )
 
   function openHouseFromAging(supplyHouseId: string) {
     const sh = supplyHousesList.find((s: SupplyHouse) => s.id === supplyHouseId)
@@ -709,11 +724,67 @@ export function SupplyHousesTab({
             <div style={{ marginBottom: '1.5rem' }}>
                 <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                   Unpaid dollars by days past due (from invoice due dates).
+                  {housesPastDue60 > 0 ? ` ${housesPastDue60} house${housesPastDue60 === 1 ? '' : 's'} 60+ past due.` : ''}
                   {agingMatrix.missingDueDateCount > 0
                     ? ` ${agingMatrix.missingDueDateCount} unpaid invoice${agingMatrix.missingDueDateCount === 1 ? ' has' : 's have'} no due date — open the house and add one to place ${agingMatrix.missingDueDateCount === 1 ? 'it' : 'them'}.`
                     : ''}
                 </p>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+{narrowAging ? (
+                  /* Phone (v2.2191): one row per house — name · worst-news note · 5-bucket bar · total.
+                     The bar's five colors are the table's five aging columns, worst on the right. */
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                    {agingMatrix.rows.length === 0 ? (
+                      <p style={{ margin: 0, padding: '0.9rem', color: 'var(--text-muted)', textAlign: 'center' }}>No unpaid invoices.</p>
+                    ) : (
+                      agingMatrix.rows.map((row, i) => {
+                        const segs = [
+                          { v: row.buckets.current, c: '#86efac' },
+                          { v: row.buckets.past1_30, c: '#fde68a' },
+                          { v: row.buckets.past30_60, c: '#fdba74' },
+                          { v: row.buckets.past60_90, c: '#fca5a5' },
+                          { v: row.buckets.past90plus, c: '#ef4444' },
+                          { v: row.buckets.noDueDate, c: '#9ca3af' },
+                        ].filter((x) => x.v > 0.005)
+                        return (
+                          <button
+                            key={row.supplyHouseId}
+                            type="button"
+                            onClick={() => openHouseFromAging(row.supplyHouseId)}
+                            title="Open this supply house"
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.6rem',
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '0.55rem 0.75rem',
+                              background: 'none',
+                              border: 'none',
+                              borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                              cursor: 'pointer',
+                              font: 'inherit',
+                              color: 'inherit',
+                            }}
+                          >
+                            <span style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', overflowWrap: 'anywhere' }}>{row.name}</span>
+                              <span style={{ display: 'block', fontSize: '0.72rem', color: row.buckets.past90plus > 0.005 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                                {supplyHouseAgingPhoneNote(row)}
+                              </span>
+                            </span>
+                            <span aria-hidden style={{ display: 'flex', width: 96, height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-subtle)', flexShrink: 0 }}>
+                              {segs.map((x, j) => (
+                                <span key={j} style={{ display: 'block', height: '100%', width: `${Math.max(3, (x.v / row.total) * 100)}%`, background: x.c }} />
+                              ))}
+                            </span>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>${formatCurrency(row.total)}</span>
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                ) : (
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left' }}>Supply House</th>
@@ -788,6 +859,7 @@ export function SupplyHousesTab({
                     </tr>
                   </tfoot>
                 </table>
+                )}
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
