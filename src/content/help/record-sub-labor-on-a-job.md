@@ -19,6 +19,11 @@ Sub labor lives on **Jobs → Sub Labor**. Every entry belongs to a job — the 
 New entries no longer ask for miles — the drive-cost math simply isn't applied to them. Older entries keep their saved distance, keep paying out drive cost, and still show the field when edited.
 :::
 
-## Editing old entries
+## Editing an entry
 
-Editing opens the classic single-page form: entries created before the picker keep their typed **Job #**, **Address**, and **Distance** fields — nothing moves or re-links. The job association still matches by number, so keep the number matching the job's # if you change it.
+{{button:outline|Edit}} opens the same form on one page (no steps), with the same **Job** field at the top: the sheet's job shows as {{chip:blue|J977 · Hospital-415 Springtown Way}} with its address underneath, and **change** opens the same search to move the sheet to a different job. Under the title, one line tells you which sheet you're in — contractor · total · what's due.
+
+- Moving a sheet to another job never touches the crew — it's already right; only the job and its address change.
+- Sheets from before the picker (a typed number that matches no job, or no number at all) read {{chip:yellow|#H-2291 No job with this number}} and keep their typed **Address** box. Nothing re-links on its own; tap **link** to attach a job.
+
+{{button:outline|Delete}} sits alone on the left, away from {{button:blue|Save}}.

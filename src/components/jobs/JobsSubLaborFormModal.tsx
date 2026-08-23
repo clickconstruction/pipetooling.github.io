@@ -881,6 +881,9 @@ function JobsSubLaborFormModalInner(
     setLaborAddress(job.address)
     setLaborDistance(job.distance_miles != null ? String(job.distance_miles) : '0')
     setLaborJobNumber(job.job_number ?? '')
+    // v2.2142: Edit links by the typed number — the Job field shows the match
+    // (address stays the sheet's own until the user picks a different job).
+    setLaborPickedJobId(resolveSubLaborJobByNumber(jobs, job.job_number)?.id ?? null)
     setLaborDate(job.job_date ?? new Date().toLocaleDateString('en-CA'))
     const jobRate = job.labor_rate ?? 0
     const items = job.items ?? []
@@ -1090,6 +1093,15 @@ function JobsSubLaborFormModalInner(
     if ((laborModalOpen || editingLaborJob) && authUserId) loadServiceTypes()
   }, [authUserId, laborModalOpen, editingLaborJob])
 
+  // Edit mode (v2.2142): the jobs cache can arrive after the sheet opened (a
+  // ?editLabor= deep link straight to the tab) — link the typed number once it
+  // resolves. Only fills an empty pick; never overrides a job the user chose.
+  useEffect(() => {
+    if (!editingLaborJob || laborPickedJobId) return
+    const match = resolveSubLaborJobByNumber(jobs, laborJobNumber)
+    if (match) setLaborPickedJobId(match.id)
+  }, [editingLaborJob, jobs, laborJobNumber, laborPickedJobId])
+
   useEffect(() => {
     if (!(laborModalOpen || editingLaborJob)) return
     if (!laborCrewSearch.trim()) return
@@ -1136,6 +1148,26 @@ function JobsSubLaborFormModalInner(
 
   /** v2.1617 wizard: which region renders. Edit mode shows everything (classic form). */
   const laborStepVisible = (n: 1 | 2 | 3): boolean => (editingLaborJob ? true : laborStep === n)
+  /** Edit header line (v2.2142): contractor · total · due — same math as the Payments block. */
+  const editSummary = editingLaborJob
+    ? (() => {
+        const fallback =
+          editingLaborJob.labor_rate ??
+          laborFixtureRows.find((r) => r.labor_rate != null && r.labor_rate !== 0)?.labor_rate ??
+          20
+        let total = laborItemsSubtotal(laborFixtureRows, fallback)
+        const payments = editingLaborJob.payments ?? []
+        const paid = payments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
+        const backcharges = payments.filter((p) => Number(p.amount) < 0).reduce((s, p) => s + Math.abs(Number(p.amount)), 0)
+        if (total === 0 && (paid > 0 || backcharges > 0)) total = paid + backcharges
+        const contractor = (editingLaborJob.assigned_to_name ?? '')
+          .split(LABOR_ASSIGNED_DELIMITER)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .join(', ')
+        return { contractor, total, due: total - paid - backcharges }
+      })()
+    : null
   const LABOR_STEP_TITLES: Record<1 | 2 | 3, string> = { 1: 'Job', 2: 'Crew', 3: 'Work and cost' }
   const laborStepNextBlocked =
     laborStep === 1 ? (!laborPickedJobId ? 'Pick the job first' : !laborAddress.trim() ? 'The job has no address — add it in Edit Job first' : null)
@@ -1191,11 +1223,12 @@ function JobsSubLaborFormModalInner(
               }}
             >
               {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', whiteSpace: 'pre-line' }}>{error}</p>}
-              {editingLaborJob ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>
-                  {laborFixtureEntryMode === 'simple'
-                    ? 'Required: Address, at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.'
-                    : 'Required: Address, at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).'}
+              {editingLaborJob && editSummary ? (
+                // v2.2142: which sheet is open, at a glance. The Save button
+                // already spells out anything missing (same as New).
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: '-0.35rem 0 0.75rem' }}>
+                  {editSummary.contractor || 'No contractor'} · ${formatCurrency(editSummary.total)} ·{' '}
+                  {editSummary.due > 0 ? `$${formatCurrency(editSummary.due)} due` : 'Paid'}
                 </p>
               ) : (
                 <div style={{ marginBottom: '0.75rem' }}>
@@ -1209,10 +1242,10 @@ function JobsSubLaborFormModalInner(
                   </p>
                 </div>
               )}
-              {!editingLaborJob && (
+              {(
                 <div style={{ marginBottom: '0.75rem', display: laborStepVisible(1) ? undefined : 'none' }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
-                    Job <span style={{ color: 'var(--text-red-700)' }}>*</span>
+                    Job {!editingLaborJob ? <span style={{ color: 'var(--text-red-700)' }}>*</span> : null}
                   </label>
                   {/* v2.1618: the field opens the app-standard job picker
                       (ScheduleDispatchAssignJobPickerModal) — type in its search,
@@ -1220,6 +1253,9 @@ function JobsSubLaborFormModalInner(
                       field, Address, and the crew. */}
                   {(() => {
                     const picked = laborPickedJobId ? jobs.find((j) => j.id === laborPickedJobId) : undefined
+                    // v2.2142 (Edit): a typed number that matches no job — old
+                    // HCP-era sheets. Kept as typed; "link" opens the search.
+                    const typedUnmatched = !picked && !!editingLaborJob && laborJobNumber.trim() !== ''
                     return (
                       <button
                         type="button"
@@ -1236,7 +1272,7 @@ function JobsSubLaborFormModalInner(
                           gap: '0.5rem',
                           width: '100%',
                           padding: '0.5rem',
-                          border: '1px solid var(--border-strong)',
+                          border: `1px solid ${typedUnmatched ? 'var(--text-amber-800)' : 'var(--border-strong)'}`,
                           borderRadius: 4,
                           minHeight: 38,
                           boxSizing: 'border-box',
@@ -1244,22 +1280,33 @@ function JobsSubLaborFormModalInner(
                           cursor: 'pointer',
                           textAlign: 'left',
                           font: 'inherit',
-                          color: picked ? 'inherit' : 'var(--text-faint)',
+                          color: picked || typedUnmatched ? 'inherit' : 'var(--text-faint)',
                         }}
                       >
                         <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {picked ? subLaborJobDisplayLabel(picked) : 'Search job # / name / address / customer'}
+                            {picked ? (
+                              subLaborJobDisplayLabel(picked)
+                            ) : typedUnmatched ? (
+                              <>
+                                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.8125rem', color: 'var(--text-amber-800)', marginRight: 6 }}>#{laborJobNumber.trim()}</span>
+                                No job with this number
+                              </>
+                            ) : (
+                              'Search job # / name / address / customer'
+                            )}
                           </span>
                           {/* v2.1621: the address is the JOB's — read-only, shown right here. */}
                           {picked && laborAddress.trim() ? (
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {laborAddress}
                             </span>
+                          ) : typedUnmatched ? (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Keeps the typed number until you link one</span>
                           ) : null}
                         </span>
                         <span aria-hidden style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {picked ? 'change' : '\u2315'}
+                          {picked ? 'change' : typedUnmatched ? 'link' : '\u2315'}
                         </span>
                       </button>
                     )
@@ -1267,21 +1314,9 @@ function JobsSubLaborFormModalInner(
                 </div>
               )}
               <div style={{ display: laborStepVisible(1) ? 'flex' : 'none', gap: '1rem', flexWrap: 'wrap', justifyContent: editingLaborJob ? undefined : 'center' }}>
-                {editingLaborJob ? (
-                  <div style={{ flex: '0 0 120px' }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Job #</label>
-                    <input
-                      type="text"
-                      value={laborJobNumber}
-                      onChange={(e) => setLaborJobNumber(e.target.value)}
-                      maxLength={10}
-                      placeholder="Optional"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
-                    />
-                  </div>
-                ) : null}
-                {editingLaborJob ? (
-                  <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                {/* v2.2142: Address is typed only while no job is linked; a linked sheet shows the job's address under the Job field. */}
+                {editingLaborJob && !laborPickedJobId ? (
+                  <div style={{ flex: '1 1 100%', minWidth: 0 }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
                     <input
                       type="text"
@@ -1338,7 +1373,7 @@ function JobsSubLaborFormModalInner(
               <div style={{ display: laborStepVisible(2) ? undefined : 'none' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Subcontractors <span style={{ color: 'var(--text-red-700)' }}>*</span></div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Crew <span style={{ color: 'var(--text-red-700)' }}>*</span></div>
                     {laborAssignedTo.length > 0 ? (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: '0.35rem' }}>
                         {laborAssignedTo.map((n) => renderLaborCrewChip(n))}
@@ -1391,7 +1426,7 @@ function JobsSubLaborFormModalInner(
                         onClick={() => setShowAddSubcontractorModal(true)}
                         style={{ padding: '0.3rem 0.8rem', fontSize: '0.8125rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-link)', border: '1px dashed var(--border-strong)', borderRadius: 999, cursor: 'pointer', flexShrink: 0 }}
                       >
-                        + Add New Sub
+                        + Add Sub
                       </button>
                       {!laborModalInternalSubsOpen && (!laborCrewSearchActive || laborModalInternalSubsShown.length > 0) && (
                         <button
@@ -2160,6 +2195,30 @@ function JobsSubLaborFormModalInner(
                   justifyContent: 'flex-end',
                 }}
               >
+                {editingLaborJob && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const ok = await deleteLaborJob(editingLaborJob.id)
+                      if (ok) closeLaborModal()
+                    }}
+                    disabled={laborJobDeletingId === editingLaborJob.id}
+                    style={{
+                      // v2.2142: quiet and alone on the left — away from Save.
+                      marginRight: 'auto',
+                      padding: '0.5rem 0.5rem 0.5rem 0',
+                      background: 'transparent',
+                      color: 'var(--text-red-700)',
+                      border: '1px solid transparent',
+                      borderRadius: 6,
+                      fontSize: '0.875rem',
+                      fontWeight: 500,
+                      cursor: laborJobDeletingId === editingLaborJob.id ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {laborJobDeletingId === editingLaborJob.id ? '…' : 'Delete'}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={closeLaborModal}
@@ -2218,45 +2277,25 @@ function JobsSubLaborFormModalInner(
                     ))}
                   </span>
                 )}
-                {editingLaborJob && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const ok = await deleteLaborJob(editingLaborJob.id)
-                      if (ok) closeLaborModal()
-                    }}
-                    disabled={laborJobDeletingId === editingLaborJob.id}
-                    style={{
-                      padding: '0.5rem 1.25rem',
-                      background: laborJobDeletingId === editingLaborJob.id ? 'var(--bg-red-200)' : 'var(--bg-red-100)',
-                      color: 'var(--text-red-800)',
-                      border: '1px solid var(--border-red)',
-                      borderRadius: 6,
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      cursor: laborJobDeletingId === editingLaborJob.id ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {laborJobDeletingId === editingLaborJob.id ? '…' : 'Delete'}
-                  </button>
-                )}
               </div>
               )}
             </form>
-            {!editingLaborJob && laborJobPickerOpen ? (
+            {laborJobPickerOpen ? (
               <ScheduleDispatchAssignJobPickerModal
                 open
                 onClose={() => setLaborJobPickerOpen(false)}
-                subtitle="Pick the job this sub labor belongs to"
+                title="Which job is this sub labor for?"
+                subtitle="Number, name, address or customer — finished jobs sit under their own divider"
                 jobRows={subLaborAssignPickerRows(jobs, laborJobPickerSearch, laborJobPickerNumberQuery)}
                 searchValue={laborJobPickerSearch}
                 onSearchChange={setLaborJobPickerSearch}
                 numberQuery={laborJobPickerNumberQuery}
                 onNumberQueryChange={setLaborJobPickerNumberQuery}
-                searchPlaceholder="Search HCP, job, address, or customer"
+                searchPlaceholder="Search job # / name / address / customer"
                 onPickJob={(jobId) => {
                   const job = jobs.find((j) => j.id === jobId)
-                  if (job) applyPickedLaborJob(job)
+                  // Edit (v2.2142): the sheet's crew is already the truth — picking a job never rewrites it.
+                  if (job) applyPickedLaborJob(job, { keepAssigned: !!editingLaborJob })
                   setLaborJobPickerOpen(false)
                 }}
               />

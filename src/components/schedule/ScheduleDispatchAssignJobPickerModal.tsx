@@ -61,6 +61,7 @@ export type ScheduleDispatchAssignJobPickerRow = {
 export function ScheduleDispatchAssignJobPickerModal({
   open,
   onClose,
+  title = 'Add job to schedule',
   subtitle,
   jobRows,
   searchValue,
@@ -77,6 +78,8 @@ export function ScheduleDispatchAssignJobPickerModal({
 }: {
   open: boolean
   onClose: () => void
+  /** Heading (v2.2142): callers outside Schedule name the job they're picking for. */
+  title?: ReactNode
   subtitle: ReactNode
   jobRows: ScheduleDispatchAssignJobPickerRow[]
   searchValue: string
@@ -214,7 +217,7 @@ export function ScheduleDispatchAssignJobPickerModal({
           }}
         >
           <h2 id="hub-assign-job-picker-title" style={{ margin: 0, fontSize: '1.05rem' }}>
-            Add job to schedule
+            {title}
           </h2>
           {onCreateNewJob ? (
             <button

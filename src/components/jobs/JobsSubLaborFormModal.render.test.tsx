@@ -37,6 +37,10 @@ const people: Person[] = [
   },
 ]
 
+// One stable jobs array: the modal stores the picked job's id, and a fresh
+// makeJob() per render would mint a new id each time (fixture ids increment).
+const harnessJobs = [makeJob({ hcp_number: 'HCP-12' })]
+
 type HarnessProps = {
   handleRef: React.RefObject<JobsSubLaborFormModalHandle>
   overrides?: Partial<JobsSubLaborFormModalProps>
@@ -51,7 +55,7 @@ function Harness({ handleRef, overrides }: HarnessProps) {
       ref={handleRef}
       editingLaborJob={editingLaborJob}
       setEditingLaborJob={setEditingLaborJob}
-      jobs={[makeJob({ hcp_number: 'HCP-12' })]}
+      jobs={harnessJobs}
       users={users}
       people={people}
       loadRoster={vi.fn(async () => {})}
@@ -80,9 +84,9 @@ function mountHarness(overrides?: Partial<JobsSubLaborFormModalProps>) {
   return { handleRef, view }
 }
 
-// Edit mode keeps the classic fields; new mode replaced them with the job picker
-// (v2.1616) whose field carries the job's address as a read-only subline (v2.1621).
-const hcpInput = () => screen.getByPlaceholderText('Optional') as HTMLInputElement
+// Both modes use the job picker (v2.1616 new, v2.2142 edit) whose field carries
+// the job's address as a read-only subline (v2.1621). Edit keeps a typed Address
+// box only while no job is linked.
 const editAddressInput = () => screen.getByPlaceholderText('Job address') as HTMLInputElement
 const jobPickerTrigger = () => screen.getByText('Search job # / name / address / customer')
 
@@ -114,7 +118,10 @@ describe('JobsSubLaborFormModal render smoke', () => {
     })
     await act(async () => handleRef.current!.openEdit(laborJob))
     expect(screen.getByText('Edit Sub Labor')).toBeTruthy()
-    expect(hcpInput().value).toBe('HCP-77')
+    // v2.2142: no free-text Job # box; a typed number with no matching job reads as unlinked
+    expect(screen.queryByPlaceholderText('Optional')).toBeNull()
+    expect(screen.getByText('#HCP-77')).toBeTruthy()
+    expect(screen.getByText('No job with this number')).toBeTruthy()
     expect(editAddressInput().value).toBe('500 Oak Ln, Austin, TX')
     // Distance field removed entirely in v2.1631 (legacy miles zeroed in prod).
     expect(screen.queryByDisplayValue('12')).toBeNull()
@@ -123,6 +130,18 @@ describe('JobsSubLaborFormModal render smoke', () => {
     // Assigned contractor chip is pressed (chips since v2.1617; selected row + group = 2)
     const samChips = screen.getAllByRole('button', { name: 'Sub Sam', pressed: true })
     expect(samChips.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('openEdit links a sheet whose number matches a job: picker shows the job, Address box goes away (v2.2142)', async () => {
+    const { handleRef } = mountHarness()
+    const laborJob = makeLaborJob({ assigned_to_name: 'Sub Sam', address: '500 Oak Ln, Austin, TX', job_number: 'HCP-12' })
+    await act(async () => handleRef.current!.openEdit(laborJob))
+    expect(screen.queryByText('No job with this number')).toBeNull()
+    expect(screen.queryByPlaceholderText('Job address')).toBeNull()
+    expect(screen.getByText('change')).toBeTruthy()
+    // the sheet's own address rides under the Job field until a different job is picked
+    expect(screen.getByText('500 Oak Ln, Austin, TX')).toBeTruthy()
+    expect(screen.getByText('Delete')).toBeTruthy()
   })
 
   it('openNewWithJobNumber resolves a known number to a picked job (v2.1616)', async () => {
