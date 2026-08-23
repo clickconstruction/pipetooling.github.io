@@ -95,7 +95,7 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 const IMPERSONATION_KEY = 'impersonation_original'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
-const PRIMARY_PATHS = ['/dashboard', '/my-statement', '/materials', '/estimates', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
+const PRIMARY_PATHS = ['/dashboard', '/my-statement', '/materials', '/estimates', '/documents', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
 const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
@@ -1514,6 +1514,7 @@ export default function Layout() {
                   </NavLink>
                 )}
                 {(role === 'estimator' ||
+                  role === 'primary' ||
                   role === null ||
                   role === 'dev' ||
                   role === 'master_technician' ||
