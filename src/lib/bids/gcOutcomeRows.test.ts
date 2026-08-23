@@ -29,11 +29,13 @@ describe('gcOutcomeRowsForBid', () => {
       pk('', null, 'SPC', { outcome: 'won', sentValue: 50000 }),
       pk('c-burd', 'c-burd', 'Burd'),
       pk('c-k', 'c-k', 'Knight', {}, { loss_category: 'price' }),
+      pk('c-m', 'c-m', 'Mapp', { outcome: 'lost' }),
     ])
-    expect(rows.map((r) => [r.gcName, r.outcome, r.perGc, r.lossCategory, r.value])).toEqual([
-      ['SPC', 'won', true, null, 50000],
-      ['Burd', 'lost', true, 'gc_lost', 52311.11],
-      ['Knight', 'lost', true, 'price', 52311.11],
+    expect(rows.map((r) => [r.gcName, r.outcome, r.perGc, r.lossCategory, r.reasonInferred, r.value])).toEqual([
+      ['SPC', 'won', true, null, false, 50000],
+      ['Burd', 'lost', true, 'gc_lost', true, 52311.11],
+      ['Knight', 'lost', true, 'price', false, 52311.11],
+      ['Mapp', 'lost', true, 'gc_lost', true, 52311.11],
     ])
   })
   it('a sibling loss leaves an unmarked packet pending (or unsent when never sent)', () => {

@@ -7,7 +7,8 @@
  * Resolution, per packet of a bid with ≥2 real packets:
  *   explicit packet outcome → that;
  *   no packet on the bid has an outcome → the bid's outcome (legacy / unchanged behavior);
- *   another packet won → lost, reason `gc_lost` unless recorded (the winner got the project);
+ *   another packet won → lost, reason `gc_lost` unless recorded (the winner got the project) — also
+ *   the inferred reason for a packet already marked lost beside that win;
  *   otherwise → pending if sent, unsent if not.
  * Single-packet bids and "Also sent to" shared-letter packets take the bid's outcome. Pure.
  */
@@ -105,7 +106,12 @@ export function gcOutcomeRowsForBid(
       let lossCategory: string | null = recorded
       let lossNote: string | null = note
       let reasonInferred = false
-      if (p.outcome === 'won' || p.outcome === 'lost') outcome = p.outcome
+      if (p.outcome === 'won' || p.outcome === 'lost') {
+        outcome = p.outcome
+        // A packet marked lost beside a sibling win (the auto-mark on a GC win, or by hand) with no
+        // reason recorded: the winner got the project.
+        if (outcome === 'lost' && !recorded && wonElsewhere) { lossCategory = 'gc_lost'; reasonInferred = true }
+      }
       else if (!anyMarked) { outcome = bidOutcome; perGc = false; lossCategory = recorded ?? bidCategory; lossNote = note ?? bidNote }
       else if (wonElsewhere) { outcome = 'lost'; if (!recorded) { lossCategory = 'gc_lost'; reasonInferred = true } }
       else outcome = p.sentOn ? 'pending' : 'unsent'
