@@ -140,9 +140,11 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         >
           ‹ Older
         </button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-700)', minWidth: 0 }}>
+        <span style={{ flex: 1, textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-700)', minWidth: 0, lineHeight: 1.25 }}>
           {card ? weekOfLabel(card.weekStart, nowYear) : ''}
-          {card?.open ? ' · in progress' : ''}
+          {/* v2.2149: the live tag sits on its own line under the week — inline it
+              wrapped mid-phrase on a phone ("Week of Aug 23 · in / progress"). */}
+          {card?.open ? <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>(in progress)</span> : null}
         </span>
         <button
           type="button"
