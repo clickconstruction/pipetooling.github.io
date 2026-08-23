@@ -22,7 +22,7 @@ Tap the card again to close it. For repeating tasks, an event shows which day it
 
 ## Adding a note
 
-Type in the **Add a note…** box at the bottom of the expanded card and tap {{button:blue|Post}}. The note lands on the task's current occurrence, so it also shows up wherever else the task's activity appears — the History ledger and the Review sign-off cards.
+Type in the **Add a note…** box at the bottom of the expanded card and tap {{button:blue|Post}} (or press Enter — Shift+Enter starts a new line). The box grows as you type, and on a phone it takes the full width with the buttons sitting underneath. The note lands on the task's current occurrence, so it also shows up wherever else the task's activity appears — the History ledger and the Review sign-off cards.
 
 Notes are a paper trail, not a chat: they can't be edited or deleted once posted.
 

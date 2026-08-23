@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { buildManageTimeline, commentTargetInstance, type ManageInstanceLite } from '../../lib/checklistManageActivity'
 
 /** A long-running repeating task can have years of instances — cap the activity fetch. */
 export const ITEM_ACTIVITY_INSTANCE_CAP = 120
+
+/** Note box grows with its text up to about five lines, then scrolls. */
+const DRAFT_MAX_HEIGHT = 160
 
 export type ChecklistItemActivityItem = {
   id: string
@@ -62,6 +65,17 @@ export function ChecklistItemActivity({
   const [posting, setPosting] = useState(false)
   const [completing, setCompleting] = useState(false)
   const [cappedPast, setCappedPast] = useState(false)
+  const draftRef = useRef<HTMLTextAreaElement | null>(null)
+
+  // Auto-grow the note box with its text (1 → ~5 lines, then it scrolls) and
+  // snap back when a post clears the draft. Runs after every draft change.
+  useEffect(() => {
+    const el = draftRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    const borders = el.offsetHeight - el.clientHeight
+    el.style.height = `${Math.min(el.scrollHeight + borders, DRAFT_MAX_HEIGHT)}px`
+  }, [draft])
 
   useEffect(() => {
     let cancelled = false
@@ -281,68 +295,85 @@ export function ChecklistItemActivity({
         </div>
       )}
       {authUserId && postTargetId ? (
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <input
-            type="text"
+        // One wrapping row (v2.2143): the note box keeps ≥240px and takes all the
+        // slack; when the row is too narrow for it plus the buttons (a phone),
+        // the button group drops underneath and fills the width. No breakpoint.
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <textarea
+            ref={draftRef}
             value={draft}
+            rows={1}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') void postComment()
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                void postComment()
+              }
             }}
             placeholder="Add a note…"
             disabled={posting}
+            enterKeyHint="send"
             aria-label={`Add a note to ${item.title}`}
             style={{
-              flex: 1,
+              flex: '999 1 240px',
               minWidth: 0,
-              height: 44,
+              minHeight: 44,
+              maxHeight: DRAFT_MAX_HEIGHT,
+              resize: 'none',
+              overflowY: 'auto',
               boxSizing: 'border-box',
-              padding: '0 0.7rem',
+              padding: '0.6rem 0.7rem',
               fontSize: '1rem',
+              lineHeight: 1.35,
+              fontFamily: 'inherit',
               border: '2px solid var(--text-600)',
               borderRadius: 10,
             }}
           />
-          <button
-            type="button"
-            onClick={() => void postComment()}
-            disabled={posting || completing || !draft.trim()}
-            style={{
-              height: 44,
-              padding: '0 1rem',
-              borderRadius: 10,
-              border: 'none',
-              background: posting || completing || !draft.trim() ? '#9ca3af' : '#2563eb',
-              color: 'white',
-              fontSize: '0.9375rem',
-              fontWeight: 600,
-              cursor: posting || completing || !draft.trim() ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {posting ? '…' : 'Post'}
-          </button>
-          {canComplete ? (
+          <div style={{ flex: '1 0 auto', display: 'flex', gap: '0.5rem' }}>
             <button
               type="button"
-              onClick={() => void completeTarget()}
-              disabled={posting || completing}
-              title={draft.trim() ? 'Post the note, then mark this task complete' : 'Mark this task complete'}
+              onClick={() => void postComment()}
+              disabled={posting || completing || !draft.trim()}
               style={{
+                flex: '1 1 auto',
                 height: 44,
                 padding: '0 1rem',
                 borderRadius: 10,
                 border: 'none',
-                background: posting || completing ? '#9ca3af' : '#16a34a',
+                background: posting || completing || !draft.trim() ? '#9ca3af' : '#2563eb',
                 color: 'white',
                 fontSize: '0.9375rem',
                 fontWeight: 600,
-                cursor: posting || completing ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap',
+                cursor: posting || completing || !draft.trim() ? 'not-allowed' : 'pointer',
               }}
             >
-              {completing ? '…' : draft.trim() ? '✓ Post & complete' : '✓ Complete'}
+              {posting ? '…' : 'Post'}
             </button>
-          ) : null}
+            {canComplete ? (
+              <button
+                type="button"
+                onClick={() => void completeTarget()}
+                disabled={posting || completing}
+                title={draft.trim() ? 'Post the note, then mark this task complete' : 'Mark this task complete'}
+                style={{
+                  flex: '1 1 auto',
+                  height: 44,
+                  padding: '0 1rem',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: posting || completing ? '#9ca3af' : '#16a34a',
+                  color: 'white',
+                  fontSize: '0.9375rem',
+                  fontWeight: 600,
+                  cursor: posting || completing ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {completing ? '…' : draft.trim() ? '✓ Post & complete' : '✓ Complete'}
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
       {footerActions ? (
