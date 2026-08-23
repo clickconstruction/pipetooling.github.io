@@ -17,16 +17,23 @@ export function partnerNavStatusFromSummary(summary: PartnerSummary | null): Par
   }
 }
 
-/** sessionStorage cache shape; `at` is epoch ms. Fresh for FRESH_MS. */
-export type PartnerNavCache = PartnerNavStatus & { at: number }
-export const PARTNER_NAV_CACHE_KEY = 'partner_nav_status_v1'
+/** sessionStorage cache shape; `at` is epoch ms, `uid` the user it was computed for. Fresh for FRESH_MS. */
+export type PartnerNavCache = PartnerNavStatus & { at: number; uid: string }
+export const PARTNER_NAV_CACHE_KEY = 'partner_nav_status_v2'
 export const PARTNER_NAV_FRESH_MS = 10 * 60 * 1000
 
-export function parsePartnerNavCache(raw: string | null, now: number): PartnerNavStatus | null {
+/**
+ * A cache entry counts only for the user it was written for (v2.2185): the
+ * dev "imitate" hand-off and a sign-out/sign-in share one tab's sessionStorage,
+ * and an entry written during the hand-off gave the next user the wrong answer
+ * for ten minutes.
+ */
+export function parsePartnerNavCache(raw: string | null, now: number, uid: string): PartnerNavStatus | null {
   if (!raw) return null
   try {
     const o = JSON.parse(raw) as Partial<PartnerNavCache>
     if (typeof o.at !== 'number' || now - o.at > PARTNER_NAV_FRESH_MS) return null
+    if (o.uid !== uid) return null
     return { isPartner: o.isPartner === true, awaitingSignOff: o.awaitingSignOff === true }
   } catch {
     return null

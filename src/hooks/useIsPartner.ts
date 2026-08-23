@@ -13,9 +13,9 @@ import type { UserRole } from './useAuth'
 
 const CHANGED_EVENT = 'partner-nav-status-changed'
 
-function readCache(): PartnerNavStatus | null {
+function readCache(uid: string): PartnerNavStatus | null {
   try {
-    return parsePartnerNavCache(sessionStorage.getItem(PARTNER_NAV_CACHE_KEY), Date.now())
+    return parsePartnerNavCache(sessionStorage.getItem(PARTNER_NAV_CACHE_KEY), Date.now(), uid)
   } catch {
     return null
   }
@@ -43,15 +43,16 @@ export function roleCanBePartner(role: UserRole | null): boolean {
  * dev/office), cached in sessionStorage for 10 minutes. Drives the Statement
  * link in the nav.
  */
-export function useIsPartner(role: UserRole | null): PartnerNavStatus {
-  const eligible = roleCanBePartner(role)
-  const [status, setStatus] = useState<PartnerNavStatus>(() => (eligible ? readCache() ?? NO_PARTNER_NAV : NO_PARTNER_NAV))
+export function useIsPartner(role: UserRole | null, userId: string | null | undefined): PartnerNavStatus {
+  const eligible = roleCanBePartner(role) && !!userId
+  const [status, setStatus] = useState<PartnerNavStatus>(() => (eligible && userId ? readCache(userId) ?? NO_PARTNER_NAV : NO_PARTNER_NAV))
 
   useEffect(() => {
-    if (!eligible) return
+    if (!eligible || !userId) return
+    const uid = userId
     let cancelled = false
     async function load(force: boolean) {
-      const cached = force ? null : readCache()
+      const cached = force ? null : readCache(uid)
       if (cached) {
         setStatus(cached)
         return
@@ -61,7 +62,7 @@ export function useIsPartner(role: UserRole | null): PartnerNavStatus {
       const next = error ? NO_PARTNER_NAV : partnerNavStatusFromSummary(parsePartnerSummary(data))
       setStatus(next)
       try {
-        sessionStorage.setItem(PARTNER_NAV_CACHE_KEY, JSON.stringify({ ...next, at: Date.now() }))
+        sessionStorage.setItem(PARTNER_NAV_CACHE_KEY, JSON.stringify({ ...next, at: Date.now(), uid }))
       } catch {
         /* private mode */
       }
@@ -73,7 +74,7 @@ export function useIsPartner(role: UserRole | null): PartnerNavStatus {
       cancelled = true
       window.removeEventListener(CHANGED_EVENT, onChanged)
     }
-  }, [eligible])
+  }, [eligible, userId])
 
   return eligible ? status : NO_PARTNER_NAV
 }

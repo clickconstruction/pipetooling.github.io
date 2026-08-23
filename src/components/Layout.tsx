@@ -116,7 +116,7 @@ export default function Layout() {
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess, readOnly } = useAuth()
   // Partner nav (v2.2165): the Statement link shows only for accounts with a live partnership.
-  const partnerNav = useIsPartner(role)
+  const partnerNav = useIsPartner(role, authUser?.id)
   const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
   // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
