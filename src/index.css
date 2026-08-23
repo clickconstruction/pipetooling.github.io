@@ -2146,3 +2146,8 @@ body.my-time-boundary-dragging {
     display: none;
   }
 }
+
+/* Pricing Workbench solver bar (v2.2148): the divider between the margin and target groups only makes sense on one line. */
+@media (max-width: 900px) {
+  .wb-solver-sep { display: none; }
+}

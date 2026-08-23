@@ -296,7 +296,6 @@ export function BidsPricingTab({
   const [wbPreview, setWbPreview] = useState<Record<string, number> | null>(null)
   const [wbLocks, setWbLocks] = useState<Set<string>>(() => new Set())
   const [wbMarginPct, setWbMarginPct] = useState(45)
-  const [wbRound5, setWbRound5] = useState(true)
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
   /** Last target-total solve: what was asked vs where it landed (cleared on input edit). */
   const [wbTargetSolveResult, setWbTargetSolveResult] = useState<{ target: number; landed: number } | null>(null)
@@ -1446,7 +1445,7 @@ export function BidsPricingTab({
     const sol = solveWorkbenchPrices(solverRows, overhead, {
       ...(opts.targetTotal == null ? { targetMarginPct: wbMarginPct } : { targetTotal: opts.targetTotal }),
       onlyUnpriced: opts.onlyUnpriced === true,
-      roundTo5: wbRound5,
+      roundTo5: true, // v2.2148: always on (was the default; the checkbox is gone)
     })
     if (!sol) {
       showToast('Nothing to solve — check the margin (1–95) and that unlocked rows have costs.', 'error')
@@ -2896,79 +2895,82 @@ export function BidsPricingTab({
                       </div>
                     </div>
 
-                    <div data-tour="workbench-solver" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.3fr) minmax(150px, 1fr) auto auto', gap: '0.8rem', alignItems: 'end', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginBottom: '0.9rem', flexWrap: 'wrap' }} className="bid-form-grid-2">
-                      <div>
-                        <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                          Blended margin — whole bid (solver moves the {costed.length} costed row{costed.length !== 1 ? 's' : ''})
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                          <input
-                            type="range" min={20} max={65} step={1} value={Math.min(65, Math.max(20, wbMarginPct))}
-                            onChange={(e) => setWbMarginPct(Number(e.target.value))}
-                            onMouseUp={() => runWorkbenchSolve({})}
-                            onTouchEnd={() => runWorkbenchSolve({})}
-                            style={{ flex: 1, accentColor: '#3b82f6' }}
-                            aria-label="Solve margin on costed rows"
-                          />
-                          <span style={{ fontSize: '1rem', fontWeight: 700, width: '2.9rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{wbMarginPct}%</span>
-                        </div>
-                      </div>
-                      <div>
-                        <span style={{ display: 'block', fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>…or target bid total (whole bid)</span>
-                        {(() => {
-                          const solveToTarget = () => {
-                            const v = parseFloat(wbTargetTotalInput.replace(/[$,]/g, ''))
-                            if (!Number.isFinite(v) || v <= totalCost) {
-                              showToast(`Target must beat our cost ($${formatCurrency(totalCost)}).`, 'error')
-                              return
-                            }
-                            runWorkbenchSolve({ targetTotal: v })
+                    <div data-tour="workbench-solver" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.55rem 0.8rem', marginBottom: '0.9rem' }}>
+                      {/* v2.2148: one compact line that wraps — Solver · Margin slider · or total $ + Solve (+ echo) · Price unpriced only. */}
+                      {(() => {
+                        const solveToTarget = () => {
+                          const v = parseFloat(wbTargetTotalInput.replace(/[$,]/g, ''))
+                          if (!Number.isFinite(v) || v <= totalCost) {
+                            showToast(`Target must beat our cost ($${formatCurrency(totalCost)}).`, 'error')
+                            return
                           }
-                          return (
-                            <div style={{ display: 'flex', gap: '0.35rem' }}>
+                          runWorkbenchSolve({ targetTotal: v })
+                        }
+                        // The no-cost fact lives in the amber banner below; this slot is only the solve echo.
+                        const echo = wbTargetSolveResult
+                          ? `→ previewing $${formatCurrency(wbTargetSolveResult.landed)}${Math.abs(wbTargetSolveResult.landed - wbTargetSolveResult.target) >= 0.005 ? ' (rounded)' : ''}`
+                          : null
+                        const labelStyle: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem 1rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', flex: '0 0 auto' }}>Solver</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '1 1 240px', minWidth: 220 }}>
+                              <span style={labelStyle}>Margin</span>
                               <input
-                                type="text" inputMode="decimal" placeholder="e.g. 42,000" value={wbTargetTotalInput}
-                                onChange={(e) => { setWbTargetTotalInput(e.target.value); setWbTargetSolveResult(null) }}
-                                onKeyDown={(e) => {
-                                  if (e.key !== 'Enter') return
-                                  e.preventDefault()
-                                  solveToTarget()
-                                }}
-                                style={{ width: '100%', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                                type="range" min={20} max={65} step={1} value={Math.min(65, Math.max(20, wbMarginPct))}
+                                onChange={(e) => setWbMarginPct(Number(e.target.value))}
+                                onMouseUp={() => runWorkbenchSolve({})}
+                                onTouchEnd={() => runWorkbenchSolve({})}
+                                style={{ flex: 1, accentColor: '#3b82f6' }}
+                                aria-label="Blended margin for the whole bid"
+                                title={`Moves the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} to this blended margin. Prices round up to $5.`}
                               />
-                              <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.35rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>
+                              <span style={{ fontSize: '0.95rem', fontWeight: 700, width: '2.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{wbMarginPct}%</span>
+                            </div>
+                            <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '2 1 360px', minWidth: 260, flexWrap: 'wrap' }}>
+                              <span style={labelStyle}>or total</span>
+                              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden', flex: '1 1 120px', maxWidth: 170 }}>
+                                <span style={{ padding: '0 0.4rem 0 0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>$</span>
+                                <input
+                                  type="text" inputMode="decimal" placeholder="42,000" value={wbTargetTotalInput}
+                                  onChange={(e) => { setWbTargetTotalInput(e.target.value); setWbTargetSolveResult(null) }}
+                                  onKeyDown={(e) => {
+                                    if (e.key !== 'Enter') return
+                                    e.preventDefault()
+                                    solveToTarget()
+                                  }}
+                                  aria-label="Target bid total"
+                                  style={{ border: 0, width: '100%', padding: '0.33rem 0.45rem 0.33rem 0', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, background: 'transparent', color: 'var(--text-strong)', outline: 'none' }}
+                                />
+                              </div>
+                              <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
                                 Solve
                               </button>
+                              {echo ? (
+                                <span style={{ fontSize: '0.74rem', color: 'var(--text-green-600)', whiteSpace: 'nowrap' }}>{echo}</span>
+                              ) : null}
                             </div>
-                          )
-                        })()}
-                        <div style={{ fontSize: '0.68rem', color: wbTargetSolveResult ? 'var(--text-green-600)' : 'var(--text-muted)', marginTop: '0.2rem' }}>
-                          {wbTargetSolveResult
-                            ? `Target $${formatCurrency(wbTargetSolveResult.target)} → previewing $${formatCurrency(wbTargetSolveResult.landed)}`
-                            : uncostedRevenue > 0
-                              ? `Counts the $${formatCurrency(uncostedRevenue)} already on no-cost rows.`
-                              : null}
-                        </div>
-                      </div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
-                        <input type="checkbox" checked={wbRound5} onChange={() => setWbRound5((v) => !v)} /> round up to $5
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => runWorkbenchSolve({ onlyUnpriced: true })}
-                        style={{ padding: '0.42rem 0.7rem', fontSize: '0.8rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
-                      >
-                        Price unpriced only
-                      </button>
+                            <button
+                              type="button"
+                              onClick={() => runWorkbenchSolve({ onlyUnpriced: true })}
+                              title="Give a price only to rows that have none yet, at the current margin"
+                              style={{ flex: '0 0 auto', marginLeft: 'auto', padding: '0.38rem 0.7rem', fontSize: '0.8rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
+                            >
+                              Price unpriced only
+                            </button>
+                          </div>
+                        )
+                      })()}
                       {uncostedRevenue > 0 ? (
-                        <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 7, padding: '0.45rem 0.7rem' }}>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)' }}>
-                            <strong>⚠ {eff.length - costed.length} of {eff.length} rows have no Takeoffs cost</strong> — their ${formatCurrency(uncostedRevenue)} of revenue counts as pure margin. The solver never re-prices them (their revenue still counts toward targets); price them by hand.
+                        <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 7, padding: '0.4rem 0.7rem' }}>
+                          <span style={{ fontSize: '0.76rem', color: 'var(--text-amber-700)' }}>
+                            <strong>⚠ {eff.length - costed.length} of {eff.length} rows have no Takeoffs cost</strong> — their ${formatCurrency(uncostedRevenue)} counts as pure margin; the solver never re-prices them.
                           </span>
                           <button
                             type="button"
                             onClick={() => { setWbShowNoCostOnly((v) => !v); setWbShowUnpricedOnly(false) }}
-                            style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', whiteSpace: 'nowrap', background: wbShowNoCostOnly ? '#3b82f6' : 'var(--surface)', color: wbShowNoCostOnly ? '#fff' : 'var(--text-700)' }}
+                            style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.2rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', whiteSpace: 'nowrap', background: wbShowNoCostOnly ? '#3b82f6' : 'var(--surface)', color: wbShowNoCostOnly ? '#fff' : 'var(--text-700)' }}
                           >
                             {wbShowNoCostOnly ? 'Showing no-cost rows — show all' : `Show these ${eff.length - costed.length} rows`}
                           </button>
