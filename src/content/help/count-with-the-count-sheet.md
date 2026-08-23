@@ -10,7 +10,7 @@ The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}}
 ## Read it like an audit
 
 - The strip up top totals **Items**, then **Counts** (rows counted each — fixtures, tie-ins, fittings) and **Line feet** (rows measured in feet — the takeoff's `ft of …` line types) **separately**, so 12 water closets never get added to 148 ft of copper. It also counts rows with **no plan page** (red — click the tile to see just those) and how many plan pages the count cites.
-- A row measured in feet shows a small **ft** tag beside its count. Lines copied from CountTooling without a scale come in as `px of …` — they get a red **Unscaled** tile and a red **px** tag: set the page scale in CountTooling and copy again rather than pricing pixels.
+- Every row has a **unit** beside its count — **ea** (faint until you hover), **ft**, **sq ft**, or **px**. It follows the fixture name (`ft of …` is feet) until you pick one from the little dropdown; a picked unit sticks even if you rename the row. Lines copied from CountTooling without a scale come in as `px of …` — they get a red **Unscaled** tile and a red **px** tag: set the page scale in CountTooling and copy again rather than pricing pixels.
 
 :::example What the strip says
 Items 35 · Counts 1,122 ea · 29 items · Line feet 444.74 ft · 6 line types · No plan page 4 · Plan pages cited 1 — the bid has 29 counted things and six pipe runs totalling 445 feet.
@@ -31,7 +31,7 @@ In By plan page, a WC-1 sits under "No plan page". Type `2` in its page cell, En
 
 Quick add starts tucked away — click {{button:outline|+ Quick add}} to open the panel (the count box is focused and ready), and **Hide** to put it away when you're done.
 
-Tap a fixture chip (from your service type's fixture list), set the count, press **Enter** — the row is added and the count box is focused for the next one. No mouse needed between rows.
+Tap a fixture chip (from your service type's fixture list), set the count, press **Enter** — the row is added and the count box is focused for the next one. No mouse needed between rows. The **ea / ft** toggle next to the count follows the name you typed (`ft of 2in copper` flips it to ft); click it to pin a unit for that row.
 
 If you type a fixture that's already on the bid, Add pauses and offers **Merge into existing (+N)** — one fixture name, one row, so the takeoff assignment never forks.
 

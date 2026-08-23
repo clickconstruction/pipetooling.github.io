@@ -1065,6 +1065,7 @@ export type Database = {
           id: string
           page: string | null
           sequence_order: number
+          unit: string | null
         }
         Insert: {
           bid_id: string
@@ -1075,6 +1076,7 @@ export type Database = {
           id?: string
           page?: string | null
           sequence_order?: number
+          unit?: string | null
         }
         Update: {
           bid_id?: string
@@ -1085,6 +1087,7 @@ export type Database = {
           id?: string
           page?: string | null
           sequence_order?: number
+          unit?: string | null
         }
         Relationships: [
           {

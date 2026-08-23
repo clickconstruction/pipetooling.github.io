@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { NumericEntryPad } from '../NumericEntryPad'
+import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, type CountUnit } from '../../lib/bids/countRowUnit'
 
 export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother, showDragHandleColumn }: { bidId: string; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void; showDragHandleColumn?: boolean }) {
   const { showToast } = useToastContext()
@@ -10,6 +11,8 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
   const [count, setCount] = useState('')
   const [groupTag, setGroupTag] = useState('')
   const [page, setPage] = useState('')
+  /** null = follow the fixture name ("ft of …" → ft); a pick pins the unit on the saved row. */
+  const [unitChoice, setUnitChoice] = useState<CountUnit | null>(null)
   const [saving, setSaving] = useState(false)
   const [countsFixtureGroups, setCountsFixtureGroups] = useState<Array<{ label: string; fixtures: string[] }>>([])
 
@@ -55,7 +58,7 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
     setSaving(true)
     const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1 })
+    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1, unit: unitChoice ?? classifyCountRowUnit(fixture) })
     if (error) { setSaving(false); showToast(error.message, 'error'); return }
     onSaved()
   }
@@ -66,7 +69,7 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
     setSaving(true)
     const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1 })
+    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1, unit: unitChoice ?? classifyCountRowUnit(fixture) })
     if (error) {
       setSaving(false)
       showToast(error.message, 'error')
@@ -76,6 +79,7 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
     setCount('')
     setGroupTag('')
     setPage('')
+    setUnitChoice(null)
     setSaving(false)
     onSavedAndAddAnother?.()
     return true
@@ -100,6 +104,15 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
         <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: calcWidth, verticalAlign: 'top', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: calcWidth }}>
             <input ref={countInputRef} type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+            <select
+              value={unitChoice ?? classifyCountRowUnit(fixture)}
+              onChange={(e) => setUnitChoice(e.target.value as CountUnit)}
+              aria-label="Unit"
+              title={unitChoice ? 'Unit pinned for this row' : 'Unit follows the fixture name ("ft of …" → ft) — pick one to pin it'}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8rem', background: 'var(--surface)', color: unitChoice ? 'var(--text-strong)' : 'var(--text-muted)' }}
+            >
+              {COUNT_UNITS.map((u) => <option key={u} value={u}>{COUNT_UNIT_LABEL[u]}</option>)}
+            </select>
             <div style={{ marginTop: hasFixtureGroups ? '1.75rem' : undefined }}>
               <NumericEntryPad widthPx={calcWidth} value={count} onChange={setCount} />
             </div>

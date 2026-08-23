@@ -1,8 +1,12 @@
+import { classifyCountRowUnit, type CountUnit } from './countRowUnit'
+
 export type ParsedCountImportRow = {
   fixture: string
   count: number
   group_tag: string | null
   page: string | null
+  /** Stamped from the name convention at import time (CountTooling's `ft of …` / `px of …` prefixes). */
+  unit: CountUnit
 }
 
 // Stable contract with the CountTooling "Copy to /Tooling" export: the trailing
@@ -42,7 +46,7 @@ export function parseCountsImportText(text: string): {
       skippedCount++
       continue
     }
-    rows.push({ fixture, count, group_tag: groupTag, page })
+    rows.push({ fixture, count, group_tag: groupTag, page, unit: classifyCountRowUnit(fixture) })
   }
   return { rows, skippedCount, sourceLink }
 }
