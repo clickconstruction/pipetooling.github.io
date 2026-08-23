@@ -50,6 +50,7 @@ import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import { readStagesSectionOpenPrefs, scopesForOpenStagesSections } from '../lib/jobs/stagesSectionPrefs'
+import { parseStagesMoneyMoveKey } from '../lib/jobs/stagesMoneyMoveLink'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
@@ -962,6 +963,32 @@ export default function Jobs() {
     stagesTabRef.current?.openWeeklyMoney()
     strip()
   }, [stagesMoneyParam, activeTab, jobsListLoading, setSearchParams])
+
+  // `?stagesMove=` deep link (v2.2145): Quickfill → Jobs Cleanup card buttons
+  // land here and open the same thing the Pipeline card opens. Same
+  // jobsListLoading handle gate as the other stages deep links (v2.832 rule).
+  const stagesMoveParam = searchParams.get('stagesMove')
+  useEffect(() => {
+    const key = parseStagesMoneyMoveKey(stagesMoveParam)
+    if (!stagesMoveParam) return
+    const strip = () => {
+      setSearchParams(
+        (p) => {
+          const next = new URLSearchParams(p)
+          next.delete('stagesMove')
+          return next
+        },
+        { replace: true },
+      )
+    }
+    if (!key || activeTab !== 'stages') {
+      strip()
+      return
+    }
+    if (jobsListLoading) return
+    stagesTabRef.current?.openMoneyMove(key)
+    strip()
+  }, [stagesMoveParam, activeTab, jobsListLoading, setSearchParams])
 
   const openBankPaymentsParam = searchParams.get('openBankPayments')
   useEffect(() => {

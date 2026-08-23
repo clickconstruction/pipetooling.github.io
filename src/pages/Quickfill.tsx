@@ -16,6 +16,7 @@ import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { QuickfillCompleteNoBillSection } from '../components/quickfill/QuickfillCompleteNoBillSection'
 import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
+import { QuickfillJobsCleanupSection } from '../components/quickfill/QuickfillJobsCleanupSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
 import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection'
@@ -86,6 +87,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
   { id: 'quickfill-complete-no-bill', sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' },
   { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Missing job info' },
+  { id: 'quickfill-jobs-cleanup', sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
   {
@@ -108,9 +110,14 @@ const APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS = 'quickfill_section_banners'
 const QUICKFILL_SECTION_BANNER_MAX_CHARS = 800
 const SCHEDULE_SECTION_DEFAULT_BANNER = 'Are there any obvious schedule conflicts?'
 const TOMORROW_SCHEDULE_SECTION_DEFAULT_BANNER = 'Who is on what job tomorrow?'
+/** Jobs Cleanup (v2.2145): unlinked sub labor + the Pipeline's money cards. */
+const JOBS_CLEANUP_SECTION_DEFAULT_BANNER =
+  "Is every sub labor sheet attached to a job, and is today's money moving? Link each sheet, then work the cards — they're the same ones on Jobs → Pipeline."
 const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 
 const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
+/** Where a later-added section slots into an org's already-saved order (see normalizeQuickfillSectionOrderFromValueText). */
+const SECTION_INSERT_AFTER: Record<string, string> = { 'jobs-cleanup': 'no-customer-stages' }
 
 const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
 
@@ -141,7 +148,15 @@ function normalizeQuickfillSectionOrderFromValueText(raw: string | null | undefi
       out.push(x)
     }
     for (const id of DEFAULT_SECTION_ORDER_IDS) {
-      if (!seen.has(id)) out.push(id)
+      if (seen.has(id)) continue
+      // A section added after the org saved its order lands beside its
+      // default neighbor (v2.2145: Jobs Cleanup after Missing job info), not
+      // at the tail — devs can still move it.
+      const anchor = SECTION_INSERT_AFTER[id]
+      const at = anchor ? out.indexOf(anchor) : -1
+      if (at >= 0) out.splice(at + 1, 0, id)
+      else out.push(id)
+      seen.add(id)
     }
     return out
   } catch {
@@ -179,6 +194,7 @@ function effectiveQuickfillSectionBanner(sectionId: string, banners: Record<stri
   if (custom) return custom.length > QUICKFILL_SECTION_BANNER_MAX_CHARS ? custom.slice(0, QUICKFILL_SECTION_BANNER_MAX_CHARS) : custom
   if (sectionId === 'schedule') return SCHEDULE_SECTION_DEFAULT_BANNER
   if (sectionId === 'tomorrow-schedule') return TOMORROW_SCHEDULE_SECTION_DEFAULT_BANNER
+  if (sectionId === 'jobs-cleanup') return JOBS_CLEANUP_SECTION_DEFAULT_BANNER
   return null
 }
 
@@ -1228,6 +1244,24 @@ function QuickfillPage() {
               clockSummaryByJobId={quickfillCompleteNoBill.clockSummaryByJobId}
               jobsListBusy={quickfillCompleteNoBill.jobsListBusy}
             />
+          </QuickfillSectionWrapper>
+        )
+      case 'jobs-cleanup':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['jobs-cleanup']?.marked_at ?? null)}
+            collapsed={isCollapsed('jobs-cleanup') && !forceExpandedSections.has('jobs-cleanup')}
+            mark={sectionMarks['jobs-cleanup']}
+            onMarkUpToDate={() => void markSectionUpToDate('jobs-cleanup')}
+            onOpenNow={() => openSectionNow('jobs-cleanup')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' })}
+          >
+            <QuickfillJobsCleanupSection />
           </QuickfillSectionWrapper>
         )
       case 'no-customer-stages':
