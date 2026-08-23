@@ -6,7 +6,7 @@
  * odometer entry.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import PeopleVehiclesTab from './PeopleVehiclesTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -120,6 +120,20 @@ describe('PeopleVehiclesTab fleet board', () => {
     expect(screen.getByRole('button', { name: 'Insurance plans' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add to plan' })).toBeTruthy()
     expect(screen.getAllByRole('button', { name: 'Change' }).length).toBe(2)
+
+    // Odometer history sheet (v2.2172): the card's reading line opens it without opening the panel.
+    fireEvent.click(screen.getByRole('button', { name: 'Odometer history for 2019 Ram ProMaster' }))
+    expect(await screen.findByRole('dialog', { name: 'Odometer history' })).toBeTruthy()
+    expect(await screen.findByText('first reading')).toBeTruthy()
+    expect(screen.getByText('121,480 mi')).toBeTruthy()
+    // Add a reading from the sheet: the button enables once miles are typed, saves, and clears the box.
+    const addBox = screen.getByLabelText("Today's odometer reading") as HTMLInputElement
+    expect((screen.getByRole('button', { name: 'Add reading' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(addBox, { target: { value: '121,900' } })
+    expect((screen.getByRole('button', { name: 'Add reading' }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Add reading' }))
+    await waitFor(() => expect(addBox.value).toBe(''))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]!)
 
     // Click through to the panel: quick odometer entry + ledger rows appear.
     fireEvent.click(screen.getByText('2019 Ram ProMaster'))
