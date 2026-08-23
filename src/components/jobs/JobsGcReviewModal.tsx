@@ -936,7 +936,7 @@ export function JobsGcReviewModal({
                           )
                         })()
                       : null}
-                  {/* Share dropdown (v2.1423): Draft Message (was "Email…", v2.2132) / Copy / Print for this GC in one menu. */}
+                  {/* Share dropdown (v2.1423): Draft Message (was "Email…", v2.2141) / Copy / Print for this GC in one menu. */}
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <button
                       type="button"
