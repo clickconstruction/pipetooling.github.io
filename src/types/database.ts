@@ -830,6 +830,7 @@ export type Database = {
         Row: {
           account_manager_id: string | null
           address: string | null
+          adopted_into_bid_id: string | null
           agreed_value: number | null
           bid_date_sent: string | null
           bid_date_sent_ack_email_at: string | null
@@ -890,6 +891,7 @@ export type Database = {
         Insert: {
           account_manager_id?: string | null
           address?: string | null
+          adopted_into_bid_id?: string | null
           agreed_value?: number | null
           bid_date_sent?: string | null
           bid_date_sent_ack_email_at?: string | null
@@ -950,6 +952,7 @@ export type Database = {
         Update: {
           account_manager_id?: string | null
           address?: string | null
+          adopted_into_bid_id?: string | null
           agreed_value?: number | null
           bid_date_sent?: string | null
           bid_date_sent_ack_email_at?: string | null
@@ -1008,6 +1011,13 @@ export type Database = {
           working_board_archived_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bids_adopted_into_bid_id_fkey"
+            columns: ["adopted_into_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bids_account_manager_id_fkey"
             columns: ["account_manager_id"]
@@ -14241,6 +14251,15 @@ export type Database = {
       count_unlinked_mercury_transactions_for_tally_stale: {
         Args: { min_age_days?: number }
         Returns: number
+      }
+      adopt_bid_as_version: {
+        Args: {
+          p_name: string
+          p_source_bid_id: string
+          p_target_base_name?: string
+          p_target_bid_id: string
+        }
+        Returns: string
       }
       create_bid_version: {
         Args: {

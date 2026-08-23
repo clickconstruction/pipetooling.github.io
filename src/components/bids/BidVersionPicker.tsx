@@ -126,8 +126,14 @@ export function BidVersionPicker({
   // through Bids.tsx.
   useEffect(() => {
     const open = () => openNewVersion()
+    // 'bid-version-picker-reload' (v2.2133): "Adopt an existing bid" created versions outside this component.
+    const reload = () => { void reloadVersions() }
     window.addEventListener('bid-version-picker-open-new', open)
-    return () => window.removeEventListener('bid-version-picker-open-new', open)
+    window.addEventListener('bid-version-picker-reload', reload)
+    return () => {
+      window.removeEventListener('bid-version-picker-open-new', open)
+      window.removeEventListener('bid-version-picker-reload', reload)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isUnsplit])
 
@@ -349,7 +355,7 @@ export function BidVersionPicker({
           <h3 style={{ margin: '0 0 1rem' }}>{isUnsplit ? 'Split into two sendable bids' : 'Another bid to send'}</h3>
           {isUnsplit && (
             <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
-              Name what you have now, then the new one. Each becomes its own bid — same counts, its own takeoff and prices — sendable separately or bundled in one cover letter.
+              Name what you have now, then the new one. Each becomes its own bid — its own counts, takeoff and prices from here — sendable separately or bundled in one cover letter.
             </p>
           )}
           {isUnsplit && (

@@ -903,6 +903,8 @@ export default function Bids() {
     let q = supabase
       .from('bids')
       .select('*, customers(*), bids_gc_builders(*), estimator:users!bids_estimator_id_fkey(id, name, email), account_manager:users!bids_account_manager_id_fkey(id, name, email), service_type:service_types(id, name, color)')
+      // v2.2133: bids adopted into another bid's package leave every list (the row stays for history).
+      .is('adopted_into_bid_id', null)
     if (sid) q = q.eq('service_type_id', sid)
     const { data, error } = await q.order('bid_due_date', { ascending: false, nullsFirst: true })
     if (error) {
