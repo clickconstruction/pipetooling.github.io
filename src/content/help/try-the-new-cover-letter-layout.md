@@ -15,6 +15,7 @@ Next to the bid's name are {{chip:gray|Old}} / {{chip:gray|New}} pills, like the
 
 - {{chip:blue|1 Scope & pricing}} — who the letter is to, what's in the letter, and the headline amount with one-click **Apply to Bid Value**.
   - **New:** under **In this cover letter**, check the bids that go in. Each is **Base** (adds to the letter total) or **Alternate** (offered in lieu of the base bids). The headline is the **letter total** — the sum of the base bids at their ★ prices. Change a bid's price on the Pricing tab; the letter follows.
+  - **New, sending:** {{button:blue|Mark sent today}} stamps every bid in the letter with today's date and its ★ value, and sets the bid's sent date and value. Each bid then shows *sent 7/7 · $279,579* here and on the version picker; Followup's **Full bid details** lists the bids in the package with their sends.
   - **Old:** check price scenarios under *Versions in this submission* — one letter each.
 
 :::example One bid, no versions?

@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
+import { BidPackageSendsDetails } from './BidPackageSendsDetails'
 import {
   bidAttestationDisplayName,
   normalizeBidDateInput,
@@ -172,6 +173,7 @@ export function BidSubmissionFollowupExpandableDetails({
 
         <SectionTitle>Submission</SectionTitle>
         <DetailPair label="Submitted to" value={dash(bid.submitted_to)} />
+        <BidPackageSendsDetails bidId={bid.id} />
 
         <SectionTitle>Financial</SectionTitle>
         <DetailPair label="Bid value" value={formatCompactCurrency(bid.bid_value != null ? Number(bid.bid_value) : null)} />

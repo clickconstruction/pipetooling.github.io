@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidVersion } from '../../lib/bids/bidPricingEngineTypes'
+import { formatSendBadge, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 
 type BidVersionPickerProps = {
   bidId: string
@@ -98,6 +99,20 @@ export function BidVersionPicker({
   }, [renaming, gcCustomers])
 
   const anyGcOverride = bidVersions.some((v) => v.customer_id != null)
+  // Per-version sends (v2.2124) → "sent 7/7 · $X" on each chip.
+  const [sends, setSends] = useState<VersionSendRow[]>([])
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      const { data, error } = await supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', bidId)
+      if (!cancelled) setSends(error ? [] : ((data ?? []) as VersionSendRow[]))
+    }
+    void load()
+    const onChanged = () => { void load() }
+    window.addEventListener('bid-version-sends-changed', onChanged)
+    return () => { cancelled = true; window.removeEventListener('bid-version-sends-changed', onChanged) }
+  }, [bidId])
+  const latestSends = latestSendByVersion(sends)
 
   function openNewVersion() {
     setCurrentName(isUnsplit ? 'To Plans' : '')
@@ -278,6 +293,7 @@ export function BidVersionPicker({
                       ? `in letter ✓ · ${(v as BidVersion & { is_alternate?: boolean | null }).is_alternate ? 'alternate' : 'base'}`
                       : 'not in letter'}
                   </span>
+                  {(() => { const b = formatSendBadge(latestSends[v.id]); return b ? <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)' }}>{b}</span> : null })()}
                   {v.customer_id ? (
                     <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-blue-800)', fontWeight: 600 }}>
                       GC: {gcNamesById[v.customer_id] ?? '…'}

@@ -623,6 +623,60 @@ export type Database = {
           },
         ]
       }
+      bid_version_sends: {
+        Row: {
+          bid_id: string
+          bid_version_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_alternate: boolean
+          note: string | null
+          round_label: string | null
+          sent_on: string
+          value: number | null
+        }
+        Insert: {
+          bid_id: string
+          bid_version_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_alternate?: boolean
+          note?: string | null
+          round_label?: string | null
+          sent_on: string
+          value?: number | null
+        }
+        Update: {
+          bid_id?: string
+          bid_version_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_alternate?: boolean
+          note?: string | null
+          round_label?: string | null
+          sent_on?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_version_sends_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_version_sends_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_versions: {
         Row: {
           bid_id: string
@@ -630,9 +684,11 @@ export type Database = {
           customer_id: string | null
           id: string
           include_in_submission: boolean
+          is_alternate: boolean
           name: string
           sort_order: number
           source_bid_version_id: string | null
+          starred_price_book_version_id: string | null
         }
         Insert: {
           bid_id: string
@@ -640,9 +696,11 @@ export type Database = {
           customer_id?: string | null
           id?: string
           include_in_submission?: boolean
+          is_alternate?: boolean
           name: string
           sort_order?: number
           source_bid_version_id?: string | null
+          starred_price_book_version_id?: string | null
         }
         Update: {
           bid_id?: string
@@ -650,9 +708,11 @@ export type Database = {
           customer_id?: string | null
           id?: string
           include_in_submission?: boolean
+          is_alternate?: boolean
           name?: string
           sort_order?: number
           source_bid_version_id?: string | null
+          starred_price_book_version_id?: string | null
         }
         Relationships: [
           {
@@ -674,6 +734,13 @@ export type Database = {
             columns: ["source_bid_version_id"]
             isOneToOne: false
             referencedRelation: "bid_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_versions_starred_price_book_version_id_fkey"
+            columns: ["starred_price_book_version_id"]
+            isOneToOne: false
+            referencedRelation: "price_book_versions"
             referencedColumns: ["id"]
           },
         ]

@@ -11,7 +11,10 @@ import {
   APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
   APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
   APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
+  APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE,
 } from '../../lib/appSettingsKeys'
+import { boardValueForRule, bundleSectionsForBoard, formatSendBadge, latestSendByVersion, parseBoardValueRule, type BoardValueRule, type VersionSendRow } from '../../lib/bids/versionSends'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import {
   breakAmountOntoOwnLineForPreview,
@@ -171,6 +174,10 @@ export function BidsCoverLetterTab({
       return 'new'
     }
   })
+  // Per-version sends (v2.2124): latest row per version → "sent 7/7 · $X"; "Mark sent today" appends.
+  const [versionSends, setVersionSends] = useState<VersionSendRow[]>([])
+  const [boardValueRule, setBoardValueRule] = useState<BoardValueRule>('base_sum')
+  const [markingSent, setMarkingSent] = useState(false)
   const switchCoverLetterView = (next: 'old' | 'new') => {
     setCoverLetterView(next)
     try {
@@ -211,6 +218,7 @@ export function BidsCoverLetterTab({
         APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
         APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
         APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
+        APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE,
       ])
       .then(({ data }) => {
         if (cancelled) return
@@ -224,6 +232,7 @@ export function BidsCoverLetterTab({
           exclusions: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT),
           closing: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING),
         })
+        setBoardValueRule(parseBoardValueRule(byKey.get(APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE) ?? null))
       })
     return () => {
       cancelled = true
@@ -356,6 +365,23 @@ export function BidsCoverLetterTab({
   }, [selectedBidForPricing?.id, versionGcFingerprint])
   useEffect(() => {
     const bid = selectedBidForPricing
+    if (!bid) {
+      setVersionSends([])
+      return
+    }
+    let cancelled = false
+    const load = async () => {
+      const { data, error } = await supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', bid.id)
+      if (cancelled) return
+      setVersionSends(error ? [] : ((data ?? []) as VersionSendRow[]))
+    }
+    void load()
+    const onChanged = () => { void load() }
+    window.addEventListener('bid-version-sends-changed', onChanged)
+    return () => { cancelled = true; window.removeEventListener('bid-version-sends-changed', onChanged) }
+  }, [selectedBidForPricing?.id])
+  useEffect(() => {
+    const bid = selectedBidForPricing
     // What goes in the document, by view:
     //  • New (v2.2117): the bid's VERSIONS flagged in-letter, base first then alternates, each at
     //    its ★ scenario. A split bid bundles even a single included version (the letter follows
@@ -463,6 +489,33 @@ export function BidsCoverLetterTab({
     await supabase.from('bid_versions').update({ sort_order: other.sort_order }).eq('id', v.id)
     await supabase.from('bid_versions').update({ sort_order: v.sort_order }).eq('id', other.id)
     await reloadBidVersions()
+  }
+
+  /** "Mark sent today" (v2.2124): one send row per bid in the letter (today, its ★ value), and the bid-level roll-up. */
+  async function markSentToday(bidId: string, sections: BundleSection[], boardValue: number | null) {
+    const inLetter = sections.filter((s) => s.bidVersionId)
+    if (inLetter.length === 0) return
+    setMarkingSent(true)
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+      const userId = (await supabase.auth.getUser()).data.user?.id ?? null
+      const { error } = await supabase.from('bid_version_sends').insert(
+        inLetter.map((s) => ({ bid_id: bidId, bid_version_id: s.bidVersionId as string, sent_on: today, value: s.revenueSum > 0 ? s.revenueSum : null, is_alternate: s.isAlternate, created_by: userId })),
+      )
+      if (error) {
+        showToast('Could not record the send: ' + error.message, 'error')
+        return
+      }
+      const patch: { bid_date_sent: string; bid_value?: number } = { bid_date_sent: today }
+      if (boardValue != null && boardValue > 0) patch.bid_value = boardValue
+      const { error: bidErr } = await supabase.from('bids').update(patch).eq('id', bidId)
+      if (bidErr) showToast('Sends recorded, but the bid did not update: ' + bidErr.message, 'error')
+      window.dispatchEvent(new Event('bid-version-sends-changed'))
+      await loadBids()
+      showToast(`Marked sent today — ${inLetter.length} bid${inLetter.length === 1 ? '' : 's'} in the letter.`, 'success')
+    } finally {
+      setMarkingSent(false)
+    }
   }
 
   function printCoverLetterDocument(combinedHtml: string) {
@@ -620,7 +673,8 @@ export function BidsCoverLetterTab({
         // not the active scenario's revenue — that's what "Apply to Bid Value" writes.
         const newBundleActive = coverLetterView === 'new' && bidVersions.length > 0 && bundlePricings.length > 0
         const newLetterTotal = letterTotal(bundlePricings)
-        const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? newLetterTotal : coverLetterRevenue
+        const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
+        const latestSends = latestSendByVersion(versionSends)
         const headlineNumber = `$${formatCurrency(headlineAmount)}`
         const isBidValueSynced = bid.bid_value != null && bid.bid_value === headlineAmount
         const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
@@ -838,6 +892,7 @@ export function BidsCoverLetterTab({
                                       <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{v.name}</span>
                                       <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                                         {starName ? <>★ {starName}{sec ? ` · $${formatCurrency(sec.revenueSum)}` : ''}</> : 'no prices yet'}
+                                        {(() => { const b = formatSendBadge(latestSends[v.id], { money: (n) => `$${formatCurrency(n)}` }); return b ? <> · {b}</> : null })()}
                                       </span>
                                     </span>
                                     <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden' }}>
@@ -852,6 +907,17 @@ export function BidsCoverLetterTab({
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                                 Checked bids go in the letter, each at its ★ price. Base bids add up; alternates are offered instead. Change a bid's price on the Pricing tab.
                                 {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
+                              </div>
+                              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  disabled={markingSent || bundlePricings.filter((s) => s.bidVersionId).length === 0}
+                                  onClick={() => void markSentToday(bid.id, bundlePricings, headlineAmount > 0 ? headlineAmount : null)}
+                                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: markingSent ? 'wait' : 'pointer', opacity: bundlePricings.filter((s) => s.bidVersionId).length === 0 ? 0.5 : 1 }}
+                                >
+                                  {markingSent ? 'Marking…' : 'Mark sent today'}
+                                </button>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>stamps every bid in the letter with today + its ★ value, and sets the bid's sent date and value</span>
                               </div>
                             </>
                           )}
@@ -873,7 +939,7 @@ export function BidsCoverLetterTab({
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', background: 'var(--bg-green-tint)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
                         <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{headlineNumber}</span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {useCustomAmount ? 'custom amount' : newBundleActive ? `letter total · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
+                          {useCustomAmount ? 'custom amount' : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
                         </span>
                         {isBidValueSynced ? (
                           <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-green-600)', fontWeight: 600 }}>✓ matches Bid Value</span>

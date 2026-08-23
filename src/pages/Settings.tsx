@@ -59,6 +59,7 @@ import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/Physic
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
+import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import SettingsSearchBar from '../components/settings/SettingsSearchBar'
 import { pollScrollToSettingsAnchor } from '../lib/settingsSearch'
@@ -1656,7 +1657,12 @@ export default function Settings() {
         />
       )}
       {/* v2.2088: the bid cover letter belongs with Bids, not Templates. */}
-      {myRole === 'dev' && <BidCoverLetterDefaultsSettingsBlock />}
+      {myRole === 'dev' && (
+        <>
+          <BidCoverLetterDefaultsSettingsBlock />
+          <BidBoardValueRuleSettingsBlock />
+        </>
+      )}
       </SettingsGroup>
 
       <SettingsGroup id="settings-templates" hidden={activeSettingsTab !== 'settings-templates'} title={settingsGroupTitle('settings-templates', 'Email templates & testing')} description={settingsGroupHint('settings-templates')}>

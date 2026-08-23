@@ -69,6 +69,8 @@ export const APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT = 'bid_cover_l
 
 /** `value_text` — the cover letter closing paragraph lines (before "Respectfully submitted…"). Blank/missing = built-in DEFAULT_COVER_LETTER_CLOSING. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING = 'bid_cover_letter_closing_v1' as const
+/** Bid Board value rule for packages (v2.2124): 'base_sum' (default) | 'active_star'. */
+export const APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE = 'bid_board_value_rule_v1' as const
 
 /** Dollars in `value_num` — default Turnaway trip charge when the client isn't home. NULL/≤0 = not configured. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_TRIP_CHARGE_CLIENT_NOT_HOME = 'trip_charge_client_not_home' as const
