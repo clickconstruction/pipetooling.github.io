@@ -46,6 +46,8 @@ export type TimelineRow = {
   remainingTasks: number
   /** Task-less stage — renders as a ◆ milestone at its wave boundary. */
   isMilestone: boolean
+  /** Task-less AND no prerequisites — "not planned yet" (v2.2127): a hollow ◇, never reached. */
+  unplanned: boolean
   locked: boolean
   done: boolean
 }
@@ -66,6 +68,8 @@ export function timelineRows(args: {
     groups.map((g) => g.id),
     edges,
   )
+  const idSet = new Set(groups.map((g) => g.id))
+  const hasIncoming = new Set(edges.filter((e) => idSet.has(e.fromGroupId) && idSet.has(e.toGroupId)).map((e) => e.toGroupId))
   const rows: TimelineRow[] = groups.map((g, i) => {
     const tasks = tasksByGroup.get(g.id) ?? []
     const done = tasks.filter((t) => t.completed_at != null).length
@@ -78,6 +82,7 @@ export function timelineRows(args: {
       doneTasks: done,
       remainingTasks: tasks.length - done,
       isMilestone: tasks.length === 0,
+      unplanned: tasks.length === 0 && !hasIncoming.has(g.id),
       locked: !unlockedIds.has(g.id),
       done: completeIds.has(g.id),
     }

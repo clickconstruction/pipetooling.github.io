@@ -99,10 +99,15 @@ export function completeGroupIdsFromTasks(
 
 /**
  * Milestone-aware completion (v2.1913): stages WITH tasks complete when every
- * task is done (unchanged); stages with NO tasks are milestones — they count
- * complete once every predecessor is complete (vacuously true for empty roots).
+ * task is done (unchanged); stages with NO tasks but at least one predecessor
+ * are milestones — they count complete once every predecessor is complete.
  * Fixpoint iteration lets chains of empty stages cascade. This is what keeps
  * task-less goal stages from permanently locking everything behind them.
+ *
+ * A task-less stage with NO predecessors is "not planned yet" (owner decision
+ * 2026-08-22): neither complete nor a milestone — it used to be vacuously
+ * complete and read "✓ reached" for a stage nobody had touched. Mirrored in
+ * the `sync_roadmap_to_checklist` RPC — keep the two in sync.
  */
 export function computeCompleteGroupIdsWithMilestones(
   allGroupIds: ReadonlySet<string> | ReadonlyArray<string>,
@@ -129,6 +134,7 @@ export function computeCompleteGroupIdsWithMilestones(
     for (const gid of empty) {
       if (complete.has(gid)) continue
       const preds = incoming.get(gid) ?? []
+      if (preds.length === 0) continue // not planned yet — never a reached milestone
       if (preds.every((p) => complete.has(p))) {
         complete.add(gid)
         grew = true
@@ -136,4 +142,27 @@ export function computeCompleteGroupIdsWithMilestones(
     }
   }
   return complete
+}
+
+/**
+ * Task-less stages with no prerequisites — "not planned yet". They are
+ * unlocked (nothing gates them) but never complete, so their dependents stay
+ * locked until the stage gets tasks or a predecessor.
+ */
+export function unplannedGroupIds(
+  allGroupIds: ReadonlySet<string> | ReadonlyArray<string>,
+  edges: ReadonlyArray<TechTreeEdge>,
+  tasksByGroup: ReadonlyMap<string, ReadonlyArray<unknown>>,
+): Set<string> {
+  const idList = Array.isArray(allGroupIds) ? allGroupIds : [...allGroupIds]
+  const idSet = new Set(idList)
+  const hasIncoming = new Set<string>()
+  for (const e of edges) {
+    if (idSet.has(e.fromGroupId) && idSet.has(e.toGroupId)) hasIncoming.add(e.toGroupId)
+  }
+  const out = new Set<string>()
+  for (const gid of idList) {
+    if ((tasksByGroup.get(gid) ?? []).length === 0 && !hasIncoming.has(gid)) out.add(gid)
+  }
+  return out
 }

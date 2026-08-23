@@ -138,7 +138,7 @@ export default function RoadmapTaskContextModal({
                     return (
                       <span
                         key={s.groupId}
-                        title={`${i + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : 'milestone'}`}
+                        title={`${i + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : s.state === 'unplanned' ? 'not planned yet' : 'milestone'}`}
                         style={{
                           flex: 1,
                           minWidth: 5,
@@ -148,7 +148,9 @@ export default function RoadmapTaskContextModal({
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          background: s.state === 'complete' ? '#16a34a' : 'var(--bg-muted)',
+                          boxSizing: 'border-box',
+                          background: s.state === 'complete' ? '#16a34a' : s.state === 'unplanned' ? 'transparent' : 'var(--bg-muted)',
+                          ...(s.state === 'unplanned' ? { border: '1px dashed var(--border-strong)' } : {}),
                           ...(isFocus
                             ? { outline: '2.5px solid #2563eb', outlineOffset: 1 }
                             : s.state === 'current'
@@ -175,6 +177,9 @@ export default function RoadmapTaskContextModal({
                     ['done', { background: '#16a34a' }],
                     ['in progress', { background: 'var(--surface)', outline: '1.5px solid #d97706', outlineOffset: -1 }],
                     ['locked', { background: 'var(--bg-muted)' }],
+                    ...(view.stages.some((s) => s.state === 'unplanned')
+                      ? ([['not planned yet', { background: 'transparent', border: '1px dashed var(--border-strong)', boxSizing: 'border-box' as const }]] as const)
+                      : []),
                     ["this task's stage", { background: 'var(--surface)', outline: '2px solid #2563eb', outlineOffset: -1 }],
                   ] as const
                 ).map(([label, sw]) => (

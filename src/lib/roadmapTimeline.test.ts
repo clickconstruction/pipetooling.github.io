@@ -35,6 +35,21 @@ describe('timelineWaves', () => {
   })
 })
 
+describe('timelineRows — unplanned roots', () => {
+  it('a task-less stage with no prerequisites is flagged unplanned; a milestone with predecessors is not', () => {
+    const rows = timelineRows({
+      groups: [...groups, { id: 'e', title: 'Solar on every roof' }],
+      tasksByGroup,
+      edges,
+      unlockedIds: new Set(['a', 'b', 'e']),
+      completeIds: new Set(),
+    })
+    const byId = new Map(rows.map((r) => [r.groupId, r]))
+    expect(byId.get('e')).toMatchObject({ isMilestone: true, unplanned: true, locked: false, done: false })
+    expect(byId.get('c')).toMatchObject({ isMilestone: true, unplanned: false })
+  })
+})
+
 describe('timelineRows', () => {
   const rows = timelineRows({ groups, tasksByGroup, edges, unlockedIds: new Set(['a', 'b']), completeIds: new Set() })
   it('staircase order: wave, then stage order', () => {

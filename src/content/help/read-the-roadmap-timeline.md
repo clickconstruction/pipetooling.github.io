@@ -11,7 +11,7 @@ order: 45
 
 - **Rows** cascade by wave, then your stage order — same number badges as everywhere else.
 - **Bar width = remaining work**, and each bar is **one slot per task**, laid end to end in task order: green slots are done (in their true position), the amber-ringed one is next up, outlined ones remain. Hover a slot for the task's name; the done/total count sits next to the stage title.
-- **◆ diamonds** are milestone stages (stages with no tasks of their own — they're reached, not worked).
+- **◆ diamonds** are milestone stages (stages with no tasks of their own — they're reached, not worked). A task-less stage with *nothing leading into it* isn't a milestone yet: it shows a hollow **◇ not planned yet** until you add tasks to it or link a stage into it, and it never counts as done on its own.
 - The **amber line** is the work front: how far the roadmap has actually moved.
 - **Tap a row** to unfold its tasks as a waterfall — each task on its own line with its numbered bar in its slot, stepping across the stage's span in the order the work will burn down. Titles stretch across the open lane right up to their own bar (assignees in gray beside them). Tap a task's title or bar to open its card.
 
