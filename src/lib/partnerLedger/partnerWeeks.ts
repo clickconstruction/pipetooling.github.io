@@ -61,6 +61,10 @@ export type PartnerLedgerOffset = {
 
 export type WeekCardLine = { label: string; sub?: string; amount: number | null; cls: 'pos' | 'neg' | 'zero' }
 
+/** Where the running balance crossed $0 inside a card (v2.2125): the line
+ * after which it happened and the balance on each side of it. */
+export type WeekCrossing = { afterLineIndex: number; before: number; after: number }
+
 export type WeekCard = {
   open: boolean
   weekStart: string
@@ -71,6 +75,8 @@ export type WeekCard = {
   closing: number
   partnerAckAt: string | null
   companyAckAt: string | null
+  /** zero crossings inside this week, in line order (usually none; at most a few) */
+  crossings: WeekCrossing[]
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -249,6 +255,25 @@ export function weekStartYmd(ymd: string): string {
   return utcMsToYmd(ms - new Date(ms).getUTCDay() * 86400000)
 }
 
+/**
+ * Zero crossings of the running balance across a card's lines (v2.2125).
+ * Walks opening → lines (lines with no amount don't move it); a crossing is
+ * strictly negative → positive or positive → negative — landing exactly on
+ * $0 is "cleared", not crossed, and is not reported. Since lines reconcile to
+ * the journal amounts, the walk matches the journal's running balance.
+ */
+export function findZeroCrossings(opening: number, lines: WeekCardLine[]): WeekCrossing[] {
+  const out: WeekCrossing[] = []
+  let bal = round2(opening)
+  lines.forEach((l, i) => {
+    if (l.amount == null) return
+    const next = round2(bal + l.amount)
+    if ((bal < 0 && next > 0) || (bal > 0 && next < 0)) out.push({ afterLineIndex: i, before: bal, after: next })
+    bal = next
+  })
+  return out
+}
+
 /** Σ stamped rate-tier hours — the hours the card's labor lines show — or
  * null when the stub carries no tiers (then hours_total is all there is). */
 export function tierHoursTotal(s: Pick<PartnerLedgerStub, 'day_rates'>): number | null {
@@ -369,6 +394,7 @@ export function buildJournalWeekCards(
     const wrows = byWeek.get(ws)!
     const stub = stubByWeek.get(ws) ?? null
     const closing = wrows[wrows.length - 1]!.balance
+    const lines = wrows.flatMap((r) => journalRowToLines(r, stubById))
     closed.push({
       open: false,
       weekStart: ws,
@@ -377,11 +403,12 @@ export function buildJournalWeekCards(
         return ms == null ? null : utcMsToYmd(ms + 6 * 86400000)
       })(),
       stubId: stub?.id ?? null,
-      lines: wrows.flatMap((r) => journalRowToLines(r, stubById)),
+      lines,
       opening,
       closing,
       partnerAckAt: stub?.partner_ack_at ?? null,
       companyAckAt: stub?.company_ack_at ?? null,
+      crossings: findZeroCrossings(opening, lines),
     })
     opening = closing
   }
@@ -412,6 +439,7 @@ export function buildJournalWeekCards(
     closing: round2(postedLive + cw.gross_so_far),
     partnerAckAt: null,
     companyAckAt: null,
+    crossings: findZeroCrossings(opening, liveLines),
   }
 
   return [live, ...closed.reverse()]

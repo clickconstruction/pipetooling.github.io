@@ -5,6 +5,7 @@
  */
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import type { JournalRow } from './partnerLedgerJournal'
+import type { WeekCrossing } from './partnerWeeks'
 
 /** Plain-words direction of a signed balance: + means Click owes the partner. */
 export function balanceWords(n: number): string {
@@ -53,4 +54,22 @@ export function isLongLabel(label: string): boolean {
 export function postingLabel(r: Pick<JournalRow, 'kind' | 'label' | 'hours'>): string {
   if (r.kind === 'labor' && r.hours != null && Number.isFinite(r.hours)) return `Labor · ${r.hours.toFixed(2)} h`
   return r.label
+}
+
+const usd = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+/** Signed balance for the card's two ends (v2.2125): "+$60.25" when Click owes
+ * the partner, "−$546.39" when the partner owes Click, "$0.00" when even —
+ * the same convention as the Full ledger's balance column. */
+export function signedBalanceLabel(n: number): string {
+  if (n > 0) return `+${usd(n)}`
+  if (n < 0) return `−${usd(n)}`
+  return usd(0)
+}
+
+/** The one-line note under the line that carried the balance across $0. */
+export function crossingText(c: Pick<WeekCrossing, 'before' | 'after'>): string {
+  if (c.before < 0 && c.after > 0) return `crossed $0 — cleared the ${usd(c.before)} you owed and went ${usd(c.after)} ahead`
+  if (c.before > 0 && c.after < 0) return `crossed $0 — used up the ${usd(c.before)} you were ahead and went ${usd(c.after)} behind`
+  return ''
 }

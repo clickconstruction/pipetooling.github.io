@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { mergeNotesIntoDisplay, type LedgerDisplayRow } from '../../lib/partnerLedger/partnerLedgerJournal'
@@ -13,7 +13,7 @@ import {
   type WeekCard,
 } from '../../lib/partnerLedger/partnerWeeks'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { balanceWords, isLongLabel, postingLabel, shortDate, weekOfLabel, weekRangeLabel } from '../../lib/partnerLedger/partnerLedgerFormat'
+import { balanceWords, crossingText, isLongLabel, postingLabel, shortDate, signedBalanceLabel, weekOfLabel, weekRangeLabel } from '../../lib/partnerLedger/partnerLedgerFormat'
 import { DashboardGroupCard } from './DashboardGroupCard'
 
 /**
@@ -35,8 +35,10 @@ import { DashboardGroupCard } from './DashboardGroupCard'
 
 const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const signedMoney = (n: number) => `${n < 0 ? '−' : '+'}${money(n)}`
-/** Balance readout: minus only when negative (openings can be either sign). */
-const signedBalance = (n: number) => `${n < 0 ? '−' : ''}${money(n)}`
+/** v2.2125: the two ends of the card are signed AND colored — red with a minus
+ * when the partner owes Click, green with a plus when Click owes them — so the
+ * lines between them literally add up on the page. Words stay as the caption. */
+const balanceColor = (n: number) => (n > 0 ? '#16a34a' : n < 0 ? 'var(--text-red-600)' : 'var(--text-muted)')
 
 export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnershipId?: string } = {}) {
   const [summary, setSummary] = useState<PartnerSummary | null>(null)
@@ -116,9 +118,9 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         <div style="font-size:19px;font-weight:700;">Partner weekly statement</div>
         <div style="color:#6d6759;font-size:12px;margin:2px 0 14px;">${summary?.display_name ?? ''} · ${weekRangeLabel(c.weekStart, c.weekEnd)}</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
-          <tr><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;">Opening balance</td><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;text-align:right;font-weight:600;">${c.opening != null ? signedBalance(c.opening) : '—'}</td></tr>
+          <tr><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;">Opening balance</td><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;text-align:right;font-weight:600;">${c.opening != null ? signedBalanceLabel(c.opening) : '—'}</td></tr>
           ${rows}
-          <tr><td style="padding:8px 0;border-top:2px solid #211d16;font-weight:800;">Closing balance</td><td style="padding:8px 0;border-top:2px solid #211d16;text-align:right;font-weight:800;">${signedBalance(c.closing)}</td></tr>
+          <tr><td style="padding:8px 0;border-top:2px solid #211d16;font-weight:800;">Closing balance</td><td style="padding:8px 0;border-top:2px solid #211d16;text-align:right;font-weight:800;">${signedBalanceLabel(c.closing)}</td></tr>
         </table>
         <p style="color:#6d6759;font-size:11px;">${c.companyAckAt ? `Company acknowledged ${new Date(c.companyAckAt).toLocaleString()}. ` : ''}${c.partnerAckAt ? `Partner acknowledged ${new Date(c.partnerAckAt).toLocaleString()}.` : ''}</p>
       </div>`,
@@ -158,22 +160,21 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
           instead of a floating headline the reader has to reconcile. The live
           week's total is still the settle-up position — posted balance plus
           charges waiting for a statement (owner call, v2.2009); closed weeks
-          keep their statement's closing balance. */}
+          keep their statement's closing balance. v2.2125: both ends are
+          signed + colored (the words stay underneath), and a week whose
+          running balance crosses $0 says so on the line where it happened —
+          otherwise a flip read as "$546.39 · you owe Click … $60.25 · Click
+          owes you" with a plus line between that didn't connect them. */}
       <div style={{ marginTop: '0.4rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          <span>Week opened</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {/* Same language at both ends of the card (v2.2116): the opening
-                says whose money it is in words, like the closing — not a
-                bare minus sign the reader has to translate. */}
-            {card && card.opening != null ? (
-              <>
-                {money(card.opening)}
-                {balanceWords(card.opening) ? <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {balanceWords(card.opening)}</span> : null}
-              </>
-            ) : (
-              '—'
-            )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'flex-start', padding: '0.4rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          <span>
+            Week opened
+            {card && card.opening != null && balanceWords(card.opening) ? (
+              <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500 }}>{balanceWords(card.opening)}</span>
+            ) : null}
+          </span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, whiteSpace: 'nowrap', color: card && card.opening != null ? balanceColor(card.opening) : undefined }}>
+            {card && card.opening != null ? signedBalanceLabel(card.opening) : '—'}
           </span>
         </div>
         <div style={{ borderTop: '1px solid var(--border)' }}>
@@ -181,7 +182,8 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.5rem 0' }}>Nothing posted this week yet.</p>
           ) : (
             card?.lines.map((l, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.82rem' }}>
+              <Fragment key={i}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.82rem' }}>
                 <span style={{ color: 'var(--text-700)', minWidth: 0 }}>
                   {(() => {
                     const key = `${card?.weekStart ?? ''}:${i}`
@@ -215,6 +217,14 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
                   {l.amount == null ? '—' : l.amount === 0 ? '0.00' : signedMoney(l.amount)}
                 </span>
               </div>
+              {card.crossings
+                .filter((x) => x.afterLineIndex === i)
+                .map((x, k) => (
+                  <div key={`x${k}`} style={{ textAlign: 'center', fontSize: '0.7rem', fontStyle: 'italic', color: 'var(--text-muted)', padding: '0.3rem 0', borderBottom: '1px solid var(--border)' }}>
+                    {crossingText(x)}
+                  </div>
+                ))}
+              </Fragment>
             ))
           )}
         </div>
@@ -224,7 +234,7 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
           // no separate pending wedge to add.
           const total = card ? card.closing : null
           if (total == null) return null
-          const direction = total >= 0 ? 'Click owes you' : 'you owe Click'
+          const direction = balanceWords(total) || 'even'
           return (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.6rem', padding: '0.55rem 0 0.1rem', borderTop: '2px solid var(--text-strong)' }}>
               <span style={{ fontWeight: 800, fontSize: '0.86rem', minWidth: 0 }}>
@@ -233,8 +243,8 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
                   {card?.open ? `${direction} · updates as hours approve` : direction}
                 </span>
               </span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                {money(total)}
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: balanceColor(total) }}>
+                {signedBalanceLabel(total)}
               </span>
             </div>
           )
