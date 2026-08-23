@@ -1902,9 +1902,14 @@ function EstimateList() {
 
   if (!user) return null
 
+  // Primary scoping (v2.2175): a primary's list is the estimates they created or
+  // that hang off a job they are the Account Man for (RLS enforces it) — say so
+  // when the list is empty instead of implying the company has none.
   const estimatesListEmptyLabel = customerParamForEstimatesReload?.trim()
     ? 'No estimates for this customer.'
-    : 'No estimates yet.'
+    : role === 'primary'
+      ? 'No estimates yet — you see the ones you created and those on jobs you are the Account Man for.'
+      : 'No estimates yet.'
 
   const estimatesStagesThread: EstimateListStagesThread = {
     estimateThreadStatsByEstimateId,
