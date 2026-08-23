@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildJournalWeekCards,
+  findZeroCrossings,
   reconcileLines,
   tierHoursTotal,
   parsePartnerLedgerStubs,
@@ -279,6 +280,35 @@ describe('partnerStubsToJournal', () => {
       ['2026-08-15', 'labor'],
       ['2026-08-15', 'deduction'],
     ])
+  })
+})
+
+describe('findZeroCrossings', () => {
+  const L = (amount: number | null) => ({ label: 'x', amount, cls: 'zero' as const })
+  it('reports the line after which the balance went negative → positive (Bryan May 10)', () => {
+    expect(findZeroCrossings(-546.39, [L(606.64)])).toEqual([{ afterLineIndex: 0, before: -546.39, after: 60.25 }])
+  })
+  it('reports positive → negative after the exact line that crossed, ignoring no-amount lines (Bryan May 24)', () => {
+    const out = findZeroCrossings(3.85, [L(null), L(-500), L(-509.83), L(-106.64), L(-457.47)])
+    expect(out).toEqual([{ afterLineIndex: 1, before: 3.85, after: -496.15 }])
+  })
+  it('landing exactly on $0 is not a crossing; a week can cross more than once', () => {
+    expect(findZeroCrossings(-100, [L(100), L(50)])).toEqual([])
+    expect(findZeroCrossings(-100, [L(150), L(-80)])).toEqual([
+      { afterLineIndex: 0, before: -100, after: 50 },
+      { afterLineIndex: 1, before: 50, after: -30 },
+    ])
+  })
+  it('buildJournalWeekCards stamps crossings on closed and live cards', () => {
+    // one stub: gross 606.64 paid out 1152.03 earlier in the week → opens 0, goes +606.64 then −545.39
+    const s = stub({ id: 'sC', period_start: '2026-05-10', period_end: '2026-05-16', hours_total: 16.18, gross_pay: 606.64, day_rates: [{ rate: 37.5, hours: 16.18, amount: 606.64 }], additional: [], deductions: [], payments: [{ amount: 1152.03, paid_at: '2026-05-20', memo: null }] })
+    const cards = buildJournalWeekCards(summary({ current_week: { week_start: '2026-05-24', field_hours: 20, office_hours: 0, farm_hours: 0, gross_so_far: 1000, pending_sessions: 0 } }), [s])
+    const w10 = cards.find((c) => c.weekStart === '2026-05-10')!
+    expect(w10.crossings).toEqual([])
+    const w17 = cards.find((c) => c.weekStart === '2026-05-17')! // payout week: +606.64 → −545.39
+    expect(w17.crossings).toEqual([{ afterLineIndex: 0, before: 606.64, after: -545.39 }])
+    expect(cards[0]!.open).toBe(true)
+    expect(cards[0]!.crossings).toEqual([{ afterLineIndex: 0, before: -545.39, after: 454.61 }])
   })
 })
 
