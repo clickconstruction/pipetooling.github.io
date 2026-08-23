@@ -140,6 +140,22 @@ export default function Partnerships() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // Ledger is the landing tab — the money story is what the page opens on.
   const [activeTab, setActiveTab] = useState<'deal' | 'agr' | 'review' | 'stmts' | 'timeline' | 'ledger'>('ledger')
+  // The tab strip scrolls sideways on phones; keep the selected tab on screen
+  // (Ledger is the default and used to open scrolled out of view). A stable
+  // callback ref attached only to the active button fires exactly when that
+  // button mounts or the active tab changes — no timing race with the detail
+  // card's async load, no re-scroll on unrelated renders.
+  const activeTabRef = useCallback((el: HTMLButtonElement | null) => {
+    const strip = el?.parentElement
+    if (!el || !strip) return
+    // Manual horizontal scroll (not scrollIntoView): never moves the page
+    // vertically, and leaves a margin so the right-edge fade doesn't sit on
+    // the active tab's last letters.
+    const pad = 32
+    const right = el.offsetLeft + el.offsetWidth + pad
+    if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth
+    else if (el.offsetLeft - pad < strip.scrollLeft) strip.scrollLeft = Math.max(0, el.offsetLeft - pad)
+  }, [])
   const [lensOn, setLensOn] = useState(false)
   const [tableMissing, setTableMissing] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -489,7 +505,7 @@ export default function Partnerships() {
         </div>
       ) : null}
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(180px, 220px) minmax(0, 1fr)', gap: isMobile ? '0.75rem' : '1rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(180px, 220px) minmax(0, 1fr)', gap: isMobile ? '0.75rem' : '1rem', alignItems: 'start' }}>
         {/* Roster — desktop side card; mobile horizontal chip strip */}
         {isMobile ? (
           <div>
@@ -629,8 +645,11 @@ export default function Partnerships() {
                 </div>
               ) : (
                 <>
-              {/* Tab bar — one line always; scrolls sideways on narrow screens */}
-              <div style={{ display: 'flex', gap: '0.9rem', borderBottom: '1px solid var(--border)', margin: '0.75rem 0', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none' }}>
+              {/* Tab bar — one line always; scrolls sideways on narrow screens,
+                  with the active tab kept in view and a soft fade at the right
+                  edge so it reads as "more tabs" rather than a cut-off. */}
+              <div style={{ position: 'relative', margin: '0.75rem 0' }}>
+              <div style={{ display: 'flex', gap: '0.9rem', borderBottom: '1px solid var(--border)', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', paddingRight: isMobile ? 36 : 0 }}>
                 {(
                   [
                     ['deal', 'Deal'],
@@ -643,6 +662,7 @@ export default function Partnerships() {
                 ).map(([key, label]) => (
                   <button
                     key={key}
+                    ref={activeTab === key ? activeTabRef : undefined}
                     type="button"
                     onClick={() => setActiveTab(key)}
                     style={{
@@ -662,6 +682,10 @@ export default function Partnerships() {
                     {label}
                   </button>
                 ))}
+              </div>
+              {isMobile ? (
+                <div aria-hidden style={{ position: 'absolute', top: 0, right: 0, bottom: 1, width: 28, pointerEvents: 'none', background: 'linear-gradient(90deg, transparent, var(--surface))' }} />
+              ) : null}
               </div>
 
               {activeTab === 'agr' ? (
