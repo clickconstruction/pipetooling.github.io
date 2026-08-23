@@ -105,7 +105,7 @@ describe('ChecklistTechTreeTaskCardModal', () => {
   it('editor: inline title edit saves on submit (Enter) with assignees preserved', async () => {
     const { onSave } = renderModal({ canEditStructure: true })
     fireEvent.click(screen.getByLabelText('Rename task'))
-    const input = screen.getByLabelText('Task title') as HTMLInputElement
+    const input = screen.getByLabelText('Task title') as HTMLTextAreaElement
     fireEvent.change(input, { target: { value: 'add posts and a gate' } })
     // Enter in the input triggers the browser's implicit form submission
     fireEvent.submit(input.closest('form')!)

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import type { BridgeChip, BridgeState } from '../../lib/roadmapBridge'
 import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
+import AutoGrowTextarea from '../AutoGrowTextarea'
 
 type UserRow = { id: string; name: string; email: string }
 
@@ -273,10 +274,14 @@ export function ChecklistTechTreeTaskCardModal({
                   e.preventDefault()
                   void saveTitle()
                 }}
-                style={{ display: 'flex', gap: 8, flex: 1, minWidth: 0 }}
+                style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1, minWidth: 0 }}
               >
-                <input
+                {/* Auto-growing textarea (v2.2121) so a long title wraps instead of
+                    scrolling off the right edge; Enter still saves (titles have no
+                    newlines), Escape cancels, ✓ submits the form. */}
+                <AutoGrowTextarea
                   autoFocus
+                  rows={1}
                   value={titleDraft}
                   onChange={(e) => setTitleDraft(e.target.value)}
                   onKeyDown={(e) => {
@@ -297,6 +302,7 @@ export function ChecklistTechTreeTaskCardModal({
                     font: 'inherit',
                     fontSize: '1.0625rem',
                     fontWeight: 600,
+                    lineHeight: 1.35,
                     padding: '4px 8px',
                     border: '1px solid #2563eb',
                     borderRadius: 7,
