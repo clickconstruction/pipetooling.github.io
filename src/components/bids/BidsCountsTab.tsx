@@ -736,21 +736,23 @@ export function BidsCountsTab({
                       </div>
                     </div>
                   ) : null}
+                  {/* One tile (owner mockup): pages cited, with the no-page count folded in as a red
+                      "(N no pages)" — click it to filter to those rows, click again to show all. */}
                   <button
                     type="button"
                     onClick={() => summary.noPageCount > 0 && setSheetNoPageOnly((v) => !v)}
-                    title={summary.noPageCount > 0 ? 'Show only rows with no plan page' : undefined}
-                    style={{ font: 'inherit', textAlign: 'left', padding: '0.55rem 1rem', border: 'none', borderRight: '1px solid var(--border)', minWidth: '8rem', background: sheetNoPageOnly ? 'var(--bg-subtle)' : 'none', cursor: summary.noPageCount > 0 ? 'pointer' : 'default' }}
+                    title={summary.noPageCount > 0 ? (sheetNoPageOnly ? 'Click to show all rows' : 'Click to show only rows with no plan page') : undefined}
+                    aria-pressed={sheetNoPageOnly}
+                    style={{ font: 'inherit', textAlign: 'left', padding: '0.55rem 1rem', border: 'none', minWidth: '8rem', background: sheetNoPageOnly ? 'var(--bg-subtle)' : 'none', cursor: summary.noPageCount > 0 ? 'pointer' : 'default' }}
                   >
-                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>No plan page</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: summary.noPageCount > 0 ? 'var(--text-red-700)' : 'var(--text-green-600)' }}>
-                      {summary.noPageCount > 0 ? summary.noPageCount : '0 ✓'}
+                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Plan pages cited</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                      {groups.pages.length}
+                      {summary.noPageCount > 0 ? (
+                        <span style={{ fontWeight: 500, color: 'var(--text-red-700)' }}> ({summary.noPageCount} no page{summary.noPageCount !== 1 ? 's' : ''})</span>
+                      ) : null}
                     </div>
                   </button>
-                  <div style={{ padding: '0.55rem 1rem', minWidth: '8rem' }}>
-                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Plan pages cited</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{groups.pages.length}</div>
-                  </div>
                 </div>
 
                 <style>{`
