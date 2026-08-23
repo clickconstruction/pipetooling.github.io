@@ -810,11 +810,12 @@ export default function Customers() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  flexWrap: 'wrap',
                   width: '100%',
                   cursor: 'pointer',
                 }}
               >
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                   <Link
                     to={`/customers/${c.id}`}

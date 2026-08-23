@@ -1633,7 +1633,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Ledger</span>
-                <div style={{ display: 'flex', gap: '0.3rem' }}>
+                {/* Wraps (phone fix): the seven chips were a 485px nowrap row that widened the whole page past a 375px screen. */}
+                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', minWidth: 0 }}>
                   {LEDGER_FILTERS.map((f) => (
                     <button
                       key={f.key}
@@ -1665,6 +1666,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       key={r.key}
                       style={{
                         display: 'flex',
+                        flexWrap: 'wrap',
                         alignItems: 'center',
                         gap: '0.6rem',
                         padding: '0.55rem 0.9rem',
@@ -1700,7 +1702,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                       ? 'Task'
                                       : 'Hand-off'}
                       </span>
-                      <span style={{ flex: 1, minWidth: 0 }}>{r.label}</span>
+                      {/* Phone (v2.2176): the label claims its own line when the row can't fit date · chip · label · value side by side. */}
+                      <span style={{ flex: '1 1 160px', minWidth: 0 }}>{r.label}</span>
                       <span style={{ textAlign: 'right', width: 90, flexShrink: 0, color: r.odometer == null && r.amount == null ? 'var(--text-muted)' : undefined }}>
                         {r.odometer != null ? `${r.odometer.toLocaleString()} mi` : r.amount != null ? `$${formatCurrency(r.amount)}` : '—'}
                       </span>
