@@ -4388,6 +4388,7 @@ export type Database = {
       gc_statement_email_requests: {
         Row: {
           attempts: number
+          cc_emails: string[] | null
           created_at: string
           development_id: string | null
           entity_name: string
@@ -4404,6 +4405,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          cc_emails?: string[] | null
           created_at?: string
           development_id?: string | null
           entity_name?: string
@@ -4420,6 +4422,7 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          cc_emails?: string[] | null
           created_at?: string
           development_id?: string | null
           entity_name?: string
@@ -4460,6 +4463,7 @@ export type Database = {
       }
       gc_statement_emails: {
         Row: {
+          cc_emails: string[] | null
           gc_customer_id: string | null
           gc_name: string
           group_by: string
@@ -4474,6 +4478,7 @@ export type Database = {
           total: number
         }
         Insert: {
+          cc_emails?: string[] | null
           gc_customer_id?: string | null
           gc_name: string
           group_by?: string
@@ -4488,6 +4493,7 @@ export type Database = {
           total: number
         }
         Update: {
+          cc_emails?: string[] | null
           gc_customer_id?: string | null
           gc_name?: string
           group_by?: string

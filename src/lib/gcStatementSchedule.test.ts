@@ -15,6 +15,15 @@ const base = {
 const now = new Date('2026-08-06T12:00:00Z')
 
 describe('buildGcStatementRequestInsert', () => {
+  it('carries cc_emails when given, null when empty (v2.2160)', () => {
+    const withCc = buildGcStatementRequestInsert({ ...base, ccEmails: ['malachi@click.com'] }, now)
+    if (!withCc.ok) throw new Error(withCc.error)
+    expect(withCc.row.cc_emails).toEqual(['malachi@click.com'])
+    const none = buildGcStatementRequestInsert({ ...base, ccEmails: [] }, now)
+    if (!none.ok) throw new Error(none.error)
+    expect(none.row.cc_emails).toBeNull()
+  })
+
   it('builds a single-GC row with the entity on gc_customer_id', () => {
     const res = buildGcStatementRequestInsert(base, now)
     if (!res.ok) throw new Error(res.error)
