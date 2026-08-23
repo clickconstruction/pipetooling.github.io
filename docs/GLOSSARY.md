@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-08-08
+last_updated: 2026-08-23
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -604,11 +604,11 @@ Recurring tasks with Today, History, **Review**, Manage, and **Roadmap** tabs (R
 **Database**: `checklist_items`, `checklist_instances`, `checklist_item_assignees`, `checklist_instance_assignees`
 
 ### Roadmap (tech tree)
-Named **roadmaps** on the Checklist page (`?tab=roadmap`, optional **`roadmap=<uuid>`**): each roadmap has its own groups of tasks, prerequisite edges, and per-task assignees. **`ChecklistTechTreeRoadmapBar`** — pick roadmap, **New roadmap** (dev/master/assistant/primary), **Members**. **`ChecklistTechTreeRoadmapMembersModal`** — add org users as **viewer** (read + complete assigned tasks) or **editor** (change graph + manage members). **Staff/primary** can access any roadmap without a member row (RLS); others need membership. Implemented in **`ChecklistTechTreeTab`** with a floating **canvas** icon row when the graph has groups—**enter full screen** (bare icon, no chip), **Organize**, **Add group**, **Edit tasks**, **Show all** / **Collapse all**—via **`ChecklistTechTreeMapActionIconButtons`**; an empty graph uses text actions in the roadmap toolbar. Full-screen mode repeats those icons in the overlay header; **exit** is an icon-only control (class **`checklistTechTreeExitFs`** in **`index.css`**).
+Named **roadmaps** on the Checklist page (`?tab=roadmap`, optional **`roadmap=<uuid>`** and **`view=map|plan|timeline`**): each roadmap is **stages** (groups, user-ordered — stage **#N** = position in that order, tasks **N.M**) holding **tasks** with per-task assignees, linked by **prerequisite arrows** (edges). A stage is **unlocked** when every predecessor is **complete**; a stage with tasks completes when all are done; a task-less stage with predecessors is a **milestone** (reached when they complete); a task-less stage with *no* predecessors is **not planned yet** (never complete). The **bridge** materializes assigned tasks in unlocked stages onto people's Today lists (`sync_roadmap_to_checklist`), with live chips (on list / in review / signed off). Three views share one load: **Map** (the React Flow canvas — `ChecklistTechTreeTab` + `ChecklistTechTreeGroupNode`), **Plan** (flat work surface with the **⚡ Next up** shortlist — *pick, don't sort*: stage numbers never move, arrows decide eligibility, two lanes of ≤5 with reason chips; **★ pin** = the owner's override that leads its lane), and **Timeline** (dependency-wave Gantt with a calendar band from the observed completion pace). Tab visibility is dev-only / off in Farm Mode (`canSeeRoadmapTab`, also gating the Dashboard "needs a name" nudge). **Members** modal: **viewer** / **editor** per roadmap; staff/primary bypass membership (RLS).
 
-**Database**: **`checklist_tech_tree_roadmaps`**, **`checklist_tech_tree_roadmap_members`**, **`checklist_tech_tree_groups`** (includes **`roadmap_id`**), **`checklist_tech_tree_group_tasks`**, **`checklist_tech_tree_edges`**, **`checklist_tech_tree_task_assignees`**
+**Database**: **`checklist_tech_tree_roadmaps`**, **`checklist_tech_tree_roadmap_members`**, **`checklist_tech_tree_groups`** (`roadmap_id`, `sort_index`), **`checklist_tech_tree_group_tasks`** (`sort_index`, `pinned_at`), **`checklist_tech_tree_edges`**, **`checklist_tech_tree_task_assignees`**; bridge via `checklist_items.roadmap_group_task_id`.
 
-**See**: `RECENT_FEATURES.md` → v2.408, v2.407; `MIGRATIONS.md` → **`20270427120000_checklist_tech_tree_multi_roadmap.sql`**; `PROJECT_DOCUMENTATION.md` → Key differentiators, Checklist
+**See**: `CHECKLIST_TABS_ARCHITECTURE.md` → roadmap dossier; help guides `see-what-to-do-next-on-a-roadmap`, `read-the-roadmap-timeline`, `staff-and-discuss-roadmap-tasks`, `number-and-order-roadmap-stages`; `docs/recent-features/` v2.1913, v2.1979, v2.2127, v2.2129, v2.2138, v2.2140
 
 **Repeat types**: once, day_of_week (multiple days), days_after_completion
 
