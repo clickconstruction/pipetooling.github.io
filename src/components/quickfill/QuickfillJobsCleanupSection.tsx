@@ -209,7 +209,8 @@ export function QuickfillJobsCleanupSection() {
           >
             <span style={{ minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, overflowWrap: 'anywhere' }}>{r.contractor}</span>
-              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {/* Wraps rather than clips (phone polish): at 375px the nowrap version cut "no job with this number" and every address. */}
+              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
                 {r.typedNumber ? (
                   <>
                     <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-amber-800)', marginRight: 6 }}>#{r.typedNumber}</span>
