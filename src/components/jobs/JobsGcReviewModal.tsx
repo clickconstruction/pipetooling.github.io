@@ -63,6 +63,11 @@ import { gcEmailChip } from '../../lib/teammateEmailChips'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
+import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
+import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
+import { gcPortalLinkCaption } from '../../lib/portal/gcPortalLink'
+import { useToastContext } from '../../contexts/ToastContext'
+import { supabase } from '../../lib/supabase'
 
 /** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD. */
 function chicagoTomorrowYmd(): string {
@@ -206,7 +211,7 @@ type JobsGcReviewModalProps = {
   /** Shell glue: build the statement HTML and open the print window (toast on popup block). */
   onPrint: (groups: GcReviewGroup[], groupBy: GcReviewGroupBy) => void
   /** Shell glue: copy the GC-facing statement (rich HTML + plain text) for pasting into an email (v2.1414). */
-  onCopyForEmail: (group: GcReviewGroup, groupBy: GcReviewGroupBy) => void
+  onCopyForEmail: (group: GcReviewGroup, groupBy: GcReviewGroupBy, extra?: { portalUrl?: string | null }) => void
   /** Shell transport for the Email… dialog: invoke send-gc-statement-email (v2.1416). */
   onSendStatement: (payload: SendGcStatementPayload) => Promise<{ ok: boolean; error?: string }>
   /** Prefill for the Email… dialog's To field (customers.contact_info email; '' when unknown). */
@@ -265,6 +270,8 @@ export function JobsGcReviewModal({
   const [emailDialogSubject, setEmailDialogSubject] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
+  /** Draft Message: include the GC's portal card (v2.2151) — on by default whenever the GC has an active portal. */
+  const [emailIncludePortal, setEmailIncludePortal] = useState(true)
   /** "Share all" dialog (v2.1420): print or email the whole report. */
   const [shareAllOpen, setShareAllOpen] = useState(false)
   const [shareAllTo, setShareAllTo] = useState('')
@@ -451,6 +458,26 @@ export function JobsGcReviewModal({
     if (open && startInRound) setRoundOpen(true)
   }, [open, startInRound])
   const certProgress = gcReviewWeekProgress(rollup.groups, certsByGc, mergedLastSent, certWeekStart)
+  /** Portal links per GC (v2.2151): the globe on the row, the Share item, and the Draft Message card all read this. */
+  const gcIdsForPortal = useMemo(() => rollup.groups.filter((g) => !g.isNoGc && g.gcId).map((g) => g.gcId as string), [rollup.groups])
+  const { links: portalLinks, refresh: refreshPortalLinks } = useGcPortalLinks(gcIdsForPortal, open && !byDevelopment)
+  const portalLinkFor = (g: GcReviewGroup) => (!byDevelopment && !g.isNoGc && g.gcId ? portalLinks.get(g.gcId) ?? null : null)
+  const { showToast } = useToastContext()
+  const copyPortalLink = async (g: GcReviewGroup) => {
+    const link = portalLinkFor(g)
+    if (!link) return
+    try {
+      // The short address locks on first share (same rule as the globe's Copy link) — printed/texted copies must not go stale.
+      if (link.short && !link.slugLocked && g.gcId) {
+        await supabase.rpc('mark_customer_portal_slug_shared' as never, { p_customer_id: g.gcId } as never)
+        refreshPortalLinks()
+      }
+      await navigator.clipboard.writeText(link.url)
+      showToast(`Portal link copied — ${g.gcName} (${gcPortalLinkCaption(link)}).`, 'success')
+    } catch {
+      showToast('Could not copy the portal link.', 'error')
+    }
+  }
   const authUserName = users.find((u) => u.id === authUser?.id)?.name ?? ''
   const userNameById = (id: string | null) => (id ? users.find((u) => u.id === id)?.name || '—' : 'nobody assigned')
   async function markRound(gcId: string, action: 'sent' | 'skipped') {
@@ -505,6 +532,7 @@ export function JobsGcReviewModal({
       gcStatementEmailSubject(g, new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
     )
     setEmailError(null)
+    setEmailIncludePortal(true)
     setEmailWhen('now')
     setEmailRepeatWeekly(false)
   }
@@ -868,6 +896,12 @@ export function JobsGcReviewModal({
                     {g.gcName}
                   </span>
                 )}
+                {!byDevelopment && !g.isNoGc && g.gcId ? (
+                  // The GC's portal (v2.2151): the same globe + modal as everywhere else (address, Copy link, Preview as customer, scoped views).
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }} onClick={(e) => e.stopPropagation()} title={portalLinkFor(g) ? `Portal: ${portalLinkFor(g)!.url.replace(/^https?:\/\//, '')} (${gcPortalLinkCaption(portalLinkFor(g)!)})` : 'Portal — not set up yet'}>
+                    <CustomerPortalGlobeButton customerId={g.gcId} customerName={g.gcName} size={14} />
+                  </span>
+                ) : null}
                 {!g.isNoGc && g.gcId && mergedLastSent[g.gcId] ? (
                   gcReviewSentThisWeek(mergedLastSent[g.gcId], certWeekStart) && !byDevelopment ? (
                     <span
@@ -944,7 +978,7 @@ export function JobsGcReviewModal({
                     <button
                       type="button"
                       onClick={() => setShareMenuGroupKey((k) => (k === g.key ? null : g.key))}
-                      title={`Share the ${g.gcName} statement — email, copy, or print`}
+                      title={`Share the ${g.gcName} statement — email, copy, print, or portal link`}
                       aria-label={`Share statement for ${g.gcName}`}
                       aria-haspopup="menu"
                       aria-expanded={shareMenuGroupKey === g.key}
@@ -997,7 +1031,7 @@ export function JobsGcReviewModal({
                             type="button"
                             onClick={() => {
                               setShareMenuGroupKey(null)
-                              onCopyForEmail(g, effectiveGroupBy)
+                              onCopyForEmail(g, effectiveGroupBy, { portalUrl: portalLinkFor(g)?.url ?? null })
                             }}
                             title={`Copy the ${g.gcName} statement to paste into an email`}
                             style={gcShareMenuItemStyle}
@@ -1015,6 +1049,35 @@ export function JobsGcReviewModal({
                           >
                             Print
                           </button>
+                          {!byDevelopment ? (
+                            <>
+                              <div style={{ height: 1, background: 'var(--border)', margin: '0.25rem 0.2rem' }} />
+                              <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.3rem 0.6rem 0.1rem' }}>Portal</div>
+                              {portalLinkFor(g) ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShareMenuGroupKey(null)
+                                    void copyPortalLink(g)
+                                  }}
+                                  title={`Copy ${g.gcName}'s portal link — their live statement with Pay online`}
+                                  style={{ ...gcShareMenuItemStyle, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
+                                >
+                                  <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '0.5rem' }}>
+                                    <span>Copy portal link</span>
+                                    <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-muted)' }}>{gcPortalLinkCaption(portalLinkFor(g)!)}</span>
+                                  </span>
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'ui-monospace, Menlo, monospace', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {portalLinkFor(g)!.url.replace(/^https?:\/\//, '')}
+                                  </span>
+                                </button>
+                              ) : (
+                                <div style={{ padding: '0.35rem 0.6rem 0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: 280 }}>
+                                  No portal link yet — use the 🌐 by the name to set one up.
+                                </div>
+                              )}
+                            </>
+                          ) : null}
                         </div>
                       </>
                     ) : null}
@@ -1192,6 +1255,20 @@ export function JobsGcReviewModal({
               disabled={emailSending || emailWhen === 'schedule'}
               style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem', opacity: emailWhen === 'schedule' ? 0.6 : 1 }}
             />
+            {(() => {
+              const link = emailDialogGroup ? portalLinkFor(emailDialogGroup) : null
+              if (!link) return null
+              return (
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.8rem', color: 'var(--text-700)', marginBottom: '0.6rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={emailIncludePortal} onChange={(e) => setEmailIncludePortal(e.target.checked)} disabled={emailSending || emailWhen === 'schedule'} style={{ marginTop: 3 }} />
+                  <span>
+                    Include portal link <span style={{ color: 'var(--text-muted)' }}>— a "Your account, any time" card under the table pointing at </span>
+                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.76rem' }}>{link.url.replace(/^https?:\/\//, '')}</span>
+                    <span style={{ color: 'var(--text-muted)' }}> ({gcPortalLinkCaption(link)}){emailWhen === 'schedule' ? ' · scheduled sends include it automatically while the portal is active' : ''}</span>
+                  </span>
+                </label>
+              )
+            })()}
             <ScheduleWhenControls
               when={emailWhen}
               setWhen={setEmailWhen}
@@ -1214,7 +1291,7 @@ export function JobsGcReviewModal({
                   const g = emailDialogGroup
                   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   const subject = emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr)
-                  if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone }))) {
+                  if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null }))) {
                     setEmailError('Allow pop-ups to preview the statement.')
                   }
                 }}
@@ -1275,8 +1352,8 @@ export function JobsGcReviewModal({
                     groupBy: effectiveGroupBy,
                     toEmail: emailDialogTo.trim(),
                     subject: emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr),
-                    emailHtml: buildGcStatementEmailHtml(g, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone }),
-                    emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone }),
+                    emailHtml: buildGcStatementEmailHtml(g, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null }),
+                    emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null }),
                     total: g.subtotal,
                     jobCount: g.jobCount,
                   }).then((res) => {
@@ -1361,7 +1438,7 @@ export function JobsGcReviewModal({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onCopyForEmail(current.group, 'gc')}
+                          onClick={() => onCopyForEmail(current.group, 'gc', { portalUrl: portalLinkFor(current.group)?.url ?? null })}
                           style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer' }}
                         >
                           Copy for email

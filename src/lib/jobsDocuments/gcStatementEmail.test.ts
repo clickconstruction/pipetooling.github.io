@@ -166,3 +166,17 @@ describe('gcStatementFooterLine (v2.2133)', () => {
     expect(buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026' })).toContain('call the office.')
   })
 })
+
+describe('portal card (v2.2151)', () => {
+  it('renders the card + text line only when a portal URL is given', async () => {
+    const mod = await import('./gcStatementEmail')
+    expect(mod.gcStatementPortalCardHtml(null)).toBe('')
+    expect(mod.gcStatementPortalCardHtml('  ')).toBe('')
+    const html = mod.gcStatementPortalCardHtml('https://my.clickplumbing.com/rmc-dudley-mason')
+    expect(html).toContain('Your account, any time')
+    expect(html).toContain('href="https://my.clickplumbing.com/rmc-dudley-mason"')
+    expect(html).toContain('my.clickplumbing.com/rmc-dudley-mason</a>')
+    expect(mod.gcStatementPortalLineText('https://x/y')).toContain('https://x/y')
+    expect(mod.gcStatementPortalLineText(null)).toBeNull()
+  })
+})

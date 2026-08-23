@@ -34,6 +34,33 @@ import {
   type GcStatementPayload,
 } from './render.ts'
 
+/**
+ * GC's portal link for the statement card (v2.2151). Keep in sync with
+ * src/lib/portal/gcPortalLink.ts `resolveGcPortalLink`: an active GC-scoped
+ * link ('gc') wins (token URL); else the main link ('all') — short custom
+ * address when a slug is saved, otherwise its token URL; nothing active → null.
+ */
+const PORTAL_SHORT_ORIGIN = 'https://my.clickplumbing.com/'
+const PORTAL_APP_ORIGIN = 'https://pipetooling.com'
+// deno-lint-ignore no-explicit-any
+async function resolveGcPortalUrl(admin: any, customerId: string): Promise<string | null> {
+  try {
+    const [{ data: links }, { data: slugRow }] = await Promise.all([
+      admin.from('customer_portal_links').select('audience, token, revoked_at').eq('customer_id', customerId).is('revoked_at', null),
+      admin.from('customer_portal_slugs').select('slug').eq('customer_id', customerId).maybeSingle(),
+    ])
+    const rows = (links ?? []) as Array<{ audience: string; token: string | null }>
+    const gc = rows.find((l) => l.audience === 'gc' && l.token)
+    if (gc?.token) return `${PORTAL_APP_ORIGIN}/portal?t=${gc.token}`
+    const all = rows.find((l) => l.audience === 'all' && l.token)
+    if (!all?.token) return null
+    const slug = typeof (slugRow as { slug?: string } | null)?.slug === 'string' ? (slugRow as { slug: string }).slug.trim() : ''
+    return slug ? `${PORTAL_SHORT_ORIGIN}${slug}` : `${PORTAL_APP_ORIGIN}/portal?t=${all.token}`
+  } catch {
+    return null
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -178,8 +205,10 @@ serve(async (req) => {
         }
 
         const subject = isSingle ? gcStatementSubject(dateStr) : gcShareAllSubject(payload.group_by, dateStr)
-        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone) : renderGcShareAllHtml(payload, dateStr, officePhone)
-        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone) : renderGcShareAllText(payload, dateStr, officePhone)
+        // Portal card (v2.2151): single-GC statements carry the GC's portal link when one is active.
+        const portalUrl = isSingle && row.group_by === 'gc' && row.gc_customer_id ? await resolveGcPortalUrl(admin, row.gc_customer_id) : null
+        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl) : renderGcShareAllHtml(payload, dateStr, officePhone)
+        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl) : renderGcShareAllText(payload, dateStr, officePhone)
 
         const { data: requester } = await admin
           .from('users')
