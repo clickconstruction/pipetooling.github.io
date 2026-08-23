@@ -62,6 +62,7 @@ import { TeammateEmailChips } from './TeammateEmailChips'
 import { gcEmailChip } from '../../lib/teammateEmailChips'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 /** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD. */
 function chicagoTomorrowYmd(): string {
@@ -290,6 +291,8 @@ export function JobsGcReviewModal({
   const refreshCerts = useCallback(() => {
     listGcReviewCertifications(certWeekStart).then(setCertRows, () => setCertRows([]))
   }, [certWeekStart])
+  // Freeze the page behind the modal (v2.2144): the review scrolls inside its own panel; the Stages board under it must not.
+  useBodyScrollLock(open)
   useEffect(() => {
     if (open) refreshCerts()
   }, [open, refreshCerts])
