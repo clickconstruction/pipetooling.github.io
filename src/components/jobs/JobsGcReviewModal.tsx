@@ -60,6 +60,7 @@ import GcReviewCertifyModal from './GcReviewCertifyModal'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
 import { gcEmailChip } from '../../lib/teammateEmailChips'
+import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
 /** Tomorrow's civil date in the company calendar zone, YYYY-MM-DD. */
@@ -489,6 +490,11 @@ export function JobsGcReviewModal({
     }
     setAssigningGcId(null)
   }
+  // Footer office number (v2.2133): hydrate the issuer session cache once per open;
+  // the builders read it synchronously at click time (falls back to the bare line).
+  useEffect(() => {
+    if (open) void fetchPhysicalInvoiceIssuerFromAppSettings()
+  }, [open])
   const openEmailDialogForGroup = (g: GcReviewGroup) => {
     setEmailDialogGroup(g)
     setEmailDialogTo(!byDevelopment && g.gcId ? emailForGc(g.gcId) : '')
@@ -1194,10 +1200,6 @@ export function JobsGcReviewModal({
               setRepeatWeekly={setEmailRepeatWeekly}
               disabled={emailSending}
             />
-            <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '0.5rem 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-              Statement preview — {emailDialogGroup.jobCount} job{emailDialogGroup.jobCount === 1 ? '' : 's'}, ${formatCurrency(emailDialogGroup.subtotal)} · job addresses, bill-sent dates and amounts owed. Sent from
-              team@noreply.pipetooling.com with your email as reply-to.
-            </div>
             {emailError ? (
               <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{emailError}</p>
             ) : null}
@@ -1209,7 +1211,7 @@ export function JobsGcReviewModal({
                   const g = emailDialogGroup
                   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   const subject = emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr)
-                  if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy }))) {
+                  if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone }))) {
                     setEmailError('Allow pop-ups to preview the statement.')
                   }
                 }}
@@ -1270,8 +1272,8 @@ export function JobsGcReviewModal({
                     groupBy: effectiveGroupBy,
                     toEmail: emailDialogTo.trim(),
                     subject: emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr),
-                    emailHtml: buildGcStatementEmailHtml(g, { dateStr, groupBy: effectiveGroupBy }),
-                    emailText: buildGcStatementEmailText(g, { dateStr }),
+                    emailHtml: buildGcStatementEmailHtml(g, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone }),
+                    emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone }),
                     total: g.subtotal,
                     jobCount: g.jobCount,
                   }).then((res) => {
@@ -1346,7 +1348,7 @@ export function JobsGcReviewModal({
                           type="button"
                           onClick={() => {
                             const subject = gcStatementEmailSubject(current.group, dateStr)
-                            if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(current.group, subject, { dateStr }))) {
+                            if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(current.group, subject, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone }))) {
                               setRoundError('Allow pop-ups to preview the statement.')
                             }
                           }}
@@ -1544,8 +1546,8 @@ export function JobsGcReviewModal({
                       groupBy: 'all',
                       toEmail: shareAllTo.trim(),
                       subject: shareAllSubject.trim() || gcReviewShareAllEmailSubject(effectiveGroupBy, dateStr),
-                      emailHtml: buildGcReviewShareAllEmailHtml(report, { dateStr, groupBy: effectiveGroupBy }),
-                      emailText: buildGcReviewShareAllEmailText(report, { dateStr, groupBy: effectiveGroupBy }),
+                      emailHtml: buildGcReviewShareAllEmailHtml(report, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone }),
+                      emailText: buildGcReviewShareAllEmailText(report, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone }),
                       total: rollup.grandTotal,
                       jobCount: rollup.groups.reduce((s, g) => s + g.jobCount, 0),
                     }).then((res) => {
