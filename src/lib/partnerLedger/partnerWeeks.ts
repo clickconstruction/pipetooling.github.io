@@ -247,6 +247,36 @@ export function weekStartYmd(ymd: string): string {
   return utcMsToYmd(ms - new Date(ms).getUTCDay() * 86400000)
 }
 
+/** "$50" for whole-dollar rates, "$37.50" otherwise — never "$37.5". */
+const fmtRate = (rate: number) => (Number.isInteger(rate) ? `$${rate}` : `$${rate.toFixed(2)}`)
+
+/**
+ * Make a group of display lines sum EXACTLY to the journal amount they stand
+ * for (v2.2112). The stamped rate tiers are per-day rounded sums, so their
+ * total can miss the stub's gross_pay by a cent (Bryan 2026-05-31: tiers
+ * 696.29, gross 696.28; 04-26: 869.80 vs 869.79; 03-29: 1520.69 vs 1520.70).
+ * The chain — and the office Ledger tab — run on gross_pay, so the residual
+ * lands on the largest line and opening + lines = closing to the penny on
+ * every card. Lines with no amount (pending sessions) are left alone.
+ */
+export function reconcileLines(lines: WeekCardLine[], target: number): WeekCardLine[] {
+  const money = lines.filter((l) => l.amount != null)
+  if (money.length === 0) return lines
+  const sum = round2(money.reduce((a, l) => a + (l.amount ?? 0), 0))
+  const residual = round2(target - sum)
+  if (residual === 0) return lines
+  let bi = -1
+  lines.forEach((l, i) => {
+    if (l.amount == null) return
+    if (bi < 0 || Math.abs(l.amount) > Math.abs(lines[bi]!.amount ?? 0)) bi = i
+  })
+  return lines.map((l, i) => {
+    if (i !== bi) return l
+    const amount = round2((l.amount ?? 0) + residual)
+    return { ...l, amount, cls: amount > 0 ? 'pos' : amount < 0 ? 'neg' : 'zero' }
+  })
+}
+
 /** One journal row → week-card line(s); labor rows expand into the stub's rate tiers. */
 function journalRowToLines(r: JournalRow, stubById: Map<string, PartnerLedgerStub>): WeekCardLine[] {
   if (r.kind === 'labor' && r.pay_stub_id) {
@@ -254,11 +284,14 @@ function journalRowToLines(r: JournalRow, stubById: Map<string, PartnerLedgerStu
     // Rate tiers with no hours ("Labor · 0.0 h × $0") are noise — skip them.
     const tiers = (stub?.day_rates ?? []).filter((d) => d.hours !== 0 || d.amount !== 0)
     if (tiers.length > 0) {
-      return tiers.map((d) => ({
-        label: `Labor · ${d.hours.toFixed(1)} h × $${d.rate}`,
+      const tierLines: WeekCardLine[] = tiers.map((d) => ({
+        label: `Labor · ${d.hours.toFixed(1)} h × ${fmtRate(d.rate)}`,
         amount: round2(d.amount),
         cls: d.amount > 0 ? 'pos' : 'zero',
       }))
+      // The journal row (and the office ledger) run on the stub's gross_pay;
+      // the tiers are per-day rounded sums that can miss it by a cent.
+      return reconcileLines(tierLines, r.amount)
     }
   }
   if (r.kind === 'payout') {
@@ -346,10 +379,14 @@ export function buildJournalWeekCards(
   // Live card: posted rows this week + the so-far hour lines.
   const cw = summary.current_week
   const liveLines: WeekCardLine[] = liveRows.flatMap((r) => journalRowToLines(r, stubById))
+  // So-far money lines reconcile to the server's gross_so_far — the closing
+  // adds gross_so_far, so the lines must sum to it (same penny rule as tiers).
+  const soFar: WeekCardLine[] = []
   if (cw.field_hours > 0)
-    liveLines.push({ label: `Field labor · ${cw.field_hours.toFixed(1)} h × $${summary.rates.field}`, amount: round2(cw.field_hours * summary.rates.field), cls: 'pos' })
+    soFar.push({ label: `Field labor · ${cw.field_hours.toFixed(1)} h × ${fmtRate(summary.rates.field)}`, amount: round2(cw.field_hours * summary.rates.field), cls: 'pos' })
   if (cw.office_hours > 0)
-    liveLines.push({ label: `Estimating · ${cw.office_hours.toFixed(1)} h × $${summary.rates.estimating}`, amount: round2(cw.office_hours * summary.rates.estimating), cls: 'pos' })
+    soFar.push({ label: `Estimating · ${cw.office_hours.toFixed(1)} h × ${fmtRate(summary.rates.estimating)}`, amount: round2(cw.office_hours * summary.rates.estimating), cls: 'pos' })
+  liveLines.push(...reconcileLines(soFar, round2(cw.gross_so_far)))
   if (cw.farm_hours > 0)
     liveLines.push({ label: `Farm · ${cw.farm_hours.toFixed(1)} h`, sub: 'no cash — farm food credit', amount: 0, cls: 'zero' })
   if (cw.pending_sessions > 0)

@@ -26,7 +26,7 @@ Field labor 22.5 h × $50, estimating 18.0 h × $35, a profit share from a finis
 
 ## Acknowledging a statement
 
-When the office closes a week, the statement waits for your sign-off. The current week's card reminds you when last week is unacknowledged — step one **‹** back and tap {{button:blue|Acknowledge statement}}. That timestamps your side of the record; the office sees it immediately. Use {{button:outline|Print / save PDF}} for a paper copy of any closed week.
+When the office closes a week, the statement waits for your sign-off. The current week's card reminds you when last week is unacknowledged — step one **‹** back and tap {{button:blue|Acknowledge statement}}. That timestamps your side of the record; the office sees it immediately. Use {{button:outline|Print / save PDF}} for a paper copy of any week that has a statement. A past week that only has charges (no hours were worked, so no statement was issued) says so instead — there is nothing to print or acknowledge for it.
 
 ## Your jobs and their costs
 

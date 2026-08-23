@@ -202,7 +202,11 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
           entirely (ack status lives on the office Statements tab). */}
       {asPartnershipId ? null : (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.6rem', alignItems: 'center' }}>
-          {card && !card.open ? (
+          {card && !card.open && !card.stubId ? (
+            <span style={{ fontSize: '0.72rem', fontWeight: 650, color: 'var(--text-muted)' }}>
+              Charges only — no statement was issued this week.
+            </span>
+          ) : card && !card.open ? (
             <>
               <button
                 type="button"
