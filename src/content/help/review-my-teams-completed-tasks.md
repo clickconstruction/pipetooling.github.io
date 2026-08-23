@@ -12,6 +12,10 @@ Install Cassie's golf cart charger
 Michael A · done yesterday 4:41 PM · "Mounted and tested"
 :::
 
+## The three tiles up top
+
+**To sign off · Outstanding · Missed this week** are tappable. Each shows its number (grey with a green ✓ caption when it's zero) and a caption that answers *who / how old* — "one-offs · 7 people · oldest 118 days". Tap **To sign off** to open the sign-off list, **Outstanding** to jump to the by-person board, or **Missed this week** to flip that board to the Missed view; the tile for the view you're on stays outlined in blue, so the tiles double as a range switcher.
+
 ## Signing off
 
 If the work is good, tap the green {{button:green|✓ Dismiss}} rail on the row's left (the same one-tap pattern as the Dispatch inbox). The card is stamped signed off and leaves the queue; the worker sees "signed off" on their card.
