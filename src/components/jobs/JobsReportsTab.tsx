@@ -1,11 +1,9 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
-import { looksLikeRawJobIdName } from '../../lib/jobs/jobFormatting'
-import { Folder, Images, Pencil, PanelRightOpen } from 'lucide-react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
-import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
-import { formatReportFieldValueInlineList } from '../../lib/reportSignatureField'
 import NewReportModal from '../NewReportModal'
+import { JobsReportsListView } from './JobsReportsListView'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import RecurringEmailReportsModal from './RecurringEmailReportsModal'
 import type { UserRole } from '../../hooks/useAuth'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -79,12 +77,12 @@ export default function JobsReportsTab({
   onError,
 }: JobsReportsTabProps) {
   const confirmDialog = useConfirmDialog()
+  const isMobile = useIsMobile()
   const [reportsList, setReportsList] = useState<ReportWithJob[]>([])
   const [reportsLoading, setReportsLoading] = useState(false)
   const [reportsSearch, setReportsSearch] = useState('')
-  const [reportsViewMode, setReportsViewMode] = useState<'job' | 'person'>('job')
-  const [reportsExpandedJobs, setReportsExpandedJobs] = useState<Set<string>>(new Set())
-  const [reportsExpandedPersons, setReportsExpandedPersons] = useState<Set<string>>(new Set())
+  // vFEED: the page opens on the newest-first feed; By job / By person are one tap away.
+  const [reportsViewMode, setReportsViewMode] = useState<'newest' | 'job' | 'person'>('newest')
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   const [recurringEmailReportsModalOpen, setRecurringEmailReportsModalOpen] = useState(false)
   const [reportsDeletingId, setReportsDeletingId] = useState<string | null>(null)
@@ -345,66 +343,96 @@ export default function JobsReportsTab({
 
   return (
     <>
-      <div>
+      {/* vFEED: reports are narrow content — cap the column so desktop reads like the phone, centered. */}
+      <div style={{ maxWidth: 860, margin: '0 auto' }}>
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
-        <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* vFEED toolbar: one obvious button (thumb-height on phones), search, then quiet view chips. */}
+        <div style={{ marginBottom: '0.6rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setNewReportModalOpen(true)}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            style={{
+              font: 'inherit',
+              fontWeight: 650,
+              fontSize: isMobile ? '1.05rem' : undefined,
+              padding: isMobile ? '0' : '0.5rem 1rem',
+              height: isMobile ? 50 : undefined,
+              width: isMobile ? '100%' : undefined,
+              background: '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: isMobile ? 12 : 6,
+              cursor: 'pointer',
+            }}
           >
-            New report
+            ＋ New report
           </button>
-          {canManageTemplates ? (
-            <button
-              type="button"
-              onClick={() => setRecurringEmailReportsModalOpen(true)}
-              style={{
-                padding: '0.5rem 1rem',
-                background: 'var(--bg-muted)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                cursor: 'pointer',
-                color: 'var(--text-strong)',
-              }}
-            >
-              Recurring Email Reports
-            </button>
-          ) : null}
-          {canManageTemplates && (
-            <button
-              type="button"
-              onClick={openReportTemplatesModal}
-              title="Manage templates"
-              aria-label="Manage report templates"
-              style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-            >
-              Templates
-            </button>
-          )}
           <input
             type="text"
-            placeholder={reportsViewMode === 'person' ? 'Search by job, HCP, or person' : 'Search by job name, HCP, or address'}
+            placeholder="Search job, number, or person"
             value={reportsSearch}
             onChange={(e) => setReportsSearch(e.target.value)}
-            style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: 200 }}
+            style={{ flex: '1 1 180px', minWidth: 0, padding: '0.55rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 10, font: 'inherit', fontSize: '0.95rem' }}
           />
-          <div style={{ display: 'flex', gap: 0, border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden', marginLeft: 'auto' }}>
+          {canManageTemplates && !isMobile ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setRecurringEmailReportsModalOpen(true)}
+                style={{ font: 'inherit', padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, cursor: 'pointer', color: 'var(--text-strong)' }}
+              >
+                Recurring Email Reports
+              </button>
+              <button
+                type="button"
+                onClick={openReportTemplatesModal}
+                title="Manage templates"
+                aria-label="Manage report templates"
+                style={{ font: 'inherit', padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 10, cursor: 'pointer' }}
+              >
+                Templates
+              </button>
+            </>
+          ) : null}
+        </div>
+        <div style={{ marginBottom: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {(
+            [
+              ['newest', 'Newest'],
+              ['job', 'By job'],
+              ['person', 'By person'],
+            ] as const
+          ).map(([key, label]) => (
             <button
+              key={key}
               type="button"
-              onClick={() => setReportsViewMode('job')}
-              style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'job' ? '#3b82f6' : 'var(--bg-subtle)', color: reportsViewMode === 'job' ? 'white' : 'var(--text-700)', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+              onClick={() => setReportsViewMode(key)}
+              aria-pressed={reportsViewMode === key}
+              style={{
+                font: 'inherit',
+                fontSize: '0.875rem',
+                fontWeight: reportsViewMode === key ? 600 : 400,
+                padding: '0.4rem 0.95rem',
+                borderRadius: 999,
+                border: reportsViewMode === key ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                background: reportsViewMode === key ? '#2563eb' : 'var(--surface)',
+                color: reportsViewMode === key ? 'white' : 'var(--text-700)',
+                cursor: 'pointer',
+              }}
             >
-              By Job
+              {label}
             </button>
-            <button
-              type="button"
-              onClick={() => setReportsViewMode('person')}
-              style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'person' ? '#3b82f6' : 'var(--bg-subtle)', color: reportsViewMode === 'person' ? 'white' : 'var(--text-700)', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              By Person
-            </button>
-          </div>
+          ))}
+          {canManageTemplates && isMobile ? (
+            <>
+              <button type="button" onClick={() => setRecurringEmailReportsModalOpen(true)} style={{ font: 'inherit', fontSize: '0.8rem', marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
+                Email reports
+              </button>
+              <button type="button" onClick={openReportTemplatesModal} style={{ font: 'inherit', fontSize: '0.8rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
+                Templates
+              </button>
+            </>
+          ) : null}
         </div>
         {reportTemplatesModalOpen && (
           <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
@@ -485,365 +513,46 @@ export default function JobsReportsTab({
                     (r.created_by_name ?? '').toLowerCase().includes(q)
                 )
               : reportsList
-            if (reportsViewMode === 'person') {
-              const byPersonKey = new Map<string, ReportWithJob[]>()
-              for (const r of filtered) {
-                const key = r.created_by_user_id
-                const arr = byPersonKey.get(key) ?? []
-                arr.push(r)
-                byPersonKey.set(key, arr)
-              }
-              const personGroups = Array.from(byPersonKey.entries())
-                .map(([key, reps]) => ({ key, reps: reps.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) }))
-                .filter(({ reps }) => reps.length > 0)
-                .sort((a, b) => new Date(b.reps[0]!.created_at).getTime() - new Date(a.reps[0]!.created_at).getTime())
-              if (personGroups.length === 0) {
-                return <p style={{ color: 'var(--text-muted)' }}>No reports yet. Click New report to add one.</p>
-              }
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {personGroups.map(({ key, reps }) => {
-                    const person = reps[0]!
-                    const displayName = person.created_by_name || 'Unknown'
-                    const isExpanded = reportsExpandedPersons.has(key)
-                    return (
-                      <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setReportsExpandedPersons((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(key)) next.delete(key)
-                              else next.add(key)
-                              return next
-                            })
-                          }
-                          style={{
-                            width: '100%',
-                            minWidth: 0,
-                            padding: '0.75rem 1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            background: 'var(--bg-subtle)',
-                            border: 'none',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          <span
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {displayName}
-                          </span>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              flexShrink: 0,
-                              marginLeft: 'auto',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                              {reps.length} report{reps.length !== 1 ? 's' : ''}
-                            </span>
-                            <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▼</span>
-                          </span>
-                        </button>
-                        {isExpanded && (
-                          <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid var(--border)' }}>
-                            {reps.map((r) => (
-                              <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                                  <div>
-                                    <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
-                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
-                                      {new Date(r.created_at).toLocaleString()} · {r.job_display_name && !looksLikeRawJobIdName(r.job_display_name) ? r.job_display_name : r.job_hcp_number ? `Job ${r.job_hcp_number}` : 'Unknown job'}
-                                      {r.job_hcp_number ? ` (J${r.job_hcp_number})` : ''}
-                                    </span>
-                                  </div>
-                                  {myRole === 'dev' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => deleteReport(r.id)}
-                                      disabled={reportsDeletingId === r.id}
-                                      title="Delete"
-                                      aria-label="Delete"
-                                      style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: 'var(--text-red-600)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                    >
-                                      {reportsDeletingId === r.id ? '…' : 'Delete'}
-                                    </button>
-                                  )}
-                                </div>
-                                {r.field_values && Object.keys(r.field_values).length > 0 && (
-                                  <div style={{ fontSize: '0.875rem' }}>
-                                    {Object.entries(r.field_values).map(([label, val]) =>
-                                      val ? (
-                                        <div key={label} style={{ marginBottom: '0.25rem' }}>
-                                          <span style={{ color: 'var(--text-muted)' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
-                                        </div>
-                                      ) : null
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            }
-            const byJobKey = new Map<string, ReportWithJob[]>()
-            for (const r of filtered) {
-              const key = `${r.job_ledger_id ?? ''}-${r.project_id ?? ''}`
-              const arr = byJobKey.get(key) ?? []
-              arr.push(r)
-              byJobKey.set(key, arr)
-            }
-            const jobGroups = Array.from(byJobKey.entries())
-              .map(([key, reps]) => ({ key, reps: reps.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) }))
-              .filter(({ reps }) => reps.length > 0)
-              .sort((a, b) => new Date(b.reps[0]!.created_at).getTime() - new Date(a.reps[0]!.created_at).getTime())
-            if (jobGroups.length === 0) {
-              return <p style={{ color: 'var(--text-muted)' }}>No reports yet. Click New report to add one.</p>
-            }
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {jobGroups.map(({ key, reps }) => {
-                  const job = reps[0]!
-                  const displayName =
-                    job.job_display_name && !looksLikeRawJobIdName(job.job_display_name)
-                      ? job.job_display_name
-                      : job.job_hcp_number
-                        ? `Job ${job.job_hcp_number}`
-                        : 'Unknown job'
-                  const hcp = job.job_hcp_number ? ` (J${job.job_hcp_number})` : ''
-                  const isExpanded = reportsExpandedJobs.has(key)
-                  return (
-                    <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-subtle)' }}>
-                        {job.job_ledger_id ? (
-                          <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0, paddingLeft: '0.5rem' }}>
-                            {(() => {
-                              const jid = job.job_ledger_id as string
-                              const drive = (job.job_google_drive_link ?? '').trim()
-                              const jpics = (job.job_job_pictures_link ?? '').trim()
-                              const iconBtnBase: CSSProperties = {
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: '0.25rem',
-                                flexShrink: 0,
-                                border: 'none',
-                                background: 'none',
-                                cursor: 'pointer',
-                                borderRadius: 4,
-                                color: 'inherit',
-                              }
-                              return (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      drive
-                                        ? openInExternalBrowser(drive)
-                                        : showToast(JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES, 'warning', undefined, undefined, 'center')
-                                    }
-                                    title={
-                                      drive
-                                        ? 'Open Customer Files'
-                                        : JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES
-                                    }
-                                    aria-label={
-                                      drive
-                                        ? 'Open Customer Files link'
-                                        : 'Customer Files not linked; contact Dispatch'
-                                    }
-                                    style={{
-                                      ...iconBtnBase,
-                                      color: drive ? 'var(--text-link)' : 'var(--text-red-600)',
-                                    }}
-                                  >
-                                    <Folder size={18} strokeWidth={2} aria-hidden />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      jpics
-                                        ? openInExternalBrowser(jpics)
-                                        : showToast(JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES, 'warning', undefined, undefined, 'center')
-                                    }
-                                    title={
-                                      jpics
-                                        ? 'Open Customer Pictures'
-                                        : JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES
-                                    }
-                                    aria-label={
-                                      jpics
-                                        ? 'Open Customer Pictures link'
-                                        : 'Customer Pictures not linked; contact Dispatch'
-                                    }
-                                    style={{
-                                      ...iconBtnBase,
-                                      color: jpics ? 'var(--text-link)' : 'var(--text-red-600)',
-                                    }}
-                                  >
-                                    <Images size={18} strokeWidth={2} aria-hidden />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      tryOpenEditJob(jid, {
-                                        initialJob: jobs.find((jRow) => jRow.id === jid),
-                                        onSaved: () => {
-                                          void loadJobs()
-                                          void loadReports()
-                                        },
-                                      })
-                                    }
-                                    title="Edit job"
-                                    aria-label="Edit job"
-                                    style={{
-                                      ...iconBtnBase,
-                                      color: 'var(--text-link)',
-                                    }}
-                                  >
-                                    <Pencil size={18} strokeWidth={2} aria-hidden />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const hLabel = (job.job_hcp_number ?? '').trim() || '—'
-                                      const nameLabel = (job.job_display_name ?? '').trim() || 'Job'
-                                      jobDetailModal?.openJobDetail({
-                                        jobId: jid,
-                                        prefillRowLabel: `${hLabel} · ${nameLabel}`,
-                                        prefillAddress: (job.job_address ?? '').trim() || null,
-                                        onEditJobSaved: () => void loadJobs(),
-                                      })
-                                    }}
-                                    title="Job preview"
-                                    aria-label={`Job preview — ${displayName}`}
-                                    style={{
-                                      ...iconBtnBase,
-                                      color: 'var(--text-link)',
-                                    }}
-                                  >
-                                    <PanelRightOpen size={18} strokeWidth={2} aria-hidden />
-                                  </button>
-                                </>
-                              )
-                            })()}
-                          </div>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setReportsExpandedJobs((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(key)) next.delete(key)
-                              else next.add(key)
-                              return next
-                            })
-                          }
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: '0.75rem 1rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            background: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            textAlign: 'left',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          <span
-                            style={{
-                              flex: 1,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              minWidth: 0,
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {displayName}
-                            {hcp}
-                          </span>
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              flexShrink: 0,
-                              marginLeft: 'auto',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                              {reps.length} report{reps.length !== 1 ? 's' : ''}
-                            </span>
-                            <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▼</span>
-                          </span>
-                        </button>
-                      </div>
-                      {isExpanded && (
-                        <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid var(--border)' }}>
-                          {reps.map((r) => (
-                            <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                                <div>
-                                  <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
-                                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
-                                    {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
-                                  </span>
-                                </div>
-                                {myRole === 'dev' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => deleteReport(r.id)}
-                                    disabled={reportsDeletingId === r.id}
-                                    title="Delete"
-                                    aria-label="Delete"
-                                    style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: 'var(--text-red-600)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                  >
-                                    {reportsDeletingId === r.id ? '…' : 'Delete'}
-                                  </button>
-                                )}
-                              </div>
-                              {r.field_values && Object.keys(r.field_values).length > 0 && (
-                                <div style={{ fontSize: '0.875rem' }}>
-                                  {Object.entries(r.field_values).map(([label, val]) =>
-                                    val ? (
-                                      <div key={label} style={{ marginBottom: '0.25rem' }}>
-                                        <span style={{ color: 'var(--text-muted)' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
-                                      </div>
-                                    ) : null
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+              <JobsReportsListView
+                rows={filtered}
+                viewMode={reportsViewMode}
+                authRole={authRole}
+                isDev={myRole === 'dev'}
+                deletingId={reportsDeletingId}
+                onDelete={(id) => void deleteReport(id)}
+                onOpenFiles={(row) => {
+                  const drive = (row.job_google_drive_link ?? '').trim()
+                  if (drive) openInExternalBrowser(drive)
+                  else showToast(JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES, 'warning', undefined, undefined, 'center')
+                }}
+                onOpenPictures={(row) => {
+                  const jpics = (row.job_job_pictures_link ?? '').trim()
+                  if (jpics) openInExternalBrowser(jpics)
+                  else showToast(JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES, 'warning', undefined, undefined, 'center')
+                }}
+                onEditJob={(jobId) =>
+                  tryOpenEditJob(jobId, {
+                    initialJob: jobs.find((jRow) => jRow.id === jobId),
+                    onSaved: () => {
+                      void loadJobs()
+                      void loadReports()
+                    },
+                  })
+                }
+                onPreviewJob={(row) => {
+                  const jid = row.job_ledger_id
+                  if (!jid) return
+                  const hLabel = (row.job_hcp_number ?? '').trim() || '—'
+                  const nameLabel = (row.job_display_name ?? '').trim() || 'Job'
+                  jobDetailModal?.openJobDetail({
+                    jobId: jid,
+                    prefillRowLabel: `${hLabel} · ${nameLabel}`,
+                    prefillAddress: (row.job_address ?? '').trim() || null,
+                    onEditJobSaved: () => void loadJobs(),
+                  })
+                }}
+              />
             )
           })()
         )}

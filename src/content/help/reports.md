@@ -34,7 +34,7 @@ The most common type is the **Status Report** — a general progress update with
 
 ## Reviewing reports (office side)
 
-Reports live at **Jobs → Reports** (`/jobs?tab=reports`). You can search, and toggle between grouping **by job** and **by person**. Click any report to read it in full.
+Reports live at **Jobs → Reports** (`/jobs?tab=reports`). The page opens on **Newest** — a feed of the latest reports, each card showing what kind, which job, who wrote it, and the first lines; tap a card (or **Read report ›**) to read it in full. The {{chip:blue|By job}} and {{chip:gray|By person}} chips group the same reports, and inside an open job you'll find labeled buttons — {{button:outline|Files}} {{button:outline|Pictures}} {{button:outline|Edit job}} {{button:outline|Preview}} (a button shown dashed means that link isn't set up yet). Search matches job, number, or person from any view.
 
 Your own reports are available under **My Reports**, and you can edit a report within the edit window (two days by default).
 
