@@ -36,6 +36,7 @@ import { goalsLedgerTaskRows, type GoalsLedgerTaskRow } from '../lib/roadmapGoal
 import { canSeeRoadmapTab } from '../lib/roadmapVisibility'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
+import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileCaption } from '../lib/checklistReviewTiles'
 
 type UserRole =
   | 'dev'
@@ -1911,6 +1912,10 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
   const [foldReviewOpen, setFoldReviewOpen] = useState(false)
   const [foldInboxOpen, setFoldInboxOpen] = useState(false)
   const [missedWeekCount, setMissedWeekCount] = useState<number | null>(null)
+  /** Review tiles (v2.2194): the missed instances' dates (weekday caption) + section jump refs. */
+  const [missedWeekDates, setMissedWeekDates] = useState<string[]>([])
+  const foldReviewRef = useRef<HTMLDivElement | null>(null)
+  const outstandingBoardRef = useRef<HTMLDivElement | null>(null)
   /** Goals strip (v2.1876): one progress row per roadmap the viewer can read. */
   const [goalRows, setGoalRows] = useState<GoalsStripRow[]>([])
   /** Per-stage rows behind each goal's segmented bar + ledger (v2.2021). */
@@ -2257,13 +2262,15 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
     // range filter below. Count-only HEAD request — cheap.
     void (async () => {
       const todayStr = new Date().toLocaleDateString('en-CA')
-      const { count } = await supabase
+      const { data, count } = await supabase
         .from('checklist_instances')
-        .select('id', { count: 'exact', head: true })
+        .select('scheduled_date', { count: 'exact' })
         .is('completed_at', null)
         .gte('scheduled_date', weekStartSunday(todayStr))
         .lt('scheduled_date', todayStr)
+        .limit(500)
       setMissedWeekCount(count ?? 0)
+      setMissedWeekDates(((data as Array<{ scheduled_date: string }> | null) ?? []).map((r) => r.scheduled_date))
     })()
     const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString('en-CA')
     const weekEnd = new Date(Date.now() + 7 * 864e5).toLocaleDateString('en-CA')
@@ -2380,11 +2387,48 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
   }
 
   const outstandingTotal = byUser.reduce((n, u) => n + u.count, 0)
-  const boardTile = (label: string, value: string, valueColor?: string) => (
-    <div style={{ flex: '1 1 96px', maxWidth: 220, background: 'var(--bg-muted)', borderRadius: 10, padding: '0.6rem 0.75rem', minWidth: 0, textAlign: 'center' }}>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{label}</div>
-      <div style={{ fontSize: '1.25rem', fontWeight: 600, color: valueColor ?? 'var(--text-strong)', marginTop: 2 }}>{value}</div>
-    </div>
+  /** Review tiles (v2.2194): centered, tappable, captioned; the tile whose list is showing stays lit. */
+  const reviewTile = (
+    label: string,
+    count: number | null,
+    tone: 'zero' | 'blue' | 'red' | 'amber',
+    caption: { text: string; ok: boolean },
+    active: boolean,
+    onClick: () => void,
+  ) => (
+    <button
+      key={label}
+      type="button"
+      onClick={onClick}
+      aria-label={`${label} — ${count ?? '…'}. ${caption.text}`}
+      style={{
+        flex: '1 1 0',
+        minWidth: 0,
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        gap: 2,
+        minHeight: 104,
+        padding: '0.65rem 0.5rem 0.6rem',
+        background: 'var(--surface)',
+        border: `1px solid ${active ? '#3b82f6' : 'var(--border)'}`,
+        boxShadow: active ? '0 0 0 1px #3b82f6 inset' : undefined,
+        borderRadius: 12,
+        cursor: 'pointer',
+        font: 'inherit',
+        color: 'var(--text-strong)',
+      }}
+    >
+      <span aria-hidden style={{ position: 'absolute', top: 6, right: 9, color: 'var(--text-faint)', fontSize: '0.8rem' }}>›</span>
+      <span style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', lineHeight: 1.25, padding: '0 0.9rem' }}>{label}</span>
+      <span style={{ fontSize: '1.55rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', color: tone === 'blue' ? 'var(--text-link)' : tone === 'red' ? 'var(--text-red-700)' : tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+        {count == null ? '—' : count}
+      </span>
+      <span style={{ fontSize: '0.68rem', lineHeight: 1.3, color: caption.ok ? 'var(--text-green-700)' : 'var(--text-muted)' }}>{caption.text}</span>
+    </button>
   )
   const foldHeader = (
     label: React.ReactNode,
@@ -2439,10 +2483,35 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-      <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-        {boardTile('To sign off', reviewCount == null ? '—' : String(reviewCount), 'var(--text-link)')}
-        {boardTile(`Outstanding · ${BOARD_RANGE_LABELS[dateRange as BoardRange].toLowerCase()}`, loading ? '—' : String(outstandingTotal), 'var(--text-red-700)')}
-        {boardTile('Missed this week', missedWeekCount == null ? '—' : String(missedWeekCount))}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', maxWidth: 640, marginLeft: 'auto', marginRight: 'auto' }}>
+        {reviewTile('To sign off', reviewCount, reviewTileTone('signoff', reviewCount), signOffTileCaption(reviewCount), foldReviewOpen, () => {
+          setFoldReviewOpen(true)
+          foldReviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })}
+        {reviewTile(
+          'Outstanding',
+          loading ? null : outstandingTotal,
+          reviewTileTone('outstanding', loading ? null : outstandingTotal),
+          loading
+            ? { text: '…', ok: false }
+            : outstandingTileCaption(
+                BOARD_RANGE_LABELS[dateRange as BoardRange],
+                byUser.length,
+                byUser.reduce<number | null>((mx, u) => {
+                  const d = oldestAgeDays(u.instances, new Date().toLocaleDateString('en-CA'))
+                  return d == null ? mx : mx == null ? d : Math.max(mx, d)
+                }, null),
+              ),
+          dateRange !== 'missed',
+          () => {
+            if (dateRange === 'missed') setDateRange('non_repeating')
+            outstandingBoardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          },
+        )}
+        {reviewTile('Missed this week', missedWeekCount, reviewTileTone('missed', missedWeekCount), missedWeekCount == null ? { text: '…', ok: false } : missedTileCaption(missedWeekDates), dateRange === 'missed', () => {
+          setDateRange('missed')
+          outstandingBoardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        })}
       </div>
       {goalRows.length > 0 ? (
         <div style={{ marginBottom: '1rem' }}>
@@ -2673,7 +2742,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
           })}
         </div>
       ) : null}
-      <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden' }}>
+      <div ref={foldReviewRef} style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', scrollMarginTop: 70 }}>
         {foldHeader('Checklist review — sign off completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
         <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
           <ChecklistReviewInboxSection onCountChange={onReviewCount} renderWhenEmpty />
@@ -2685,7 +2754,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
           <ChecklistReviewInboxes hideChecklistReviewSection onOpenRequestCount={onOpenReqCount} />
         </div>
       </div>
-      <div style={{ marginBottom: '1.5rem' }}>
+      <div ref={outstandingBoardRef} style={{ marginBottom: '1.5rem', scrollMarginTop: 70 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0 }}>Outstanding by person</h3>
           <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', marginLeft: 'auto' }}>
