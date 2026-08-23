@@ -79,6 +79,21 @@ describe('nextUpPicks', () => {
     expect(lanes.needsName.find((p) => p.taskId === 'well1')!.stageNumber).toBe(3)
   })
 
+  it('★ pinned tasks lead their lane (oldest pin first) and are exempt from the per-stage cap', () => {
+    const pinned = new Map(tasksByGroup)
+    pinned.set('well', [
+      ...tasksByGroup.get('well')!.slice(0, 4),
+      { ...tasksByGroup.get('well')![4]!, pinned_at: '2026-08-21T10:00:00Z' },
+      { ...tasksByGroup.get('well')![5]!, pinned_at: '2026-08-20T10:00:00Z' },
+    ])
+    // a third well task pinned too would exceed the cap of 2 — pins never lose their slot
+    pinned.set('well', [...pinned.get('well')!.slice(0, 3), { ...tasksByGroup.get('well')![3]!, pinned_at: '2026-08-22T10:00:00Z' }, ...pinned.get('well')!.slice(4)])
+    const lanes = nextUpPicks({ groups, tasksByGroup: pinned, edges, unlockedIds, completeIds, now: NOW })
+    expect(lanes.needsName.map((p) => p.taskId)).toEqual(['well6', 'well5', 'well4', 'trail2', 'trail3'])
+    expect(lanes.needsName[0]!.reasons[0]).toEqual({ kind: 'pinned' })
+    expect(nextUpReasonLabel({ kind: 'pinned' })).toBe('★ pinned')
+  })
+
   it('returns empty lanes when nothing is open', () => {
     const empty = nextUpPicks({ groups: [], tasksByGroup: new Map(), edges: [], unlockedIds: new Set(), completeIds: new Set(), now: NOW })
     expect(empty).toEqual({ ready: [], needsName: [], openReady: 0, openNeedsName: 0 })

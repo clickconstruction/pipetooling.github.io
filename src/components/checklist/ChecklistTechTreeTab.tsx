@@ -91,7 +91,12 @@ type EdgeRow = Database['public']['Tables']['checklist_tech_tree_edges']['Row']
 type RoadmapRow = Database['public']['Tables']['checklist_tech_tree_roadmaps']['Row']
 type RoadmapMemberRow = Database['public']['Tables']['checklist_tech_tree_roadmap_members']['Row']
 
-type TaskView = TaskRow & { assigneeIds: string[] }
+/**
+ * `pinned_at` is spelled out until `src/types/database.ts` is regenerated after
+ * migration 20260823042146 is pushed (then TaskRow carries it and this
+ * intersection member can go — same pattern as #1810).
+ */
+type TaskView = TaskRow & { assigneeIds: string[]; pinned_at: string | null }
 
 const PREREQ_LINK_TOAST_MS = 2000
 
@@ -183,9 +188,9 @@ function useTechTreeData(
               () =>
                 supabase
                   .from('checklist_tech_tree_group_tasks')
-                  .select(
-                    'id, group_id, title, sort_index, completed_at, completed_by_user_id, created_at, checklist_tech_tree_task_assignees(user_id)',
-                  )
+                  // `*` (not a column list) so `pinned_at` (v2.2140) arrives once its
+                  // migration is pushed and the read never 400s before that.
+                  .select('*, checklist_tech_tree_task_assignees(user_id)')
                   .in('group_id', groupIds)
                   .order('sort_index', { ascending: true }),
               'load checklist_tech_tree_group_tasks',
@@ -236,6 +241,7 @@ function useTechTreeData(
             completed_at: string | null
             completed_by_user_id: string | null
             created_at: string
+            pinned_at?: string | null
             checklist_tech_tree_task_assignees: { user_id: string }[] | null
           }
           const assigneeIds = (r.checklist_tech_tree_task_assignees ?? []).map((a) => a.user_id)
@@ -247,6 +253,7 @@ function useTechTreeData(
             completed_at: r.completed_at,
             completed_by_user_id: r.completed_by_user_id,
             created_at: r.created_at,
+            pinned_at: r.pinned_at ?? null,
             assigneeIds,
           }
         }),
@@ -294,6 +301,8 @@ type GroupNodeData = {
     bridgeChip: 'in_review' | 'signed_off' | 'on_list' | null
     /** On the Plan's ⚡ Next up shortlist (v2.2138). */
     nextUp: boolean
+    /** ★ pinned (v2.2140) — leads the shortlist. */
+    pinned: boolean
   }>
   onToggle: (taskId: string) => void
   canEditStructure: boolean
@@ -311,17 +320,17 @@ type GroupNodeData = {
 
 type GroupTask = GroupNodeData['tasks'][0]
 
-/** ⚡ marker for tasks on the Plan's Next up shortlist (v2.2138) — static and reorder rows. */
-function TaskNextUpSpan({ on }: { on: boolean }) {
-  if (!on) return null
+/** ⚡ / ★ markers for tasks on the Plan's Next up shortlist (v2.2138) and pinned tasks (v2.2140) — static and reorder rows. */
+function TaskNextUpSpan({ on, pinned }: { on: boolean; pinned?: boolean }) {
+  if (!on && !pinned) return null
   return (
     <span
       className="nodrag"
-      title="On the Plan's ⚡ Next up shortlist"
-      aria-label="Next up"
+      title={pinned ? 'Pinned — leads the Plan\'s ⚡ Next up shortlist' : "On the Plan's ⚡ Next up shortlist"}
+      aria-label={pinned ? 'Pinned, next up' : 'Next up'}
       style={{ marginLeft: 4, fontSize: 11, color: 'var(--text-amber-800)', verticalAlign: 'middle' }}
     >
-      ⚡
+      {pinned ? '★' : '⚡'}
     </span>
   )
 }
@@ -549,7 +558,7 @@ function TechTreeDndTaskRow({
             {task.assigneeLabel ? (
               <span style={{ color: 'var(--text-slate-500)' }}> — {task.assigneeLabel}</span>
             ) : null}
-            <TaskNextUpSpan on={task.nextUp} />
+            <TaskNextUpSpan on={task.nextUp} pinned={task.pinned} />
             <TaskBridgeChipSpan chip={task.bridgeChip} />
           </div>
         </div>
@@ -871,7 +880,7 @@ function GroupNode({ data }: NodeProps) {
                       {t.title}
                     </TechTreeEditableTaskTitle>
                     {t.assigneeLabel ? <span style={{ color: 'var(--text-slate-500)' }}> — {t.assigneeLabel}</span> : null}
-                    <TaskNextUpSpan on={t.nextUp} />
+                    <TaskNextUpSpan on={t.nextUp} pinned={t.pinned} />
                     <TaskBridgeChipSpan chip={t.bridgeChip} />
                   </div>
                 </div>
@@ -1605,6 +1614,7 @@ export function ChecklistTechTreeTab({
               canAct: canActOnTask(t, gu),
               bridgeChip: bridgeChipFor(t.completed_at, bridgeByTaskId.get(t.id)),
               nextUp: nextUpTaskIds.has(t.id),
+              pinned: Boolean(t.pinned_at),
             }
           }),
           reorderMode: canEditStructure && reorderMode,
@@ -1857,6 +1867,34 @@ export function ChecklistTechTreeTab({
         return true
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Could not update task')
+        return false
+      }
+    },
+    [canEditStructure, tasks, load, setError],
+  )
+
+  /** ★ pin toggle (v2.2140): the owner's "this one, now" — leads the Next up shortlist. Editors only. */
+  const toggleTaskPin = useCallback(
+    async (taskId: string): Promise<boolean> => {
+      if (!canEditStructure) return false
+      const current = tasks.find((t) => t.id === taskId)
+      if (!current) return false
+      const next = current.pinned_at ? null : new Date().toISOString()
+      try {
+        setError(null)
+        await withSupabaseRetry(
+          () =>
+            supabase
+              .from('checklist_tech_tree_group_tasks')
+              // cast until database.ts is regenerated with pinned_at (migration 20260823042146)
+              .update({ pinned_at: next } as unknown as Database['public']['Tables']['checklist_tech_tree_group_tasks']['Update'])
+              .eq('id', taskId),
+          'toggle tech tree task pin',
+        )
+        await load()
+        return true
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not pin task')
         return false
       }
     },
@@ -2771,6 +2809,8 @@ export function ChecklistTechTreeTab({
           if (!editTaskId) return false
           return updateTaskInGroup(editTaskId, title, assigneeUserIds)
         }}
+        pinned={Boolean(editTaskForModal?.pinned_at)}
+        onTogglePin={async () => (editTaskId ? toggleTaskPin(editTaskId) : false)}
         onOpenTodayTab={onOpenTodayTab}
         onClose={() => setEditTaskId(null)}
         portalContainer={roadmapModalPortalHost ?? undefined}

@@ -434,6 +434,11 @@ export function ChecklistRoadmapPlanView({
                     }}
                   >
                     {taskNumbers.has(t.id) ? <RoadmapTaskNumber label={taskNumbers.get(t.id)!} /> : null}
+                    {t.pinned_at ? (
+                      <span title="Pinned — leads the Next up shortlist" aria-label="Pinned" style={{ color: 'var(--text-amber-800)', fontSize: '0.8rem', flex: 'none' }}>
+                        ★
+                      </span>
+                    ) : null}
                     <button
                       type="button"
                       onClick={() => (assignable ? void assign(t.id) : onOpenTask(t.id))}

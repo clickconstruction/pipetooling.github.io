@@ -33,4 +33,8 @@ In the **Plan** view's header, **N assigned** and **N unstaffed** are tappable. 
 
 Tap the **✎** next to the title, type, and press **Enter** (Esc cancels). Editors only.
 
+## Pin a task
+
+Tap the **★** beside the title to say "this one, now": the task jumps to the top of its lane on the Plan's ⚡ Next up shortlist (see *see what to do next on a roadmap*). Tap again to unpin. Editors only.
+
 The card's stage crumb wears the stage's **number badge**, so "the gate task on stage 4" is easy to find from either view.

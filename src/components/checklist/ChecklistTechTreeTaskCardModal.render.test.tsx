@@ -121,3 +121,21 @@ describe('ChecklistTechTreeTaskCardModal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 })
+
+describe('ChecklistTechTreeTaskCardModal — ★ pin (v2.2140)', () => {
+  it('editors get a pin toggle that calls onTogglePin; pinned state shows the chip', async () => {
+    const onTogglePin = vi.fn().mockResolvedValue(true)
+    renderModal({ canEditStructure: true, onTogglePin })
+    fireEvent.click(screen.getByRole('button', { name: 'Pin task — do this next' }))
+    await waitFor(() => expect(onTogglePin).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText('★ pinned — next up')).toBeNull()
+    renderModal({ canEditStructure: true, onTogglePin, pinned: true })
+    expect(screen.getByRole('button', { name: 'Unpin task' })).toBeTruthy()
+    expect(screen.getByText('★ pinned — next up')).toBeTruthy()
+  })
+  it('non-editors never see the toggle (but do see the chip when pinned)', () => {
+    renderModal({ canEditStructure: false, onTogglePin: vi.fn(), pinned: true })
+    expect(screen.queryByRole('button', { name: /pin task/i })).toBeNull()
+    expect(screen.getByText('★ pinned — next up')).toBeTruthy()
+  })
+})

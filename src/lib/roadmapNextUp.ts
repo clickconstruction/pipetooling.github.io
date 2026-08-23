@@ -7,7 +7,9 @@
  * open tasks, every pick carrying the reasons it was chosen:
  *
  *   eligible = task open, stage unlocked and not complete
- *   order    = closes a stage (≤ CLOSES_STAGE_LEFT tasks left in its stage;
+ *   order    = ★ pinned (v2.2140; oldest pin first — the owner's override,
+ *              exempt from the per-stage cap)
+ *            → closes a stage (≤ CLOSES_STAGE_LEFT tasks left in its stage;
  *              fewer first — the same threshold as the chip, so the first
  *              sort key IS the first reason)
  *            → unlocks the most (open tasks, then stages, behind the stage's
@@ -34,9 +36,12 @@ export type NextUpTask = {
   group_id: string
   completed_at: string | null
   assigneeIds: ReadonlyArray<string>
+  /** ★ pin (v2.2140): when set, the task leads its lane (oldest pin first) and is exempt from the per-stage cap. */
+  pinned_at?: string | null
 }
 
 export type NextUpReason =
+  | { kind: 'pinned' }
   | { kind: 'closes_stage'; stageNumber: number; left: number }
   | { kind: 'unlocks'; feeds: string; stages: number; tasks: number }
   | { kind: 'priority'; stageNumber: number }
@@ -138,8 +143,9 @@ export function nextUpPicks(args: {
     groupId: string
     stageNumber: number
     staffed: boolean
-    /** [closing? 0:1, tasks left if closing, -downstream open tasks, -downstream stages, stage #, task index] */
-    key: [number, number, number, number, number, number]
+    pinned: boolean
+    /** [pinned? 0:1, pin time, closing? 0:1, tasks left if closing, -downstream open tasks, -downstream stages, stage #, task index] */
+    key: [number, number, number, number, number, number, number, number]
     reasons: NextUpReason[]
   }
   const candidates: Candidate[] = []
@@ -156,6 +162,9 @@ export function nextUpPicks(args: {
     tasks.forEach((t, ti) => {
       if (t.completed_at != null) return
       const reasons: NextUpReason[] = []
+      const pinTs = t.pinned_at ? new Date(t.pinned_at).getTime() : NaN
+      const pinned = Number.isFinite(pinTs)
+      if (pinned) reasons.push({ kind: 'pinned' })
       if (closing) reasons.push({ kind: 'closes_stage', stageNumber, left: remaining })
       if (ds.stages > 0 && ds.feeds) reasons.push({ kind: 'unlocks', feeds: ds.feeds, stages: ds.stages, tasks: ds.tasks })
       if (stageNumber <= 3) reasons.push({ kind: 'priority', stageNumber })
@@ -166,7 +175,8 @@ export function nextUpPicks(args: {
         groupId: g.id,
         stageNumber,
         staffed: t.assigneeIds.length > 0,
-        key: [closing ? 0 : 1, closing ? remaining : 0, -ds.tasks, -ds.stages, stageNumber, ti],
+        pinned,
+        key: [pinned ? 0 : 1, pinned ? pinTs : 0, closing ? 0 : 1, closing ? remaining : 0, -ds.tasks, -ds.stages, stageNumber, ti],
         reasons,
       })
     })
@@ -189,7 +199,8 @@ export function nextUpPicks(args: {
       open += 1
       if (picks.length >= limit) continue
       const used = perStage.get(c.groupId) ?? 0
-      if (used >= perStageCap) continue
+      // a pin is the owner saying "this one, now" — it never loses its slot to the per-stage cap
+      if (!c.pinned && used >= perStageCap) continue
       perStage.set(c.groupId, used + 1)
       picks.push({ taskId: c.taskId, groupId: c.groupId, stageNumber: c.stageNumber, reasons: c.reasons })
     }
@@ -204,6 +215,8 @@ export function nextUpPicks(args: {
 /** Short human label for a reason chip — one phrase, no trailing period. */
 export function nextUpReasonLabel(r: NextUpReason): string {
   switch (r.kind) {
+    case 'pinned':
+      return '★ pinned'
     case 'closes_stage':
       return r.left === 1 ? `last task in stage ${r.stageNumber}` : `closes stage ${r.stageNumber} · ${r.left} left`
     case 'unlocks':

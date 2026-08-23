@@ -35,6 +35,10 @@ type Props = {
    * inline-title save commits immediately — there is no Save button.
    */
   onSave: (title: string, assigneeUserIds: string[]) => Promise<boolean>
+  /** ★ pin state (v2.2140) — pinned tasks lead the Plan's Next up shortlist. */
+  pinned?: boolean
+  /** Toggles the pin (editors only); resolves true on success. */
+  onTogglePin?: () => Promise<boolean>
   /** Jump to the Today tab (the live checklist card). */
   onOpenTodayTab?: () => void
   onClose: () => void
@@ -67,11 +71,14 @@ export function ChecklistTechTreeTaskCardModal({
   loadEvents,
   postComment,
   onSave,
+  pinned = false,
+  onTogglePin,
   onOpenTodayTab,
   onClose,
   portalContainer,
 }: Props) {
   const [events, setEvents] = useState<ChecklistCardEvent[]>([])
+  const [pinSaving, setPinSaving] = useState(false)
   const [eventsLoading, setEventsLoading] = useState(false)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
@@ -324,6 +331,26 @@ export function ChecklistTechTreeTaskCardModal({
                 {task.title}
               </h2>
             )}
+            {canEditStructure && onTogglePin && !titleEditing ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (pinSaving) return
+                  setPinSaving(true)
+                  void onTogglePin().finally(() => setPinSaving(false))
+                }}
+                aria-pressed={pinned}
+                aria-label={pinned ? 'Unpin task' : 'Pin task — do this next'}
+                title={pinned ? 'Unpin — drop it back into the ranked order' : 'Pin — leads the Plan\'s ⚡ Next up shortlist'}
+                disabled={pinSaving}
+                style={{
+                  ...iconBtnStyle,
+                  ...(pinned ? { background: 'var(--bg-amber-100)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' } : {}),
+                }}
+              >
+                {pinned ? '★' : '☆'}
+              </button>
+            ) : null}
             {canEditStructure && !titleEditing ? (
               <button type="button" onClick={startTitleEdit} aria-label="Rename task" title="Rename task" style={iconBtnStyle}>
                 ✎
@@ -333,11 +360,21 @@ export function ChecklistTechTreeTaskCardModal({
               ✕
             </button>
           </div>
-          {chip ? (
-            <div style={{ marginTop: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', ...chipStyles[chip] }}>
-                {chipLabel}
-              </span>
+          {chip || pinned ? (
+            <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {pinned ? (
+                <span
+                  title="Leads the Plan's ⚡ Next up shortlist"
+                  style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)' }}
+                >
+                  ★ pinned — next up
+                </span>
+              ) : null}
+              {chip ? (
+                <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', ...chipStyles[chip] }}>
+                  {chipLabel}
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>
