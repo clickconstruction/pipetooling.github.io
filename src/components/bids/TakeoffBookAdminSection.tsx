@@ -397,7 +397,7 @@ export function TakeoffBookAdminSection({
               }}
               onClick={closeTakeoffBookVersionForm}
             >
-              <div
+              <div role="dialog" aria-modal="true"
                 style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -432,7 +432,7 @@ export function TakeoffBookAdminSection({
               }}
               onClick={closeTakeoffBookEntryForm}
             >
-              <div
+              <div role="dialog" aria-modal="true"
                 style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                 onClick={(e) => e.stopPropagation()}
               >

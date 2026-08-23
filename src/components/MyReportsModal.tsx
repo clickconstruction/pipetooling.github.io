@@ -113,7 +113,7 @@ export default function MyReportsModal({
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           padding: '1.5rem',

@@ -1873,7 +1873,7 @@ export default function JobTally() {
                 }}
                 onClick={() => setJobPickerOpen(false)}
               >
-                <div
+                <div role="dialog" aria-modal="true"
                   style={{
                     background: 'var(--surface)',
                     borderTopLeftRadius: 16,

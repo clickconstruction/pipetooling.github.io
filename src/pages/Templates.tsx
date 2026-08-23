@@ -355,7 +355,7 @@ export default function Templates() {
 
       {formOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>{editingId ? 'Edit template' : 'Add template'}</h2>
             <form onSubmit={handleSave}>
               <div style={{ marginBottom: '1rem' }}>
@@ -397,7 +397,7 @@ export default function Templates() {
 
       {workflowModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '80vh', overflow: 'auto' }}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '80vh', overflow: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>Workflow: {workflowModal.templateName}</h2>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>These steps are copied when a project uses &quot;Add workflow from template&quot; on the New project form.</p>
             <form onSubmit={addWorkflowStep} style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>

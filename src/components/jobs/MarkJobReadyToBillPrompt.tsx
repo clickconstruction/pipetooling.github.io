@@ -49,7 +49,7 @@ export function MarkJobReadyToBillPrompt({ job, onClose }: Props) {
         padding: '1rem',
       }}
     >
-      <div
+      <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
           padding: '1.5rem',

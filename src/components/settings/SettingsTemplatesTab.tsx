@@ -771,7 +771,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
 
           {editingTemplate && (
             <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
                 <h2 style={{ marginTop: 0 }}>
                   Edit {editingTemplate.template_type === 'invitation' ? 'Invitation' : 
                     editingTemplate.template_type === 'sign_in' ? 'Sign-In' : 
@@ -856,7 +856,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
 
           {editingNotificationTemplate && (
             <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
                 <h2 style={{ marginTop: 0 }}>
                   Edit Notification: {editingNotificationTemplate.template_type.replace(/_/g, ' ')}
                 </h2>
@@ -913,7 +913,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                 : testTargetEmail || '—'
             return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400 }}>
+              <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400 }}>
                 <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   Send a test email to <strong>{testRecipientLabel}</strong> (the user selected under <strong>Test target</strong> above). Variables like {'{{name}}'}, {'{{email}}'}, and {'{{role}}'} use that user&apos;s data; other placeholders use sample values.
                 </p>
