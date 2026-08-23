@@ -145,10 +145,6 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
                 {pill ? <span style={{ ...pill.style, marginTop: 0, marginRight: '0.4rem', verticalAlign: '1px' }}>{pill.label}</span> : null}
                 <b>{pill ? j.label : `#${j.label}`}</b>
                 {j.job_name && j.job_name !== j.label ? ` — ${j.job_name}` : ''}
-                <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {j.status ?? ''}
-                  {j.confirmed_at ? ` · yours since ${new Date(j.confirmed_at).toLocaleDateString()}` : ''}
-                </span>
               </span>
               {j.profit_share != null ? (
                 <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: '#16a34a', fontSize: '0.82rem' }}>+{money(j.profit_share)}</span>
