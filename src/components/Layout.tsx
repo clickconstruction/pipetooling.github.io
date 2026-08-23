@@ -77,6 +77,7 @@ import {
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
+import BodyScrollLockSentinel from './BodyScrollLockSentinel'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -736,6 +737,8 @@ export default function Layout() {
 
   const layoutBody = (
     <>
+      {/* v2.2186: freezes the page behind ANY blocking overlay (modal, sheet, dialog); opt-out via data-page-scroll="allow". */}
+      <BodyScrollLockSentinel />
       <DailyGoalsGateOverlay />
       <div
         style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
