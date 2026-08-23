@@ -39,6 +39,9 @@ export type JournalRow = {
   pay_stub_id: string | null
   /** person_offsets id when the row came from a dated charge — the drill-in key */
   offset_id: string | null
+  /** labor rows only: the hours behind the amount, so renderers can compose a
+   * short label ("Labor · 12.86 h") without re-parsing `label` (v2.2116) */
+  hours?: number | null
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -81,12 +84,13 @@ export function buildPartnerJournal(input: {
   for (const s of stubsAsc) {
     events.push({
       date: s.period_end,
-      label: `Labor — ${s.hours_total.toFixed(1)} h (week of ${s.period_start})`,
+      label: `Labor — ${s.hours_total.toFixed(2)} h (week of ${s.period_start})`,
       detail: null,
       amount: round2(s.gross_pay),
       kind: 'labor',
       pay_stub_id: s.id,
       offset_id: null,
+      hours: round2(s.hours_total),
     })
     for (const a of input.additional.filter((x) => x.pay_stub_id === s.id)) {
       events.push({

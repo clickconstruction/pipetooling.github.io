@@ -97,7 +97,9 @@ export function partnerStubsToJournal(
       id: s.id,
       period_start: s.period_start,
       period_end: s.period_end,
-      hours_total: s.hours_total,
+      // The card's labor lines show the stamped rate-tier hours; the partner's
+      // Full ledger must say the same number for the same week (v2.2116).
+      hours_total: tierHoursTotal(s) ?? s.hours_total,
       gross_pay: s.gross_pay,
     })),
     additional: stubs.flatMap((s) => s.additional.map((a) => ({ pay_stub_id: s.id, description: a.description, line_total: a.amount }))),
@@ -247,6 +249,14 @@ export function weekStartYmd(ymd: string): string {
   return utcMsToYmd(ms - new Date(ms).getUTCDay() * 86400000)
 }
 
+/** Σ stamped rate-tier hours — the hours the card's labor lines show — or
+ * null when the stub carries no tiers (then hours_total is all there is). */
+export function tierHoursTotal(s: Pick<PartnerLedgerStub, 'day_rates'>): number | null {
+  const tiers = (s.day_rates ?? []).filter((d) => d.hours !== 0 || d.amount !== 0)
+  if (tiers.length === 0) return null
+  return round2(tiers.reduce((a, d) => a + d.hours, 0))
+}
+
 /** "$50" for whole-dollar rates, "$37.50" otherwise — never "$37.5". */
 const fmtRate = (rate: number) => (Number.isInteger(rate) ? `$${rate}` : `$${rate.toFixed(2)}`)
 
@@ -285,7 +295,7 @@ function journalRowToLines(r: JournalRow, stubById: Map<string, PartnerLedgerStu
     const tiers = (stub?.day_rates ?? []).filter((d) => d.hours !== 0 || d.amount !== 0)
     if (tiers.length > 0) {
       const tierLines: WeekCardLine[] = tiers.map((d) => ({
-        label: `Labor · ${d.hours.toFixed(1)} h × ${fmtRate(d.rate)}`,
+        label: `Labor · ${d.hours.toFixed(2)} h × ${fmtRate(d.rate)}`,
         amount: round2(d.amount),
         cls: d.amount > 0 ? 'pos' : 'zero',
       }))
@@ -383,12 +393,12 @@ export function buildJournalWeekCards(
   // adds gross_so_far, so the lines must sum to it (same penny rule as tiers).
   const soFar: WeekCardLine[] = []
   if (cw.field_hours > 0)
-    soFar.push({ label: `Field labor · ${cw.field_hours.toFixed(1)} h × ${fmtRate(summary.rates.field)}`, amount: round2(cw.field_hours * summary.rates.field), cls: 'pos' })
+    soFar.push({ label: `Field labor · ${cw.field_hours.toFixed(2)} h × ${fmtRate(summary.rates.field)}`, amount: round2(cw.field_hours * summary.rates.field), cls: 'pos' })
   if (cw.office_hours > 0)
-    soFar.push({ label: `Estimating · ${cw.office_hours.toFixed(1)} h × ${fmtRate(summary.rates.estimating)}`, amount: round2(cw.office_hours * summary.rates.estimating), cls: 'pos' })
+    soFar.push({ label: `Estimating · ${cw.office_hours.toFixed(2)} h × ${fmtRate(summary.rates.estimating)}`, amount: round2(cw.office_hours * summary.rates.estimating), cls: 'pos' })
   liveLines.push(...reconcileLines(soFar, round2(cw.gross_so_far)))
   if (cw.farm_hours > 0)
-    liveLines.push({ label: `Farm · ${cw.farm_hours.toFixed(1)} h`, sub: 'no cash — farm food credit', amount: 0, cls: 'zero' })
+    liveLines.push({ label: `Farm · ${cw.farm_hours.toFixed(2)} h`, sub: 'no cash — farm food credit', amount: 0, cls: 'zero' })
   if (cw.pending_sessions > 0)
     liveLines.push({ label: `${cw.pending_sessions} session(s) pending approval`, sub: 'post when the office approves them', amount: null, cls: 'zero' })
   const postedLive = liveRows.length > 0 ? liveRows[liveRows.length - 1]!.balance : opening

@@ -12,6 +12,8 @@ import {
   type PartnerSummary,
   type WeekCard,
 } from '../../lib/partnerLedger/partnerWeeks'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { balanceWords, isLongLabel, postingLabel, shortDate, weekOfLabel, weekRangeLabel } from '../../lib/partnerLedger/partnerLedgerFormat'
 import { DashboardGroupCard } from './DashboardGroupCard'
 
 /**
@@ -44,6 +46,10 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
   const [loaded, setLoaded] = useState(false)
   const [fullRows, setFullRows] = useState<LedgerDisplayRow[] | null>(null)
   const [fullOpen, setFullOpen] = useState(false)
+  /** v2.2116: long line labels (pasted notes) clamp to two lines; keys `${weekStart}:${i}` are expanded. */
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const isMobile = useIsMobile()
+  const nowYear = new Date().getFullYear()
 
   const load = useCallback(async () => {
     // Lens mode (asPartnershipId): dev-only *_as RPCs share the exact inner
@@ -108,7 +114,7 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
       `<div data-theme="light" style="font-family:system-ui,sans-serif;color:#211d16;max-width:640px;margin:0 auto;padding:24px;">
         <div style="font-weight:800;font-size:13px;">CLICK PLUMBING, ELECTRICAL, AND HVAC</div>
         <div style="font-size:19px;font-weight:700;">Partner weekly statement</div>
-        <div style="color:#6d6759;font-size:12px;margin:2px 0 14px;">${summary?.display_name ?? ''} · Week of ${c.weekStart}${c.weekEnd ? ` – ${c.weekEnd}` : ' (in progress)'}</div>
+        <div style="color:#6d6759;font-size:12px;margin:2px 0 14px;">${summary?.display_name ?? ''} · ${weekRangeLabel(c.weekStart, c.weekEnd)}</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <tr><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;">Opening balance</td><td style="padding:6px 0;border-bottom:1px solid #e6e1d5;text-align:right;font-weight:600;">${c.opening != null ? signedBalance(c.opening) : '—'}</td></tr>
           ${rows}
@@ -121,7 +127,9 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
 
   return (
     <DashboardGroupCard title="Your ledger">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', margin: '0.1rem 0 0.4rem', flexWrap: 'wrap' }}>
+      {/* One row at any width (v2.2116): buttons at the ends, the week in the
+          middle — on a phone the old wrapping layout stacked into three rows. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', margin: '0.1rem 0 0.4rem' }}>
         <button
           type="button"
           disabled={idx >= cards.length - 1}
@@ -130,8 +138,8 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         >
           ‹ Older
         </button>
-        <span style={{ textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-700)', minWidth: '11rem' }}>
-          Week of {card?.weekStart}
+        <span style={{ flex: 1, textAlign: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-700)', minWidth: 0 }}>
+          {card ? weekOfLabel(card.weekStart, nowYear) : ''}
           {card?.open ? ' · in progress' : ''}
         </span>
         <button
@@ -155,7 +163,17 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           <span>Week opened</span>
           <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap' }}>
-            {card && card.opening != null ? `${card.opening < 0 ? '−' : ''}${money(card.opening)}` : '—'}
+            {/* Same language at both ends of the card (v2.2116): the opening
+                says whose money it is in words, like the closing — not a
+                bare minus sign the reader has to translate. */}
+            {card && card.opening != null ? (
+              <>
+                {money(card.opening)}
+                {balanceWords(card.opening) ? <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {balanceWords(card.opening)}</span> : null}
+              </>
+            ) : (
+              '—'
+            )}
           </span>
         </div>
         <div style={{ borderTop: '1px solid var(--border)' }}>
@@ -165,7 +183,32 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
             card?.lines.map((l, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'baseline', padding: '0.4rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.82rem' }}>
                 <span style={{ color: 'var(--text-700)', minWidth: 0 }}>
-                  {l.label}
+                  {(() => {
+                    const key = `${card?.weekStart ?? ''}:${i}`
+                    const long = isLongLabel(l.label)
+                    const open = expanded.has(key)
+                    return (
+                      <>
+                        <span style={long && !open ? { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : undefined}>{l.label}</span>
+                        {long ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpanded((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(key)) next.delete(key)
+                                else next.add(key)
+                                return next
+                              })
+                            }
+                            style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer' }}
+                          >
+                            {open ? 'less ▴' : 'more ▾'}
+                          </button>
+                        ) : null}
+                      </>
+                    )
+                  })()}
                   {l.sub ? <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{l.sub}</span> : null}
                 </span>
                 <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap', color: l.amount == null ? 'var(--text-muted)' : l.cls === 'pos' ? '#16a34a' : l.cls === 'neg' ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
@@ -252,6 +295,40 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0.4rem 0 0' }}>Nothing posted yet.</p>
           ) : (
             <div style={{ overflowX: 'auto', marginTop: '0.4rem' }}>
+              {/* v2.2116: on a phone the four-column table pushed the running
+                  balance off-screen — the stacked list keeps date · posting on
+                  one line and amount → balance on the next; wide screens keep
+                  the table. Dates are short (Aug 15) either way. */}
+              {isMobile ? (
+                <div>
+                  {[...fullRows].reverse().map((r, i) =>
+                    r.kind === 'note' ? (
+                      <div key={i} style={{ padding: '0.35rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.76rem', fontStyle: 'italic', color: 'var(--text-700)', background: 'var(--bg-muted)' }}>
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'normal' }}>{shortDate(r.date, nowYear)} · </span>
+                        {r.label}
+                      </div>
+                    ) : r.amount == null || r.balance == null ? null : (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', padding: '0.35rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.78rem' }}>
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{shortDate(r.date, nowYear)}</span>
+                          <span style={{ display: 'block' }}>
+                            {postingLabel(r)}
+                            {r.detail ? <span style={{ color: 'var(--text-muted)' }}> · {r.detail}</span> : null}
+                          </span>
+                        </span>
+                        <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                          <span style={{ display: 'block', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)' }}>
+                            {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                          </span>
+                          <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            bal {r.balance < 0 ? '−' : ''}{money(r.balance)}
+                          </span>
+                        </span>
+                      </div>
+                    ),
+                  )}
+                </div>
+              ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                 <thead>
                   <tr>
@@ -266,16 +343,16 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
                   {[...fullRows].reverse().map((r, i) =>
                     r.kind === 'note' ? (
                       <tr key={i} style={{ background: 'var(--bg-muted)' }}>
-                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{r.date}</td>
+                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>{shortDate(r.date, nowYear)}</td>
                         <td colSpan={3} style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', fontStyle: 'italic', color: 'var(--text-700)' }}>
                           {r.label}
                         </td>
                       </tr>
                     ) : r.amount == null || r.balance == null ? null : (
                       <tr key={i}>
-                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{r.date}</td>
+                        <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{shortDate(r.date, nowYear)}</td>
                         <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)' }}>
-                          {r.label}
+                          {postingLabel(r)}
                           {r.detail ? <span style={{ color: 'var(--text-muted)' }}> · {r.detail}</span> : null}
                         </td>
                         <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)', whiteSpace: 'nowrap' }}>
@@ -289,6 +366,7 @@ export function DashboardPartnerLedgerSection({ asPartnershipId }: { asPartnersh
                   )}
                 </tbody>
               </table>
+              )}
               <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
                 Every posting, payout, and charge, newest first — charges count on the date they happened; your weekly
                 statements list them as the paper record.

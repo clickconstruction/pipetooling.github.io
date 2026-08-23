@@ -231,6 +231,9 @@ export function PersonOffsetFormModal({
             placeholder="Optional"
             style={{ width: '100%', padding: '0.5rem' }}
           />
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
+            This is the line’s label on the person’s pay statement and ledger — keep it short; longer context belongs in a ledger note.
+          </div>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', marginBottom: 4 }}>Occurred date *</label>

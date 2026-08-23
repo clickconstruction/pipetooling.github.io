@@ -12,7 +12,7 @@ The card opens on the **current week**, laid out like the paper statement: **Wee
 
 Charges like a back-charge or a utility overage show as a red line **in the week they happened**, whether or not a statement has picked them up yet — so the week they hit is the week you see them.
 
-Use the **‹ Older / Newer ›** buttons to step through past weeks, back to your very first week. Every week opens exactly where the week before it closed, so you can follow the money straight through; **Full ledger** at the bottom of the card is the same history as one long list — postings, payouts, and charges at their dates — with running balances. The office can also leave dated notes on the ledger; ones shared with you appear there as quiet italic lines. Each closed week shows:
+Use the **‹ Older / Newer ›** buttons to step through past weeks, back to your very first week. Every week opens exactly where the week before it closed — **Week opened** says whose money it is in the same words as the total (**you owe Click** / **Click owes you**) — so you can follow the money straight through; **Full ledger** at the bottom of the card is the same history as one long list — postings, payouts, and charges at their dates — with running balances. The office can also leave dated notes on the ledger; ones shared with you appear there as quiet italic lines. On a phone the Full ledger lists each posting on two lines — date and posting, then amount and running balance — so the balance never scrolls off the edge. A long line label (a pasted note) is clipped to two lines on the card; tap **more** to read it all. Each closed week shows:
 
 1. Labor lines — your hours at the rate they were priced that week (rate changes never reach back into old weeks).
 2. Anything added — profit shares from your jobs, credits.
@@ -21,7 +21,7 @@ Use the **‹ Older / Newer ›** buttons to step through past weeks, back to yo
 5. **Week opened** at the top and **Week closed** at the bottom — every closing balance opens the next week, so the chain is the ledger.
 
 :::example A typical closed week
-Field labor 22.5 h × $50, estimating 18.0 h × $35, a profit share from a finished job, one back-charge, and Friday's payout — ending at the week's closing balance.
+Field labor 22.50 h × $50, estimating 18.00 h × $35, a profit share from a finished job, one back-charge, and Friday's payout — ending at the week's closing balance.
 :::
 
 ## Acknowledging a statement
