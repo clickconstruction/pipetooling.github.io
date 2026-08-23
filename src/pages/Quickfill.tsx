@@ -27,7 +27,7 @@ import { QuickfillPeopleHoursNewSection } from '../components/quickfill/Quickfil
 import { QuickfillUnassignedFieldTimeSection } from '../components/quickfill/QuickfillUnassignedFieldTimeSection'
 import { QuickfillVehicleOdometersSection } from '../components/quickfill/QuickfillVehicleOdometersSection'
 import { QuickfillDifficultPeopleSection } from '../components/quickfill/QuickfillDifficultPeopleSection'
-import { QuickfillEmailInboxSection } from '../components/quickfill/QuickfillEmailInboxSection'
+import { QuickfillEmailSection } from '../components/quickfill/QuickfillEmailSection'
 import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
 import { QuickfillPhysicalInboxSection } from '../components/quickfill/QuickfillPhysicalInboxSection'
 import { QuickfillOfficeSection } from '../components/quickfill/QuickfillOfficeSection'
@@ -96,9 +96,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
     sectionId: 'tomorrow-schedule',
     label: "Tomorrow's Schedule",
   },
-  { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email Inbox' },
-  { id: 'quickfill-email-next-actions', sectionId: 'email-next-actions', label: 'Email: Next Actions' },
-  { id: 'quickfill-email-follow-up', sectionId: 'email-follow-up', label: 'Email: Follow Up' },
+  { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
   { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
   { id: 'quickfill-physical-inbox', sectionId: 'physical-inbox', label: 'Physical inbox' },
   { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
@@ -1402,75 +1400,15 @@ function QuickfillPage() {
             omitDefaultMarkButton
             onMarkUpToDate={() => undefined}
             onOpenNow={() => openSectionNow('email-inbox')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email Inbox' })}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email' })}
           >
-            <QuickfillEmailInboxSection
+            <QuickfillEmailSection
               metricSectionId="email-inbox"
               markButtonPalette={{
                 bg: BUTTON_BG[getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)],
                 border: BUTTON_BORDER[getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)],
               }}
               onConfirmMark={(note) => void markSectionUpToDate('email-inbox', { noteText: note })}
-            />
-          </QuickfillSectionWrapper>
-        )
-      case 'email-next-actions':
-        return (
-          <QuickfillSectionWrapper
-            id={id}
-            sectionId={sectionId}
-            label={label}
-            bannerText={bannerText}
-            withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)}
-            collapsed={isCollapsed('email-next-actions') && !forceExpandedSections.has('email-next-actions')}
-            mark={sectionMarks['email-next-actions']}
-            omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
-            onOpenNow={() => openSectionNow('email-next-actions')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-next-actions', label: 'Email: Next Actions' })}
-          >
-            <QuickfillEmailInboxSection
-              metricSectionId="email-next-actions"
-              fieldLabel="Still in Next Actions"
-              description=" - Before marking complete, list what is still in Next Actions (one item per line or free text)."
-              markButtonLabel="Mark Next Actions up to date!"
-              emptyNoteToast="List what is still in Next Actions before marking complete."
-              markButtonPalette={{
-                bg: BUTTON_BG[getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)],
-                border: BUTTON_BORDER[getButtonColor(sectionMarks['email-next-actions']?.marked_at ?? null)],
-              }}
-              onConfirmMark={(note) => void markSectionUpToDate('email-next-actions', { noteText: note })}
-            />
-          </QuickfillSectionWrapper>
-        )
-      case 'email-follow-up':
-        return (
-          <QuickfillSectionWrapper
-            id={id}
-            sectionId={sectionId}
-            label={label}
-            bannerText={bannerText}
-            withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)}
-            collapsed={isCollapsed('email-follow-up') && !forceExpandedSections.has('email-follow-up')}
-            mark={sectionMarks['email-follow-up']}
-            omitDefaultMarkButton
-            onMarkUpToDate={() => undefined}
-            onOpenNow={() => openSectionNow('email-follow-up')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-follow-up', label: 'Email: Follow Up' })}
-          >
-            <QuickfillEmailInboxSection
-              metricSectionId="email-follow-up"
-              fieldLabel="Still in Follow Up"
-              description=" - Before marking complete, list what is still in Follow Up (one item per line or free text)."
-              markButtonLabel="Mark Follow Up up to date!"
-              emptyNoteToast="List what is still in Follow Up before marking complete."
-              markButtonPalette={{
-                bg: BUTTON_BG[getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)],
-                border: BUTTON_BORDER[getButtonColor(sectionMarks['email-follow-up']?.marked_at ?? null)],
-              }}
-              onConfirmMark={(note) => void markSectionUpToDate('email-follow-up', { noteText: note })}
             />
           </QuickfillSectionWrapper>
         )
