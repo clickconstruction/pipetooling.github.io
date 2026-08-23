@@ -39,6 +39,10 @@ type Props = {
   pinned?: boolean
   /** Toggles the pin (editors only); resolves true on success. */
   onTogglePin?: () => Promise<boolean>
+  /** Done state (v2.2182). */
+  done?: boolean
+  /** Done ⇄ open (same field the Map checkbox writes); pass only when the viewer may act. */
+  onToggleDone?: () => Promise<boolean>
   /** Jump to the Today tab (the live checklist card). */
   onOpenTodayTab?: () => void
   onClose: () => void
@@ -73,12 +77,15 @@ export function ChecklistTechTreeTaskCardModal({
   onSave,
   pinned = false,
   onTogglePin,
+  done = false,
+  onToggleDone,
   onOpenTodayTab,
   onClose,
   portalContainer,
 }: Props) {
   const [events, setEvents] = useState<ChecklistCardEvent[]>([])
   const [pinSaving, setPinSaving] = useState(false)
+  const [doneSaving, setDoneSaving] = useState(false)
   const [eventsLoading, setEventsLoading] = useState(false)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
@@ -360,8 +367,41 @@ export function ChecklistTechTreeTaskCardModal({
               ✕
             </button>
           </div>
-          {chip || pinned ? (
-            <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {chip || pinned || onToggleDone || done ? (
+            <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {onToggleDone ? (
+                // Mark done / Reopen (v2.2182): the one control the card never had.
+                // Writes the same field as the Map checkbox, so bridge / Goals /
+                // Timeline agree instantly. Chip-button so it reads as status + action.
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (doneSaving) return
+                    setDoneSaving(true)
+                    void onToggleDone().finally(() => setDoneSaving(false))
+                  }}
+                  disabled={doneSaving}
+                  aria-pressed={done}
+                  aria-label={done ? 'Reopen task' : 'Mark task done'}
+                  title={done ? 'Reopen — back to open' : 'Mark done'}
+                  style={{
+                    font: 'inherit',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 999,
+                    whiteSpace: 'nowrap',
+                    cursor: doneSaving ? 'default' : 'pointer',
+                    border: '1.5px solid #16a34a',
+                    background: done ? '#16a34a' : 'transparent',
+                    color: done ? 'white' : 'var(--text-green-700)',
+                  }}
+                >
+                  {doneSaving ? '…' : done ? '✓ done · reopen' : '○ Mark done'}
+                </button>
+              ) : done ? (
+                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', background: '#16a34a', color: 'white' }}>✓ done</span>
+              ) : null}
               {pinned ? (
                 <span
                   title="Leads the Plan's ⚡ Next up shortlist"

@@ -45,6 +45,7 @@ import {
 } from '../../lib/roadmapBridge'
 import type { Database } from '../../types/database'
 import { useChecklistTechTreeData, type TaskView } from '../../hooks/useChecklistTechTreeData'
+import { useTechTreeTaskMutations } from '../../hooks/useTechTreeTaskMutations'
 import { GroupNode, type GroupNodeData } from './ChecklistTechTreeGroupNode'
 import { RoadmapCanvasSearchPanel } from './ChecklistTechTreeCanvasSearchPanel'
 import { clientCoordsForConnectEnd } from '../../lib/checklistTechTreeCanvas'
@@ -67,7 +68,6 @@ import { nextUpPicks } from '../../lib/roadmapNextUp'
 import { ChecklistRoadmapTimelineView } from './ChecklistRoadmapTimelineView'
 import { ChecklistTechTreeOrderStagesModal } from './ChecklistTechTreeOrderStagesModal'
 import { computeStageOrderUpdates, computeTaskOrderUpdates, stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
-import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { ChecklistTechTreeAddGroupModal } from './ChecklistTechTreeAddGroupModal'
 import { ChecklistTechTreeLineUpModal } from './ChecklistTechTreeLineUpModal'
 import { ChecklistTechTreeLinksModal } from './ChecklistTechTreeLinksModal'
@@ -399,48 +399,30 @@ export function ChecklistTechTreeTab({
     })
   }, [groups, flowEdgeList, collapsedGroupIds])
 
+  // Task write path (v2.2182): shared with the Review tab's "Where this task fits" sheet.
+  const getTaskForMutation = useCallback((taskId: string) => tasks.find((t) => t.id === taskId), [tasks])
+  const isGroupUnlockedForMutation = useCallback((groupId: string) => unlockedIds.has(groupId), [unlockedIds])
+  const {
+    canActOnTask,
+    toggleTaskDone,
+    loadInstanceEvents,
+    postInstanceComment,
+    assignTaskToUser,
+    updateTaskInGroup,
+    toggleTaskPin,
+  } = useTechTreeTaskMutations({
+    authUserId,
+    canEditStructure,
+    getTask: getTaskForMutation,
+    isGroupUnlocked: isGroupUnlockedForMutation,
+    reload: load,
+    setError,
+  })
   const onToggleTask = useCallback(
     (taskId: string) => {
-      const t = tasks.find((x) => x.id === taskId)
-      if (!t || !authUserId) return
-      const g = groups.find((x) => x.id === t.group_id)
-      if (!g) return
-      const unlocked = unlockedIds.has(t.group_id)
-      const isStaff = canEditStructure
-      const isAssignee = t.assigneeIds.length === 0 ? false : t.assigneeIds.includes(authUserId)
-      const canAct = isStaff || (unlocked && (isAssignee || t.assigneeIds.length === 0)) // empty assignee: only staff
-      if (!canAct) return
-      if (!unlocked && !isStaff) return
-
-      const next = t.completed_at
-        ? { completed_at: null as null, completed_by_user_id: null as null }
-        : { completed_at: new Date().toISOString(), completed_by_user_id: authUserId }
-
-      void (async () => {
-        try {
-          await withSupabaseRetry(
-            () =>
-              supabase.from('checklist_tech_tree_group_tasks').update(next).eq('id', taskId),
-            'toggle tech tree task',
-          )
-          await load()
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Could not update task')
-        }
-      })()
+      void toggleTaskDone(taskId)
     },
-    [authUserId, canEditStructure, groups, load, setError, tasks, unlockedIds],
-  )
-
-  const canActOnTask = useCallback(
-    (t: TaskView, groupUnlocked: boolean) => {
-      if (!authUserId) return false
-      if (canEditStructure) return true
-      if (!groupUnlocked) return false
-      if (t.assigneeIds.length === 0) return false
-      return t.assigneeIds.includes(authUserId)
-    },
-    [authUserId, canEditStructure],
+    [toggleTaskDone],
   )
 
   const { nodes: layoutNodes, edges: layoutEdges } = useMemo(() => {
@@ -722,54 +704,6 @@ export function ChecklistTechTreeTab({
     ? groups.find((g) => g.id === editTaskForModal.group_id) ?? null
     : null
 
-  /** Card history for the task modal — same events spine the Today cards read. */
-  const loadInstanceEvents = useCallback(async (instanceId: string): Promise<ChecklistCardEvent[]> => {
-    const { data } = await supabase
-      .from('checklist_instance_events')
-      .select('id, instance_id, event_type, actor_user_id, body, created_at')
-      .eq('instance_id', instanceId)
-      .order('created_at', { ascending: true })
-    return (data ?? []) as ChecklistCardEvent[]
-  }, [])
-
-  const postInstanceComment = useCallback(
-    async (instanceId: string, body: string): Promise<boolean> => {
-      if (!authUserId) return false
-      const { error: e } = await supabase.from('checklist_instance_events').insert({
-        instance_id: instanceId,
-        event_type: 'comment',
-        actor_user_id: authUserId,
-        body,
-      })
-      if (e) {
-        setError(e.message)
-        return false
-      }
-      return true
-    },
-    [authUserId, setError],
-  )
-
-  /** Plan-view staffing: add one assignee, then reload (the load re-runs the sync RPC). */
-  const assignTaskToUser = useCallback(
-    async (taskId: string, userId: string): Promise<boolean> => {
-      if (!canEditStructure) return false
-      try {
-        setError(null)
-        await withSupabaseRetry(
-          () => supabase.from('checklist_tech_tree_task_assignees').insert({ task_id: taskId, user_id: userId }),
-          'assign tech tree task',
-        )
-        await load()
-        return true
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not assign task')
-        return false
-      }
-    },
-    [canEditStructure, load, setError],
-  )
-
   const [linksModalOpen, setLinksModalOpen] = useState(false)
   const [linksSearchQuery, setLinksSearchQuery] = useState('')
 
@@ -833,75 +767,6 @@ export function ChecklistTechTreeTab({
       }
     },
     [authUserId, canEditStructure, load, setError, tasksByGroup],
-  )
-
-  const updateTaskInGroup = useCallback(
-    async (taskId: string, title: string, assigneeUserIds: string[]): Promise<boolean> => {
-      if (!canEditStructure || !title.trim()) return false
-      // Skip untouched halves: the task card saves per interaction (an
-      // assignee tap sends the unchanged title and vice versa), and the
-      // title UPDATE also trips the tasks↔assignees policy recursion
-      // (42P17, pre-existing) until its migration fix lands.
-      const current = tasks.find((t) => t.id === taskId)
-      const trimmed = title.trim()
-      const titleChanged = !current || current.title !== trimmed
-      const assigneesChanged =
-        !current ||
-        current.assigneeIds.length !== assigneeUserIds.length ||
-        !assigneeUserIds.every((id) => current.assigneeIds.includes(id))
-      try {
-        setError(null)
-        if (titleChanged) {
-          await withSupabaseRetry(
-            () =>
-              supabase.from('checklist_tech_tree_group_tasks').update({ title: trimmed }).eq('id', taskId),
-            'update tech tree task title',
-          )
-        }
-        if (assigneesChanged) {
-          await withSupabaseRetry(
-            () => supabase.from('checklist_tech_tree_task_assignees').delete().eq('task_id', taskId),
-            'clear tech tree task assignees',
-          )
-          for (const uid of assigneeUserIds) {
-            await withSupabaseRetry(
-              () => supabase.from('checklist_tech_tree_task_assignees').insert({ task_id: taskId, user_id: uid }),
-              'insert tech tree task assignee',
-            )
-          }
-        }
-        if (titleChanged || assigneesChanged) await load()
-        return true
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not update task')
-        return false
-      }
-    },
-    [canEditStructure, tasks, load, setError],
-  )
-
-  /** ★ pin toggle (v2.2140): the owner's "this one, now" — leads the Next up shortlist. Editors only. */
-  const toggleTaskPin = useCallback(
-    async (taskId: string): Promise<boolean> => {
-      if (!canEditStructure) return false
-      const current = tasks.find((t) => t.id === taskId)
-      if (!current) return false
-      const next = current.pinned_at ? null : new Date().toISOString()
-      try {
-        setError(null)
-        await withSupabaseRetry(
-          () =>
-            supabase.from('checklist_tech_tree_group_tasks').update({ pinned_at: next }).eq('id', taskId),
-          'toggle tech tree task pin',
-        )
-        await load()
-        return true
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not pin task')
-        return false
-      }
-    },
-    [canEditStructure, tasks, load, setError],
   )
 
   const insertNewGroup = useCallback(
@@ -1814,6 +1679,12 @@ export function ChecklistTechTreeTab({
         }}
         pinned={Boolean(editTaskForModal?.pinned_at)}
         onTogglePin={async () => (editTaskId ? toggleTaskPin(editTaskId) : false)}
+        done={Boolean(editTaskForModal?.completed_at)}
+        onToggleDone={
+          editTaskForModal && canActOnTask(editTaskForModal, unlockedIds.has(editTaskForModal.group_id))
+            ? async () => (editTaskId ? toggleTaskDone(editTaskId) : false)
+            : undefined
+        }
         onOpenTodayTab={onOpenTodayTab}
         onClose={() => setEditTaskId(null)}
         portalContainer={roadmapModalPortalHost ?? undefined}

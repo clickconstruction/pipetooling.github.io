@@ -139,3 +139,19 @@ describe('ChecklistTechTreeTaskCardModal — ★ pin (v2.2140)', () => {
     expect(screen.getByText('★ pinned — next up')).toBeTruthy()
   })
 })
+
+describe('ChecklistTechTreeTaskCardModal — Mark done / Reopen (v2.2182)', () => {
+  it('renders the toggle only when onToggleDone is passed, and flips its label with `done`', async () => {
+    const onToggleDone = vi.fn().mockResolvedValue(true)
+    renderModal({ onToggleDone })
+    fireEvent.click(screen.getByRole('button', { name: 'Mark task done' }))
+    await waitFor(() => expect(onToggleDone).toHaveBeenCalledTimes(1))
+    renderModal({ onToggleDone, done: true })
+    expect(screen.getByRole('button', { name: 'Reopen task' })).toBeTruthy()
+  })
+  it('without onToggleDone a done task shows a static ✓ done chip', () => {
+    renderModal({ done: true })
+    expect(screen.queryByRole('button', { name: /Mark task done|Reopen task/ })).toBeNull()
+    expect(screen.getByText('✓ done')).toBeTruthy()
+  })
+})
