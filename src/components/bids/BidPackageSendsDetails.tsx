@@ -8,6 +8,7 @@ import { formatSendBadge, latestSendByVersion, type VersionSendRow } from '../..
 import { groupVersionsByGc } from '../../lib/bids/gcPackets'
 import { setGcPacketOutcome, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import { useToastContext } from '../../contexts/ToastContext'
+import { GcOutcomePill } from './BidBoardGcRows'
 import { formatCurrency } from '../../lib/format'
 
 type VersionRow = { id: string; name: string; sort_order: number; include_in_submission: boolean; is_alternate?: boolean | null; customer_id: string | null; created_at?: string | null; outcome?: string | null }
@@ -69,9 +70,7 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 600 }}>{p.name}</span>
             <span style={{ fontSize: '0.75rem', color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{p.sentOn ? `sent ${fmtSent(p.sentOn)}` : 'not sent'}{p.sentValue != null ? ` · ★ $${formatCurrency(p.sentValue)}` : ''}</span>
-            <select value={p.outcome ?? ''} onChange={(e) => void change(p.key, (e.target.value || null) as PacketOutcome)} aria-label={`Outcome with ${p.name}`} style={{ font: 'inherit', fontSize: '0.74rem', padding: '0.1rem 0.3rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: p.outcome === 'won' ? 'var(--bg-green-tint)' : p.outcome === 'lost' ? 'var(--bg-red-tint)' : 'var(--surface)', color: 'var(--text-strong)' }}>
-              <option value="">waiting…</option><option value="won">won</option><option value="lost">lost</option>
-            </select>
+            <GcOutcomePill value={p.outcome === 'won' || p.outcome === 'lost' ? p.outcome : null} gcName={p.name} onChange={(next) => void change(p.key, next)} />
           </div>
           {p.versions.map((v) => {
             const badge = formatSendBadge(latest[v.id], { money: (n) => `$${formatCurrency(n)}` })

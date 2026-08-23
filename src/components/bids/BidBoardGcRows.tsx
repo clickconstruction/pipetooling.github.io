@@ -1,8 +1,10 @@
 /**
- * Bid Board: the per-GC lines under a bid that has more than one GC packet (Bids by GC, v2.2162) —
- * GC · sent · ★ value · outcome (won / lost) per GC. The row the owner sketched.
+ * Bid Board, per-GC (Bids by GC, v2.2162 → in-cell v2.2183): a bid that went to more than one GC
+ * lists each GC in its GC/Builder cell — name · sent m/d · a small state pill (waiting / won / lost).
+ * The pill is the control: tap it and the three choices pop beside it. Same lines on the phone card
+ * and in Followup's "Sent to — by GC". Option A from the owner's pick (artifact 8e510a77).
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { setGcPacketOutcome, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -10,16 +12,98 @@ import { formatCurrency } from '../../lib/format'
 
 export function gcRowsWorthShowing(packets: GcPacket[] | undefined): boolean {
   if (!packets) return false
-  // An unsplit bid with only "Also sent to" GCs keeps its +N GCs pill; the rows need a real packet to anchor to.
+  // An unsplit bid with only "Also sent to" GCs keeps its +N GCs pill; the lines need a real packet to anchor to.
   if (!packets.some((p) => p.versions.length > 0)) return false
   return packets.length > 1 || packets.some((p) => p.gcId != null)
 }
 
-/** The per-GC lines (name · sent · ★ value · outcome) — shared by the table row and the phone card. */
-export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged }: { bidId: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void }) {
+export function fmtSentShort(ymd: string): string {
+  const [, m, d] = ymd.split('-')
+  return m && d ? `${Number(m)}/${Number(d)}` : ymd
+}
+
+const PILL_BASE: React.CSSProperties = {
+  display: 'inline-block',
+  font: 'inherit',
+  fontSize: '0.66rem',
+  fontWeight: 600,
+  lineHeight: 1.3,
+  padding: '0.05rem 0.45rem',
+  borderRadius: 999,
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface)',
+  color: 'var(--text-muted)',
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+}
+
+function pillStyle(state: PacketOutcome, opts?: { dim?: boolean }): React.CSSProperties {
+  if (state === 'won') return { ...PILL_BASE, background: 'var(--bg-emerald-tint)', color: 'var(--text-emerald-800)', borderColor: 'transparent', opacity: opts?.dim ? 0.55 : 1 }
+  if (state === 'lost') return { ...PILL_BASE, background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', borderColor: 'transparent', opacity: opts?.dim ? 0.55 : 1 }
+  return { ...PILL_BASE, opacity: opts?.dim ? 0.55 : 1 }
+}
+
+/**
+ * The state pill + its popover (waiting / won / lost). Controlled by the parent; `busy` greys it while
+ * a write is in flight. Click-outside and Escape close the popover.
+ */
+export function GcOutcomePill({ value, gcName, busy, onChange }: { value: PacketOutcome; gcName: string; busy?: boolean; onChange: (next: PacketOutcome) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLSpanElement | null>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey, true)
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey, true) }
+  }, [open])
+  const label = value === 'won' ? 'won' : value === 'lost' ? 'lost' : 'waiting'
+  return (
+    <span ref={ref} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        disabled={busy}
+        aria-label={`Outcome with ${gcName}: ${label}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        title={`Outcome with ${gcName} — tap to change`}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+        style={{ ...pillStyle(value), cursor: busy ? 'progress' : 'pointer' }}
+      >
+        {label}
+      </button>
+      {open ? (
+        <span
+          role="listbox"
+          aria-label={`Outcome with ${gcName}`}
+          style={{ position: 'absolute', left: 'calc(100% + 0.35rem)', top: '50%', transform: 'translateY(-50%)', zIndex: 30, display: 'inline-flex', gap: '0.25rem', padding: '0.2rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', boxShadow: '0 2px 8px rgba(15, 23, 42, 0.14)' }}
+        >
+          {([null, 'won', 'lost'] as PacketOutcome[]).map((opt) => (
+            <button
+              key={opt ?? 'waiting'}
+              type="button"
+              role="option"
+              aria-selected={opt === value}
+              onClick={(e) => { e.stopPropagation(); setOpen(false); if (opt !== value) onChange(opt) }}
+              style={{ ...pillStyle(opt, { dim: opt !== value && opt != null }), outline: opt === value ? '2px solid var(--text-blue-500)' : 'none', outlineOffset: 1 }}
+            >
+              {opt ?? 'waiting'}
+            </button>
+          ))}
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
+/**
+ * The per-GC lines: one per packet — name · sent m/d · state pill (★ value in the tooltip). Shared by the
+ * table cell, the phone card and Followup. `nameStyle` lets the caller match the surrounding text.
+ */
+export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged, dense }: { bidId: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean }) {
   const { showToast } = useToastContext()
   const [busyKey, setBusyKey] = useState<string | null>(null)
-  const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
   async function change(p: GcPacket, next: PacketOutcome) {
     setBusyKey(p.key)
     const after = packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === p.key ? next : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter }))
@@ -32,51 +116,28 @@ export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged }: { bid
     else if (autoNote) showToast(`${p.name} marked won${autoNote}`, 'success')
     onChanged()
   }
+  const primaryName = packets.find((x) => !x.sharedLetter)?.name ?? 'the bid’s GC'
   return (
-        <div style={{ display: 'grid', gap: '0.15rem', fontSize: '0.78rem', color: 'var(--text-700)' }}>
-          {packets.map((p) => {
-            const value = p.sentValue
-            if (p.sharedLetter) {
-              // "Also sent to" GC without its own packet: same letter as the bid's GC, answer tracked with the bid.
-              return (
-                <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }} title="On the bid's “Also sent to” list — got the same letter as the bid's GC. Give it its own packet (＋ Another GC…) to track its answer separately.">
-                  <span style={{ fontWeight: 600, color: 'var(--text-strong)', minWidth: '10em' }}>{p.name}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>same letter as {packets.find((x) => !x.sharedLetter)?.name ?? 'the bid’s GC'}{p.sentOn ? ` · sent ${fmtSent(p.sentOn)}` : ''}</span>
-                </div>
-              )
-            }
-            return (
-              <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text-strong)', minWidth: '10em' }}>{p.name}</span>
-                <span style={{ color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{p.sentOn ? `sent ${fmtSent(p.sentOn)}` : 'not sent'}</span>
-                {value != null ? <span style={{ fontVariantNumeric: 'tabular-nums' }}>★ ${formatCurrency(value)}</span> : null}
-                {p.versions.length > 1 ? <span style={{ color: 'var(--text-muted)' }}>{p.versions.length} versions</span> : null}
-                <select
-                  value={p.outcome ?? ''}
-                  disabled={busyKey === p.key}
-                  onChange={(e) => void change(p, (e.target.value || null) as PacketOutcome)}
-                  aria-label={`Outcome with ${p.name}`}
-                  title="Outcome with this GC"
-                  style={{ font: 'inherit', fontSize: '0.74rem', padding: '0.1rem 0.3rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: p.outcome === 'won' ? 'var(--bg-green-tint)' : p.outcome === 'lost' ? 'var(--bg-red-tint)' : 'var(--surface)', color: 'var(--text-strong)' }}
-                >
-                  <option value="">waiting…</option>
-                  <option value="won">won</option>
-                  <option value="lost">lost</option>
-                </select>
-              </div>
-            )
-          })}
-        </div>
-  )
-}
-
-/** Table variant: one full-width row under the bid's row. */
-export function BidBoardGcRows({ colSpan, ...rest }: { bidId: string; bidOutcome: string | null; packets: GcPacket[]; colSpan: number; onChanged: () => void }) {
-  return (
-    <tr style={{ background: 'var(--bg-subtle)' }} onClick={(e) => e.stopPropagation()}>
-      <td colSpan={colSpan} style={{ padding: '0.25rem 1rem 0.35rem 2rem', borderTop: '1px dashed var(--border)' }}>
-        <BidBoardGcLines {...rest} />
-      </td>
-    </tr>
+    <div style={{ display: 'grid', gap: dense ? '0.1rem' : '0.15rem', fontSize: dense ? '0.72rem' : '0.76rem', color: 'var(--text-muted)', minWidth: 0 }}>
+      {packets.map((p) => {
+        const state: PacketOutcome = p.outcome === 'won' || p.outcome === 'lost' ? p.outcome : null
+        const title = [p.name, p.sentOn ? `sent ${fmtSentShort(p.sentOn)}` : 'not sent', p.sentValue != null ? `★ $${formatCurrency(p.sentValue)}` : null, p.versions.length > 1 ? `${p.versions.length} versions` : null].filter(Boolean).join(' · ')
+        if (p.sharedLetter) {
+          return (
+            <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }} title={`${p.name} — on the bid’s “Also sent to” list: same letter as ${primaryName}. Give it its own packet (＋ Another GC…) to track its answer.`}>
+              <span style={{ fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>{p.name}</span>
+              <span style={{ whiteSpace: 'nowrap' }}>same letter{p.sentOn ? ` · sent ${fmtSentShort(p.sentOn)}` : ''}</span>
+            </div>
+          )
+        }
+        return (
+          <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }} title={title}>
+            <span style={{ fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>{p.name}</span>
+            <span style={{ color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-muted)', whiteSpace: 'nowrap', flex: '0 0 auto' }}>{p.sentOn ? `sent ${fmtSentShort(p.sentOn)}` : 'not sent'}</span>
+            <GcOutcomePill value={state} gcName={p.name} busy={busyKey === p.key} onChange={(next) => void change(p, next)} />
+          </div>
+        )
+      })}
+    </div>
   )
 }

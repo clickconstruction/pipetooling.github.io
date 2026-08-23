@@ -33,7 +33,7 @@ Distance to the office lives in the row dropdown, along with the address — tap
 
 ## Bids sent to more than one GC
 
-When a bid has a packet per GC (see *bid one project to multiple GCs*), a quiet line appears under its row for each GC — name · *sent 7/31* · ★ value · an answer select {{chip:gray|waiting…}} / {{chip:green|won}} / {{chip:red|lost}}. Set a GC's answer right there: a win rolls the bid up to **Won**; the bid only rolls to **Lost** once every GC you sent to has said no. A GC on the bid's *Also sent to* list without a packet of its own shows as *same letter as {{chip:gray|GC}}* — its answer is tracked with the bid. On phones the same lines sit inside the card.
+When a bid has a packet per GC (see *bid one project to multiple GCs*), its GC/Builder cell lists each GC on its own line — name · *sent 7/31* · a small state pill {{chip:gray|waiting}} / {{chip:green|won}} / {{chip:red|lost}}. Tap the pill to set that GC's answer (the three choices pop beside it): a win rolls the bid up to **Won** and marks the other GCs you sent to *lost · GC lost the project* for you; the bid only rolls to **Lost** once every GC has said no. A GC on the bid's *Also sent to* list without a packet of its own reads *same letter* — its answer is tracked with the bid. On phones the same lines sit in the card.
 
 ## Click a row for the full story
 
