@@ -51,6 +51,14 @@ import { readingCatchUpRows, type ReadingCatchUpRow } from '../../lib/vehicleCat
 import { VehicleReadingsCatchUpModal, VehicleTasksCatchUpModal } from './VehicleCatchUpModals'
 import { VehiclesFleetSummary } from './VehiclesFleetSummary'
 import { buildFleetAttentionItems, fleetFactsLine } from '../../lib/vehicleFleetAttention'
+import {
+  INSURANCE_COST_UNITS,
+  effectiveWeeklyInsuranceCost,
+  formatInsuranceCostLine,
+  insurancePlanTotals,
+  weeklyInsuranceCostFromInput,
+  type InsuranceCostUnit,
+} from '../../lib/vehicleInsuranceCost'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -141,7 +149,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [vehicleModel, setVehicleModel] = useState('')
   const [vehicleTrim, setVehicleTrim] = useState('')
   const [vehicleVin, setVehicleVin] = useState('')
-  const [vehicleInsCost, setVehicleInsCost] = useState('')
+  /** Insurance card (v2.2180): cost typed in the carrier's unit, stored weekly. */
+  const [insCostDraft, setInsCostDraft] = useState('')
+  const [insCostUnit, setInsCostUnit] = useState<InsuranceCostUnit>('mo')
+  const [insCostSaving, setInsCostSaving] = useState(false)
   const [vehicleRegCost, setVehicleRegCost] = useState('')
 
   const [handOffVehicle, setHandOffVehicle] = useState<Vehicle | null>(null)
@@ -291,9 +302,15 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     [vehicles, lastOilMap, latestMap],
   )
 
+  // v2.2180 (D5): insurance counts only while the vehicle sits on a plan; registration always.
   const weeklyTotal = useMemo(
-    () => vehicles.reduce((s, v) => s + (v.weekly_insurance_cost ?? 0) + (v.weekly_registration_cost ?? 0), 0),
-    [vehicles],
+    () =>
+      vehicles.reduce(
+        (s, v) =>
+          s + effectiveWeeklyInsuranceCost(v.weekly_insurance_cost, insuranceByVehicle.has(v.id)) + (v.weekly_registration_cost ?? 0),
+        0,
+      ),
+    [vehicles, insuranceByVehicle],
   )
 
   const filteredVehicles = useMemo(
@@ -509,7 +526,6 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setVehicleModel(v?.model ?? '')
     setVehicleTrim(v?.trim ?? '')
     setVehicleVin(v?.vin ?? '')
-    setVehicleInsCost(v?.weekly_insurance_cost?.toString() ?? '')
     setVehicleRegCost(v?.weekly_registration_cost?.toString() ?? '')
     setVehicleOilInterval((v?.oil_change_interval_miles ?? 5000).toString())
     setVehicleOilSuggestWindow((v?.oil_suggest_window_miles ?? 1000).toString())
@@ -540,7 +556,6 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setError('Year must be 1900–2100')
       return
     }
-    const ins = parseFloat(vehicleInsCost) || 0
     const reg = parseFloat(vehicleRegCost) || 0
     const interval = parseInt(vehicleOilInterval, 10)
     const suggestWindow = parseInt(vehicleOilSuggestWindow, 10)
@@ -551,7 +566,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       model: vehicleModel.trim(),
       trim: vehicleTrim.trim() || null,
       vin: vehicleVin.trim() || null,
-      weekly_insurance_cost: ins,
+      // Insurance cost is set on the vehicle's Insurance card (v2.2180), not here.
       weekly_registration_cost: reg,
       oil_change_interval_miles: !isNaN(interval) && interval > 0 ? interval : 5000,
       oil_suggest_window_miles: !isNaN(suggestWindow) && suggestWindow >= 0 ? suggestWindow : 1000,
@@ -559,7 +574,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     }
     const { error: err } = editingVehicle
       ? await supabase.from('vehicles').update({ ...payload, updated_at: new Date().toISOString() }).eq('id', editingVehicle.id)
-      : await supabase.from('vehicles').insert(payload)
+      : await supabase.from('vehicles').insert({ ...payload, weekly_insurance_cost: 0 })
     if (err) {
       setError(err.message)
       return
@@ -696,6 +711,30 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     }
     setError(null)
     loadFleet()
+  }
+
+  /** Insurance card (v2.2180): store the typed amount as weekly cents; the local list updates in place. */
+  async function saveInsuranceCost() {
+    if (!selectedVehicle || insCostSaving) return
+    const weekly = weeklyInsuranceCostFromInput(insCostDraft, insCostUnit)
+    if (weekly == null) {
+      setError('Enter the insurance cost as a number')
+      return
+    }
+    setInsCostSaving(true)
+    const { error: err } = await supabase
+      .from('vehicles')
+      .update({ weekly_insurance_cost: weekly, updated_at: new Date().toISOString() })
+      .eq('id', selectedVehicle.id)
+    setInsCostSaving(false)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setError(null)
+    const id = selectedVehicle.id
+    setVehicles((prev) => prev.map((v) => (v.id === id ? { ...v, weekly_insurance_cost: weekly } : v)))
+    setInsCostDraft('')
   }
 
   function openAddToPlan(v: Vehicle) {
@@ -1344,9 +1383,6 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   <button type="button" style={actionBtn} onClick={() => openHandOff(selectedVehicle)}>
                     {holderByVehicle.get(selectedVehicle.id) ? 'Hand off' : 'Assign'}
                   </button>
-                  <button type="button" style={actionBtn} onClick={() => openAddToPlan(selectedVehicle)}>
-                    Insurance
-                  </button>
                   <button
                     type="button"
                     style={actionBtn}
@@ -1441,6 +1477,107 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   {savingReading ? '…' : 'Save reading'}
                 </button>
               </div>
+
+              {/* Insurance card (v2.2180, owner mockup): status + plan action + the cost, in the odometer card's anatomy. */}
+              {(() => {
+                const cur = insuranceByVehicle.get(selectedVehicle.id) ?? null
+                const weekly = selectedVehicle.weekly_insurance_cost ?? 0
+                const preview = insCostDraft.trim() ? weeklyInsuranceCostFromInput(insCostDraft, insCostUnit) : null
+                return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      flexWrap: 'wrap',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '0.7rem 0.9rem',
+                      marginBottom: '0.9rem',
+                      background: 'var(--bg-subtle)',
+                    }}
+                  >
+                    <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>Insurance</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        {cur ? (
+                          <>
+                            <span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>{planNameById.get(cur.plan_id) ?? 'Insurance plan'}</span> · since {formatYmdShort(cur.start_date)}
+                            </span>
+                            <button type="button" onClick={() => openAddToPlan(selectedVehicle)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit' }}>
+                              Change plan
+                            </button>
+                            <button type="button" onClick={() => openTakeOff(cur, vehicleDisplayName(selectedVehicle))} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit' }}>
+                              Take off
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={chipStyle('amber')}>Not on insurance</span>
+                            <button type="button" onClick={() => openAddToPlan(selectedVehicle)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit' }}>
+                              Add to plan
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: weekly > 0 ? 'var(--text-700)' : 'var(--text-muted)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                        {weekly > 0
+                          ? cur
+                            ? formatInsuranceCostLine(weekly)
+                            : `$0.00/wk while off a plan · last cost $${formatCurrency(weekly)}/wk`
+                          : 'no cost set — type what the carrier charges for this vehicle'}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', background: 'var(--surface)' }}>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder={weekly > 0 ? 'New amount' : 'Amount'}
+                          value={insCostDraft}
+                          onChange={(e) => setInsCostDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') void saveInsuranceCost()
+                          }}
+                          aria-label="Insurance cost"
+                          style={{ width: 104, padding: '0.45rem 0.6rem', border: 'none', fontSize: '0.875rem', background: 'transparent', color: 'inherit' }}
+                        />
+                        <select
+                          value={insCostUnit}
+                          onChange={(e) => setInsCostUnit(e.target.value as InsuranceCostUnit)}
+                          aria-label="Per week, month, or year"
+                          style={{ border: 'none', borderLeft: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', color: 'var(--text-muted)', fontSize: '0.8125rem', padding: '0 0.4rem', cursor: 'pointer' }}
+                        >
+                          {INSURANCE_COST_UNITS.map((u) => (
+                            <option key={u.key} value={u.key}>{u.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', minHeight: '1em' }}>
+                        {preview != null && insCostUnit !== 'wk' ? `saved as $${formatCurrency(preview)} / wk` : '\u00a0'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void saveInsuranceCost()}
+                      disabled={insCostSaving || preview == null}
+                      style={{
+                        padding: '0.45rem 0.9rem',
+                        background: insCostSaving || preview == null ? '#9ca3af' : '#3b82f6',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontWeight: 500,
+                        cursor: insCostSaving || preview == null ? 'not-allowed' : 'pointer',
+                        alignSelf: 'flex-start',
+                      }}
+                    >
+                      {insCostSaving ? '…' : 'Save cost'}
+                    </button>
+                  </div>
+                )
+              })()}
 
               {(() => {
                 const open = openProblems(panelProblems)
@@ -1906,12 +2043,9 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               />
             </div>
             <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.6rem', marginBottom: '0.7rem' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Weekly costs ($)</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Weekly cost ($)</div>
+              {/* Insurance cost moved to the vehicle's Insurance card (v2.2180) — one place to set it, beside the plan status. */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Insurance</label>
-                  <input type="number" min={0} step={0.01} value={vehicleInsCost} onChange={(e) => setVehicleInsCost(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
-                </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: 3, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registration</label>
                   <input type="number" min={0} step={0.01} value={vehicleRegCost} onChange={(e) => setVehicleRegCost(e.target.value)} style={{ width: '100%', padding: '0.45rem 0.5rem', boxSizing: 'border-box' }} />
@@ -2243,16 +2377,44 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                         {onPlan.map((v) => {
                           const period = insuranceByVehicle.get(v.id)
                           if (!period) return null
+                          const cost = v.weekly_insurance_cost ?? 0
                           return (
-                            <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.9rem', fontSize: '0.8125rem', borderTop: '1px solid var(--border)' }}>
-                              <span style={{ flex: 1, minWidth: 0 }}>{vehicleDisplayName(v)}</span>
+                            <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.9rem', fontSize: '0.8125rem', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPlansOpen(false)
+                                  setSelectedVehicleId(v.id)
+                                }}
+                                title="Open this vehicle — its Insurance card sets the cost"
+                                style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }}
+                              >
+                                {vehicleDisplayName(v)}
+                              </button>
                               <span style={{ color: 'var(--text-muted)' }}>since {formatYmdShort(period.start_date)}</span>
+                              {/* v2.2180: each vehicle's weekly cost, so the plan can be held up against the carrier's bill. */}
+                              <span style={{ fontVariantNumeric: 'tabular-nums', minWidth: 78, textAlign: 'right', color: cost > 0 ? undefined : 'var(--text-amber-800)' }}>
+                                {cost > 0 ? `$${formatCurrency(cost)}/wk` : 'no cost set'}
+                              </span>
                               <button type="button" style={actionBtn} onClick={() => openTakeOff(period, vehicleDisplayName(v))}>
                                 Take off
                               </button>
                             </div>
                           )
                         })}
+                        {(() => {
+                          const t = insurancePlanTotals(onPlan.map((v) => v.weekly_insurance_cost))
+                          return (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', padding: '0.45rem 0.9rem', fontSize: '0.8125rem', borderTop: '1px solid var(--border)', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                              <span>
+                                Plan total{t.unpriced > 0 ? ` (${t.priced} of ${t.priced + t.unpriced} priced)` : ''}
+                              </span>
+                              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                <strong style={{ color: 'var(--text-700)' }}>${formatCurrency(t.weekly)}/wk</strong> · {formatInsuranceCostLine(t.weekly).split(' · ').slice(1).join(' · ')}
+                              </span>
+                            </div>
+                          )
+                        })()}
                       </div>
                     )}
                   </div>

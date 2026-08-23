@@ -83,7 +83,22 @@ Open problems show as a red chip on the vehicle's card and in an **Open problems
 
 ## Insurance plans
 
-The company may carry several insurance policies, and vehicles come on and off them as they're driven or parked. {{button:outline|Insurance plans}} above the board manages the plans themselves — name, carrier, policy number, and renewal date — and shows each plan's vehicles with the date they came on.
+### The Insurance card on a vehicle
+
+Open a vehicle and the **Insurance** card sits right under the odometer card — the same shape: status on the left, the number on the right.
+
+:::example What a covered truck shows
+**Insurance** — {{chip:green|Abraham Insurance · since Aug 1}} Change plan · Take off
+$59.35/wk · ≈ $257/mo · $3,086/yr
+[ New amount ] [ / mo ▾ ] {{button:blue|Save cost}}
+:::
+
+- Type the cost the way the carrier quotes it — pick **/ wk**, **/ mo**, or **/ yr** next to the box. The app stores it weekly (that's what pay stubs and the fleet total read) and shows all three so nobody does the math; while you type you'll see "saved as $59.31 / wk".
+- **Change plan** / **Take off** / **Add to plan** sit right beside the status they act on (the old "Insurance" button in the action row is gone).
+- A vehicle that's **not on a plan** reads {{chip:yellow|Not on insurance}} and **$0.00/wk while off a plan · last cost $60.42/wk** — the number is kept, so putting it back on a plan doesn't lose it. The fleet total above the board counts insurance only for vehicles currently on a plan.
+
+
+The company may carry several insurance policies, and vehicles come on and off them as they're driven or parked. {{button:outline|Insurance plans}} above the board manages the plans themselves — name, carrier, policy number, and renewal date — and shows each plan's vehicles with the date they came on. Each vehicle row also shows its weekly cost (or an amber **no cost set**), and a **Plan total** line sums the priced vehicles per week / month / year — hold it up against what the carrier actually bills. Click a vehicle in the list to jump to its page and set the cost.
 
 Each vehicle sits on **at most one plan at a time**, shown on the bottom line of its card: the plan name with the on date, or an amber **Not on insurance** with the date it came off. From there:
 
@@ -99,4 +114,4 @@ Every on/off lands in the vehicle's ledger as an {{chip:gray|Insurance}} row ("A
 
 ## Vehicle details
 
-{{button:outline|Edit}} on an open vehicle changes year, make, model, trim, VIN, and the weekly insurance and registration costs (those print on pay stubs and feed the fleet total). {{button:outline|Update value}} records what replacing the vehicle would cost today — the history stays in the ledger. Deleting a vehicle removes its whole history with it, so park old vehicles as **Unassigned** instead unless you really mean delete.
+{{button:outline|Edit}} on an open vehicle changes year, make, model, trim, VIN, and the weekly registration cost (it prints on pay stubs and feeds the fleet total). The **insurance** cost lives on the vehicle's **Insurance** card instead — see below. {{button:outline|Update value}} records what replacing the vehicle would cost today — the history stays in the ledger. Deleting a vehicle removes its whole history with it, so park old vehicles as **Unassigned** instead unless you really mean delete.
