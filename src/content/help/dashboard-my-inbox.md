@@ -9,7 +9,7 @@ The **My Inbox** card on the Dashboard is your personal task inbox — everythin
 
 ## What's inside
 
-- **Due Today** — checklist items scheduled for today. Check the box to complete one, or use the arrow to forward it to someone else.
+- **Due Today** — checklist items scheduled for today, as full conversation cards (v2.2193 — the same cards as Checklist → Today): the big **✓** completes, {{button:outline|＋ Add a note}} (or {{button:outline|💬 Notes N}}) drops the thread down right there, and tapping the **title** opens the task's whole history with a composer that can {{button:outline|✓ Post & complete}} — write "posts are in the trailer" and close the card in one motion. Status chips ({{chip:yellow|Reopened by …}}, {{chip:blue|Waiting on review}}) show on the card itself. The arrow still forwards it to someone else.
 - **Overdue** — items past their scheduled date, each with a day counter:
 
 :::example an overdue item

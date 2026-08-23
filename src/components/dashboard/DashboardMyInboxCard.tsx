@@ -12,10 +12,11 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import ChecklistItemMuteModal from '../ChecklistItemMuteModal'
 import { getNextDisplayOrders } from '../../utils/checklistOrder'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { formatTDays, getDaysUntilDue } from '../../lib/dashboardMyInbox'
 import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
+import { ChecklistInstanceCard } from '../checklist/ChecklistInstanceCard'
+import { groupEventsByInstance, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 
 /**
  * Dashboard "My Inbox" group card: Due Today / Overdue checklists and the
@@ -93,6 +94,9 @@ export function DashboardMyInboxCard({
 
   const checklistToggleInFlightRef = useRef(new Set<string>())
   const [outstandingItems, setOutstandingItems] = useState<ChecklistInstance[]>([])
+  /** Conversation cards (v2.2193): oldest-first history per visible instance + actor names. */
+  const [eventsByInstance, setEventsByInstance] = useState<Map<string, ChecklistCardEvent[]>>(new Map())
+  const [eventActorNameById, setEventActorNameById] = useState<Record<string, string>>({})
   const [outstandingLoading, setOutstandingLoading] = useState(true)
   const outstandingToggleInFlightRef = useRef(new Set<string>())
   const [sendTaskUsers, setSendTaskUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
@@ -126,6 +130,14 @@ export function DashboardMyInboxCard({
     if (!loadOnMount || !authUserId) return
     void loadTodayChecklist()
   }, [loadOnMount, authUserId])
+
+  // Conversation cards (v2.2193): (re)load card histories whenever the visible rows change.
+  const visibleInstanceIdsKey = [...todayChecklist.map((i) => i.id), ...outstandingItems.map((i) => i.id)].join(',')
+  useEffect(() => {
+    if (!authUserId) return
+    void loadCardEvents(visibleInstanceIdsKey ? visibleInstanceIdsKey.split(',') : [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUserId, visibleInstanceIdsKey])
 
   // Load users for Forward modal (all users, for Outstanding Forward)
   useEffect(() => {
@@ -239,7 +251,7 @@ export function DashboardMyInboxCard({
     const today = toLocalDateString(new Date())
     const { data: todayData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -252,7 +264,7 @@ export function DashboardMyInboxCard({
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -270,7 +282,7 @@ export function DashboardMyInboxCard({
     setOutstandingLoading(true)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links, repeat_type), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, created_by_user_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
@@ -313,6 +325,65 @@ export function DashboardMyInboxCard({
     })
     setOutstandingItems((sorted.slice(0, 10) as unknown) as ChecklistInstance[])
     setOutstandingLoading(false)
+  }
+
+  /** Fetch the card history for the visible instances + names for its actors (Today-tab pattern, v2.2193). */
+  async function loadCardEvents(instanceIds: string[]) {
+    if (instanceIds.length === 0) {
+      setEventsByInstance(new Map())
+      return
+    }
+    const { data, error: e } = await supabase
+      .from('checklist_instance_events')
+      .select('id, instance_id, event_type, actor_user_id, body, created_at')
+      .in('instance_id', instanceIds)
+      .order('created_at', { ascending: true })
+    if (e) return
+    const events = (data ?? []) as ChecklistCardEvent[]
+    setEventsByInstance(groupEventsByInstance(events))
+    const actorIds = [...new Set(events.map((ev) => ev.actor_user_id).filter((v): v is string => !!v))]
+    const missing = actorIds.filter((id) => !(id in eventActorNameById))
+    if (missing.length > 0) {
+      const { data: nameRows } = await supabase.from('users').select('id, name').in('id', missing)
+      if (nameRows) {
+        setEventActorNameById((prev) => {
+          const next = { ...prev }
+          for (const r of nameRows as Array<{ id: string; name: string | null }>) {
+            next[r.id] = (r.name ?? '').trim() || 'Someone'
+          }
+          return next
+        })
+      }
+    }
+  }
+
+  /** After the activity panel posts a note, keep the card badges honest without a refetch. */
+  function appendLocalCardComment(instanceId: string, body: string) {
+    if (!authUserId) return
+    setEventsByInstance((prev) => {
+      const next = new Map(prev)
+      const list = [...(next.get(instanceId) ?? [])]
+      list.push({ id: `local-${Date.now()}`, instance_id: instanceId, event_type: 'comment', actor_user_id: authUserId, body, created_at: new Date().toISOString() })
+      next.set(instanceId, list)
+      return next
+    })
+  }
+
+  /** Post a comment event; returns true on success (the card clears its draft only then). */
+  async function postCardComment(inst: ChecklistInstance, body: string): Promise<boolean> {
+    if (!authUserId) return false
+    const { error: e } = await supabase.from('checklist_instance_events').insert({
+      instance_id: inst.id,
+      event_type: 'comment',
+      actor_user_id: authUserId,
+      body,
+    })
+    if (e) {
+      showToast(formatErrorMessage(e, 'Could not post note'), 'error')
+      return false
+    }
+    appendLocalCardComment(inst.id, body)
+    return true
   }
 
   async function toggleChecklistComplete(inst: ChecklistInstance) {
@@ -604,82 +675,56 @@ export function DashboardMyInboxCard({
             {todayChecklist.map((inst) => {
               const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
               const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
-              const isCompleted = !!inst.completed_at
               return (
-                <li
+                <ChecklistInstanceCard
                   key={inst.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: isMobile ? 'flex-start' : 'center',
-                    gap: '0.75rem',
-                    padding: '0.5rem 0.75rem',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    marginBottom: '0.5rem',
-                    background: isCompleted ? 'var(--bg-green-tint)' : 'var(--surface)',
+                  instance={{ id: inst.id, completed_at: inst.completed_at, reviewed_at: inst.reviewed_at ?? null }}
+                  title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleChip(inst.id)}</> : null}</>}
+                  events={eventsByInstance.get(inst.id) ?? []}
+                  nameById={eventActorNameById}
+                  currentUserId={authUserId ?? null}
+                  onToggleComplete={() => void toggleChecklistComplete(inst)}
+                  onPostComment={(body) => postCardComment(inst, body)}
+                  fullHistory={{
+                    item: {
+                      id: inst.checklist_item_id,
+                      title,
+                      created_at: inst.checklist_items?.created_at ?? null,
+                      created_by_user_id: inst.checklist_items?.created_by_user_id ?? null,
+                    },
+                    showInstanceDays: (inst.checklist_items?.repeat_type ?? 'once') !== 'once',
+                    setError: setUserError,
+                    onPosted: appendLocalCardComment,
+                    onComplete: async () => {
+                      await toggleChecklistComplete(inst)
+                      return true
+                    },
                   }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isCompleted}
-                    onChange={() => void toggleChecklistComplete(inst)}
-                    style={isMobile ? { marginTop: 3 } : undefined}
-                  />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: 'block', fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? 'var(--text-muted)' : 'inherit' }}>
-                      <ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />
-                      {isVehicleTaskTitle(title) ? <> {vehicleChip(inst.id)}</> : null}
-                    </span>
-                    {isMobile && inst.completed_at && (
-                      <span style={{ display: 'block', marginTop: 2, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {formatNotificationDatetime(inst.completed_at)}
-                      </span>
-                    )}
-                  </div>
-                  {!isMobile && inst.completed_at && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {formatNotificationDatetime(inst.completed_at)}
-                    </span>
-                  )}
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    {isNotificationRecipient(inst) && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); openMuteModal(inst) }}
-                        style={{
-                          padding: '0.2rem',
-                          border: '1px solid var(--border-strong)',
-                          borderRadius: 4,
-                          background: 'var(--surface)',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem',
-                          lineHeight: 1,
-                        }}
-                        title="Mute notifications for this task"
-                        aria-label="Mute notifications for this task"
-                      >
-                        🔕
-                      </button>
-                    )}
-                    {isDev && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); openFwd(inst) }}
-                        style={{
-                          padding: 0,
-                          border: 'none',
-                          background: 'none',
-                          cursor: 'pointer',
-                          fontSize: '0.8125rem',
-                          color: 'var(--text-faint)',
-                          textDecoration: 'underline',
-                        }}
-                      >
-                        fwd
-                      </button>
-                    )}
-                  </div>
-                </li>
+                  actions={
+                    <>
+                      {isNotificationRecipient(inst) && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); openMuteModal(inst) }}
+                          style={{ padding: '0.2rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem', lineHeight: 1 }}
+                          title="Mute notifications for this task"
+                          aria-label="Mute notifications for this task"
+                        >
+                          🔕
+                        </button>
+                      )}
+                      {isDev && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); openFwd(inst) }}
+                          style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-faint)', textDecoration: 'underline' }}
+                        >
+                          fwd
+                        </button>
+                      )}
+                    </>
+                  }
+                />
               )
             })}
           </ul>
@@ -702,55 +747,44 @@ export function DashboardMyInboxCard({
                 const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
                 const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
                 return (
-                  <li
+                  <ChecklistInstanceCard
                     key={inst.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.5rem 0.75rem',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      marginBottom: '0.5rem',
-                      background: 'var(--surface)',
+                    instance={{ id: inst.id, completed_at: inst.completed_at, reviewed_at: inst.reviewed_at ?? null }}
+                    title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleChip(inst.id)}</> : null}<span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 400 }}> ({formatTDays(getDaysUntilDue(inst.scheduled_date))})</span></>}
+                    events={eventsByInstance.get(inst.id) ?? []}
+                    nameById={eventActorNameById}
+                    currentUserId={authUserId ?? null}
+                    onToggleComplete={() => void toggleOutstandingComplete(inst)}
+                    onPostComment={(body) => postCardComment(inst, body)}
+                    fullHistory={{
+                      item: {
+                        id: inst.checklist_item_id,
+                        title,
+                        created_at: inst.checklist_items?.created_at ?? null,
+                        created_by_user_id: inst.checklist_items?.created_by_user_id ?? null,
+                      },
+                      showInstanceDays: (inst.checklist_items?.repeat_type ?? 'once') !== 'once',
+                      setError: setUserError,
+                      onPosted: appendLocalCardComment,
+                      onComplete: async () => {
+                        await toggleOutstandingComplete(inst)
+                        return true
+                      },
                     }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={!!inst.completed_at}
-                      onChange={() => void toggleOutstandingComplete(inst)}
-                      title="Mark complete"
-                      aria-label="Mark complete"
-                    />
-                    <span style={{ flex: 1, fontWeight: 500 }}>
-                      <ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />
-                      {isVehicleTaskTitle(title) ? <> {vehicleChip(inst.id)}</> : null}
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                      {' '}({formatTDays(getDaysUntilDue(inst.scheduled_date))})
-                    </span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); openFwd(inst) }}
-                      title="Forward"
-                      aria-label="Forward"
-                      style={{
-                        padding: '0.25rem',
-                        border: 'none',
-                        borderRadius: 4,
-                        background: 'transparent',
-                        color: 'var(--text-blue-500)',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                        <path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z" />
-                      </svg>
-                    </button>
-                  </li>
+                    actions={
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); openFwd(inst) }}
+                        title="Forward"
+                        aria-label="Forward"
+                        style={{ padding: '0.25rem', border: 'none', borderRadius: 4, background: 'transparent', color: 'var(--text-blue-500)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                          <path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z" />
+                        </svg>
+                      </button>
+                    }
+                  />
                 )
               })}
             </ul>

@@ -20,7 +20,7 @@ export function fetchDashboardPhase1(
     supabase
       .from('checklist_instances')
       .select(
-        'id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)',
+        'id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)',
       )
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', todayYmd)
