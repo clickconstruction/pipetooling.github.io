@@ -403,6 +403,15 @@ export function BidsCoverLetterTab({
     let cancelled = false
     const versionIds = plans.map((p) => p.pricingId).filter((id): id is string => !!id)
     void (async () => {
+      // v2.2132: counts are per version — fetch the bid's rows once and group by version so each
+      // section is priced on ITS bid's counts (the engine's pricingCountRows are only the active one's).
+      const { data: allCountRows } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bid.id).order('sequence_order', { ascending: true })
+      const rowsByVersion = new Map<string | null, BidCountRow[]>()
+      for (const r of ((allCountRows ?? []) as BidCountRow[])) {
+        const k = (r as BidCountRow & { bid_version_id?: string | null }).bid_version_id ?? null
+        rowsByVersion.set(k, [...(rowsByVersion.get(k) ?? []), r])
+      }
+      const rowsFor = (versionId: string | null) => rowsByVersion.get(versionId) ?? (versionId == null ? pricingCountRows : rowsByVersion.get(null) ?? pricingCountRows)
       const [entriesRes, assignRes, customRes, hidesRes] = versionIds.length > 0
         ? await Promise.all([
             supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
@@ -423,7 +432,7 @@ export function BidsCoverLetterTab({
         const customMap = new Map<string, number>()
         for (const c of allCustom) if (c.price_book_version_id === pid) customMap.set(c.count_row_id, Number(c.unit_price))
         const result = computeBidPricingRows({
-          countRows: pricingCountRows,
+          countRows: rowsFor(p.bidVersionId),
           assignments: allAssign
             .filter((a) => a.price_book_version_id === pid)
             .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),

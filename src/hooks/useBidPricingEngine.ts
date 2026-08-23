@@ -195,10 +195,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   const [pricingFixtureMaterialsFromTakeoff, setPricingFixtureMaterialsFromTakeoff] = useState<Record<string, number>>({})
 
   async function loadCountRows(bidId: string) {
-    const { data, error } = await supabase
-      .from('bids_count_rows')
-      .select('*')
-      .eq('bid_id', bidId)
+    // v2.2132: counts belong to the bid's active version (null = unsplit bid).
+    const { data, error } = await applyVersionFilter(
+      supabase.from('bids_count_rows').select('*').eq('bid_id', bidId),
+      activeVersionIdForBid(bidId),
+    )
       .order('sequence_order', { ascending: true })
       .order('id', { ascending: true })
     if (error) {
@@ -224,10 +225,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
 
   async function loadTakeoffCountRows(bidId: string) {
     const [{ data, error }, bidMetaRes] = await Promise.all([
-      supabase
-        .from('bids_count_rows')
-        .select('*')
-        .eq('bid_id', bidId)
+      applyVersionFilter(supabase.from('bids_count_rows').select('*').eq('bid_id', bidId), activeVersionIdForBid(bidId))
         .order('sequence_order', { ascending: true }),
       supabase.from('bids').select('materials_model').eq('id', bidId).maybeSingle(),
     ])
@@ -500,7 +498,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
             .from('bids_takeoff_rough_part_lines')
             .select('count_row_id, quantity, unit_price')
             .eq('bid_id', bidId),
-          supabase.from('bids_count_rows').select('id, count').eq('bid_id', bidId),
+          applyVersionFilter(supabase.from('bids_count_rows').select('id, count').eq('bid_id', bidId), activeVersionIdForBid(bidId)),
         ])
         const countByRowId = new Map(
           ((crsForCount ?? []) as Array<{ id: string; count: number | null }>).map((r) => [r.id, r.count]),
@@ -540,11 +538,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   async function loadCostEstimateCountRows(bidId: string) {
-    const { data, error } = await supabase
-      .from('bids_count_rows')
-      .select('*')
-      .eq('bid_id', bidId)
-      .order('sequence_order', { ascending: true })
+    const { data, error } = await applyVersionFilter(
+      supabase.from('bids_count_rows').select('*').eq('bid_id', bidId),
+      activeVersionIdForBid(bidId),
+    ).order('sequence_order', { ascending: true })
     if (error) {
       setError(`Failed to load count rows: ${error.message}`)
       setCostEstimateCountRows([])
@@ -904,7 +901,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     try {
     const [countRes, estRes, bidMetaRes, mappingsRes, roughLinesRes] = await Promise.all([
       (() => {
-        let q: ReturnType<typeof supabase.from> = supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
+        let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase.from('bids_count_rows').select('*').eq('bid_id', bidId), activeVersionIdForBid(bidId)).order('sequence_order', { ascending: true })
         if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
         return q
       })(),
@@ -1245,9 +1242,26 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   useEffect(() => {
-    if (selectedBidForCounts?.id) loadCountRows(selectedBidForCounts.id)
-    else setCountRows([])
-  }, [selectedBidForCounts?.id])
+    const bid = selectedBidForCounts
+    if (!bid?.id) {
+      setCountRows([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      // v2.2132: counts are per version — resolve the active version for this bid before loading
+      // (landing directly on Counts must show the right bid's rows); a version switch (same bid)
+      // re-runs this via selectedBidVersionId.
+      if (selectedBidVersionIdRef.current?.bidId !== bid.id) {
+        const versions = await loadBidVersions(bid.id)
+        if (cancelled) return
+        setSelectedBidVersionId(bid.id, pickActiveVersion({ savedVersionId: bid.selected_bid_version_id, bidVersions: versions }))
+      }
+      if (!cancelled) await loadCountRows(bid.id)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBidForCounts?.id, selectedBidVersionId])
 
   useEffect(() => {
     const bid = selectedBidForTakeoff

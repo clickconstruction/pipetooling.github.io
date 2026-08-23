@@ -33,6 +33,8 @@ type BidsCountsTabProps = {
   setCountRows: Dispatch<SetStateAction<BidCountRow[]>>
   refreshAfterCountsChange: (opts?: { skipCountRows?: boolean }) => void
   skipNextLoadCountRowsRef: MutableRefObject<boolean>
+  /** v2.2132: the active version whose rows are shown/edited (null = unsplit bid). */
+  activeBidVersionId: string | null
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
   onEditBid: (bid: BidWithBuilder) => void
@@ -79,6 +81,7 @@ export function BidsCountsTab({
   setCountRows,
   refreshAfterCountsChange,
   skipNextLoadCountRowsRef,
+  activeBidVersionId,
   onSelectBid,
   onClose,
   onEditBid,
@@ -338,7 +341,9 @@ export function BidsCountsTab({
     setClearAllCountsBusy(true)
     try {
       await withSupabaseRetry(
-        async () => supabase.from('bids_count_rows').delete().eq('bid_id', bid.id),
+        async () => (activeBidVersionId
+          ? supabase.from('bids_count_rows').delete().eq('bid_id', bid.id).eq('bid_version_id', activeBidVersionId)
+          : supabase.from('bids_count_rows').delete().eq('bid_id', bid.id).is('bid_version_id', null)),
         'clear all bid count rows'
       )
       setClearAllCountsOpen(false)
@@ -412,6 +417,7 @@ export function BidsCountsTab({
       if (!row) continue
       const { error } = await supabase.from('bids_count_rows').insert({
         bid_id: bidId,
+        bid_version_id: activeBidVersionId,
         fixture: row.fixture,
         count: row.count,
         group_tag: row.group_tag,
@@ -992,6 +998,7 @@ export function BidsCountsTab({
                     {addingCountRow && (
                       <NewCountRow
                         bidId={selectedBidForCounts.id}
+                        bidVersionId={activeBidVersionId}
                         serviceTypeId={selectedBidForCounts.service_type_id ?? undefined}
                         onSaved={() => { setAddingCountRow(false); refreshAfterCountsChange() }}
                         onCancel={() => setAddingCountRow(false)}
