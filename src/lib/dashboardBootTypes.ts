@@ -35,12 +35,17 @@ export type ChecklistInstance = {
   notes: string | null
   completed_by_user_id: string | null
   created_at: string | null
+  /** Review sign-off stamp — the conversation card's status line reads it (v2.2193). */
+  reviewed_at?: string | null
   checklist_items?: {
     title: string
     links?: string[] | null
     notify_on_complete_user_id?: string | null
     notify_creator_on_complete?: boolean
     created_by_user_id?: string | null
+    /** For the card's full-history spine (v2.2193). */
+    created_at?: string | null
+    repeat_type?: string
   } | null
   checklist_instance_assignees?: Array<{ user_id: string }>
 }
