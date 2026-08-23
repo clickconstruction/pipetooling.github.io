@@ -290,7 +290,7 @@ export function BidVersionPicker({
                   {/* Purpose facts (v2.2110): whether this bid version rides in the cover letter, and its GC. */}
                   <span style={{ display: 'block', fontSize: '0.625rem', color: v.include_in_submission ? 'var(--text-green-600)' : 'var(--text-muted)', fontWeight: 600 }}>
                     {v.include_in_submission
-                      ? `in letter ✓ · ${(v as BidVersion & { is_alternate?: boolean | null }).is_alternate ? 'alternate' : 'base'}`
+                      ? `in letter ✓ · ${v.is_alternate ? 'alternate' : 'base'}`
                       : 'not in letter'}
                   </span>
                   {(() => { const b = formatSendBadge(latestSends[v.id]); return b ? <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)' }}>{b}</span> : null })()}

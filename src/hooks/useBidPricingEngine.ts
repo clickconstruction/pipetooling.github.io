@@ -786,8 +786,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   /** The version's own ★ scenario id (v2.2117; column arrives with the F1 migration — absent on older rows). */
   function versionStarredId(versions: BidVersion[], versionId: string | null): string | null {
     if (!versionId) return null
-    const v = versions.find((x) => x.id === versionId) as (BidVersion & { starred_price_book_version_id?: string | null }) | undefined
-    return v?.starred_price_book_version_id ?? null
+    return versions.find((x) => x.id === versionId)?.starred_price_book_version_id ?? null
   }
 
   async function loadBidVersions(bidId: string): Promise<BidVersion[]> {
@@ -1121,8 +1120,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     // versions no longer loses it (the bid-level column stays = the active version's ★).
     const activeVersionId = resolveTaggedVersion(selectedBidVersionIdRef.current, bidId)
     if (activeVersionId) {
-      const patch = { starred_price_book_version_id: versionId } as unknown as Partial<BidVersion>
-      await supabase.from('bid_versions').update(patch).eq('id', activeVersionId)
+      await supabase.from('bid_versions').update({ starred_price_book_version_id: versionId }).eq('id', activeVersionId)
       await loadBidVersions(bidId)
     }
     await loadBids()

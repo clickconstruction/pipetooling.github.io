@@ -56,8 +56,8 @@ import type { BidCountRow } from '../../types/bids'
 
 const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 
-/** bid_versions + the two F1 columns (v2.2117); typed locally until the generated types catch up. */
-type BidVersionLetter = BidVersion & { is_alternate?: boolean | null; starred_price_book_version_id?: string | null }
+/** bid_versions row (the v2.2117 letter columns are in the generated types since the F5 regen). */
+type BidVersionLetter = BidVersion
 type BundleSection = { name: string; bidVersionId: string | null; revenueSum: number; fixtureRows: { fixture: string; count: number }[]; isAlternate: boolean }
 const COVER_LETTER_VIEW_KEY = 'bids_cover_letter_view_v1'
 
@@ -477,8 +477,7 @@ export function BidsCoverLetterTab({
   }
   async function setVersionAlternate(v: BidVersionLetter, isAlternate: boolean) {
     if (!!v.is_alternate === isAlternate) return
-    const patch = { is_alternate: isAlternate } as unknown as Partial<BidVersion>
-    await supabase.from('bid_versions').update(patch).eq('id', v.id)
+    await supabase.from('bid_versions').update({ is_alternate: isAlternate }).eq('id', v.id)
     await reloadBidVersions()
   }
   async function reorderVersion(v: BidVersionLetter, dir: -1 | 1) {
