@@ -52,6 +52,23 @@ export function gcStatementFooterLine(officePhone?: string | null): string {
   return phone ? `Questions about a bill? Reply to this email or call the office at ${phone}.` : GC_STATEMENT_FOOTER_LINE
 }
 
+/** `tel:` target for the office number — mirror of gcStatementEmail.ts officePhoneTelHref. */
+export function officePhoneTelHref(officePhone?: string | null): string | null {
+  const d = (officePhone ?? '').replace(/\D/g, '')
+  if (!d) return null
+  if (d.length === 10) return `tel:+1${d}`
+  if (d.length === 11 && d.startsWith('1')) return `tel:+${d}`
+  return `tel:+${d}`
+}
+
+/** HTML footer with a tap-to-call office number (v2.2158) — mirror of gcStatementEmail.ts gcStatementFooterHtml. */
+export function gcStatementFooterHtml(officePhone?: string | null): string {
+  const phone = (officePhone ?? '').trim()
+  const tel = officePhoneTelHref(phone)
+  if (!phone || !tel) return escapeHtml(gcStatementFooterLine(null))
+  return `Questions about a bill? Reply to this email or call the office at <a href="${escapeHtml(tel)}" style="color:#6b7280;font-weight:bold;text-decoration:none;white-space:nowrap">${escapeHtml(phone)}</a>.`
+}
+
 const escapeHtml = (s: string) =>
   (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -140,7 +157,7 @@ export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: s
       </tr>
     </tbody>
   </table>${portalCardHtml(portalUrl)}
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(officePhone))}</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${gcStatementFooterHtml(officePhone)}</p>
 </div>`
 }
 
@@ -188,7 +205,7 @@ export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: strin
       </tr>
     </tbody>
   </table>
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(officePhone))}</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${gcStatementFooterHtml(officePhone)}</p>
 </div>`
 }
 

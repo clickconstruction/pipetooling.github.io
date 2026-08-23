@@ -157,7 +157,8 @@ describe('buildGcStatementEmailPreviewHtml', () => {
 describe('gcStatementFooterLine (v2.2133)', () => {
   it('names the office number from Settings when configured', () => {
     expect(gcStatementFooterLine('(210) 555-0100')).toBe('Questions about a bill? Reply to this email or call the office at (210) 555-0100.')
-    expect(buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026', officePhone: ' 210-555-0100 ' })).toContain('call the office at 210-555-0100.')
+    // HTML links the number as tap-to-call (v2.2158); text stays plain.
+    expect(buildGcStatementEmailHtml(group(), { dateStr: 'Jul 31, 2026', officePhone: ' 210-555-0100 ' })).toContain('call the office at <a href="tel:+12105550100"')
     expect(buildGcStatementEmailText(group(), { dateStr: 'Jul 31, 2026', officePhone: '210-555-0100' })).toContain('call the office at 210-555-0100.')
   })
   it('falls back to the bare line when no number is set', () => {
@@ -178,5 +179,20 @@ describe('portal card (v2.2151)', () => {
     expect(html).toContain('my.clickplumbing.com/rmc-dudley-mason</a>')
     expect(mod.gcStatementPortalLineText('https://x/y')).toContain('https://x/y')
     expect(mod.gcStatementPortalLineText(null)).toBeNull()
+  })
+})
+
+describe('gcStatementFooterHtml (v2.2158)', () => {
+  it('links the office number as tel: (US 10-digit → +1)', async () => {
+    const mod = await import('./gcStatementEmail')
+    expect(mod.officePhoneTelHref('(512) 360-0599')).toBe('tel:+15123600599')
+    expect(mod.officePhoneTelHref('1 (512) 360-0599')).toBe('tel:+15123600599')
+    expect(mod.officePhoneTelHref('+44 20 7946 0958')).toBe('tel:+442079460958')
+    expect(mod.officePhoneTelHref('')).toBeNull()
+    const html = mod.gcStatementFooterHtml('(512) 360-0599')
+    expect(html).toContain('<a href="tel:+15123600599"')
+    expect(html).toContain('>(512) 360-0599</a>.')
+    expect(mod.gcStatementFooterHtml(null)).toBe('Questions about a bill? Reply to this email or call the office.')
+    expect(mod.buildGcStatementEmailHtml({ key: 'k', gcId: 'g', gcName: 'X', isNoGc: false, rows: [], subtotal: 0, jobCount: 0, oldestAgeDays: null }, { officePhone: '(512) 360-0599' })).toContain('href="tel:+15123600599"')
   })
 })

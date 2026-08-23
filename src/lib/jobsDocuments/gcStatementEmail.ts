@@ -63,6 +63,27 @@ export function gcStatementPortalLineText(portalUrl: string | null | undefined):
 const escapeHtml = (s: string) =>
   (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
+/** `tel:` target for the office number — US 10/11-digit → +1…, else +digits; null when no digits. */
+export function officePhoneTelHref(officePhone?: string | null): string | null {
+  const d = (officePhone ?? '').replace(/\D/g, '')
+  if (!d) return null
+  if (d.length === 10) return `tel:+1${d}`
+  if (d.length === 11 && d.startsWith('1')) return `tel:+${d}`
+  return `tel:+${d}`
+}
+
+/**
+ * HTML footer (v2.2158): same sentence as gcStatementFooterLine, with the
+ * office number as a tap-to-call link. Mirror of the dispatcher's render.ts
+ * `gcStatementFooterHtml` — keep in sync.
+ */
+export function gcStatementFooterHtml(officePhone?: string | null): string {
+  const phone = (officePhone ?? '').trim()
+  const tel = officePhoneTelHref(phone)
+  if (!phone || !tel) return escapeHtml(GC_STATEMENT_FOOTER_LINE)
+  return `Questions about a bill? Reply to this email or call the office at <a href="${escapeHtml(tel)}" style="color:#6b7280;font-weight:bold;text-decoration:none;white-space:nowrap">${escapeHtml(phone)}</a>.`
+}
+
 /** Recipient-neutral on purpose — safe to paste to anyone without leaking another GC's name. */
 export function gcStatementEmailSubject(_group: GcReviewGroup, dateStr: string): string {
   return `${GC_STATEMENT_SUBJECT_NAME} open balances: ${dateStr}`
@@ -104,7 +125,7 @@ export function buildGcStatementEmailHtml(
       </tr>
     </tbody>
   </table>${gcStatementPortalCardHtml(opts?.portalUrl)}
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(opts?.officePhone))}</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${gcStatementFooterHtml(opts?.officePhone)}</p>
 </div>`
 }
 
@@ -147,7 +168,7 @@ export function buildGcReviewShareAllEmailHtml(
       </tr>
     </tbody>
   </table>
-  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(opts?.officePhone))}</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${gcStatementFooterHtml(opts?.officePhone)}</p>
 </div>`
 }
 
