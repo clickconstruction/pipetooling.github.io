@@ -69,6 +69,7 @@ import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
+import { nextUpPicks } from '../../lib/roadmapNextUp'
 import { ChecklistRoadmapTimelineView } from './ChecklistRoadmapTimelineView'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import { ChecklistTechTreeOrderStagesModal } from './ChecklistTechTreeOrderStagesModal'
@@ -277,6 +278,8 @@ type GroupNodeData = {
   badge: StageBadge
   /** Task-less stage with no prerequisites — "not planned yet" (v2.2127). */
   unplanned: boolean
+  /** How many of this stage's tasks are on the Plan's ⚡ Next up shortlist (v2.2138). */
+  nextUpCount: number
   /** Locked stages only: "Unlocks when … is done" / auto-assign wording. */
   lockedHint: string | null
   onToggleCollapse: () => void
@@ -289,6 +292,8 @@ type GroupNodeData = {
     assigneeLabel: string
     canAct: boolean
     bridgeChip: 'in_review' | 'signed_off' | 'on_list' | null
+    /** On the Plan's ⚡ Next up shortlist (v2.2138). */
+    nextUp: boolean
   }>
   onToggle: (taskId: string) => void
   canEditStructure: boolean
@@ -305,6 +310,21 @@ type GroupNodeData = {
 }
 
 type GroupTask = GroupNodeData['tasks'][0]
+
+/** ⚡ marker for tasks on the Plan's Next up shortlist (v2.2138) — static and reorder rows. */
+function TaskNextUpSpan({ on }: { on: boolean }) {
+  if (!on) return null
+  return (
+    <span
+      className="nodrag"
+      title="On the Plan's ⚡ Next up shortlist"
+      aria-label="Next up"
+      style={{ marginLeft: 4, fontSize: 11, color: 'var(--text-amber-800)', verticalAlign: 'middle' }}
+    >
+      ⚡
+    </span>
+  )
+}
 
 /** Live bridge status chip on a task row — shared by the static and reorder rows. */
 function TaskBridgeChipSpan({ chip }: { chip: GroupTask['bridgeChip'] }) {
@@ -529,6 +549,7 @@ function TechTreeDndTaskRow({
             {task.assigneeLabel ? (
               <span style={{ color: 'var(--text-slate-500)' }}> — {task.assigneeLabel}</span>
             ) : null}
+            <TaskNextUpSpan on={task.nextUp} />
             <TaskBridgeChipSpan chip={task.bridgeChip} />
           </div>
         </div>
@@ -687,8 +708,25 @@ function GroupNode({ data }: NodeProps) {
           >
             {d.title}
           </div>
-          {d.badge || d.locked || d.unplanned ? (
+          {d.badge || d.locked || d.unplanned || d.nextUpCount > 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+              {d.nextUpCount > 0 ? (
+                <span
+                  title="Tasks in this stage on the Plan's ⚡ Next up shortlist"
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: '1px 6px',
+                    borderRadius: 6,
+                    background: 'var(--bg-amber-100)',
+                    border: '1px solid var(--border-amber)',
+                    color: 'var(--text-amber-800)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ⚡ {d.nextUpCount === 1 ? 'next up' : `${d.nextUpCount} next up`}
+                </span>
+              ) : null}
               {d.unplanned ? (
                 <span
                   title="No tasks and nothing leading into it — add tasks, or link a stage into it"
@@ -833,6 +871,7 @@ function GroupNode({ data }: NodeProps) {
                       {t.title}
                     </TechTreeEditableTaskTitle>
                     {t.assigneeLabel ? <span style={{ color: 'var(--text-slate-500)' }}> — {t.assigneeLabel}</span> : null}
+                    <TaskNextUpSpan on={t.nextUp} />
                     <TaskBridgeChipSpan chip={t.bridgeChip} />
                   </div>
                 </div>
@@ -1062,6 +1101,7 @@ export function ChecklistTechTreeTab({
   canEditTechTree,
   setError,
   roadmapIdFromUrl,
+  viewFromUrl,
   onRoadmapUrlParamChange,
   onOpenTodayTab,
 }: {
@@ -1070,6 +1110,8 @@ export function ChecklistTechTreeTab({
   canEditTechTree: boolean
   setError: (s: string | null) => void
   roadmapIdFromUrl: string | null
+  /** `?view=map|plan|timeline` deep link (v2.2138, Dashboard nudge → Plan); wins over the remembered view once, then persists. */
+  viewFromUrl?: string | null
   onRoadmapUrlParamChange: (roadmapId: string) => void
   /** Jump to the Today tab — the task card modal's "Open on the checklist". */
   onOpenTodayTab?: () => void
@@ -1198,6 +1240,13 @@ export function ChecklistTechTreeTab({
     [allGroupIds, graphEdges, completeGroupIds],
   )
 
+  // ⚡ Next up (v2.2138): the same picks the Plan panel shows, so Map clusters
+  // can mark them — computed once here, rendered as row markers + a stage chip.
+  const nextUpTaskIds = useMemo(() => {
+    const lanes = nextUpPicks({ groups, tasksByGroup, edges: graphEdges, unlockedIds, completeIds: completeGroupIds })
+    return new Set([...lanes.ready, ...lanes.needsName].map((p) => p.taskId))
+  }, [groups, tasksByGroup, graphEdges, unlockedIds, completeGroupIds])
+
   const taskCountByGroup = useMemo(() => {
     const m = new Map<string, number>()
     for (const g of groups) m.set(g.id, (tasksByGroup.get(g.id) ?? []).length)
@@ -1315,6 +1364,11 @@ export function ChecklistTechTreeTab({
       // private mode: toggle still works for the session
     }
   }, [])
+  // `?view=` deep link (v2.2138): the Dashboard nudge lands on Plan regardless
+  // of the remembered view; the choice then persists like a manual toggle.
+  useEffect(() => {
+    if (viewFromUrl === 'map' || viewFromUrl === 'plan' || viewFromUrl === 'timeline') setViewModePersisted(viewFromUrl)
+  }, [viewFromUrl, setViewModePersisted])
   const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   /** Re-layout the graph in dagre only when group set, links, or collapse changes — not on task add/complete. */
@@ -1525,6 +1579,7 @@ export function ChecklistTechTreeTab({
           locked: !gu,
           badge: stageBadgeFor(tlist.map((t) => ({ completedAt: t.completed_at }))),
           unplanned: tlist.length === 0 && !graphEdges.some((e) => e.toGroupId === gid),
+          nextUpCount: tlist.filter((t) => nextUpTaskIds.has(t.id)).length,
           lockedHint: gu
             ? null
             : lockedStageHint(
@@ -1549,6 +1604,7 @@ export function ChecklistTechTreeTab({
               assigneeLabel: names.length ? names.join(', ') : '',
               canAct: canActOnTask(t, gu),
               bridgeChip: bridgeChipFor(t.completed_at, bridgeByTaskId.get(t.id)),
+              nextUp: nextUpTaskIds.has(t.id),
             }
           }),
           reorderMode: canEditStructure && reorderMode,

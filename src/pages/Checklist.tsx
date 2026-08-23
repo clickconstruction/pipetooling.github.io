@@ -32,6 +32,7 @@ import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/c
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { goalsStageRows, goalsStripRows, lockedStageHint, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
+import { canSeeRoadmapTab } from '../lib/roadmapVisibility'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 
@@ -197,8 +198,9 @@ export default function Checklist() {
   const [farmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
 
   // Roadmap is dev-only for now (owner request, 2026-08-10) — hide the tab and
-  // bounce deep links for everyone else. Widen this gate to re-release it.
-  const canSeeRoadmap = role === 'dev' && !farmModeEnabled
+  // bounce deep links for everyone else. Widen canSeeRoadmapTab to re-release it
+  // (the Dashboard nudge reads the same gate).
+  const canSeeRoadmap = canSeeRoadmapTab(role, farmModeEnabled)
 
   useEffect(() => {
     const tab = searchParams.get('tab')
@@ -392,6 +394,7 @@ export default function Checklist() {
             canEditTechTree={canEditTechTree}
             setError={setError}
             roadmapIdFromUrl={searchParams.get('roadmap')}
+            viewFromUrl={searchParams.get('view')}
             onRoadmapUrlParamChange={onRoadmapUrlParamChange}
             onOpenTodayTab={onOpenTodayTab}
           />

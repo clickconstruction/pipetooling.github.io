@@ -17,6 +17,7 @@ import DashboardTallyStaleStaffBanner from '../DashboardTallyStaleStaffBanner'
 import DashboardLostBidsMissingReasonBanner from '../DashboardLostBidsMissingReasonBanner'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import DashboardTeamReviewsDueBanner from '../DashboardTeamReviewsDueBanner'
+import DashboardRoadmapNeedsNameBanner from '../DashboardRoadmapNeedsNameBanner'
 import DashboardJobFollowupsBanner from '../DashboardJobFollowupsBanner'
 import DashboardBulkDeleteAlertBanner from '../DashboardBulkDeleteAlertBanner'
 import DashboardClaimDevAttemptsBanner from '../DashboardClaimDevAttemptsBanner'
@@ -480,6 +481,8 @@ export function DashboardPinnedQuickRow({
         />
       )}
       {!hideBanners && <DashboardTeamReviewsDueBanner authUserId={authUserId} />}
+      {/* Roadmap "needs a name" (v2.2138): self-gates to the Roadmap-tab audience and a threshold. */}
+      {!hideBanners && <DashboardRoadmapNeedsNameBanner authUserId={authUserId} role={role} />}
       {/* Job Follow-Up Mode (v2.1720): office roles only; self-gates to nothing when the queue is empty. */}
       {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardJobFollowupsBanner />
