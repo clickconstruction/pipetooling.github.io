@@ -10,7 +10,7 @@ import { latestSendByVersion, type VersionSendRow } from '../lib/bids/versionSen
 
 type BidLite = { id: string; bid_date_sent: string | null; customers?: { name?: string | null } | null; bids_gc_builders?: { name?: string | null } | null }
 
-export function useBidGcPackets(bids: ReadonlyArray<BidLite>): { packetsByBid: Record<string, GcPacket[]>; reload: () => void } {
+export function useBidGcPackets(bids: ReadonlyArray<BidLite>, recipientsByBid?: Record<string, ReadonlyArray<{ customerId: string; name: string }>>): { packetsByBid: Record<string, GcPacket[]>; reload: () => void } {
   const [versions, setVersions] = useState<Array<GcVersionLike & { bid_id: string }>>([])
   const [sends, setSends] = useState<VersionSendRow[]>([])
   const [gcNames, setGcNames] = useState<Record<string, string>>({})
@@ -56,11 +56,12 @@ export function useBidGcPackets(bids: ReadonlyArray<BidLite>): { packetsByBid: R
     const byBid = new Map<string, Array<GcVersionLike & { bid_id: string }>>()
     for (const v of versions) byBid.set(v.bid_id, [...(byBid.get(v.bid_id) ?? []), v])
     for (const b of bids) {
-      const vs = byBid.get(b.id)
-      if (!vs || vs.length === 0) continue
-      out[b.id] = groupVersionsByGc(vs, { bidGcName: b.customers?.name ?? b.bids_gc_builders?.name ?? null, gcNames, latestSends: latest, bidDateSent: b.bid_date_sent })
+      const vs = byBid.get(b.id) ?? []
+      const recipients = recipientsByBid?.[b.id]
+      if (vs.length === 0 && !(recipients && recipients.length > 0)) continue
+      out[b.id] = groupVersionsByGc(vs, { bidGcName: b.customers?.name ?? b.bids_gc_builders?.name ?? null, gcNames, latestSends: latest, bidDateSent: b.bid_date_sent, recipients })
     }
     return out
-  }, [versions, sends, gcNames, bids])
+  }, [versions, sends, gcNames, bids, recipientsByBid])
   return { packetsByBid, reload }
 }

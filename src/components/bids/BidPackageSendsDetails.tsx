@@ -17,17 +17,21 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
   const [versions, setVersions] = useState<VersionRow[]>([])
   const [sends, setSends] = useState<VersionSendRow[]>([])
   const [gcNames, setGcNames] = useState<Record<string, string>>({})
+  const [recipients, setRecipients] = useState<Array<{ customerId: string; name: string }>>([])
   useEffect(() => {
     let cancelled = false
     const load = async () => {
-      const [{ data: v }, { data: s, error }] = await Promise.all([
+      const [{ data: v }, { data: s, error }, recRes] = await Promise.all([
         supabase.from('bid_versions').select('id, name, sort_order, include_in_submission, is_alternate, customer_id, created_at, outcome').eq('bid_id', bidId).order('sort_order'),
         supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', bidId),
+        supabase.from('bid_gc_recipients').select('customer_id, customers(name)').eq('bid_id', bidId),
       ])
       if (cancelled) return
       const vs = ((v ?? []) as VersionRow[])
       setVersions(vs)
       setSends(error ? [] : ((s ?? []) as VersionSendRow[]))
+      type RecRow = { customer_id: string; customers: { name: string | null } | { name: string | null }[] | null }
+      setRecipients(((recRes.data ?? []) as RecRow[]).map((r) => ({ customerId: r.customer_id, name: (Array.isArray(r.customers) ? r.customers[0]?.name : r.customers?.name) ?? '—' })))
       const cids = [...new Set(vs.map((x) => x.customer_id).filter((c): c is string => !!c))]
       if (cids.length > 0) { const { data: cs } = await supabase.from('customers').select('id, name').in('id', cids); if (!cancelled && cs) setGcNames(Object.fromEntries(cs.map((c) => [c.id, c.name ?? '—']))) }
     }
@@ -39,7 +43,7 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
   }, [bidId])
   if (versions.length === 0) return null
   const latest = latestSendByVersion(sends)
-  const packets = groupVersionsByGc(versions, { bidGcName, gcNames, latestSends: latest, bidDateSent })
+  const packets = groupVersionsByGc(versions, { bidGcName, gcNames, latestSends: latest, bidDateSent, recipients })
   const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
   async function change(pKey: string, next: PacketOutcome) {
     const p = packets.find((x) => x.key === pKey)
@@ -53,7 +57,12 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
   return (
     <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Sent to — by GC</div>
-      {packets.map((p) => (
+      {packets.map((p) => p.sharedLetter ? (
+        <div key={p.key} style={{ padding: '0.2rem 0 0.35rem', display: 'flex', gap: '0.6rem', alignItems: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }} title="On the bid's “Also sent to” list — got the same letter as the bid's GC. Give it its own packet (＋ Another GC… on the bid's pages) to track its answer separately.">
+          <span style={{ fontWeight: 600 }}>{p.name}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>same letter as {packets.find((x) => !x.sharedLetter)?.name ?? 'the bid’s GC'}{p.sentOn ? ` · sent ${fmtSent(p.sentOn)}` : ''}</span>
+        </div>
+      ) : (
         <div key={p.key} style={{ padding: '0.2rem 0 0.35rem' }}>
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 600 }}>{p.name}</span>

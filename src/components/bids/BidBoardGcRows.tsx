@@ -10,6 +10,8 @@ import { formatCurrency } from '../../lib/format'
 
 export function gcRowsWorthShowing(packets: GcPacket[] | undefined): boolean {
   if (!packets) return false
+  // An unsplit bid with only "Also sent to" GCs keeps its +N GCs pill; the rows need a real packet to anchor to.
+  if (!packets.some((p) => p.versions.length > 0)) return false
   return packets.length > 1 || packets.some((p) => p.gcId != null)
 }
 
@@ -32,6 +34,15 @@ export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged }: { bid
         <div style={{ display: 'grid', gap: '0.15rem', fontSize: '0.78rem', color: 'var(--text-700)' }}>
           {packets.map((p) => {
             const value = p.sentValue
+            if (p.sharedLetter) {
+              // "Also sent to" GC without its own packet: same letter as the bid's GC, answer tracked with the bid.
+              return (
+                <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }} title="On the bid's “Also sent to” list — got the same letter as the bid's GC. Give it its own packet (＋ Another GC…) to track its answer separately.">
+                  <span style={{ fontWeight: 600, color: 'var(--text-strong)', minWidth: '10em' }}>{p.name}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>same letter as {packets.find((x) => !x.sharedLetter)?.name ?? 'the bid’s GC'}{p.sentOn ? ` · sent ${fmtSent(p.sentOn)}` : ''}</span>
+                </div>
+              )
+            }
             return (
               <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 600, color: 'var(--text-strong)', minWidth: '10em' }}>{p.name}</span>

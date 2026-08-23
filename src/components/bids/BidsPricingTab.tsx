@@ -1182,7 +1182,7 @@ export function BidsPricingTab({
     const teamLaborCost = teamLaborCostByBidId.get(ctx.bid.id) ?? 0
     const result = buildPricingCsvForBid(ctx, teamLaborCost)
     if (!result) {
-      showToast('Select a price scenario and ensure Counts and Labor are set up.', 'info')
+      showToast('Select a price and make sure Counts and Labor are set up.', 'info')
       return
     }
     const blob = new Blob([`\uFEFF${result.csv}`], { type: 'text/csv;charset=utf-8' })
@@ -1298,14 +1298,19 @@ export function BidsPricingTab({
   /** The Workbench walkthrough stops, in the section's own top-to-bottom order. */
   const WORKBENCH_TOUR_STEPS: SpotlightTourStep[] = [
     {
+      anchor: 'send-to',
+      title: 'Send to — one packet per GC',
+      body: 'Versions draft this bid for different GCs: each GC gets its own packet — counts, prices, send date, answer. "＋ Another GC…" starts one as a copy of this one.',
+    },
+    {
       anchor: 'workbench-scenarios',
-      title: 'Scenarios — for you to compare',
-      body: 'Price scenarios are different prices for the same version. The ★ starred one is what the customer sees. Cover Letter, Share, Print, and the bid value all use it.',
+      title: 'Prices — what this GC receives',
+      body: 'Price options are different prices for the same GC. The ★ base is what the GC sees — Cover Letter, Share, Print, and the bid value all use it. Offer another as an alternate and it goes on their letter too; anything else is yours to compare.',
     },
     {
       anchor: 'workbench-summary',
       title: 'Read the strip',
-      body: 'Revenue, cost, profit, and margin always show the scenario you’re viewing. An amber dashed border means the numbers include an unsaved solver preview.',
+      body: 'Revenue, cost, profit, and margin always show the price you’re viewing. An amber dashed border means the numbers include an unsaved solver preview.',
     },
     {
       anchor: 'workbench-solver',
@@ -1315,7 +1320,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-rows',
       title: 'Preview, then Apply',
-      body: 'Solver results land as amber previews in the Sale price column — nothing saves until "Apply" up in the strip. 📌 pins a row so the solver holds its price. Discard throws previews away, and so does switching scenarios.',
+      body: 'Solver results land as amber previews in the Sale price column — nothing saves until "Apply" up in the strip. 📌 pins a row so the solver holds its price. Discard throws previews away, and so does switching prices.',
     },
   ]
 
@@ -2453,7 +2458,7 @@ export function BidsPricingTab({
                                         savingPricingAssignment === row.countRow.id ?
                                           'Saving…'
                                         : !row.canToggleOmitSubmission ?
-                                          'Select a price scenario to change submission visibility.'
+                                          'Select a price option to change what goes on the letter.'
                                         : undefined
                                       }
                                     >
@@ -2699,7 +2704,7 @@ export function BidsPricingTab({
                           disabled={wbCloning}
                           style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.85rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', cursor: wbCloning ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
                         >
-                          {wbCloning ? 'Duplicating…' : '＋ New price or version…'}
+                          {wbCloning ? 'Duplicating…' : '＋ Another price or GC…'}
                         </button>
                       )
                       const doorOptStyle: React.CSSProperties = { display: 'flex', gap: '0.7rem', alignItems: 'flex-start', width: '100%', textAlign: 'left', font: 'inherit', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.8rem', background: 'var(--surface)', cursor: 'pointer', marginBottom: '0.55rem' }
@@ -2710,11 +2715,11 @@ export function BidsPricingTab({
                         >
                           <div
                             role="dialog"
-                            aria-label="New price or version"
+                            aria-label="Another price or GC"
                             style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 440, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>New price or version</h3>
+                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Another price or GC</h3>
                             <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>What do you want?</p>
                             <button
                               type="button"
@@ -2726,9 +2731,9 @@ export function BidsPricingTab({
                             >
                               <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>💲</span>
                               <span>
-                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Another price point</b>
+                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Another price for {selectedBidVersionId ? shortGc(gcNameForVersion(selectedBidVersionId)) : 'this GC'}</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  For you to compare. The customer only ever sees the ★.
+                                  Offer it as an alternate on their letter, or keep it to compare. The GC sees the ★ and what you offer — nothing else.
                                 </span>
                               </span>
                             </button>
@@ -2737,14 +2742,14 @@ export function BidsPricingTab({
                               style={doorOptStyle}
                               onClick={() => {
                                 setWbVariantDoorOpen(false)
-                                window.dispatchEvent(new Event('bid-version-picker-open-new'))
+                                window.dispatchEvent(new Event('bid-version-picker-open-add-gc'))
                               }}
                             >
                               <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>📦</span>
                               <span>
-                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Another bid to send</b>
+                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Another GC</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  The customer sees it — its own section or letter. Starts as a copy of this bid's counts, takeoff and prices.
+                                  Send this bid to another GC — its own packet, starting as a copy of this one's counts, takeoff and prices.
                                 </span>
                               </span>
                             </button>
@@ -2760,7 +2765,7 @@ export function BidsPricingTab({
                               <span>
                                 <b style={{ display: 'block', fontSize: '0.92rem' }}>Adopt an existing bid</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Pull a bid already on the board in as one of this package's bids. Its counts, prices and sent history come with it; its old row retires.
+                                  Pull a bid already on the board in as one of this bid's packets. Its counts, prices and sent history come with it; its old row retires.
                                 </span>
                               </span>
                             </button>
@@ -2789,9 +2794,9 @@ export function BidsPricingTab({
                               data-tour="workbench-scenarios"
                               style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.9rem', marginBottom: '0.9rem' }}
                             >
-                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One bid · one price</span>
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>One GC · one price</span>
                               {isCustomerFacing ? (
-                                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-green-600)' }}>★ customer sees</span>
+                                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-green-600)' }}>★ base · the GC sees this</span>
                               ) : null}
                               <b style={{ fontSize: '0.85rem' }}>{v.name}</b>
                               {unpriced ? (
@@ -2811,7 +2816,7 @@ export function BidsPricingTab({
                               )}
                               {!isCustomerFacing && !unpriced ? (
                                 <button type="button" onClick={() => void makeScenarioCustomerFacing(v, rev)} style={cardBtnStyle}>
-                                  ☆ Make customer-facing…
+                                  ☆ Make base…
                                 </button>
                               ) : null}
                               <span style={{ flex: 1 }} />
@@ -2858,7 +2863,7 @@ export function BidsPricingTab({
                                 <div
                                   key={v.id}
                                   onClick={() => { if (!viewing) viewWorkbenchScenario(v.id) }}
-                                  title={viewing ? 'The scenario open on this Workbench' : 'View this scenario (doesn’t change what the customer sees)'}
+                                  title={viewing ? 'The price open on this Workbench' : 'View this price (doesn’t change what the GC sees)'}
                                   style={{
                                     flex: '1 1 190px', minWidth: 170, textAlign: 'left', font: 'inherit',
                                     background: 'var(--surface)', border: viewing ? '1px solid #3b82f6' : '1px solid var(--border)',
@@ -3807,7 +3812,7 @@ export function BidsPricingTab({
                     <button type="button" onClick={openAddBlankPricing} style={addPricingMenuItemStyle}>Blank pricing</button>
                     {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).length > 0 && (
                       <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>Copy prices from another scenario</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>Copy prices from another option</div>
                         {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).map((p) => (
                           <button key={p.id} type="button" onClick={() => openClonePricing(p.id, p.name)} style={addPricingMenuItemStyle}>{p.name}</button>
                         ))}
@@ -4000,9 +4005,9 @@ export function BidsPricingTab({
               style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-red-700)' }}>Delete price scenario</h3>
+              <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-red-700)' }}>Delete price option</h3>
               <p style={{ margin: '0 0 0.75rem', color: 'var(--text-700)', fontSize: '0.9rem' }}>
-                This will delete the price scenario <strong>{pricingVersionToDelete.name}</strong> and all entries
+                This will delete the price option <strong>{pricingVersionToDelete.name}</strong> and all entries
                 it contains. A dev can put it back for 90 days from <strong>Settings → Data &amp; migration → Recently
                 deleted</strong>.
               </p>
@@ -4230,7 +4235,7 @@ export function BidsPricingTab({
               </button>
               <button type="button" style={radio(starChoice === 'viewed')} onClick={() => setStarChoice('viewed')}>
                 <input type="radio" readOnly checked={starChoice === 'viewed'} style={{ marginTop: '0.2rem' }} />
-                <span><b style={{ display: 'block', fontSize: '0.9rem' }}>The one you're viewing — {viewedName}</b><span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>For a teammate to check a scenario. Not customer-facing.</span></span>
+                <span><b style={{ display: 'block', fontSize: '0.9rem' }}>The one you're viewing — {viewedName}</b><span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>For a teammate to check. Not what the GC sees.</span></span>
               </button>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
                 <button type="button" onClick={() => setStarChooser(null)} disabled={starBusy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>

@@ -28,11 +28,23 @@ export type GcPacket<V extends GcVersionLike = GcVersionLike> = {
   sentValue: number | null
   /** 'won' | 'lost' | null — the packet's outcome (first version that has one). */
   outcome: string | null
+  /**
+   * A GC on the bid's "Also sent to" list with no version of its own: it got the same letter as the
+   * bid's GC. Shown for completeness; its answer is tracked with the bid until it gets its own packet.
+   */
+  sharedLetter?: boolean
 }
 
 export function groupVersionsByGc<V extends GcVersionLike>(
   versions: ReadonlyArray<V>,
-  opts: { bidGcName: string | null; gcNames: Record<string, string>; latestSends: Record<string, LatestSend>; bidDateSent: string | null },
+  opts: {
+    bidGcName: string | null
+    gcNames: Record<string, string>
+    latestSends: Record<string, LatestSend>
+    bidDateSent: string | null
+    /** "Also sent to" GCs (bid_gc_recipients); those without a version become shared-letter packets. */
+    recipients?: ReadonlyArray<{ customerId: string; name: string }>
+  },
 ): GcPacket<V>[] {
   const groups: GcPacket<V>[] = []
   for (const v of [...versions].sort((a, b) => a.sort_order - b.sort_order)) {
@@ -56,6 +68,10 @@ export function groupVersionsByGc<V extends GcVersionLike>(
       if (existedThen) g.sentOn = opts.bidDateSent
     }
     g.outcome = g.versions.find((v) => v.outcome)?.outcome ?? null
+  }
+  for (const r of opts.recipients ?? []) {
+    if (groups.some((g) => g.gcId === r.customerId)) continue
+    groups.push({ key: `shared:${r.customerId}`, gcId: r.customerId, name: r.name, versions: [], sentOn: opts.bidDateSent, sentValue: null, outcome: null, sharedLetter: true })
   }
   return groups
 }
