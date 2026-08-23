@@ -148,7 +148,7 @@ export function BidsBidBoardTab({
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
   // Bids by GC (v2.2162): per-GC packets for every bid on the board → the GC lines under a row.
-  const { packetsByBid: gcPacketsByBid } = useBidGcPackets(bids)
+  const { packetsByBid: gcPacketsByBid } = useBidGcPackets(bids, recipientsByBidId)
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)

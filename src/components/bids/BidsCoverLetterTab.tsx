@@ -822,7 +822,7 @@ export function BidsCoverLetterTab({
                   {...(narrowViewport640 ? { h2Style: { margin: 0 } } : {})}
                 />
                 {/* Old / New pills (v2.2117) — same device-remembered pattern as Pricing. */}
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} title="Old = today's letter (checked price scenarios). New = the bids in this package, each at its ★.">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} title="Old = today's letter (checked price scenarios). New = one letter per GC — each packet at its ★ base, plus any prices you offered as alternates.">
                   <button type="button" onClick={() => switchCoverLetterView('old')} style={studioPillStyle(coverLetterView === 'old')}>Old</button>
                   <button type="button" onClick={() => switchCoverLetterView('new')} style={studioPillStyle(coverLetterView === 'new')}>New</button>
                 </span>
@@ -964,7 +964,7 @@ export function BidsCoverLetterTab({
                                 )
                               })}
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                {multi ? <>Checked bids go in {gcShort}'s letter at their ★ base price; ticked prices under a bid are offered to {gcShort} as alternates. </> : <>Checked bids go in the letter, each at its ★ price; ticked prices under a bid are offered as alternates. Base bids add up; alternate bids are offered instead. </>}Change prices on the Pricing tab.
+                                {multi ? <>Checked packets go in {gcShort}'s letter at their ★ base price; ticked prices under one are offered to {gcShort} as alternates. </> : <>Checked packets go in the letter, each at its ★ base price; ticked prices under one are offered as alternates. Base packets add up; alternates are offered instead. </>}Change prices on the Pricing tab.
                                 {multi ? <> <strong style={{ color: 'var(--text-strong)' }}>{gcShort}: base ${formatCurrency(gcBase)}{gcAlts ? ` + ${gcAlts} alternate${gcAlts === 1 ? '' : 's'}` : ''}</strong></> : null}
                                 {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
                               </div>

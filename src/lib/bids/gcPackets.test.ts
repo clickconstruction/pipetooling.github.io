@@ -21,6 +21,17 @@ describe('groupVersionsByGc', () => {
     )
     expect(g.map((x) => [x.name, x.sentOn])).toEqual([['SPC', '2026-07-31'], ['Knight', null]])
   })
+  it('"Also sent to" GCs without a version become shared-letter packets after the real ones; GCs that have a version are not doubled', () => {
+    const g = groupVersionsByGc(
+      [v('spc', null, 0), v('burd', 'c-burd', 1)],
+      { bidGcName: 'SPC', gcNames: { 'c-burd': 'Burd' }, latestSends: {}, bidDateSent: '2026-07-31', recipients: [{ customerId: 'c-burd', name: 'Burd' }, { customerId: 'c-k', name: 'Knight' }] },
+    )
+    expect(g.map((x) => [x.name, x.versions.length, x.sentOn, x.sharedLetter ?? false])).toEqual([
+      ['SPC', 1, '2026-07-31', false],
+      ['Burd', 1, '2026-07-31', false],
+      ['Knight', 0, '2026-07-31', true],
+    ])
+  })
 })
 
 describe('rollUpOutcome', () => {

@@ -2,7 +2,7 @@
 title: read the bid board
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: bid board, jump strip, sections, pending, lost, show all, bid dropdown, notes, due date, last contact, days late, google maps, phone cards
+keywords: GC, packet, won, lost, outcome, bid board, jump strip, sections, pending, lost, show all, bid dropdown, notes, due date, last contact, days late, google maps, phone cards
 order: 68
 ---
 The Bid Board (Bids → Bid Board) shows every bid in five sections — **Unsent / Working**, **Not yet won or lost**, **Won**, **Started or Complete**, and **Lost** — plus **Estimating Health** at the bottom.
@@ -30,6 +30,10 @@ Each row leads with the bid number: the **Counts** button sits on its left, the 
 - **Links** — icons for only the artifacts the bid actually has: project folder, job plans, CountTooling plans, bid submission.
 
 Distance to the office lives in the row dropdown, along with the address — tap the address there to open Google Maps.
+
+## Bids sent to more than one GC
+
+When a bid has a packet per GC (see *bid one project to multiple GCs*), a quiet line appears under its row for each GC — name · *sent 7/31* · ★ value · an answer select {{chip:gray|waiting…}} / {{chip:green|won}} / {{chip:red|lost}}. Set a GC's answer right there: a win rolls the bid up to **Won**; the bid only rolls to **Lost** once every GC you sent to has said no. A GC on the bid's *Also sent to* list without a packet of its own shows as *same letter as {{chip:gray|GC}}* — its answer is tracked with the bid. On phones the same lines sit inside the card.
 
 ## Click a row for the full story
 

@@ -129,7 +129,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
             return (
               <span
                 key={r.customer_id}
-                title={r.source === 'version' ? 'Synced from a bid Version pointed at this GC' : 'Added by hand'}
+                title={r.source === 'version' ? 'Has its own packet (a version points at this GC) — see Send to on the bid’s pages' : 'Added by hand — got the same letter as the GC above. Use ＋ Another GC… on the bid’s pages to track it separately'}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -165,7 +165,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
             )
           })}
           {rows.length === 0 ? (
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Only the GC above.</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Only the GC above. GCs with their own packet land here on their own.</span>
           ) : null}
           {canEdit ? (
             <span style={{ position: 'relative' }}>

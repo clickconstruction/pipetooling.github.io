@@ -9,17 +9,17 @@ The **Bids → Cover Letter** tab is a two-pane studio: your controls sit in num
 
 ## Old and New
 
-Next to the bid's name are {{chip:gray|Old}} / {{chip:gray|New}} pills, like the Pricing tab. **New** bundles the **bids in your package** (versions), each at its ★ price; **Old** is the previous letter, which bundles checked price scenarios. Your choice is remembered on this device, and **Send… →** on the version picker always opens New.
+Next to the bid's name are {{chip:gray|Old}} / {{chip:gray|New}} pills, like the Pricing tab. **New** writes **one letter per GC**: each of that GC's packets at its ★ base price, plus any price you offered them as an alternate. **Old** is the previous letter, which bundles checked price scenarios. Your choice is remembered on this device, and **Send… →** on the Send to strip always opens New.
 
 ## The two steps
 
 - {{chip:blue|1 Scope & pricing}} — who the letter is to, what's in the letter, and the headline amount with one-click **Apply to Bid Value**.
-  - **New:** under **In this cover letter**, check the bids that go in. Each is **Base** (adds to the letter total) or **Alternate** (offered in lieu of the base bids). The headline is the **letter total** — the sum of the base bids at their ★ prices. Change a bid's price on the Pricing tab; the letter follows.
-  - **New, sending:** {{button:blue|Mark sent today}} stamps every bid in the letter with today's date and its ★ value, and sets the bid's sent date and value. Each bid then shows *sent 7/7 · $279,579* here and on the version picker; Followup's **Full bid details** lists the bids in the package with their sends.
+  - **New:** when the bid goes to more than one GC, tabs above the form pick whose letter you're writing. Under **In {{chip:gray|GC}}'s letter**, check the packets that go in. Each is **Base** (adds to the letter total) or **Alternate** (offered in lieu of the base); the prices you ticked under a packet are offered to that GC as alternates. The headline is the **letter total** — the sum of the base packets at their ★ prices. Change a price on the Pricing tab; the letter follows.
+  - **New, sending:** {{button:blue|Mark sent to Burd & Assoc.}} stamps that GC's packets with today's date and their ★ value, and sets the bid's sent date and value. The packet then shows *sent 7/7 · $279,579* here and on the Send to strip; Followup's **Full bid details** lists **Sent to — by GC** with each GC's answer.
   - **Old:** check price scenarios under *Versions in this submission* — one letter each.
 
-:::example One bid, no versions?
-New shows a single line — *One bid — the letter shows ★ WENDI* — and the letter is exactly what it was. To offer an alternate, make it a bid to send with {{button:blue|＋ Another bid to send…}} at the top.
+:::example One GC, one price?
+New shows a single line — *One bid — the letter shows ★ WENDI* — and the letter is exactly what it was. To offer that GC a second price, add it on the Pricing tab with {{button:outline|＋ Another price or GC…}} and tick **Offer as alternate**.
 :::
 - {{chip:blue|2 Letter content}} — what's included (Plan date, Fixtures per plan, Signature, Payment schedule as on/off pills), the Schedule of Values, and the inclusions / exclusions / terms text.
 
@@ -28,5 +28,5 @@ New shows a single line — *One bid — the letter shows ★ WENDI* — and the
 The buttons live right under the letter: {{button:blue|Copy & open in Google Docs}} copies the finished document and opens your proposal template, **Print** prints it, and the paste-the-link field attaches the shared Proposal back onto the bid.
 
 :::example Bidding to two GCs?
-When a bid has versions assigned to different GCs, pills above the letter switch whose document you're looking at — each GC only ever sees their own pricing.
+When a bid goes to more than one GC, the GC tabs above the form switch whose letter you're writing — each GC only ever sees their own packets and prices. A GC whose packet has no prices yet gets a *No prices yet* note instead of a letter, and its **Mark sent** stays off until it's priced.
 :::
