@@ -209,8 +209,30 @@ export default function ChecklistAddModal({
     }
   }, [modalContext?.isOpen, modalContext?.initialAssigneeUserId, users, form.assigned_to_user_ids.length, authUser?.id])
 
+  /**
+   * One reset per open (v2.2195): this effect's deps include `users` and
+   * `authUser` so the default assignee can be computed, but their async
+   * settling used to RE-FIRE the reset and wipe a draft the user was already
+   * typing (the CI flake that blocked three unrelated merges on 2026-08-23 —
+   * and a real wipe on slow connections). The key guards: reset only when the
+   * modal (re)opens or its preset changes; the effect below fills the default
+   * assignee when the roster lands later.
+   */
+  const formResetKeyRef = useRef<string | null>(null)
   useEffect(() => {
-    if (modalContext?.isOpen) {
+    if (!modalContext?.isOpen) {
+      formResetKeyRef.current = null
+      return
+    }
+    {
+      const resetKey = JSON.stringify([
+        modalContext.initialAssigneeUserId ?? null,
+        modalContext.initialPreset ?? null,
+      ])
+      if (formResetKeyRef.current === resetKey) return
+      formResetKeyRef.current = resetKey
+    }
+    {
       const defaultAssignee = getDefaultAssigneeId(
         modalContext.initialAssigneeUserId,
         users,
