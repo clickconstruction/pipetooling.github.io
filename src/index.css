@@ -156,7 +156,7 @@ button:focus-visible {
   --chrome-bg: #fafafa;
   --menu-bg: #ffffff;
   --chrome-text: #1a1a1a;
-  --chrome-border: #e5e7eb;
+  --chrome-border: #d8dce2; /* one step darker with --border (2026-08-23) */
 
   /* text (color:) */
   --text-strong: #111827;
@@ -236,9 +236,10 @@ button:focus-visible {
   --bg-indigo-100: #e0e7ff;
   --bg-indigo-200: #c7d2fe;
 
-  /* borders (border*/outline) */
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
+  /* borders (border*/outline) — darkened one step 2026-08-23 (owner: light-mode lines were
+     too faint to separate sections; dark mode already reads). Old values: #e5e7eb / #d1d5db. */
+  --border: #d8dce2;
+  --border-strong: #b9c0c9;
   /* Section-separator rules (draft editor + customer document): visible on white. */
   --border-rule: #b8bec8;
   /* Job-row separators (Jobs Pipeline board): mirrors dark mode's bright-line contrast. */
