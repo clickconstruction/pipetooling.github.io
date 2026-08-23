@@ -14,31 +14,48 @@ import { BidLossCategoryChips } from './BidLossCategoryChips'
  */
 export function BidLostQuickPopover({
   bid,
+  packet,
   onSaved,
   onClose,
 }: {
   bid: { id: string; outcome?: string | null; loss_reason?: string | null; loss_category?: string | null }
+  /**
+   * Bids by GC (v2.2178): when set, the reason is this GC's packet (bid_versions.loss_category /
+   * outcome_note) — the bid's own outcome and reason are left alone.
+   */
+  packet?: { versionIds: string[]; gcName: string; lossCategory?: string | null; note?: string | null }
   onSaved: () => void
   onClose: () => void
 }) {
   const { showToast } = useToastContext()
-  const [note, setNote] = useState((bid.loss_reason ?? '').trim())
+  const [note, setNote] = useState(((packet ? packet.note : bid.loss_reason) ?? '').trim())
   const [saving, setSaving] = useState(false)
-  const alreadyLost = bid.outcome === 'lost'
-  const currentCategory = isBidLossCategoryKey(bid.loss_category) ? bid.loss_category : null
+  const alreadyLost = packet ? true : bid.outcome === 'lost'
+  const currentCategory = isBidLossCategoryKey(packet ? packet.lossCategory : bid.loss_category) ? ((packet ? packet.lossCategory : bid.loss_category) as BidLossCategoryKey) : null
 
   async function save(category: BidLossCategoryKey | null) {
     setSaving(true)
     try {
-      await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('bids')
-            .update({ outcome: 'lost', loss_category: category, loss_reason: note.trim() || null })
-            .eq('id', bid.id),
-        'quick lost capture',
-      )
-      showToast(category ? 'Lost — reason recorded.' : 'Marked lost — it will wait in Followup → Why we lost.', 'success')
+      if (packet) {
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('bid_versions')
+              .update({ outcome: 'lost', loss_category: category, outcome_note: note.trim() || null })
+              .in('id', packet.versionIds),
+          'quick lost capture (packet)',
+        )
+      } else {
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('bids')
+              .update({ outcome: 'lost', loss_category: category, loss_reason: note.trim() || null })
+              .eq('id', bid.id),
+          'quick lost capture',
+        )
+      }
+      showToast(packet ? `Lost with ${packet.gcName} — ${category ? 'reason recorded.' : 'no reason yet.'}` : category ? 'Lost — reason recorded.' : 'Marked lost — it will wait in Followup → Why we lost.', 'success')
       onSaved()
       onClose()
     } catch (err) {

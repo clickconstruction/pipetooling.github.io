@@ -3452,6 +3452,7 @@ export default function Bids() {
       {activeTab === 'submission-followup' && (
         <BidSubmissionFollowupTab
           bids={bids}
+          gcPacketsByBid={gcPacketsByBid}
           authUser={authUser}
           selectedBid={selectedBidForSubmission}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'submission-followup')}

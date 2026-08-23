@@ -115,6 +115,7 @@ A bid sent to several GCs shows up under **each** of them — in the Call queue,
 
 - When you mark one GC **won** (board, Followup, or a chase tap), the other GCs you sent to are marked **lost · GC lost the project** for you — tagged {{chip:gray|auto}} in Why we lost, and you can tap a different reason any time. Nothing to triage.
 - In **Why we lost**, a multi-GC entry shows a line under the address — *Burd & Assoc.* {{chip:red|lost}} *★ $52,311 · sent 7/31 · also went to Southern Post* {{chip:green|won}} — and the reason you tap is **that GC's**; the bid's overall outcome doesn't move.
+- In **By status**, the bid shows one row per GC, each in the bucket that GC's answer puts it; the GC column names the row's GC with a quiet *also to …* line, and the Lost row's reason is that GC's.
 - In **Waiting to hear**, a GC that has answered drops off that builder's list while the others keep waiting. Touches (Left message, Still pending…) stay per-bid, so a touch under any GC freshens every copy.
 - A GC on the bid's **Also sent to** list with no packet of its own got the same letter as the bid's GC; it rides with the bid's outcome, and one reason still clears it everywhere. On the **Bid Board**, multi-GC bids show a line per GC under the row (and wear a {{chip:gray|+2 GCs}} chip for the Also-sent-to list).
 
