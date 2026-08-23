@@ -49,6 +49,7 @@ const SUPERINTENDENT_PATHS = [
 function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
   return [
     '/dashboard',
+    '/my-statement',
     '/map',
     '/materials',
     '/estimates',

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { usePartnerJobs, usePartnerLedger } from '../hooks/usePartnerLedger'
+import { invalidatePartnerNavStatus } from '../hooks/useIsPartner'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { todayLongDate } from '../lib/partnerLedger/partnerStatementModel'
 import { MUTED, PAPER } from '../lib/portal/portalTheme'
@@ -27,7 +28,10 @@ export function PartnerStatementView({ asPartnershipId }: { asPartnershipId?: st
   async function acknowledge(stubId: string) {
     setAcking(true)
     const { error } = await supabase.rpc('acknowledge_partner_statement', { p_pay_stub_id: stubId })
-    if (!error) await reload()
+    if (!error) {
+      await reload()
+      invalidatePartnerNavStatus()
+    }
     setAcking(false)
   }
 

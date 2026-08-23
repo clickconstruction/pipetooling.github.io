@@ -1,10 +1,10 @@
 ---
 title: see your partner ledger and weekly statements
 category: Billing & Money
-roles: subcontractor
+roles: subcontractor, estimator
 keywords: partner, ledger, weekly statement, balance, acknowledge, profit share, back-charge, paid out, partnership
 ---
-If you work with the company as a partner, your Dashboard has a **Your statement** card — your balance in plain words (**you owe Click** or **Click owes you**), which week is open, and a note when a statement is waiting on your sign-off. Tap it to open your **Partner statement**: the same kind of paper the company sends its customers, with your running balance and everything behind it, week by week.
+If you work with the company as a partner, your Dashboard has a **Your statement** card — your balance in plain words (**you owe Click** or **Click owes you**), which week is open, and a note when a statement is waiting on your sign-off. Tap it — or the receipt icon beside the home icon at the top of every page (it carries a small amber dot while a statement is waiting on you) — to open your **Partner statement**: the same kind of paper the company sends its customers, with your running balance and everything behind it, week by week.
 
 ## Reading the statement
 

@@ -75,6 +75,8 @@ import {
   stampDispatchModeActivity,
 } from '../lib/dispatchModeReturnFocus'
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
+import { useIsPartner } from '../hooks/useIsPartner'
+import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -113,6 +115,8 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess, readOnly } = useAuth()
+  // Partner nav (v2.2165): the Statement link shows only for accounts with a live partnership.
+  const partnerNav = useIsPartner(role)
   const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
   // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
@@ -538,6 +542,7 @@ export default function Layout() {
             {dashboardIcon}
           </NavLink>
         ) : null}
+        {partnerNav.isPartner ? <PartnerStatementNavLink variant="icon" awaitingSignOff={partnerNav.awaitingSignOff} style={iconLinkStyle} /> : null}
         {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="strip" isMobile={isMobile} />}
         {role === 'dev' && !isMobile && (
           <NavLink to="/people?tab=review" style={iconLinkStyle} title="Review" aria-label="Review">
@@ -599,6 +604,17 @@ export default function Layout() {
               {dashboardContent}
             </NavLink>
           )}
+          {partnerNav.isPartner ? (
+            onNavClick ? (
+              <PartnerStatementNavLink variant="row" awaitingSignOff={partnerNav.awaitingSignOff} style={linkStyle} onClick={onNavClick} />
+            ) : !excludeHeaderLinks ? (
+              <PartnerStatementNavLink
+                variant="icon"
+                awaitingSignOff={partnerNav.awaitingSignOff}
+                style={({ isActive }) => ({ ...linkStyle({ isActive }), display: 'inline-flex', alignItems: 'center' })}
+              />
+            ) : null
+          ) : null}
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
           <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
@@ -662,6 +678,17 @@ export default function Layout() {
             {dashboardContent}
           </NavLink>
         )}
+        {partnerNav.isPartner ? (
+          onNavClick ? (
+            <PartnerStatementNavLink variant="row" awaitingSignOff={partnerNav.awaitingSignOff} style={linkStyle} onClick={onNavClick} />
+          ) : !excludeHeaderLinks ? (
+            <PartnerStatementNavLink
+              variant="icon"
+              awaitingSignOff={partnerNav.awaitingSignOff}
+              style={({ isActive }) => ({ ...linkStyle({ isActive }), display: 'inline-flex', alignItems: 'center' })}
+            />
+          ) : null
+        ) : null}
         {!isSubcontractorLikeRole(role) && (
           <>
             {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
