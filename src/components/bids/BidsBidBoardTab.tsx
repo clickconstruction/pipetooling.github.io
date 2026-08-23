@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useBidGcPackets } from '../../hooks/useBidGcPackets'
+import { BidBoardGcRows, gcRowsWorthShowing } from './BidBoardGcRows'
 import type { Bid } from '../../types/bids'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -145,6 +147,8 @@ export function BidsBidBoardTab({
   } = useBidBoardSelfHighlight(authUser?.id)
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
+  // Bids by GC (v2.2162): per-GC packets for every bid on the board → the GC lines under a row.
+  const { packetsByBid: gcPacketsByBid } = useBidGcPackets(bids)
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)
@@ -862,6 +866,9 @@ export function BidsBidBoardTab({
             {renderBidBoardLinksCluster(bid)}
           </td>
         </tr>
+        {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
+          <BidBoardGcRows bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} colSpan={colCount} onChanged={onReloadBids} />
+        ) : null}
         {bid.outcome === 'lost' ? (
           <tr
             aria-label={`Loss reason: ${(bid as { loss_reason?: string | null }).loss_reason?.trim() || 'not recorded'}`}

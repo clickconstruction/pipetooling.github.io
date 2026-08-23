@@ -686,6 +686,9 @@ export type Database = {
           include_in_submission: boolean
           is_alternate: boolean
           name: string
+          outcome: string | null
+          outcome_at: string | null
+          outcome_note: string | null
           sort_order: number
           source_bid_version_id: string | null
           starred_price_book_version_id: string | null
@@ -698,6 +701,9 @@ export type Database = {
           include_in_submission?: boolean
           is_alternate?: boolean
           name: string
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_note?: string | null
           sort_order?: number
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
@@ -710,6 +716,9 @@ export type Database = {
           include_in_submission?: boolean
           is_alternate?: boolean
           name?: string
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_note?: string | null
           sort_order?: number
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null

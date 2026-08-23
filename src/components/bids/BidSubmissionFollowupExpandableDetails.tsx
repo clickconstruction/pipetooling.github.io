@@ -173,7 +173,7 @@ export function BidSubmissionFollowupExpandableDetails({
 
         <SectionTitle>Submission</SectionTitle>
         <DetailPair label="Submitted to" value={dash(bid.submitted_to)} />
-        <BidPackageSendsDetails bidId={bid.id} />
+        <BidPackageSendsDetails bidId={bid.id} bidOutcome={bid.outcome ?? null} bidGcName={bid.customers?.name ?? bid.bids_gc_builders?.name ?? null} bidDateSent={bid.bid_date_sent ?? null} />
 
         <SectionTitle>Financial</SectionTitle>
         <DetailPair label="Bid value" value={formatCompactCurrency(bid.bid_value != null ? Number(bid.bid_value) : null)} />
