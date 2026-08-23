@@ -12,6 +12,7 @@ import {
   type PortalPayload,
 } from '../lib/portal/portalPayload'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
+import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER } from '../lib/portal/portalTheme'
 
 /**
  * Customer / GC portal (portal train PR 1): the no-login "account statement"
@@ -24,13 +25,6 @@ import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOr
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
-const INK = '#16283c'
-const PAPER = '#f6f3ec'
-const CARD = '#fdfcf9'
-const MUTED = '#5a6b7e'
-const FAINT = '#8a97a6'
-const HAIR = '#ddd6c8'
-const COPPER = '#b0662f'
 
 export default function CustomerPortal() {
   const [params] = useSearchParams()

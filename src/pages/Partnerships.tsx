@@ -14,8 +14,7 @@ import {
   type PartnershipModules,
 } from '../lib/partnerLedger/partnershipConfig'
 import type { Database, Json } from '../types/database'
-import { DashboardPartnerLedgerSection } from '../components/dashboard/DashboardPartnerLedgerSection'
-import { DashboardPartnerJobsSection } from '../components/dashboard/DashboardPartnerJobsSection'
+import { PartnerStatementView } from './PartnerStatement'
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 import { PartnershipJobReviewTab } from '../components/partnerships/PartnershipJobReviewTab'
 import { PartnershipStatementsTab } from '../components/partnerships/PartnershipStatementsTab'
@@ -632,13 +631,10 @@ export default function Partnerships() {
               </div>
 
               {lensOn ? (
-                // Muted ground behind the lens — the dashboard cards are white
-                // surfaces that vanish against this page's white detail card in
-                // light mode; this recreates the dashboard's page background so
-                // their borders read in both themes.
-                <div style={{ marginTop: '0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.1rem 0.85rem' }}>
-                  <DashboardPartnerLedgerSection asPartnershipId={selected.id} />
-                  <DashboardPartnerJobsSection asPartnershipId={selected.id} />
+                // The lens shows exactly the partner's statement page (v2.2157)
+                // through the dev-only *_as RPCs — same paper, same truth.
+                <div style={{ marginTop: '0.75rem' }}>
+                  <PartnerStatementView asPartnershipId={selected.id} />
                 </div>
               ) : (
                 <>
