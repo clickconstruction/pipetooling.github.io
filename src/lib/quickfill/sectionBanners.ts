@@ -16,7 +16,7 @@ export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>>
   'jobs-cleanup': "Is every sub labor sheet attached to a job, and is today's money moving? Link each sheet, then work the cards — they're the same ones on Jobs → Pipeline.",
   'people-hours-new': "Are yesterday's and today's hours right?",
   'unassigned-field-time': 'Is every paid field hour tied to a job?',
-  'vehicle-odometers': 'Do we have a reading on every truck this week?',
+  'vehicle-odometers': 'Do we have a reading and a check-in on every truck?',
   'difficult-people': 'Who needs a conversation this week?',
   'banking-sorting': 'Is every bank transaction sorted to a job?',
   'crew-jobs': 'Does every crew day have its job split?',

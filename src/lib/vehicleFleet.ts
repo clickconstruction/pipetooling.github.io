@@ -463,6 +463,49 @@ export function staleOdometerCallList(
   return rows
 }
 
+export type CheckinDueRow = {
+  vehicle: FleetVehicle
+  /** Null only never happens — motor-pool rows carry the motor-pool possession. */
+  holder: FleetPossession
+  motorPool: boolean
+  latest: FleetOdometerEntry | null
+  daysStale: number | null
+  /** The cadence that put this row on the list (7 for assigned, 30 for motor pool by default). */
+  dueDays: number
+}
+
+/**
+ * The check-in worklist (v2.2199): assigned vehicles whose reading is older
+ * than `assignedDays`, plus motor-pool vehicles older than `motorPoolDays`
+ * (0 = motor pool skipped). Unassigned vehicles (no open possession) are
+ * still skipped. Never-read first, then stalest.
+ */
+export function vehicleCheckinDueList(
+  vehicles: FleetVehicle[],
+  holderByVehicle: ReadonlyMap<string, FleetPossession>,
+  latestByVehicle: ReadonlyMap<string, FleetOdometerEntry>,
+  todayYmd: string,
+  cadence: { assignedDays: number; motorPoolDays: number },
+): CheckinDueRow[] {
+  const rows: CheckinDueRow[] = []
+  for (const v of vehicles) {
+    const holder = holderByVehicle.get(v.id)
+    if (!holder) continue
+    const motorPool = isMotorPoolPossession(holder)
+    const dueDays = motorPool ? cadence.motorPoolDays : cadence.assignedDays
+    if (motorPool && dueDays <= 0) continue
+    const latest = latestByVehicle.get(v.id) ?? null
+    const daysStale = latest ? daysBetweenYmd(latest.read_date, todayYmd) : null
+    if (daysStale != null && daysStale <= dueDays) continue
+    rows.push({ vehicle: v, holder, motorPool, latest, daysStale, dueDays })
+  }
+  rows.sort((a, b) => {
+    if ((a.daysStale == null) !== (b.daysStale == null)) return a.daysStale == null ? -1 : 1
+    return (b.daysStale ?? 0) - (a.daysStale ?? 0)
+  })
+  return rows
+}
+
 export type FleetProblemReport = {
   id: string
   vehicle_id: string
@@ -498,6 +541,7 @@ export function openProblemCounts(reports: FleetProblemReport[]): Map<string, nu
 
 export type VehicleLedgerRowKind =
   | 'reading'
+  | 'checkin'
   | 'handoff'
   | 'return'
   | 'value'
@@ -536,8 +580,10 @@ export function buildVehicleLedger(args: {
   insurancePeriods?: FleetInsurancePeriod[]
   planNameById?: ReadonlyMap<string, string>
   maintenanceTasks?: VehicleMaintenanceTask[]
+  /** Check-ins (v2.2199): label pre-built by the caller (checkinLedgerBody). */
+  checkins?: Array<{ id: string; checkin_date: string; label: string }>
 }): VehicleLedgerRow[] {
-  const { readings, possessions, valueEntries, userNameById, serviceEvents = [], problemReports = [], insurancePeriods = [], planNameById, maintenanceTasks = [] } = args
+  const { readings, possessions, valueEntries, userNameById, serviceEvents = [], problemReports = [], insurancePeriods = [], planNameById, maintenanceTasks = [], checkins = [] } = args
   const name = (id: string | null | undefined): string | null => {
     if (!id) return null
     return userNameById.get(id) ?? null
@@ -553,6 +599,17 @@ export function buildVehicleLedger(args: {
       odometer: r.odometer_value,
       amount: null,
       sourceId: r.id,
+    })
+  }
+  for (const c of checkins) {
+    rows.push({
+      key: `checkin-${c.id}`,
+      kind: 'checkin',
+      dateYmd: c.checkin_date,
+      label: c.label,
+      odometer: null,
+      amount: null,
+      sourceId: c.id,
     })
   }
   const byStart = [...possessions].sort((a, b) => a.start_date.localeCompare(b.start_date))
@@ -685,10 +742,11 @@ export function buildVehicleLedger(args: {
     insurance_on: 3,
     problem_resolved: 4,
     problem: 5,
-    task_done: 6,
-    service: 7,
-    reading: 8,
-    value: 9,
+    checkin: 6,
+    task_done: 7,
+    service: 8,
+    reading: 9,
+    value: 10,
   }
   rows.sort((a, b) => {
     if (a.dateYmd !== b.dateYmd) return b.dateYmd.localeCompare(a.dateYmd)

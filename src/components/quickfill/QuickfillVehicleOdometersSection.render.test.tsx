@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the Quickfill "Vehicle odometers" station: person-held
- * vehicles with week-stale readings list with holder call links and inline
- * miles entry; fresh, motor-pool, and unassigned vehicles are skipped.
+ * Render smoke for the Quickfill "Vehicle check-ins" station (v2.2199):
+ * person-held vehicles with week-stale readings list with holder call links,
+ * inline miles entry, and the check-in question checkboxes; motor-pool
+ * vehicles ride the monthly cadence ("walk out & check"); fresh and
+ * unassigned vehicles are skipped.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -52,6 +54,7 @@ vi.mock('../../lib/supabase', () => {
       builder[m] = () => builder
     }
     builder.single = () => Promise.resolve({ data: rows[0] ?? null, error: null })
+    builder.maybeSingle = () => Promise.resolve({ data: rows[0] ?? null, error: null })
     builder.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
       Promise.resolve({ data: rows, error: null, count: rows.length }).then(onFulfilled, onRejected)
     return builder
@@ -64,25 +67,35 @@ vi.mock('../../lib/supabase', () => {
 })
 
 describe('QuickfillVehicleOdometersSection', () => {
-  it('lists week-stale person-held vehicles with call links and miles entry, skipping fresh/pool', async () => {
+  it('lists stale person-held + motor-pool vehicles with call links, miles entry, and questions', async () => {
     renderWithProviders(<QuickfillVehicleOdometersSection />)
 
     // v1: Abraham, 12d stale → listed with a tel: link. v4: Trace, never read →
-    // listed first with the no-phone note. v2 fresh and v3 motor pool are out.
+    // listed with the no-phone note. v3 motor pool, never read → listed on the
+    // monthly cadence with "walk out & check". v2 fresh is out.
     expect(await screen.findByText('2019 Ford F250')).toBeTruthy()
     expect(screen.getByText('2007 Dodge Ram')).toBeTruthy()
+    expect(screen.getByText('2000 Ford F650')).toBeTruthy()
     expect(screen.queryByText('2021 Ford Transit')).toBeNull()
-    expect(screen.queryByText('2000 Ford F650')).toBeNull()
 
     const call = screen.getByTitle('Call Abraham (210-555-0101)') as HTMLAnchorElement
     expect(call.getAttribute('href')).toBe('tel:210-555-0101')
     expect(screen.getByText('Trace')).toBeTruthy()
     expect(screen.getByText('(no phone)')).toBeTruthy()
+    expect(screen.getByText(/walk out & check/)).toBeTruthy()
+    expect(screen.getByText('Motor pool · monthly')).toBeTruthy()
+    expect(screen.getAllByText('weekly').length).toBe(2)
     expect(screen.getByText(/12d ago/)).toBeTruthy()
-    expect(screen.getByText('no reading yet')).toBeTruthy()
+    expect(screen.getAllByText('no reading yet').length).toBe(2)
+
+    // Default check-in question renders as a checkbox on every row; the
+    // required note box only appears once the box is checked.
+    expect(screen.getAllByText('Any lights on the dash?').length).toBe(3)
+    expect(screen.queryByPlaceholderText('What did you see? (required)')).toBeNull()
 
     expect(screen.getByLabelText('Odometer for 2019 Ford F250')).toBeTruthy()
     expect(screen.getByLabelText('Odometer for 2007 Dodge Ram')).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: 'Save' }).length).toBe(2)
+    expect(screen.getByLabelText('Odometer for 2000 Ford F650')).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Save' }).length).toBe(3)
   })
 })
