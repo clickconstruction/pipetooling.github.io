@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJournalWeekCards,
   reconcileLines,
+  tierHoursTotal,
   parsePartnerLedgerStubs,
   parsePartnerSummary,
   parsePartnerLedgerOffsets,
@@ -115,8 +116,8 @@ describe('buildJournalWeekCards', () => {
     // payout dated 08-14 books before the 08-15 stub lines — dates rule, not the statement layout
     expect(labels).toEqual([
       'Paid out',
-      'Labor · 22.5 h × $50',
-      'Labor · 18.0 h × $35',
+      'Labor · 22.50 h × $50',
+      'Labor · 18.00 h × $35',
       'Profit share — Job 781',
       'Back-charge — return trip',
     ])
@@ -126,7 +127,7 @@ describe('buildJournalWeekCards', () => {
     const s = stub({ day_rates: [{ rate: 50, hours: 22.5, amount: 1125 }, { rate: 0, hours: 0, amount: 0 }] })
     const cards = buildJournalWeekCards(summary(), [s])
     const laborLabels = cards[1]?.lines.filter((l) => l.label.startsWith('Labor')).map((l) => l.label) ?? []
-    expect(laborLabels).toEqual(['Labor · 22.5 h × $50'])
+    expect(laborLabels).toEqual(['Labor · 22.50 h × $50'])
   })
 
   it('labor tier lines reconcile to the stub gross — opening + lines = closing to the penny', () => {
@@ -145,7 +146,7 @@ describe('buildJournalWeekCards', () => {
     const cards = buildJournalWeekCards(summary(), [s])
     const wk = cards.find((c) => c.weekStart === '2026-05-31')!
     const labor = wk.lines.find((l) => l.label.startsWith('Labor'))!
-    expect(labor.label).toBe('Labor · 18.6 h × $37.50')
+    expect(labor.label).toBe('Labor · 18.57 h × $37.50')
     expect(labor.amount).toBe(696.28)
     const sum = Math.round(wk.lines.reduce((a, l) => a + (l.amount ?? 0), 0) * 100) / 100
     expect(sum).toBe(Math.round((wk.closing - (wk.opening ?? 0)) * 100) / 100)
@@ -171,7 +172,7 @@ describe('buildJournalWeekCards', () => {
   it('live so-far lines reconcile to gross_so_far', () => {
     const cards = buildJournalWeekCards(summary({ current_week: { week_start: '2026-08-16', field_hours: 9.5, office_hours: 0, farm_hours: 0, gross_so_far: 475.01, pending_sessions: 0 } }), [stub()])
     const field = cards[0]!.lines.find((l) => l.label.startsWith('Field labor'))!
-    expect(field.label).toBe('Field labor · 9.5 h × $50')
+    expect(field.label).toBe('Field labor · 9.50 h × $50')
     expect(field.amount).toBe(475.01)
   })
 
@@ -230,7 +231,7 @@ describe('partnerStubsToJournal', () => {
     // 1755 + 1051.05 − 150 − 1625
     expect(balance).toBe(1031.05)
     expect(rows[0]?.date).toBe('2026-08-14')
-    expect(rows[1]?.label).toBe('Labor — 40.5 h (week of 2026-08-09)')
+    expect(rows[1]?.label).toBe('Labor — 40.50 h (week of 2026-08-09)')
   })
 
   it('chains multiple weeks oldest-first; closing equals the summary balance convention', () => {
@@ -278,6 +279,21 @@ describe('partnerStubsToJournal', () => {
       ['2026-08-15', 'labor'],
       ['2026-08-15', 'deduction'],
     ])
+  })
+})
+
+describe('tierHoursTotal + Full-ledger hours', () => {
+  it('the partner Full ledger says the same hours as the card (Σ tier hours, not hours_total)', () => {
+    // Bryan 2026-08-09: hours_total 12.85 but the stamped tier says 12.86 — the card showed "12.9 h",
+    // the Full ledger "12.8 h". Both now read 12.86.
+    const s = stub({ id: 'sH', hours_total: 12.85, gross_pay: 450.1, day_rates: [{ rate: 35, hours: 12.86, amount: 450.1 }, { rate: 0, hours: 0, amount: 0 }], additional: [], deductions: [], payments: [] })
+    expect(tierHoursTotal(s)).toBe(12.86)
+    expect(tierHoursTotal(stub({ day_rates: [] }))).toBeNull()
+    const { rows } = partnerStubsToJournal([s])
+    expect(rows[0]?.label).toBe('Labor — 12.86 h (week of 2026-08-09)')
+    expect(rows[0]?.hours).toBe(12.86)
+    const cards = buildJournalWeekCards(summary(), [s])
+    expect(cards[1]?.lines.find((l) => l.label.startsWith('Labor'))?.label).toBe('Labor · 12.86 h × $35')
   })
 })
 
