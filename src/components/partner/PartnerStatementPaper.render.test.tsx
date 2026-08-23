@@ -13,6 +13,8 @@ const summary: PartnerSummary = {
   exists: true,
   partnership_id: 'p1',
   display_name: 'Bryan',
+  company_name: 'Herber Electric',
+  started_on: '2026-03-22',
   balance: -1008.13,
   modules: { weekly_statement: true, costing: true, profit_shares: true },
   current_week: { week_start: '2026-08-23', field_hours: 0, office_hours: 0, farm_hours: 0, gross_so_far: 0, pending_sessions: 0 },
@@ -44,7 +46,15 @@ describe('PartnerStatementPaper', () => {
     expect(screen.getByText(/Last statement · Week of Aug 9 · awaiting your sign-off/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Acknowledge statement' })).toBeTruthy()
     expect(screen.getByText('partner since Mar 22, 2026 · field $50 · estimating $35 / h')).toBeTruthy()
+    expect(screen.getByText(/Partner account · Herber Electric/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Costing ›' })).toBeTruthy()
+  })
+
+  it('letterhead falls back when the deal has no company name or start date', () => {
+    render(<PartnerStatementPaper {...base} summary={{ ...summary, company_name: null, started_on: null }} />)
+    expect(screen.queryByText(/Partner account ·/)).toBeNull()
+    // oldest card on file starts 2026-03-22 too, so the words are the same — just sourced differently
+    expect(screen.getByText(/partner since Mar 22, 2026/)).toBeTruthy()
   })
 
   it('hides the awaiting block when the reader is already on that week', () => {
