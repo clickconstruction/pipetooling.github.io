@@ -649,7 +649,8 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
               // jobs_ledger now has TWO customers FKs (customer_id + gc_customer_id, v2.1175) — the embed must name its FK.
               'id, hcp_number, click_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers!jobs_ledger_customer_id_fkey(name, address), service_type:service_types(name)',
             )
-            .is('adopted_into_bid_id', null)
+            // (v2.2181: the `.is('adopted_into_bid_id', null)` that #1840 added here by mistake —
+            // jobs_ledger has no such column — made this tab silently empty for everyone since v2.2137.)
             // Primary scoping (v2.2177): a primary's Documents → Jobs is the jobs they are
             // Account Man for (RLS enforces it; stated here so the page filters on purpose).
             .match(role === 'primary' ? { account_manager_user_id: user.id } : {})

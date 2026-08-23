@@ -625,7 +625,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Checklist** (`/checklist`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Partner statement** (`/my-statement`, v2.2157 — the partner's own statement page, the customer portal's sibling on paper; self-gating through the `get_my_partner_*` RPCs: a caller with no live partnership sees a quiet "no partner statement" note. Partners can be sub-like OR `estimator` accounts (Bryan is an estimator), so the path is in the sub-like, estimator, and (v2.2179) primary allowlists; the nav's Statement link (v2.2165, `useIsPartner`) shows only when `get_my_partner_summary` says the caller is a partner; devs reach the same view through Partnerships → "View as …") | ✅ (lens / own) | — | — | ✅ partners only | ✅ partners only | ✅ partners only | — |
 | **Tally** (`/tally`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ (hidden since PR #275 (2026-07-13); restored v2.2181 now that rows are scoped to Account-Man jobs) | ✅ |
 | **Accounts Receivable** (`/accounts-receivable`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Help** (`/help`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
