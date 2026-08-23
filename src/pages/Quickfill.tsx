@@ -7,6 +7,7 @@ import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnall
 import { SectionDock } from '../components/SectionDock'
 import { markStampInitial, markStampTime } from '../lib/quickfillMarkStamp'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
@@ -1528,6 +1529,16 @@ function QuickfillPage() {
     }
   }
 
+  const narrowViewport = useNarrowViewport640()
+  const freshnessLine = useMemo(
+    () =>
+      quickfillFreshnessSummary(
+        orderedSections
+          .filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
+          .map(({ sectionId }) => ({ sectionId, markedAt: sectionMarks[sectionId]?.marked_at ?? null, personal: sectionId === 'my-inbox' })),
+      ).line,
+    [orderedSections, sectionWouldRenderOnPage, sectionMarks],
+  )
   const dockSections = searchedSections
     .filter(({ sectionId }) => !dockHiddenThisVisit.has(sectionId))
     .map(({ id, label }) => ({ id, label }))
@@ -1539,7 +1550,29 @@ function QuickfillPage() {
     <div style={{ padding: '1.5rem', paddingBottom: dockSections.length > 1 ? '4.5rem' : '1.5rem', maxWidth: 1200, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Quickfill sections" /> : null}
       <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Quickfill</h1>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
+      {/* Jump grid (v2.2184): phones get a one-line strip you flick sideways (the
+          dock's own pattern) plus a freshness summary — the wrapped grid was 18
+          rows tall at 375px, a whole screen before the first section. Desktop
+          and tablet keep the wrapped grid. The who·when stamp now sits inside
+          the chip after its label instead of floating over the corner. */}
+      <div
+        style={
+          narrowViewport
+            ? {
+                display: 'flex',
+                flexWrap: 'nowrap',
+                gap: '0.5rem',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                padding: '0.25rem 0 0.5rem',
+                marginBottom: '0.25rem',
+                scrollbarWidth: 'thin',
+              }
+            : { display: 'flex', flexWrap: 'wrap', gap: '0.6rem 0.75rem', justifyContent: 'center', marginBottom: '1.5rem' }
+        }
+        role="navigation"
+        aria-label="Jump to a section"
+      >
         {orderedSections.filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId)).map(({ id, sectionId, label }) => {
           const mark = sectionMarks[sectionId]
           const color = getButtonColor(mark?.marked_at ?? null)
@@ -1556,46 +1589,32 @@ function QuickfillPage() {
                 ? `Last marked ${markRelative}${byName ? ` by ${byName}` : ''}`
                 : 'Never marked'
           return (
-            <div key={id} style={{ position: 'relative' }}>
-              <button
-                type="button"
-                onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
-                title={lastMarkedTitle}
-                aria-label={`${label}: jump to section. ${lastMarkedTitle}`}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: 6,
-                  background: isPersonalSection ? 'var(--surface)' : BUTTON_BG[color],
-                  border: `1px solid ${isPersonalSection ? 'var(--border-strong)' : BUTTON_BORDER[color]}`,
-                  cursor: 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                }}
-              >
-                {label}
-              </button>
+            <button
+              key={id}
+              type="button"
+              onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
+              title={lastMarkedTitle}
+              aria-label={`${label}: jump to section. ${lastMarkedTitle}`}
+              style={{
+                padding: narrowViewport ? '0.4rem 0.65rem' : '0.5rem 0.75rem',
+                borderRadius: 6,
+                background: isPersonalSection ? 'var(--surface)' : BUTTON_BG[color],
+                border: `1px solid ${isPersonalSection ? 'var(--border-strong)' : BUTTON_BORDER[color]}`,
+                cursor: 'pointer',
+                fontSize: narrowViewport ? '0.8125rem' : '0.875rem',
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              {label}
               {mark ? (
-                // Compact who+when stamp floating over the button's corner; hover title carries the full text.
                 <span
                   aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    bottom: -8,
-                    right: -6,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    padding: '1px 6px 1px 1px',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 999,
-                    fontSize: '0.6875rem',
-                    fontWeight: 600,
-                    color: 'var(--text-muted)',
-                    pointerEvents: 'none',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
-                    whiteSpace: 'nowrap',
-                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)' }}
                 >
                   <span
                     style={{
@@ -1616,10 +1635,13 @@ function QuickfillPage() {
                   {markStampTime(mark.marked_at, Date.now())}
                 </span>
               ) : null}
-            </div>
+            </button>
           )
         })}
       </div>
+      {narrowViewport && freshnessLine ? (
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '0.75rem' }}>{freshnessLine}</div>
+      ) : null}
       {hasAnyVisibleSection && (
         <div style={{ position: 'relative', width: '100%', marginBottom: '1.5rem' }}>
           <input
@@ -2008,6 +2030,29 @@ function QuickfillSectionWrapper({
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-slate-500)' }} title="Last time this section was marked up to date">
             Last marked: {formatHeaderLastMarked(mark?.marked_at ?? null)}
           </span>
+        ) : null}
+        {/* Header mark (v2.2184): the same action as the big button at the foot, reachable
+            without scrolling a long section. Sections that ask for a note first
+            (Texts / Email / Physical) keep their own button only. */}
+        {!omitDefaultMarkButton && !collapsed ? (
+          <button
+            type="button"
+            onClick={onMarkUpToDate}
+            title={`Mark ${label} up to date`}
+            aria-label={`Mark ${label} up to date`}
+            style={{
+              padding: '0.3rem 0.6rem',
+              borderRadius: 6,
+              background: BUTTON_BG[color],
+              border: `1px solid ${BUTTON_BORDER[color]}`,
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            ✓ Mark
+          </button>
         ) : null}
         {showMarkHistoryButton ? (
           <button
