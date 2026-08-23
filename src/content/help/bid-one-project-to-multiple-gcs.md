@@ -7,11 +7,11 @@ order: 71
 ---
 When several general contractors are chasing the same project, you can price and send the same bid to each of them without rebuilding it — each GC gets their own cover letter document with only their own pricing.
 
-## Point a Version at a GC
+## Add a GC
 
-1. On the bid's **Pricing** (or Takeoff / Cover Letter) page, find the **Version** chips.
-2. Click the ✎ on a version. Under the name you'll see **GC/Builder (customer) for this version**.
-3. Pick the GC this version is priced for, or leave it on **Use bid default** to keep the GC from the bid itself.
+1. On the bid's **Counts / Takeoffs / Pricing / Cover Letter** page, the strip at the top reads **Send to** — one group per GC, each showing whether it was sent and its ★ price.
+2. Press {{button:blue|＋ Another GC…}}: pick the GC, choose which packet to **start from** (its counts, takeoff and prices are copied), and optionally name it — it defaults to the GC's name.
+3. Inside a GC group, **+ version** adds a same-GC variant with its own takeoff (a VE, say). The ✎ on any version still lets you rename it or point it at a different GC.
 
 :::example Chips show where each version points
 Once any version has its own GC, every chip shows a small tag — {{chip:blue|GC: Turner Const.}} on overridden versions, and *GC: bid default* on the rest — so nothing is ambiguous.

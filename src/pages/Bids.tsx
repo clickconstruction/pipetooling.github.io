@@ -3100,6 +3100,8 @@ export default function Bids() {
             onSwitch={(versionId) => switchActiveVersion(selectedBidForCounts.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForCounts.id), loadBidPricings(selectedBidForCounts.id)]).then(() => {})}
             pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
+            bidGcName={selectedBidForCounts.customers?.name ?? selectedBidForCounts.bids_gc_builders?.name ?? null}
+            bidDateSent={selectedBidForCounts.bid_date_sent ?? null}
           />
         )}
         <BidsCountsTab
@@ -3143,6 +3145,8 @@ export default function Bids() {
             onSwitch={(versionId) => switchActiveVersion(selectedBidForTakeoff.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForTakeoff.id), loadBidPricings(selectedBidForTakeoff.id)]).then(() => {})}
             pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
+            bidGcName={selectedBidForTakeoff.customers?.name ?? selectedBidForTakeoff.bids_gc_builders?.name ?? null}
+            bidDateSent={selectedBidForTakeoff.bid_date_sent ?? null}
           />
         )}
         <BidsTakeoffTab
@@ -3297,6 +3301,8 @@ export default function Bids() {
             onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
             pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
+            bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
+            bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
           />
         )}
         <BidsPricingTab
@@ -3380,6 +3386,8 @@ export default function Bids() {
             onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
             pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
+            bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
+            bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
           />
         )}
         <BidsCoverLetterTab

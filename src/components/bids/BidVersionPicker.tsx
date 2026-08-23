@@ -23,6 +23,10 @@ type BidVersionPickerProps = {
   onGoToCoverLetter?: () => void
   /** Scenario names by id (bid pricings + templates), so the split modal can say which name the clone keeps (v2.2123). */
   pricingSourceNames?: Record<string, string>
+  /** The bid's own GC / builder name — the group a version with no override belongs to (G2, v2.2161). */
+  bidGcName?: string | null
+  /** bids.bid_date_sent — shown on every GC group when the bid has no per-version sends yet (pre-v2.2124 bids). */
+  bidDateSent?: string | null
 }
 
 const chipBase: React.CSSProperties = {
@@ -50,6 +54,8 @@ export function BidVersionPicker({
   reloadVersions,
   onGoToCoverLetter,
   pricingSourceNames,
+  bidGcName,
+  bidDateSent,
 }: BidVersionPickerProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -62,6 +68,9 @@ export function BidVersionPicker({
   const [busy, setBusy] = useState(false)
 
   const [renaming, setRenaming] = useState<BidVersion | null>(null)
+  // G2 (v2.2161): "+ Another GC…" — GC-first packet creation; "+ version" inside a GC group.
+  const [addGc, setAddGc] = useState<{ gcId: string; fromVersionId: string; name: string } | null>(null)
+  const [newForGcId, setNewForGcId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   // Per-version GC override (v2.1159). '' = use the bid-level GC.
   const [renameGcCustomerId, setRenameGcCustomerId] = useState('')
@@ -89,16 +98,15 @@ export function BidVersionPicker({
 
   // Full pick-list only once the edit dialog opens.
   useEffect(() => {
-    if (!renaming || gcCustomers !== null) return
+    if ((!renaming && !addGc) || gcCustomers !== null) return
     let cancelled = false
     void (async () => {
       const { data } = await supabase.from('customers').select('id, name').order('name')
       if (!cancelled) setGcCustomers((data ?? []).map((c) => ({ id: c.id, name: c.name ?? '—' })))
     })()
     return () => { cancelled = true }
-  }, [renaming, gcCustomers])
+  }, [renaming, addGc, gcCustomers])
 
-  const anyGcOverride = bidVersions.some((v) => v.customer_id != null)
   // Per-version sends (v2.2124) → "sent 7/7 · $X" on each chip.
   const [sends, setSends] = useState<VersionSendRow[]>([])
   useEffect(() => {
@@ -114,18 +122,72 @@ export function BidVersionPicker({
   }, [bidId])
   const latestSends = latestSendByVersion(sends)
 
-  function openNewVersion() {
-    setCurrentName(isUnsplit ? 'To Plans' : '')
+  function openNewVersion(forGcId: string | null = null) {
+    setCurrentName(isUnsplit ? (bidGcName ?? 'To Plans') : '')
     setNewName(isUnsplit ? 'Value Engineered' : '')
     setClonePricing(true)
+    setNewForGcId(forGcId)
     setModalOpen(true)
+  }
+  /** Record a GC a version points at as a bid recipient (best-effort, as the rename dialog does). */
+  async function stampVersionGc(versionId: string, gcId: string) {
+    await supabase.from('bid_versions').update({ customer_id: gcId }).eq('id', versionId)
+    try {
+      const { data: bidRow } = await supabase.from('bids').select('customer_id').eq('id', bidId).single()
+      if ((bidRow?.customer_id ?? null) !== gcId) {
+        await (supabase as never as { from: (t: string) => { upsert: (v: object, o: object) => Promise<{ error: { message: string } | null }> } })
+          .from('bid_gc_recipients')
+          .upsert({ bid_id: bidId, customer_id: gcId, source: 'version' }, { onConflict: 'bid_id,customer_id', ignoreDuplicates: true })
+      }
+    } catch { /* recipients table is best-effort */ }
+  }
+  /** G2: "+ Another GC…" — a packet for that GC, starting as a copy of a chosen version (or the unsplit bid). */
+  async function submitAddGc() {
+    if (!addGc || !addGc.gcId) return
+    const gcName = gcCustomers?.find((c) => c.id === addGc.gcId)?.name ?? 'GC'
+    const name = addGc.name.trim() || gcName
+    setBusy(true)
+    try {
+      let newId: string | null = null
+      if (isUnsplit) {
+        const { data, error } = await supabase.rpc('split_bid_into_versions', {
+          p_bid_id: bidId,
+          p_current_name: bidGcName ?? 'To Plans',
+          p_new_name: name,
+          p_clone_pricing: !!pricingSource,
+          p_pricing_source_version_id: (pricingSource ?? null) as string,
+        })
+        if (error) { showToast(`Failed: ${error.message}`, 'error'); return }
+        newId = data as string
+      } else {
+        const src = bidVersions.find((v) => v.id === addGc.fromVersionId) ?? bidVersions[0]
+        if (!src) return
+        const srcPricing = src.starred_price_book_version_id ?? (src.id === selectedBidVersionId ? pricingSource : null)
+        const { data, error } = await supabase.rpc('create_bid_version', {
+          p_bid_id: bidId,
+          p_name: name,
+          p_source_bid_version_id: src.id,
+          p_clone_pricing: !!srcPricing,
+          p_pricing_source_version_id: (srcPricing ?? null) as string,
+        })
+        if (error) { showToast(`Failed: ${error.message}`, 'error'); return }
+        newId = data as string
+      }
+      if (newId) await stampVersionGc(newId, addGc.gcId)
+      await reloadVersions()
+      if (newId) onSwitch(newId)
+      setAddGc(null)
+      showToast(`${gcName} added — their packet starts as a copy. Price it, then send from the Cover Letter.`, 'success')
+    } finally {
+      setBusy(false)
+    }
   }
 
   // The Workbench's "Try a variant…" door (v2.2104) opens this picker's
   // new-version modal from below via a window event — no prop drilling
   // through Bids.tsx.
   useEffect(() => {
-    const open = () => openNewVersion()
+    const open = () => openNewVersion(null)
     // 'bid-version-picker-reload' (v2.2133): "Adopt an existing bid" created versions outside this component.
     const reload = () => { void reloadVersions() }
     window.addEventListener('bid-version-picker-open-new', open)
@@ -184,9 +246,11 @@ export function BidVersionPicker({
         }
         newId = data as string
       }
+      if (newId && newForGcId) await stampVersionGc(newId, newForGcId)
       await reloadVersions()
       if (newId) onSwitch(newId)
       setModalOpen(false)
+      setNewForGcId(null)
       showToast(`Created version "${variantName}".`, 'success')
     } finally {
       setBusy(false)
@@ -268,60 +332,89 @@ export function BidVersionPicker({
     }
   }
 
+  // G2: group versions by the GC they go to (no override = the bid's GC).
+  const groups: Array<{ key: string; gcId: string | null; name: string; versions: BidVersion[] }> = []
+  for (const v of [...bidVersions].sort((a, b) => a.sort_order - b.sort_order)) {
+    const key = v.customer_id ?? ''
+    let g = groups.find((x) => x.key === key)
+    if (!g) { g = { key, gcId: v.customer_id ?? null, name: v.customer_id ? (gcNamesById[v.customer_id] ?? '…') : (bidGcName ?? 'the GC'), versions: [] }; groups.push(g) }
+    g.versions.push(v)
+  }
+  if (groups.length === 0) groups.push({ key: '', gcId: null, name: bidGcName ?? 'the GC', versions: [] })
+  groups.sort((a, b) => (a.key === '' ? -1 : b.key === '' ? 1 : 0))
+  const anySends = Object.keys(latestSends).length > 0
+  // Pre-v2.2124 bids have no per-version sends: fall back to the bid's sent date, but only for
+  // versions that already existed then (a packet added later was not part of that send).
+  const gcSentOn = (g: { versions: BidVersion[] }) => {
+    let best: string | null = null
+    for (const v of g.versions) { const so = latestSends[v.id]?.sentOn; if (so && (!best || so > best)) best = so }
+    if (best) return best
+    if (anySends || !bidDateSent) return null
+    const existedThen = g.versions.some((v) => !v.created_at || v.created_at.slice(0, 10) <= bidDateSent)
+    return existedThen ? bidDateSent : null
+  }
+  const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
+  const starNameOf = (v: BidVersion) => (v.starred_price_book_version_id ? pricingSourceNames?.[v.starred_price_book_version_id] ?? null : null)
+
   return (
     <div style={{ marginBottom: '1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
-          {isUnsplit ? 'One bid' : 'Bids in this package'}
-          {!isUnsplit ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> — each goes to the customer on its own</span> : null}
-        </span>
-        {isUnsplit ? null : (
-          bidVersions.map((v) => {
-            const active = selectedBidVersionId === v.id
-            return (
-              <span
-                key={v.id}
-                style={{
-                  ...chipBase,
-                  background: active ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
-                  border: active ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-                }}
+        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Send to</span>
+        {groups.map((g) => {
+          const groupActive = !isUnsplit && g.versions.some((v) => v.id === selectedBidVersionId)
+          const sentOn = gcSentOn(g)
+          const first = g.versions[0]
+          const star = first ? starNameOf(first) : null
+          return (
+            <div
+              key={g.key || 'bid-default'}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.4rem', border: groupActive || isUnsplit ? '1px solid #3b82f6' : '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', boxShadow: groupActive ? 'inset 0 0 0 1px #3b82f6' : 'none' }}
+            >
+              <button
+                type="button"
+                onClick={() => { if (first && first.id !== selectedBidVersionId) onSwitch(first.id) }}
+                title={isUnsplit ? 'This bid goes to this GC' : `Switch to ${g.name}'s packet`}
+                style={{ background: 'none', border: 'none', cursor: first ? 'pointer' : 'default', padding: '0 0.3rem', textAlign: 'left', color: 'var(--text-strong)' }}
               >
-                <button
-                  type="button"
-                  onClick={() => onSwitch(v.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: active ? 600 : 400, padding: 0, textAlign: 'left' }}
-                >
-                  {v.name}
-                  {/* Purpose facts (v2.2110): whether this bid version rides in the cover letter, and its GC. */}
-                  <span style={{ display: 'block', fontSize: '0.625rem', color: v.include_in_submission ? 'var(--text-green-600)' : 'var(--text-muted)', fontWeight: 600 }}>
-                    {v.include_in_submission
-                      ? `in letter ✓ · ${v.is_alternate ? 'alternate' : 'base'}`
-                      : 'not in letter'}
+                <span style={{ fontWeight: 700, fontSize: '0.82rem', display: 'block' }}>{g.name}</span>
+                <span style={{ display: 'block', fontSize: '0.625rem', color: sentOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
+                  {sentOn ? `sent ${fmtSent(sentOn)}` : 'not sent'}{star ? ` · ★ ${star}` : isUnsplit ? ' · one bid' : ''}{g.versions.length > 1 ? ` · ${g.versions.length} versions` : ''}
+                </span>
+              </button>
+              {g.versions.map((v) => {
+                const active = selectedBidVersionId === v.id
+                return (
+                  <span key={v.id} style={{ ...chipBase, background: active ? 'var(--bg-blue-200)' : 'var(--bg-muted)', border: active ? '1px solid #3b82f6' : '1px solid var(--border-strong)' }}>
+                    <button type="button" onClick={() => onSwitch(v.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: active ? 600 : 400, padding: 0, textAlign: 'left' }}>
+                      {v.name}
+                      <span style={{ display: 'block', fontSize: '0.625rem', color: v.include_in_submission ? 'var(--text-green-600)' : 'var(--text-muted)', fontWeight: 600 }}>
+                        {v.include_in_submission ? `in letter ✓ · ${v.is_alternate ? 'alternate' : 'base'}` : 'not in letter'}
+                      </span>
+                      {(() => { const b = formatSendBadge(latestSends[v.id]); return b ? <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)' }}>{b}</span> : null })()}
+                    </button>
+                    <button type="button" onClick={() => { setRenaming(v); setRenameValue(v.name); setRenameGcCustomerId(v.customer_id ?? '') }} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }} title="Rename / delete version">✎</button>
                   </span>
-                  {(() => { const b = formatSendBadge(latestSends[v.id]); return b ? <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)' }}>{b}</span> : null })()}
-                  {v.customer_id ? (
-                    <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-blue-800)', fontWeight: 600 }}>
-                      GC: {gcNamesById[v.customer_id] ?? '…'}
-                    </span>
-                  ) : anyGcOverride ? (
-                    <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                      GC: bid default
-                    </span>
-                  ) : null}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setRenaming(v); setRenameValue(v.name); setRenameGcCustomerId(v.customer_id ?? '') }}
-                  style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                  title="Rename / delete version"
-                >
-                  ✎
-                </button>
-              </span>
-            )
-          })
-        )}
+                )
+              })}
+              <button
+                type="button"
+                onClick={() => openNewVersion(g.gcId)}
+                title={`Another version for ${g.name} — its own takeoff and prices (e.g. a VE)`}
+                style={{ padding: '0.2rem 0.45rem', background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)' }}
+              >
+                + version
+              </button>
+            </div>
+          )
+        })}
+        <button
+          type="button"
+          onClick={() => setAddGc({ gcId: '', fromVersionId: selectedBidVersionId ?? bidVersions[0]?.id ?? '', name: '' })}
+          style={{ padding: '0.35rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+          title="Send this bid to another GC — a packet that starts as a copy"
+        >
+          ＋ Another GC…
+        </button>
         {!isUnsplit ? (
           <button
             type="button"
@@ -330,19 +423,12 @@ export function BidVersionPicker({
               try { window.localStorage.setItem('bids_cover_letter_view_v1', 'new') } catch { /* device just won't remember */ }
               onGoToCoverLetter?.()
             }}
-            style={{ marginLeft: 'auto', padding: '0.35rem 0.6rem', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-700)' }}
-            title="Bundle and send these from the Cover Letter"
+            style={{ marginLeft: 'auto', padding: '0.35rem 0.6rem', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-strong)' }}
+            title="Send from the Cover Letter — one letter per GC"
           >
             Send… →
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={openNewVersion}
-          style={{ marginLeft: isUnsplit ? 'auto' : 0, padding: '0.35rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-        >
-          ＋ Another bid to send…
-        </button>
       </div>
       {isExactMaterials && !isUnsplit && (
         <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 4, padding: '0.35rem 0.5rem' }}>
@@ -352,7 +438,7 @@ export function BidVersionPicker({
 
       {modalOpen && (
         <Overlay onClose={() => !busy && setModalOpen(false)}>
-          <h3 style={{ margin: '0 0 1rem' }}>{isUnsplit ? 'Split into two sendable bids' : 'Another bid to send'}</h3>
+          <h3 style={{ margin: '0 0 1rem' }}>{isUnsplit ? 'Split into two versions' : newForGcId ? `Another version for ${gcNamesById[newForGcId] ?? 'this GC'}` : 'Another version'}</h3>
           {isUnsplit && (
             <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
               Name what you have now, then the new one. Each becomes its own bid — its own counts, takeoff and prices from here — sendable separately or bundled in one cover letter.
@@ -379,6 +465,41 @@ export function BidVersionPicker({
             <button type="button" onClick={submitNewVersion} disabled={busy || !newName.trim()} style={btnPrimary}>
               {busy ? 'Working…' : isUnsplit ? 'Split' : 'Create'}
             </button>
+          </div>
+        </Overlay>
+      )}
+
+      {addGc && (
+        <Overlay onClose={() => !busy && setAddGc(null)}>
+          <h3 style={{ margin: '0 0 0.5rem' }}>Send this bid to another GC</h3>
+          <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
+            Makes a packet for that GC — a version named after them, pointed at them, starting as a copy. Their letter, sends and outcome are tracked on their own.
+          </p>
+          <label style={{ display: 'block', marginBottom: '0.75rem' }}>
+            <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>GC / builder</span>
+            <select value={addGc.gcId} onChange={(e) => setAddGc((st) => st && { ...st, gcId: e.target.value })} style={inputStyle} autoFocus>
+              <option value="">{gcCustomers ? 'Pick a GC…' : 'Loading…'}</option>
+              {(gcCustomers ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          {!isUnsplit ? (
+            <label style={{ display: 'block', marginBottom: '0.75rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Start from</span>
+              <select value={addGc.fromVersionId} onChange={(e) => setAddGc((st) => st && { ...st, fromVersionId: e.target.value })} style={inputStyle}>
+                {bidVersions.map((v) => <option key={v.id} value={v.id}>{(v.customer_id ? gcNamesById[v.customer_id] ?? '…' : bidGcName ?? 'bid GC')} · {v.name}{starNameOf(v) ? ` · ★ ${starNameOf(v)}` : ' · no prices'}</option>)}
+              </select>
+              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>copies its counts, takeoff and prices</span>
+            </label>
+          ) : (
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>This bid isn't split yet — its current setup becomes <strong>{bidGcName ?? 'To Plans'}</strong>'s packet and the new GC starts as a copy of it.</p>
+          )}
+          <label style={{ display: 'block', marginBottom: '1rem' }}>
+            <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Name (optional)</span>
+            <input value={addGc.name} onChange={(e) => setAddGc((st) => st && { ...st, name: e.target.value })} placeholder={gcCustomers?.find((c) => c.id === addGc.gcId)?.name ?? 'defaults to the GC name'} style={inputStyle} />
+          </label>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <button type="button" onClick={() => setAddGc(null)} disabled={busy} style={btnGhost}>Cancel</button>
+            <button type="button" onClick={() => void submitAddGc()} disabled={busy || !addGc.gcId} style={btnPrimary}>{busy ? 'Working…' : 'Add GC'}</button>
           </div>
         </Overlay>
       )}
