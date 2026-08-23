@@ -496,7 +496,7 @@ export default function PeoplePayStubsTab({
                   }}
                 >
                   <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
-                    <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Ledger</h2>
+                    <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Pay reports</h2>
                     {payStubs.length > 0 && ledgerFilteredPayStubs.length > 0 ? (
                       <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }} aria-live="polite">
                         {ledgerOpenBalanceSummary.openCount > 0
