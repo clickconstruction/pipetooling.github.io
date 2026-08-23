@@ -15,6 +15,8 @@ import { formatCurrency } from '../jobs/jobFormatting'
  */
 
 export const GC_STATEMENT_COMPANY_NAME = 'Click Plumbing and Electrical'
+/** Subject-line short name (v2.2131, owner copy): "Click Plumbing open balances: Aug 22, 2026". */
+export const GC_STATEMENT_SUBJECT_NAME = 'Click Plumbing'
 export const GC_STATEMENT_FOOTER_LINE =
   'Questions about a bill? Reply to this email or call the office.'
 
@@ -23,7 +25,7 @@ const escapeHtml = (s: string) =>
 
 /** Recipient-neutral on purpose — safe to paste to anyone without leaking another GC's name. */
 export function gcStatementEmailSubject(_group: GcReviewGroup, dateStr: string): string {
-  return `Open balances — ${GC_STATEMENT_COMPANY_NAME} — ${dateStr}`
+  return `${GC_STATEMENT_SUBJECT_NAME} open balances: ${dateStr}`
 }
 
 const statementRowsHtml = (rows: GcReviewGroup['rows']): string =>

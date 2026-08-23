@@ -69,8 +69,9 @@ function refDisplay(row: GcStatementPayloadRow): string {
   return row.ref_is_estimate ? `${s} (est.)` : s
 }
 
+/** Keep in sync with src/lib/jobsDocuments/gcStatementEmail.ts gcStatementEmailSubject (v2.2131 copy). */
 export function gcStatementSubject(dateStr: string): string {
-  return `Open balances — ${GC_STATEMENT_COMPANY_NAME} — ${dateStr}`
+  return `Click Plumbing open balances: ${dateStr}`
 }
 
 export function gcShareAllSubject(groupBy: 'gc' | 'development', dateStr: string): string {

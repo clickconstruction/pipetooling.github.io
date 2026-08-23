@@ -14,6 +14,7 @@ describe('emailLogStreamForSubject', () => {
     expect(emailLogStreamForSubject('Weekly movement — Aug 10 – 16 — Click Plumbing and Electrical')).toBe('weekly_movement')
     expect(emailLogStreamForSubject('Open balances — Click Plumbing and Electrical — Aug 17, 2026')).toBe('gc_statement')
     expect(emailLogStreamForSubject('Open balances (all GCs) — Click Plumbing and Electrical — Aug 17, 2026')).toBe('gc_statement')
+    expect(emailLogStreamForSubject('Click Plumbing open balances: Aug 22, 2026')).toBe('gc_statement')
   })
 
   it('strips the [TEST] prefix from test sends', () => {

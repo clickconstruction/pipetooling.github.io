@@ -65,3 +65,15 @@ export function buildTeammateEmailChips(users: TeammateChipUser[]): TeammateChip
 export function chipMatchesValue(chipEmail: string, value: string): boolean {
   return value.trim().toLowerCase() === chipEmail
 }
+
+/**
+ * The GC's own chip (v2.2131) — rendered FIRST in the per-GC statement dialog
+ * so the prefilled To (the GC's email) is visibly the selected pill. Null when
+ * the customer has no email on file.
+ */
+export function gcEmailChip(gcName: string, email: string | null | undefined): TeammateChip | null {
+  const e = (email ?? '').trim().toLowerCase()
+  if (!e.includes('@')) return null
+  const name = gcName.trim() || 'GC'
+  return { email: e, label: name, title: `${name} · ${e} · GC` }
+}

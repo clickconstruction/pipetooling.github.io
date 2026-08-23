@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import { buildTeammateEmailChips, chipMatchesValue, type TeammateChipUser } from '../../lib/teammateEmailChips'
+import { buildTeammateEmailChips, chipMatchesValue, type TeammateChip, type TeammateChipUser } from '../../lib/teammateEmailChips'
 
 /**
  * Tap-to-fill office-staff chips for a typed-email To field (v2.1455).
@@ -14,13 +14,20 @@ export function TeammateEmailChips({
   value,
   onPick,
   disabled,
+  leading,
 }: {
   users: TeammateChipUser[]
   value: string
   onPick: (email: string) => void
   disabled?: boolean
+  /** Chips rendered ahead of the teammates (v2.2131: the GC's own email); deduped by email. */
+  leading?: TeammateChip[]
 }) {
-  const chips = useMemo(() => buildTeammateEmailChips(users), [users])
+  const chips = useMemo(() => {
+    const lead = leading ?? []
+    const leadEmails = new Set(lead.map((c) => c.email))
+    return [...lead, ...buildTeammateEmailChips(users).filter((c) => !leadEmails.has(c.email))]
+  }, [users, leading])
   if (chips.length === 0) return null
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>

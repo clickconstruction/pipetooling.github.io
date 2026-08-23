@@ -13,7 +13,9 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
  * inline (list_job_activity_events, newest first), and the job link opens
  * Job Detail ON TOP (the Detail modal's overlay outranks this one) — the
  * checklist keeps its check state while the certifier digs in and comes back.
- * Certify / Certify & send… unlock only when every row is checked.
+ * Certify / Draft Message unlock only when every row is checked (v2.2131:
+ * "Certify & send…" renamed — it certifies, then opens the statement email
+ * dialog as a draft; nothing sends until the user clicks Send statement).
  */
 export default function GcReviewCertifyModal({
   group,
@@ -229,7 +231,7 @@ export default function GcReviewCertifyModal({
                 color: allChecked ? '#ffffff' : 'var(--text-faint)',
               }}
             >
-              Certify &amp; send…
+              Draft Message
             </button>
           </span>
         </div>
