@@ -3373,6 +3373,8 @@ export default function Bids() {
           versionGcFingerprint={bidVersions.map((v) => `${v.id}:${v.customer_id ?? ''}`).join('|')}
           bidPricings={priceBookVersions}
           reloadBidPricings={() => (selectedBidForPricing ? loadBidPricings(selectedBidForPricing.id).then(() => {}) : Promise.resolve())}
+          bidVersions={bidVersions}
+          reloadBidVersions={() => (selectedBidForPricing ? loadBidVersions(selectedBidForPricing.id).then(() => {}) : Promise.resolve())}
           loadBids={loadBids}
           coverLetterInclusionsByBid={coverLetterInclusionsByBid}
           setCoverLetterInclusionsByBid={setCoverLetterInclusionsByBid}

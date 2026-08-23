@@ -37,12 +37,15 @@ export function deriveActivePricingId(input: {
   bidPricings: { id: string; bid_version_id: string | null }[]
   legacyFallbackPricingId: string | null
   defaultTemplatePricingId?: string | null
+  /** The active version's own ★ (`bid_versions.starred_price_book_version_id`, v2.2117) — wins when it belongs to the version. */
+  versionStarredPricingId?: string | null
 }): string | null {
-  const { activeVersionId, bidPricings, legacyFallbackPricingId, defaultTemplatePricingId } = input
+  const { activeVersionId, bidPricings, legacyFallbackPricingId, defaultTemplatePricingId, versionStarredPricingId } = input
   if (activeVersionId != null) {
     const versionPricings = bidPricings.filter((p) => p.bid_version_id === activeVersionId)
+    const starred = versionStarredPricingId ? versionPricings.find((p) => p.id === versionStarredPricingId) : undefined
     const saved = versionPricings.find((p) => p.id === legacyFallbackPricingId)
-    return saved?.id ?? versionPricings[0]?.id ?? null
+    return starred?.id ?? saved?.id ?? versionPricings[0]?.id ?? null
   }
   const unsplitPricings = bidPricings.filter((p) => p.bid_version_id == null)
   const savedUnsplit = unsplitPricings.find((p) => p.id === legacyFallbackPricingId)

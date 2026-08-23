@@ -11,7 +11,7 @@ New to it? Click the **?** beside the New pill for a guided tour — it spotligh
 
 ## Versions, scenarios, and the star
 
-One sentence covers it: a **version** is a separate bid you can send — its own takeoff, its own prices, its own GC, over the same counts — and a **price scenario** is the same bid at a different price point. Versions bundle into the cover letter as their own priced sections (base bid + alternates, or several buildings), each optionally addressed to its own GC.
+One sentence covers it: a **version** is a separate bid you can send — its own takeoff, its own prices, its own GC, over the same counts — and a **price scenario** is the same bid at a different price point. Versions bundle into the cover letter (New) as their own priced sections — each at its ★, marked **Base** or **Alternate** — optionally addressed to their own GC. The rule underneath: **versions are what the customer sees; scenarios are what you compare.**
 
 Most bids have one version and one price, so the Workbench shows just one quiet line — your price, the star, and {{button:outline|＋ New price or version…}}. That button offers the two moves: **Another price point** (same counts, different price — star the winner) or **Another bid to send** (a new version — same counts, its own takeoff and prices). Once a second price or version exists, the full structure bar and scenario cards appear, and the picker at the top shows **Bids in this package** with each one's cover-letter status and GC.
 
