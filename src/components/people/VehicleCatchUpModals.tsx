@@ -78,7 +78,7 @@ function VehicleName({ name, vin, done }: { name: string; vin: string | null; do
   )
 }
 
-function ModalShell({
+export function ModalShell({
   icon,
   iconTint,
   title,

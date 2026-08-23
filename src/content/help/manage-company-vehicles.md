@@ -9,6 +9,10 @@ keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage
 
 Two of those rows open a list (they carry a › chevron). Tap **8 need a reading** for the **odometer catch-up**: every affected vehicle with its VIN tail and holder, a miles box on each row — Enter saves with today's date and jumps to the next box, and rows turn green as you sweep the list. Tap **1 maintenance task** for the **open-task list**: vehicle, task, assignee, and {{button:green|✓ Done}} (or an Assign button when nobody owns it yet) right on the row.
 
+## Seeing a vehicle's miles over time
+
+Tap the reading line on any card — **229,950 mi · 9d ago** — to open **Odometer history**. The tiles at the top give the pace: **per month** and **per year** (averaged over the whole history, first reading to last), the **last 90 days** pace with a faster / slower hint, and the total **since the first reading**. Below, every reading newest first, each with what it added since the one before ("+1,230 mi in 12 days") and who logged it; a reading that went backwards is flagged amber so it can be fixed. With a single reading the tiles say "need one more reading" — add the next one right there with the **Add reading** box (dated today; Enter saves), or from the card's **Current odometer** box or the catch-up list, and the averages appear.
+
 ## Handing a vehicle to someone
 
 Every card has a {{button:outline|Hand off}} button (or {{button:outline|Assign}} when nobody holds it). One dialog does the whole move:

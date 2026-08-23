@@ -59,6 +59,7 @@ import {
   weeklyInsuranceCostFromInput,
   type InsuranceCostUnit,
 } from '../../lib/vehicleInsuranceCost'
+import { VehicleOdometerHistoryModal } from './VehicleOdometerHistoryModal'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -192,6 +193,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [catchUpSaved, setCatchUpSaved] = useState<Record<string, number>>({})
   const [catchUpSavingId, setCatchUpSavingId] = useState<string | null>(null)
   const [tasksCatchUpOpen, setTasksCatchUpOpen] = useState(false)
+  /** Odometer history sheet (v2.2172): the vehicle whose reading line was tapped. */
+  const [odoHistoryVehicleId, setOdoHistoryVehicleId] = useState<string | null>(null)
   const [editTask, setEditTask] = useState<VehicleMaintenanceTask | null>(null)
   const [editTaskTitle, setEditTaskTitle] = useState('')
   const [editTaskNote, setEditTaskNote] = useState('')
@@ -1896,9 +1899,24 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   </div>
                   {renderHolderRow(v)}
                   <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8125rem', color: freshness === 'fresh' ? 'var(--text-muted)' : 'var(--text-amber-800)' }}>
-                      {latest ? `${latest.odometer_value.toLocaleString()} mi · ${odometerAgeLabel(latest, today)}` : 'No reading yet'}
-                    </span>
+                    {latest ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setOdoHistoryVehicleId(v.id)
+                        }}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        title="Odometer history — every reading, and miles per month / year"
+                        aria-label={`Odometer history for ${vehicleDisplayName(v)}`}
+                        style={{ font: 'inherit', fontSize: '0.8125rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: freshness === 'fresh' ? 'var(--text-muted)' : 'var(--text-amber-800)', textDecoration: 'underline dotted', textDecorationColor: 'var(--text-faint)', textUnderlineOffset: 3 }}
+                      >
+                        {`${latest.odometer_value.toLocaleString()} mi · ${odometerAgeLabel(latest, today)}`}
+                        <span aria-hidden style={{ color: 'var(--text-faint)', marginLeft: 4, fontSize: '0.8rem' }}>›</span>
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>No reading yet</span>
+                    )}
                     {freshness !== 'fresh' && <span style={chipStyle('amber')}>{freshness === 'none' ? 'needs first reading' : 'needs a reading'}</span>}
                     {(() => {
                       const s = oilStatus(lastOilMap.get(v.id) ?? null, v.oil_change_interval_miles, latest, oilThresholdsForVehicle(v))
@@ -2570,6 +2588,19 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         </div>
       )}
 
+      {odoHistoryVehicleId && (() => {
+        const v = vehicles.find((x) => x.id === odoHistoryVehicleId)
+        return v ? (
+          <VehicleOdometerHistoryModal
+            vehicle={v}
+            todayYmd={today}
+            nameById={(id) => (id ? userNameById.get(id) ?? null : null)}
+            formatDate={formatYmdShort}
+            onClose={() => setOdoHistoryVehicleId(null)}
+            onAdded={() => loadFleet()}
+          />
+        ) : null
+      })()}
       {readingsCatchUp && (
         <VehicleReadingsCatchUpModal
           rows={readingsCatchUp}
