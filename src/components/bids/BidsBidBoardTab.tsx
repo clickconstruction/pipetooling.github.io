@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useBidGcPackets } from '../../hooks/useBidGcPackets'
+import { BidBoardGcLines, BidBoardGcRows, gcRowsWorthShowing } from './BidBoardGcRows'
 import type { Bid } from '../../types/bids'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -145,6 +147,8 @@ export function BidsBidBoardTab({
   } = useBidBoardSelfHighlight(authUser?.id)
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
+  // Bids by GC (v2.2162): per-GC packets for every bid on the board → the GC lines under a row.
+  const { packetsByBid: gcPacketsByBid } = useBidGcPackets(bids)
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)
@@ -862,6 +866,9 @@ export function BidsBidBoardTab({
             {renderBidBoardLinksCluster(bid)}
           </td>
         </tr>
+        {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
+          <BidBoardGcRows bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} colSpan={colCount} onChanged={onReloadBids} />
+        ) : null}
         {bid.outcome === 'lost' ? (
           <tr
             aria-label={`Loss reason: ${(bid as { loss_reason?: string | null }).loss_reason?.trim() || 'not recorded'}`}
@@ -987,6 +994,11 @@ export function BidsBidBoardTab({
           </span>
         </div>
         {hasLinks ? <div style={{ marginTop: '0.35rem' }}>{renderBidBoardLinksCluster(bid)}</div> : null}
+        {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
+          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: '0.35rem', paddingTop: '0.3rem', borderTop: '1px dashed var(--border)', cursor: 'default' }}>
+            <BidBoardGcLines bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} />
+          </div>
+        ) : null}
         {bid.outcome === 'lost' ? (
           <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
             <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Why did we lose? </span>

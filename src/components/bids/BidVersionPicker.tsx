@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidVersion } from '../../lib/bids/bidPricingEngineTypes'
 import { formatSendBadge, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
+import { groupVersionsByGc } from '../../lib/bids/gcPackets'
 
 type BidVersionPickerProps = {
   bidId: string
@@ -332,27 +333,9 @@ export function BidVersionPicker({
     }
   }
 
-  // G2: group versions by the GC they go to (no override = the bid's GC).
-  const groups: Array<{ key: string; gcId: string | null; name: string; versions: BidVersion[] }> = []
-  for (const v of [...bidVersions].sort((a, b) => a.sort_order - b.sort_order)) {
-    const key = v.customer_id ?? ''
-    let g = groups.find((x) => x.key === key)
-    if (!g) { g = { key, gcId: v.customer_id ?? null, name: v.customer_id ? (gcNamesById[v.customer_id] ?? '…') : (bidGcName ?? 'the GC'), versions: [] }; groups.push(g) }
-    g.versions.push(v)
-  }
-  if (groups.length === 0) groups.push({ key: '', gcId: null, name: bidGcName ?? 'the GC', versions: [] })
-  groups.sort((a, b) => (a.key === '' ? -1 : b.key === '' ? 1 : 0))
-  const anySends = Object.keys(latestSends).length > 0
-  // Pre-v2.2124 bids have no per-version sends: fall back to the bid's sent date, but only for
-  // versions that already existed then (a packet added later was not part of that send).
-  const gcSentOn = (g: { versions: BidVersion[] }) => {
-    let best: string | null = null
-    for (const v of g.versions) { const so = latestSends[v.id]?.sentOn; if (so && (!best || so > best)) best = so }
-    if (best) return best
-    if (anySends || !bidDateSent) return null
-    const existedThen = g.versions.some((v) => !v.created_at || v.created_at.slice(0, 10) <= bidDateSent)
-    return existedThen ? bidDateSent : null
-  }
+  // G2: group versions by the GC they go to (no override = the bid's GC) — shared kernel (v2.2162).
+  const groups = groupVersionsByGc(bidVersions, { bidGcName: bidGcName ?? null, gcNames: gcNamesById, latestSends, bidDateSent: bidDateSent ?? null })
+  if (groups.length === 0) groups.push({ key: '', gcId: null, name: bidGcName ?? 'the GC', versions: [], sentOn: null, sentValue: null, outcome: null })
   const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
   const starNameOf = (v: BidVersion) => (v.starred_price_book_version_id ? pricingSourceNames?.[v.starred_price_book_version_id] ?? null : null)
 
@@ -362,7 +345,7 @@ export function BidVersionPicker({
         <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Send to</span>
         {groups.map((g) => {
           const groupActive = !isUnsplit && g.versions.some((v) => v.id === selectedBidVersionId)
-          const sentOn = gcSentOn(g)
+          const sentOn = g.sentOn
           const first = g.versions[0]
           const star = first ? starNameOf(first) : null
           return (
