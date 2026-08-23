@@ -2868,10 +2868,6 @@ export function BidsPricingTab({
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.55rem 0.9rem', flexWrap: 'wrap' }}>
                         {wbPreview && previewCount > 0 ? (
                           <>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
-                              Previewing {previewCount} changed price{previewCount !== 1 ? 's' : ''} on{' '}
-                              <u>{priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'this scenario'}</u> — nothing saved yet
-                            </span>
                             <button
                               type="button"
                               onClick={() => void applyWorkbenchPreview()}
