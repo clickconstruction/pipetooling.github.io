@@ -44,6 +44,7 @@ import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import HazmatNoticePublic from './pages/HazmatNoticePublic'
 import CustomerPortal from './pages/CustomerPortal'
+import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
 import ContractBookPreview from './pages/ContractBookPreview'
 import TaskShortcut from './pages/TaskShortcut'
@@ -301,6 +302,7 @@ function AppContent() {
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
           <Route path="moneyfill" element={<ErrorBoundary><Moneyfill /></ErrorBoundary>} />
           <Route path="partnerships" element={<ErrorBoundary><Partnerships /></ErrorBoundary>} />
+          <Route path="my-statement" element={<ErrorBoundary><PartnerStatement /></ErrorBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="map" element={<Map />} />

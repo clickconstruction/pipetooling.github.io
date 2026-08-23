@@ -618,6 +618,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Moneyfill** (`/moneyfill`, v2.1378 — **dev + controller only**; the one surface where controller does **not** read the assistant column: assistants and masters are excluded, `Moneyfill.tsx` redirects them to `/dashboard`) | ✅ | ❌ | ❌ (controller ✅) | ❌ | ❌ | ❌ | ❌ |
 | **Partnerships** (`/partnerships`, v2.1880 — **dev only**; partner deal config per [`PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md); `Partnerships.tsx` redirects every other role to `/dashboard`; tables are dev-only RLS — partner-facing surfaces read config via SECURITY DEFINER RPCs, never directly) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Checklist** (`/checklist`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Partner statement** (`/my-statement`, v2.2157 — the partner's own statement page, the customer portal's sibling on paper; self-gating through the `get_my_partner_*` RPCs: a caller with no live partnership sees a quiet "no partner statement" note. Listed in the sub-like path allowlist because partners are `subcontractor`-role accounts; devs reach the same view through Partnerships → "View as …") | ✅ (lens / own) | — | — | ✅ partners only | — | — | — |
 | **Tally** (`/tally`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | **Accounts Receivable** (`/accounts-receivable`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |

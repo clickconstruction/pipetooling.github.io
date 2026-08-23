@@ -7,7 +7,7 @@ import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRol
  *
  * If you change allowed paths in Layout, update this file the same way.
  */
-const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
+const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
 
 const PRIMARY_PATHS = [
   '/dashboard',

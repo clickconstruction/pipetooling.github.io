@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { DashboardGroupCard } from './DashboardGroupCard'
+import { parsePartnerJobCosting, parsePartnerJobsPayload, type PartnerJobCosting, type PartnerJobRow } from '../../lib/partnerLedger/partnerJobsPayload'
 
 /**
  * "Your jobs" — the partner's §5 window (PARTNERSHIPS_PLAN.md PR 7).
@@ -11,26 +12,8 @@ import { DashboardGroupCard } from './DashboardGroupCard'
  * with a freshness stamp. Self-gating + fail-soft like the ledger card.
  */
 
-type JobRow = {
-  job_id: string
-  label: string
-  job_name: string | null
-  status: string | null
-  confirmed_at: string | null
-  /** null until the partner_jobs_payload migration adds it — pill fail-softs */
-  service_type_name: string | null
-  profit_share: number | null
-}
-
-type Costing = {
-  label: string
-  revenue: number | null
-  as_of: string
-  hours: { name: string; hours: number }[]
-  supply_invoices: { vendor: string | null; invoice_number: string | null; invoice_date: string | null; invoice_amount: number; pct: number; allocated: number }[]
-  card_charges: { counterparty: string | null; posted_at: string | null; allocated: number }[]
-  direct: { description: string; amount: number }[]
-}
+type JobRow = PartnerJobRow
+type Costing = PartnerJobCosting
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -47,27 +30,13 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
     const { data, error } = asPartnershipId
       ? await supabase.rpc('get_partner_jobs_as', { p_partnership_id: asPartnershipId })
       : await supabase.rpc('get_my_partner_jobs')
-    if (error || !data || typeof data !== 'object' || (data as Record<string, unknown>).exists !== true) {
+    const parsed = error ? null : parsePartnerJobsPayload(data)
+    if (!parsed) {
       setRows(null)
       return
     }
-    const d = data as Record<string, unknown>
-    setCostingOn(d.costing_on === true)
-    setRows(
-      Array.isArray(d.rows)
-        ? (d.rows as Record<string, unknown>[])
-            .filter((r) => typeof r.job_id === 'string')
-            .map((r) => ({
-              job_id: String(r.job_id),
-              label: String(r.label ?? ''),
-              job_name: typeof r.job_name === 'string' ? r.job_name : null,
-              status: typeof r.status === 'string' ? r.status : null,
-              confirmed_at: typeof r.confirmed_at === 'string' ? r.confirmed_at : null,
-              service_type_name: typeof r.service_type_name === 'string' ? r.service_type_name : null,
-              profit_share: Number.isFinite(Number(r.profit_share)) && r.profit_share != null ? Number(r.profit_share) : null,
-            }))
-        : [],
-    )
+    setCostingOn(parsed.costingOn)
+    setRows(parsed.rows)
   }, [asPartnershipId])
 
   useEffect(() => {
@@ -92,31 +61,7 @@ export function DashboardPartnerJobsSection({ asPartnershipId }: { asPartnership
       setCostingErr(error.message)
       return
     }
-    const d = (data ?? {}) as Record<string, unknown>
-    setCosting({
-      label: String(d.label ?? ''),
-      revenue: Number.isFinite(Number(d.revenue)) && d.revenue != null ? Number(d.revenue) : null,
-      as_of: String(d.as_of ?? ''),
-      hours: Array.isArray(d.hours) ? (d.hours as Record<string, unknown>[]).map((h) => ({ name: String(h.name ?? ''), hours: Number(h.hours) || 0 })) : [],
-      supply_invoices: Array.isArray(d.supply_invoices)
-        ? (d.supply_invoices as Record<string, unknown>[]).map((i) => ({
-            vendor: typeof i.vendor === 'string' ? i.vendor : null,
-            invoice_number: typeof i.invoice_number === 'string' ? i.invoice_number : null,
-            invoice_date: typeof i.invoice_date === 'string' ? i.invoice_date : null,
-            invoice_amount: Number(i.invoice_amount) || 0,
-            pct: Number(i.pct) || 0,
-            allocated: Number(i.allocated) || 0,
-          }))
-        : [],
-      card_charges: Array.isArray(d.card_charges)
-        ? (d.card_charges as Record<string, unknown>[]).map((c) => ({
-            counterparty: typeof c.counterparty === 'string' ? c.counterparty : null,
-            posted_at: typeof c.posted_at === 'string' ? c.posted_at : null,
-            allocated: Number(c.allocated) || 0,
-          }))
-        : [],
-      direct: Array.isArray(d.direct) ? (d.direct as Record<string, unknown>[]).map((m) => ({ description: String(m.description ?? ''), amount: Number(m.amount) || 0 })) : [],
-    })
+    setCosting(parsePartnerJobCosting(data))
   }
 
   const groupHead = (t: string) => (
