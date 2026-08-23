@@ -91,12 +91,7 @@ type EdgeRow = Database['public']['Tables']['checklist_tech_tree_edges']['Row']
 type RoadmapRow = Database['public']['Tables']['checklist_tech_tree_roadmaps']['Row']
 type RoadmapMemberRow = Database['public']['Tables']['checklist_tech_tree_roadmap_members']['Row']
 
-/**
- * `pinned_at` is spelled out until `src/types/database.ts` is regenerated after
- * migration 20260823042146 is pushed (then TaskRow carries it and this
- * intersection member can go — same pattern as #1810).
- */
-type TaskView = TaskRow & { assigneeIds: string[]; pinned_at: string | null }
+type TaskView = TaskRow & { assigneeIds: string[] }
 
 const PREREQ_LINK_TOAST_MS = 2000
 
@@ -241,7 +236,7 @@ function useTechTreeData(
             completed_at: string | null
             completed_by_user_id: string | null
             created_at: string
-            pinned_at?: string | null
+            pinned_at: string | null
             checklist_tech_tree_task_assignees: { user_id: string }[] | null
           }
           const assigneeIds = (r.checklist_tech_tree_task_assignees ?? []).map((a) => a.user_id)
@@ -253,7 +248,7 @@ function useTechTreeData(
             completed_at: r.completed_at,
             completed_by_user_id: r.completed_by_user_id,
             created_at: r.created_at,
-            pinned_at: r.pinned_at ?? null,
+            pinned_at: r.pinned_at,
             assigneeIds,
           }
         }),
@@ -1884,11 +1879,7 @@ export function ChecklistTechTreeTab({
         setError(null)
         await withSupabaseRetry(
           () =>
-            supabase
-              .from('checklist_tech_tree_group_tasks')
-              // cast until database.ts is regenerated with pinned_at (migration 20260823042146)
-              .update({ pinned_at: next } as unknown as Database['public']['Tables']['checklist_tech_tree_group_tasks']['Update'])
-              .eq('id', taskId),
+            supabase.from('checklist_tech_tree_group_tasks').update({ pinned_at: next }).eq('id', taskId),
           'toggle tech tree task pin',
         )
         await load()
