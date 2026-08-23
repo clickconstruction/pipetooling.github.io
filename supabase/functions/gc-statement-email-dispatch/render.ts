@@ -105,8 +105,29 @@ const tableHeadHtml = `<thead><tr>
       <th style="padding:6px;border-bottom:2px solid #9ca3af;font-size:12px;color:#4b5563;text-align:right">Amount owed</th>
     </tr></thead>`
 
+/**
+ * Portal card under the statement table (v2.2151). Mirror of
+ * src/lib/jobsDocuments/gcStatementEmail.ts `gcStatementPortalCardHtml` — keep in sync.
+ */
+export function portalCardHtml(portalUrl: string | null | undefined): string {
+  const url = (portalUrl ?? '').trim()
+  if (!url) return ''
+  const shown = url.replace(/^https?:\/\//, '')
+  return `<table role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px"><tr>
+    <td style="border:1px solid #ddd6c8;border-left:4px solid #b0662f;background:#fbf7f0;border-radius:6px;padding:12px 14px">
+      <p style="margin:0;font-size:14px;font-weight:bold;color:#16283c">Your account, any time</p>
+      <p style="margin:3px 0 0;font-size:13px;color:#5a6b7e;line-height:1.4">This statement stays current at <a href="${escapeHtml(url)}" style="color:#b0662f;font-weight:bold;text-decoration:none">${escapeHtml(shown)}</a> — pay any bill there by card or ACH.</p>
+    </td>
+  </tr></table>`
+}
+
+export function portalLineText(portalUrl: string | null | undefined): string | null {
+  const url = (portalUrl ?? '').trim()
+  return url ? `Your account, any time: this statement stays current at ${url} — pay any bill there by card or ACH.` : null
+}
+
 /** Single-GC (or single-development) statement — mirror of buildGcStatementEmailHtml. */
-export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null): string {
+export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null, portalUrl?: string | null): string {
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
   <p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
   <p style="margin:2px 0 12px;font-size:13px;color:#4b5563">Statement for ${escapeHtml(group.entity_name)} · ${escapeHtml(dateStr)}</p>
@@ -118,12 +139,12 @@ export function renderGcStatementHtml(group: GcStatementPayloadGroup, dateStr: s
         <td style="padding:9px 6px;font-size:14px;font-weight:bold;color:#111827;text-align:right">$${formatCurrency(group.subtotal)}</td>
       </tr>
     </tbody>
-  </table>
+  </table>${portalCardHtml(portalUrl)}
   <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(officePhone))}</p>
 </div>`
 }
 
-export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null): string {
+export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: string, officePhone?: string | null, portalUrl?: string | null): string {
   const lines = group.rows.map((r) => {
     const num = (r.display_number ?? '').trim()
     const sub = [num ? `Job ${num}` : '', (r.job_name ?? '').trim()].filter(Boolean).join(' · ')
@@ -138,6 +159,7 @@ export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: s
     '',
     `Total owed: $${formatCurrency(group.subtotal)}`,
     '',
+    ...(portalLineText(portalUrl) ? [portalLineText(portalUrl) as string, ''] : []),
     gcStatementFooterLine(officePhone),
   ].join('\n')
 }

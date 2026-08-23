@@ -30,7 +30,35 @@ export function gcStatementFooterLine(officePhone?: string | null): string {
   return phone ? `Questions about a bill? Reply to this email or call the office at ${phone}.` : GC_STATEMENT_FOOTER_LINE
 }
 
-export type GcStatementEmailOpts = { dateStr?: string; groupBy?: GcReviewGroupBy; officePhone?: string | null }
+export type GcStatementEmailOpts = {
+  dateStr?: string
+  groupBy?: GcReviewGroupBy
+  officePhone?: string | null
+  /** The GC's portal link (v2.2151) — renders the "Your account, any time" card; omit/null for none. */
+  portalUrl?: string | null
+}
+
+/**
+ * Portal card under the statement table (v2.2151). Mirror of
+ * gc-statement-email-dispatch/render.ts `portalCardHtml` — keep in sync.
+ */
+export function gcStatementPortalCardHtml(portalUrl: string | null | undefined): string {
+  const url = (portalUrl ?? '').trim()
+  if (!url) return ''
+  const shown = url.replace(/^https?:\/\//, '')
+  return `<table role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px"><tr>
+    <td style="border:1px solid #ddd6c8;border-left:4px solid #b0662f;background:#fbf7f0;border-radius:6px;padding:12px 14px">
+      <p style="margin:0;font-size:14px;font-weight:bold;color:#16283c">Your account, any time</p>
+      <p style="margin:3px 0 0;font-size:13px;color:#5a6b7e;line-height:1.4">This statement stays current at <a href="${escapeHtml(url)}" style="color:#b0662f;font-weight:bold;text-decoration:none">${escapeHtml(shown)}</a> — pay any bill there by card or ACH.</p>
+    </td>
+  </tr></table>`
+}
+
+/** Plain-text counterpart of the portal card. */
+export function gcStatementPortalLineText(portalUrl: string | null | undefined): string | null {
+  const url = (portalUrl ?? '').trim()
+  return url ? `Your account, any time: this statement stays current at ${url} — pay any bill there by card or ACH.` : null
+}
 
 const escapeHtml = (s: string) =>
   (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -75,7 +103,7 @@ export function buildGcStatementEmailHtml(
         <td style="padding:9px 6px;font-size:14px;font-weight:bold;color:#111827;text-align:right">$${formatCurrency(group.subtotal)}</td>
       </tr>
     </tbody>
-  </table>
+  </table>${gcStatementPortalCardHtml(opts?.portalUrl)}
   <p style="margin:12px 0 0;font-size:12px;color:#6b7280">${escapeHtml(gcStatementFooterLine(opts?.officePhone))}</p>
 </div>`
 }
@@ -186,6 +214,7 @@ export function buildGcStatementEmailText(
     '',
     `Total owed: $${formatCurrency(group.subtotal)}`,
     '',
+    ...(gcStatementPortalLineText(opts?.portalUrl) ? [gcStatementPortalLineText(opts?.portalUrl) as string, ''] : []),
     gcStatementFooterLine(opts?.officePhone),
   ].join('\n')
 }

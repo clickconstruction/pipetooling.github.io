@@ -4170,8 +4170,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       showToast('Allow pop-ups to print the report.', 'error')
                     }
                   }}
-                  onCopyForEmail={(group) => {
+                  onCopyForEmail={(group, _groupBy, extra) => {
                     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    const portalUrl = extra?.portalUrl ?? null
                     const subject = gcStatementEmailSubject(group, dateStr)
                     // Subject rides at the top of the copied block so it can be
                     // cut into the email's subject field; the table below it is
@@ -4179,8 +4180,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     // Outlook / Apple Mail; plain text covers everything else.
                     const html =
                       `<p style="margin:0 0 10px;font-size:12px;color:#6b7280"><strong>Subject:</strong> ${subject}</p>` +
-                      buildGcStatementEmailHtml(group, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone })
-                    const text = `Subject: ${subject}\n\n${buildGcStatementEmailText(group, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone })}`
+                      buildGcStatementEmailHtml(group, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl })
+                    const text = `Subject: ${subject}\n\n${buildGcStatementEmailText(group, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl })}`
                     void copyRichHtmlToClipboard(html, text).then(
                       () => showToast(`Copied the ${group.gcName} statement — paste it into your email.`, 'success'),
                       () => showToast('Could not copy — try again.', 'error'),
