@@ -68,7 +68,7 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
               <div key={v.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', fontSize: '0.78rem', padding: '0.05rem 0 0.05rem 1rem', color: 'var(--text-600)', flexWrap: 'wrap' }}>
                 <span>{v.name}</span>
                 <span style={{ fontSize: '0.72rem', color: v.include_in_submission ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{v.include_in_submission ? (v.is_alternate ? 'alternate' : 'base') : 'not in letter'}</span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{badge ?? 'not sent'}</span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{badge ?? (p.sentOn && !latest[v.id] && (!v.created_at || String(v.created_at).slice(0, 10) <= p.sentOn) ? `sent ${fmtSent(p.sentOn)}` : 'not sent')}</span>
               </div>
             )
           })}

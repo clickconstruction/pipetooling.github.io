@@ -13,7 +13,8 @@ export function gcRowsWorthShowing(packets: GcPacket[] | undefined): boolean {
   return packets.length > 1 || packets.some((p) => p.gcId != null)
 }
 
-export function BidBoardGcRows({ bidId, bidOutcome, packets, colSpan, onChanged }: { bidId: string; bidOutcome: string | null; packets: GcPacket[]; colSpan: number; onChanged: () => void }) {
+/** The per-GC lines (name · sent · ★ value · outcome) — shared by the table row and the phone card. */
+export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged }: { bidId: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void }) {
   const { showToast } = useToastContext()
   const [busyKey, setBusyKey] = useState<string | null>(null)
   const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
@@ -28,9 +29,7 @@ export function BidBoardGcRows({ bidId, bidOutcome, packets, colSpan, onChanged 
     onChanged()
   }
   return (
-    <tr style={{ background: 'var(--bg-subtle)' }} onClick={(e) => e.stopPropagation()}>
-      <td colSpan={colSpan} style={{ padding: '0.25rem 1rem 0.35rem 2rem', borderTop: '1px dashed var(--border)', fontSize: '0.78rem', color: 'var(--text-700)' }}>
-        <div style={{ display: 'grid', gap: '0.15rem' }}>
+        <div style={{ display: 'grid', gap: '0.15rem', fontSize: '0.78rem', color: 'var(--text-700)' }}>
           {packets.map((p) => {
             const value = p.sentValue
             return (
@@ -55,6 +54,15 @@ export function BidBoardGcRows({ bidId, bidOutcome, packets, colSpan, onChanged 
             )
           })}
         </div>
+  )
+}
+
+/** Table variant: one full-width row under the bid's row. */
+export function BidBoardGcRows({ colSpan, ...rest }: { bidId: string; bidOutcome: string | null; packets: GcPacket[]; colSpan: number; onChanged: () => void }) {
+  return (
+    <tr style={{ background: 'var(--bg-subtle)' }} onClick={(e) => e.stopPropagation()}>
+      <td colSpan={colSpan} style={{ padding: '0.25rem 1rem 0.35rem 2rem', borderTop: '1px dashed var(--border)' }}>
+        <BidBoardGcLines {...rest} />
       </td>
     </tr>
   )
