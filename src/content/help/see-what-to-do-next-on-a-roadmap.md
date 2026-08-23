@@ -30,6 +30,11 @@ Every row wears the reasons it was picked as small amber chips; tap **why this o
 Stage 6 has two tasks left, and finishing it is what moves "Full Use of Land". That's why it's at the top, even though stage 1 is numbered first.
 :::
 
+## The same picks, elsewhere
+
+- **On the Map**, tasks on the shortlist wear a small ⚡ after their title, and a stage with picks shows a {{chip:yellow|⚡ 2 next up}} chip in its header — so a collapsed cluster still tells you there's something worth doing inside.
+- **On the Dashboard**, when a roadmap has three or more unowned tasks in open stages, a card says *Farm 1 · 84 roadmap tasks need a name* with the top pick. Tap {{button:outline|Open Plan →}} to land on that roadmap's Plan with the panel at the top. The card only appears for people who can see the Roadmap tab.
+
 ## What it doesn't do
 
 It never re-numbers stages, never hides anything, and never moves a locked stage's tasks onto the list. When you'd rather work in your own order, just scroll past it — the **Now**, **Up next**, and **Goals** lists are unchanged.
