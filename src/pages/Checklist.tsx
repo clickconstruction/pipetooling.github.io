@@ -402,7 +402,7 @@ export default function Checklist() {
         </div>
       )}
       {activeTab === 'review' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} canEditRoadmapTasks={canEditTechTree} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
@@ -1884,7 +1884,7 @@ function OutstandingByPersonSortableList({
   )
 }
 
-function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
+function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEditRoadmapTasks, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; /** Roadmap structure editors (v2.2182) — may edit tasks from the Where-this-fits sheet. */ canEditRoadmapTasks: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
@@ -1922,6 +1922,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
   const [goalTaskRows, setGoalTaskRows] = useState<Map<string, Map<string, GoalsLedgerTaskRow[]>>>(new Map())
   /** The one stage row currently unfolded to its tasks (v2.2167). */
   const [expandedStageId, setExpandedStageId] = useState<string | null>(null)
+  /** Bumped after edits made from the Where-this-fits sheet (v2.2182) so the ledger refetches. */
+  const [goalsReloadTick, setGoalsReloadTick] = useState(0)
   const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
   const onOpenReqCount = useCallback((n: number) => setOpenReqCount(n), [])
 
@@ -1993,7 +1995,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [goalsReloadTick])
 
   const loadOutstandingRef = useRef(loadOutstanding)
   loadOutstandingRef.current = loadOutstanding
@@ -2857,6 +2859,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
           roadmapGroupTaskId={roadmapContextTaskId}
           onClose={() => setRoadmapContextTaskId(null)}
           onOpenRoadmap={onOpenRoadmap}
+          canEditStructure={canEditRoadmapTasks}
+          currentUserId={authUserId}
+          onChanged={() => setGoalsReloadTick((t) => t + 1)}
         />
       )}
       {outstandingDeletePending && (
