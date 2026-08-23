@@ -17,6 +17,8 @@ const summary = (over?: Partial<PartnerSummary>): PartnerSummary => ({
   exists: true,
   partnership_id: 'pp1',
   display_name: 'Bryan Herber',
+  company_name: 'Herber Electric',
+  started_on: '2026-03-22',
   balance: 3173.75,
   modules: { weekly_statement: true, costing: true, profit_shares: true },
   current_week: { week_start: '2026-08-16', field_hours: 9.5, office_hours: 4, farm_hours: 0, gross_so_far: 615, pending_sessions: 2 },
@@ -60,6 +62,13 @@ describe('parsePartnerSummary', () => {
     expect(s?.balance).toBe(12.5)
     expect(s?.modules.costing).toBe(false)
     expect(s?.latest_statement).toBeNull()
+    // v2.2170: letterhead fields are optional in the payload — absent → null, blank → null, present → trimmed.
+    expect(s?.company_name).toBeNull()
+    expect(s?.started_on).toBeNull()
+    const t = parsePartnerSummary({ exists: true, company_name: '  Herber Electric ', started_on: '2026-03-22' })
+    expect(t?.company_name).toBe('Herber Electric')
+    expect(t?.started_on).toBe('2026-03-22')
+    expect(parsePartnerSummary({ exists: true, company_name: '   ' })?.company_name).toBeNull()
   })
   it('returns null for non-partners and garbage', () => {
     expect(parsePartnerSummary({ exists: false })).toBeNull()

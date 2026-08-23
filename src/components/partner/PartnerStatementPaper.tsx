@@ -2,7 +2,7 @@ import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import type { LedgerDisplayRow } from '../../lib/partnerLedger/partnerLedgerJournal'
 import { balanceWords, crossingText, postingLabel, shortDate, signedBalanceLabel, weekOfLabel, weekRangeLabel } from '../../lib/partnerLedger/partnerLedgerFormat'
-import { awaitingStatementCard, balanceHeadline, partnerSinceLabel } from '../../lib/partnerLedger/partnerStatementModel'
+import { awaitingStatementCard, balanceHeadline, longDate, partnerSinceLabel } from '../../lib/partnerLedger/partnerStatementModel'
 import type { PartnerJobCosting, PartnerJobsPayload } from '../../lib/partnerLedger/partnerJobsPayload'
 import type { PartnerSummary, WeekCard } from '../../lib/partnerLedger/partnerWeeks'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PORTAL_FONT } from '../../lib/portal/portalTheme'
@@ -77,7 +77,8 @@ export function PartnerStatementPaper(p: PartnerStatementPaperProps) {
   // D7: the last statement sits under the open week only while unacknowledged,
   // and only when the reader is looking at the open week (else ‹ Older has it).
   const showAwaiting = awaiting != null && card != null && card.open && awaiting !== card
-  const since = partnerSinceLabel(cards)
+  // The deal's start date when the partnership record has one; else the oldest week on file.
+  const since = summary.started_on ? `partner since ${longDate(summary.started_on)}` : partnerSinceLabel(cards)
   const rates = [summary.rates.field > 0 ? `field $${summary.rates.field}` : null, summary.rates.estimating > 0 ? `estimating $${summary.rates.estimating}` : null].filter(Boolean).join(' · ')
   const sub = [since, rates ? `${rates} / h` : null].filter(Boolean).join(' · ')
 
@@ -94,7 +95,7 @@ export function PartnerStatementPaper(p: PartnerStatementPaperProps) {
           </div>
         </div>
         <div style={{ textAlign: 'right', fontSize: 11, color: MUTED, lineHeight: 1.6, whiteSpace: 'nowrap' }}>
-          Partner account
+          Partner account{summary.company_name ? ` · ${summary.company_name}` : ''}
           <br />
           {p.todayLabel}
         </div>
