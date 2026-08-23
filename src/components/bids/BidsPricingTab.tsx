@@ -1274,7 +1274,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-scenarios',
       title: 'Scenarios — for you to compare',
-      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, Print, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "＋ New price or version…" adds another price point (for you) — or another bid to send (the customer sees it).',
+      body: 'Price scenarios are different prices for the same version. The ★ starred one is what the customer sees. Cover Letter, Share, Print, and the bid value all use it.',
     },
     {
       anchor: 'workbench-summary',
@@ -1774,7 +1774,6 @@ export function BidsPricingTab({
               </button>
               {pricingView === 'new' ? (
                 <>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Workbench — solver previews, Apply writes. Same data as Old.</span>
                   <button
                     type="button"
                     onClick={startWorkbenchTour}
