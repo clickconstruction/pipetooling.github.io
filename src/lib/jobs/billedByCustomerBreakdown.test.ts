@@ -94,6 +94,23 @@ describe('buildBilledByCustomerBreakdown', () => {
     expect(groups[0]!.worstAgeDays).toBe(10)
   })
 
+  it('ages by billed_at when no est. bill date is set; a hand-set date wins and is flagged (v2.2130)', () => {
+    const j = job({ id: 'jf' })
+    const rows = [
+      invRow(j, { id: 'b1', amount: 1000, billed_at: '2026-07-04T15:00:00Z' }), // 47d, app-stamped
+      invRow(j, { id: 'b2', amount: 1000, billed_at: '2026-08-18T15:00:00Z', estimated_bill_date: '2026-03-01' }), // 172d, hand-set
+      invRow(j, { id: 'b3', amount: 1000 }), // nothing → no date
+    ]
+    const g = buildBilledByCustomerBreakdown(rows, NOW)[0]!
+    expect(g.bills.map((b) => [b.invoiceId, b.ageDays, b.ageHandSet])).toEqual([
+      ['b2', 172, true],
+      ['b1', 47, false],
+      ['b3', null, false],
+    ])
+    expect(g.worstAgeDays).toBe(172)
+    expect(g.worstAgeHandSet).toBe(true)
+  })
+
   it('missing customer groups under "No customer" keyed by name; blank name jobs merge there', () => {
     const a = job({ id: 'n1', customer_id: null, customer_name: '', job_name: 'Orphan 1' })
     const b = job({ id: 'n2', customer_id: null, customer_name: null, job_name: 'Orphan 2' })

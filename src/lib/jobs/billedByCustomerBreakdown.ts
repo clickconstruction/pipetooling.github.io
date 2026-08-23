@@ -3,11 +3,12 @@
  * CUSTOMERS card (v2.1929): the Billed Awaiting Payment rows regrouped by
  * customer so the card's total answers its own question. Pure reshaping of
  * the board's `billedActiveRows` — amounts are the same per-row open
- * remainders the section total sums, ages use the same est.-bill-date clock
- * as the 30/90 aging chips (rows without a date can't age — `ageDays` null).
+ * remainders the section total sums, ages use the same clock as the 30/90
+ * aging chips (`stageRowBilledAgeReference`: hand-set est. bill date, else the
+ * billed date; rows with neither can't age — `ageDays` null).
  */
 import type { StageRow } from '../jobsStagesBoard'
-import { stageRowBilledAgeDays, stageRowBilledRemainingAmount } from './invoiceBilling'
+import { stageRowBilledAgeDays, stageRowBilledAgeReference, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 export type BilledBreakdownBill = {
@@ -18,8 +19,10 @@ export type BilledBreakdownBill = {
   jobNumber: string
   /** Open remainder on this row (what the section total sums). */
   amount: number
-  /** Days since est. bill date — the aging chips' clock; null = no date (can't age). */
+  /** Days since the bill's reference date — the aging chips' clock; null = no date (can't age). */
   ageDays: number | null
+  /** True when the age counts from a hand-set est. bill date rather than the billed date. */
+  ageHandSet: boolean
 }
 
 export type BilledBreakdownCustomerGroup = {
@@ -30,6 +33,8 @@ export type BilledBreakdownCustomerGroup = {
   /** Oldest first; undated bills last. */
   bills: BilledBreakdownBill[]
   worstAgeDays: number | null
+  /** Whether the bill behind `worstAgeDays` is aged by a hand-set date. */
+  worstAgeHandSet: boolean
 }
 
 /** Groups sorted by total owed descending; ties broken oldest-first. */
@@ -51,6 +56,7 @@ export function buildBilledByCustomerBreakdown(
       jobNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
       amount,
       ageDays: stageRowBilledAgeDays(row, now),
+      ageHandSet: stageRowBilledAgeReference(row)?.handSet ?? false,
     }
     const g = groups.get(key)
     if (g) {
@@ -59,6 +65,7 @@ export function buildBilledByCustomerBreakdown(
       g.count += 1
       if (bill.ageDays != null && (g.worstAgeDays == null || bill.ageDays > g.worstAgeDays)) {
         g.worstAgeDays = bill.ageDays
+        g.worstAgeHandSet = bill.ageHandSet
       }
     } else {
       groups.set(key, {
@@ -68,6 +75,7 @@ export function buildBilledByCustomerBreakdown(
         count: 1,
         bills: [bill],
         worstAgeDays: bill.ageDays,
+        worstAgeHandSet: bill.ageDays != null && bill.ageHandSet,
       })
     }
   }

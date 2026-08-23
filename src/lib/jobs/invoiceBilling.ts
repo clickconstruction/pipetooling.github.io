@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildBilledStageRows, jobInCollections, stagesMergedBillingInvoiceId, type StageRow } from '../jobsStagesBoard'
 import { calendarDaysSinceDateUtc, formatYmdOrIsoDateForPrintDisplay } from './jobFormatting'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -45,10 +46,29 @@ export function stageRowBilledRemainingAmount(r: StageRow): number {
   return invoiceOpenRemainingOnJob(r.inv, r.job)
 }
 
+/**
+ * The Billed aging clock's reference date (v2.2130). Two sources, one rule:
+ * a hand-set est. bill date wins (it exists to correct the date — bills
+ * entered after the fact, backdated lines), otherwise the `billed_at` the DB
+ * trigger stamped when the line became billed (its Chicago calendar day).
+ * Job-shell rows (billed job, no bill line) have neither and can't age.
+ * Every age on the board — Who owes what, the 30+/90+ chips, the money card's
+ * age bar, the "Chase the 90+ tail" move — reads this one function.
+ */
+export function stageRowBilledAgeReference(r: StageRow): { ymd: string; handSet: boolean } | null {
+  if (r.kind === 'job') return null
+  const est = effectiveInvoiceEstBillDate(r.inv)
+  if (est) return { ymd: est, handSet: true }
+  const billedAt = r.inv.billed_at?.trim()
+  if (!billedAt) return null
+  const ymd = calendarYmdInAppTzFromIso(billedAt)
+  return ymd ? { ymd, handSet: false } : null
+}
+
 export function stageRowBilledAgeDays(r: StageRow, now = new Date()): number | null {
-  const iso = r.kind === 'job' ? null : effectiveInvoiceEstBillDate(r.inv)
-  if (!iso) return null
-  const days = calendarDaysSinceDateUtc(iso, now)
+  const ref = stageRowBilledAgeReference(r)
+  if (!ref) return null
+  const days = calendarDaysSinceDateUtc(ref.ymd, now)
   if (days < 0) return null
   return days
 }
@@ -135,10 +155,8 @@ export type BilledAgingBucketKey = '30_90' | '90'
  * the buildBilledAgingBuckets loop has always applied.
  */
 export function billedStageRowAgingBucket(row: StageRow, now = new Date()): BilledAgingBucketKey | null {
-  const iso = row.kind === 'job' ? null : effectiveInvoiceEstBillDate(row.inv)
-  if (!iso) return null
-  const days = calendarDaysSinceDateUtc(iso, now)
-  if (days < 30) return null
+  const days = stageRowBilledAgeDays(row, now)
+  if (days == null || days < 30) return null
   if (stageRowBilledRemainingAmount(row) <= 0) return null
   return days < 90 ? '30_90' : '90'
 }
