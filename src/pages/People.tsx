@@ -15,6 +15,7 @@ import PeopleOverheadTab from '../components/people/PeopleOverheadTab'
 import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
+import PeoplePayLedgerView from '../components/people/PeoplePayLedgerView'
 import { PeopleUsersTab } from '../components/people/PeopleUsersTab'
 import {
   buildUsersTabKindRoster,
@@ -234,6 +235,8 @@ const PEOPLE_HOURS_CLOCK_REALTIME_MAX_USER_IDS = 150
 
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
+  /** Payroll tab view (v2.2168, dev-only): the per-stub table ("reports") or the per-person ledger. Deep-link: ?view=ledger&person=<name>. */
+  const [payrollView, setPayrollView] = useState<'reports' | 'ledger'>(() => (searchParams.get('view') === 'ledger' ? 'ledger' : 'reports'))
   const { user: authUser, role: authRole } = useAuth()
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
@@ -3440,7 +3443,53 @@ export default function People() {
         />
       )}
 
-      {activeTab === 'pay_stubs' && canAccessPay && (
+      {activeTab === 'pay_stubs' && canAccessPay && isDev ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
+          <div role="tablist" aria-label="Payroll view" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
+            {(
+              [
+                ['reports', 'Pay reports'],
+                ['ledger', 'Ledger'],
+              ] as const
+            ).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={payrollView === v}
+                onClick={() => {
+                  setPayrollView(v)
+                  const next = new URLSearchParams(searchParams)
+                  if (v === 'ledger') next.set('view', 'ledger')
+                  else {
+                    next.delete('view')
+                    next.delete('person')
+                  }
+                  setSearchParams(next, { replace: true })
+                }}
+                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.3rem 0.8rem', border: 'none', background: payrollView === v ? 'var(--text-link)' : 'var(--surface)', color: payrollView === v ? 'var(--surface)' : 'var(--text-700)', cursor: 'pointer' }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === 'pay_stubs' && canAccessPay && isDev && payrollView === 'ledger' && (
+        <PeoplePayLedgerView
+          payStubs={payStubs}
+          payStubPaymentsByStubId={payStubPaymentsByStubId}
+          payStubDeductionsByStubId={payStubDeductionsByStubId}
+          payStubAdditionalByStubId={payStubAdditionalByStubId}
+          onViewStub={(stub) => void viewPayStubInModal(stub)}
+          onRecordPayment={openPayStubMarkPaidModal}
+          onError={setError}
+          loadPayStubs={loadPayStubs}
+        />
+      )}
+
+      {activeTab === 'pay_stubs' && canAccessPay && !(isDev && payrollView === 'ledger') && (
         <PeoplePayStubsTab
           payStubs={payStubs}
           payStubPaymentsByStubId={payStubPaymentsByStubId}
