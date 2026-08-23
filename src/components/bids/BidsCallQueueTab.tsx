@@ -17,7 +17,10 @@ import {
   hasAnyBidTabValue,
   type BidTabValues,
 } from '../../lib/bidTabCapture'
-import { buildCallQueue, classifyCallQueueOutcome, type CallQueueBid, type CallQueueBuilder } from '../../lib/bids/callQueue'
+import { buildCallQueue, type CallQueueBid, type CallQueueBuilder } from '../../lib/bids/callQueue'
+import type { GcPacket } from '../../lib/bids/gcPackets'
+import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
+import { setGcPacketLossCategory, setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { BidTabCapturePanel } from './BidTabCapturePanel'
 import {
@@ -30,6 +33,8 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 export type BidsCallQueueTabProps = {
   bids: BidWithBuilder[]
+  /** Per-bid GC packets — builder stats and rows count each GC's packet, not the bid. */
+  gcPacketsByBid: Record<string, GcPacket[]>
   ledgerPrefixMap: LedgerPrefixMap
   /** Latest submission-entry instant per bid id (parent's `lastContactFromEntries`). */
   lastContactFromEntries: Record<string, string>
@@ -43,7 +48,8 @@ export type BidsCallQueueTabProps = {
 
 type QueueRowKey = 'chase' | 'reasons' | 'tabs'
 
-type MappedBid = CallQueueBid & { label: string; project: string; raw: BidWithBuilder }
+/** One queue entry = one bid × one GC (Bids by GC, v2.2164). `id` stays the bid id (writes); `rowKey` is unique. */
+type MappedBid = CallQueueBid & { rowKey: string; label: string; project: string; raw: BidWithBuilder; gc: GcOutcomeRow }
 
 const taskLabelStyle: CSSProperties = {
   fontSize: '0.72rem',
@@ -86,6 +92,7 @@ function shortDate(iso: string): string {
  */
 export function BidsCallQueueTab({
   bids,
+  gcPacketsByBid,
   ledgerPrefixMap,
   lastContactFromEntries,
   narrowViewport640,
@@ -107,29 +114,33 @@ export function BidsCallQueueTab({
 
   const mapped = useMemo<MappedBid[]>(
     () =>
-      bids.map((b) => {
+      bids.flatMap((b) => {
         const builderName = (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
+        const builderKey = b.customer_id ?? b.gc_builder_id ?? builderName
         const fromBid = b.last_contact ?? null
         const fromEntries = lastContactFromEntries[b.id] ?? null
         const lastContactIso =
           fromBid && fromEntries ? (fromBid > fromEntries ? fromBid : fromEntries) : fromBid ?? fromEntries
-        return {
+        // Bids by GC: one entry per GC the bid went to, with that GC's outcome / value / reason.
+        return gcOutcomeRowsForBid(b, { key: builderKey, name: builderName }, gcPacketsByBid[b.id]).map((row) => ({
           id: b.id,
-          builderKey: b.customer_id ?? b.gc_builder_id ?? builderName,
-          builderName,
-          phone: builderPhoneOf(b),
-          value: Number(b.bid_value) || 0,
-          outcome: classifyCallQueueOutcome(b),
-          sentIso: b.bid_date_sent ?? null,
+          rowKey: row.packetKey ? `${b.id}:${row.gcKey}` : b.id,
+          builderKey: row.gcKey,
+          builderName: row.gcName,
+          phone: row.gcKey === builderKey ? builderPhoneOf(b) : null,
+          value: row.value,
+          outcome: row.outcome,
+          sentIso: row.sentOn ?? b.bid_date_sent ?? null,
           lastContactIso,
-          lossCategory: b.loss_category ?? null,
+          lossCategory: row.lossCategory,
           hasTab: bidTabValuesFromRow(b).low != null,
           label: bidLensLabel(b, ledgerPrefixMap),
           project: (b.project_name ?? '').trim() || '—',
           raw: b,
-        }
+          gc: row,
+        }))
       }),
-    [bids, lastContactFromEntries, ledgerPrefixMap],
+    [bids, gcPacketsByBid, lastContactFromEntries, ledgerPrefixMap],
   )
 
   const queue = useMemo(() => buildCallQueue(mapped, nowIso), [mapped, nowIso])
@@ -169,6 +180,11 @@ export function BidsCallQueueTab({
     setOpenRow((cur) => (cur && cur.builderKey === builderKey && cur.row === row ? null : { builderKey, row }))
   }
 
+  /** Multi-GC bid rows carry their own answer and reason (a packet); single-GC rows write the bid as always. */
+  function packetScoped(b: MappedBid): boolean {
+    return gcRowIsPacketScoped(b.gc)
+  }
+
   /** One chase tap — entry + last_contact stamp (+ outcome / tab when given), then reload. */
   function chaseAction(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null) {
     if (!authUserId) {
@@ -192,7 +208,22 @@ export function BidsCallQueueTab({
       try {
         await withSupabaseRetry(async () => supabase.from('bids_submission_entries').insert(writes.entry), 'log call note')
         const patch: Record<string, string | number | null> = { last_contact: writes.lastContact }
-        if (writes.outcomeUpdate) {
+        if (writes.outcomeUpdate && packetScoped(b)) {
+          // Multi-GC bid: the answer is this GC's, not the bid's — write the packet; the bid rolls up.
+          const packets = gcPacketsByBid[b.id] ?? []
+          const res = await setGcPacketOutcome({
+            bidId: b.id,
+            bidOutcome: b.raw.outcome ?? null,
+            versionIds: b.gc.versionIds,
+            outcome: writes.outcomeUpdate.outcome,
+            packetsAfter: packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === b.gc.packetKey ? writes.outcomeUpdate!.outcome : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter })),
+          })
+          if (res.error) throw new Error(res.error)
+          if (writes.outcomeUpdate.outcome === 'lost' && writes.outcomeUpdate.loss_category) {
+            await setGcPacketLossCategory({ versionIds: b.gc.versionIds, category: writes.outcomeUpdate.loss_category, note: writes.outcomeUpdate.loss_reason })
+          }
+          window.dispatchEvent(new Event('bid-gc-outcome-changed'))
+        } else if (writes.outcomeUpdate) {
           patch.outcome = writes.outcomeUpdate.outcome
           patch.loss_reason = writes.outcomeUpdate.loss_reason
           patch.loss_category = writes.outcomeUpdate.loss_category
@@ -219,7 +250,13 @@ export function BidsCallQueueTab({
     setNoteDraft('')
     void (async () => {
       try {
-        await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save loss reason')
+        if (packetScoped(b)) {
+          const res = await setGcPacketLossCategory({ versionIds: b.gc.versionIds, category: key, note: note || null })
+          if (res.error) throw new Error(res.error)
+          window.dispatchEvent(new Event('bid-gc-outcome-changed'))
+        } else {
+          await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save loss reason')
+        }
         onError(null)
         onReloadBids()
       } catch (err) {
@@ -290,16 +327,16 @@ export function BidsCallQueueTab({
             const quiet = b.lastContactIso ?? b.sentIso
             const quietDays = quiet ? Math.max(0, Math.floor((Date.parse(nowIso) - Date.parse(quiet)) / 86_400_000)) : null
             return (
-              <div key={b.id} style={{ marginBottom: '0.55rem' }}>
+              <div key={b.rowKey} style={{ marginBottom: '0.55rem' }}>
                 {bidHeadline(b, `${b.sentIso ? ` · sent ${shortDate(b.sentIso)}` : ''}${quietDays != null ? ` · quiet ${quietDays}d` : ''}`)}
-                {lostPickerBidId === b.id ? (
+                {lostPickerBidId === b.rowKey ? (
                   <div style={{ marginTop: '0.35rem' }}>
                     <BidLossCategoryChips value={null} onSelect={(key) => chaseAction(b, 'lost', key)} />
                   </div>
-                ) : tabOpenBidId === b.id ? (
+                ) : tabOpenBidId === b.rowKey ? (
                   <div style={{ marginTop: '0.35rem' }}>
                     <BidTabCapturePanel
-                      key={b.id}
+                      key={b.rowKey}
                       ourValue={b.value}
                       initial={bidTabValuesFromRow(b.raw)}
                       saving={savingBidId != null}
@@ -316,7 +353,7 @@ export function BidsCallQueueTab({
                         type="button"
                         disabled={savingBidId != null}
                         onClick={() =>
-                          a.key === 'lost' ? setLostPickerBidId(b.id) : a.key === 'bid_tab' ? setTabOpenBidId(b.id) : chaseAction(b, a.key)
+                          a.key === 'lost' ? setLostPickerBidId(b.rowKey) : a.key === 'bid_tab' ? setTabOpenBidId(b.rowKey) : chaseAction(b, a.key)
                         }
                         style={{
                           fontSize: '0.75rem',
@@ -348,7 +385,7 @@ export function BidsCallQueueTab({
           {builder.reasons.todo.map((cb) => {
             const b = cb as MappedBid
             return (
-              <div key={b.id} style={{ marginBottom: '0.55rem' }}>
+              <div key={b.rowKey} style={{ marginBottom: '0.55rem' }}>
                 {bidHeadline(b, ' · lost — no reason yet')}
                 <div style={{ marginTop: '0.35rem' }}>
                   <BidLossCategoryChips
@@ -371,12 +408,12 @@ export function BidsCallQueueTab({
         {builder.tabs.todo.map((cb) => {
           const b = cb as MappedBid
           return (
-            <div key={b.id} style={{ marginBottom: '0.55rem' }}>
+            <div key={b.rowKey} style={{ marginBottom: '0.55rem' }}>
               {bidHeadline(b, `${b.outcome === 'lost' ? ' · lost' : b.sentIso ? ` · sent ${shortDate(b.sentIso)}` : ''}`)}
-              {tabOpenBidId === b.id ? (
+              {tabOpenBidId === b.rowKey ? (
                 <div style={{ marginTop: '0.35rem' }}>
                   <BidTabCapturePanel
-                    key={b.id}
+                    key={b.rowKey}
                     ourValue={b.value}
                     initial={bidTabValuesFromRow(b.raw)}
                     saving={savingBidId != null}
@@ -388,7 +425,7 @@ export function BidsCallQueueTab({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setTabOpenBidId(b.id)}
+                  onClick={() => setTabOpenBidId(b.rowKey)}
                   style={{ marginTop: '0.25rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontSize: '0.75rem' }}
                 >
                   record the bid tab {'→'}
@@ -400,7 +437,7 @@ export function BidsCallQueueTab({
         {recorded.length > 0 ? (
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
             {recorded.map((b) => (
-              <div key={b.id} style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.2rem' }}>
+              <div key={b.rowKey} style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.2rem' }}>
                 <span
                   style={{ fontSize: '0.62rem', fontWeight: 700, padding: '0.08rem 0.45rem', borderRadius: 999, background: 'var(--bg-emerald-tint)', color: 'var(--text-emerald-800)', letterSpacing: '0.03em' }}
                 >
@@ -409,19 +446,19 @@ export function BidsCallQueueTab({
                 <span>
                   {b.project} — {bidTabSummary(bidTabValuesFromRow(b.raw), b.value)}
                 </span>
-                {tabOpenBidId !== b.id ? (
+                {tabOpenBidId !== b.rowKey ? (
                   <button
                     type="button"
-                    onClick={() => setTabOpenBidId(b.id)}
+                    onClick={() => setTabOpenBidId(b.rowKey)}
                     style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', fontSize: '0.72rem' }}
                   >
                     edit
                   </button>
                 ) : null}
-                {tabOpenBidId === b.id ? (
+                {tabOpenBidId === b.rowKey ? (
                   <div style={{ flexBasis: '100%', marginTop: '0.25rem' }}>
                     <BidTabCapturePanel
-                      key={b.id}
+                      key={b.rowKey}
                       ourValue={b.value}
                       initial={bidTabValuesFromRow(b.raw)}
                       saving={savingBidId != null}

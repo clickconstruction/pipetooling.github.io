@@ -26,7 +26,10 @@ import {
   type BidTabValues,
 } from '../../lib/bidTabCapture'
 import { BidTabCapturePanel, BidTabRecordedLine } from './BidTabCapturePanel'
-import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
+import { looksLikeCombinedGcName, type BidGcRecipientsMap } from '../../lib/bids/bidGcRecipients'
+import type { GcPacket } from '../../lib/bids/gcPackets'
+import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
+import { setGcPacketLossCategory, setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import {
   type LedgerPrefixMap,
   bidNumberMatchesQuery,
@@ -38,6 +41,8 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 export type BidsWaitingToHearLensProps = {
   bids: BidWithBuilder[]
+  /** Bids by GC (v2.2164): per-bid GC packets — a bid waits under each GC whose packet is still open. */
+  gcPacketsByBid: Record<string, GcPacket[]>
   ledgerPrefixMap: LedgerPrefixMap
   /** Latest submission-entry instant per bid id (parent's `lastContactFromEntries`). */
   lastContactFromEntries: Record<string, string>
@@ -52,6 +57,9 @@ export type BidsWaitingToHearLensProps = {
 }
 
 type LensBid = PendingChaseBid & {
+  /** Unique per bid × GC; `id` stays the bid id. */
+  rowKey: string
+  gc: GcOutcomeRow
   label: string
   project: string
   address: string | null
@@ -104,6 +112,7 @@ function daysAgoLabel(days: number): string {
 
 export function BidsWaitingToHearLens({
   bids,
+  gcPacketsByBid,
   ledgerPrefixMap,
   lastContactFromEntries,
   recipientsByBidId,
@@ -129,28 +138,27 @@ export function BidsWaitingToHearLens({
   const nowIso = useMemo(() => new Date().toISOString(), [])
 
   const lensBids = useMemo<LensBid[]>(() => {
-    return bids
-      .filter(
-        (b) =>
-          !!b.bid_date_sent &&
-          b.outcome !== 'won' &&
-          b.outcome !== 'lost' &&
-          b.outcome !== 'started_or_complete' &&
-          !localResolved[b.id],
-      )
-      .map((b) => {
-        const builderName =
-          (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
-        const fromBid = localTouches[b.id] ?? b.last_contact ?? null
-        const fromEntries = lastContactFromEntries[b.id] ?? null
-        const lastContactIso =
-          fromBid && fromEntries ? (fromBid > fromEntries ? fromBid : fromEntries) : fromBid ?? fromEntries
-        return {
+    return bids.flatMap((b) => {
+      const builderName =
+        (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
+      const builderKey = b.customer_id ?? b.gc_builder_id ?? builderName
+      const fromBid = localTouches[b.id] ?? b.last_contact ?? null
+      const fromEntries = lastContactFromEntries[b.id] ?? null
+      const lastContactIso =
+        fromBid && fromEntries ? (fromBid > fromEntries ? fromBid : fromEntries) : fromBid ?? fromEntries
+      // Bids by GC: one entry per GC whose packet is still waiting (a GC that already answered drops off).
+      return gcOutcomeRowsForBid(b, { key: builderKey, name: builderName }, gcPacketsByBid[b.id])
+        .filter((row) => row.outcome === 'pending')
+        .map((row) => ({ row, rowKey: row.packetKey ? `${b.id}:${row.gcKey}` : b.id }))
+        .filter(({ rowKey }) => !localResolved[rowKey])
+        .map(({ row, rowKey }) => ({
           id: b.id,
-          builderKey: b.customer_id ?? b.gc_builder_id ?? builderName,
-          builderName,
-          value: Number(b.bid_value) || 0,
-          sentIso: b.bid_date_sent!,
+          rowKey,
+          gc: row,
+          builderKey: row.gcKey,
+          builderName: row.gcName,
+          value: row.value,
+          sentIso: row.sentOn ?? b.bid_date_sent ?? '',
           lastContactIso,
           label: bidLensLabel(b, ledgerPrefixMap),
           project: (b.project_name ?? '').trim() || '—',
@@ -158,9 +166,9 @@ export function BidsWaitingToHearLens({
           estimatorName: estimatorNameOf(b),
           dueIso: b.bid_due_date ?? null,
           raw: b,
-        }
-      })
-  }, [bids, lastContactFromEntries, ledgerPrefixMap, localTouches, localResolved])
+        }))
+    })
+  }, [bids, gcPacketsByBid, lastContactFromEntries, ledgerPrefixMap, localTouches, localResolved])
 
   // Search narrows the queue (sidebar + bids), never the rollup headline —
   // "N to chase" stays a status of the whole queue, not of the query.
@@ -178,16 +186,13 @@ export function BidsWaitingToHearLens({
     )
   }, [lensBids, chaseSearchQuery, ledgerPrefixMap])
 
-  // Per-GC copies: a bid sent to three GCs is three chances at a bid tab.
-  // Contact stamps are per-bid, so a touch under any GC freshens every copy.
-  const expandedLensBids = useMemo<RecipientExpanded<LensBid>[]>(
-    () => searchedLensBids.flatMap((b) => expandLensBidByRecipients(b, recipientsByBidId[b.id])),
-    [searchedLensBids, recipientsByBidId],
-  )
+  // Per-GC rows already carry one entry per GC (packets + "Also sent to"); contact stamps stay per-bid,
+  // so a touch under any GC freshens every copy.
+  const expandedLensBids = searchedLensBids
 
   const groups = useMemo(() => groupPendingChaseByBuilder(expandedLensBids, nowIso), [expandedLensBids, nowIso])
   // Rollup stays per-bid — dollars are never double-counted across GC copies.
-  const rollup = useMemo(() => buildPendingChaseRollup(lensBids, nowIso), [lensBids, nowIso])
+  const rollup = useMemo(() => buildPendingChaseRollup(lensBids.filter((b, i, arr) => arr.findIndex((x) => x.id === b.id) === i), nowIso), [lensBids, nowIso])
 
   const selectedGroup = useMemo(() => {
     if (groups.length === 0) return null
@@ -201,7 +206,7 @@ export function BidsWaitingToHearLens({
   const selectedBid = useMemo(() => {
     if (selectedBids.length === 0) return null
     return (
-      selectedBids.find((b) => b.id === selectedBidId) ??
+      selectedBids.find((b) => b.rowKey === selectedBidId) ??
       selectedBids.find((b) => bidNeedsChase(b, nowIso)) ??
       selectedBids[0]!
     )
@@ -244,7 +249,7 @@ export function BidsWaitingToHearLens({
     }
     // Optimistic: resolved bids leave the queue, contact-only taps go fresh.
     if (writes.outcomeUpdate) {
-      setLocalResolved((prev) => ({ ...prev, [b.id]: writes.outcomeUpdate!.outcome }))
+      setLocalResolved((prev) => ({ ...prev, [b.rowKey]: writes.outcomeUpdate!.outcome }))
     } else {
       setLocalTouches((prev) => ({ ...prev, [b.id]: writes.lastContact }))
     }
@@ -253,7 +258,7 @@ export function BidsWaitingToHearLens({
     setLostPickerOpen(false)
     setTabCaptureOpen(false)
     setSavingBidId(b.id)
-    advanceFrom(b.id)
+    advanceFrom(b.rowKey)
     void (async () => {
       try {
         await withSupabaseRetry(
@@ -262,7 +267,22 @@ export function BidsWaitingToHearLens({
         )
         const bidPatch: Record<string, string | number | null> = { last_contact: writes.lastContact }
         if (tab) Object.assign(bidPatch, buildBidTabPatch(tab.values))
-        if (writes.outcomeUpdate) {
+        if (writes.outcomeUpdate && gcRowIsPacketScoped(b.gc)) {
+          // Multi-GC bid: this GC's answer goes on its packet; the bid rolls up (a win marks the others lost).
+          const packets = gcPacketsByBid[b.id] ?? []
+          const res = await setGcPacketOutcome({
+            bidId: b.id,
+            bidOutcome: b.raw.outcome ?? null,
+            versionIds: b.gc.versionIds,
+            outcome: writes.outcomeUpdate.outcome,
+            packetsAfter: packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === b.gc.packetKey ? writes.outcomeUpdate!.outcome : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter })),
+          })
+          if (res.error) throw new Error(res.error)
+          if (writes.outcomeUpdate.outcome === 'lost' && writes.outcomeUpdate.loss_category) {
+            await setGcPacketLossCategory({ versionIds: b.gc.versionIds, category: writes.outcomeUpdate.loss_category, note: writes.outcomeUpdate.loss_reason })
+          }
+          window.dispatchEvent(new Event('bid-gc-outcome-changed'))
+        } else if (writes.outcomeUpdate) {
           bidPatch.outcome = writes.outcomeUpdate.outcome
           bidPatch.loss_reason = writes.outcomeUpdate.loss_reason
           bidPatch.loss_category = writes.outcomeUpdate.loss_category
@@ -277,7 +297,7 @@ export function BidsWaitingToHearLens({
         onError(err instanceof Error ? `Could not log the chase: ${err.message}` : 'Could not log the chase.')
         setLocalResolved((prev) => {
           const next = { ...prev }
-          delete next[b.id]
+          delete next[b.rowKey]
           return next
         })
         setLocalTouches((prev) => {
@@ -311,12 +331,12 @@ export function BidsWaitingToHearLens({
     })()
   }
 
-  function advanceFrom(bidId: string) {
+  function advanceFrom(rowKey: string) {
     if (!selectedGroup) return
-    const idx = selectedBids.findIndex((b) => b.id === bidId)
+    const idx = selectedBids.findIndex((b) => b.rowKey === rowKey)
     const next = nextPendingChaseBidIndex({ bids: selectedBids }, idx, nowIso)
-    if (next != null && selectedBids[next]!.id !== bidId) {
-      setSelectedBidId(selectedBids[next]!.id)
+    if (next != null && selectedBids[next]!.rowKey !== rowKey) {
+      setSelectedBidId(selectedBids[next]!.rowKey)
       return
     }
     // Builder done — hop to the next builder that still has bids to chase.
@@ -333,14 +353,14 @@ export function BidsWaitingToHearLens({
       const target = e.target as HTMLElement | null
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
       if (!selectedBid) return
-      const idx = selectedBids.findIndex((b) => b.id === selectedBid.id)
+      const idx = selectedBids.findIndex((b) => b.rowKey === selectedBid.rowKey)
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         const next = selectedBids[Math.min(selectedBids.length - 1, idx + 1)]
-        if (next) setSelectedBidId(next.id)
+        if (next) setSelectedBidId(next.rowKey)
         e.preventDefault()
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         const prev = selectedBids[Math.max(0, idx - 1)]
-        if (prev) setSelectedBidId(prev.id)
+        if (prev) setSelectedBidId(prev.rowKey)
         e.preventDefault()
       }
     }
@@ -466,7 +486,7 @@ export function BidsWaitingToHearLens({
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{selectedGroup.builderName}</span>
                 {(() => {
-                  const phone = selectedBid.viaRecipient ? selectedBid.viaRecipient.phone : builderPhoneOf(selectedBid.raw)
+                  const phone = selectedBid.gc.gcKey !== (selectedBid.raw.customer_id ?? selectedBid.raw.gc_builder_id ?? '') ? (recipientsByBidId[selectedBid.id] ?? []).find((r) => r.customerId === selectedBid.gc.gcKey)?.phone ?? null : builderPhoneOf(selectedBid.raw)
                   return phone ? (
                     <a
                       href={`tel:${phone}`}
@@ -512,12 +532,12 @@ export function BidsWaitingToHearLens({
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginRight: '0.15rem' }}>Their open bids</span>
                 {selectedBids.map((b) => {
                   const fresh = !bidNeedsChase(b, nowIso)
-                  const current = b.id === selectedBid.id
+                  const current = b.rowKey === selectedBid.rowKey
                   return (
                     <button
-                      key={b.id}
+                      key={b.rowKey}
                       type="button"
-                      onClick={() => setSelectedBidId(b.id)}
+                      onClick={() => setSelectedBidId(b.rowKey)}
                       title={`${b.label} · ${b.project}${b.address ? ` — ${b.address}` : ''}`}
                       aria-pressed={current}
                       style={{
@@ -592,18 +612,20 @@ export function BidsWaitingToHearLens({
                   )
                 })()}
                 {(() => {
-                  const recips = recipientsByBidId[selectedBid.id] ?? []
-                  if (recips.length === 0 && !selectedBid.viaRecipient) return null
-                  const primaryName =
-                    (selectedBid.raw.customers?.name ?? '').trim() || (selectedBid.raw.bids_gc_builders?.name ?? '').trim() || 'No builder'
-                  const others = [
-                    ...(selectedBid.viaRecipient ? [primaryName] : []),
-                    ...recips.filter((r) => r.customerId !== selectedBid.builderKey).map((r) => r.name),
-                  ]
+                  const g = selectedBid.gc
+                  if (g.sharedLetter) {
+                    return (
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                        Sent to this GC too — same letter as {g.siblings[0]?.gcName ?? 'the bid’s GC'}
+                        <span style={{ fontStyle: 'italic' }}> (a touch under any GC freshens every copy)</span>
+                      </p>
+                    )
+                  }
+                  if (g.siblings.length === 0) return null
                   return (
                     <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                      also sent to: {others.length > 0 ? others.join(', ') : '—'}
-                      <span style={{ fontStyle: 'italic' }}> (a touch under any GC freshens every copy)</span>
+                      {g.gcName}’s packet · also went to {g.siblings.map((sb) => `${sb.gcName} (${sb.outcome === 'pending' ? 'waiting' : sb.outcome})`).join(', ')}
+                      <span style={{ fontStyle: 'italic' }}> — an answer here is {g.gcName}’s; a touch freshens every copy</span>
                     </p>
                   )
                 })()}
@@ -688,7 +710,7 @@ export function BidsWaitingToHearLens({
 
               {tabCaptureOpen ? (
                 <BidTabCapturePanel
-                  key={selectedBid.id}
+                  key={selectedBid.rowKey}
                   ourValue={selectedBid.value}
                   initial={bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)}
                   saving={savingBidId != null}
@@ -716,7 +738,7 @@ export function BidsWaitingToHearLens({
                 />
                 <button
                   type="button"
-                  onClick={() => advanceFrom(selectedBid.id)}
+                  onClick={() => advanceFrom(selectedBid.rowKey)}
                   style={{
                     padding: '0.35rem 0.7rem',
                     fontSize: '0.8125rem',

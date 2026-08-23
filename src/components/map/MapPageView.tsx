@@ -590,13 +590,19 @@ export function MapPageView() {
     })
     setBidStages(DEFAULT_MAP_BID_STAGES)
   }, [setSearchParams])
+  // Bids by GC (v2.2164): a bid counts for the focused builder when it's the bid's GC or one of its packets
+  // goes there; the section is that GC's packet outcome when the bid went to several GCs.
+  const focusSectionOf = useCallback(
+    (e: MapPageEntity): SubmissionSectionKey | undefined => (builderFocusId && e.bidGcSections?.[builderFocusId]) || e.bidSection,
+    [builderFocusId],
+  )
   const builderFocusEntities = useMemo(
-    () => (builderFocusId ? entities.filter((e) => e.kind === 'bid' && e.bidCustomerId === builderFocusId) : []),
+    () => (builderFocusId ? entities.filter((e) => e.kind === 'bid' && (e.bidCustomerId === builderFocusId || !!e.bidGcSections?.[builderFocusId])) : []),
     [entities, builderFocusId],
   )
   const builderFocusCounts = useMemo(
-    () => builderBidOutcomeCounts(builderFocusEntities.map((e) => e.bidSection)),
-    [builderFocusEntities],
+    () => builderBidOutcomeCounts(builderFocusEntities.map((e) => focusSectionOf(e))),
+    [builderFocusEntities, focusSectionOf],
   )
   const [mapSearchQuery, setMapSearchQuery] = useState('')
   const [filterPoly, setFilterPoly] = useState<Feature<Polygon> | null>(null)
@@ -903,8 +909,9 @@ export function MapPageView() {
                 center={[e.lat!, e.lng!]}
                 radius={7}
                 pathOptions={(() => {
-                  const c = builderFocusId && e.kind === 'bid' && e.bidSection
-                    ? BID_STAGE_MARKER_COLOR[e.bidSection]
+                  const fs = e.kind === 'bid' ? focusSectionOf(e) : undefined
+                  const c = builderFocusId && fs
+                    ? BID_STAGE_MARKER_COLOR[fs]
                     : KIND_COLOR[e.kind]
                   return { color: c, fillColor: c, fillOpacity: 0.8, weight: 1 }
                 })()}

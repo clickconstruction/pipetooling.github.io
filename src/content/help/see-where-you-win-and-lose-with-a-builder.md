@@ -15,7 +15,7 @@ Each builder's card shows count chips for their bids: {{chip:green|4 won}} {{chi
 
 1. Click {{button:outline|Bid map}} on a builder's card (it appears when the builder has at least one bid with an address).
 2. The Map page opens focused on that builder: **only their bids**, each pin colored by outcome — green = won, red = lost, yellow = pending (sent, undecided).
-3. The banner at the top keeps score: won · lost · pending and the **hit rate** (won ÷ decided).
+3. The banner at the top keeps score: won · lost · pending and the **hit rate** (won ÷ decided). A bid sent to several GCs counts by **this builder's packet** — won with them, lost with them — and its pin takes that color too.
 
 :::example Reading the map
 A cluster of green in one part of town means that builder actually awards you there. A cluster of red means they're shopping you in that area — or you're not competitive there. Both are worth knowing before the next invite.

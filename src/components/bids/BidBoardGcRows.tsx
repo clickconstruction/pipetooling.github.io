@@ -22,12 +22,14 @@ export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged }: { bid
   const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
   async function change(p: GcPacket, next: PacketOutcome) {
     setBusyKey(p.key)
-    const after = packets.map((x) => (x.key === p.key ? { outcome: next, sentOn: x.sentOn } : { outcome: x.outcome, sentOn: x.sentOn }))
+    const after = packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === p.key ? next : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter }))
     const res = await setGcPacketOutcome({ bidId, bidOutcome, versionIds: p.versions.map((v) => v.id), outcome: next, packetsAfter: after })
     setBusyKey(null)
     if (res.error) { showToast('Could not save: ' + res.error, 'error'); return }
     window.dispatchEvent(new Event('bid-gc-outcome-changed'))
-    if (res.bidOutcomeSet) showToast(`Bid marked ${res.bidOutcomeSet} (${next === 'won' ? 'with ' + p.name : 'every GC lost'}).`, 'success')
+    const autoNote = res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost · GC lost the project.` : ''
+    if (res.bidOutcomeSet) showToast(`Bid marked ${res.bidOutcomeSet} (${next === 'won' ? 'with ' + p.name : 'every GC lost'})${autoNote}`, 'success')
+    else if (autoNote) showToast(`${p.name} marked won${autoNote}`, 'success')
     onChanged()
   }
   return (

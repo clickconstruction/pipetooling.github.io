@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { useBidGcPackets } from '../../hooks/useBidGcPackets'
+import type { GcPacket } from '../../lib/bids/gcPackets'
 import { BidBoardGcLines, BidBoardGcRows, gcRowsWorthShowing } from './BidBoardGcRows'
 import type { Bid } from '../../types/bids'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -62,6 +62,8 @@ type BidsBidBoardTabProps = {
   workingBoardArchivedBids: BidWithBuilder[]
   /** bid_id → other GCs the bid went to (renders the +N chip on the GC cell). */
   recipientsByBidId: BidGcRecipientsMap
+  /** Bids by GC: per-bid GC packets (loaded once in Bids.tsx). */
+  gcPacketsByBid: Record<string, GcPacket[]>
 }
 
 const BID_BOARD_UNSENT_SECTION_LABEL = 'Unsent / Working Bids'
@@ -136,6 +138,7 @@ export function BidsBidBoardTab({
   onSaveLossReason,
   workingBoardArchivedBids,
   recipientsByBidId,
+  gcPacketsByBid,
 }: BidsBidBoardTabProps) {
   // How the viewer's OWN name is boxed on the board (per-account, per-theme —
   // picked via the color wheel on the Health line, v2.1710).
@@ -148,7 +151,6 @@ export function BidsBidBoardTab({
   const [bidBoardSearchQuery, setBidBoardSearchQuery] = useState('')
   const [expandedBidBoardBidId, setExpandedBidBoardBidId] = useState<string | null>(null)
   // Bids by GC (v2.2162): per-GC packets for every bid on the board → the GC lines under a row.
-  const { packetsByBid: gcPacketsByBid } = useBidGcPackets(bids, recipientsByBidId)
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)

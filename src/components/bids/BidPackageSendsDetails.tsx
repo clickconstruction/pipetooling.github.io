@@ -48,11 +48,13 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
   async function change(pKey: string, next: PacketOutcome) {
     const p = packets.find((x) => x.key === pKey)
     if (!p) return
-    const after = packets.map((x) => (x.key === pKey ? { outcome: next, sentOn: x.sentOn } : { outcome: x.outcome, sentOn: x.sentOn }))
+    const after = packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === pKey ? next : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter }))
     const res = await setGcPacketOutcome({ bidId, bidOutcome, versionIds: p.versions.map((v) => v.id), outcome: next, packetsAfter: after })
     if (res.error) { showToast('Could not save: ' + res.error, 'error'); return }
     window.dispatchEvent(new Event('bid-gc-outcome-changed'))
-    if (res.bidOutcomeSet) showToast(`Bid marked ${res.bidOutcomeSet}.`, 'success')
+    const autoNote = res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost · GC lost the project.` : ''
+    if (res.bidOutcomeSet) showToast(`Bid marked ${res.bidOutcomeSet}${autoNote}`, 'success')
+    else if (autoNote) showToast(`${p.name} marked won${autoNote}`, 'success')
   }
   return (
     <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
