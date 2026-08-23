@@ -129,7 +129,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
             return (
               <span
                 key={r.customer_id}
-                title={r.source === 'version' ? 'Has its own packet (a version points at this GC) — see Send to on the bid’s pages' : 'Added by hand — got the same letter as the GC above. Use ＋ Another GC… on the bid’s pages to track it separately'}
+                title={r.source === 'version' ? 'Has its own packet (a version points at this GC) — see Send to on the bid’s pages' : 'Added by hand — got the same letter as the GC above. Use ＋ Add GC on the bid’s pages to track it separately'}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

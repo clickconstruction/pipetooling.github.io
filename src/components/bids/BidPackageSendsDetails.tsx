@@ -61,7 +61,7 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
     <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Sent to — by GC</div>
       {packets.map((p) => p.sharedLetter ? (
-        <div key={p.key} style={{ padding: '0.2rem 0 0.35rem', display: 'flex', gap: '0.6rem', alignItems: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }} title="On the bid's “Also sent to” list — got the same letter as the bid's GC. Give it its own packet (＋ Another GC… on the bid's pages) to track its answer separately.">
+        <div key={p.key} style={{ padding: '0.2rem 0 0.35rem', display: 'flex', gap: '0.6rem', alignItems: 'center', fontSize: '0.85rem', flexWrap: 'wrap' }} title="On the bid's “Also sent to” list — got the same letter as the bid's GC. Give it its own packet (＋ Add GC on the bid's pages) to track its answer separately.">
           <span style={{ fontWeight: 600 }}>{p.name}</span>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>same letter as {packets.find((x) => !x.sharedLetter)?.name ?? 'the bid’s GC'}{p.sentOn ? ` · sent ${fmtSent(p.sentOn)}` : ''}</span>
         </div>

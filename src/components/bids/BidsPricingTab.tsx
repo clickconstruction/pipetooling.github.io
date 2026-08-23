@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
@@ -363,6 +364,8 @@ export function BidsPricingTab({
   const shortGc = (name: string) => name
   const [starChoice, setStarChoice] = useState<'star' | 'viewed'>('star')
   const [starBusy, setStarBusy] = useState(false)
+  /** v2.2203: the Workbench structure bar lives behind the (i) beside the bid name. */
+  const [wbInfoOpen, setWbInfoOpen] = useState(false)
   const [shareOverride, setShareOverride] = useState<{ pricingId: string; name: string; rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null>(null)
 
   // Close price book modals when service type changes
@@ -1301,7 +1304,7 @@ export function BidsPricingTab({
     {
       anchor: 'send-to',
       title: 'Send to — one packet per GC',
-      body: 'Versions draft this bid for different GCs: each GC gets its own packet — counts, prices, send date, answer. "＋ Another GC…" starts one as a copy of this one.',
+      body: 'Versions draft this bid for different GCs: each GC gets its own packet — counts, prices, send date, answer. "＋ Add GC" starts one as a copy of this one.',
     },
     {
       anchor: 'workbench-scenarios',
@@ -1687,12 +1690,16 @@ export function BidsPricingTab({
               </button>
             ) : null}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <BidWorkflowTabTitleWithPreview
-                bid={selectedBidForPricing}
-                previewEnabled={bidPreview != null}
-                onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
-                h2Style={{ margin: 0, flex: '0 0 auto' }}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto' }}>
+                <BidWorkflowTabTitleWithPreview
+                  bid={selectedBidForPricing}
+                  previewEnabled={bidPreview != null}
+                  onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
+                  h2Style={{ margin: 0, flex: '0 0 auto' }}
+                />
+                {/* v2.2203: the Workbench structure bar folded into this (i) — rendered here by portal from the multi branch. */}
+                <span id="pricing-info-slot" style={{ display: 'inline-flex', alignItems: 'center' }} />
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
                 {/* v2.2198 (option A, artifact df8daa33): Share keeps one click; Print / CSV / review live in the ▾ menu. */}
                 <PricingShareMenu
@@ -1781,7 +1788,12 @@ export function BidsPricingTab({
                 ) : null}
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.9rem' }}>
+            {(() => {
+              // v2.2203: render the Old/New pills into the top-right slot beside the Send-to strip when it
+              // exists (Pricing tab with a selected bid); fall back to the old in-card spot otherwise.
+              const slot = typeof document !== 'undefined' ? document.getElementById('pricing-view-slot') : null
+              const pills = (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', ...(slot ? {} : { marginBottom: '0.9rem' }) }}>
               <button type="button" role="tab" aria-selected={pricingView === 'old'} onClick={() => switchPricingView('old')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pricingView === 'old' ? '#2563eb' : 'transparent', color: pricingView === 'old' ? '#fff' : 'var(--text-muted)' }}>
                 Old
               </button>
@@ -1802,6 +1814,9 @@ export function BidsPricingTab({
                 </>
               ) : null}
             </div>
+              )
+              return slot ? createPortal(pills, slot) : pills
+            })()}
             {wbTourSteps ? (
               <SpotlightTour
                 steps={wbTourSteps}
@@ -2660,7 +2675,12 @@ export function BidsPricingTab({
                           disabled={wbCloning}
                           style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.85rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', cursor: wbCloning ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}
                         >
-                          {wbCloning ? 'Duplicating…' : '＋ Another price or GC…'}
+                          {wbCloning ? 'Duplicating…' : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                              <span aria-hidden style={{ fontSize: '1.05rem', lineHeight: 1 }}>＋</span>
+                              <span style={{ textAlign: 'left', lineHeight: 1.25 }}>Add<br />price</span>
+                            </span>
+                          )}
                         </button>
                       )
                       const doorOptStyle: React.CSSProperties = { display: 'flex', gap: '0.7rem', alignItems: 'flex-start', width: '100%', textAlign: 'left', font: 'inherit', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.8rem', background: 'var(--surface)', cursor: 'pointer', marginBottom: '0.55rem' }
@@ -2671,11 +2691,11 @@ export function BidsPricingTab({
                         >
                           <div
                             role="dialog"
-                            aria-label="Another price or GC"
+                            aria-label="Add a price or GC"
                             style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 440, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Another price or GC</h3>
+                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Add a price or GC</h3>
                             <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>What do you want?</p>
                             <button
                               type="button"
@@ -2784,8 +2804,26 @@ export function BidsPricingTab({
                       }
                       return (
                         <>
-                          <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', flexWrap: 'wrap' }}>
-                            <div style={{ padding: '0.5rem 0.9rem', borderRight: '1px solid var(--border)', minWidth: '13rem' }}>
+                          {(() => {
+                            // v2.2203: the structure bar lives in a modal behind the (i) beside the bid name —
+                            // most people don't need it in the page flow.
+                            const slot = typeof document !== 'undefined' ? document.getElementById('pricing-info-slot') : null
+                            const icon = (
+                              <button
+                                type="button"
+                                onClick={() => setWbInfoOpen(true)}
+                                title="How this Workbench is put together — GC, price options, labor & cost"
+                                aria-label="How this Workbench is put together"
+                                style={{ font: 'inherit', width: 20, height: 20, borderRadius: '50%', border: '1.5px solid var(--border-strong)', color: 'var(--text-muted)', background: 'var(--surface)', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, marginLeft: '0.45rem' }}
+                              >
+                                i
+                              </button>
+                            )
+                            const modal = wbInfoOpen ? (
+                              <div role="presentation" onClick={() => setWbInfoOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4rem 1rem 1rem' }}>
+                                <div role="dialog" aria-label="How this Workbench is put together" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, maxWidth: '34rem', width: '100%', boxShadow: '0 10px 32px rgba(15, 23, 42, 0.2)', overflow: 'hidden' }}>
+                          <div>
+                            <div style={{ padding: '0.5rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
                               <div style={labelStyle}>This GC — {gcNameForVersion(selectedBidVersionId)}</div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem' }}>
                                 <span style={{ border: '1px solid #3b82f6', background: 'var(--bg-subtle)', color: 'var(--text-strong)', borderRadius: 5, padding: '0.08rem 0.55rem', fontSize: '0.8rem', fontWeight: 600 }}>
@@ -2794,20 +2832,33 @@ export function BidsPricingTab({
                                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeVersionName ? (bidVersions.filter((b) => (b.customer_id ?? null) === (bidVersions.find((x) => x.id === selectedBidVersionId)?.customer_id ?? null)).length > 1 ? 'one of several for this GC · switch at the top' : 'switch GC at the top of the page') : 'this bid has one takeoff'}</span>
                               </div>
                             </div>
-                            <div style={{ padding: '0.5rem 0.9rem', flex: 1, minWidth: '18rem', borderRight: '1px solid var(--border)' }}>
+                            <div style={{ padding: '0.5rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
                               <div style={labelStyle}>Price options — what {shortGc(gcNameForVersion(selectedBidVersionId))} receives</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                                 <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> is the base price on their letter — Cover Letter, Share, Print, and the bid value use it. <b>Offer as alternate</b> adds a second price for the same GC, same counts.
                               </div>
                             </div>
-                            <div style={{ padding: '0.5rem 0.9rem', minWidth: '12rem', maxWidth: '16rem' }}>
+                            <div style={{ padding: '0.5rem 0.9rem',  }}>
                               <div style={labelStyle}>Labor &amp; cost</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                                 Shared by the whole package. Switching bids changes revenue, not cost.
                               </div>
                             </div>
                           </div>
-                          <div data-tour="workbench-scenarios" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+                                  <div style={{ padding: '0.5rem 0.9rem', textAlign: 'right' }}>
+                                    <button type="button" onClick={() => setWbInfoOpen(false)} style={{ font: 'inherit', padding: '0.35rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Close</button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null
+                            return (
+                              <>
+                                {slot ? createPortal(icon, slot) : icon}
+                                {modal}
+                              </>
+                            )
+                          })()}
+                          <div data-tour="workbench-scenarios" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', margin: '0.85rem 0 0.9rem', flexWrap: 'wrap' }}>
                             {scenarios.map((v) => {
                               const viewing = v.id === selectedPricingVersionId
                               const isCustomerFacing = v.id === customerFacingPricingId
@@ -2822,21 +2873,32 @@ export function BidsPricingTab({
                                   title={viewing ? 'The price open on this Workbench' : 'View this price (doesn’t change what the GC sees)'}
                                   style={{
                                     flex: '1 1 190px', minWidth: 170, textAlign: 'left', font: 'inherit',
-                                    background: 'var(--surface)', border: viewing ? '1px solid #3b82f6' : '1px solid var(--border)',
+                                    background: isCustomerFacing ? 'var(--bg-green-tint)' : 'var(--surface)',
+                                    border: viewing ? '1px solid #3b82f6' : isCustomerFacing ? '1px solid var(--border-green)' : '1px solid var(--border)',
                                     boxShadow: viewing ? '0 0 0 1px #3b82f6' : 'none',
-                                    borderRadius: 10, padding: '0.5rem 0.75rem', cursor: viewing ? 'default' : 'pointer', position: 'relative',
+                                    borderRadius: 10, padding: '0.5rem 0.75rem 0', cursor: viewing ? 'default' : 'pointer', position: 'relative',
+                                    display: 'flex', flexDirection: 'column',
                                   }}
                                 >
+                                  {/* v2.2203: state tabs sit on the card's top edge — blue Viewing, green ★ Submittal; side by side when both. */}
+                                  {(viewing || isCustomerFacing) ? (
+                                    <span style={{ position: 'absolute', top: '-0.72rem', left: '0.6rem', display: 'inline-flex', gap: '0.3rem' }}>
+                                      {viewing ? (
+                                        <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#3b82f6', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>Viewing</span>
+                                      ) : null}
+                                      {isCustomerFacing ? (
+                                        <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#16a34a', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>★ Submittal</span>
+                                      ) : null}
+                                    </span>
+                                  ) : null}
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
                                     <div style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</div>
-                                    {isCustomerFacing ? (
-                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-green-600)', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>★ base</span>
-                                    ) : unpriced ? (
+                                    {unpriced ? (
                                       <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
                                     ) : null}
                                   </div>
                                   <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpriced ? 'var(--text-muted)' : undefined }}>{rev != null ? fmtM(rev) : '…'}</div>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', marginBottom: '0.4rem' }}>
                                     {m == null ? '—' : `${Math.round(m * 100)}% margin · profit ${fmtM((rev ?? 0) - totalCost)}`}
                                   </div>
                                   {unpriced && viewing && copySource ? (
@@ -2852,31 +2914,39 @@ export function BidsPricingTab({
                                       </button>{' '}
                                       or use the solver below.
                                     </div>
-                                  ) : unpriced && !viewing ? (
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', marginTop: '0.25rem' }}>View it to start pricing.</div>
                                   ) : null}
-                                  <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.35rem', alignItems: 'center' }}>
-                                    {viewing ? (
-                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>Viewing</span>
-                                    ) : (
-                                      <button type="button" onClick={(e) => { e.stopPropagation(); viewWorkbenchScenario(v.id) }} style={cardBtnStyle}>
-                                        View
-                                      </button>
-                                    )}
-                                    {!isCustomerFacing && !unpriced ? (
-                                      <>
-                                        <button type="button" onClick={(e) => { e.stopPropagation(); void setScenarioOffered(v, !offered) }} style={cardBtnStyle} title={offered ? 'Stop offering this price on the letter' : 'Add this price to the letter as an alternate — same counts, no new version'}>
-                                          {offered ? "Don't offer" : 'Offer as alternate'}
-                                        </button>
-                                        <button type="button" onClick={(e) => { e.stopPropagation(); void makeScenarioCustomerFacing(v, rev) }} style={cardBtnStyle}>
-                                          ☆ Make base
-                                        </button>
-                                      </>
-                                    ) : null}
-                                  </div>
-                                  {offered ? (
-                                    <span style={{ position: 'absolute', top: '0.5rem', right: '0.6rem', fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-link)', border: '1px solid var(--border)', background: 'var(--bg-blue-tint)', borderRadius: 999, padding: '0.05rem 0.4rem' }}>offered · alternate</span>
-                                  ) : null}
+                                  {/* v2.2203 (option 1): the footer answers "who sees this price?" and carries the actions. */}
+                                  {(() => {
+                                    const linkStyle: React.CSSProperties = { font: 'inherit', fontSize: '0.66rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'inherit', whiteSpace: 'nowrap' }
+                                    const footBase: React.CSSProperties = { margin: 'auto -0.75rem 0', padding: '0.26rem 0.7rem', borderTop: '1px solid var(--border)', borderRadius: '0 0 9px 9px', fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: 'auto' }
+                                    if (isCustomerFacing) {
+                                      return (
+                                        <div style={{ ...footBase, background: 'var(--bg-green-100)', color: 'var(--text-emerald-800)', fontWeight: 700 }}>
+                                          ★ The price on their letter
+                                        </div>
+                                      )
+                                    }
+                                    if (unpriced) {
+                                      return (
+                                        <div style={{ ...footBase, background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                                          Only you see this
+                                        </div>
+                                      )
+                                    }
+                                    return (
+                                      <div style={{ ...footBase, ...(offered ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontWeight: 600 } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }) }}>
+                                        {offered ? 'On their letter · alternate' : 'Only you see this'}
+                                        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.55rem' }}>
+                                          <button type="button" style={linkStyle} title={offered ? 'Take this price off their letter' : 'Add this price to their letter as an alternate — same counts, no new version'} onClick={(e) => { e.stopPropagation(); void setScenarioOffered(v, !offered); window.dispatchEvent(new Event('bid-version-picker-reload')) }}>
+                                            {offered ? 'stop offering' : 'offer as alternate'}
+                                          </button>
+                                          <button type="button" style={linkStyle} title="Make this the ★ price their letter is built on" onClick={(e) => { e.stopPropagation(); void makeScenarioCustomerFacing(v, rev); window.dispatchEvent(new Event('bid-version-picker-reload')) }}>
+                                            ☆ make base
+                                          </button>
+                                        </span>
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               )
                             })}
@@ -2890,52 +2960,14 @@ export function BidsPricingTab({
                       data-tour="workbench-summary"
                       style={{
                         position: 'sticky', top: 0, zIndex: 20,
-                        display: 'flex', flexWrap: 'wrap', alignItems: 'stretch',
                         background: 'var(--surface)',
                         border: wbPreview && previewCount > 0 ? '1px dashed var(--text-amber-700)' : '1px solid var(--border)',
                         borderRadius: 10,
-                        boxShadow: '0 4px 14px rgba(0,0,0,0.08)', marginBottom: '0.9rem', overflow: 'hidden',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.08)', marginBottom: '0.9rem', padding: '0.5rem 0.9rem',
                       }}
                     >
-                      {([
-                        ['Revenue', fmtM(effRevenue), 'var(--text-strong)'],
-                        ['Our cost', fmtM(totalCost), 'var(--text-strong)'],
-                        ['Profit', fmtM(effProfit), effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)'],
-                        ['Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin)],
-                      ] as const).map(([k, v, c]) => (
-                        <div key={k} style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '7.5rem' }}>
-                          <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k}</div>
-                          <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: c }}>{v}</div>
-                        </div>
-                      ))}
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.55rem 0.9rem', flexWrap: 'wrap' }}>
-                        {wbPreview && previewCount > 0 ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => void applyWorkbenchPreview()}
-                              disabled={wbApplying}
-                              style={{ padding: '0.42rem 0.8rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
-                            >
-                              {wbApplying ? 'Applying…' : `Apply to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'scenario'}`}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setWbPreview(null)}
-                              disabled={wbApplying}
-                              style={{ padding: '0.42rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
-                            >
-                              Discard
-                            </button>
-                          </>
-                        ) : (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Solver changes preview here first — Apply writes them.</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div data-tour="workbench-solver" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.55rem 0.8rem', marginBottom: '0.9rem' }}>
-                      {/* v2.2148: one compact line that wraps — Solver · Margin slider · or total $ + Solve (+ echo) · Price unpriced only. */}
+                      {/* v2.2203 (1B): the stats and the solver share one line that wraps; Apply/Discard join it on preview. */}
+                    <div data-tour="workbench-solver">
                       {(() => {
                         const solveToTarget = () => {
                           const v = parseFloat(wbTargetTotalInput.replace(/[$,]/g, ''))
@@ -2950,9 +2982,38 @@ export function BidsPricingTab({
                           ? `→ previewing $${formatCurrency(wbTargetSolveResult.landed)}${Math.abs(wbTargetSolveResult.landed - wbTargetSolveResult.target) >= 0.005 ? ' (rounded)' : ''}`
                           : null
                         const labelStyle: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
+                        const stat = (k: string, v: string, c: string, title?: string) => (
+                          <span key={k} title={title} style={{ display: 'inline-flex', flexDirection: 'column', flex: '0 0 auto' }}>
+                            <span style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k}</span>
+                            <span style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, color: c }}>{v}</span>
+                          </span>
+                        )
                         return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem 1rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', flex: '0 0 auto' }}>Solver</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
+                            {stat('Revenue', fmtM(effRevenue), 'var(--text-strong)', `our cost $${formatCurrency(totalCost)}`)}
+                            {stat('Profit', fmtM(effProfit), effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `our cost $${formatCurrency(totalCost)}`)}
+                            {stat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
+                            {wbPreview && previewCount > 0 ? (
+                              <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flex: '0 0 auto' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => void applyWorkbenchPreview()}
+                                  disabled={wbApplying}
+                                  style={{ padding: '0.34rem 0.7rem', fontSize: '0.8rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
+                                >
+                                  {wbApplying ? 'Applying…' : `Apply to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'scenario'}`}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setWbPreview(null)}
+                                  disabled={wbApplying}
+                                  style={{ padding: '0.34rem 0.6rem', fontSize: '0.8rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
+                                >
+                                  Discard
+                                </button>
+                              </span>
+                            ) : null}
+                            <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '1 1 240px', minWidth: 220 }}>
                               <span style={labelStyle}>Margin</span>
                               <input
@@ -3015,6 +3076,7 @@ export function BidsPricingTab({
                           </button>
                         </div>
                       ) : null}
+                    </div>
                     </div>
 
                     {(() => {

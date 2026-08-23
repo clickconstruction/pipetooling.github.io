@@ -124,7 +124,7 @@ export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged, dense }
         const title = [p.name, p.sentOn ? `sent ${fmtSentShort(p.sentOn)}` : 'not sent', p.sentValue != null ? `★ $${formatCurrency(p.sentValue)}` : null, p.versions.length > 1 ? `${p.versions.length} versions` : null].filter(Boolean).join(' · ')
         if (p.sharedLetter) {
           return (
-            <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }} title={`${p.name} — on the bid’s “Also sent to” list: same letter as ${primaryName}. Give it its own packet (＋ Another GC…) to track its answer.`}>
+            <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }} title={`${p.name} — on the bid’s “Also sent to” list: same letter as ${primaryName}. Give it its own packet (＋ Add GC) to track its answer.`}>
               <span style={{ fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>{p.name}</span>
               <span style={{ whiteSpace: 'nowrap' }}>same letter{p.sentOn ? ` · sent ${fmtSentShort(p.sentOn)}` : ''}</span>
             </div>
