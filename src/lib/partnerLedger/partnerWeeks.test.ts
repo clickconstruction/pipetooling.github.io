@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildJournalWeekCards,
+  reconcileLines,
   parsePartnerLedgerStubs,
   parsePartnerSummary,
   parsePartnerLedgerOffsets,
@@ -128,6 +129,52 @@ describe('buildJournalWeekCards', () => {
     expect(laborLabels).toEqual(['Labor · 22.5 h × $50'])
   })
 
+  it('labor tier lines reconcile to the stub gross — opening + lines = closing to the penny', () => {
+    // Bryan 2026-05-31: the per-day tier rounding summed to 696.29 while gross_pay is 696.28
+    const s = stub({
+      id: 'sB',
+      period_start: '2026-05-31',
+      period_end: '2026-06-06',
+      hours_total: 18.57,
+      gross_pay: 696.28,
+      day_rates: [{ rate: 37.5, hours: 18.57, amount: 696.29 }],
+      additional: [{ description: 'Additional', amount: 232.22 }],
+      deductions: [],
+      payments: [],
+    })
+    const cards = buildJournalWeekCards(summary(), [s])
+    const wk = cards.find((c) => c.weekStart === '2026-05-31')!
+    const labor = wk.lines.find((l) => l.label.startsWith('Labor'))!
+    expect(labor.label).toBe('Labor · 18.6 h × $37.50')
+    expect(labor.amount).toBe(696.28)
+    const sum = Math.round(wk.lines.reduce((a, l) => a + (l.amount ?? 0), 0) * 100) / 100
+    expect(sum).toBe(Math.round((wk.closing - (wk.opening ?? 0)) * 100) / 100)
+  })
+
+  it('every closed card satisfies opening + lines = closing, even with multi-tier penny drift and charges', () => {
+    const s1 = stub({ id: 'sA', period_start: '2026-07-05', period_end: '2026-07-11', gross_pay: 322.25, day_rates: [{ rate: 50, hours: 4.87, amount: 243.5 }, { rate: 35, hours: 2.25, amount: 78.76 }], additional: [], deductions: [], payments: [{ amount: 602.5, paid_at: '2026-07-07', memo: 'Cashapp' }] })
+    const s2 = stub({ id: 'sB', period_start: '2026-07-12', period_end: '2026-07-18', gross_pay: 690, day_rates: [{ rate: 50, hours: 13.8, amount: 690 }], additional: [], deductions: [], payments: [] })
+    const cards = buildJournalWeekCards(summary(), [s1, s2], [
+      { id: 'o1', type: 'back_charge', amount: 405.64, occurred_date: '2026-07-08', description: 'AC unit' },
+    ])
+    const closed = cards.filter((c) => !c.open)
+    expect(closed.length).toBeGreaterThan(0)
+    for (const c of closed) {
+      const sum = Math.round(c.lines.reduce((a, l) => a + (l.amount ?? 0), 0) * 100) / 100
+      expect(sum).toBe(Math.round((c.closing - (c.opening ?? 0)) * 100) / 100)
+    }
+    // the 78.76 tier absorbed nothing — the residual (−0.01) went to the largest tier
+    const wk = cards.find((c) => c.weekStart === '2026-07-05')!
+    expect(wk.lines.filter((l) => l.label.startsWith('Labor')).map((l) => l.amount)).toEqual([243.49, 78.76])
+  })
+
+  it('live so-far lines reconcile to gross_so_far', () => {
+    const cards = buildJournalWeekCards(summary({ current_week: { week_start: '2026-08-16', field_hours: 9.5, office_hours: 0, farm_hours: 0, gross_so_far: 475.01, pending_sessions: 0 } }), [stub()])
+    const field = cards[0]!.lines.find((l) => l.label.startsWith('Field labor'))!
+    expect(field.label).toBe('Field labor · 9.5 h × $50')
+    expect(field.amount).toBe(475.01)
+  })
+
   it('books charges in their own week (even with no statement) and payouts in the week they were paid', () => {
     // The Bryan shape: a stub whose payout landed the NEXT calendar week, and a
     // back-charge in a week with no statement at all.
@@ -243,5 +290,25 @@ describe('parsePartnerLedgerOffsets', () => {
     })
     expect(out).toHaveLength(1)
     expect(out[0]?.amount).toBe(49.79)
+  })
+})
+
+describe('reconcileLines', () => {
+  it('puts the residual on the largest money line and leaves no-amount lines alone', () => {
+    const out = reconcileLines(
+      [
+        { label: 'a', amount: 100.0, cls: 'pos' },
+        { label: 'b', amount: 20.0, cls: 'pos' },
+        { label: 'pending', amount: null, cls: 'zero' },
+      ],
+      119.99,
+    )
+    expect(out.map((l) => l.amount)).toEqual([99.99, 20, null])
+  })
+  it('is a no-op when the lines already sum to the target or there is nothing to adjust', () => {
+    const lines = [{ label: 'a', amount: 5, cls: 'pos' as const }]
+    expect(reconcileLines(lines, 5)).toBe(lines)
+    const none = [{ label: 'p', amount: null, cls: 'zero' as const }]
+    expect(reconcileLines(none, 9)).toBe(none)
   })
 })
