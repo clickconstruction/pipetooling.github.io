@@ -31,11 +31,14 @@ describe('partnerNavStatusFromSummary', () => {
 })
 
 describe('parsePartnerNavCache', () => {
-  it('reads a fresh cache and rejects a stale or malformed one', () => {
+  it('reads a fresh cache for the same user and rejects stale, malformed, or another user’s', () => {
     const now = 1_000_000
-    expect(parsePartnerNavCache(JSON.stringify({ isPartner: true, awaitingSignOff: false, at: now - 1000 }), now)).toEqual({ isPartner: true, awaitingSignOff: false })
-    expect(parsePartnerNavCache(JSON.stringify({ isPartner: true, awaitingSignOff: true, at: now - PARTNER_NAV_FRESH_MS - 1 }), now)).toBeNull()
-    expect(parsePartnerNavCache('{not json', now)).toBeNull()
-    expect(parsePartnerNavCache(null, now)).toBeNull()
+    expect(parsePartnerNavCache(JSON.stringify({ isPartner: true, awaitingSignOff: false, at: now - 1000, uid: 'u1' }), now, 'u1')).toEqual({ isPartner: true, awaitingSignOff: false })
+    // written for u1 during an imitate hand-off, read by u2 → ignored
+    expect(parsePartnerNavCache(JSON.stringify({ isPartner: false, awaitingSignOff: false, at: now - 1000, uid: 'u1' }), now, 'u2')).toBeNull()
+    expect(parsePartnerNavCache(JSON.stringify({ isPartner: true, awaitingSignOff: true, at: now - PARTNER_NAV_FRESH_MS - 1, uid: 'u1' }), now, 'u1')).toBeNull()
+    expect(parsePartnerNavCache(JSON.stringify({ isPartner: true, awaitingSignOff: true, at: now }), now, 'u1')).toBeNull()
+    expect(parsePartnerNavCache('{not json', now, 'u1')).toBeNull()
+    expect(parsePartnerNavCache(null, now, 'u1')).toBeNull()
   })
 })
