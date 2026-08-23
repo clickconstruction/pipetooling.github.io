@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens, type CountSheetRow } from './countSheet'
 
-const row = (id: string, fixture: string, count: number, page: string | null, group_tag: string | null = null): CountSheetRow => ({ id, fixture, count, page, group_tag })
+const row = (id: string, fixture: string, count: number, page: string | null, group_tag: string | null = null, unit: string | null = null): CountSheetRow => ({ id, fixture, count, page, group_tag, unit })
 
 describe('parsePlanPageTokens', () => {
   it('splits on commas/semicolons, trims, dedupes', () => {
@@ -13,13 +13,19 @@ describe('parsePlanPageTokens', () => {
 })
 
 describe('countSheetSummary', () => {
-  it('totals items, units, missing pages, and group tags', () => {
+  it('totals items per unit (never feet into counts), missing pages, and group tags', () => {
     const s = countSheetSummary([
       row('a', 'WC', 6, '5, 26'),
-      row('b', 'Waterline', 200, null),
+      row('b', 'ft of Waterline', 200, null),
       row('c', 'Sink', 12, '26', 'Kitchen'),
+      row('d', '2in copper', 30.5, '26', null, 'ft'),
     ])
-    expect(s).toEqual({ items: 3, units: 218, noPageCount: 1, withGroupTag: 1 })
+    expect(s.items).toBe(4)
+    expect(s.byUnit.ea).toEqual({ items: 2, total: 18 })
+    expect(s.byUnit.ft).toEqual({ items: 2, total: 230.5 })
+    expect(s.byUnit.px).toEqual({ items: 0, total: 0 })
+    expect(s.noPageCount).toBe(1)
+    expect(s.withGroupTag).toBe(1)
   })
 })
 
@@ -30,10 +36,12 @@ describe('buildCountSheetPageGroups', () => {
       row('b', 'WH', 2, '26'),
       row('c', 'Riser', 1, 'A-101'),
       row('d', 'Waterline', 200, null),
+      row('e', 'ft of 2in CW', 40.25, '26'),
     ])
     expect(g.pages.map((p) => p.label)).toEqual(['5', '26', 'A-101'])
-    expect(g.pages[1]!.rows.map((r) => r.fixture)).toEqual(['WC', 'WH'])
-    expect(g.pages[1]!.units).toBe(8)
+    expect(g.pages[1]!.rows.map((r) => r.fixture)).toEqual(['WC', 'WH', 'ft of 2in CW'])
+    expect(g.pages[1]!.byUnit.ft).toEqual({ items: 1, total: 40.25 })
+    expect(g.pages[1]!.byUnit.ea).toEqual({ items: 2, total: 8 })
     expect(g.noPage.map((r) => r.fixture)).toEqual(['Waterline'])
   })
 })

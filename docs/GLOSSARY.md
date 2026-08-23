@@ -721,6 +721,8 @@ Quantity entry for a fixture or tie-in in a bid. Stored in Counts tab. Uses free
 
 **Note**: Unlike labor/price books, count rows use free text `fixture` field (not FK) to allow flexible field notes
 
+**Unit** (v2.2113): a count row's `count` is a tally (**ea**) or a length (**ft**; **px** = unscaled CountTooling run; **sqft**). Until the `unit` column lands the unit is read from the name convention (`ft of …`, `feet of …`, `… per ft`) by `src/lib/bids/countRowUnit.ts`; totals are kept per unit and never summed across units
+
 ### Rough In
 Initial plumbing installation phase. In-wall piping, water supply lines, drain/waste/vent lines installed before walls closed.
 

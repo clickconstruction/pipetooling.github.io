@@ -22,6 +22,7 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens } from '../../lib/bids/countSheet'
+import { COUNT_UNIT_LABEL, effectiveCountUnit, formatUnitTotal, formatUnitTotals, summarizeRowsByUnit } from '../../lib/bids/countRowUnit'
 
 type BidsCountsTabProps = {
   bids: BidWithBuilder[]
@@ -448,7 +449,7 @@ export function BidsCountsTab({
     setCountsImportOpen(false)
     refreshAfterCountsChange()
     await persistCountSourceLink(bidId, sourceLink)
-    const msg = skippedCount > 0 ? `Imported ${inserted} rows. ${skippedCount} lines skipped.` : `Imported ${inserted} rows.`
+    const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
     showToast(msg, 'success')
   }
 
@@ -468,7 +469,7 @@ export function BidsCountsTab({
         }
         refreshAfterCountsChange()
         await persistCountSourceLink(bidId, sourceLink)
-        const msg = skippedCount > 0 ? `Imported ${inserted} rows. ${skippedCount} lines skipped.` : `Imported ${inserted} rows.`
+        const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
         showToast(msg, 'success')
         return
       }
@@ -648,7 +649,16 @@ export function BidsCountsTab({
             )
             const sheetRowCells = (r: BidCountRow) => (
               <>
-                <td style={{ ...sheetCell, width: '5.2rem' }}>{sheetEditCell(r, 'count', String(r.count), { numeric: true, ariaLabel: `Count for ${r.fixture}` })}</td>
+                <td style={{ ...sheetCell, width: '6.4rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                    {sheetEditCell(r, 'count', String(r.count), { numeric: true, ariaLabel: `Count for ${r.fixture}` })}
+                    {effectiveCountUnit(r) !== 'ea' ? (
+                      <span title={effectiveCountUnit(r) === 'px' ? 'Unscaled — pixel length, not feet' : `Measured in ${COUNT_UNIT_LABEL[effectiveCountUnit(r)]}`} style={{ fontSize: '0.66rem', fontWeight: 700, color: effectiveCountUnit(r) === 'px' ? 'var(--text-red-700)' : 'var(--text-muted)', flex: '0 0 auto' }}>
+                        {COUNT_UNIT_LABEL[effectiveCountUnit(r)]}
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td style={sheetCell}>{sheetEditCell(r, 'fixture', r.fixture, { ariaLabel: `Fixture name for ${r.fixture}` })}</td>
                 {showGroupTag ? <td style={{ ...sheetCell, width: '9rem' }}>{sheetEditCell(r, 'group_tag', r.group_tag ?? '', { ariaLabel: `Group or tag for ${r.fixture}` })}</td> : null}
                 <td style={{ ...sheetCell, width: '9rem' }}>
@@ -680,10 +690,34 @@ export function BidsCountsTab({
                     <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Items</div>
                     <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{summary.items}</div>
                   </div>
-                  <div style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '7.5rem' }}>
-                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Total units</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{summary.units.toLocaleString()}</div>
+                  <div style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '7.5rem' }} title="Rows counted each — fixtures, tie-ins, fittings">
+                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Counts</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                      {formatUnitTotal(summary.byUnit.ea.total, 'ea')} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>ea · {summary.byUnit.ea.items} item{summary.byUnit.ea.items !== 1 ? 's' : ''}</span>
+                    </div>
                   </div>
+                  <div style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '7.5rem' }} title="Rows measured in feet — line types from the takeoff (“ft of …”)">
+                    <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Line feet</div>
+                    <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: summary.byUnit.ft.items > 0 ? undefined : 'var(--text-muted)' }}>
+                      {formatUnitTotal(summary.byUnit.ft.total, 'ft')} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>ft · {summary.byUnit.ft.items} line type{summary.byUnit.ft.items !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                  {summary.byUnit.sqft.items > 0 ? (
+                    <div style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '7rem' }} title="Rows measured in square feet">
+                      <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Area</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                        {formatUnitTotal(summary.byUnit.sqft.total, 'sqft')} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>sq ft · {summary.byUnit.sqft.items}</span>
+                      </div>
+                    </div>
+                  ) : null}
+                  {summary.byUnit.px.items > 0 ? (
+                    <div style={{ padding: '0.55rem 1rem', borderRight: '1px solid var(--border)', minWidth: '7.5rem' }} title="Lines exported without a scale — pixel lengths, not feet. Set the scale in CountTooling and re-copy.">
+                      <div style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-red-700)' }}>Unscaled</div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-red-700)' }}>
+                        {formatUnitTotal(summary.byUnit.px.total, 'px')} <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>px · {summary.byUnit.px.items} run{summary.byUnit.px.items !== 1 ? 's' : ''}</span>
+                      </div>
+                    </div>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => summary.noPageCount > 0 && setSheetNoPageOnly((v) => !v)}
@@ -849,7 +883,7 @@ export function BidsCountsTab({
                             {buildCountSheetPageGroups(visibleRows).pages.flatMap((g) => [
                               <tr key={`head-${g.label}`}>
                                 <td colSpan={showGroupTag ? 5 : 4} style={{ background: 'var(--bg-subtle)', fontWeight: 700, fontSize: '0.78rem', padding: '0.4rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
-                                  Plan page {g.label} <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>— {g.rows.length} item{g.rows.length !== 1 ? 's' : ''}, {g.units.toLocaleString()} units</span>
+                                  Plan page {g.label} <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>— {g.rows.length} item{g.rows.length !== 1 ? 's' : ''}, {formatUnitTotals(g.byUnit)}</span>
                                 </td>
                               </tr>,
                               ...g.rows.map((r) => (
