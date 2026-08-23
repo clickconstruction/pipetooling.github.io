@@ -4,12 +4,16 @@
  * `page` is the existing free-text plan-page field ("5, 26, 38", "A-101", …).
  */
 
+import { emptyUnitTotals, sumByUnit, type UnitTotals } from './countRowUnit'
+
 export type CountSheetRow = {
   id: string
   fixture: string
   count: number
   group_tag: string | null
   page: string | null
+  /** Explicit unit (stage 2 column); null/undefined → inferred from the name. */
+  unit?: string | null
 }
 
 /** Split a free-text plan-page value into display tokens ("5, 26,38" → ['5','26','38']). */
@@ -28,7 +32,8 @@ export function parsePlanPageTokens(page: string | null | undefined): string[] {
 
 export type CountSheetSummary = {
   items: number
-  units: number
+  /** Per-unit items + totals (v2.2113): counts (ea) and line feet (ft) are never summed together. */
+  byUnit: UnitTotals
   noPageCount: number
   withGroupTag: number
 }
@@ -36,7 +41,7 @@ export type CountSheetSummary = {
 export function countSheetSummary(rows: CountSheetRow[]): CountSheetSummary {
   return {
     items: rows.length,
-    units: rows.reduce((s, r) => s + (Number.isFinite(r.count) ? r.count : 0), 0),
+    byUnit: sumByUnit(rows),
     noPageCount: rows.filter((r) => parsePlanPageTokens(r.page).length === 0).length,
     withGroupTag: rows.filter((r) => (r.group_tag ?? '').trim() !== '').length,
   }
@@ -45,7 +50,8 @@ export function countSheetSummary(rows: CountSheetRow[]): CountSheetSummary {
 export type CountSheetPageGroup<T extends CountSheetRow = CountSheetRow> = {
   label: string
   rows: T[]
-  units: number
+  /** Per-unit totals for the group header ("12 ea · 148.5 ft"). */
+  byUnit: UnitTotals
 }
 
 /**
@@ -85,7 +91,7 @@ export function buildCountSheetPageGroups<T extends CountSheetRow>(rows: T[]): {
   return {
     pages: labels.map((label) => {
       const groupRows = byPage.get(label) ?? []
-      return { label, rows: groupRows, units: groupRows.reduce((s, r) => s + r.count, 0) }
+      return { label, rows: groupRows, byUnit: groupRows.length ? sumByUnit(groupRows) : emptyUnitTotals() }
     }),
     noPage,
   }
