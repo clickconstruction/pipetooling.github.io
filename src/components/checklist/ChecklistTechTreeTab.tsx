@@ -46,6 +46,7 @@ import {
 import type { Database } from '../../types/database'
 import { useChecklistTechTreeData, type TaskView } from '../../hooks/useChecklistTechTreeData'
 import { useTechTreeTaskMutations } from '../../hooks/useTechTreeTaskMutations'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { GroupNode, type GroupNodeData } from './ChecklistTechTreeGroupNode'
 import { RoadmapCanvasSearchPanel } from './ChecklistTechTreeCanvasSearchPanel'
 import { clientCoordsForConnectEnd } from '../../lib/checklistTechTreeCanvas'
@@ -1059,11 +1060,10 @@ export function ChecklistTechTreeTab({
     }
   }, [isCanvasFullscreen])
 
-  // CSS fullscreen fallback: lock body scroll and allow Esc to exit (no native handling).
+  // CSS fullscreen fallback: freeze the page (shared iOS-safe lock, v2.2186) and allow Esc to exit (no native handling).
+  useBodyScrollLock(cssFullscreen)
   useEffect(() => {
     if (!cssFullscreen) return
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setCssFullscreen(false)
@@ -1072,7 +1072,6 @@ export function ChecklistTechTreeTab({
     }
     window.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = prevOverflow
       window.removeEventListener('keydown', onKey)
     }
   }, [cssFullscreen, triggerCanvasResize])

@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-08-10
+last_updated: 2026-08-23
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -2428,6 +2428,15 @@ async function myFunction() {
 - Use `?? null` to convert `undefined` (from optional chaining) to `null`
 - This ensures type consistency throughout the code
 - Both `null` and `undefined` are falsy, so `if (!value)` checks work with both
+
+### 10. Modal scroll lock — automatic, opt-out (v2.2186)
+
+The page behind any modal, sheet, or dialog is frozen **app-wide without per-modal code**. [`BodyScrollLockSentinel`](../src/components/BodyScrollLockSentinel.tsx) (mounted once in `Layout`) watches the DOM and, while [`findBlockingOverlays`](../src/lib/blockingOverlay.ts) finds a `position: fixed` layer covering ≥ 90% of the viewport, holds the reference-counted iOS-safe lock in [`bodyScrollLock.ts`](../src/lib/bodyScrollLock.ts) (`body { position: fixed; top: -scrollY }`, scrollbar-width compensation, exact scroll restore on the last release). Stacked modals just work.
+
+- **Writing a modal:** nothing to do — a fixed, viewport-covering backdrop is detected. Give the panel `role="dialog"` (+ `aria-modal="true"`) anyway: it's the explicit signal and the a11y-correct one.
+- **Opting a modal out** (let the page scroll behind it): `data-page-scroll="allow"` on the overlay (or any ancestor of the dialog).
+- **Freezing without an overlay** (e.g. the roadmap's CSS fullscreen): `useBodyScrollLock(true)` — refcounted with the sentinel, so both coexist.
+- Don't hand-roll `document.body.style.overflow = 'hidden'` — it doesn't hold on iOS Safari; the three historical copies were retired in v2.2186.
 
 
 ---

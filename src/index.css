@@ -2217,3 +2217,12 @@ body.my-time-boundary-dragging {
 .goal-task-mark { color: var(--text-amber-800); font-weight: 600; }
 .goal-task-chip { font-size: 0.66rem; padding: 0 0.4rem; border-radius: 5px; background: var(--bg-muted); border: 1px solid var(--border-strong); color: var(--text-muted); }
 
+/* App-wide modal scroll lock (v2.2186): BodyScrollLockSentinel freezes the page
+   behind any blocking overlay. Dialog panels keep their own scrolling but never
+   chain it to the page (no rubber-band hand-off at the ends). */
+[role="dialog"],
+.respModalOverlay,
+.roadmap-task-card {
+  overscroll-behavior: contain;
+}
+

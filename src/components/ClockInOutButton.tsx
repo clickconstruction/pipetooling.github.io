@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { supabase } from '../lib/supabase'
 import { useAuth, type UserRole } from '../hooks/useAuth'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
@@ -438,31 +439,8 @@ export default function ClockInOutButton({
     }
   }, [clockInModalOpen])
 
-  useEffect(() => {
-    if (clockInModalOpen) {
-      const scrollY = window.scrollY
-      const prevOverflow = document.body.style.overflow
-      const prevPosition = document.body.style.position
-      const prevTop = document.body.style.top
-      const prevLeft = document.body.style.left
-      const prevRight = document.body.style.right
-
-      document.body.style.overflow = 'hidden'
-      document.body.style.position = 'fixed'
-      document.body.style.top = `-${scrollY}px`
-      document.body.style.left = '0'
-      document.body.style.right = '0'
-
-      return () => {
-        document.body.style.overflow = prevOverflow
-        document.body.style.position = prevPosition
-        document.body.style.top = prevTop
-        document.body.style.left = prevLeft
-        document.body.style.right = prevRight
-        window.scrollTo(0, scrollY)
-      }
-    }
-  }, [clockInModalOpen])
+  // Page freeze behind the clock-in modal — the shared refcounted lock (v2.2186; was a hand-rolled copy of the same recipe).
+  useBodyScrollLock(clockInModalOpen)
 
   useEffect(() => {
     if (updateFocusModalOpen) {
