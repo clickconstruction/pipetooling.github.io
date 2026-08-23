@@ -42,4 +42,4 @@ Open **GC Review** (the Billed Awaiting Payment section tools). The **Weekly sta
 
 - Nothing is ever emailed uncertified, and nothing is emailed by the system at all — a person always sends.
 - The per-sender tallies in the panel header ("Malachi 2/3 sent") are how you see Friday afternoon who still owes sends.
-- The **Email…** dialog and scheduled sends still exist for the GCs where an app-sent statement is fine — a personal round send and an app send both count as "sent" everywhere.
+- The **Draft Message** dialog and scheduled sends still exist for the GCs where an app-sent statement is fine — a personal round send and an app send both count as "sent" everywhere.

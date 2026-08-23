@@ -936,7 +936,7 @@ export function JobsGcReviewModal({
                           )
                         })()
                       : null}
-                  {/* Share dropdown (v2.1423): Email… / Copy / Print for this GC in one menu. */}
+                  {/* Share dropdown (v2.1423): Draft Message (was "Email…", v2.2141) / Copy / Print for this GC in one menu. */}
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <button
                       type="button"
@@ -985,10 +985,10 @@ export function JobsGcReviewModal({
                               setShareMenuGroupKey(null)
                               openEmailDialogForGroup(g)
                             }}
-                            title={`Email the ${g.gcName} statement from the app`}
+                            title={`Draft the ${g.gcName} statement email — nothing sends until you click Send statement`}
                             style={gcShareMenuItemStyle}
                           >
-                            Email…
+                            Draft Message
                           </button>
                           <button
                             type="button"
