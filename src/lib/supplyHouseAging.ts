@@ -106,3 +106,38 @@ export function nextMonthlyPaymentDueYmd(monthlyPaymentDay: number, fromYmd: str
   const clamped = Math.min(day, daysInMonth)
   return `${year}-${String(month).padStart(2, '0')}-${String(clamped).padStart(2, '0')}`
 }
+
+/** Houses with anything 60+ days past due — the Quickfill section's "N open" (v2.2191). */
+export function countSupplyHousesPastDue60(matrix: SupplyHouseAgingMatrix): number {
+  return matrix.rows.filter((r) => r.buckets.past60_90 + r.buckets.past90plus > EPSILON).length
+}
+
+/**
+ * One-line phone note for a house row (v2.2191): the worst news first — the 90+
+ * dollars when there are any, else where most of the balance sits.
+ */
+export function supplyHouseAgingPhoneNote(row: SupplyHouseAgingRow): string {
+  const b = row.buckets
+  const overdue = b.past1_30 + b.past30_60 + b.past60_90 + b.past90plus
+  if (overdue <= EPSILON && b.noDueDate <= EPSILON) return 'all current'
+  const parts: string[] = []
+  let largestKey: AgingBucketKey = 'current'
+  let largest = b.current
+  for (const k of ['past1_30', 'past30_60', 'past60_90', 'past90plus', 'noDueDate'] as AgingBucketKey[]) {
+    if (b[k] > largest) {
+      largest = b[k]
+      largestKey = k
+    }
+  }
+  const labels: Record<AgingBucketKey, string> = {
+    current: 'current',
+    past1_30: '1–30',
+    past30_60: '30–60',
+    past60_90: '60–90',
+    past90plus: '90+',
+    noDueDate: 'no due date',
+  }
+  if (largestKey !== 'past90plus') parts.push(`most in ${labels[largestKey]}`)
+  if (b.past90plus > EPSILON) parts.push(`$${Math.round(b.past90plus).toLocaleString('en-US')} at 90+`)
+  return parts.join(' · ') || 'all current'
+}
