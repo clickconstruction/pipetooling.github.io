@@ -275,6 +275,8 @@ type GroupNodeData = {
   taskCount: number
   /** Progress badge: "✓ done" / "N of M done"; null for empty stages. */
   badge: StageBadge
+  /** Task-less stage with no prerequisites — "not planned yet" (v2.2127). */
+  unplanned: boolean
   /** Locked stages only: "Unlocks when … is done" / auto-assign wording. */
   lockedHint: string | null
   onToggleCollapse: () => void
@@ -685,8 +687,24 @@ function GroupNode({ data }: NodeProps) {
           >
             {d.title}
           </div>
-          {d.badge || d.locked ? (
+          {d.badge || d.locked || d.unplanned ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+              {d.unplanned ? (
+                <span
+                  title="No tasks and nothing leading into it — add tasks, or link a stage into it"
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: '1px 6px',
+                    borderRadius: 6,
+                    border: '1px dashed var(--border-strong)',
+                    color: 'var(--text-slate-500)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  not planned yet
+                </span>
+              ) : null}
               {d.badge?.kind === 'done' ? (
                 <span
                   style={{
@@ -1506,6 +1524,7 @@ export function ChecklistTechTreeTab({
           stageNumber: stageNumbers.get(gid) ?? 0,
           locked: !gu,
           badge: stageBadgeFor(tlist.map((t) => ({ completedAt: t.completed_at }))),
+          unplanned: tlist.length === 0 && !graphEdges.some((e) => e.toGroupId === gid),
           lockedHint: gu
             ? null
             : lockedStageHint(

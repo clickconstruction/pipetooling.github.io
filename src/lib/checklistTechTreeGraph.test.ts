@@ -4,6 +4,7 @@ import {
   computeCompleteGroupIdsWithMilestones,
   computeUnlockedGroupIds,
   isGroupComplete,
+  unplannedGroupIds,
   wouldAddEdgeCreateCycle,
 } from './checklistTechTreeGraph'
 
@@ -105,13 +106,38 @@ describe('computeCompleteGroupIdsWithMilestones', () => {
     expect(s.has('m1')).toBe(true)
     expect(s.has('m2')).toBe(true)
   })
-  it('empty root is vacuously complete; stages with tasks still need every task done', () => {
+  it('empty root is NOT complete (not planned yet); stages with tasks still need every task done', () => {
     const s = computeCompleteGroupIdsWithMilestones(
       ['lonely', 'working'],
       [],
       new Map([['working', [{ completed_at: 'x' }, { completed_at: null }]]]),
     )
-    expect(s.has('lonely')).toBe(true)
+    expect(s.has('lonely')).toBe(false)
     expect(s.has('working')).toBe(false)
+  })
+  it('an unplanned root keeps its dependents locked until it is planned', () => {
+    const e = [{ fromGroupId: 'lonely', toGroupId: 'after' }]
+    const tasks = new Map<string, { completed_at: string | null }[]>([['after', [{ completed_at: null }]]])
+    const s = computeCompleteGroupIdsWithMilestones(['lonely', 'after'], e, tasks)
+    expect(s.has('lonely')).toBe(false)
+    expect(computeUnlockedGroupIds(['lonely', 'after'], e, s).has('after')).toBe(false)
+    // once the root gets a predecessor that is complete, it becomes a reached milestone again
+    const e2 = [...e, { fromGroupId: 'done', toGroupId: 'lonely' }]
+    const tasks2 = new Map<string, { completed_at: string | null }[]>([...tasks, ['done', [{ completed_at: 'x' }]]])
+    const s2 = computeCompleteGroupIdsWithMilestones(['done', 'lonely', 'after'], e2, tasks2)
+    expect(s2.has('lonely')).toBe(true)
+  })
+})
+
+describe('unplannedGroupIds', () => {
+  it('is the task-less stages with no prerequisites — not milestones, not task stages', () => {
+    const edges = [{ fromGroupId: 'a', toGroupId: 'm' }]
+    const tasks = new Map([['a', [{ completed_at: null }]]])
+    const u = unplannedGroupIds(['a', 'm', 'lonely'], edges, tasks)
+    expect([...u]).toEqual(['lonely'])
+  })
+  it('ignores edges from groups outside the set', () => {
+    const u = unplannedGroupIds(['x'], [{ fromGroupId: 'other', toGroupId: 'x' }], new Map())
+    expect(u.has('x')).toBe(true)
   })
 })

@@ -145,12 +145,14 @@ export type GoalMilestone = {
   feederTotal: number
   feederStages: number
   complete: boolean
+  /** No prerequisites at all — "not planned yet" (v2.2127): nothing feeds it, so there is nothing to measure. */
+  unplanned: boolean
 }
 
 /**
  * Task-less stages rendered as milestones, measured by every task in their
  * transitive predecessor subtree. Empty stages inside the subtree contribute
- * stages but no tasks.
+ * stages but no tasks. A task-less stage with no predecessors is `unplanned`.
  */
 export function goalMilestones(args: {
   groups: ReadonlyArray<PlanGroup>
@@ -190,6 +192,7 @@ export function goalMilestones(args: {
       feederTotal,
       feederStages: seen.size,
       complete: completeIds.has(g.id),
+      unplanned: (incoming.get(g.id) ?? []).length === 0,
     })
   }
   return rows

@@ -511,14 +511,14 @@ export function ChecklistRoadmapPlanView({
                   padding: '0.6rem 0.8rem',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, marginBottom: 6, color: g.unplanned ? 'var(--text-muted)' : undefined }}>
                   {numberFor(g.groupId)}
                   <span style={{ minWidth: 0 }}>
-                    {g.complete ? '✓ ' : '⛰ '}
+                    {g.complete ? '✓ ' : g.unplanned ? '◇ ' : '⛰ '}
                     {g.title}
                   </span>
                 </div>
-                <div style={{ height: 6, background: 'var(--bg-muted)', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ height: 6, background: 'var(--bg-muted)', borderRadius: 999, overflow: 'hidden', ...(g.unplanned ? { background: 'transparent', border: '1px dashed var(--border-strong)' } : {}) }}>
                   <div
                     style={{
                       width: `${g.feederTotal === 0 ? 0 : Math.round((g.feederDone / g.feederTotal) * 100)}%`,
@@ -528,7 +528,9 @@ export function ChecklistRoadmapPlanView({
                   />
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 5 }}>
-                  {g.feederDone} of {g.feederTotal} feeder tasks · {g.feederStages} stage{g.feederStages === 1 ? '' : 's'}
+                  {g.unplanned
+                    ? 'not planned yet — add tasks, or link a stage into it'
+                    : `${g.feederDone} of ${g.feederTotal} feeder tasks · ${g.feederStages} stage${g.feederStages === 1 ? '' : 's'}`}
                 </div>
               </div>
             ))}

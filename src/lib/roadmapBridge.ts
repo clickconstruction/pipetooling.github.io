@@ -7,6 +7,7 @@
 import {
   computeCompleteGroupIdsWithMilestones,
   computeUnlockedGroupIds,
+  unplannedGroupIds,
   type TechTreeEdge,
 } from './checklistTechTreeGraph'
 
@@ -71,7 +72,9 @@ export function goalsStripRows(args: {
     // their predecessors are — matches the canvas and the sync RPC.
     const completeIds = computeCompleteGroupIdsWithMilestones(groupIds, rmEdges, tasksByGroup)
     const unlocked = computeUnlockedGroupIds(groupIds, rmEdges, completeIds)
-    const current = rmGroups.filter((g) => unlocked.has(g.id) && !completeIds.has(g.id))
+    const unplanned = unplannedGroupIds(groupIds, rmEdges, tasksByGroup)
+    // "not planned yet" stages are unlocked but not work — they're not the front
+    const current = rmGroups.filter((g) => unlocked.has(g.id) && !completeIds.has(g.id) && !unplanned.has(g.id))
     const doneTasks = rmTasks.filter((t) => t.completed_at != null).length
     rows.push({
       roadmapId: rm.id,
@@ -91,7 +94,8 @@ export type GoalsStageRow = {
   title: string
   done: number
   total: number
-  state: 'complete' | 'current' | 'locked'
+  /** 'unplanned' = task-less stage with no prerequisites — "not planned yet" (v2.2127). */
+  state: 'complete' | 'current' | 'locked' | 'unplanned'
   /** Open (incomplete) assigned tasks in this stage. */
   openAssigned: number
   /** Incomplete predecessor titles — why a locked stage is locked. */
@@ -121,6 +125,7 @@ export function goalsStageRows(args: {
   }
   const completeIds = computeCompleteGroupIdsWithMilestones(groupIds, rmEdges, tasksByGroup)
   const unlocked = computeUnlockedGroupIds(groupIds, rmEdges, completeIds)
+  const unplanned = unplannedGroupIds(groupIds, rmEdges, tasksByGroup)
   const titleByGroupId = new Map(groups.map((g) => [g.id, g.title]))
   return [...groups]
     .sort((a, b) => a.sort_index - b.sort_index || a.id.localeCompare(b.id))
@@ -128,9 +133,11 @@ export function goalsStageRows(args: {
       const gTasks = tasksByGroup.get(g.id) ?? []
       const state: GoalsStageRow['state'] = completeIds.has(g.id)
         ? 'complete'
-        : unlocked.has(g.id)
-          ? 'current'
-          : 'locked'
+        : unplanned.has(g.id)
+          ? 'unplanned'
+          : unlocked.has(g.id)
+            ? 'current'
+            : 'locked'
       return {
         groupId: g.id,
         title: g.title,

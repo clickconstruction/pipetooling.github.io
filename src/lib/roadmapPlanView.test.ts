@@ -105,6 +105,17 @@ describe('goalMilestones', () => {
       complete: false,
     })
   })
+  it('a task-less stage with no prerequisites is unplanned and never complete', () => {
+    const rows = goalMilestones({
+      groups: [...groups, { id: 'lonely', title: 'Solar on every roof' }],
+      tasksByGroup,
+      completeIds: computeCompleteGroupIdsWithMilestones([...groups.map((g) => g.id), 'lonely'], edges, tasksByGroup),
+      edges,
+    })
+    const lonely = rows.find((r) => r.groupId === 'lonely')!
+    expect(lonely).toMatchObject({ unplanned: true, complete: false, feederStages: 0, feederTotal: 0 })
+    expect(rows.find((r) => r.groupId === 'goal')!.unplanned).toBe(false)
+  })
   it('milestone flips complete when its feeders finish (via milestone completion)', () => {
     const doneTasks = new Map<string, PlanTask[]>([
       ['doing1', [t('a', 'doing1', true)]],

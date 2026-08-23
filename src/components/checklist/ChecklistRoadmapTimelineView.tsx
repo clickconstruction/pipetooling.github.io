@@ -154,6 +154,9 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
   const barFor = (r: TimelineRow, stageTasks: PlanTask[]) => {
     const waveStart = geometry.starts.get(r.wave) ?? 0
     if (r.isMilestone) {
+      // Hollow ◇ + muted label for a task-less stage with nothing before it —
+      // "not planned yet" (v2.2127); it used to read ✓ reached.
+      const color = r.done ? DONE : r.unplanned ? 'var(--text-muted)' : 'var(--text-violet-700)'
       return (
         <>
           <span
@@ -166,11 +169,13 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
               width: 12,
               height: 12,
               borderRadius: 2,
-              background: r.done ? DONE : 'var(--text-violet-700)',
+              boxSizing: 'border-box',
+              background: r.unplanned ? 'var(--surface)' : color,
+              border: r.unplanned ? '1.5px dashed var(--border-strong)' : undefined,
             }}
           />
-          <span style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: `calc(${pct(waveStart)} + 12px)`, fontSize: '0.68rem', fontWeight: 700, color: r.done ? DONE : 'var(--text-violet-700)', whiteSpace: 'nowrap' }}>
-            {r.done ? '✓ reached' : 'milestone'}
+          <span style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: `calc(${pct(waveStart)} + 12px)`, fontSize: '0.68rem', fontWeight: r.unplanned ? 600 : 700, color, whiteSpace: 'nowrap' }}>
+            {r.done ? '✓ reached' : r.unplanned ? 'not planned yet' : 'milestone'}
           </span>
         </>
       )
@@ -595,7 +600,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
         </div>
       </div>
       <p style={{ margin: 0, padding: '0.45rem 0.8rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-        Columns are dependency waves from the Map's arrows — sequence, not calendar. The calendar up top projects real dates from your observed pace (remaining ÷ tasks/week, wave by wave). Each slot ≈ one task, in stage order — green done, amber ring next up · ◆ = milestone stage · the amber line is the work front.
+        Columns are dependency waves from the Map's arrows — sequence, not calendar. The calendar up top projects real dates from your observed pace (remaining ÷ tasks/week, wave by wave). Each slot ≈ one task, in stage order — green done, amber ring next up · ◆ = milestone stage · ◇ = not planned yet (no tasks, nothing before it) · the amber line is the work front.
       </p>
     </div>
   )

@@ -2460,7 +2460,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                     {stages.map((s, stageIndex) => (
                       <span
                         key={s.groupId}
-                        title={`${stageIndex + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : 'milestone'}`}
+                        title={`${stageIndex + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : s.state === 'unplanned' ? 'not planned yet' : 'milestone'}`}
                         style={{
                           flex: 1,
                           minWidth: 5,
@@ -2470,8 +2470,10 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          background: s.state === 'complete' ? '#16a34a' : 'var(--bg-muted)',
+                          boxSizing: 'border-box',
+                          background: s.state === 'complete' ? '#16a34a' : s.state === 'unplanned' ? 'transparent' : 'var(--bg-muted)',
                           ...(s.state === 'current' ? { outline: '1.5px solid #d97706', outlineOffset: 1 } : {}),
+                          ...(s.state === 'unplanned' ? { border: '1px dashed var(--border-strong)' } : {}),
                         }}
                       >
                         {s.state === 'current' && s.total > 0 && s.done > 0 ? (
@@ -2528,6 +2530,13 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                               </span>
                             ) : null}
                           </>
+                        ) : s.state === 'unplanned' ? (
+                          <span
+                            title="No tasks and nothing leading into it — add tasks on the roadmap, or link a stage into it"
+                            style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', border: '1px dashed var(--border-strong)', color: 'var(--text-muted)' }}
+                          >
+                            not planned yet
+                          </span>
                         ) : (
                           <span
                             title={lockedStageHint(s.blockedBy, s.openAssigned > 0) ?? undefined}

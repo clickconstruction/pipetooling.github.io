@@ -142,6 +142,26 @@ describe('goalsStageRows', () => {
     expect(rows.map((r) => r.state)).toEqual(['complete', 'current', 'complete', 'locked'])
   })
 
+  it('a task-less stage with no prerequisites is "unplanned" — never complete, never current', () => {
+    const rows = goalsStageRows({
+      groups: [...groups, { id: 'gE', title: 'Solar on every roof', sort_index: 5 }],
+      tasks,
+      edges,
+    })
+    const e = rows.find((r) => r.groupId === 'gE')!
+    expect(e.state).toBe('unplanned')
+    expect(e.blockedBy).toEqual([])
+    // the strip's "current" list leaves it out too
+    const strip = goalsStripRows({
+      roadmaps: [{ id: 'r', title: 'Farm' }],
+      groups: [...groups, { id: 'gE', title: 'Solar on every roof', sort_index: 5 }].map((g) => ({ ...g, roadmap_id: 'r' })),
+      tasks: tasks.map((t, i) => ({ ...t, id: `t${i}` })),
+      edges,
+    })
+    expect(strip[0]!.currentStages).not.toContain('Solar on every roof')
+    expect(strip[0]!.stagesComplete).toBe(2)
+  })
+
   it('counts done/total and open assigned tasks per stage', () => {
     const rows = goalsStageRows({ groups, tasks, edges })
     const b = rows.find((r) => r.groupId === 'gB')!

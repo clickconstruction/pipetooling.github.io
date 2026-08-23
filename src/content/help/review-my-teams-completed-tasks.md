@@ -36,6 +36,6 @@ If it's not done right, type a comment — it's required, so the person always k
 
 If you use Roadmaps, the Review board shows a **Goals** strip: each big goal with its stage progress and what's currently in motion. When a stage finishes, the next stage's tasks land on the assigned people's Today lists automatically — look for the purple {{chip:purple|⛰ goal}} chip on their tasks.
 
-The goal's bar is **one segment per stage**, in the order you arranged them: green segments are finished stages, amber-ringed ones are the current work front (they fill blue as their tasks complete), and pale ones are still locked.
+The goal's bar is **one segment per stage**, in the order you arranged them: green segments are finished stages, amber-ringed ones are the current work front (they fill blue as their tasks complete), and pale ones are still locked. A **dashed, hollow** segment is a stage that's *not planned yet* — no tasks and nothing leading into it — so it never reads as done by accident.
 
 Tap the goal card to open the **stage ledger** — every stage with its own mini bar and count, plus a chip telling its story: {{chip:green|✓ done}}, {{chip:yellow|current}} with {{chip:blue|2 on lists}} when tasks are already on people's Today lists, or 🔒 with the stage that has to finish first. Long locked tails fold behind "N more locked stages". The **Open roadmap →** link inside the ledger jumps to the canvas when you want to edit rather than glance.
