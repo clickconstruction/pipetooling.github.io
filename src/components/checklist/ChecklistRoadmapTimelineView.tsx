@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { approxDateLabel, paceProjection, taskSlotRects, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
-import { bandFraction, calendarBand, observedPace, paceLabel } from '../../lib/roadmapCalendar'
+import { bandFraction, calendarBand, monthLabelStride, observedPace, paceLabel } from '../../lib/roadmapCalendar'
 import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import type { PlanTask } from '../../lib/roadmapPlanView'
@@ -47,6 +47,23 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
   // What-if dial (v2.2090): ephemeral, never persisted — the solid flag stays the
   // observed truth; this only drives the dashed ghost. null until touched.
   const [whatIf, setWhatIf] = useState<number | null>(null)
+  // Calendar band width (v2.2136): month labels thin to every Nth month on
+  // narrow screens instead of overprinting each other ("AUG SEP OC NOVDEC…").
+  const bandRef = useRef<HTMLDivElement | null>(null)
+  const [bandPx, setBandPx] = useState(0)
+  useEffect(() => {
+    const el = bandRef.current
+    if (!el) return
+    const measure = () => setBandPx(el.getBoundingClientRect().width)
+    measure()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const tasksByGroup = useMemo(() => {
     const m = new Map<string, PlanTask[]>()
@@ -119,6 +136,13 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
   }, [projection, geometry])
 
   const pct = (f: number) => `${(f * 100).toFixed(2)}%`
+  const labelStride = monthLabelStride(bandPx, band.months[0]?.width ?? 1)
+  /** Pace that would land the goal inside the visible horizon (clamped goals only). */
+  const neededPaceLabel =
+    band.goal?.clamped && remainingTotal > 0
+      ? paceLabel(remainingTotal / Math.max((band.horizonEnd.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000), 1))
+      : null
+  const horizonLabel = band.months[band.months.length - 1]?.label ?? ''
 
   const laneVlines = (
     <>
@@ -250,12 +274,14 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
       {/* calendar band: real months, today tick, runway, wave dots, 🎯 goal flag */}
       <div style={{ padding: '0.65rem 0.8rem 0.55rem', borderBottom: '1px solid var(--border)' }}>
         <div
+          ref={bandRef}
           aria-label={band.goal ? `Calendar: projected finish ${band.goal.label}` : 'Calendar'}
           style={{ position: 'relative', height: 46, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}
         >
           {band.months.map((m, i) => (
             <span
               key={m.label}
+              title={m.label}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -266,9 +292,11 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 background: i % 2 === 1 ? 'var(--bg-slate-tint)' : undefined,
               }}
             >
-              <span style={{ position: 'absolute', top: 4, left: 6, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {m.label}
-              </span>
+              {i % labelStride === 0 ? (
+                <span style={{ position: 'absolute', top: 4, left: 6, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  {m.label}
+                </span>
+              ) : null}
             </span>
           ))}
           {band.runway ? (
@@ -347,30 +375,41 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline', marginTop: 7, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
           {band.goal && pace ? (
             <>
-              <span>
-                🎯 goal <b style={{ color: 'var(--text-strong)' }}>{band.goal.label}</b>
-              </span>
-              <span style={{ color: 'var(--border-strong)' }}>·</span>
-              <span>
-                at your {pace.basis === 'recent' ? 'recent' : 'all-time'} pace —{' '}
-                <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{paceLabel(pace.tasksPerWeek)} tasks/week</b>
-                {pace.basis === 'recent' ? ' over the last 4 weeks' : ''}
-              </span>
-              <span style={{ color: 'var(--border-strong)' }}>·</span>
-              <span>
-                <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{remainingTotal}</b> task{remainingTotal === 1 ? '' : 's'} left
-              </span>
-              {band.goal.clamped && remainingTotal > 0 ? (
-                <>
-                  <span style={{ color: 'var(--border-strong)' }}>·</span>
+              {(() => {
+                // Caption order (v2.2136): when the honest date is clamped past the
+                // 12-month horizon, lead with what's actionable — tasks left and
+                // the pace that lands inside the year — and demote the far date.
+                const leftNode = (
                   <span>
-                    <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
-                      {paceLabel(remainingTotal / Math.max((band.horizonEnd.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000), 1))}
-                    </b>
-                    /week would finish by {band.months[band.months.length - 1]?.label}
+                    <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{remainingTotal}</b> task{remainingTotal === 1 ? '' : 's'} left
                   </span>
-                </>
-              ) : null}
+                )
+                const paceNode = (
+                  <span>
+                    at your {pace.basis === 'recent' ? 'recent' : 'all-time'} pace —{' '}
+                    <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{paceLabel(pace.tasksPerWeek)} tasks/week</b>
+                    {pace.basis === 'recent' ? ' over the last 4 weeks' : ''}
+                  </span>
+                )
+                const goalNode = (
+                  <span>
+                    🎯 {band.goal.clamped ? 'at that pace' : 'goal'} <b style={{ color: 'var(--text-strong)' }}>{band.goal.label}</b>
+                  </span>
+                )
+                const neededNode =
+                  neededPaceLabel != null ? (
+                    <span>
+                      <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{neededPaceLabel}</b>/week would finish by {horizonLabel}
+                    </span>
+                  ) : null
+                const parts = neededNode ? [leftNode, neededNode, paceNode, goalNode] : [goalNode, paceNode, leftNode]
+                return parts.map((p, i) => (
+                  <Fragment key={i}>
+                    {i > 0 ? <span style={{ color: 'var(--border-strong)' }}>·</span> : null}
+                    {p}
+                  </Fragment>
+                ))
+              })()}
               {ghost && whatIf != null ? (
                 <>
                   <span style={{ color: 'var(--border-strong)' }}>·</span>
@@ -479,6 +518,9 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                     }
                   }}
                   aria-expanded={expanded}
+                  aria-label={`Stage ${r.stageNumber}: ${r.title} — ${
+                    r.isMilestone ? (r.done ? 'reached' : r.unplanned ? 'not planned yet' : 'milestone') : `${r.doneTasks} of ${r.totalTasks} done`
+                  }${r.locked ? ', locked' : ''}`}
                   style={{ display: 'flex', borderBottom: '1px solid var(--border)', cursor: 'pointer', background: expanded ? 'var(--bg-slate-tint)' : undefined }}
                 >
                   <div className="roadmap-timeline-rail" style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 7, padding: '0.4rem 0.6rem', minWidth: 0 }}>
