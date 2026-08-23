@@ -3400,8 +3400,6 @@ export function BidsPricingTab({
                         <span style={{ marginLeft: '0.6rem', fontSize: '0.78rem', color: 'var(--text-amber-700)' }}>
                           ⚠ {Math.round(conc.top2Share * 100)}% of profit sits in {conc.segments[0]?.label} + {conc.segments[1]?.label} — a VE cut there guts the job.
                         </span>
-                      ) : conc.totalProfit > 0 ? (
-                        <span style={{ marginLeft: '0.6rem', fontSize: '0.78rem', color: 'var(--text-green-600)' }}>Healthy spread.</span>
                       ) : null}
                       <div style={{ display: 'flex', height: 16, borderRadius: 6, overflow: 'hidden', marginTop: '0.45rem' }}>
                         {conc.totalProfit <= 0 ? (
