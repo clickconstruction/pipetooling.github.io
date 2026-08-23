@@ -628,12 +628,6 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
           </table>
         </div>
       )}
-      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Newest first; each row’s balance is the running balance after that posting. Charges count at the date they
-        happened — statements list them later as the paper record. Append-only: reversals are new rows, never edits.
-        Click any row to drill in — labor opens that week’s pay report, charges open the editor.
-      </p>
-
       {payReport ? (
         <PayStubViewModal title={payReport.title} html={payReport.html} zIndex={1200} onClose={() => setPayReport(null)} />
       ) : null}
