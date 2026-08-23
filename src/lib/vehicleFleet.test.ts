@@ -566,3 +566,30 @@ describe('vehicle maintenance tasks', () => {
     ])
   })
 })
+
+describe('vehicleCheckinDueList (v2.2199)', async () => {
+  const { vehicleCheckinDueList } = await import('./vehicleFleet')
+  const veh = (id: string) => ({ id, year: 2020, make: 'Ford', model: 'F250', vin: null, weekly_insurance_cost: 0, weekly_registration_cost: 0 })
+  const pos = (vehicle_id: string, user_id: string | null) => ({ id: `p-${vehicle_id}`, vehicle_id, user_id, start_date: '2026-01-01', end_date: null })
+  const entry = (vehicle_id: string, read_date: string) => ({ id: `o-${vehicle_id}`, vehicle_id, odometer_value: 100, read_date, created_by: null, created_at: null })
+  it('assigned use assignedDays; motor pool uses motorPoolDays; 0 skips motor pool; unassigned skipped', () => {
+    const vehicles = [veh('a'), veh('m'), veh('u'), veh('fresh')] as never[]
+    const holders = new Map<string, ReturnType<typeof pos>>([
+      ['a', pos('a', 'user-1')],
+      ['m', pos('m', null)], // motor pool = null user_id
+      ['fresh', pos('fresh', 'user-2')],
+    ])
+    const latest = new Map([
+      ['a', entry('a', '2026-08-13')], // 10d
+      ['m', entry('m', '2026-07-10')], // 44d
+      ['fresh', entry('fresh', '2026-08-20')], // 3d
+    ])
+    const rows = vehicleCheckinDueList(vehicles as never, holders as never, latest as never, '2026-08-23', { assignedDays: 7, motorPoolDays: 30 })
+    expect(rows.map((r) => [r.vehicle.id, r.motorPool, r.dueDays])).toEqual([
+      ['m', true, 30],
+      ['a', false, 7],
+    ])
+    const noPool = vehicleCheckinDueList(vehicles as never, holders as never, latest as never, '2026-08-23', { assignedDays: 7, motorPoolDays: 0 })
+    expect(noPool.map((r) => r.vehicle.id)).toEqual(['a'])
+  })
+})

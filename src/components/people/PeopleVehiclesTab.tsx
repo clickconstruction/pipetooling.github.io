@@ -6,6 +6,14 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import {
+  DEFAULT_VEHICLE_CHECKIN_SETTINGS,
+  fetchVehicleCheckinSettings,
+  parseVehicleCheckinAnswers,
+  checkinLedgerBody,
+  saveVehicleCheckinSettings,
+  type VehicleCheckinSettings,
+} from '../../lib/vehicleCheckinSettings'
+import {
   buildVehicleLedger,
   currentInsurancePeriod,
   currentPossession,
@@ -84,6 +92,9 @@ type Vehicle = {
 
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
 
+/** vehicle_checkins row as read for the selected vehicle's ledger (v2.2199). */
+type PanelCheckin = { id: string; checkin_date: string; answers: unknown; created_by: string | null }
+
 export type PeopleVehiclesTabProps = {
   users: UserRow[]
 }
@@ -93,6 +104,7 @@ const LEDGER_FILTERS: Array<{ key: 'all' | VehicleLedgerRowKind; label: string }
   { key: 'reading', label: 'Odometer' },
   { key: 'service', label: 'Service' },
   { key: 'problem', label: 'Problems' },
+  { key: 'checkin', label: 'Check-ins' },
   { key: 'handoff', label: 'Holders' },
   { key: 'insurance_on', label: 'Insurance' },
   { key: 'value', label: 'Value' },
@@ -165,6 +177,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
   const [insurancePlans, setInsurancePlans] = useState<FleetInsurancePlan[]>([])
   const [insurancePeriodsAll, setInsurancePeriodsAll] = useState<FleetInsurancePeriod[]>([])
   const [plansOpen, setPlansOpen] = useState(false)
+  const [checkinSettingsOpen, setCheckinSettingsOpen] = useState(false)
+  const [checkinSettingsDraft, setCheckinSettingsDraft] = useState<VehicleCheckinSettings>(DEFAULT_VEHICLE_CHECKIN_SETTINGS)
+  const [checkinSettingsSaving, setCheckinSettingsSaving] = useState(false)
+  const [panelCheckins, setPanelCheckins] = useState<PanelCheckin[]>([])
   const [planFormOpen, setPlanFormOpen] = useState(false)
   const [editingPlan, setEditingPlan] = useState<FleetInsurancePlan | null>(null)
   const [planName, setPlanName] = useState('')
@@ -470,9 +486,24 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     setPanelValues((valData ?? []) as FleetValueEntry[])
     setPanelServiceEvents((svcData ?? []) as FleetServiceEvent[])
     setPanelProblems((probData2 ?? []) as FleetProblemReport[])
+    // Check-in history (v2.2199) — fail-soft while the table hasn't been migrated yet.
+    let checkins: PanelCheckin[] = []
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: ciData, error: ciErr } = await supabase
+        .from('vehicle_checkins' as any)
+        .select('id, checkin_date, answers, created_by')
+        .eq('vehicle_id', vehicleId)
+        .order('checkin_date', { ascending: false })
+      if (!ciErr) checkins = (ciData ?? []) as unknown as PanelCheckin[]
+    } catch {
+      checkins = []
+    }
+    setPanelCheckins(checkins)
     resolveExtraNames([
       ...((odoData ?? []) as FleetOdometerEntry[]).map((e) => e.created_by),
       ...((probData2 ?? []) as FleetProblemReport[]).map((p) => p.reported_by),
+      ...checkins.map((c) => c.created_by),
     ])
   }
 
@@ -494,6 +525,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       setPanelValues([])
       setPanelServiceEvents([])
       setPanelProblems([])
+      setPanelCheckins([])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only on vehicle switch
   }, [selectedVehicleId])
@@ -1158,7 +1190,38 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     loadPanel(selectedVehicleId)
   }
 
+  const isDev = useMemo(() => users.find((u) => u.id === authUser?.id)?.role === 'dev', [users, authUser?.id])
+
+  async function openCheckinSettings() {
+    setCheckinSettingsDraft(await fetchVehicleCheckinSettings())
+    setCheckinSettingsOpen(true)
+  }
+
+  async function saveCheckinSettings() {
+    if (checkinSettingsSaving) return
+    setCheckinSettingsSaving(true)
+    try {
+      await saveVehicleCheckinSettings(checkinSettingsDraft)
+      setCheckinSettingsOpen(false)
+      showToast('Check-in settings saved.', 'success')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setCheckinSettingsSaving(false)
+    }
+  }
+
   async function deleteLedgerRow(kind: VehicleLedgerRowKind, sourceId: string) {
+    if (kind === 'checkin') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: err } = await supabase.from('vehicle_checkins' as any).delete().eq('id', sourceId)
+      if (err) {
+        setError(err.message)
+        return
+      }
+      if (selectedVehicleId) loadPanel(selectedVehicleId)
+      return
+    }
     const table =
       kind === 'reading'
         ? 'vehicle_odometer_entries'
@@ -1194,8 +1257,16 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
       planNameById,
       maintenanceTasks: maintenanceTasksAll.filter((t) => t.vehicle_id === selectedVehicleId),
       userNameById,
+      checkins: panelCheckins.map((c) => {
+        const body = checkinLedgerBody(parseVehicleCheckinAnswers(c.answers))
+        const by = c.created_by ? (userNameById.get(c.created_by) ?? null) : null
+        const what = body.allClear
+          ? 'Check-in · all clear'
+          : `⚠ Check-in · ${body.flaggedLines.join(' · ')} · problem report filed`
+        return { id: c.id, checkin_date: c.checkin_date, label: by ? `${what} — by ${by}` : what }
+      }),
     })
-  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, panelProblems, possessionsAll, insurancePeriodsAll, planNameById, maintenanceTasksAll, userNameById])
+  }, [selectedVehicleId, panelReadings, panelValues, panelServiceEvents, panelProblems, panelCheckins, possessionsAll, insurancePeriodsAll, planNameById, maintenanceTasksAll, userNameById])
 
   const visibleLedgerRows = useMemo(
     () =>
@@ -1309,6 +1380,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
         <VehiclesFleetSummary
           facts={fleetFactsLine({ total: summary.total, motorPool: summary.motorPool, weeklyInsReg: weeklyTotal }, formatCurrency)}
           onInsurancePlans={() => setPlansOpen(true)}
+          onCheckinSettings={isDev ? () => void openCheckinSettings() : undefined}
           items={buildFleetAttentionItems({
             unassigned: summary.unassigned,
             uninsured: uninsuredCount,
@@ -2441,6 +2513,109 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => setPlansOpen(false)} style={{ padding: '0.5rem 1rem' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Check-in settings (v2.2199, dev-only): the cadence + questions that drive Quickfill's Vehicle check-ins station. */}
+      {checkinSettingsOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }} onClick={() => setCheckinSettingsOpen(false)}>
+          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 520, width: '92%', maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0, marginBottom: '0.35rem' }}>Check-in settings</h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Drives Quickfill's <strong>Vehicle check-ins</strong> station: how often each kind of vehicle needs an odometer
+              reading, and the questions the assistant answers while they have the holder on the phone.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-slate-600)' }}>
+                Assigned vehicles — every
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: 4 }}>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={checkinSettingsDraft.assignedDays}
+                    onChange={(e) => setCheckinSettingsDraft((prev) => ({ ...prev, assignedDays: Math.max(1, Math.min(365, Math.floor(Number(e.target.value) || 0))) }))}
+                    style={{ width: 72, padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6 }}
+                  />
+                  days
+                </span>
+              </label>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-slate-600)' }}>
+                Motor pool — every
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: 4 }}>
+                  <input
+                    type="number"
+                    min={0}
+                    max={365}
+                    value={checkinSettingsDraft.motorPoolDays}
+                    onChange={(e) => setCheckinSettingsDraft((prev) => ({ ...prev, motorPoolDays: Math.max(0, Math.min(365, Math.floor(Number(e.target.value) || 0))) }))}
+                    style={{ width: 72, padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6 }}
+                  />
+                  days <span style={{ color: 'var(--text-muted)' }}>(0 = skip)</span>
+                </span>
+              </label>
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.4rem' }}>Questions asked at each check-in</div>
+              {checkinSettingsDraft.questions.length === 0 && (
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No questions — check-ins will just collect the odometer.</p>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {checkinSettingsDraft.questions.map((q, qi) => (
+                  <div key={q.id} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={q.label}
+                      onChange={(e) =>
+                        setCheckinSettingsDraft((prev) => ({
+                          ...prev,
+                          questions: prev.questions.map((qq, i) => (i === qi ? { ...qq, label: e.target.value } : qq)),
+                        }))
+                      }
+                      placeholder="e.g. Any lights on the dash?"
+                      aria-label={`Check-in question ${qi + 1}`}
+                      style={{ flex: 1, padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCheckinSettingsDraft((prev) => ({ ...prev, questions: prev.questions.filter((_, i) => i !== qi) }))}
+                      aria-label={`Remove question ${qi + 1}`}
+                      title="Remove question"
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0.25rem' }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  setCheckinSettingsDraft((prev) => ({
+                    ...prev,
+                    questions: [...prev.questions, { id: `q-${crypto.randomUUID().slice(0, 8)}`, label: '' }],
+                  }))
+                }
+                style={{ marginTop: '0.5rem', padding: '0.35rem 0.7rem', background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 6, color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.8125rem' }}
+              >
+                + Add question
+              </button>
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Renaming a question only changes future check-ins — history keeps the wording that was asked.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button type="button" onClick={() => setCheckinSettingsOpen(false)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
+              <button
+                type="button"
+                onClick={() => void saveCheckinSettings()}
+                disabled={checkinSettingsSaving}
+                style={{ padding: '0.5rem 1rem', background: checkinSettingsSaving ? '#9ca3af' : '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: checkinSettingsSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {checkinSettingsSaving ? 'Saving…' : 'Save'}
+              </button>
             </div>
           </div>
         </div>

@@ -12,12 +12,15 @@ import type { FleetAttentionItem } from '../../lib/vehicleFleetAttention'
 export function VehiclesFleetSummary({
   facts,
   onInsurancePlans,
+  onCheckinSettings,
   items,
   onOpenReadings,
   onOpenTasks,
 }: {
   facts: string[]
   onInsurancePlans: () => void
+  /** Dev-only (v2.2199): opens the check-in cadence + questions modal. */
+  onCheckinSettings?: () => void
   items: FleetAttentionItem[]
   onOpenReadings: () => void
   onOpenTasks: () => void
@@ -67,6 +70,19 @@ export function VehiclesFleetSummary({
         >
           Insurance plans ›
         </button>
+        {onCheckinSettings ? (
+          <>
+            <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
+            <button
+              type="button"
+              onClick={onCheckinSettings}
+              aria-label="Check-in settings"
+              style={{ font: 'inherit', fontSize: '0.86rem', background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              ⚙ Check-ins ›
+            </button>
+          </>
+        ) : null}
       </p>
       {items.length > 0 ? (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>

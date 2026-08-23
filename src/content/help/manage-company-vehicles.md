@@ -2,7 +2,7 @@
 title: manage company vehicles and track their odometers
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage, motor pool, parked, active, inactive, maintenance, tasks, battery, repair checklist
+keywords: vehicles, fleet, odometer, hand off, possession, assign truck, mileage, replacement value, VIN, insurance, insurance plan, policy, coverage, motor pool, parked, active, inactive, maintenance, tasks, battery, repair checklist, check-in, check-ins, dash lights, questions, cadence
 ---
 
 **People → Vehicles** is the fleet board: one card per vehicle showing who holds it, its latest odometer reading, whether that reading is getting old, and which insurance plan covers it. The board groups into **Active** (someone is using the vehicle) and **Inactive** (parked in the motor pool, or waiting for a holder). Above the board, one quiet line states the facts — how many vehicles, how many are parked in the motor pool, and the weekly insurance + registration cost, with **Insurance plans ›** right beside it. Under it, a **Needs attention** card lists what's asking for work: each row is a count and a plain label (need a reading, not on insurance, unassigned, oil due soon / overdue, open problems, maintenance tasks), red before amber, and the card disappears when the fleet is caught up.
@@ -46,6 +46,8 @@ Open each card wearing a {{chip:yellow|needs a reading}} chip, ask the holder fo
 :::
 
 You often won't need to ask: everyone holding a vehicle has a **My Vehicle** card on their own Dashboard where they send readings and report problems themselves — see the guide *report a problem with my truck or send an odometer reading*.
+
+The office side of this is the **Vehicle check-ins** station on Quickfill: assigned trucks come due for a reading weekly and motor-pool trucks monthly, with your check-in questions ("Any lights on the dash?") asked at every capture. A dev sets the cadence and questions from the **⚙ Check-ins ›** link beside **Insurance plans ›** above the board; each saved check-in — flagged or all clear — shows on the vehicle's ledger under the **Check-ins** filter, and every checked box files a Monitor problem report automatically. See the *use Quickfill* guide.
 
 ## Oil changes and services
 

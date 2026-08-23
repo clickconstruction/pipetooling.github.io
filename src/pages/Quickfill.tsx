@@ -69,7 +69,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
     sectionId: 'unassigned-field-time',
     label: 'Unassigned field time',
   },
-  { id: 'quickfill-vehicle-odometers', sectionId: 'vehicle-odometers', label: 'Vehicle odometers' },
+  { id: 'quickfill-vehicle-odometers', sectionId: 'vehicle-odometers', label: 'Vehicle check-ins' },
   { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
@@ -996,7 +996,7 @@ function QuickfillPage() {
             onMarkUpToDate={() => void markSectionUpToDate('vehicle-odometers')}
             onOpenNow={() => openSectionNow('vehicle-odometers')}
             onOpenHistory={() =>
-              setMarkHistoryModal({ sectionId: 'vehicle-odometers', label: 'Vehicle odometers' })
+              setMarkHistoryModal({ sectionId: 'vehicle-odometers', label: 'Vehicle check-ins' })
             }
           >
             <QuickfillVehicleOdometersSection />
