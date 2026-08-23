@@ -2718,7 +2718,7 @@ export function BidsPricingTab({
                                   </span>
                                 </>
                               )}
-                              {!isCustomerFacing ? (
+                              {!isCustomerFacing && !unpriced ? (
                                 <button type="button" onClick={() => void makeScenarioCustomerFacing(v, rev)} style={cardBtnStyle}>
                                   ☆ Make customer-facing…
                                 </button>
@@ -2804,7 +2804,7 @@ export function BidsPricingTab({
                                         View
                                       </button>
                                     )}
-                                    {!isCustomerFacing ? (
+                                    {!isCustomerFacing && !unpriced ? (
                                       <button type="button" onClick={(e) => { e.stopPropagation(); void makeScenarioCustomerFacing(v, rev) }} style={cardBtnStyle}>
                                         ☆ Make customer-facing…
                                       </button>
