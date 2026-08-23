@@ -5,27 +5,18 @@ import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { formatCurrency } from '../../lib/format'
-import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { fetchStagesHeaderStats } from '../../lib/jobs/fetchStagesHeaderStats'
+import { buildQuickfillBilledRows, type QuickfillBilledRow } from '../../lib/jobs/quickfillBilledAwaiting'
 import type { Database } from '../../types/database'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
-type LedgerPaymentPick = Pick<
-  Database['public']['Tables']['jobs_ledger_payments']['Row'],
-  'job_id' | 'invoice_id' | 'amount'
->
-type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
-type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerTeamMember = Database['public']['Tables']['jobs_ledger_team_members']['Row']
-
-type BilledRow =
-  | { kind: 'job'; job: JobsLedgerRow; assigned: string[]; remaining: number }
-  | { kind: 'invoice'; inv: JobsLedgerInvoice; job: JobsLedgerRow; assigned: string[]; remaining: number }
 
 export function BilledAwaitingPaymentSection() {
   const { user: authUser, role } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [rows, setRows] = useState<BilledRow[]>([])
+  const [rows, setRows] = useState<QuickfillBilledRow[]>([])
   const [total, setTotal] = useState(0)
 
   useEffect(() => {
@@ -36,95 +27,40 @@ export function BilledAwaitingPaymentSection() {
       setLoading(true)
       setError(null)
       try {
-        const [jobsRes, invoicesRes] = await Promise.all([
-          supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, revenue, payments_made').eq('status', 'billed'),
-          supabase.from('jobs_ledger_invoices').select('id, job_id, amount').eq('status', 'billed'),
-        ])
+        // v2.2147: the Pipeline's own Billed Awaiting Payment rows (lean spine →
+        // board kernel: one row per bill, Collections excluded). Before, this
+        // section pushed a job-level row for EVERY billed job plus an invoice
+        // row per line — doubling nearly everything.
+        const res = await fetchStagesHeaderStats(null)
         if (cancelled) return
-        const billedJobs = (jobsRes.data ?? []) as JobsLedgerRow[]
-        const billedInvoices = (invoicesRes.data ?? []) as JobsLedgerInvoice[]
-        if (jobsRes.error) {
-          setError(jobsRes.error.message)
+        if (!res.ok) {
+          setError(res.error)
           setLoading(false)
           return
         }
-        if (invoicesRes.error) {
-          setError(invoicesRes.error.message)
-          setLoading(false)
-          return
-        }
-
-        const jobIds = new Set<string>()
-        for (const j of billedJobs) jobIds.add(j.id)
-        for (const i of billedInvoices) jobIds.add(i.job_id)
-
-        let jobDetailsMap: Record<string, JobsLedgerRow> = {}
-        if (jobIds.size > 0) {
-          const ids = Array.from(jobIds)
-          const { data: jobDetails } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: ids })
-          jobDetailsMap = Object.fromEntries(
-            ((jobDetails ?? []) as JobsLedgerRow[]).map((j) => [j.id, j])
-          )
-        }
-
-        const jobIdsArray = Array.from(jobIds)
-        const { data: payRows } =
-          jobIdsArray.length > 0
-            ? await supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount').in('job_id', jobIdsArray)
-            : { data: [] as LedgerPaymentPick[] }
-        const payments = (payRows ?? []) as LedgerPaymentPick[]
-        function appliedToInvoice(invoiceId: string): number {
-          let s = 0
-          for (const p of payments) {
-            if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
+        const lean = res.leanBilledRows
+        const jobIds = Array.from(new Set(lean.map((r) => r.job.id)))
+        const jobNameById = new Map<string, string>()
+        const assignedByJobId = new Map<string, string[]>()
+        if (jobIds.length > 0) {
+          const [{ data: jobDetails }, { data: teamData }] = await Promise.all([
+            supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }),
+            supabase.from('jobs_ledger_team_members').select('job_id, users(name)').in('job_id', jobIds),
+          ])
+          if (cancelled) return
+          for (const j of (jobDetails ?? []) as Array<{ id: string; job_name: string | null }>) {
+            jobNameById.set(j.id, (j.job_name ?? '').trim())
           }
-          return s
+          for (const t of (teamData ?? []) as (JobsLedgerTeamMember & { users: { name: string } | null })[]) {
+            const n = t.users?.name?.trim()
+            if (!n) continue
+            assignedByJobId.set(t.job_id, [...(assignedByJobId.get(t.job_id) ?? []), n])
+          }
         }
-
-        const { data: teamData } = await supabase
-          .from('jobs_ledger_team_members')
-          .select('job_id, users(name)')
-          .in('job_id', jobIdsArray)
-        const teamByJob = new Map<string, string[]>()
-        for (const t of (teamData ?? []) as (JobsLedgerTeamMember & { users: { name: string } | null })[]) {
-          const names = (teamByJob.get(t.job_id) ?? [])
-          const n = t.users?.name?.trim()
-          if (n) names.push(n)
-          teamByJob.set(t.job_id, names)
-        }
-
-        const result: BilledRow[] = []
-        let sumTotal = 0
-
-        for (const j of billedJobs) {
-          const remaining = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
-          sumTotal += remaining
-          result.push({
-            kind: 'job',
-            job: j,
-            assigned: teamByJob.get(j.id) ?? [],
-            remaining,
-          })
-        }
-        for (const inv of billedInvoices) {
-          const job = jobDetailsMap[inv.job_id]
-          if (!job) continue
-          const amount = Number(inv.amount ?? 0)
-          const remaining = Math.max(0, amount - appliedToInvoice(inv.id))
-          if (remaining <= 0) continue
-          sumTotal += remaining
-          result.push({
-            kind: 'invoice',
-            inv,
-            job,
-            assigned: teamByJob.get(inv.job_id) ?? [],
-            remaining,
-          })
-        }
-
+        const built = buildQuickfillBilledRows(lean, jobNameById, assignedByJobId)
         if (!cancelled) {
-          setRows(result)
-          setTotal(sumTotal)
+          setRows(built.rows)
+          setTotal(built.total)
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load')
@@ -178,18 +114,18 @@ export function BilledAwaitingPaymentSection() {
               const openDetail = jobDetailModal
                 ? () =>
                     jobDetailModal.openJobDetail({
-                      jobId: r.job.id,
-                      prefillRowLabel: `${effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'} · ${r.job.job_name || '—'}`,
+                      jobId: r.jobId,
+                      prefillRowLabel: `${r.jobNumber} · ${r.jobName}`,
                     })
                 : null
               return (
                 <tr
-                  key={r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`}
+                  key={r.key}
                   onClick={openDetail ?? undefined}
                   title={openDetail ? 'Open job details (notes, status, billing, crew timeline)' : undefined}
                   style={{ borderBottom: '1px solid var(--border)', cursor: openDetail ? 'pointer' : undefined }}
                 >
-                  <td style={{ padding: '0.75rem 0.5rem' }}>{effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'}</td>
+                  <td style={{ padding: '0.75rem 0.5rem' }}>{r.jobNumber}</td>
                   <td style={{ padding: '0.75rem 0.5rem' }}>
                     {openDetail ? (
                       <button
@@ -211,10 +147,10 @@ export function BilledAwaitingPaymentSection() {
                           textAlign: 'left',
                         }}
                       >
-                        {r.job.job_name || '—'}
+                        {r.jobName}
                       </button>
                     ) : (
-                      r.job.job_name || '—'
+                      r.jobName
                     )}
                   </td>
                   <td style={{ padding: '0.75rem 0.5rem' }}>{r.assigned.join(', ') || '—'}</td>
