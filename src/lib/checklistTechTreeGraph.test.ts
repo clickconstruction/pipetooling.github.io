@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   completeGroupIdsFromTasks,
+  getAddPrereqLinkBlockReason,
   computeCompleteGroupIdsWithMilestones,
   computeUnlockedGroupIds,
   isGroupComplete,
@@ -139,5 +140,23 @@ describe('unplannedGroupIds', () => {
   it('ignores edges from groups outside the set', () => {
     const u = unplannedGroupIds(['x'], [{ fromGroupId: 'other', toGroupId: 'x' }], new Map())
     expect(u.has('x')).toBe(true)
+  })
+})
+
+describe('getAddPrereqLinkBlockReason', () => {
+  const edges = [{ from_group_id: 'a', to_group_id: 'b' }]
+  it('read-only viewers are blocked first', () => {
+    expect(getAddPrereqLinkBlockReason(false, 'a', 'c', edges)).toBe("You can't edit roadmap links (read-only).")
+  })
+  it('an unfinished pick is not an error yet', () => {
+    expect(getAddPrereqLinkBlockReason(true, '', 'c', edges)).toBeNull()
+  })
+  it('self-links, duplicates, and cycles each get their own message', () => {
+    expect(getAddPrereqLinkBlockReason(true, 'a', 'a', edges)).toBe("A group can't be a prerequisite of itself.")
+    expect(getAddPrereqLinkBlockReason(true, 'a', 'b', edges)).toBe('This link already exists.')
+    expect(getAddPrereqLinkBlockReason(true, 'b', 'a', edges)).toBe('That link would create a cycle.')
+  })
+  it('a fresh, acyclic link is allowed', () => {
+    expect(getAddPrereqLinkBlockReason(true, 'b', 'c', edges)).toBeNull()
   })
 })

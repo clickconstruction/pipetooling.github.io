@@ -24,7 +24,7 @@ The repo still has several God components (line counts at 2026-07-29, the date o
 | `src/pages/Prospects.tsx` (+ `TeamProspectsTab` 1,820) | 3,373 | [`PROSPECTS_TABS_ARCHITECTURE.md`](./PROSPECTS_TABS_ARCHITECTURE.md) | pointer + dual-cache substrate; Activity tab is a near-free first move |
 | `src/pages/Banking.tsx` (+ 2 oversized extracted tabs) | 3,104 | [`BANKING_TABS_ARCHITECTURE.md`](./BANKING_TABS_ARCHITECTURE.md) | 5 of 7 Mercury tabs already out; in-file table components are the first move |
 | `ScheduleDispatchHub` + `ScheduleDispatchHubPage` | 3,302 + 2,384 | [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md) | hot (churn 22/20); container/presentational split already in place |
-| `src/pages/Checklist.tsx` (+ `ChecklistTechTreeTab` 2,312) | 2,533 | [`CHECKLIST_TABS_ARCHITECTURE.md`](./CHECKLIST_TABS_ARCHITECTURE.md) | tabs are already in-file components — Stage B is mostly file moves |
+| `src/pages/Checklist.tsx` (+ `ChecklistTechTreeTab` ~1,840 after v2.2156) | ~3,500 | [`CHECKLIST_TABS_ARCHITECTURE.md`](./CHECKLIST_TABS_ARCHITECTURE.md) | tabs are already in-file components — Stage B is mostly file moves; tech-tree sub-decomposition done v2.2156 |
 | `src/pages/JobTally.tsx` | 2,330 | [`JOB_TALLY_ARCHITECTURE.md`](./JOB_TALLY_ARCHITECTURE.md) | two nearly independent tabs |
 | `src/pages/Quickfill.tsx` (+ `QuickfillScheduleSection` 1,737) | 2,039 | [`QUICKFILL_ARCHITECTURE.md`](./QUICKFILL_ARCHITECTURE.md) | section bodies extracted; framework + schedule section remain |
 | `src/pages/Jobs.tsx` | 2,020 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | decomposition essentially done (shrank from ~15k) |

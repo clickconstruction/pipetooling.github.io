@@ -166,3 +166,31 @@ export function unplannedGroupIds(
   }
   return out
 }
+
+/**
+ * Why a prerequisite link can't be added right now — read-only viewer, self-link,
+ * duplicate, or a cycle — as the toast/inline message the Map shows; null when
+ * the link is fine. (Moved from ChecklistTechTreeTab in v2.2156.)
+ */
+export function getAddPrereqLinkBlockReason(
+  canEdit: boolean,
+  fromGroupId: string,
+  toGroupId: string,
+  treeEdges: ReadonlyArray<{ from_group_id: string; to_group_id: string }>,
+): string | null {
+  if (!canEdit) return "You can't edit roadmap links (read-only)."
+  if (!fromGroupId || !toGroupId) return null
+  if (fromGroupId === toGroupId) return "A group can't be a prerequisite of itself."
+  if (treeEdges.some((e) => e.from_group_id === fromGroupId && e.to_group_id === toGroupId)) {
+    return 'This link already exists.'
+  }
+  const existing: TechTreeEdge[] = treeEdges.map((e) => ({
+    fromGroupId: e.from_group_id,
+    toGroupId: e.to_group_id,
+  }))
+  if (wouldAddEdgeCreateCycle(existing, fromGroupId, toGroupId)) {
+    return 'That link would create a cycle.'
+  }
+  return null
+}
+
