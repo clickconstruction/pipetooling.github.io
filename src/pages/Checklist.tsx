@@ -2962,8 +2962,9 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   const [completedOpen, setCompletedOpen] = useState(false)
   /** Card expanded to show its activity spine (history + notes), v2.2010. */
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
-  /** View pills (v2.2066): Repeating gets a front door instead of living below 28 one-offs. */
-  const [manageView, setManageView] = useState<'all' | 'one_offs' | 'repeating' | 'completed'>('all')
+  /** View pills (v2.2066): Repeating gets a front door instead of living below 28 one-offs.
+   *  Default is One-offs (v2.2118) — the open list is what people come here for; All is one tap away. */
+  const [manageView, setManageView] = useState<'all' | 'one_offs' | 'repeating' | 'completed'>('one_offs')
   /** Next upcoming open occurrence per item — the green "next Mon, Aug 24" chip. */
   const [nextOpenByItem, setNextOpenByItem] = useState<Map<string, string>>(new Map())
 
