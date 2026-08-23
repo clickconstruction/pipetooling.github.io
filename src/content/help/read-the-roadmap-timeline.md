@@ -19,7 +19,7 @@ order: 45
 
 The band across the top is a real calendar: months left to right, an amber **today** tick, a blue runway for the remaining work, and a 🎯 flag on the projected finish. There's nothing to set — the finish date comes from your **observed pace**: tasks you actually completed in the last 4 weeks (or your all-time average if the last month was quiet). Every task you complete updates the pace and pulls the flag closer for real.
 
-When stages block each other, small dots on the calendar mark when each later wave clears. If the projected finish is more than a year out, the runway runs off the right edge instead — and the caption tells you both the honest date and what pace **would** land it within the year.
+When stages block each other, small dots on the calendar mark when each later wave clears. If the projected finish is more than a year out, the runway runs off the right edge instead — and the caption leads with what you can act on (tasks left, and the pace that **would** land it within the year) before the honest far-off date. On a phone the month labels thin out to every second or third month so they stay readable; hover or long-press a column for its name.
 
 :::example Why the dates say ≈
 88 tasks left at your recent pace of 7/week ≈ 13 weeks — so the flag sits in November and reads "≈ Nov". The chart never claims a date you didn't earn; it shows where your real pace is taking you.

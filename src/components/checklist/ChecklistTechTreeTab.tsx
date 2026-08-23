@@ -2537,7 +2537,7 @@ export function ChecklistTechTreeTab({
                     alignItems: 'center',
                     gap: 8,
                     padding: '8px 12px',
-                    background: 'rgba(248, 250, 252, 0.97)',
+                    background: 'var(--surface)',
                     borderBottom: '1px solid var(--border)',
                     boxSizing: 'border-box',
                     pointerEvents: 'auto',

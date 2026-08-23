@@ -60,6 +60,17 @@ export type CalendarBand = {
   horizonEnd: Date
 }
 
+/**
+ * Label every Nth month so month labels never collide on a narrow band
+ * (v2.2136): N = ceil(minLabelPx ÷ the pixel width of one month), at least 1.
+ * Returns 1 while the band is unmeasured (0 px) so SSR/first paint shows
+ * every label and the next measure thins them.
+ */
+export function monthLabelStride(bandPx: number, monthFraction: number, minLabelPx = 44): number {
+  if (!(bandPx > 0) || !(monthFraction > 0)) return 1
+  return Math.max(1, Math.ceil(minLabelPx / (bandPx * monthFraction)))
+}
+
 /** Fraction of the band where a date falls, clamped to [0, 1]. */
 export function bandFraction(band: Pick<CalendarBand, 'horizonStart' | 'horizonEnd'>, d: Date): number {
   const start = band.horizonStart.getTime()

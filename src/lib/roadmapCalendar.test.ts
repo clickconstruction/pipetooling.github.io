@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandFraction, calendarBand, observedPace, paceLabel } from './roadmapCalendar'
+import { bandFraction, calendarBand, observedPace, paceLabel, monthLabelStride } from './roadmapCalendar'
 
 const NOW = new Date('2026-08-22T12:00:00')
 const done = (iso: string) => ({ completed_at: iso })
@@ -96,5 +96,20 @@ describe('calendarBand', () => {
       NOW,
     )
     expect(collapsed.markers).toEqual([])
+  })
+})
+
+describe('monthLabelStride', () => {
+  it('labels every month when each month is wide enough', () => {
+    expect(monthLabelStride(1100, 1 / 12)).toBe(1)
+    expect(monthLabelStride(330, 1 / 3)).toBe(1)
+  })
+  it('thins to every 2nd (then 3rd) month as the band narrows', () => {
+    expect(monthLabelStride(330, 1 / 12)).toBe(2) // 27.5px months → 44/27.5 → 2
+    expect(monthLabelStride(200, 1 / 12)).toBe(3) // 16.7px months → 3
+  })
+  it('is 1 while unmeasured or degenerate', () => {
+    expect(monthLabelStride(0, 1 / 12)).toBe(1)
+    expect(monthLabelStride(330, 0)).toBe(1)
   })
 })
