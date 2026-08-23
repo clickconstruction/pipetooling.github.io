@@ -79,7 +79,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 4. **subcontractor** - External workers assigned to specific tasks
 5. **helpers** - Field workers with **the same app routing, RLS parity, and Clock/Dispatch service-type rules as subcontractors**; scoped via `helpers_service_type_ids` (same semantics as `subcontractor_service_type_ids`)
 6. **estimator** - Bid estimation specialists
-7. **primary** - Materials and job reports specialist (Reports and Billing tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
+7. **primary** - Materials and job reports specialist, **scoped to their own work since v2.2174–2177**: bids they are estimator/account manager/creator of, estimates they created or on jobs they are Account Man for, jobs they are Account Man for; Jobs page shows the Reports tab only; Dashboard with Recent Reports, My Bids and Send task
 8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only; no People page)
 9. **controller** - Bookkeeper/financial controller (v2.662): **acts like an assistant everywhere** (client `isAssistantLike()`, DB `is_assistant()` are assistant-LIKE) **plus dev-level financial visibility** — Payroll tab, wages/pay stubs (`has_payroll_access()`), team labor totals, Job Summary labor/profit, Cost breakdown team labor. Not dev admin (no user management, impersonation, backups, deletes).
 
@@ -465,11 +465,16 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 ### primary (Primary)
 
-**Purpose**: Materials and job reports specialist with access to Reports and Billing tabs on Jobs, full Bids access (same as estimators), plus Dashboard with Recent Reports and Send task.
+**Purpose**: Materials and job reports specialist. **Scoped to their own work (owner rule 2026-08-23, v2.2174–2177)** — enforced by RESTRICTIVE `primary_scope_*` RLS policies that only bite for `primary` (helpers `is_primary()`, `primary_can_access_bid/job/estimate()`; migrations `20260823171344_primary_scope_bids`, `20260823171822_primary_scope_estimates`, `20260823172141_primary_scope_jobs`):
+- **Bids**: only bids where they are the estimator, the account manager, or the creator (`bids.estimator_id` / `account_manager_id` / `created_by`), across the whole bids family (versions, pricing, counts, takeoff, cost estimates, submissions). The Bid Board adds the same filter client-side.
+- **Estimates**: only estimates they created (`created_by` — the "created and sent" proxy; there is no `sent_by`) or that hang off a job they are Account Man for.
+- **Jobs**: only jobs where `jobs_ledger.account_manager_user_id` is them (+ all job child tables). The Jobs page shows the **Reports tab only** (`Jobs.tsx` `primaryTabs = ['reports']`; deep links rewrite). **Reports themselves are not scoped** (D1): `reports` policies untouched, `list_reports_with_job_info` / `search_jobs_for_reports` are SECURITY DEFINER.
+- **Documents**: the page is a ledger view over jobs/estimates/bids, so it inherits the scoping; the Jobs tab adds an explicit Account-Man filter.
+- Materials adoption via `master_primaries` is unchanged, but adding materials to a job now requires being its Account Man (the `jobs_ledger_materials` rows are scoped).
 
 **Access**:
-- Dashboard, Materials, Jobs (Reports and Billing tabs), Bids (full access: all tabs, create/edit/delete bids), Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Sub Sheet Ledger, Crew P&L)
+- Dashboard, Materials, Jobs (Reports tab only), Bids (all tabs, create/edit/delete — **their own bids only**), Estimates (**their own only**), Documents (**their jobs only**), Calendar, Checklist, Settings
+- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Billing since the Reports-only gate; Sub Sheet Ledger, Crew P&L)
 
 **Service Type Filtering**:
 - Devs can restrict a primary to specific service types in Materials via `primary_service_type_ids` on the user record (like `estimator_service_type_ids`)
@@ -491,10 +496,10 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 - Purchase order management
 - Price history viewing
 
-**Jobs - Reports and Billing Tabs**:
-- **Reports tab**: View all reports via `list_reports_with_job_info` RPC; SELECT, INSERT, UPDATE on reports (delete restricted to devs only)
-- **Billing tab**: View jobs and add materials; Edit/Delete buttons hidden (read + add materials only)
-- Other Jobs tabs hidden (Sub Sheet Ledger, Crew P&L)
+**Jobs - Reports tab only**:
+- **Reports tab**: View all reports via `list_reports_with_job_info` RPC; SELECT, INSERT, UPDATE on reports (delete restricted to devs only). New-report job picker (`search_jobs_for_reports`, SECURITY DEFINER) still offers every job.
+- Billing, Sub Sheet Ledger, Crew P&L hidden (`Jobs.tsx` primary gate; `?tab=` deep links rewrite to `reports`)
+- Direct `jobs_ledger` reads (Edit Job, Documents → Jobs) return only Account-Man jobs (v2.2177)
 
 **Dashboard**:
 - Recent Reports section (same as masters); **primary** defaults **collapsed** and does **not** auto-expand when reports are unread (**`RECENT_FEATURES`** **v2.494**)
@@ -599,7 +604,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only |
 | **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
-| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
+| **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports tab only (`Jobs.tsx` `primaryTabs`); job rows limited to Account-Man jobs (v2.2177) | ✅ Reports + Sub Ledger |
 | **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
 | **Banking** | ✅ full Mercury (Ledger + User Sort + Drag Sort + **Accounting** + **Card Review** (renamed from "User Review", v2.1262) + **Category Review** + **Reconciliation** + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames; org-wide **`mercury_drag_sort_labels`** / **`mercury_transaction_drag_sort_assignments`** (Drag Sort / Accounting approvals); **`mercury_accounting_label_rules`** / **`mercury_accounting_label_suggestions`** (**Accounting** tab, banking-staff RLS); **Stripe** segment (**dev-only**): **Invoices** (`jobs_ledger_invoices` + job embed, rows without **`stripe_invoice_id`** highlighted) and **Data** (`stripe_webhook_events` webhook log) | ✅ same staff tabs as assistant (`canAccessBanking` = dev / master_technician / assistant-like — [`Banking.tsx`](../src/pages/Banking.tsx)) | ✅ **User Sort** + **Drag Sort** + **Accounting** + **Card Review** + **Category Review** + **Reconciliation** (default User Sort slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS); rules/suggestions/approvals per banking-staff policies | ❌ | ❌ | ❌ | ❌ |
 

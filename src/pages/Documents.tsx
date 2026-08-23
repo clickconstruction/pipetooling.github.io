@@ -617,7 +617,7 @@ function documentsJobsRowMatchesSearch(
 
 function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const embedded = embedSearch !== undefined
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<LedgerJobRow[]>([])
   const [invoicesByJobId, setInvoicesByJobId] = useState<Map<string, DocumentsJobLedgerInvoiceRow[]>>(() => new Map())
@@ -650,6 +650,9 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
               'id, hcp_number, click_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers!jobs_ledger_customer_id_fkey(name, address), service_type:service_types(name)',
             )
             .is('adopted_into_bid_id', null)
+            // Primary scoping (v2.2177): a primary's Documents → Jobs is the jobs they are
+            // Account Man for (RLS enforces it; stated here so the page filters on purpose).
+            .match(role === 'primary' ? { account_manager_user_id: user.id } : {})
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(200),
         'load documents jobs ledger',
@@ -704,7 +707,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, showToast])
+  }, [user?.id, role, showToast])
 
   useEffect(() => {
     void load()
