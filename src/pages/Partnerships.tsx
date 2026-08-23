@@ -602,9 +602,6 @@ export default function Partnerships() {
                     {selected.display_name}
                     {selected.company_name ? ` — ${selected.company_name}` : ''}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    linked to people record ✓ · created {new Date(selected.created_at).toLocaleDateString()}
-                  </div>
                 </div>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                   {statusChip(draft.status)}
