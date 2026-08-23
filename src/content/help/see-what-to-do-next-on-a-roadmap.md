@@ -30,6 +30,10 @@ Every row wears the reasons it was picked as small amber chips; tap **why this o
 Stage 6 has two tasks left, and finishing it is what moves "Full Use of Land". That's why it's at the top, even though stage 1 is numbered first.
 :::
 
+## Pin a task — "this one, now"
+
+Open any task's card and tap the **★** next to its title (editors only). A pinned task jumps to the **top of its lane** on the shortlist — above everything the rules would pick — wearing a {{chip:yellow|★ pinned}} chip, and shows a small ★ on its Plan row and inside its Map cluster. Pin several and they keep the order you pinned them in. Tap ★ again to unpin. Pinning never changes stage numbers, arrows, or anyone's lists; it only changes what the shortlist points at first.
+
 ## The same picks, elsewhere
 
 - **On the Map**, tasks on the shortlist wear a small ⚡ after their title, and a stage with picks shows a {{chip:yellow|⚡ 2 next up}} chip in its header — so a collapsed cluster still tells you there's something worth doing inside.

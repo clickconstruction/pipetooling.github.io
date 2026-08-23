@@ -16,6 +16,8 @@ export type PlanTask = {
   title: string
   completed_at: string | null
   assigneeIds: string[]
+  /** ★ pin (v2.2140) — leads the Next up shortlist; shown as ★ on Plan rows. */
+  pinned_at?: string | null
 }
 
 export type PlanGroup = { id: string; title: string }
