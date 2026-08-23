@@ -3318,8 +3318,8 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '1rem' }}>
         {(
           [
-            ['all', 'All', null],
             ['one_offs', 'One-offs', incompleteItems.length],
+            ['all', 'All', null],
             ['repeating', '↻ Repeating', repeatingItems.length],
             ['completed', '✓ Completed', completeItems.length],
           ] as const
