@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildTeammateEmailChips, chipMatchesValue } from './teammateEmailChips'
+import { buildTeammateEmailChips, chipMatchesValue, gcEmailChip } from './teammateEmailChips'
 
 const u = (id: string, name: string, email: string | null, role: string) => ({ id, name, email, role })
 
@@ -47,5 +47,19 @@ describe('chipMatchesValue', () => {
   it('matches case- and whitespace-insensitively', () => {
     expect(chipMatchesValue('grace@x.com', '  Grace@X.com ')).toBe(true)
     expect(chipMatchesValue('grace@x.com', 'malachi@x.com')).toBe(false)
+  })
+})
+
+describe('gcEmailChip', () => {
+  it('builds the GC\'s own chip from the customer email, normalized', () => {
+    expect(gcEmailChip('Done Right Foundation', '  Grace@ClickPlumbing.com ')).toEqual({
+      email: 'grace@clickplumbing.com',
+      label: 'Done Right Foundation',
+      title: 'Done Right Foundation · grace@clickplumbing.com · GC',
+    })
+  })
+  it('is null without a usable email', () => {
+    expect(gcEmailChip('Done Right Foundation', null)).toBeNull()
+    expect(gcEmailChip('Done Right Foundation', 'no-at-sign')).toBeNull()
   })
 })

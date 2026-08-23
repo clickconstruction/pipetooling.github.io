@@ -37,7 +37,7 @@ Every week (due Wednesday), the office certifies each GC's group before sending 
 
 1. Clicking it opens a **per-bill checklist**: check off each bill as you confirm it belongs to this GC and the amount is right.
 2. Not sure about one? The **▾ chevron** drops down the job's recent activity right in the list, and clicking the **job link** opens Job Detail on top — dig in, close it, and your checkmarks are still there.
-3. When every bill is checked, {{button:outline|Certify}} records the attestation (who, when, exactly what), and {{button:blue|Certify & send…}} goes straight into the Email dialog so the GC gets their statement in the same motion.
+3. When every bill is checked, {{button:outline|Certify}} records the attestation (who, when, exactly what), and {{button:blue|Draft Message}} certifies and opens the statement email as a draft — the GC's email is already in the To line with their pill lit first (teammates follow), and the subject reads **Click Plumbing open balances: Aug 22, 2026**. Nothing sends until you click {{button:blue|Send statement}}.
 
 The group header then shows {{chip:green|✓ Certified · Taunya · 7:02 AM}} — and if a bill lands or a payment posts **after** sign-off, it flips to {{chip:yellow|Changed since certified · +$2,700}} with a Re-certify button, so a sent statement never silently drifts from what was reviewed. Certifications reset each week.
 

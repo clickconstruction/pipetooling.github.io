@@ -39,9 +39,7 @@ function group(over: Partial<GcReviewGroup> = {}): GcReviewGroup {
 
 describe('gcStatementEmail', () => {
   it('subject names the company and date, not the GC (works pasted to any recipient)', () => {
-    expect(gcStatementEmailSubject(group(), 'Jul 31, 2026')).toBe(
-      'Open balances — Click Plumbing and Electrical — Jul 31, 2026',
-    )
+    expect(gcStatementEmailSubject(group(), 'Jul 31, 2026')).toBe('Click Plumbing open balances: Jul 31, 2026')
   })
 
   it('HTML leads with job address, bill-sent date, and amount owed, plus a total row', () => {

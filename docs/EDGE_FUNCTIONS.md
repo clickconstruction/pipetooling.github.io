@@ -2239,6 +2239,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Purpose** (v2.1426): Cron-only dispatcher for **scheduled** GC statement sends — Phase 2 of the `gc_statement` Report Subscriptions stream ([REPORT_SUBSCRIPTIONS.md](REPORT_SUBSCRIPTIONS.md)). Drains due `gc_statement_email_requests` rows (send_at ≤ now, unsent, attempts < 5, batch 10), rebuilds each statement **fresh at send time** via `get_gc_statement_email_payload` (v2.1425), renders HTML in-function ([`render.ts`](../supabase/functions/gc-statement-email-dispatch/render.ts) — keep in sync with `src/lib/jobsDocuments/gcStatementEmail.ts`), sends via Resend with the **requester's email as reply-to**, audits into `gc_statement_emails` (single statements as `gc`/`development`, whole-report rows as `all`), best-effort logs to `email_send_log`, stamps `sent_at`, and re-enqueues `repeat_weekly` chains (+7 days, guarded against retry double-inserts).
 
+**Subject** (v2.2131): per-GC statements go out as `Click Plumbing open balances: <date>` (`gcStatementSubject` in `render.ts`, mirrored by the client's `gcStatementEmailSubject`); whole-report sends keep `Open balances (all GCs|all developments) — … — <date>`. `emailLogStreamForSubject` maps both shapes to the `gc_statement` stream.
+
 **Endpoint**: `POST /functions/v1/gc-statement-email-dispatch`
 
 **Authentication**: `X-Cron-Secret` must equal `CRON_SECRET` — **no user-JWT modes**. Immediate sends stay on `send-gc-statement-email`; scheduling and cancelling are direct RLS-gated writes to `gc_statement_email_requests` from the client.
