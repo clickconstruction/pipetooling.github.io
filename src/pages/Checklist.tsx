@@ -37,6 +37,7 @@ import { canSeeRoadmapTab } from '../lib/roadmapVisibility'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileCaption } from '../lib/checklistReviewTiles'
+import { useToastContext } from '../contexts/ToastContext'
 
 type UserRole =
   | 'dev'
@@ -1892,6 +1893,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('non_repeating')
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
+  const { showToast } = useToastContext()
   const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
   const [fwdAssigneeId, setFwdAssigneeId] = useState('')
@@ -2190,7 +2192,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
     }
   }
 
-  async function sendReminder(userId: string, instances: OutstandingInstance[]) {
+  async function sendReminder(userId: string, name: string, instances: OutstandingInstance[]) {
     setRemindingUserId(userId)
     const titles = instances.map((inst) => inst.checklist_items?.title ?? '—')
     const n = titles.length
@@ -2201,7 +2203,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
           ? `You have ${n} outstanding tasks: ${titles.join(', ')}`
           : `You have ${n} outstanding tasks: ${titles.slice(0, 3).join(', ')} and ${n - 3} more`
     try {
-      await supabase.functions.invoke('send-checklist-notification', {
+      const { data, error: fnError } = await supabase.functions.invoke('send-checklist-notification', {
         body: {
           recipient_user_id: userId,
           push_title: 'Task reminder',
@@ -2210,8 +2212,16 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
           tag: 'task-reminder',
         },
       })
+      // Honest outcome toast (v2.2200): the function reports how many devices actually got the push.
+      if (fnError) throw fnError
+      const sent = (data as { push_sent?: number } | null)?.push_sent ?? 0
+      if (sent > 0) {
+        showToast(`Reminded ${name} on ${sent} device${sent === 1 ? '' : 's'}.`, 'success')
+      } else {
+        showToast(`${name} has no notification-enabled devices — the reminder had nowhere to land. A text or call is the sure path.`, 'error')
+      }
     } catch {
-      // Best-effort; do not block UI
+      showToast(`Couldn't send the reminder to ${name} — try again.`, 'error')
     } finally {
       setRemindingUserId(null)
     }
@@ -2855,7 +2865,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                       disabled={remindingUserId === userId}
                       onClick={(e) => {
                         e.stopPropagation()
-                        sendReminder(userId, instances)
+                        sendReminder(userId, name, instances)
                       }}
                       style={{
                         minHeight: 36,
