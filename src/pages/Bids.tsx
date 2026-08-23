@@ -54,6 +54,7 @@ import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
 import { BidsCallQueueTab } from '../components/bids/BidsCallQueueTab'
 import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
 import { fetchBidGcRecipientsMap, type BidGcRecipientsMap } from '../lib/bids/bidGcRecipients'
+import { useBidGcPackets } from '../hooks/useBidGcPackets'
 import { isBidLossCategoryKey, type BidLossCategoryKey } from '../lib/bidLossCategories'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
 import { BidLienReleaseTab } from '../components/bids/BidLienReleaseTab'
@@ -258,6 +259,8 @@ export default function Bids() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [lastContactFromEntries, setLastContactFromEntries] = useState<Record<string, string>>({})
   const [bidGcRecipientsByBidId, setBidGcRecipientsByBidId] = useState<BidGcRecipientsMap>({})
+  // Bids by GC (v2.2162/v2.2164): one packet load for the board, the Followup lenses and By builder.
+  const { packetsByBid: gcPacketsByBid } = useBidGcPackets(bids, bidGcRecipientsByBidId)
   const [customerContacts, setCustomerContacts] = useState<CustomerContact[]>([])
   const [customerContactPersons, setCustomerContactPersons] = useState<CustomerContactPerson[]>([])
 
@@ -2843,6 +2846,7 @@ export default function Bids() {
           showLostModalLabor={showLostModalLabor}
                 onSaveLossReason={saveLossReasonFromLostSummaryModal}
           workingBoardArchivedBids={workingBoardArchivedBids}
+          gcPacketsByBid={gcPacketsByBid}
           recipientsByBidId={bidGcRecipientsByBidId}
         />
       )}
@@ -2981,6 +2985,7 @@ export default function Bids() {
       {activeTab === 'call-queue' && (
         <BidsCallQueueTab
           bids={bids}
+          gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
           lastContactFromEntries={lastContactFromEntries}
           narrowViewport640={narrowViewport640}
@@ -2993,6 +2998,7 @@ export default function Bids() {
       {activeTab === 'why-we-lost' && (
         <BidsWhyWeLostLens
           bids={bids}
+          gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
           recipientsByBidId={bidGcRecipientsByBidId}
           narrowViewport640={narrowViewport640}
@@ -3004,6 +3010,7 @@ export default function Bids() {
       {activeTab === 'waiting-to-hear' && (
         <BidsWaitingToHearLens
           bids={bids}
+          gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
           lastContactFromEntries={lastContactFromEntries}
           recipientsByBidId={bidGcRecipientsByBidId}
@@ -3017,6 +3024,7 @@ export default function Bids() {
       {activeTab === 'builder-review' && (
         <BidsBuilderReviewTab
           bids={bids}
+          gcPacketsByBid={gcPacketsByBid}
           customers={customers}
           customerContacts={customerContacts}
           customerContactPersons={customerContactPersons}

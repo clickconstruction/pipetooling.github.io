@@ -4,6 +4,8 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 import { batchGeocodeCacheKeys } from '../lib/map/geocodeCacheBatches'
+import { gcOutcomeRowsForBid } from '../lib/bids/gcOutcomeRows'
+import { groupVersionsByGc } from '../lib/bids/gcPackets'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../lib/bids/submissionSections'
 import { mapGeocodeErrorMessage } from '../lib/map/geocodeErrorMessage'
 
@@ -39,6 +41,11 @@ export type MapPageEntity = {
   bidSection?: SubmissionSectionKey
   /** The bid's GC/Builder customer id (bids only) — drives /map?builder= focus (v2.1162). */
   bidCustomerId?: string
+  /**
+   * Bids by GC (v2.2164): per-GC section for bids sent to more than one GC — customer id → that GC's
+   * packet outcome as a board section. Builder focus reads this first, then `bidSection`.
+   */
+  bidGcSections?: Record<string, SubmissionSectionKey>
 }
 
 /** Matches [`geocode-address-batch`](supabase/functions/geocode-address-batch/index.ts) `MAX_ADDRESSES`. */
@@ -104,6 +111,30 @@ export function useMapPageData(enabled: boolean) {
 
       if (gen !== loadGenerationRef.current) return
 
+      // Bids by GC: versions pointed at a GC (or with an answer) make per-GC sections. Tiny table; one query.
+      const gcSectionsByBid = new Map<string, Record<string, SubmissionSectionKey>>()
+      try {
+        const { data: vrows } = await supabase
+          .from('bid_versions')
+          .select('id, bid_id, name, customer_id, sort_order, created_at, outcome, loss_category')
+          .or('customer_id.not.is.null,outcome.not.is.null')
+        const byBid = new Map<string, NonNullable<typeof vrows>>()
+        for (const v of vrows ?? []) byBid.set(v.bid_id, [...(byBid.get(v.bid_id) ?? []), v])
+        for (const b of bidRows) {
+          const vs = byBid.get(b.id)
+          if (!vs || vs.length === 0) continue
+          const packets = groupVersionsByGc(vs, { bidGcName: null, gcNames: {}, latestSends: {}, bidDateSent: b.bid_date_sent ?? null })
+          const rows = gcOutcomeRowsForBid({ id: b.id, outcome: b.outcome, bid_date_sent: b.bid_date_sent, bid_value: null }, { key: b.customer_id ?? '', name: '' }, packets)
+          if (rows.length < 2) continue
+          const rec: Record<string, SubmissionSectionKey> = {}
+          for (const r of rows) rec[r.gcKey] = r.outcome === 'won' ? (b.outcome === 'started_or_complete' && r.gcKey === (b.customer_id ?? '') ? 'startedOrComplete' : 'won') : r.outcome === 'lost' ? 'lost' : r.outcome === 'pending' ? 'pending' : 'unsent'
+          gcSectionsByBid.set(b.id, rec)
+        }
+      } catch {
+        /* per-GC sections are best-effort; the bid-level section still renders */
+      }
+      if (gen !== loadGenerationRef.current) return
+
       const next: MapPageEntity[] = []
       for (const j of jobRows) {
         const addr = j.job_address?.trim()
@@ -142,6 +173,7 @@ export function useMapPageData(enabled: boolean) {
           meta: b.outcome ?? '',
           bidSection: getSubmissionSectionKey(b) ?? undefined,
           bidCustomerId: b.customer_id ?? undefined,
+          bidGcSections: gcSectionsByBid.get(b.id),
         })
       }
       for (const e of estRows) {

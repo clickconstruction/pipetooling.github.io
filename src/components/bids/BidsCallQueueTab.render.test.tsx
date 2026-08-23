@@ -41,6 +41,7 @@ function renderTab(bids: BidWithBuilder[]) {
   render(
     <BidsCallQueueTab
       bids={bids}
+      gcPacketsByBid={{}}
       ledgerPrefixMap={{}}
       lastContactFromEntries={{}}
       narrowViewport640={false}

@@ -22,6 +22,8 @@ import { BID_LOSS_CATEGORIES, isBidLossCategoryKey } from '../../lib/bidLossCate
 import { BidLostQuickPopover } from './BidLostQuickPopover'
 import { getSubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { builderBidOutcomeCounts, type BuilderBidOutcomeCounts } from '../../lib/map/builderBidMapFocus'
+import type { GcPacket } from '../../lib/bids/gcPackets'
+import { gcOutcomeRowsForBid } from '../../lib/bids/gcOutcomeRows'
 import type { useNewCustomerModal } from '../../contexts/NewCustomerModalContext'
 import type { useEditCustomerModal } from '../../contexts/EditCustomerModalContext'
 
@@ -31,6 +33,8 @@ type CustomerContactPerson = Database['public']['Tables']['customer_contact_pers
 
 type BidsBuilderReviewTabProps = {
   bids: BidWithBuilder[]
+  /** Bids by GC (v2.2164): per-bid GC packets — the header chips count each GC's packet, not the bid. */
+  gcPacketsByBid: Record<string, GcPacket[]>
   customers: Customer[]
   customerContacts: CustomerContact[]
   customerContactPersons: CustomerContactPerson[]
@@ -54,6 +58,7 @@ type BidsBuilderReviewTabProps = {
 
 export function BidsBuilderReviewTab({
   bids,
+  gcPacketsByBid,
   customers,
   customerContacts,
   customerContactPersons,
@@ -84,16 +89,40 @@ export function BidsBuilderReviewTab({
     const addressByCustomer = new Map<string, boolean>()
     for (const b of bids) {
       if (!b.customer_id) continue
-      const list = sectionsByCustomer.get(b.customer_id) ?? []
-      list.push(getSubmissionSectionKey(b))
-      sectionsByCustomer.set(b.customer_id, list)
-      if (b.address?.trim()) addressByCustomer.set(b.customer_id, true)
+      // Bids by GC: one tally entry per GC the bid went to (a bid won with one GC and lost with another
+      // counts for each); single-GC bids tally exactly as before.
+      const builderName = (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
+      for (const row of gcOutcomeRowsForBid(b, { key: b.customer_id, name: builderName }, gcPacketsByBid[b.id])) {
+        const list = sectionsByCustomer.get(row.gcKey) ?? []
+        list.push(row.outcome === 'won' ? 'won' : row.outcome === 'lost' ? 'lost' : row.outcome === 'pending' ? 'pending' : 'unsent')
+        sectionsByCustomer.set(row.gcKey, list)
+        if (b.address?.trim()) addressByCustomer.set(row.gcKey, true)
+      }
     }
     for (const [cid, sections] of sectionsByCustomer) {
       byCustomer.set(cid, { counts: builderBidOutcomeCounts(sections), hasAddress: addressByCustomer.get(cid) === true })
     }
     return byCustomer
-  }, [bids])
+  }, [bids, gcPacketsByBid])
+  /**
+   * Bids by GC (v2.2164): the bids a builder's card lists, keyed by customer — a bid's own GC as always,
+   * plus any bid with a packet pointed at this GC (listed under that packet's outcome). One entry per bid.
+   */
+  const customerBidRows = useMemo(() => {
+    const map = new Map<string, Array<{ bid: BidWithBuilder; outcome: 'won' | 'lost' | 'pending' | 'unsent' }>>()
+    for (const b of bids) {
+      const builderName = (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
+      const key = b.customer_id ?? b.gc_builder_id ?? builderName
+      for (const row of gcOutcomeRowsForBid(b, { key, name: builderName }, gcPacketsByBid[b.id])) {
+        if (row.sharedLetter) continue
+        const list = map.get(row.gcKey) ?? []
+        if (list.some((x) => x.bid.id === b.id)) continue
+        list.push({ bid: b, outcome: row.outcome })
+        map.set(row.gcKey, list)
+      }
+    }
+    return map
+  }, [bids, gcPacketsByBid])
   const [addContactPersonModalCustomer, setAddContactPersonModalCustomer] = useState<Customer | null>(null)
   const [editingContactPerson, setEditingContactPerson] = useState<CustomerContactPerson | null>(null)
   const [contactPersonName, setContactPersonName] = useState('')
@@ -356,11 +385,8 @@ export function BidsBuilderReviewTab({
   }
 
   function makeCallSheetBuilder(customer: Customer): CallSheetBuilder {
-    const customerBids = bids.filter((b) => b.customer_id === customer.id)
-    const openBids = customerBids.filter((b) => {
-      const s = getSubmissionSectionKey(b)
-      return s === 'unsent' || s === 'pending'
-    })
+    const customerRows = customerBidRows.get(customer.id) ?? []
+    const openBids = customerRows.filter((x) => x.outcome === 'unsent' || x.outcome === 'pending').map((x) => x.bid)
     const stats = builderBidMapStats.get(customer.id)
     const lastIso = customerLastContactMap.get(customer.id) ?? null
     const contactInfo = extractContactInfo(customer.contact_info ?? null)
@@ -618,12 +644,14 @@ export function BidsBuilderReviewTab({
         `}</style>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {builderReviewCustomersFiltered.map((customer) => {
-            const customerBids = bids.filter((b) => b.customer_id === customer.id)
-            const brUnsent = customerBids.filter((b) => !b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
-            const brPending = customerBids.filter((b) => b.bid_date_sent && b.outcome !== 'won' && b.outcome !== 'lost' && b.outcome !== 'started_or_complete')
-            const brWon = customerBids.filter((b) => b.outcome === 'won')
-            const brStartedOrComplete = customerBids.filter((b) => b.outcome === 'started_or_complete')
-            const brLost = customerBids.filter((b) => b.outcome === 'lost')
+            const customerRows = customerBidRows.get(customer.id) ?? []
+            const customerBids = customerRows.map((x) => x.bid)
+            const brUnsent = customerRows.filter((x) => x.outcome === 'unsent').map((x) => x.bid)
+            const brPending = customerRows.filter((x) => x.outcome === 'pending').map((x) => x.bid)
+            // "Started or Complete" is the bid's own state; a packet win for this GC lists under Won.
+            const brStartedOrComplete = customerRows.filter((x) => x.outcome === 'won' && x.bid.outcome === 'started_or_complete' && x.bid.customer_id === customer.id).map((x) => x.bid)
+            const brWon = customerRows.filter((x) => x.outcome === 'won').map((x) => x.bid).filter((b) => !brStartedOrComplete.includes(b))
+            const brLost = customerRows.filter((x) => x.outcome === 'lost').map((x) => x.bid)
             const hasBids = customerBids.length > 0
             const lastContact = customerLastContactMap.get(customer.id) ?? null
             const isCardExpanded = builderReviewCardExpanded[customer.id] !== false
@@ -955,7 +983,7 @@ export function BidsBuilderReviewTab({
                             {stats.counts.hitRatePct !== null && chip(`${stats.counts.hitRatePct}% hit rate`, 'var(--bg-blue-tint)', 'var(--text-blue-700)')}
                             {(() => {
                               const openValue = formatOpenPipelineValue(
-                                builderOpenPipelineValue(customerBids.filter((b) => getSubmissionSectionKey(b) === 'unsent' || getSubmissionSectionKey(b) === 'pending')),
+                                builderOpenPipelineValue([...brUnsent, ...brPending]),
                               )
                               return openValue ? chip(`${openValue} open`, 'var(--bg-muted)', 'var(--text-700)') : null
                             })()}

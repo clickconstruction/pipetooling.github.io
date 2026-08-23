@@ -22,7 +22,7 @@ export function useBidGcPackets(bids: ReadonlyArray<BidLite>, recipientsByBid?: 
     let cancelled = false
     void (async () => {
       const [vRes, sRes] = await Promise.all([
-        supabase.from('bid_versions').select('id, bid_id, name, customer_id, sort_order, created_at, starred_price_book_version_id, outcome, outcome_at').in('bid_id', ids),
+        supabase.from('bid_versions').select('id, bid_id, name, customer_id, sort_order, created_at, starred_price_book_version_id, outcome, outcome_at, loss_category, outcome_note').in('bid_id', ids),
         supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').in('bid_id', ids),
       ])
       if (cancelled) return

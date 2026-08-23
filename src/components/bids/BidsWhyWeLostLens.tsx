@@ -35,10 +35,15 @@ import {
 } from '../../lib/ledgerDisplayPrefixes'
 import { bidTriagePillLabel } from '../../lib/bids/bidFormatting'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
-import { expandLensBidByRecipients, looksLikeCombinedGcName, type BidGcRecipientsMap, type RecipientExpanded } from '../../lib/bids/bidGcRecipients'
+import { looksLikeCombinedGcName, type BidGcRecipientsMap } from '../../lib/bids/bidGcRecipients'
+import type { GcPacket } from '../../lib/bids/gcPackets'
+import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
+import { setGcPacketLossCategory } from '../../lib/bids/gcPacketOutcome'
 
 export type BidsWhyWeLostLensProps = {
   bids: BidWithBuilder[]
+  /** Bids by GC (v2.2164): per-bid GC packets — the lens triages each GC's loss, not the bid's. */
+  gcPacketsByBid: Record<string, GcPacket[]>
   ledgerPrefixMap: LedgerPrefixMap
   /** bid_id → other GCs the bid went to; each gets its own queue entry. */
   recipientsByBidId: BidGcRecipientsMap
@@ -50,7 +55,11 @@ export type BidsWhyWeLostLensProps = {
 }
 
 type LensBid = {
+  /** Bid id (writes, tab capture, builder card). One bid can appear once per GC it went to. */
   id: string
+  /** Unique per bid × GC — React keys, selection, optimistic saves. */
+  rowKey: string
+  gc: GcOutcomeRow
   builderKey: string
   builderName: string
   value: number
@@ -96,6 +105,7 @@ function builderPhoneOf(bid: BidWithBuilder): string | null {
 
 export function BidsWhyWeLostLens({
   bids,
+  gcPacketsByBid,
   ledgerPrefixMap,
   recipientsByBidId,
   narrowViewport640,
@@ -115,29 +125,41 @@ export function BidsWhyWeLostLens({
   /** "bids by" estimator scope (v2.2053) — '' = all; scopes the WHOLE lens (headline, rail, queue). */
   const [estimatorFilter, setEstimatorFilter] = useState('')
 
+  /** Every GC-level row across all bids (won / lost / pending / unsent) — the lens's unit of work. */
+  const allRows = useMemo(() => {
+    const out: Array<{ bid: BidWithBuilder; row: GcOutcomeRow }> = []
+    for (const b of bids) {
+      const builderName = (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
+      const builderKey = b.customer_id ?? b.gc_builder_id ?? builderName
+      for (const row of gcOutcomeRowsForBid(b, { key: builderKey, name: builderName }, gcPacketsByBid[b.id])) out.push({ bid: b, row })
+    }
+    return out
+  }, [bids, gcPacketsByBid])
+
   const allLensBids = useMemo<LensBid[]>(() => {
-    return bids
-      .filter((b) => b.outcome === 'lost')
-      .map((b) => {
-        const local = localSaves[b.id]
-        const builderName =
-          (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
+    return allRows
+      .filter(({ row }) => row.outcome === 'lost')
+      .map(({ bid: b, row }) => {
+        const rowKey = row.packetKey ? `${b.id}:${row.gcKey}` : b.id
+        const local = localSaves[rowKey]
         return {
           id: b.id,
-          builderKey: b.customer_id ?? b.gc_builder_id ?? builderName,
-          builderName,
-          value: Number(b.bid_value) || 0,
-          category: local?.category ?? b.loss_category,
+          rowKey,
+          gc: row,
+          builderKey: row.gcKey,
+          builderName: row.gcName,
+          value: row.value,
+          category: local?.category ?? row.lossCategory,
           label: bidLensLabel(b, ledgerPrefixMap),
           project: (b.project_name ?? '').trim() || '—',
           address: (b.address ?? '').trim() || null,
           estimatorName: estimatorNameOf(b),
-          legacyReason: (b.loss_reason ?? '').trim() || null,
+          legacyReason: row.lossNote,
           note: local?.note ?? null,
           raw: b,
         }
       })
-  }, [bids, localSaves, ledgerPrefixMap])
+  }, [allRows, localSaves, ledgerPrefixMap])
 
   /** Distinct estimator names across the lost bids, for the "bids by" select. */
   const estimatorOptions = useMemo(() => {
@@ -163,7 +185,7 @@ export function BidsWhyWeLostLens({
   const learnRows = useMemo<BidLossLearnRow[]>(
     () =>
       lensBids.map((b) => ({
-        id: b.id,
+        id: b.rowKey,
         builderKey: b.builderKey,
         builderName: b.builderName,
         value: b.value,
@@ -191,31 +213,21 @@ export function BidsWhyWeLostLens({
     )
   }, [lensBids, lossSearchQuery, ledgerPrefixMap])
 
-  const expandedLensBids = useMemo<RecipientExpanded<LensBid>[]>(
-    () => searchedLensBids.flatMap((b) => expandLensBidByRecipients(b, recipientsByBidId[b.id])),
-    [searchedLensBids, recipientsByBidId],
-  )
+  // Per-GC rows already carry one entry per GC (packets + "Also sent to"), so no further expansion.
+  const expandedLensBids = searchedLensBids
 
   const groups = useMemo(() => groupLossTriageByBuilder(expandedLensBids), [expandedLensBids])
 
   const pendingCountByBuilderKey = useMemo(() => {
     const map = new Map<string, number>()
-    for (const b of bids) {
-      if (!b.bid_date_sent || b.outcome === 'won' || b.outcome === 'lost' || b.outcome === 'started_or_complete') continue
-      const key = b.customer_id ?? b.gc_builder_id ?? ((b.customers?.name ?? b.bids_gc_builders?.name ?? '').trim() || 'No builder')
-      map.set(key, (map.get(key) ?? 0) + 1)
-      for (const r of recipientsByBidId[b.id] ?? []) {
-        if (r.customerId === key) continue
-        map.set(r.customerId, (map.get(r.customerId) ?? 0) + 1)
-      }
+    for (const { row } of allRows) {
+      if (row.outcome !== 'pending') continue
+      map.set(row.gcKey, (map.get(row.gcKey) ?? 0) + 1)
     }
     return map
-  }, [bids, recipientsByBidId])
+  }, [allRows])
 
-  const wonCount = useMemo(
-    () => bids.filter((b) => b.outcome === 'won' || b.outcome === 'started_or_complete').length,
-    [bids],
-  )
+  const wonCount = useMemo(() => allRows.filter(({ row }) => row.outcome === 'won').length, [allRows])
   const rollup = useMemo(() => buildLossRollup(lensBids, wonCount), [lensBids, wonCount])
   const clearedToday = Object.keys(localSaves).length
 
@@ -230,13 +242,13 @@ export function BidsWhyWeLostLens({
   )
   const selectedBid = useMemo(() => {
     if (selectedBids.length === 0) return null
-    return selectedBids.find((b) => b.id === selectedBidId) ?? selectedBids.find((b) => !isBidLossCategoryKey(b.category)) ?? selectedBids[0]!
+    return selectedBids.find((b) => b.rowKey === selectedBidId) ?? selectedBids.find((b) => !isBidLossCategoryKey(b.category)) ?? selectedBids[0]!
   }, [selectedBids, selectedBidId])
 
   useEffect(() => {
     setNoteDraft('')
     setTabCaptureOpen(false)
-  }, [selectedBid?.id])
+  }, [selectedBid?.rowKey])
 
   function saveBidTab(b: LensBid, values: BidTabValues) {
     setSavingTabBidId(b.id)
@@ -263,13 +275,13 @@ export function BidsWhyWeLostLens({
     setSelectedBidId(null)
   }
 
-  function advanceFrom(bidId: string) {
+  function advanceFrom(rowKey: string) {
     if (!selectedGroup) return
-    const idx = selectedBids.findIndex((b) => b.id === bidId)
+    const idx = selectedBids.findIndex((b) => b.rowKey === rowKey)
     const group = { bids: selectedBids }
     const next = nextLossTriageBidIndex(group, idx)
     if (next != null) {
-      setSelectedBidId(selectedBids[next]!.id)
+      setSelectedBidId(selectedBids[next]!.rowKey)
       return
     }
     // Builder clear — hop to the next builder that still needs reasons.
@@ -284,24 +296,31 @@ export function BidsWhyWeLostLens({
     const note = noteDraft.trim()
     setLocalSaves((prev) => ({
       ...prev,
-      [b.id]: { category: key, note: note || (prev[b.id]?.note ?? null) },
+      [b.rowKey]: { category: key, note: note || (prev[b.rowKey]?.note ?? null) },
     }))
-    advanceFrom(b.id)
+    advanceFrom(b.rowKey)
     void (async () => {
       try {
-        const patch: { loss_category: string; loss_reason?: string } = { loss_category: key }
-        if (note) patch.loss_reason = note
-        await withSupabaseRetry(
-          async () => supabase.from('bids').update(patch).eq('id', b.id),
-          'save bid loss category',
-        )
+        if (gcRowIsPacketScoped(b.gc)) {
+          // Multi-GC bid: the reason belongs to this GC's packet; the bid's own reason is untouched.
+          const res = await setGcPacketLossCategory({ versionIds: b.gc.versionIds, category: key, note: note || null })
+          if (res.error) throw new Error(res.error)
+          window.dispatchEvent(new Event('bid-gc-outcome-changed'))
+        } else {
+          const patch: { loss_category: string; loss_reason?: string } = { loss_category: key }
+          if (note) patch.loss_reason = note
+          await withSupabaseRetry(
+            async () => supabase.from('bids').update(patch).eq('id', b.id),
+            'save bid loss category',
+          )
+        }
         onError(null)
         onReloadBids()
       } catch (err) {
         onError(err instanceof Error ? `Could not save loss reason: ${err.message}` : 'Could not save loss reason.')
         setLocalSaves((prev) => {
           const next = { ...prev }
-          delete next[b.id]
+          delete next[b.rowKey]
           return next
         })
       }
@@ -329,14 +348,14 @@ export function BidsWhyWeLostLens({
           return
         }
       }
-      const idx = selectedBids.findIndex((b) => b.id === selectedBid.id)
+      const idx = selectedBids.findIndex((b) => b.rowKey === selectedBid.rowKey)
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         const next = selectedBids[Math.min(selectedBids.length - 1, idx + 1)]
-        if (next) setSelectedBidId(next.id)
+        if (next) setSelectedBidId(next.rowKey)
         e.preventDefault()
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         const prev = selectedBids[Math.max(0, idx - 1)]
-        if (prev) setSelectedBidId(prev.id)
+        if (prev) setSelectedBidId(prev.rowKey)
         e.preventDefault()
       }
     }
@@ -497,7 +516,7 @@ export function BidsWhyWeLostLens({
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{selectedGroup.builderName}</span>
               {(() => {
-                const phone = selectedBid.viaRecipient ? selectedBid.viaRecipient.phone : builderPhoneOf(selectedBid.raw)
+                const phone = selectedBid.gc.sharedLetter || selectedBid.gc.gcKey !== (selectedBid.raw.customer_id ?? selectedBid.raw.gc_builder_id ?? '') ? (recipientsByBidId[selectedBid.id] ?? []).find((r) => r.customerId === selectedBid.gc.gcKey)?.phone ?? null : builderPhoneOf(selectedBid.raw)
                 return phone ? (
                   <a
                     href={`tel:${phone}`}
@@ -543,12 +562,12 @@ export function BidsWhyWeLostLens({
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginRight: '0.15rem' }}>Their lost bids</span>
               {selectedBids.map((b) => {
                 const done = isBidLossCategoryKey(b.category)
-                const current = b.id === selectedBid.id
+                const current = b.rowKey === selectedBid.rowKey
                 return (
                   <button
-                    key={b.id}
+                    key={b.rowKey}
                     type="button"
-                    onClick={() => setSelectedBidId(b.id)}
+                    onClick={() => setSelectedBidId(b.rowKey)}
                     title={`${b.label} · ${b.project}${b.address ? ` — ${b.address}` : ''}`}
                     aria-pressed={current}
                     style={{
@@ -626,20 +645,37 @@ export function BidsWhyWeLostLens({
                 )
               })()}
               {(() => {
-                const recips = recipientsByBidId[selectedBid.id] ?? []
-                if (recips.length === 0 && !selectedBid.viaRecipient) return null
-                const primaryName =
-                  (selectedBid.raw.customers?.name ?? '').trim() || (selectedBid.raw.bids_gc_builders?.name ?? '').trim() || 'No builder'
-                const others = [
-                  ...(selectedBid.viaRecipient ? [primaryName] : []),
-                  ...recips.filter((r) => r.customerId !== selectedBid.builderKey).map((r) => r.name),
-                ]
+                // Bids by GC: which GC this entry is, its answer and ★, and what the other GCs on the bid did.
+                const g = selectedBid.gc
+                if (g.sharedLetter) {
+                  const primary = g.siblings[0]?.gcName ?? ((selectedBid.raw.customers?.name ?? '').trim() || (selectedBid.raw.bids_gc_builders?.name ?? '').trim() || 'the bid’s GC')
+                  return (
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      Sent to this GC too — same letter as {primary}
+                      <span style={{ fontStyle: 'italic' }}> (one reason clears it for every GC)</span>
+                    </p>
+                  )
+                }
+                if (g.siblings.length === 0) return null
+                const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
+                const outcomeChip = (o: string) => (
+                  <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.45rem', borderRadius: 999, border: '1px solid var(--border)', background: o === 'won' ? 'var(--bg-emerald-tint)' : o === 'lost' ? 'var(--bg-red-tint)' : 'var(--bg-muted)', color: o === 'won' ? 'var(--text-emerald-800)' : o === 'lost' ? 'var(--text-red-800)' : 'var(--text-700)' }}>{o === 'pending' ? 'waiting' : o}</span>
+                )
                 return (
-                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                    {selectedBid.viaRecipient ? 'Sent to this GC too — ' : ''}
-                    also sent to: {others.length > 0 ? others.join(', ') : '—'}
-                    <span style={{ fontStyle: 'italic' }}> (one reason clears it for every GC)</span>
-                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.55rem', alignItems: 'center', fontSize: '0.8rem', margin: '0.45rem 0 0', padding: '0.35rem 0.55rem', background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{g.gcName}</span>
+                    {outcomeChip(g.outcome)}
+                    <span style={{ color: 'var(--text-muted)' }}>{g.value > 0 ? `★ $${formatCurrency(g.value)}` : ''}{g.sentOn ? `${g.value > 0 ? ' · ' : ''}sent ${fmtSent(g.sentOn)}` : ''}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>·</span>
+                    <span style={{ color: 'var(--text-muted)' }}>also went to</span>
+                    {g.siblings.map((sb) => (
+                      <span key={sb.gcKey} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{sb.gcName}</span>
+                        {outcomeChip(sb.outcome)}
+                      </span>
+                    ))}
+                    <span style={{ fontStyle: 'italic', color: 'var(--text-muted)', flexBasis: '100%' }}>this reason is {g.gcName}’s — the bid stays {selectedBid.raw.outcome === 'won' || selectedBid.raw.outcome === 'started_or_complete' ? 'won' : selectedBid.raw.outcome === 'lost' ? 'lost' : 'as it is'}</span>
+                  </div>
                 )
               })()}
               {selectedBid.legacyReason && !selectedBid.note ? (
@@ -650,6 +686,7 @@ export function BidsWhyWeLostLens({
               {isBidLossCategoryKey(selectedBid.category) ? (
                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-emerald-800)' }}>
                   {'✓'} {bidLossCategoryLabel(selectedBid.category)}
+                  {selectedBid.gc.reasonInferred && !localSaves[selectedBid.rowKey] ? <span title="Recorded when another GC on this bid was marked won" style={{ marginLeft: '0.35rem', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 3, padding: '0 0.25rem', verticalAlign: 'middle' }}>auto</span> : null}
                   {selectedBid.note ? ` — “${selectedBid.note}”` : ''}
                   <span style={{ color: 'var(--text-muted)' }}> (tap another reason to change)</span>
                 </p>
@@ -658,7 +695,7 @@ export function BidsWhyWeLostLens({
 
             {tabCaptureOpen ? (
               <BidTabCapturePanel
-                key={selectedBid.id}
+                key={selectedBid.rowKey}
                 ourValue={selectedBid.value}
                 initial={bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)}
                 saving={savingTabBidId != null}
@@ -704,7 +741,7 @@ export function BidsWhyWeLostLens({
               />
               <button
                 type="button"
-                onClick={() => advanceFrom(selectedBid.id)}
+                onClick={() => advanceFrom(selectedBid.rowKey)}
                 style={{
                   padding: '0.35rem 0.7rem',
                   fontSize: '0.8125rem',

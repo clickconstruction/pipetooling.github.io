@@ -685,6 +685,7 @@ export type Database = {
           id: string
           include_in_submission: boolean
           is_alternate: boolean
+          loss_category: string | null
           name: string
           outcome: string | null
           outcome_at: string | null
@@ -700,6 +701,7 @@ export type Database = {
           id?: string
           include_in_submission?: boolean
           is_alternate?: boolean
+          loss_category?: string | null
           name: string
           outcome?: string | null
           outcome_at?: string | null
@@ -715,6 +717,7 @@ export type Database = {
           id?: string
           include_in_submission?: boolean
           is_alternate?: boolean
+          loss_category?: string | null
           name?: string
           outcome?: string | null
           outcome_at?: string | null

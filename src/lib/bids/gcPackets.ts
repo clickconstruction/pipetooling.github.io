@@ -14,6 +14,9 @@ export type GcVersionLike = {
   starred_price_book_version_id?: string | null
   outcome?: string | null
   outcome_at?: string | null
+  /** Per-GC loss reason (v2.2164) — same keys as bids.loss_category. */
+  loss_category?: string | null
+  outcome_note?: string | null
 }
 
 export type GcPacket<V extends GcVersionLike = GcVersionLike> = {

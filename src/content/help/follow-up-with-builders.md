@@ -111,7 +111,12 @@ Log the answer without leaving the card — the **What happened?** chips, one ta
 
 ## One bid, several GCs — every queue knows
 
-A bid recorded as sent to several GCs (the **Also sent to** row in Edit Bid, or Versions pointed at different GCs) shows up under **each** of those GCs in both the Why we lost and Waiting to hear queues — each entry dials that GC's own number, and the card lists everyone else who got it. Outcomes stay per-bid: record the reason (or log a touch) with whichever GC answers and the bid clears in every queue at once. On the **Bid Board**, multi-GC bids wear a {{chip:gray|+2 GCs}} chip next to the GC name — hover it for the full send list.
+A bid sent to several GCs shows up under **each** of them — in the Call queue, By builder's numbers, Why we lost and Waiting to hear — and since Bids by GC, **each GC's packet carries its own answer** (see *bid one project to multiple GCs*). So a bid won with Southern Post and lost with Burd is a **win in SPC's numbers and a loss in Burd's**: hit rates, the won · lost · pending line and the map's builder focus all count the packet that went to *that* builder; single-GC bids count exactly as before.
+
+- When you mark one GC **won** (board, Followup, or a chase tap), the other GCs you sent to are marked **lost · GC lost the project** for you — tagged {{chip:gray|auto}} in Why we lost, and you can tap a different reason any time. Nothing to triage.
+- In **Why we lost**, a multi-GC entry shows a line under the address — *Burd & Assoc.* {{chip:red|lost}} *★ $52,311 · sent 7/31 · also went to Southern Post* {{chip:green|won}} — and the reason you tap is **that GC's**; the bid's overall outcome doesn't move.
+- In **Waiting to hear**, a GC that has answered drops off that builder's list while the others keep waiting. Touches (Left message, Still pending…) stay per-bid, so a touch under any GC freshens every copy.
+- A GC on the bid's **Also sent to** list with no packet of its own got the same letter as the bid's GC; it rides with the bid's outcome, and one reason still clears it everywhere. On the **Bid Board**, multi-GC bids show a line per GC under the row (and wear a {{chip:gray|+2 GCs}} chip for the Also-sent-to list).
 
 ## Print a call sheet
 
