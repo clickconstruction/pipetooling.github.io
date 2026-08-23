@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { GcPacket } from '../../lib/bids/gcPackets'
-import { BidBoardGcLines, BidBoardGcRows, gcRowsWorthShowing } from './BidBoardGcRows'
+import { BidBoardGcLines, gcRowsWorthShowing } from './BidBoardGcRows'
 import type { Bid } from '../../types/bids'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -747,14 +747,17 @@ export function BidsBidBoardTab({
           >
             {/* One line each, ellipsized — the row dropdown carries the full text.
                 maxWidth sits on this div, not the td: auto table layout ignores td max-width. */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem', maxWidth: 200, minWidth: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem', maxWidth: gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? 250 : 200, minWidth: 0 }}>
               <span
                 title={bid.project_name ?? undefined}
                 style={{ maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.9375rem', fontWeight: 600 }}
               >
                 {bid.project_name ?? '-'}
               </span>
-              {(bid.customers || bid.bids_gc_builders) ? (
+              {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
+                // Bids by GC (in-cell, v2.2183): one line per GC — name · sent · state pill — in place of the GC name.
+                <div style={{ alignSelf: 'stretch', minWidth: 0 }}><BidBoardGcLines bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} dense /></div>
+              ) : (bid.customers || bid.bids_gc_builders) ? (
                 <button
                   type="button"
                   onClick={() => onOpenGcBuilderOrCustomer(bid)}
@@ -779,7 +782,7 @@ export function BidsBidBoardTab({
               ) : (
                 '-'
               )}
-              {(recipientsByBidId[bid.id]?.length ?? 0) > 0 ? (
+              {!gcRowsWorthShowing(gcPacketsByBid[bid.id]) && (recipientsByBidId[bid.id]?.length ?? 0) > 0 ? (
                 <span
                   title={`Also sent to: ${recipientsByBidId[bid.id]!.map((r) => r.name).join(', ')}`}
                   style={{
@@ -868,9 +871,6 @@ export function BidsBidBoardTab({
             {renderBidBoardLinksCluster(bid)}
           </td>
         </tr>
-        {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
-          <BidBoardGcRows bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} colSpan={colCount} onChanged={onReloadBids} />
-        ) : null}
         {bid.outcome === 'lost' ? (
           <tr
             aria-label={`Loss reason: ${(bid as { loss_reason?: string | null }).loss_reason?.trim() || 'not recorded'}`}
@@ -961,6 +961,11 @@ export function BidsBidBoardTab({
         >
           {bid.project_name ?? '-'}
         </div>
+        {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
+          <div style={{ margin: '0.1rem 0 0.25rem' }}>
+            <BidBoardGcLines bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} />
+          </div>
+        ) : null}
         <div
           style={{
             fontSize: '0.75rem',
@@ -971,7 +976,7 @@ export function BidsBidBoardTab({
             gap: '0.15rem 0.35rem',
           }}
         >
-          {(bid.customers || bid.bids_gc_builders) ? (
+          {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? null : (bid.customers || bid.bids_gc_builders) ? (
             <button
               type="button"
               onClick={() => onOpenGcBuilderOrCustomer(bid)}
@@ -980,7 +985,7 @@ export function BidsBidBoardTab({
               {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
             </button>
           ) : null}
-          {estNorm ? <span>· {estNorm.name || estNorm.email}</span> : null}
+          {estNorm ? <span>{gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? '' : '· '}{estNorm.name || estNorm.email}</span> : null}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             · {renderBidBoardBidValue(bid)}
           </span>
@@ -996,11 +1001,6 @@ export function BidsBidBoardTab({
           </span>
         </div>
         {hasLinks ? <div style={{ marginTop: '0.35rem' }}>{renderBidBoardLinksCluster(bid)}</div> : null}
-        {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
-          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: '0.35rem', paddingTop: '0.3rem', borderTop: '1px dashed var(--border)', cursor: 'default' }}>
-            <BidBoardGcLines bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} />
-          </div>
-        ) : null}
         {bid.outcome === 'lost' ? (
           <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
             <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Why did we lose? </span>
