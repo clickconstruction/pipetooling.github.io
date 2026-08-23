@@ -24,6 +24,8 @@ export type GcStatementScheduleInput = {
   /** Civil date + wall clock in the company calendar zone (Central). */
   sendDateYmd: string
   sendTimeHm: string
+  /** CC recipients (v2.2160) — already normalized by parseCcEmails; empty/omitted → none. */
+  ccEmails?: string[]
   repeatWeekly: boolean
 }
 
@@ -62,6 +64,7 @@ export function buildGcStatementRequestInsert(
       include_collections: input.includeCollections,
       send_at: sendAtIso,
       repeat_weekly: input.repeatWeekly,
+      cc_emails: input.ccEmails && input.ccEmails.length > 0 ? input.ccEmails : null,
     },
   }
 }

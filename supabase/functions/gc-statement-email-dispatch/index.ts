@@ -90,6 +90,8 @@ type RequestRow = {
   send_at: string
   repeat_weekly: boolean
   attempts: number
+  /** CC recipients (v2.2160), normalized by the client; null = none. */
+  cc_emails: string[] | null
 }
 
 serve(async (req) => {
@@ -121,7 +123,7 @@ serve(async (req) => {
     const { data: pending, error: qErr } = await admin
       .from('gc_statement_email_requests')
       .select(
-        'id, requested_by, sent_to, group_by, gc_customer_id, development_id, entity_name, include_collections, send_at, repeat_weekly, attempts',
+        'id, requested_by, sent_to, group_by, gc_customer_id, development_id, entity_name, include_collections, send_at, repeat_weekly, attempts, cc_emails',
       )
       .is('sent_at', null)
       .lte('send_at', new Date().toISOString())
@@ -159,6 +161,7 @@ serve(async (req) => {
           include_collections: row.include_collections,
           send_at: nextSendAt,
           repeat_weekly: true,
+          cc_emails: row.cc_emails && row.cc_emails.length ? row.cc_emails : null,
         })
       }
     }
@@ -224,6 +227,7 @@ serve(async (req) => {
           body: JSON.stringify({
             from: FROM,
             to: [row.sent_to],
+            ...(Array.isArray(row.cc_emails) && row.cc_emails.length ? { cc: row.cc_emails } : {}),
             subject,
             html,
             text,
@@ -238,7 +242,7 @@ serve(async (req) => {
 
         await logEmailSendBestEffort({
           resendEmailId: sentMail.id ?? null,
-          to: [row.sent_to],
+          to: [row.sent_to, ...(Array.isArray(row.cc_emails) ? row.cc_emails : [])],
           from: FROM,
           subject,
         })
@@ -262,6 +266,7 @@ serve(async (req) => {
               : payload.groups.reduce((s, g) => s + g.job_count, 0),
             sent_by: row.requested_by,
             sent_by_name: typeof requester?.name === 'string' ? requester.name : '',
+            cc_emails: Array.isArray(row.cc_emails) && row.cc_emails.length ? row.cc_emails : null,
             resend_email_id: sentMail.id ?? null,
           })
         } catch (auditErr) {

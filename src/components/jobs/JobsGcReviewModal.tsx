@@ -59,6 +59,8 @@ import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
 import GcReviewCertifyModal from './GcReviewCertifyModal'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
+import { buildTeammateEmailChips } from '../../lib/teammateEmailChips'
+import { ccTextIncludes, parseCcEmails, toggleCcEmailInText, GC_STATEMENT_CC_MAX } from '../../lib/gcStatementCc'
 import { gcEmailChip } from '../../lib/teammateEmailChips'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
@@ -196,6 +198,8 @@ export type SendGcStatementPayload = {
   /** 'all' = the whole GC Review report in one email ("Share all", v2.1420). */
   groupBy: GcReviewGroupBy | 'all'
   toEmail: string
+  /** CC recipients (v2.2160), normalized by parseCcEmails; omitted/empty = none. */
+  ccEmails?: string[]
   subject: string
   emailHtml: string
   emailText: string
@@ -267,6 +271,8 @@ export function JobsGcReviewModal({
   /** Email… dialog state — one group at a time; To/Subject editable before Send. */
   const [emailDialogGroup, setEmailDialogGroup] = useState<GcReviewGroup | null>(null)
   const [emailDialogTo, setEmailDialogTo] = useState('')
+  /** CC row (v2.2160): free text, chips toggle addresses in and out of it. */
+  const [emailDialogCcText, setEmailDialogCcText] = useState('')
   const [emailDialogSubject, setEmailDialogSubject] = useState('')
   const [emailSending, setEmailSending] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -528,6 +534,7 @@ export function JobsGcReviewModal({
   const openEmailDialogForGroup = (g: GcReviewGroup) => {
     setEmailDialogGroup(g)
     setEmailDialogTo(!byDevelopment && g.gcId ? emailForGc(g.gcId) : '')
+    setEmailDialogCcText('')
     setEmailDialogSubject(
       gcStatementEmailSubject(g, new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
     )
@@ -1245,6 +1252,49 @@ export function JobsGcReviewModal({
               disabled={emailSending}
               style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.6rem' }}
             />
+            {/* CC (v2.2160): tap teammates to add/remove, or type any addresses (comma-separated). */}
+            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>CC — optional; tap teammates or type addresses</label>
+            {(() => {
+              const chips = buildTeammateEmailChips(users).filter((c) => c.email !== emailDialogTo.trim().toLowerCase())
+              return chips.length ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                  {chips.map((c) => {
+                    const selected = ccTextIncludes(emailDialogCcText, c.email)
+                    return (
+                      <button
+                        key={c.email}
+                        type="button"
+                        onClick={() => setEmailDialogCcText((t) => toggleCcEmailInText(t, c.email))}
+                        disabled={emailSending}
+                        title={`${c.title} — ${selected ? 'remove from CC' : 'add to CC'}`}
+                        aria-pressed={selected}
+                        style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', borderRadius: 999, cursor: emailSending ? 'default' : 'pointer', border: `1px solid ${selected ? 'var(--border-indigo-soft)' : 'var(--border-strong)'}`, background: selected ? 'var(--bg-blue-tint)' : 'var(--surface)', color: selected ? 'var(--text-blue-700)' : 'var(--text-700)', opacity: emailSending ? 0.6 : 1 }}
+                      >
+                        {selected ? '✓ ' : ''}{c.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null
+            })()}
+            <input
+              type="text"
+              value={emailDialogCcText}
+              onChange={(e) => setEmailDialogCcText(e.target.value)}
+              placeholder="cc@example.com, another@example.com"
+              aria-label="CC"
+              disabled={emailSending}
+              style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: parseCcEmails(emailDialogCcText, emailDialogTo).invalid.length || parseCcEmails(emailDialogCcText, emailDialogTo).overflow ? '0.15rem' : '0.6rem' }}
+            />
+            {(() => {
+              const cc = parseCcEmails(emailDialogCcText, emailDialogTo)
+              if (!cc.invalid.length && !cc.overflow) return null
+              return (
+                <p style={{ margin: '0 0 0.6rem', fontSize: '0.74rem', color: 'var(--text-amber-700)' }}>
+                  {cc.invalid.length ? `Not an email: ${cc.invalid.join(', ')}` : ''}{cc.invalid.length && cc.overflow ? ' · ' : ''}{cc.overflow ? `Up to ${GC_STATEMENT_CC_MAX} CC addresses — extras dropped.` : ''}
+                </p>
+              )
+            })()}
             <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 2 }}>
               Subject{emailWhen === 'schedule' ? ' (scheduled sends use the standard subject)' : ''}
             </label>
@@ -1313,6 +1363,11 @@ export function JobsGcReviewModal({
                 onClick={() => {
                   const g = emailDialogGroup
                   if (emailWhen === 'schedule') {
+                    const ccParsed = parseCcEmails(emailDialogCcText, emailDialogTo)
+                    if (ccParsed.invalid.length) {
+                      setEmailError(`CC has something that isn't an email: ${ccParsed.invalid.join(', ')}`)
+                      return
+                    }
                     const built = buildGcStatementRequestInsert({
                       requestedBy: authUser?.id ?? '',
                       toEmail: emailDialogTo,
@@ -1323,6 +1378,7 @@ export function JobsGcReviewModal({
                       sendDateYmd: emailSendDate,
                       sendTimeHm: emailSendTime,
                       repeatWeekly: emailRepeatWeekly,
+                      ccEmails: ccParsed.emails,
                     })
                     if (!built.ok) {
                       setEmailError(built.error)
@@ -1344,6 +1400,11 @@ export function JobsGcReviewModal({
                     return
                   }
                   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  const ccNow = parseCcEmails(emailDialogCcText, emailDialogTo)
+                  if (ccNow.invalid.length) {
+                    setEmailError(`CC has something that isn't an email: ${ccNow.invalid.join(', ')}`)
+                    return
+                  }
                   setEmailSending(true)
                   setEmailError(null)
                   void onSendStatement({
@@ -1351,6 +1412,7 @@ export function JobsGcReviewModal({
                     gcName: g.gcName,
                     groupBy: effectiveGroupBy,
                     toEmail: emailDialogTo.trim(),
+                    ccEmails: ccNow.emails,
                     subject: emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr),
                     emailHtml: buildGcStatementEmailHtml(g, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null }),
                     emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null }),

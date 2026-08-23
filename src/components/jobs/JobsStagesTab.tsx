@@ -4205,6 +4205,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           gc_name: p.gcName,
                           group_by: p.groupBy,
                           to_email: p.toEmail,
+                          cc_emails: p.ccEmails ?? [],
                           subject: p.subject,
                           email_html: p.emailHtml,
                           email_text: p.emailText,

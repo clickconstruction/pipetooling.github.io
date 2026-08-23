@@ -78,6 +78,8 @@ serve(async (req) => {
       gc_name?: string
       group_by?: string
       to_email?: string
+      /** CC recipients (v2.2160) — validated/capped here too; never the To address. */
+      cc_emails?: unknown
       subject?: string
       email_html?: string
       email_text?: string
@@ -100,6 +102,17 @@ serve(async (req) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(toEmail)) {
       return jsonResponse({ error: 'Valid to_email required' }, 400)
+    }
+    // CC (v2.2160): mirror of src/lib/gcStatementCc.ts parseCcEmails — lower-case, valid, unique, not the To, ≤ 10.
+    const ccEmails: string[] = []
+    if (Array.isArray(body.cc_emails)) {
+      for (const raw of body.cc_emails) {
+        if (typeof raw !== 'string') continue
+        const e = raw.trim().toLowerCase()
+        if (!e || !emailRegex.test(e) || e === toEmail.toLowerCase() || ccEmails.includes(e)) continue
+        ccEmails.push(e)
+        if (ccEmails.length >= 10) break
+      }
     }
     if (!gcName || !subject || !emailHtml || !emailText) {
       return jsonResponse({ error: 'gc_name, subject, email_html and email_text required' }, 400)
@@ -138,6 +151,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: 'PipeTooling <team@noreply.pipetooling.com>',
         to: [toEmail],
+        ...(ccEmails.length ? { cc: ccEmails } : {}),
         subject,
         html: emailHtml,
         text: emailText,
@@ -152,7 +166,7 @@ serve(async (req) => {
 
     await logEmailSendBestEffort({
       resendEmailId: sent.id ?? null,
-      to: [toEmail],
+      to: [toEmail, ...ccEmails],
       from: 'PipeTooling <team@noreply.pipetooling.com>',
       subject,
     })
@@ -172,6 +186,7 @@ serve(async (req) => {
         sent_by: me.id,
         sent_by_name: typeof me.name === 'string' ? me.name : '',
         resend_email_id: sent.id ?? null,
+        cc_emails: ccEmails.length ? ccEmails : null,
       })
     } catch (auditErr) {
       console.error('gc_statement_emails audit insert failed', auditErr)
