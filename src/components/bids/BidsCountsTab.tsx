@@ -619,9 +619,6 @@ export function BidsCountsTab({
             <button type="button" role="tab" aria-selected={countsView === 'new'} onClick={() => switchCountsView('new')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: countsView === 'new' ? '#2563eb' : 'transparent', color: countsView === 'new' ? '#fff' : 'var(--text-muted)' }}>
               New
             </button>
-            {countsView === 'new' ? (
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Count Sheet — same rows as Old, ready to edit</span>
-            ) : null}
           </div>
           {countsView === 'new' ? (() => {
             const summary = countSheetSummary(countRows)
