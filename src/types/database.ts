@@ -13101,6 +13101,58 @@ export type Database = {
         }
         Relationships: []
       }
+      vehicle_checkins: {
+        Row: {
+          answers: Json
+          checkin_date: string
+          created_at: string
+          created_by: string | null
+          id: string
+          odometer_entry_id: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          answers?: Json
+          checkin_date: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          odometer_entry_id?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          answers?: Json
+          checkin_date?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          odometer_entry_id?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_checkins_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_checkins_odometer_entry_id_fkey"
+            columns: ["odometer_entry_id"]
+            isOneToOne: false
+            referencedRelation: "vehicle_odometer_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_checkins_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicle_insurance_periods: {
         Row: {
           created_at: string
@@ -14839,6 +14891,7 @@ export type Database = {
       is_estimator_group_member: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
+      is_primary: { Args: never; Returns: boolean }
       is_read_only: { Args: never; Returns: boolean }
       is_team_lead_for_member: {
         Args: { p_leader: string; p_member: string }
@@ -15764,6 +15817,12 @@ export type Database = {
         Args: { p_survivor: string; p_victim: string }
         Returns: Json
       }
+      primary_can_access_bid: { Args: { p_bid_id: string }; Returns: boolean }
+      primary_can_access_estimate: {
+        Args: { p_estimate_id: string }
+        Returns: boolean
+      }
+      primary_can_access_job: { Args: { p_job_id: string }; Returns: boolean }
       recompute_jobs_ledger_thread_note_stats: {
         Args: { p_job_id: string }
         Returns: undefined

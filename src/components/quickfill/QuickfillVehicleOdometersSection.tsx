@@ -233,8 +233,7 @@ export function QuickfillVehicleOdometersSection() {
       const flagged = answers.filter((a) => a.flagged)
       let checkinSaved = true
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: ciErr } = await supabase.from('vehicle_checkins' as any).insert({
+        const { error: ciErr } = await supabase.from('vehicle_checkins').insert({
           vehicle_id: vehicleId,
           odometer_entry_id: entryId,
           checkin_date: today,

@@ -489,9 +489,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
     // Check-in history (v2.2199) — fail-soft while the table hasn't been migrated yet.
     let checkins: PanelCheckin[] = []
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: ciData, error: ciErr } = await supabase
-        .from('vehicle_checkins' as any)
+        .from('vehicle_checkins')
         .select('id, checkin_date, answers, created_by')
         .eq('vehicle_id', vehicleId)
         .order('checkin_date', { ascending: false })
@@ -1213,8 +1212,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
 
   async function deleteLedgerRow(kind: VehicleLedgerRowKind, sourceId: string) {
     if (kind === 'checkin') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: err } = await supabase.from('vehicle_checkins' as any).delete().eq('id', sourceId)
+      const { error: err } = await supabase.from('vehicle_checkins').delete().eq('id', sourceId)
       if (err) {
         setError(err.message)
         return
