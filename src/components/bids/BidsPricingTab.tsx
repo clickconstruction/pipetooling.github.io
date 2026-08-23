@@ -1300,7 +1300,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-scenarios',
       title: 'Scenarios — for you to compare',
-      body: 'Price scenarios are different sell prices over the same counts. The ★ starred one is what the customer sees — Cover Letter, Share, Print, and the bid value all use it, and only "☆ Make customer-facing…" changes that. "＋ New price or version…" adds another price point (for you) — or another bid to send (the customer sees it).',
+      body: 'Price scenarios are different prices for the same version. The ★ starred one is what the customer sees. Cover Letter, Share, Print, and the bid value all use it.',
     },
     {
       anchor: 'workbench-summary',
@@ -1829,7 +1829,6 @@ export function BidsPricingTab({
               </button>
               {pricingView === 'new' ? (
                 <>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Workbench — solver previews, Apply writes. Same data as Old.</span>
                   <button
                     type="button"
                     onClick={startWorkbenchTour}
@@ -2951,10 +2950,6 @@ export function BidsPricingTab({
                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem', padding: '0.55rem 0.9rem', flexWrap: 'wrap' }}>
                         {wbPreview && previewCount > 0 ? (
                           <>
-                            <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
-                              Previewing {previewCount} changed price{previewCount !== 1 ? 's' : ''} on{' '}
-                              <u>{priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'this scenario'}</u> — nothing saved yet
-                            </span>
                             <button
                               type="button"
                               onClick={() => void applyWorkbenchPreview()}
