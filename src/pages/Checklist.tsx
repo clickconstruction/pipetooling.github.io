@@ -2847,7 +2847,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                             </span>
                           </>
                         ) : null}
-                        {notesTotal > 0 ? <> · 💬 {notesTotal} {notesTotal === 1 ? 'note' : 'notes'}</> : null}
+                        {notesTotal > 0 ? <> · <span style={{ whiteSpace: 'nowrap' }}>💬 {notesTotal} {notesTotal === 1 ? 'note' : 'notes'}</span></> : null}
                       </span>
                     </span>
                     <button
