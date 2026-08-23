@@ -3304,6 +3304,8 @@ export default function Bids() {
       {activeTab === 'pricing' && (
         <>
         {selectedBidForPricing && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+          <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           <BidVersionPicker
             onGoToCoverLetter={() => selectBidsTab('cover-letter')}
             bidId={selectedBidForPricing.id}
@@ -3318,6 +3320,10 @@ export default function Bids() {
             bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
             bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
           />
+          </div>
+          {/* v2.2203: the Old/New pills portal up here from BidsPricingTab, top-right beside the strip. */}
+          <div id="pricing-view-slot" style={{ flex: '0 0 auto', paddingTop: '0.25rem' }} />
+          </div>
         )}
         <BidsPricingTab
           bids={bidsTyped}

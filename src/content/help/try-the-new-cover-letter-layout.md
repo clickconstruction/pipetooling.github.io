@@ -9,7 +9,7 @@ The **Bids → Cover Letter** tab is a two-pane studio: your controls sit in num
 
 ## Old and New
 
-Next to the bid's name are {{chip:gray|Old}} / {{chip:gray|New}} pills, like the Pricing tab. **New** writes **one letter per GC**: each of that GC's packets at its ★ base price, plus any price you offered them as an alternate. **Old** is the previous letter, which bundles checked price scenarios. Your choice is remembered on this device, and **Send… →** on the Send to strip always opens New.
+Next to the bid's name are {{chip:gray|Old}} / {{chip:gray|New}} pills, like the Pricing tab. **New** writes **one letter per GC**: each of that GC's packets at its ★ base price, plus any price you offered them as an alternate. **Old** is the previous letter, which bundles checked price scenarios. Your choice is remembered on this device.
 
 ## The two steps
 
@@ -19,7 +19,7 @@ Next to the bid's name are {{chip:gray|Old}} / {{chip:gray|New}} pills, like the
   - **Old:** check price scenarios under *Versions in this submission* — one letter each.
 
 :::example One GC, one price?
-New shows a single line — *One bid — the letter shows ★ WENDI* — and the letter is exactly what it was. To offer that GC a second price, add it on the Pricing tab with {{button:outline|＋ Another price or GC…}} and tick **Offer as alternate**.
+New shows a single line — *One bid — the letter shows ★ WENDI* — and the letter is exactly what it was. To offer that GC a second price, add it on the Pricing tab with {{button:outline|＋ Add price}} and offer it from the card's bottom bar.
 :::
 - {{chip:blue|2 Letter content}} — what's included (Plan date, Fixtures per plan, Signature, Payment schedule as on/off pills), the Schedule of Values, and the inclusions / exclusions / terms text.
 

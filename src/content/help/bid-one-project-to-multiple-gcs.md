@@ -10,11 +10,11 @@ The one sentence: **versions draft this bid for different GCs; price options sen
 ## Add a GC
 
 1. On the bid's **Counts / Takeoffs / Pricing / Cover Letter** pages, the strip at the top reads **Send to** — one group per GC, each showing whether it was sent and its ★ price. The bid's own GC comes first.
-2. Press {{button:blue|＋ Another GC…}}: pick the GC, choose which packet to **start from** (its counts, takeoff and prices are copied), and optionally name it — it defaults to the GC's name. The new GC joins the bid's *Also sent to* list on its own.
+2. Press {{button:blue|＋ Add GC}}: pick the GC, choose which packet to **start from** (its counts, takeoff and prices are copied), and optionally name it — it defaults to the GC's name. The new GC joins the bid's *Also sent to* list on its own.
 3. Inside a GC group, **+ version** adds a same-GC variant with its own takeoff (a VE, say). The ✎ on any version still renames it or points it at a different GC.
 
 :::example Not split yet?
-A bid that has never been split shows one group — its GC — with *one packet*. The first **＋ Another GC…** names the existing setup after the bid's GC and starts the new packet as a copy of it.
+A bid that has never been split shows one group — its GC — with *one packet*. The first **＋ Add GC** names the existing setup after the bid's GC and starts the new packet as a copy of it.
 :::
 
 ## Choose what each GC receives
@@ -22,8 +22,8 @@ A bid that has never been split shows one group — its GC — with *one packet*
 On **Pricing** (New), the Workbench shows the packet you're on: **This GC — Burd & Assoc.** and **Price options — what Burd & Assoc. receives**.
 
 - The {{chip:green|★ base}} option is the price on that GC's letter — Cover Letter, Share, Print and the bid value all use it. {{button:outline|☆ Make base}} moves it, with a confirm.
-- {{button:outline|Offer as alternate}} on any other priced option puts it on the same GC's letter as an alternate — same counts, no new version. {{button:outline|Don't offer}} takes it back off.
-- {{button:outline|＋ Another price or GC…}} asks what you want: **Another price for this GC** (name it; offer it right away or keep it to compare), **Another GC** (the same GC-first modal as the strip), or **Adopt an existing bid**.
+- Every price card ends in a bar that answers **who sees this price**: green *★ The price on their letter*, blue *On their letter · alternate*, or gray *Only you see this*. The bar's links do the work — **offer as alternate** / **stop offering**, and **☆ make base**. The GC's chip on the Send to strip counts what they're getting: {{chip:blue|gets 2 prices}}.
+- {{button:outline|＋ Add price}} asks what you want: **Another price for this GC** (name it; offer it right away or keep it to compare), **Another GC** (the same GC-first modal as the strip), or **Adopt an existing bid**.
 - A packet that hasn't been priced yet says **No prices yet for Southern Post Construction** and offers to copy prices from a priced packet.
 
 ## Write each GC's letter
@@ -40,7 +40,7 @@ On **Pricing** (New), the Workbench shows the packet you're on: **This GC — Bu
 
 ## "Also sent to" — the same letter, no packet
 
-Open **Edit Bid** and look under the GC/Builder picker: the **Also sent to** row lists every other GC this bid went out to. GCs with their own packet land here automatically; use {{button:outline|+ Add GC}} for a builder who got the **same letter** as the bid's GC without a packet of their own. Such a GC shows on the Send to strip, the board and Followup as *same letter as Southern Post Construction* — its answer is tracked with the bid. To track it separately, press **track separately** on the strip (it opens ＋ Another GC… with that builder filled in).
+Open **Edit Bid** and look under the GC/Builder picker: the **Also sent to** row lists every other GC this bid went out to. GCs with their own packet land here automatically; use {{button:outline|+ Add GC}} for a builder who got the **same letter** as the bid's GC without a packet of their own. Such a GC shows on the Send to strip, the board and Followup as *same letter as Southern Post Construction* — its answer is tracked with the bid. To track it separately, press **track separately** on the strip (it opens ＋ Add GC with that builder filled in).
 
 ## Tips
 

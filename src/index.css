@@ -203,7 +203,7 @@ button:focus-visible {
   --text-indigo-800: #3730a3;
 
   /* surfaces (background:) */
-  --bg-page: #fafafa;
+  --bg-page: #f0f2f5; /* v2.2203: was #fafafa — white cards need a ground to sit on, like dark mode */
   --surface: #ffffff;
   --bg-subtle: #f9fafb;
   --bg-muted: #f3f4f6;
@@ -236,10 +236,10 @@ button:focus-visible {
   --bg-indigo-100: #e0e7ff;
   --bg-indigo-200: #c7d2fe;
 
-  /* borders (border*/outline) — darkened one step 2026-08-23 (owner: light-mode lines were
+  /* borders (border*/outline) — darkened 2026-08-23 (twice: v2.2192, v2.2203) (owner: light-mode lines were
      too faint to separate sections; dark mode already reads). Old values: #e5e7eb / #d1d5db. */
-  --border: #d8dce2;
-  --border-strong: #b9c0c9;
+  --border: #cfd4db; /* v2.2203: was #d8dce2 */
+  --border-strong: #aab2bd; /* v2.2203: was #b9c0c9 */
   /* Section-separator rules (draft editor + customer document): visible on white. */
   --border-rule: #b8bec8;
   /* Job-row separators (Jobs Pipeline board): mirrors dark mode's bright-line contrast. */

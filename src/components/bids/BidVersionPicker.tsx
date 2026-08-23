@@ -53,7 +53,8 @@ export function BidVersionPicker({
   isExactMaterials,
   onSwitch,
   reloadVersions,
-  onGoToCoverLetter,
+  // v2.2203: Send… → removed from the strip; prop kept so call sites don't churn.
+  onGoToCoverLetter: _onGoToCoverLetter,
   pricingSourceNames,
   bidGcName,
   bidDateSent,
@@ -77,6 +78,27 @@ export function BidVersionPicker({
   const [renameGcCustomerId, setRenameGcCustomerId] = useState('')
   const [gcCustomers, setGcCustomers] = useState<Array<{ id: string; name: string }> | null>(null)
   const [gcNamesById, setGcNamesById] = useState<Record<string, string>>({})
+  // v2.2203: "gets N prices" per GC group — the ★ plus offered alternates of each version.
+  const [offeredByVersion, setOfferedByVersion] = useState<Record<string, number>>({})
+  const [reloadTick, setReloadTick] = useState(0)
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('price_book_versions').select('id, bid_version_id, include_in_submission').eq('bid_id', bidId)
+      if (cancelled || !data) return
+      const counts: Record<string, number> = {}
+      for (const v of bidVersions) {
+        let n = v.starred_price_book_version_id ? 1 : 0
+        for (const o of data) {
+          if (o.bid_version_id === v.id && o.include_in_submission && o.id !== v.starred_price_book_version_id) n += 1
+        }
+        counts[v.id] = n
+      }
+      setOfferedByVersion(counts)
+    })()
+    return () => { cancelled = true }
+  }, [bidId, bidVersions, reloadTick])
+
   // "Also sent to" GCs (bid_gc_recipients) — those without a version show as shared-letter groups (v2.2163).
   const [recipients, setRecipients] = useState<Array<{ customerId: string; name: string }>>([])
   useEffect(() => {
@@ -204,7 +226,7 @@ export function BidVersionPicker({
     // 'bid-version-picker-open-add-gc' (v2.2163): the Workbench door's "Another GC" opens the GC-first modal.
     const openAddGc = () => setAddGc({ gcId: '', fromVersionId: selectedBidVersionId ?? bidVersions[0]?.id ?? '', name: '' })
     // 'bid-version-picker-reload' (v2.2133): "Adopt an existing bid" created versions outside this component.
-    const reload = () => { void reloadVersions() }
+    const reload = () => { setReloadTick((t) => t + 1); void reloadVersions() }
     window.addEventListener('bid-version-picker-open-new', open)
     window.addEventListener('bid-version-picker-open-add-gc', openAddGc)
     window.addEventListener('bid-version-picker-reload', reload)
@@ -386,7 +408,7 @@ export function BidVersionPicker({
           return (
             <div
               key={g.key || 'bid-default'}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.25rem 0.4rem', border: groupActive || isUnsplit ? '1px solid #3b82f6' : '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', boxShadow: groupActive ? 'inset 0 0 0 1px #3b82f6' : 'none' }}
+              style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', padding: '0.25rem 0.4rem', border: groupActive || isUnsplit ? '1px solid #3b82f6' : '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', boxShadow: groupActive ? 'inset 0 0 0 1px #3b82f6' : 'none', minWidth: 0 }}
             >
               <button
                 type="button"
@@ -397,6 +419,15 @@ export function BidVersionPicker({
                 <span style={{ fontWeight: 700, fontSize: '0.82rem', display: 'block' }}>{g.name}</span>
                 <span style={{ display: 'block', fontSize: '0.625rem', color: sentOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
                   {sentOn ? `sent ${fmtSent(sentOn)}` : 'not sent'}{star ? ` · ★ ${star}` : isUnsplit ? ' · one packet' : ''}{g.versions.length > 1 ? ` · ${g.versions.length} versions` : ''}
+                  {(() => {
+                    // v2.2203: how many prices this GC receives (★ + offered alternates across their versions).
+                    const n = g.versions.reduce((sum, v) => sum + (offeredByVersion[v.id] ?? 0), 0)
+                    return g.versions.length > 0 && n > 0 ? (
+                      <span title="Prices on this GC's letter — the ★ base plus offered alternates" style={{ marginLeft: '0.35rem', fontSize: '0.6rem', fontWeight: 700, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderRadius: 999, padding: '0.06rem 0.4rem', whiteSpace: 'nowrap' }}>
+                        gets {n} price{n === 1 ? '' : 's'}
+                      </span>
+                    ) : null
+                  })()}
                 </span>
               </button>
               {g.versions.map((v) => {
@@ -428,25 +459,14 @@ export function BidVersionPicker({
         <button
           type="button"
           onClick={() => setAddGc({ gcId: '', fromVersionId: selectedBidVersionId ?? bidVersions[0]?.id ?? '', name: '' })}
-          style={{ padding: '0.35rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+          style={{ padding: '0.25rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', lineHeight: 1.25, textAlign: 'center' }}
           title="Send this bid to another GC — a packet that starts as a copy"
         >
-          ＋ Another GC…
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>＋</span>
+            <span style={{ textAlign: 'left', lineHeight: 1.25 }}>Add<br />GC</span>
+          </span>
         </button>
-        {!isUnsplit ? (
-          <button
-            type="button"
-            onClick={() => {
-              // v2.2117: "Send… →" lands on the Cover Letter's New view (the one that bundles bids).
-              try { window.localStorage.setItem('bids_cover_letter_view_v1', 'new') } catch { /* device just won't remember */ }
-              onGoToCoverLetter?.()
-            }}
-            style={{ marginLeft: 'auto', padding: '0.35rem 0.6rem', background: 'none', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-strong)' }}
-            title="Send from the Cover Letter — one letter per GC"
-          >
-            Send… →
-          </button>
-        ) : null}
       </div>
       {isExactMaterials && !isUnsplit && (
         <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 4, padding: '0.35rem 0.5rem' }}>
@@ -457,7 +477,7 @@ export function BidVersionPicker({
       {modalOpen && (
         <Overlay onClose={() => !busy && setModalOpen(false)}>
           <h3 style={{ margin: '0 0 1rem' }}>{isUnsplit ? 'Split into two versions' : newForGcId ? `Another version for ${gcNamesById[newForGcId] ?? 'this GC'}` : 'Another version'}</h3>
-          {!isUnsplit ? <p style={{ margin: '-0.6rem 0 0.8rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Same GC, its own takeoff and prices — a VE, say. For another GC use ＋ Another GC…; for another price only, the Pricing page.</p> : null}
+          {!isUnsplit ? <p style={{ margin: '-0.6rem 0 0.8rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Same GC, its own takeoff and prices — a VE, say. For another GC use ＋ Add GC; for another price only, the Pricing page.</p> : null}
           {isUnsplit && (
             <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
               Name what you have now, then the new one. Each becomes its own bid — its own counts, takeoff and prices from here — sendable separately or bundled in one cover letter.
