@@ -1012,17 +1012,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "bids_adopted_into_bid_id_fkey"
-            columns: ["adopted_into_bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bids_account_manager_id_fkey"
             columns: ["account_manager_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_adopted_into_bid_id_fkey"
+            columns: ["adopted_into_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
           {
@@ -1171,17 +1171,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "bids_count_rows_bid_version_id_fkey"
-            columns: ["bid_version_id"]
-            isOneToOne: false
-            referencedRelation: "bid_versions"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bids_count_rows_bid_id_fkey"
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_count_rows_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -14029,6 +14029,15 @@ export type Database = {
         }
         Returns: Json
       }
+      adopt_bid_as_version: {
+        Args: {
+          p_name: string
+          p_source_bid_id: string
+          p_target_base_name?: string
+          p_target_bid_id: string
+        }
+        Returns: string
+      }
       apply_agreed_write_down_to_billed_invoice: {
         Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
         Returns: Json
@@ -14220,6 +14229,14 @@ export type Database = {
         Args: { p_id: string }
         Returns: undefined
       }
+      clone_count_rows_to_bid_version: {
+        Args: {
+          p_bid_id: string
+          p_source_bid_version_id: string
+          p_target_bid_version_id: string
+        }
+        Returns: number
+      }
       clone_price_book_version_to_bid: {
         Args: { p_bid_id: string; p_name: string; p_source_version_id: string }
         Returns: string
@@ -14251,15 +14268,6 @@ export type Database = {
       count_unlinked_mercury_transactions_for_tally_stale: {
         Args: { min_age_days?: number }
         Returns: number
-      }
-      adopt_bid_as_version: {
-        Args: {
-          p_name: string
-          p_source_bid_id: string
-          p_target_base_name?: string
-          p_target_bid_id: string
-        }
-        Returns: string
       }
       create_bid_version: {
         Args: {
