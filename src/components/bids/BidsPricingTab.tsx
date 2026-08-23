@@ -2858,7 +2858,8 @@ export function BidsPricingTab({
                               </>
                             )
                           })()}
-                          <div data-tour="workbench-scenarios" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', margin: '0.85rem 0 0.9rem', flexWrap: 'wrap' }}>
+                          {/* v2.2204: the whole set of price options sits in one quiet gray tray. */}
+                          <div data-tour="workbench-scenarios" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', margin: '0.85rem 0 0.9rem', flexWrap: 'wrap', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem' }}>
                             {scenarios.map((v) => {
                               const viewing = v.id === selectedPricingVersionId
                               const isCustomerFacing = v.id === customerFacingPricingId
@@ -2993,26 +2994,6 @@ export function BidsPricingTab({
                             {stat('Revenue', fmtM(effRevenue), 'var(--text-strong)', `our cost $${formatCurrency(totalCost)}`)}
                             {stat('Profit', fmtM(effProfit), effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `our cost $${formatCurrency(totalCost)}`)}
                             {stat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
-                            {wbPreview && previewCount > 0 ? (
-                              <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flex: '0 0 auto' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => void applyWorkbenchPreview()}
-                                  disabled={wbApplying}
-                                  style={{ padding: '0.34rem 0.7rem', fontSize: '0.8rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
-                                >
-                                  {wbApplying ? 'Applying…' : `Apply to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'scenario'}`}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setWbPreview(null)}
-                                  disabled={wbApplying}
-                                  style={{ padding: '0.34rem 0.6rem', fontSize: '0.8rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
-                                >
-                                  Discard
-                                </button>
-                              </span>
-                            ) : null}
                             <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '1 1 240px', minWidth: 220 }}>
                               <span style={labelStyle}>Margin</span>
@@ -3025,12 +3006,28 @@ export function BidsPricingTab({
                                 aria-label="Blended margin for the whole bid"
                                 title={`Moves the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} to this blended margin. Prices round up to $5.`}
                               />
-                              <span style={{ fontSize: '0.95rem', fontWeight: 700, width: '2.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{wbMarginPct}%</span>
+                              <input
+                                type="number" min={1} max={95} inputMode="numeric" value={wbMarginPct}
+                                onChange={(e) => {
+                                  const v = Math.round(Number(e.target.value))
+                                  if (Number.isFinite(v)) setWbMarginPct(Math.min(95, Math.max(1, v)))
+                                }}
+                                onBlur={() => runWorkbenchSolve({})}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    runWorkbenchSolve({})
+                                  }
+                                }}
+                                aria-label="Blended margin percent"
+                                style={{ width: '3.4rem', font: 'inherit', fontSize: '0.95rem', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '0.18rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                              />
+                              <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>%</span>
                             </div>
                             <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '2 1 360px', minWidth: 260, flexWrap: 'wrap' }}>
                               <span style={labelStyle}>or total</span>
-                              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden', flex: '1 1 120px', maxWidth: 170 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden', flex: '0 0 auto' }}>
                                 <span style={{ padding: '0 0.4rem 0 0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>$</span>
                                 <input
                                   type="text" inputMode="decimal" placeholder="42,000" value={wbTargetTotalInput}
@@ -3041,7 +3038,7 @@ export function BidsPricingTab({
                                     solveToTarget()
                                   }}
                                   aria-label="Target bid total"
-                                  style={{ border: 0, width: '100%', padding: '0.33rem 0.45rem 0.33rem 0', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, background: 'transparent', color: 'var(--text-strong)', outline: 'none' }}
+                                  style={{ border: 0, width: `${Math.max(wbTargetTotalInput.length, 6) + 1}ch`, padding: '0.33rem 0.45rem 0.33rem 0', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, background: 'transparent', color: 'var(--text-strong)', outline: 'none' }}
                                 />
                               </div>
                               <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
@@ -3062,6 +3059,33 @@ export function BidsPricingTab({
                           </div>
                         )
                       })()}
+                      {/* v2.2204: Apply/Discard on their own second line — they appear the moment
+                          the solver previews something (slider, typed margin, Solve, Price
+                          unpriced only) and vanish once applied or discarded. */}
+                      {wbPreview && previewCount > 0 ? (
+                        <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', borderTop: '1px dashed var(--text-amber-700)', paddingTop: '0.5rem' }}>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
+                            Previewing {previewCount} price{previewCount === 1 ? '' : 's'} — nothing saved yet.
+                          </span>
+                          <span style={{ flex: 1 }} />
+                          <button
+                            type="button"
+                            onClick={() => void applyWorkbenchPreview()}
+                            disabled={wbApplying}
+                            style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
+                          >
+                            {wbApplying ? 'Applying…' : `Apply to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'scenario'}`}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWbPreview(null)}
+                            disabled={wbApplying}
+                            style={{ padding: '0.4rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
+                          >
+                            Discard
+                          </button>
+                        </div>
+                      ) : null}
                       {uncostedRevenue > 0 ? (
                         <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 7, padding: '0.4rem 0.7rem' }}>
                           <span style={{ fontSize: '0.76rem', color: 'var(--text-amber-700)' }}>
