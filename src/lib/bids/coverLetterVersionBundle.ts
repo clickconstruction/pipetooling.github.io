@@ -22,6 +22,9 @@ export type BundlePricing = {
   bid_version_id: string | null
   sort_order: number
   created_at?: string | null
+  /** G1 (v2.2154): a non-★ scenario flagged here is OFFERED to the version's GC as an alternate price. */
+  include_in_submission?: boolean | null
+  name?: string | null
 }
 
 /**
@@ -48,24 +51,38 @@ export type BundleSectionPlan = {
   /** The scenario whose prices the section shows; null = no prices yet (section still listed). */
   pricingId: string | null
   customerId: string | null
+  /** Set when the section is an OFFERED alternate price (a non-★ scenario), not the version's base. */
+  offeredPricingId?: string
 }
 
 /**
- * Which versions go in the letter, in letter order: base bids first (by sort_order), then
- * alternates (by sort_order). Only versions flagged `include_in_submission`.
+ * Which sections go in the letter, in letter order: base bids first (by sort_order), then
+ * alternates (by sort_order) — a version flagged alternate, and (G1) every non-★ scenario a
+ * version OFFERS to its GC (`price_book_versions.include_in_submission`), priced on that version's
+ * counts. Only versions flagged `include_in_submission` contribute.
  */
 export function planLetterSections(versions: BundleVersion[], pricings: BundlePricing[]): BundleSectionPlan[] {
   const included = versions.filter((v) => v.include_in_submission)
   const bySort = (a: BundleVersion, b: BundleVersion) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)
   const base = included.filter((v) => !v.is_alternate).sort(bySort)
   const alts = included.filter((v) => !!v.is_alternate).sort(bySort)
-  return [...base, ...alts].map((v) => ({
+  const main = [...base, ...alts].map((v) => ({
     versionId: v.id,
     name: v.name,
     isAlternate: !!v.is_alternate,
     pricingId: starredPricingIdForVersion(v, pricings),
     customerId: v.customer_id ?? null,
   }))
+  const offered: BundleSectionPlan[] = []
+  for (const v of [...base, ...alts]) {
+    const star = starredPricingIdForVersion(v, pricings)
+    const own = pricings.filter((p) => p.bid_version_id === v.id && p.include_in_submission && p.id !== star)
+      .sort((a, b) => a.sort_order - b.sort_order)
+    for (const p of own) {
+      offered.push({ versionId: v.id, name: `${v.name} · ${p.name ?? 'price'}`, isAlternate: true, pricingId: p.id, customerId: v.customer_id ?? null, offeredPricingId: p.id })
+    }
+  }
+  return [...main, ...offered]
 }
 
 /** Sum of the base sections' revenue — the number the letter says the job costs. */

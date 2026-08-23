@@ -58,7 +58,7 @@ const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 
 /** bid_versions row (the v2.2117 letter columns are in the generated types since the F5 regen). */
 type BidVersionLetter = BidVersion
-type BundleSection = { name: string; bidVersionId: string | null; revenueSum: number; fixtureRows: { fixture: string; count: number }[]; isAlternate: boolean }
+type BundleSection = { name: string; bidVersionId: string | null; revenueSum: number; fixtureRows: { fixture: string; count: number }[]; isAlternate: boolean; offeredPricingId?: string }
 const COVER_LETTER_VIEW_KEY = 'bids_cover_letter_view_v1'
 
 type BidsCoverLetterTabProps = {
@@ -387,10 +387,10 @@ export function BidsCoverLetterTab({
     //    its ★ scenario. A split bid bundles even a single included version (the letter follows
     //    what's checked, not what's active); an unsplit bid has no versions → single letter.
     //  • Old: the checked price scenarios, 2+ of them, one letter each (unchanged).
-    const plans: Array<{ name: string; bidVersionId: string | null; pricingId: string | null; isAlternate: boolean }> =
+    const plans: Array<{ name: string; bidVersionId: string | null; pricingId: string | null; isAlternate: boolean; offeredPricingId?: string }> =
       coverLetterView === 'new'
         ? (bidVersions.length > 0
-            ? planLetterSections(bidVersions as BidVersionLetter[], bidPricings).map((p) => ({ name: p.name, bidVersionId: p.versionId, pricingId: p.pricingId, isAlternate: p.isAlternate }))
+            ? planLetterSections(bidVersions as BidVersionLetter[], bidPricings).map((p) => ({ name: p.name, bidVersionId: p.versionId, pricingId: p.pricingId, isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }))
             : [])
         : (() => {
             const included = bidPricings.filter((p) => p.include_in_submission).sort((a, b) => a.sort_order - b.sort_order)
@@ -426,7 +426,7 @@ export function BidsCoverLetterTab({
       const allCustom = (customRes.data as BidCountRowCustomPrice[]) ?? []
       const allHides = (hidesRes.data as BidCountRowSubmissionHide[]) ?? []
       const sections: BundleSection[] = plans.map((p) => {
-        if (!p.pricingId) return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: 0, fixtureRows: [], isAlternate: p.isAlternate }
+        if (!p.pricingId) return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: 0, fixtureRows: [], isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }
         const pid = p.pricingId
         const entries = allEntries.filter((e) => e.version_id === pid)
         const customMap = new Map<string, number>()
@@ -446,7 +446,7 @@ export function BidsCoverLetterTab({
           hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, pid),
         })
         const totals = coverLetterTotalsFromPricingRows(result.rows)
-        return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows, isAlternate: p.isAlternate }
+        return { name: p.name, bidVersionId: p.bidVersionId, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows, isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }
       })
       setBundlePricings(sections)
     })()
@@ -479,10 +479,16 @@ export function BidsCoverLetterTab({
   async function toggleVersionInclude(v: BidVersionLetter) {
     const next = !v.include_in_submission
     await supabase.from('bid_versions').update({ include_in_submission: next }).eq('id', v.id)
+    // Mirror onto the ★ scenario only (Old reads scenario flags). Other scenarios' flags mean
+    // "offered to this GC as an alternate" (G1, v2.2154) and are the user's to set.
     const starId = starredPricingIdForVersion(v, bidPricings)
-    await supabase.from('price_book_versions').update({ include_in_submission: false }).eq('bid_version_id', v.id)
-    if (next && starId) await supabase.from('price_book_versions').update({ include_in_submission: true }).eq('id', starId)
+    if (starId) await supabase.from('price_book_versions').update({ include_in_submission: next }).eq('id', starId)
     await Promise.all([reloadBidVersions(), reloadBidPricings()])
+  }
+  /** G1: offer / stop offering a non-★ scenario to its version's GC as an alternate price on the letter. */
+  async function setScenarioOffered(p: PriceBookVersion, offered: boolean) {
+    await supabase.from('price_book_versions').update({ include_in_submission: offered }).eq('id', p.id)
+    await reloadBidPricings()
   }
   async function setVersionAlternate(v: BidVersionLetter, isAlternate: boolean) {
     if (!!v.is_alternate === isAlternate) return
@@ -878,21 +884,52 @@ export function BidsCoverLetterTab({
                         {' · '}
                         {projectNameVal}
                       </div>
-                      {coverLetterView === 'new' ? (
+                      {coverLetterView === 'new' ? (() => {
+                        // G1 (v2.2154): one letter per GC. Tabs = the GCs this bid's versions point at
+                        // (a version with no override = the bid's GC); the list is that GC's versions
+                        // and, under each, the non-★ prices it offers as alternates.
+                        const gcKeyOf = (vid: string) => versionGcById[vid]?.id ?? 'bid-default'
+                        const gcTabs: Array<{ key: string; name: string }> = []
+                        for (const v of [...bidVersions].sort((a, b) => a.sort_order - b.sort_order)) {
+                          const key = gcKeyOf(v.id)
+                          if (!gcTabs.some((t) => t.key === key)) gcTabs.push({ key, name: versionGcById[v.id]?.name ?? customerName })
+                        }
+                        const activeKey = activeBidVersionId ? gcKeyOf(activeBidVersionId) : (gcTabs[0]?.key ?? 'bid-default')
+                        const selectedKey = selectedGcPacketKey && gcTabs.some((t) => t.key === selectedGcPacketKey) ? selectedGcPacketKey : activeKey
+                        const multi = gcTabs.length > 1
+                        const rowsVersions = [...bidVersions].sort((a, b) => a.sort_order - b.sort_order).filter((v) => !multi || gcKeyOf(v.id) === selectedKey)
+                        const gcName = gcTabs.find((t) => t.key === selectedKey)?.name ?? customerName
+                        const gcShort = gcName
+                        const packet = gcPackets.find((pk) => pk.key === selectedKey) ?? null
+                        const gcSections = multi ? (packet?.sections ?? []) : bundlePricings
+                        const gcBase = letterTotal(gcSections)
+                        const gcAlts = gcSections.filter((x) => x.isAlternate).length
+                        const latestForGc = (key: string) => { const vids = bidVersions.filter((v) => gcKeyOf(v.id) === key).map((v) => v.id); let best: string | null = null; for (const vid of vids) { const sOn = latestSends[vid]?.sentOn; if (sOn && (!best || sOn > best)) best = sOn } return best }
+                        return (
                         <div style={{ marginBottom: '0.7rem' }}>
-                          <span style={studioFieldLabelStyle}>In this cover letter</span>
+                          {multi ? (
+                            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                              {gcTabs.map((t) => { const sOn = latestForGc(t.key); const on = t.key === selectedKey; return (
+                                <button key={t.key} type="button" onClick={() => setSelectedGcPacketKey(t.key)} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.6rem', borderRadius: 6, border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', textAlign: 'left' }}>
+                                  {t.name}<span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400, color: sOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{sOn ? `sent ${sOn.slice(5).replace('-', '/').replace(/^0/, '')}` : 'not sent'}</span>
+                                </button>
+                              ) })}
+                            </div>
+                          ) : null}
+                          <span style={studioFieldLabelStyle}>{multi ? `In ${gcShort}'s letter` : 'In this cover letter'}</span>
                           {bidVersions.length === 0 ? (
                             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                               One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong></> : null}. To offer an alternate, make it a bid to send (＋ Another bid to send… at the top).
                             </div>
                           ) : (
                             <>
-                              {[...bidVersions].sort((a, b) => a.sort_order - b.sort_order).map((v, i, arr) => {
+                              {rowsVersions.map((v, i, arr) => {
                                 const vx = v as BidVersionLetter
                                 const starId = starredPricingIdForVersion(vx, bidPricings)
                                 const starName = bidPricings.find((p) => p.id === starId)?.name ?? null
-                                const sec = bundlePricings.find((x) => x.bidVersionId === v.id)
+                                const sec = bundlePricings.find((x) => x.bidVersionId === v.id && !x.offeredPricingId)
                                 const isAlt = !!vx.is_alternate
+                                const otherPrices = bidPricings.filter((p) => p.bid_version_id === v.id && p.id !== starId).sort((a, b) => a.sort_order - b.sort_order)
                                 return (
                                   <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', padding: '0.2rem 0', flexWrap: 'wrap' }}>
                                     <input type="checkbox" checked={v.include_in_submission} onChange={() => void toggleVersionInclude(vx)} style={{ cursor: 'pointer', margin: 0 }} aria-label={`${v.name} in the letter`} />
@@ -909,28 +946,45 @@ export function BidsCoverLetterTab({
                                     </span>
                                     <button type="button" onClick={() => void reorderVersion(vx, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▲</button>
                                     <button type="button" onClick={() => void reorderVersion(vx, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▼</button>
+                                    {v.include_in_submission && otherPrices.length > 0 ? (
+                                      <div style={{ flexBasis: '100%', paddingLeft: '1.65rem', display: 'grid', gap: '0.15rem' }}>
+                                        {otherPrices.map((op) => {
+                                          const osec = bundlePricings.find((x) => x.offeredPricingId === op.id)
+                                          return (
+                                            <label key={op.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer' }}>
+                                              <input type="checkbox" checked={op.include_in_submission} onChange={() => void setScenarioOffered(op, !op.include_in_submission)} style={{ margin: 0 }} aria-label={`Offer ${op.name} as an alternate`} />
+                                              <span style={{ color: 'var(--text-600)' }}>{op.name}</span>
+                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? `alternate${osec ? ` · $${formatCurrency(osec.revenueSum)}` : ''}` : 'not offered'}</span>
+                                            </label>
+                                          )
+                                        })}
+                                      </div>
+                                    ) : null}
                                   </div>
                                 )
                               })}
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                Checked bids go in the letter, each at its ★ price. Base bids add up; alternates are offered instead. Change a bid's price on the Pricing tab.
+                                {multi ? <>Checked bids go in {gcShort}'s letter at their ★ base price; ticked prices under a bid are offered to {gcShort} as alternates. </> : <>Checked bids go in the letter, each at its ★ price; ticked prices under a bid are offered as alternates. Base bids add up; alternate bids are offered instead. </>}Change prices on the Pricing tab.
+                                {multi ? <> <strong style={{ color: 'var(--text-strong)' }}>{gcShort}: base ${formatCurrency(gcBase)}{gcAlts ? ` + ${gcAlts} alternate${gcAlts === 1 ? '' : 's'}` : ''}</strong></> : null}
                                 {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
                               </div>
                               <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <button
                                   type="button"
-                                  disabled={markingSent || bundlePricings.filter((s) => s.bidVersionId).length === 0}
-                                  onClick={() => void markSentToday(bid.id, bundlePricings, headlineAmount > 0 ? headlineAmount : null)}
+                                  disabled={markingSent || gcSections.filter((s) => s.bidVersionId && !s.offeredPricingId && s.revenueSum > 0).length === 0}
+                                  title={gcSections.filter((s) => s.bidVersionId && !s.offeredPricingId && s.revenueSum > 0).length === 0 ? 'Nothing to send until this GC has a ★ base price' : undefined}
+                                  onClick={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null)}
                                   style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: markingSent ? 'wait' : 'pointer', opacity: bundlePricings.filter((s) => s.bidVersionId).length === 0 ? 0.5 : 1 }}
                                 >
-                                  {markingSent ? 'Marking…' : 'Mark sent today'}
+                                  {markingSent ? 'Marking…' : multi ? `Mark sent to ${gcShort}` : 'Mark sent today'}
                                 </button>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>stamps every bid in the letter with today + its ★ value, and sets the bid's sent date and value</span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{multi ? `stamps ${gcShort}'s bids with today + base price` : 'stamps every bid in the letter with today + its ★ value'}, and sets the bid's sent date and value</span>
                               </div>
                             </>
                           )}
                         </div>
-                      ) : bidPricings.length > 1 ? (
+                        )
+                      })() : bidPricings.length > 1 ? (
                         <div style={{ marginBottom: '0.7rem' }}>
                           <span style={studioFieldLabelStyle}>Versions in this submission</span>
                           {[...bidPricings].sort((a, b) => a.sort_order - b.sort_order).map((p, i, arr) => (
@@ -1133,7 +1187,7 @@ export function BidsCoverLetterTab({
                   </div>
 
                   <div className="cover-letter-studio-preview" style={{ display: 'grid', gap: '0.7rem' }}>
-                    {multiGc ? (
+                    {multiGc && coverLetterView === 'old' ? (
                       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
                         {gcPackets.map((pk) => {
                           const active = pk.key === selectedGcPacket?.key

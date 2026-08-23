@@ -336,6 +336,30 @@ export function BidsPricingTab({
   const [starChooser, setStarChooser] = useState<'share' | 'print' | 'csv' | null>(null)
   // F6b (v2.2133): "Adopt an existing bid" — fold a board bid into this package as a version.
   const [adoptOpen, setAdoptOpen] = useState(false)
+  // G1 (v2.2154): price options per GC — GC names for the structure bar, the "Another price" modal,
+  // and the offered-as-alternate toggle (price_book_versions.include_in_submission, scoped per version).
+  const [gcNamesById, setGcNamesById] = useState<Record<string, string>>({})
+  const [addPriceOpen, setAddPriceOpen] = useState<{ name: string; fromId: string | null; offer: boolean } | null>(null)
+  const [copyingGcPrice, setCopyingGcPrice] = useState(false)
+  useEffect(() => {
+    const ids = [...new Set(bidVersions.map((v) => v.customer_id).filter((id): id is string => !!id))].filter((id) => gcNamesById[id] === undefined)
+    if (ids.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('customers').select('id, name').in('id', ids)
+      if (cancelled || !data) return
+      setGcNamesById((prev) => { const next = { ...prev }; for (const c of data) next[c.id] = c.name ?? '—'; return next })
+    })()
+    return () => { cancelled = true }
+  }, [bidVersions, gcNamesById])
+  /** The GC a version's letter goes to: its own override, else the bid's GC. */
+  function gcNameForVersion(versionId: string | null): string {
+    const v = versionId ? bidVersions.find((x) => x.id === versionId) : undefined
+    if (v?.customer_id) return gcNamesById[v.customer_id] ?? '…'
+    const b = selectedBidForPricing as (BidWithBuilder & { customers?: { name?: string | null } | null; bids_gc_builders?: { name?: string | null } | null }) | null
+    return b?.customers?.name ?? b?.bids_gc_builders?.name ?? 'the GC'
+  }
+  const shortGc = (name: string) => name
   const [starChoice, setStarChoice] = useState<'star' | 'viewed'>('star')
   const [starBusy, setStarBusy] = useState(false)
   const [shareOverride, setShareOverride] = useState<{ pricingId: string; name: string; rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null>(null)
@@ -1266,7 +1290,10 @@ export function BidsPricingTab({
    * ★ customer-facing scenario (Cover Letter, Share, bid value); `selectedPricingVersionId` is
    * merely the scenario open on the Workbench. Card clicks only view; the star action persists.
    */
-  const customerFacingPricingId = selectedBidForPricing?.selected_price_book_version_id ?? null
+  const customerFacingPricingId =
+    (selectedBidVersionId ? bidVersions.find((v) => v.id === selectedBidVersionId)?.starred_price_book_version_id ?? null : null)
+    ?? selectedBidForPricing?.selected_price_book_version_id
+    ?? null
 
   /** The Workbench walkthrough stops, in the section's own top-to-bottom order. */
   const WORKBENCH_TOUR_STEPS: SpotlightTourStep[] = [
@@ -1316,15 +1343,71 @@ export function BidsPricingTab({
     const bid = selectedBidForPricing
     if (!bid) return
     const amount = revenue != null ? `$${formatCurrency(revenue)}` : 'its current total'
+    const gc = gcNameForVersion(selectedBidVersionId)
     const ok = await confirmDialog({
-      title: `Make "${v.name}" the customer-facing scenario?`,
+      title: `Make "${v.name}" the base price for ${gc}?`,
       message: `The Cover Letter, Share, Print, and the bid value will show ${amount}.`,
-      confirmLabel: 'Make customer-facing',
+      confirmLabel: 'Make base',
     })
     if (!ok) return
     if (v.id !== selectedPricingVersionId) viewWorkbenchScenario(v.id)
     await saveBidSelectedPriceBookVersion(bid.id, v.id)
-    showToast(`"${v.name}" is now what the customer sees.`, 'success')
+    // The base is never also an "offered alternate".
+    await supabase.from('price_book_versions').update({ include_in_submission: false }).eq('id', v.id)
+    await loadBidPricings(bid.id)
+    showToast(`"${v.name}" is now ${gc}'s base price.`, 'success')
+  }
+
+  /** G1: offer (or stop offering) a non-base price to this GC as an alternate on their letter. */
+  async function setScenarioOffered(v: { id: string; name: string }, offered: boolean) {
+    const bid = selectedBidForPricing
+    if (!bid) return
+    const { error: err } = await supabase.from('price_book_versions').update({ include_in_submission: offered }).eq('id', v.id)
+    if (err) { showToast('Could not update: ' + err.message, 'error'); return }
+    await loadBidPricings(bid.id)
+    const gc = shortGc(gcNameForVersion(selectedBidVersionId))
+    showToast(offered ? `"${v.name}" offered to ${gc} as an alternate.` : `"${v.name}" no longer offered to ${gc}.`, 'success')
+  }
+
+  /** G1: "Another price for this GC" — named clone of a scenario, optionally offered right away. */
+  async function createPriceOption(name: string, fromId: string | null, offer: boolean) {
+    const bid = selectedBidForPricing
+    const source = priceBookVersions.find((p) => p.id === (fromId ?? selectedPricingVersionId))
+    if (!bid || !source) return
+    setWbCloning(true)
+    try {
+      const { data, error: err } = await supabase.rpc('clone_price_book_version_to_bid', { p_source_version_id: source.id, p_bid_id: bid.id, p_name: name })
+      if (err) { setError(err.message); return }
+      const newId = (data as string) ?? null
+      if (newId) {
+        const patch: { bid_version_id?: string; include_in_submission: boolean } = { include_in_submission: offer }
+        if (selectedBidVersionId) patch.bid_version_id = selectedBidVersionId
+        await supabase.from('price_book_versions').update(patch).eq('id', newId)
+      }
+      await loadBidPricings(bid.id)
+      if (newId) viewWorkbenchScenario(newId)
+      const gc = shortGc(gcNameForVersion(selectedBidVersionId))
+      showToast(offer ? `"${name}" created from ${source.name} — offered to ${gc} as an alternate.` : `"${name}" created from ${source.name}.`, 'success')
+      setAddPriceOpen(null)
+    } finally {
+      setWbCloning(false)
+    }
+  }
+
+  /** G1: a GC with no prices yet starts from another GC's base price (clone of that version's ★). */
+  async function copyBasePriceFromVersion(sourceVersionId: string) {
+    const bid = selectedBidForPricing
+    const src = bidVersions.find((v) => v.id === sourceVersionId)
+    const starId = src?.starred_price_book_version_id ?? null
+    const star = starId ? priceBookVersions.find((p) => p.id === starId) : null
+    if (!bid || !star) return
+    setCopyingGcPrice(true)
+    try {
+      const newId = await cloneTemplateIntoBidAndActivate(star.id, star.name)
+      if (newId) showToast(`Copied ${gcNameForVersion(sourceVersionId)}'s base price into ${gcNameForVersion(selectedBidVersionId)} — now its base.`, 'success')
+    } finally {
+      setCopyingGcPrice(false)
+    }
   }
 
   /**
@@ -1381,33 +1464,6 @@ export function BidsPricingTab({
   }
 
   /** Iteration 2 — duplicate a Pricing as a fresh scenario and VIEW it (the ★ stays put). */
-  async function duplicateWorkbenchScenario() {
-    const bid = selectedBidForPricing
-    const source = priceBookVersions.find((v) => v.id === selectedPricingVersionId)
-    if (!bid || !source) return
-    setWbCloning(true)
-    try {
-      const { data, error: err } = await supabase.rpc('clone_price_book_version_to_bid', {
-        p_source_version_id: source.id,
-        p_bid_id: bid.id,
-        p_name: `${source.name} copy`,
-      })
-      if (err) {
-        setError(err.message)
-        return
-      }
-      const newId = (data as string) ?? null
-      if (newId && selectedBidVersionId) {
-        await supabase.from('price_book_versions').update({ bid_version_id: selectedBidVersionId }).eq('id', newId)
-      }
-      await loadBidPricings(bid.id)
-      if (newId) viewWorkbenchScenario(newId)
-      showToast(`Scenario "${source.name} copy" created — you’re viewing it. Star it when it should be what the customer sees.`, 'success')
-    } finally {
-      setWbCloning(false)
-    }
-  }
-
   /** Workbench: assign every exact-name book match in one batch (v2.2060). */
   async function fillMatchingBookEntries(matches: BookEntryMatch[]) {
     const bidId = selectedBidForPricing?.id
@@ -2562,9 +2618,27 @@ export function BidsPricingTab({
               (() => {
                 const derived = derivePricingWorkbench()
                 if (!derived) {
+                  // G1: a GC with no prices yet can start from another GC's base price.
+                  const donors = bidVersions.filter((v) => v.id !== selectedBidVersionId && v.starred_price_book_version_id && priceBookVersions.some((p) => p.id === v.starred_price_book_version_id))
+                  const noPricingHere = selectedBidVersionId != null && !priceBookVersions.some((p) => p.bid_version_id === selectedBidVersionId)
                   return (
                     <div style={{ padding: '1rem', border: '1px dashed var(--border-strong)', borderRadius: 8, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                      The Workbench needs Counts, an active Pricing, and a cost estimate. Set those up (the Old view and the Counts / Labor tabs work as always), then come back.
+                      {noPricingHere && donors.length > 0 ? (
+                        <>
+                          <div style={{ color: 'var(--text-strong)', fontWeight: 600, marginBottom: '0.3rem' }}>No prices yet for {gcNameForVersion(selectedBidVersionId)}.</div>
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            Start from another GC's base price:
+                            {donors.map((d) => (
+                              <button key={d.id} type="button" disabled={copyingGcPrice} onClick={() => void copyBasePriceFromVersion(d.id)} style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
+                                {copyingGcPrice ? 'Copying…' : `Copy ${shortGc(gcNameForVersion(d.id))}'s base price`}
+                              </button>
+                            ))}
+                            <span>or pick a price book in Old and price from there.</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>The Workbench needs Counts, an active Pricing, and a cost estimate. Set those up (the Old view and the Counts / Labor tabs work as always), then come back.</>
+                      )}
                     </div>
                   )
                 }
@@ -2648,7 +2722,7 @@ export function BidsPricingTab({
                               style={doorOptStyle}
                               onClick={() => {
                                 setWbVariantDoorOpen(false)
-                                void duplicateWorkbenchScenario()
+                                setAddPriceOpen({ name: '', fromId: selectedPricingVersionId, offer: true })
                               }}
                             >
                               <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>💲</span>
@@ -2752,18 +2826,18 @@ export function BidsPricingTab({
                         <>
                           <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', flexWrap: 'wrap' }}>
                             <div style={{ padding: '0.5rem 0.9rem', borderRight: '1px solid var(--border)', minWidth: '13rem' }}>
-                              <div style={labelStyle}>This bid{bidVersions.length > 1 ? ` — one of ${bidVersions.length} in the package` : ''}</div>
+                              <div style={labelStyle}>This GC — {gcNameForVersion(selectedBidVersionId)}</div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem' }}>
                                 <span style={{ border: '1px solid #3b82f6', background: 'var(--bg-subtle)', color: 'var(--text-strong)', borderRadius: 5, padding: '0.08rem 0.55rem', fontSize: '0.8rem', fontWeight: 600 }}>
                                   {activeVersionName ?? 'Current'}
                                 </span>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeVersionName ? 'switch at the top of the page' : 'this bid has one takeoff'}</span>
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeVersionName ? (bidVersions.filter((b) => (b.customer_id ?? null) === (bidVersions.find((x) => x.id === selectedBidVersionId)?.customer_id ?? null)).length > 1 ? 'one of several for this GC · switch at the top' : 'switch GC at the top of the page') : 'this bid has one takeoff'}</span>
                               </div>
                             </div>
                             <div style={{ padding: '0.5rem 0.9rem', flex: 1, minWidth: '18rem', borderRight: '1px solid var(--border)' }}>
-                              <div style={labelStyle}>Its price points — for you to compare</div>
+                              <div style={labelStyle}>Price options — what {shortGc(gcNameForVersion(selectedBidVersionId))} receives</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                The customer sees the <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> — Cover Letter, Share, Print, and the bid value all use it.
+                                <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> is the base price on their letter — Cover Letter, Share, Print, and the bid value use it. <b>Offer as alternate</b> adds a second price for the same GC, same counts.
                               </div>
                             </div>
                             <div style={{ padding: '0.5rem 0.9rem', minWidth: '12rem', maxWidth: '16rem' }}>
@@ -2780,6 +2854,7 @@ export function BidsPricingTab({
                               const rev = revOf(v.id)
                               const m = rev != null && rev > 0 ? (rev - totalCost) / rev : null
                               const unpriced = rev === 0
+                              const offered = !isCustomerFacing && !unpriced && (v as { include_in_submission?: boolean }).include_in_submission === true
                               return (
                                 <div
                                   key={v.id}
@@ -2795,7 +2870,7 @@ export function BidsPricingTab({
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
                                     <div style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</div>
                                     {isCustomerFacing ? (
-                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-green-600)', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>★ Customer sees this</span>
+                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-green-600)', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>★ base</span>
                                     ) : unpriced ? (
                                       <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
                                     ) : null}
@@ -2829,11 +2904,19 @@ export function BidsPricingTab({
                                       </button>
                                     )}
                                     {!isCustomerFacing && !unpriced ? (
-                                      <button type="button" onClick={(e) => { e.stopPropagation(); void makeScenarioCustomerFacing(v, rev) }} style={cardBtnStyle}>
-                                        ☆ Make customer-facing…
-                                      </button>
+                                      <>
+                                        <button type="button" onClick={(e) => { e.stopPropagation(); void setScenarioOffered(v, !offered) }} style={cardBtnStyle} title={offered ? 'Stop offering this price on the letter' : 'Add this price to the letter as an alternate — same counts, no new version'}>
+                                          {offered ? "Don't offer" : 'Offer as alternate'}
+                                        </button>
+                                        <button type="button" onClick={(e) => { e.stopPropagation(); void makeScenarioCustomerFacing(v, rev) }} style={cardBtnStyle}>
+                                          ☆ Make base
+                                        </button>
+                                      </>
                                     ) : null}
                                   </div>
+                                  {offered ? (
+                                    <span style={{ position: 'absolute', top: '0.5rem', right: '0.6rem', fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-link)', border: '1px solid var(--border)', background: 'var(--bg-blue-tint)', borderRadius: 999, padding: '0.05rem 0.4rem' }}>offered · alternate</span>
+                                  ) : null}
                                 </div>
                               )
                             })}
@@ -4090,6 +4173,32 @@ export function BidsPricingTab({
         }}
       />
 
+      {addPriceOpen && selectedBidForPricing ? (() => {
+        const gc = gcNameForVersion(selectedBidVersionId)
+        const mine = priceBookVersions.filter((p) => (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null))
+        const defaultName = `Alternate ${Math.max(1, mine.length)}`
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }} onClick={() => !wbCloning && setAddPriceOpen(null)}>
+            <div role="dialog" aria-label={`Another price for ${gc}`} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 460, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Another price for {gc}</h3>
+              <p style={{ margin: '0 0 0.7rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>Same counts, same takeoff — a second price this GC can pick. Different materials? use “+ version” in the picker instead.</p>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.2rem' }}>Name this price option</label>
+              <input type="text" autoFocus value={addPriceOpen.name} onChange={(e) => setAddPriceOpen((st) => st && { ...st, name: e.target.value })} placeholder={defaultName} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void createPriceOption(addPriceOpen.name.trim() || defaultName, addPriceOpen.fromId, addPriceOpen.offer) } }} style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', font: 'inherit', boxSizing: 'border-box' }} />
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, margin: '0.6rem 0 0.2rem' }}>Start from</label>
+              <select value={addPriceOpen.fromId ?? ''} onChange={(e) => setAddPriceOpen((st) => st && { ...st, fromId: e.target.value || null })} style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', font: 'inherit' }}>
+                {mine.map((p) => <option key={p.id} value={p.id}>{p.name}{p.id === customerFacingPricingId ? ' · ★ base' : ''}</option>)}
+              </select>
+              <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.82rem', marginTop: '0.6rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={addPriceOpen.offer} onChange={(e) => setAddPriceOpen((st) => st && { ...st, offer: e.target.checked })} /> Offer it to {shortGc(gc)} as an alternate right away
+              </label>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
+                <button type="button" onClick={() => setAddPriceOpen(null)} disabled={wbCloning} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={() => void createPriceOption(addPriceOpen.name.trim() || defaultName, addPriceOpen.fromId, addPriceOpen.offer)} disabled={wbCloning || mine.length === 0} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: wbCloning ? 'wait' : 'pointer' }}>{wbCloning ? 'Creating…' : 'Create'}</button>
+              </div>
+            </div>
+          </div>
+        )
+      })() : null}
       {adoptOpen && selectedBidForPricing ? (
         <AdoptBidModal
           targetBid={selectedBidForPricing}
