@@ -203,3 +203,15 @@ export function formatJobNameTwoLines(name: string | null): { line1: string; lin
   }
   return { line1: a }
 }
+
+/**
+ * Split a formatCurrency string at its decimal point ("40,000.00" →
+ * main "40,000", cents ".00") so callers can render the cents in a smaller
+ * font (v2.2246, Sub Labor tab). The text content stays intact for
+ * copy/paste; cents is '' when there is no decimal point.
+ */
+export function splitFormattedAmountCents(formatted: string): { main: string; cents: string } {
+  const i = formatted.lastIndexOf('.')
+  if (i === -1) return { main: formatted, cents: '' }
+  return { main: formatted.slice(0, i), cents: formatted.slice(i) }
+}
