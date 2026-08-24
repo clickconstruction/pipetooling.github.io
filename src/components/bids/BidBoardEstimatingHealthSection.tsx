@@ -80,9 +80,6 @@ export function BidBoardEstimatingHealthSection({
         <button type="button" role="tab" aria-selected={healthView === 'new'} onClick={() => switchHealthView('new')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: healthView === 'new' ? '#2563eb' : 'transparent', color: healthView === 'new' ? '#fff' : 'var(--text-muted)' }}>
           New
         </button>
-        {healthView === 'new' ? (
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Pulse — same data as Old, every number clicks through.</span>
-        ) : null}
       </div>
       {healthView === 'new' ? (
         <Fragment>
