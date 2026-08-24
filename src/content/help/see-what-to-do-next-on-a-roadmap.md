@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, primary
 keywords: roadmap, next up, shortlist, plan, priority, what to do next, staffing, reasons, stage order
 order: 46
 ---
-The **Plan** view on **Checklist → Roadmap** opens with a small **⚡ Next up** panel: a short list of the tasks worth doing next, and *why*. It doesn't re-order your roadmap — the stage numbers and the full lists below stay exactly as you arranged them. It just points.
+The **Plan** view is where **Checklist → Roadmap** now opens (tap **Map** or **Timeline** to switch — your pick sticks on that device). It starts with a small **⚡ Next up** panel: a short list of the tasks worth doing next, and *why*. It doesn't re-order your roadmap — the stage numbers and the full lists below stay exactly as you arranged them. It just points.
 
 ## Two lanes
 
