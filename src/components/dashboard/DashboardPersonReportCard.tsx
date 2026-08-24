@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { DashboardGroupCard } from './DashboardGroupCard'
+import { SearchableSelect } from '../SearchableSelect'
 
 /**
  * "HR Report" — the field-report intake card (v2.2235), for master
@@ -71,6 +72,18 @@ export function DashboardPersonReportCard({ visible }: { visible: boolean }) {
     return m
   }, [people])
 
+  // Same searchable picker as checklist task assignment (SearchableSelect,
+  // in-place search) — the roster is long enough that a bare <select> was a
+  // scroll hunt. Labels carry the role so same-named people stay tellable.
+  const personOptions = useMemo(
+    () =>
+      (people ?? []).map((p) => ({
+        value: p.id,
+        label: p.kind ? `${p.name} — ${p.kind.replace(/_/g, ' ')}` : p.name,
+      })),
+    [people],
+  )
+
   if (!visible || unavailable || people == null) return null
 
   const canSend = personId !== '' && content.trim() !== '' && occurred !== '' && !busy
@@ -121,21 +134,22 @@ export function DashboardPersonReportCard({ visible }: { visible: boolean }) {
       defaultCollapsed
     >
       <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 0.2rem' }}>
-        For anything worth remembering — good or bad. A dev folds it into their record.
+        For anything worth remembering.
       </p>
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 190px', minWidth: 0 }}>
           <label style={labelStyle} htmlFor="person-report-who">Who is this about?</label>
-          <select id="person-report-who" style={fieldStyle} value={personId} onChange={(e) => setPersonId(e.target.value)}>
-            <option value="">Pick a person…</option>
-            {(people ?? []).map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-                {p.kind ? ` — ${p.kind}` : ''}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            id="person-report-who"
+            value={personId}
+            onChange={setPersonId}
+            options={personOptions}
+            placeholder="Pick a person…"
+            listAriaLabel="Who is this about?"
+            searchReplacesTrigger
+            triggerMinHeightPx={0}
+          />
         </div>
         <div style={{ flex: '0 1 150px' }}>
           <label style={labelStyle} htmlFor="person-report-when">When did it happen?</label>
