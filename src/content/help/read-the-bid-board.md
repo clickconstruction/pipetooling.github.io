@@ -28,6 +28,7 @@ Each row leads with the bid number: the **Counts** button sits on its left, the 
 - **Due Date** — a chip with the weekday + date on top and a signed day count under it: **(+4)** means four days past due, **(-2)** means due in two days. The red/amber colors appear **only on unsent bids** — once a bid is sent, the chip goes quiet (the wait is on the GC), and once it's decided the day count drops too. Not sure what a color means? Tap the little red/yellow/grey key beside the **Due Date** header for the legend. 
 - **Last Contact** — same two-line pattern: the date on top, **(+6)** = six days since you last touched the bid. Tap it to log a contact.
 - **Links** — icons for only the artifacts the bid actually has: project folder, job plans, CountTooling plans, bid submission.
+- **GC lines** — under a multi-GC bid, one line per GC: *sent date · state · name*. **Tap the name** to read and leave notes about that GC on this bid (a 💬 count shows who has notes); the state pill still sets won / lost.
 
 Distance to the office lives in the row dropdown, along with the address — tap the address there to open Google Maps.
 

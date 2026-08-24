@@ -12,7 +12,7 @@ import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCou
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
-import { formatBidValueShort, formatCompactCurrency } from '../../lib/bids/bidFormatting'
+import { bidDisplayName, formatBidValueShort, formatCompactCurrency } from '../../lib/bids/bidFormatting'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { bidBoardDueCellParts, bidBoardLastContactParts, DUE_SOON_WINDOW_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
@@ -63,6 +63,8 @@ type BidsBidBoardTabProps = {
   recipientsByBidId: BidGcRecipientsMap
   /** Bids by GC: per-bid GC packets (loaded once in Bids.tsx). */
   gcPacketsByBid: Record<string, GcPacket[]>
+  /** Per-GC note counts (v2.2217): `${bidId}:${gcCustomerId}` → n. */
+  gcNoteCounts?: Record<string, number>
 }
 
 const BID_BOARD_UNSENT_SECTION_LABEL = 'Unsent / Working Bids'
@@ -138,6 +140,7 @@ export function BidsBidBoardTab({
   workingBoardArchivedBids,
   recipientsByBidId,
   gcPacketsByBid,
+  gcNoteCounts,
 }: BidsBidBoardTabProps) {
   // How the viewer's OWN name is boxed on the board (per-account, per-theme —
   // picked via the color wheel on the Health line, v2.1710).
@@ -750,7 +753,7 @@ export function BidsBidBoardTab({
               </span>
               {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
                 // Bids by GC (in-cell, v2.2183): one line per GC — name · sent · state pill — in place of the GC name.
-                <div style={{ alignSelf: 'stretch', minWidth: 0 }}><BidBoardGcLines bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} dense /></div>
+                <div style={{ alignSelf: 'stretch', minWidth: 0 }}><BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} dense /></div>
               ) : (bid.customers || bid.bids_gc_builders) ? (
                 <button
                   type="button"
@@ -957,7 +960,7 @@ export function BidsBidBoardTab({
         </div>
         {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
           <div style={{ margin: '0.1rem 0 0.25rem' }}>
-            <BidBoardGcLines bidId={bid.id} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} />
+            <BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} />
           </div>
         ) : null}
         <div

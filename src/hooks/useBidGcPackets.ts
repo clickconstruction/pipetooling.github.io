@@ -7,13 +7,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { groupVersionsByGc, type GcPacket, type GcVersionLike } from '../lib/bids/gcPackets'
 import { latestSendByVersion, type VersionSendRow } from '../lib/bids/versionSends'
+import { countGcNotes } from '../lib/bids/bidGcNotes'
 
 type BidLite = { id: string; bid_date_sent: string | null; customers?: { name?: string | null } | null; bids_gc_builders?: { name?: string | null } | null }
 
-export function useBidGcPackets(bids: ReadonlyArray<BidLite>, recipientsByBid?: Record<string, ReadonlyArray<{ customerId: string; name: string }>>): { packetsByBid: Record<string, GcPacket[]>; reload: () => void } {
+export function useBidGcPackets(bids: ReadonlyArray<BidLite>, recipientsByBid?: Record<string, ReadonlyArray<{ customerId: string; name: string }>>): { packetsByBid: Record<string, GcPacket[]>; noteCounts: Record<string, number>; reload: () => void } {
   const [versions, setVersions] = useState<Array<GcVersionLike & { bid_id: string }>>([])
   const [sends, setSends] = useState<VersionSendRow[]>([])
   const [gcNames, setGcNames] = useState<Record<string, string>>({})
+  /** Per-GC note counts (v2.2217): `${bidId}:${gcCustomerId}` → n (scoped bids_submission_entries). */
+  const [noteCounts, setNoteCounts] = useState<Record<string, number>>({})
   const [tick, setTick] = useState(0)
   const ids = useMemo(() => bids.map((b) => b.id), [bids])
   const idsKey = ids.join('|')
@@ -21,11 +24,13 @@ export function useBidGcPackets(bids: ReadonlyArray<BidLite>, recipientsByBid?: 
     if (ids.length === 0) { setVersions([]); setSends([]); return }
     let cancelled = false
     void (async () => {
-      const [vRes, sRes] = await Promise.all([
+      const [vRes, sRes, nRes] = await Promise.all([
         supabase.from('bid_versions').select('id, bid_id, name, customer_id, sort_order, created_at, starred_price_book_version_id, outcome, outcome_at, loss_category, outcome_note').in('bid_id', ids),
         supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').in('bid_id', ids),
+        supabase.from('bids_submission_entries').select('bid_id, gc_customer_id').in('bid_id', ids).not('gc_customer_id', 'is', null),
       ])
       if (cancelled) return
+      setNoteCounts(countGcNotes(((nRes.data ?? []) as Array<{ bid_id: string; gc_customer_id: string | null }>)))
       const vs = ((vRes.data ?? []) as Array<GcVersionLike & { bid_id: string }>)
       setVersions(vs)
       setSends(sRes.error ? [] : ((sRes.data ?? []) as VersionSendRow[]))
@@ -43,10 +48,12 @@ export function useBidGcPackets(bids: ReadonlyArray<BidLite>, recipientsByBid?: 
     window.addEventListener('bid-version-sends-changed', bump)
     window.addEventListener('bid-version-picker-reload', bump)
     window.addEventListener('bid-gc-outcome-changed', bump)
+    window.addEventListener('bid-gc-notes-changed', bump)
     return () => {
       window.removeEventListener('bid-version-sends-changed', bump)
       window.removeEventListener('bid-version-picker-reload', bump)
       window.removeEventListener('bid-gc-outcome-changed', bump)
+      window.removeEventListener('bid-gc-notes-changed', bump)
     }
   }, [])
   const reload = useCallback(() => setTick((t) => t + 1), [])
@@ -63,5 +70,5 @@ export function useBidGcPackets(bids: ReadonlyArray<BidLite>, recipientsByBid?: 
     }
     return out
   }, [versions, sends, gcNames, bids, recipientsByBid])
-  return { packetsByBid, reload }
+  return { packetsByBid, noteCounts, reload }
 }
