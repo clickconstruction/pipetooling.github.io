@@ -131,6 +131,7 @@ when_to_read:
    - [gc-statement-email-dispatch](#gc-statement-email-dispatch)
    - [weekly-movement-email-dispatch](#weekly-movement-email-dispatch)
    - [weekly-money-email-dispatch](#weekly-money-email-dispatch)
+   - [payment-forecast-email-dispatch](#payment-forecast-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -2282,6 +2283,20 @@ interface SendPhysicalInvoiceEmailBody {
 **Deploy**: `supabase functions deploy weekly-money-email-dispatch --no-verify-jwt`. Requires migrations `20260807053000`/`20260807060000` (payload RPC) and `20260807070000` (requests table + pg_cron).
 
 **Cron**: pg_cron **`weekly-money-email-dispatch`** at **`4-59/5 * * * *`** since [`20260821010000_stagger_email_dispatch_crons.sql`](../supabase/migrations/20260821010000_stagger_email_dispatch_crons.sql) (was `*/5`; v2.1919 stagger), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
+---
+
+### payment-forecast-email-dispatch
+
+**Purpose** (v2.2225): Share the Stages **Payment forecast** modal (v2.1925) by email — the `payment_forecast` Report Subscriptions stream. Renders the modal top-to-bottom: bucket tile strip (Past expected / This week / Next week / following two weeks / Later), pay-speeds line, then each bucket's bills **Past expected first** (the follow-up queue leads). Numbers come from the service-role RPC **`get_payment_forecast_email_payload()`** (migration `20260824133529` — open billed rows + pay-speed medians + promised dates), rebuilt **at send time**; the **bucketing** runs in-function via [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts), a Deno port of the client kernels (`billedExpectedPay.ts` + `billedPaymentForecast.ts` — **source of truth; keep in sync**). Every job deep-links to `?jobDetail=`; the CTA opens `?tab=stages&forecast=1`. An **empty board still sends a one-liner** (a silent skip reads as a broken subscription) and weekly chains advance either way.
+
+**Endpoint**: `POST /functions/v1/payment-forecast-email-dispatch`
+
+**Modes** (billed-report-email skeleton): `preview` / `test_send` / `send_now` (caller JWT; sender roles dev/master_technician/assistant/controller; recipients office-capable incl. primary) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `payment_forecast_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard).
+
+**Deploy**: `supabase functions deploy payment-forecast-email-dispatch --no-verify-jwt`. Requires migration `20260824133529` (table + payload RPC + pg_cron).
+
+**Cron**: pg_cron **`payment-forecast-email-dispatch`** at **`4-59/5 * * * *`** — co-rides the weekly-money lane (all five */5 lanes were taken by the v2.1919 stagger; both co-tenants no-op cheaply), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
 
 ---
 

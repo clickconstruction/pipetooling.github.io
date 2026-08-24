@@ -597,6 +597,10 @@ verify_jwt = false
 [functions.weekly-money-email-dispatch]
 verify_jwt = false
 
+# Payment forecast dispatcher (v2.2225): cron via X-Cron-Secret; preview/test/send-now validate JWT in-function.
+[functions.payment-forecast-email-dispatch]
+verify_jwt = false
+
 # Emails reports to subscribed recipients via Resend: JWT validated in function (getUser); same gateway pattern as test-email.
 [functions.send-report-email]
 verify_jwt = false
