@@ -3,12 +3,27 @@
  * Render-smoke tests for PaySpeedsBreakdownModal — the pay-speeds drill-down
  * (v2.2022) with per-customer payment receipts (billed → paid → gap chips).
  */
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+
+// jsdom has no matchMedia; useIsMobile (mobile restack, v2.2252) needs a stub.
+let narrowMatches = false
+beforeAll(() => {
+  window.matchMedia = ((query: string) => ({
+    matches: query === '(max-width: 640px)' && narrowMatches,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia
+})
 
 const speeds: PaySpeedData = {
   company: { medianDays: 11, samples: 5 },
@@ -88,5 +103,18 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     fireEvent.click(screen.getByTitle('Show the payments behind this median'))
     fireEvent.click(screen.getByRole('button', { name: 'See these bills on the board →' }))
     expect(onOpen).toHaveBeenCalledWith('Knight Contracting')
+  })
+
+  it('mobile restack (v2.2252): ranked rows show payments and open dollars on one combined line', () => {
+    narrowMatches = true
+    try {
+      render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={speeds} onClose={() => {}} />)
+      // Two-line card: facts line fuses the desktop columns.
+      expect(screen.getByText(/4 pmts · \$[\d,]+ open/)).toBeTruthy()
+      // The desktop column header is display:none on mobile but still in the DOM.
+      expect(screen.getByText('Median')).toBeTruthy()
+    } finally {
+      narrowMatches = false
+    }
   })
 })
