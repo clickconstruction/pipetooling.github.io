@@ -158,6 +158,10 @@ export default function Jobs() {
   const loadJobsFromEffectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const LOAD_JOBS_AFTER_MUTATION_MS = 300
   const LOAD_JOBS_FROM_EFFECT_DEBOUNCE_MS = 50
+  /** Sub Labor's job picker offers paid-in-full jobs too — merge the lazy paid scope on demand (no-op once merged). */
+  const ensurePaidJobsLoaded = useCallback(() => {
+    void fetchPaidJobsIfNeeded(customerFilterForFetch)
+  }, [fetchPaidJobsIfNeeded, customerFilterForFetch])
   const loadJobs = useCallback(async () => {
     const rows = await runFetchJobs(customerFilterForFetch)
     // Direct loadJobs() calls are overwhelmingly post-mutation refetches (Bill
@@ -1881,6 +1885,8 @@ export default function Jobs() {
         onClearEditPayment={() => subLaborPaymentModalsRef.current?.clearEditPayment()}
         authUserId={authUser?.id}
         printJobSubSheet={printJobSubSheet}
+        ensurePaidJobsLoaded={ensurePaidJobsLoaded}
+        paidJobsLoading={paidJobsLoading}
       />
 
 
