@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import type { LaborJob, LaborJobPayment } from '../types/laborJob'
+import { buildLaborJobNamesByNumber } from '../lib/subLaborLedgerNames'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 
 /**
@@ -136,12 +137,13 @@ export function useSubLaborLedger({
         if (!paymentsByJob.has(p.job_id)) paymentsByJob.set(p.job_id, [])
         paymentsByJob.get(p.job_id)!.push({ id: p.id, amount: Number(p.amount), memo: p.memo, created_at: p.created_at, payment_date: p.payment_date })
       }
-      const jobNamesByHcp: Record<string, string> = {}
-      for (const j of (ledgerJobs ?? []) as Array<{ hcp_number: string; job_name: string }>) {
-        const key = (j.hcp_number ?? '').trim().toLowerCase()
-        if (key && j.job_name) jobNamesByHcp[key] = j.job_name.trim()
-      }
-      setLaborJobNamesByHcp(jobNamesByHcp)
+      // Key click-only jobs too — the RPC resolves them (empty hcp, matching
+      // click_number) but keying hcp_number alone dropped their names.
+      setLaborJobNamesByHcp(
+        buildLaborJobNamesByNumber(
+          (ledgerJobs ?? []) as Array<{ hcp_number: string; click_number?: string | null; job_name: string }>,
+        ),
+      )
       // Resolve project names for anchored sheets (display only, fail-soft).
       const projectIds = [...new Set((jobs as LaborJob[]).map((j) => j.project_id).filter((id): id is string => !!id))]
       const projectNamesById = new Map<string, string>()
