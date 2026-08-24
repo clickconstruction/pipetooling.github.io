@@ -25,7 +25,7 @@ The two biggest sections (**Not yet won or lost** and **Lost**) start with their
 
 Each row leads with the bid number: the **Counts** button sits on its left, the **Edit** gear on its right, and a red badge next to the number means unread notes. Then:
 
-- **Due Date** — a colored chip: the weekday + date on top, and a signed day count under it. **(+4)** means four days past due (red chip); **(-2)** means due in two days (amber when it's within three days). Not sure what a color means? Tap the little red/yellow/grey key beside the **Due Date** header for the legend. 
+- **Due Date** — a chip with the weekday + date on top and a signed day count under it: **(+4)** means four days past due, **(-2)** means due in two days. The red/amber colors appear **only on unsent bids** — once a bid is sent, the chip goes quiet (the wait is on the GC), and once it's decided the day count drops too. Not sure what a color means? Tap the little red/yellow/grey key beside the **Due Date** header for the legend. 
 - **Last Contact** — same two-line pattern: the date on top, **(+6)** = six days since you last touched the bid. Tap it to log a contact.
 - **Links** — icons for only the artifacts the bid actually has: project folder, job plans, CountTooling plans, bid submission.
 
