@@ -9258,6 +9258,93 @@ export type Database = {
           },
         ]
       }
+      person_file_entries: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: string
+          person_id: string
+          source: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          entry_date: string
+          id?: string
+          person_id: string
+          source?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          person_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_file_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_file_entries_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_files: {
+        Row: {
+          content: string
+          id: string
+          kind: string
+          person_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content?: string
+          id?: string
+          kind: string
+          person_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          id?: string
+          kind?: string
+          person_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_files_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_files_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_license_cost_lines: {
         Row: {
           amount: number

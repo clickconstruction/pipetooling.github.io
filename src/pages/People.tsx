@@ -11,6 +11,7 @@ import PeopleLicensesTab from '../components/people/PeopleLicensesTab'
 import PeopleOffsetsTab from '../components/people/PeopleOffsetsTab'
 import PeopleContractsTab from '../components/people/PeopleContractsTab'
 import PeopleSubsTab from '../components/people/PeopleSubsTab'
+import PeopleHrTab from '../components/people/PeopleHrTab'
 import PeopleOverheadTab from '../components/people/PeopleOverheadTab'
 import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
@@ -214,6 +215,7 @@ type PersonActiveProject = { id: string; name: string }
 type PeopleTab =
   | 'scoreboard'
   | 'review'
+  | 'hr'
   | 'users'
   | 'subs'
   | 'overhead'
@@ -806,6 +808,7 @@ export default function People() {
       tab === 'writeups' ||
       tab === 'review' ||
       tab === 'scoreboard' ||
+      tab === 'hr' ||
       tab === 'feedback' ||
       tab === 'activity'
     ) {
@@ -3135,6 +3138,22 @@ export default function People() {
             Review
           </button>
         )}
+        {isDev && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('hr')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'hr')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'hr')}
+          >
+            HR
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -4260,6 +4279,8 @@ export default function People() {
       ) : null}
 
       {activeTab === 'scoreboard' && isDev && <PeopleScoreboardTab />}
+      {/* 'hr' follows Scoreboard's pattern: no URL gate (isDev resolves async), render-site gated. */}
+      {activeTab === 'hr' && isDev && <PeopleHrTab />}
       {activeTab === 'review' && isDev && (
         <PeopleReviewTab
           payConfig={payConfig}
