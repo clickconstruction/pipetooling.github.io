@@ -15,7 +15,7 @@ A pill row stays pinned at the top of the board:
 
 {{chip:gray|Unsent 17}} {{chip:yellow|Pending 102}} {{chip:gray|Won 26}} {{chip:gray|Started 10}} {{chip:gray|Lost 99}} {{chip:gray|Health}}
 
-Tap a pill to jump straight to that section — it opens automatically if it was collapsed. **Health** takes you to the win-rate gauges and Scoreboard at the bottom. Each pill shows the live bid count; **Pending** is highlighted because it's usually where the action is.
+Tap a pill to jump straight to that section — it opens automatically if it was collapsed. **Health** takes you to the Estimating Pulse at the bottom. Each pill shows the live bid count; **Pending** is highlighted because it's usually where the action is.
 
 The two biggest sections (**Not yet won or lost** and **Lost**) start with their first 25 bids showing. Use {{button:outline-blue|Show all N ▾}} at the bottom of the list to see the rest; search always looks through every bid either way.
 

@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, estimator
 keywords: estimating health, pulse, weekly bids sent, won rate, win rate, scoreboard, bands, charging too much, field, people cards, waiting
 order: 69
 ---
-At the bottom of **Bids → Bid Board** (the **Health** pill jumps there) lives Estimating Health. It has two layouts, switched by the {{chip:gray|Old}} / {{chip:gray|New}} pills — Old is the classic weekly table + sliders + Scoreboard; **New is the Pulse**, the same data with every number one click from its bids.
+At the bottom of **Bids → Bid Board** (the **Health** pill jumps there) lives Estimating Health — the **Pulse**: your estimating record with every number one click from its bids. (It replaced the old weekly table + sliders + Scoreboard layout; same rules, same math.)
 
 ## The pulse
 
@@ -36,4 +36,4 @@ One card per person — their **Estimator** and **Account Man** sides live on th
 - {{chip:green|W 8}} {{chip:red|L 21}} {{chip:yellow|⏳ 46}} click through to the actual bids,
 - the marker on the mini-band is their won % for that role, and the numbers after it read like **28% · 23% $** — by count, then by dollars. A `*` marks a small sample; hover the line for the full sentence.
 
-Everything uses the same rules as the Scoreboard on the Old view, so the numbers always agree — the Pulse just shows them at a glance.
+Every number follows the same outcome rules the old Scoreboard used, so historic comparisons still hold — the Pulse just shows them at a glance.

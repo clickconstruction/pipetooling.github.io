@@ -17,7 +17,6 @@ import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { bidBoardDueCellParts, bidBoardLastContactParts, DUE_SOON_WINDOW_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
-import { computeBidBoardStaffOutcomeStatsByRole } from '../../lib/bids/bidBoardStaffOutcomes'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
@@ -206,11 +205,6 @@ export function BidsBidBoardTab({
         !isBidLossCategoryKey((b as { loss_category?: string | null }).loss_category ?? null),
     ).length
   }, [bidBoardBuckets.lost])
-
-  const bidBoardStaffOutcomeByRole = useMemo(
-    () => computeBidBoardStaffOutcomeStatsByRole(filteredBidsForBidBoard),
-    [filteredBidsForBidBoard]
-  )
 
   const bidBoardWeeklySentSummaries = useMemo(
     () => buildBidBoardWeeklySentSummaries(filteredBidsForBidBoard),
@@ -1382,11 +1376,9 @@ export function BidsBidBoardTab({
           ) : null}
           <div id="bid-board-health-section" style={{ scrollMarginTop: '3.25rem' }}>
             <BidBoardEstimatingHealthSection
-              staffOutcomeByRole={bidBoardStaffOutcomeByRole}
               weeklySentSummaries={bidBoardWeeklySentSummaries}
               filteredBids={filteredBidsForBidBoard}
               isDev={isDev}
-              ledgerPrefixMap={ledgerPrefixMap}
             />
           </div>
         </div>
