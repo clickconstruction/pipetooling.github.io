@@ -33,6 +33,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'accounts-receivable',
       'billed-share-print',
       'billed-aging-chart',
+      'billed-payment-forecast',
       'paid-notifications',
       'paid-profit-chart',
       'paid-in-full-notifications',
@@ -89,7 +90,7 @@ describe('buildStagesSectionToolsMenu', () => {
 
   it('assistant and controller get Share / Print but not the notification settings', () => {
     const assistantKeys = keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'assistant' }))
-    expect(assistantKeys).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print'])
+    expect(assistantKeys).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast'])
     const controllerGroups = buildStagesSectionToolsMenu({ ...base, authRole: 'controller' })
     expect(keysOf(controllerGroups)).toEqual([
       'recently-added',
@@ -100,6 +101,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'accounts-receivable',
       'billed-share-print',
       'billed-aging-chart',
+      'billed-payment-forecast',
       'paid-profit-chart',
     ])
     // Controller's Paid in Full group holds only the profit chart (no ⚙).
@@ -109,7 +111,7 @@ describe('buildStagesSectionToolsMenu', () => {
 
   it('primary can open Accounts Receivable but sees no admin tools', () => {
     const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'primary' })
-    expect(keysOf(groups)).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable'])
+    expect(keysOf(groups)).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-payment-forecast'])
     const ar = groups.flatMap((g) => g.items).find((i) => i.key === 'accounts-receivable')
     expect(ar?.disabled).toBe(false)
   })
@@ -118,6 +120,15 @@ describe('buildStagesSectionToolsMenu', () => {
     const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'superintendent' })
     const ar = groups.flatMap((g) => g.items).find((i) => i.key === 'accounts-receivable')
     expect(ar?.disabled).toBe(true)
+  })
+
+  it('Payment forecast mirrors the header gate — hidden for superintendent and signed-out', () => {
+    for (const authRole of ['dev', 'master_technician', 'assistant', 'controller', 'primary']) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).toContain('billed-payment-forecast')
+    }
+    for (const authRole of ['superintendent', 'subcontractor', 'helpers', null]) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole }))).not.toContain('billed-payment-forecast')
+    }
   })
 
   it('GC Review disables only when Billed and Collections are both empty', () => {

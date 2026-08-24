@@ -32,7 +32,7 @@ Anyone who can see the board sees promises; marking them is for dev, masters, an
 
 ## The payment forecast
 
-The {{button:outline|Payment forecast}} button on the Billed Awaiting Payment header rolls every chip up into one view: open dollars bucketed by expected payment date — **Past expected** (your follow-up queue, listed first in red), **This week**, **Next week**, and beyond. It reads two ways:
+The {{button:green|Forecast}} button at the top of the Pipeline (next to {{button:blue|New Job}} and {{button:outline-amber|Follow-ups}}) rolls every chip up into one view — the same view also opens from the {{button:outline|Payment forecast}} button on the Billed Awaiting Payment header and from the stage strip's hamburger menu: open dollars bucketed by expected payment date — **Past expected** (your follow-up queue, listed first in red), **This week**, **Next week**, and beyond. It reads two ways:
 
 - **As a cash forecast** — "about $35k should land this week, $47k next week."
 - **As a work list** — everything in Past expected is a customer running slower than their own norm; click any row to jump straight to that bill on the board.

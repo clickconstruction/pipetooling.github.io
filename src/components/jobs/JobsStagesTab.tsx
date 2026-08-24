@@ -2261,6 +2261,26 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 liveJobStages={followupLiveJobStages}
               />
             ) : null}
+            {canSeeBilledExpectedPay && (
+              <button
+                type="button"
+                onClick={() => setBilledPaymentForecastOpen(true)}
+                title="Open billed dollars bucketed by expected payment date (bill date + customer pay speed)"
+                aria-label="Payment forecast"
+                style={{
+                  padding: '0.5rem 0.9rem',
+                  background: 'var(--bg-green-tint)',
+                  color: 'var(--text-green-700)',
+                  border: '1px solid var(--border-green)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Forecast
+              </button>
+            )}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
             <div
               style={{
@@ -2940,6 +2960,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             'accounts-receivable': () => setBankPaymentsModalOpen(true),
                             'billed-share-print': () => setBilledShareModalOpen(true),
                             'billed-aging-chart': () => setBilledAgingChartOpen(true),
+                            'billed-payment-forecast': () => setBilledPaymentForecastOpen(true),
                             'paid-notifications': () => setPaymentEmailSettingsOpen(true),
                             'paid-profit-chart': () => setPaidProfitChartOpen(true),
                             'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
