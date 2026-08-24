@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { awaitingStatementCard, balanceHeadline, longDate, partnerSinceLabel, todayLongDate } from './partnerStatementModel'
+import { balanceHeadline, longDate, partnerSinceLabel, todayLongDate } from './partnerStatementModel'
 import type { WeekCard } from './partnerWeeks'
 
 const card = (over: Partial<WeekCard>): WeekCard => ({
@@ -21,31 +21,6 @@ describe('balanceHeadline', () => {
     expect(balanceHeadline(60.25)).toBe('Click owes you')
     expect(balanceHeadline(-1008.13)).toBe('You owe Click')
     expect(balanceHeadline(0)).toBe('Even')
-  })
-})
-
-describe('awaitingStatementCard', () => {
-  it('returns the newest closed statement while unacknowledged', () => {
-    const live = card({ open: true, weekStart: '2026-08-23', weekEnd: null, stubId: null })
-    const last = card({ weekStart: '2026-08-16', weekEnd: '2026-08-22', stubId: 's2' })
-    const older = card({ weekStart: '2026-08-09', stubId: 's1', partnerAckAt: '2026-08-17T10:00:00Z' })
-    expect(awaitingStatementCard([live, last, older])?.stubId).toBe('s2')
-  })
-  it('returns null once the last statement is acknowledged — even if older ones are not', () => {
-    const live = card({ open: true, stubId: null })
-    const last = card({ weekStart: '2026-08-16', stubId: 's2', partnerAckAt: '2026-08-24T10:00:00Z' })
-    const older = card({ weekStart: '2026-08-09', stubId: 's1' })
-    expect(awaitingStatementCard([live, last, older])).toBeNull()
-  })
-  it('skips charge-only weeks (no statement to sign) when finding the last statement', () => {
-    const live = card({ open: true, stubId: null })
-    const chargesOnly = card({ weekStart: '2026-08-16', stubId: null })
-    const last = card({ weekStart: '2026-08-09', stubId: 's1' })
-    expect(awaitingStatementCard([live, chargesOnly, last])?.stubId).toBe('s1')
-  })
-  it('returns null with no closed statements at all', () => {
-    expect(awaitingStatementCard([card({ open: true, stubId: null })])).toBeNull()
-    expect(awaitingStatementCard([])).toBeNull()
   })
 })
 

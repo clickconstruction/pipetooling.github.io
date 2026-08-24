@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the partner statement paper (v2.2157): letterhead + balance
- * words, the D7 "last statement awaiting sign-off" block only while looking at
- * the open week, lens hides actions, print mode drops buttons and nav.
+ * Render smoke for the partner statement paper (v2.2157; acknowledgment flow
+ * removed v2.2212): letterhead + balance words, lens hides actions, print mode
+ * drops buttons and nav.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -39,12 +39,13 @@ const base: PartnerStatementPaperProps = {
 }
 
 describe('PartnerStatementPaper', () => {
-  it('prints the balance with its words and shows the awaiting statement under the open week', () => {
-    render(<PartnerStatementPaper {...base} onPrint={vi.fn()} onAcknowledge={vi.fn()} />)
+  it('prints the balance with its words — and no acknowledgment UI anywhere (v2.2212)', () => {
+    render(<PartnerStatementPaper {...base} onPrint={vi.fn()} />)
     expect(screen.getByText('Partner statement')).toBeTruthy()
     expect(screen.getByText('You owe Click')).toBeTruthy()
-    expect(screen.getByText(/Last statement · Week of Aug 9 · awaiting your sign-off/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Acknowledge statement' })).toBeTruthy()
+    expect(screen.queryByText(/Last statement ·/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Acknowledge statement' })).toBeNull()
+    expect(screen.queryByText(/acknowledged/i)).toBeNull()
     expect(screen.getByText('partner since Mar 22, 2026 · field $50 · estimating $35 / h')).toBeTruthy()
     expect(screen.getByText(/Partner account · Herber Electric/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Costing ›' })).toBeTruthy()
@@ -57,16 +58,17 @@ describe('PartnerStatementPaper', () => {
     expect(screen.getByText(/partner since Mar 22, 2026/)).toBeTruthy()
   })
 
-  it('hides the awaiting block when the reader is already on that week', () => {
-    render(<PartnerStatementPaper {...base} idx={1} />)
-    expect(screen.queryByText(/Last statement ·/)).toBeNull()
+  it('a closed week shows its closing and only Print as the action', () => {
+    render(<PartnerStatementPaper {...base} idx={1} onPrint={vi.fn()} />)
     expect(screen.getByText('Week closed')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Print / save PDF' })).toBeTruthy()
+    expect(screen.queryByText(/acknowledg/i)).toBeNull()
   })
 
-  it('lens: no partner actions, ack status as text', () => {
+  it('lens: no partner actions at all', () => {
     render(<PartnerStatementPaper {...base} idx={1} lens />)
-    expect(screen.queryByRole('button', { name: 'Acknowledge statement' })).toBeNull()
-    expect(screen.getByText('Awaiting the partner’s acknowledgment.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Print / save PDF' })).toBeNull()
+    expect(screen.queryByText(/acknowledg/i)).toBeNull()
   })
 
   it('print mode: no buttons at all', () => {

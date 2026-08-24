@@ -2,7 +2,7 @@ import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import type { LedgerDisplayRow } from '../../lib/partnerLedger/partnerLedgerJournal'
 import { balanceWords, crossingText, postingLabel, shortDate, signedBalanceLabel, weekOfLabel, weekRangeLabel } from '../../lib/partnerLedger/partnerLedgerFormat'
-import { awaitingStatementCard, balanceHeadline, longDate, partnerSinceLabel } from '../../lib/partnerLedger/partnerStatementModel'
+import { balanceHeadline, longDate, partnerSinceLabel } from '../../lib/partnerLedger/partnerStatementModel'
 import type { PartnerJobCosting, PartnerJobsPayload } from '../../lib/partnerLedger/partnerJobsPayload'
 import type { PartnerSummary, WeekCard } from '../../lib/partnerLedger/partnerWeeks'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PORTAL_FONT } from '../../lib/portal/portalTheme'
@@ -12,7 +12,7 @@ import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PORTAL_
  * Same letterhead, same palette, same ruled-ledger grammar: balance with its
  * words, the selected week laid out like the printed statement (Week opened →
  * lines → double-rule total), the last statement underneath while it awaits
- * sign-off (D7), the partner's jobs, and the full ledger. Purely presentational
+ * the partner's jobs, and the full ledger. Purely presentational
  * and inline-styled on purpose: `printMode` renders the identical markup into
  * a print window, so print IS the page (D4). Every color is painted
  * explicitly — this surface pins light like every customer/print surface.
@@ -30,8 +30,6 @@ export type PartnerStatementPaperProps = {
   costing?: PartnerJobCosting | null
   costingErr?: string | null
   onToggleCosting?: (jobId: string) => void
-  onAcknowledge?: (stubId: string) => void
-  acking?: boolean
   onPrint?: () => void
   /** Office lens ("View as …"): read-only — statement actions hidden, ack status lives on the Statements tab. */
   lens?: boolean
@@ -73,10 +71,6 @@ export function PartnerStatementPaper(p: PartnerStatementPaperProps) {
   const card = cards[idx] ?? null
   const live = cards[0]?.open ? cards[0] : null
   const headline = live ? live.closing : summary.balance
-  const awaiting = awaitingStatementCard(cards)
-  // D7: the last statement sits under the open week only while unacknowledged,
-  // and only when the reader is looking at the open week (else ‹ Older has it).
-  const showAwaiting = awaiting != null && card != null && card.open && awaiting !== card
   // The deal's start date when the partnership record has one; else the oldest week on file.
   const since = summary.started_on ? `partner since ${longDate(summary.started_on)}` : partnerSinceLabel(cards)
   const rates = [summary.rates.field > 0 ? `field $${summary.rates.field}` : null, summary.rates.estimating > 0 ? `estimating $${summary.rates.estimating}` : null].filter(Boolean).join(' · ')
@@ -145,25 +139,9 @@ export function PartnerStatementPaper(p: PartnerStatementPaperProps) {
           <WeekLines card={card} />
           <WeekTotal card={card} />
           {!printMode && !lens ? <WeekActions card={card} p={p} /> : null}
-          {lens && !card.open && card.stubId ? (
-            <div style={{ fontSize: 11, color: MUTED, marginTop: 10 }}>
-              {card.partnerAckAt ? `Partner acknowledged ${new Date(card.partnerAckAt).toLocaleDateString()}.` : 'Awaiting the partner’s acknowledgment.'}
-            </div>
-          ) : null}
         </>
       ) : null}
 
-      {/* D7: last statement, while it awaits sign-off */}
-      {showAwaiting && awaiting ? (
-        <div>
-          <span style={sectionHead}>
-            Last statement · {weekOfLabel(awaiting.weekStart, p.nowYear)} · {lens ? 'awaiting partner sign-off' : 'awaiting your sign-off'}
-          </span>
-          <WeekLines card={awaiting} />
-          <WeekTotal card={awaiting} />
-          {!printMode && !lens ? <WeekActions card={awaiting} p={p} /> : null}
-        </div>
-      ) : null}
 
       {/* Your jobs */}
       {jobs ? (
@@ -293,15 +271,6 @@ function WeekActions({ card, p }: { card: WeekCard; p: PartnerStatementPaperProp
   }
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
-      {!card.open && card.stubId ? (
-        card.partnerAckAt ? (
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: PAPER_GREEN }}>acknowledged {new Date(card.partnerAckAt).toLocaleDateString()}</span>
-        ) : (
-          <button type="button" disabled={p.acking} onClick={() => card.stubId && p.onAcknowledge?.(card.stubId)} style={{ ...inkButton, opacity: p.acking ? 0.6 : 1 }}>
-            Acknowledge statement
-          </button>
-        )
-      ) : null}
       <button type="button" onClick={() => p.onPrint?.()} style={outlineButton}>
         Print / save PDF
       </button>
@@ -389,7 +358,9 @@ function FullLedgerStacked({ rows, nowYear }: { rows: LedgerDisplayRow[]; nowYea
 }
 
 function FullLedgerTable({ rows, nowYear }: { rows: LedgerDisplayRow[]; nowYear: number }) {
-  const grid: CSSProperties = { display: 'grid', gridTemplateColumns: '72px 1fr auto auto', gap: '0 14px', alignItems: 'baseline', padding: '8px 0', borderBottom: `1px solid ${HAIR}`, fontSize: 12.5 }
+  // Fixed money columns (not `auto`): every row is its own grid, so auto columns
+  // sized per row and the header's AMOUNT/BALANCE drifted off the numbers (v2.2212).
+  const grid: CSSProperties = { display: 'grid', gridTemplateColumns: '72px 1fr 96px 104px', gap: '0 14px', alignItems: 'baseline', padding: '8px 0', borderBottom: `1px solid ${HAIR}`, fontSize: 12.5 }
   const right: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
   return (
     <div>
