@@ -84,7 +84,7 @@ export function SearchableSelectSeparatorListRow({ separator: o }: { separator: 
   )
 }
 
-type ListPosition = { top: number; left: number; width: number }
+type ListPosition = { top: number; left: number; width: number; listMaxHeight?: number }
 
 export type SearchableSelectProps = {
   value: string
@@ -114,6 +114,12 @@ export type SearchableSelectProps = {
   searchReplacesTrigger?: boolean
   /** Max height (px) of the scrollable options list; default 140. */
   listMaxHeightPx?: number
+  /**
+   * When true and the list opens downward, it grows to the bottom of the
+   * viewport (never smaller than `listMaxHeightPx`) so long rosters show many
+   * rows at once. The flip-above fallback keeps the fixed cap.
+   */
+  fillViewportHeight?: boolean
   /** CSS padding for each option row button; default `0.6rem 0.75rem`. */
   listOptionPadding?: string
   /** CSS font-size for option row text; default `0.875rem`. */
@@ -262,6 +268,7 @@ export function SearchableSelect({
   portalZIndex = PORTAL_Z_INDEX,
   searchReplacesTrigger: searchReplacesTriggerProp = false,
   listMaxHeightPx,
+  fillViewportHeight = false,
   listOptionPadding = DEFAULT_LIST_OPTION_PADDING,
   listOptionFontSize = DEFAULT_LIST_OPTION_FONT_SIZE,
   listMinWidthPx,
@@ -380,15 +387,21 @@ export function SearchableSelect({
 
     const extraListAbove = searchable && !searchReplacesTrigger ? 48 : 0
     let top: number
+    let listMaxHeight: number | undefined
     if (placeBelow) {
       top = rect.bottom + DROPDOWN_MARGIN_PX
+      if (fillViewportHeight) {
+        // Grow to the viewport bottom (8px gutter), never below the fixed cap.
+        const available = window.innerHeight - top - extraPortalSearchRow - 8
+        listMaxHeight = Math.max(available, resolvedListMaxHeightPx)
+      }
     } else {
       top = rect.top - resolvedListMaxHeightPx - DROPDOWN_MARGIN_PX - extraListAbove
       if (top < 8) top = 8
     }
 
-    setListPosition({ top, left, width })
-  }, [open, searchable, searchReplacesTrigger, resolvedListMaxHeightPx, listMinWidthPx])
+    setListPosition({ top, left, width, listMaxHeight })
+  }, [open, searchable, searchReplacesTrigger, resolvedListMaxHeightPx, listMinWidthPx, fillViewportHeight])
 
   useLayoutEffect(() => {
     updateListPosition()
@@ -699,7 +712,16 @@ export function SearchableSelect({
             )}
           </div>
         ) : (
-          <ul id={listId} role="listbox" aria-label={listAriaLabel} style={listboxStyle}>
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label={listAriaLabel}
+            style={
+              listPosition?.listMaxHeight !== undefined
+                ? { ...listboxStyle, maxHeight: listPosition.listMaxHeight }
+                : listboxStyle
+            }
+          >
             {filteredForRender.map((o, idx) => {
               if (isSeparatorOption(o)) {
                 return <SearchableSelectSeparatorListRow key={`sep-${o.id}-${idx}`} separator={o} />
