@@ -182,6 +182,12 @@ describe('buildStagesSectionToolsMenu', () => {
     expect(groups.flatMap((g) => g.items).find((i) => i.key === 'capable-to-bill')?.label).toBe(
       'Capable of Being Billed: $12,345',
     )
+    // While header stats are still loading the view passes '…' (same value the
+    // Working header shows) — the label must carry it through, not read $0.
+    const loading = buildStagesSectionToolsMenu({ ...base, authRole: 'assistant', capableToBillTotalFormatted: '…' })
+    expect(loading.flatMap((g) => g.items).find((i) => i.key === 'capable-to-bill')?.label).toBe(
+      'Capable of Being Billed: $…',
+    )
   })
 })
 
