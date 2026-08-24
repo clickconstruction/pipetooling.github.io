@@ -100,6 +100,7 @@ import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
 import BilledByCustomerBreakdownModal from './BilledByCustomerBreakdownModal'
 import PaidProfitChartModal from './PaidProfitChartModal'
 import BilledReportShareModal from './BilledReportShareModal'
+import PaymentForecastShareModal from './PaymentForecastShareModal'
 import JobBookModal from './JobBookModal'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
@@ -658,6 +659,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
   const [billedAgingChartOpen, setBilledAgingChartOpen] = useState(false)
   const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
+  /** Email… on the Payment forecast header (v2.2226) — the payment_forecast stream's share modal. */
+  const [forecastShareModalOpen, setForecastShareModalOpen] = useState(false)
   // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929).
   const [billedBreakdownOpen, setBilledBreakdownOpen] = useState(false)
   // The three billed money modals (aging chart / payment forecast / who owes
@@ -964,6 +967,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setChaseModalOpen(true)
       const p = new URLSearchParams(searchParams)
       p.delete('chase')
+      navigate({ search: p.toString() }, { replace: true })
+    }
+  }, [searchParams, navigate])
+  /** `?forecast=1` deep link (v2.2226): the forecast email's CTA opens the Payment forecast modal directly. */
+  const forecastParamConsumedRef = useRef(false)
+  useEffect(() => {
+    if (forecastParamConsumedRef.current) return
+    if (searchParams.get('forecast') === '1') {
+      forecastParamConsumedRef.current = true
+      setBilledPaymentForecastOpen(true)
+      const p = new URLSearchParams(searchParams)
+      p.delete('forecast')
       navigate({ search: p.toString() }, { replace: true })
     }
   }, [searchParams, navigate])
@@ -4766,8 +4781,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setBilledPaymentForecastOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
+          onEmail={
+            authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+              ? () => setForecastShareModalOpen(true)
+              : undefined
+          }
         />
       )}
+      {forecastShareModalOpen && <PaymentForecastShareModal onClose={() => setForecastShareModalOpen(false)} />}
       {chaseModalOpen && (
         <PaymentChaseModal
           queue={chaseFullQueue}

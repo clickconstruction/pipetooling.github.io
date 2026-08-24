@@ -41,6 +41,18 @@ Bills whose customers have no measurable history sit in **No pay history** at th
 
 The **Pay speeds** strip under the buckets gives the averages at a glance: the company-wide pay time next to the {{chip:blue|Res}} and {{chip:yellow|Comm}} averages, each with how many payments it's based on. Every row also wears its customer's Res/Comm tag — commercial GCs usually pay on check runs while homeowners pay on the spot, so the same "late by 10 days" reads very differently between the two.
 
+## Emailing the forecast
+
+The {{button:outline|✉ Email…}} button in the forecast's header sends this exact view as an email — the bucket totals, the pay-speeds line, and every bill with its expected date, past-expected follow-ups first. The email is built **fresh at send time**, so a Monday 7 AM email shows Monday's numbers.
+
+- **Send now** emails a teammate immediately; **Schedule…** picks a date and time (Central), and **Repeat weekly** turns it into a standing subscription — the classic setup is Monday 7:00 AM, so the week's cash-in picture is in the inbox before the day starts.
+- **Preview** opens the email in a new tab; **Email me a test** sends it to your own address first.
+- Pending sends list at the bottom of the dialog with a **Cancel** each — cancelling a weekly send ends the chain.
+- Recipients are office-capable teammates (dev, masters, assistant-type roles, and primary). Scheduled sends also appear on the recipient's {{icon:gear}} **Settings → Your account → My email schedule**.
+- Every job in the email links back to the app, and the **Open the forecast** button lands right on this modal.
+
+Sending is for dev, masters, and assistant-type roles — the same people who can share the Billed report.
+
 ## The pay-speeds breakdown
 
 The strip is a door: click anywhere on it (**See the breakdown ›**) and a second view opens showing *who* is behind those averages.

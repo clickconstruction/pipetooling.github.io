@@ -89,6 +89,7 @@ export default function BilledPaymentForecastModal({
   todayYmd,
   onClose,
   onOpenInvoice,
+  onEmail,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -98,6 +99,8 @@ export default function BilledPaymentForecastModal({
   todayYmd: string
   onClose: () => void
   onOpenInvoice: (invoiceId: string) => void
+  /** Opens the Email… share modal (v2.2226) — passed only for sender roles. */
+  onEmail?: () => void
 }) {
   const forecast = useMemo(
     () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises),
@@ -129,14 +132,41 @@ export default function BilledPaymentForecastModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Payment forecast</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
-          >
-            ×
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {onEmail && (
+              <button
+                type="button"
+                onClick={onEmail}
+                title="Email this forecast to a teammate — now, scheduled, or weekly"
+                aria-label="Email payment forecast"
+                style={{
+                  height: 30,
+                  padding: '0 0.75rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 6,
+                  background: 'var(--surface)',
+                  cursor: 'pointer',
+                  color: 'var(--text-700)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span aria-hidden>✉</span>
+                Email…
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
+            >
+              ×
+            </button>
+          </div>
         </div>
         <p style={{ margin: '0.25rem 0 0.9rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Open billed dollars by expected payment date — the bill date plus each customer's median pay speed (last 12
