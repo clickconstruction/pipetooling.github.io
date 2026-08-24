@@ -323,7 +323,7 @@ export function DashboardRecentReportsSection({
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
                                 <span style={{ flex: 1, minWidth: 0 }}>
-                                  {r.job_ledger_id ? (
+                                  {r.job_ledger_id && role !== 'primary' ? (
                                     <span
                                       role="button"
                                       tabIndex={0}
@@ -407,7 +407,9 @@ export function DashboardRecentReportsSection({
                                 <p style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>No content</p>
                               )}
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                                {r.job_ledger_id ? (
+                                {/* Primaries only reach their own Account-Man jobs (v2.2177 scoping),
+                                    and reports span every job — so no job-detail door for them (v2.2222). */}
+                                {r.job_ledger_id && role !== 'primary' ? (
                                   <button
                                     type="button"
                                     style={rowActionChip}
