@@ -27,6 +27,11 @@ const TABLE_ROWS: Record<string, unknown[]> = {
     { id: 'e2', person_id: 'p-marcus', entry_date: '2026-08-19', content: 'Re-ran the vent stack on 6th St.', source: 'job_event', created_by: null, created_at: '2026-08-19T12:00:00.000Z' },
   ],
   users: [{ id: 'u-dev', name: 'Robert' }],
+  // v2.2231: one attachment linked to entry e2, one person-level exhibit.
+  person_file_attachments: [
+    { id: 'a1', person_id: 'p-marcus', entry_id: 'e2', storage_path: 'p-marcus/x-vent-photo.jpg', filename: 'vent-photo.jpg', mime_type: 'image/jpeg', size_bytes: 204800, author_label: null, uploaded_by: 'u-dev', created_at: '2026-08-20T00:00:00.000Z' },
+    { id: 'a2', person_id: 'p-marcus', entry_id: null, storage_path: 'p-marcus/y-agreement.pdf', filename: 'agreement.pdf', mime_type: 'application/pdf', size_bytes: 1258291, author_label: 'HR agent', uploaded_by: null, created_at: '2026-08-20T00:00:00.000Z' },
+  ],
 }
 
 vi.mock('../../hooks/useAuth', async () => {
@@ -81,5 +86,13 @@ describe('PeopleHrTab', () => {
     expect(screen.getByText(/Robert · logged/)).toBeTruthy()
     expect(screen.getByPlaceholderText(/facts and dates, no speculation/)).toBeTruthy()
     expect(screen.getByText('Add entry')).toBeTruthy()
+
+    // v2.2231 exhibits: the person-level exhibit panel and the entry-linked chip.
+    expect(screen.getByText('Exhibits')).toBeTruthy()
+    expect(screen.getByText('agreement.pdf')).toBeTruthy()
+    expect(screen.getByText('1.2 MB')).toBeTruthy()
+    expect(screen.getByText('vent-photo.jpg')).toBeTruthy()
+    expect(screen.getByText('+ Add exhibits')).toBeTruthy()
+    expect(screen.getByText(/Attach files/)).toBeTruthy()
   })
 })

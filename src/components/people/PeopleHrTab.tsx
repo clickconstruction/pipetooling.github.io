@@ -47,7 +47,33 @@ type EntryRow = {
   author_label: string | null
 }
 
+type AttachmentRow = {
+  id: string
+  person_id: string
+  entry_id: string | null
+  storage_path: string
+  filename: string
+  mime_type: string | null
+  size_bytes: number | null
+  author_label: string | null
+  uploaded_by: string | null
+  created_at: string
+}
+
 type FileView = 'summary' | 'narrative' | 'raw'
+
+const HR_FILES_BUCKET = 'hr-files'
+
+function formatBytes(n: number | null): string {
+  if (n === null || !Number.isFinite(n)) return ''
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function safeUploadName(filename: string): string {
+  return filename.replace(/[^A-Za-z0-9._-]+/g, '_').slice(-120)
+}
 
 export const HR_ENTRY_SOURCES = [
   'conversation',
@@ -150,6 +176,9 @@ export default function PeopleHrTab() {
   const [entries, setEntries] = useState<EntryRow[]>([])
   const [entriesLoading, setEntriesLoading] = useState(false)
   const hrDocRef = useRef<HTMLDivElement>(null)
+  const [attachments, setAttachments] = useState<AttachmentRow[]>([])
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [uploadingExhibit, setUploadingExhibit] = useState(false)
 
   const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
   const [draftDate, setDraftDate] = useState(todayYmd)
@@ -188,18 +217,65 @@ export default function PeopleHrTab() {
 
   const loadEntries = useCallback(async (personId: string) => {
     setEntriesLoading(true)
-    const { data, error } = await supabase
-      .from('person_file_entries')
-      .select('id, person_id, entry_date, content, source, created_by, created_at, author_label')
-      .eq('person_id', personId)
-      .order('entry_date', { ascending: false })
-      .order('created_at', { ascending: false })
+    const [entriesRes, attachRes] = await Promise.all([
+      supabase
+        .from('person_file_entries')
+        .select('id, person_id, entry_date, content, source, created_by, created_at, author_label')
+        .eq('person_id', personId)
+        .order('entry_date', { ascending: false })
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('person_file_attachments')
+        .select('id, person_id, entry_id, storage_path, filename, mime_type, size_bytes, author_label, uploaded_by, created_at')
+        .eq('person_id', personId)
+        .order('created_at', { ascending: false }),
+    ])
     setEntriesLoading(false)
-    if (error) {
-      showToast(`Couldn't load entries: ${error.message}`, 'error')
+    if (entriesRes.error) {
+      showToast(`Couldn't load entries: ${entriesRes.error.message}`, 'error')
       return
     }
-    setEntries((data ?? []) as EntryRow[])
+    setEntries((entriesRes.data ?? []) as EntryRow[])
+    // Attachments failing to load shouldn't blank the timeline — degrade quietly.
+    setAttachments(attachRes.error ? [] : ((attachRes.data ?? []) as AttachmentRow[]))
+  }, [showToast])
+
+  /** Upload files to the hr-files bucket + insert their metadata rows. */
+  const uploadAttachments = useCallback(async (personId: string, entryId: string | null, files: File[]): Promise<boolean> => {
+    for (const file of files) {
+      const path = `${personId}/${crypto.randomUUID()}-${safeUploadName(file.name)}`
+      const up = await supabase.storage.from(HR_FILES_BUCKET).upload(path, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false,
+      })
+      if (up.error) {
+        showToast(`Couldn't upload ${file.name}: ${up.error.message}`, 'error')
+        return false
+      }
+      const ins = await supabase.from('person_file_attachments').insert({
+        person_id: personId,
+        entry_id: entryId,
+        storage_path: path,
+        filename: file.name,
+        mime_type: file.type || null,
+        size_bytes: file.size,
+        uploaded_by: authUser?.id ?? null,
+      })
+      if (ins.error) {
+        showToast(`Uploaded ${file.name} but couldn't record it: ${ins.error.message}`, 'error')
+        return false
+      }
+    }
+    return true
+  }, [authUser?.id, showToast])
+
+  const openAttachment = useCallback(async (a: AttachmentRow) => {
+    const { data, error } = await supabase.storage.from(HR_FILES_BUCKET).createSignedUrl(a.storage_path, 600)
+    if (error || !data?.signedUrl) {
+      showToast(`Couldn't open ${a.filename}: ${error?.message ?? 'no URL'}`, 'error')
+      return
+    }
+    window.open(data.signedUrl, '_blank', 'noopener')
   }, [showToast])
 
   useEffect(() => {
@@ -263,23 +339,71 @@ export default function PeopleHrTab() {
   const addEntry = useCallback(async () => {
     if (!selectedPersonId || draftContent.trim() === '' || savingEntry) return
     setSavingEntry(true)
-    const { error } = await supabase.from('person_file_entries').insert({
-      person_id: selectedPersonId,
-      entry_date: draftDate,
-      content: draftContent.trim(),
-      source: draftSource,
-      created_by: authUser?.id ?? null,
-    })
-    setSavingEntry(false)
+    const { data, error } = await supabase
+      .from('person_file_entries')
+      .insert({
+        person_id: selectedPersonId,
+        entry_date: draftDate,
+        content: draftContent.trim(),
+        source: draftSource,
+        created_by: authUser?.id ?? null,
+      })
+      .select('id')
+      .single()
     if (error) {
+      setSavingEntry(false)
       showToast(`Couldn't add the entry: ${error.message}`, 'error')
       return
     }
+    // Attach any files staged in the composer to the new entry.
+    if (pendingFiles.length > 0) {
+      const entryId = (data as { id: string } | null)?.id ?? null
+      const ok = await uploadAttachments(selectedPersonId, entryId, pendingFiles)
+      if (ok) setPendingFiles([])
+    }
+    setSavingEntry(false)
     showToast('Entry added', 'success')
     setDraftContent('')
     setDraftDate(todayYmd)
     await Promise.all([loadEntries(selectedPersonId), load()])
-  }, [selectedPersonId, draftContent, draftDate, draftSource, savingEntry, authUser?.id, showToast, loadEntries, load, todayYmd])
+  }, [selectedPersonId, draftContent, draftDate, draftSource, savingEntry, authUser?.id, showToast, loadEntries, load, todayYmd, pendingFiles, uploadAttachments])
+
+  const addExhibits = useCallback(async (files: FileList | null) => {
+    if (!selectedPersonId || !files || files.length === 0 || uploadingExhibit) return
+    setUploadingExhibit(true)
+    const ok = await uploadAttachments(selectedPersonId, null, Array.from(files))
+    setUploadingExhibit(false)
+    if (ok) {
+      showToast(files.length === 1 ? 'Exhibit added' : `${files.length} exhibits added`, 'success')
+      await loadEntries(selectedPersonId)
+    }
+  }, [selectedPersonId, uploadingExhibit, uploadAttachments, showToast, loadEntries])
+
+  const attachmentsByEntry = useMemo(() => {
+    const map = new Map<string, AttachmentRow[]>()
+    for (const a of attachments) {
+      if (!a.entry_id) continue
+      const list = map.get(a.entry_id) ?? []
+      list.push(a)
+      map.set(a.entry_id, list)
+    }
+    return map
+  }, [attachments])
+  const exhibitAttachments = useMemo(() => attachments.filter((a) => a.entry_id === null), [attachments])
+
+  const attachmentChip = (a: AttachmentRow) => (
+    <button
+      key={a.id}
+      type="button"
+      onClick={() => { void openAttachment(a) }}
+      title={`${a.filename}${a.size_bytes !== null ? ` · ${formatBytes(a.size_bytes)}` : ''} · added ${formatIsoDate(a.created_at)}`}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.12rem 0.55rem', borderRadius: 999, fontSize: '0.74rem', border: '1px solid var(--border-strong)', background: 'var(--bg-page)', color: 'var(--text-link)', cursor: 'pointer', maxWidth: '32ch' }}
+    >
+      <span aria-hidden>📎</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.filename}</span>
+      {a.size_bytes !== null && <span style={{ color: 'var(--text-faint)', flex: 'none' }}>{formatBytes(a.size_bytes)}</span>}
+    </button>
+  )
 
   const renderDoc = (doc: PersonFileRow | undefined, kind: 'summary' | 'narrative') => {
     const fr = selectedFreshness
@@ -476,6 +600,28 @@ export default function PeopleHrTab() {
               {fileView === 'raw' && (
                 <div>
                   <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem', marginBottom: '1rem', maxWidth: '70ch' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: exhibitAttachments.length > 0 ? '0.5rem' : 0 }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-strong)' }}>Exhibits</span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>person-level files; entry-linked ones sit on their entries below</span>
+                      <label style={{ marginLeft: 'auto', fontSize: '0.76rem', color: 'var(--text-link)', cursor: uploadingExhibit ? 'default' : 'pointer', fontWeight: 600 }}>
+                        {uploadingExhibit ? 'Uploading…' : '+ Add exhibits'}
+                        <input
+                          type="file"
+                          multiple
+                          disabled={uploadingExhibit}
+                          onChange={(e) => { void addExhibits(e.target.files); e.target.value = '' }}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                    </div>
+                    {exhibitAttachments.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                        {exhibitAttachments.map(attachmentChip)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem', marginBottom: '1rem', maxWidth: '70ch' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                       <input
                         type="date"
@@ -501,14 +647,41 @@ export default function PeopleHrTab() {
                       rows={3}
                       style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 7, fontSize: '0.84rem', background: 'var(--bg-page)', color: 'var(--text-base)', resize: 'vertical', fontFamily: 'inherit' }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => { void addEntry() }}
-                      disabled={savingEntry || draftContent.trim() === ''}
-                      style={{ marginTop: '0.5rem', padding: '0.4rem 0.9rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: savingEntry || draftContent.trim() === '' ? 'default' : 'pointer', background: 'var(--text-link)', color: 'var(--surface)', opacity: savingEntry || draftContent.trim() === '' ? 0.55 : 1 }}
-                    >
-                      {savingEntry ? 'Adding…' : 'Add entry'}
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => { void addEntry() }}
+                        disabled={savingEntry || draftContent.trim() === ''}
+                        style={{ padding: '0.4rem 0.9rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: savingEntry || draftContent.trim() === '' ? 'default' : 'pointer', background: 'var(--text-link)', color: 'var(--surface)', opacity: savingEntry || draftContent.trim() === '' ? 0.55 : 1 }}
+                      >
+                        {savingEntry ? 'Adding…' : 'Add entry'}
+                      </button>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--text-link)', cursor: 'pointer' }}>
+                        📎 Attach files
+                        <input
+                          type="file"
+                          multiple
+                          onChange={(e) => {
+                            if (e.target.files) setPendingFiles((prev) => [...prev, ...Array.from(e.target.files ?? [])])
+                            e.target.value = ''
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      {pendingFiles.map((f, i) => (
+                        <span key={`${f.name}-${i}`} style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                          {f.name}
+                          <button
+                            type="button"
+                            aria-label={`Remove ${f.name}`}
+                            onClick={() => setPendingFiles((prev) => prev.filter((_, j) => j !== i))}
+                            style={{ marginLeft: '0.25rem', border: 'none', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: '0.74rem' }}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   {entriesLoading ? (
@@ -525,6 +698,11 @@ export default function PeopleHrTab() {
                             <span style={{ ...chipStyle(SOURCE_CHIP_STYLE[e.source] ?? SOURCE_CHIP_STYLE.conversation!), marginLeft: '0.5rem' }}>
                               {SOURCE_LABELS[e.source] ?? e.source}
                             </span>
+                            {(attachmentsByEntry.get(e.id) ?? []).length > 0 && (
+                              <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.35rem' }}>
+                                {(attachmentsByEntry.get(e.id) ?? []).map(attachmentChip)}
+                              </span>
+                            )}
                             <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: 2 }}>
                               {e.created_by ? (userNamesById[e.created_by] ?? 'unknown') : (e.author_label ?? 'agent')} · logged {formatIsoDate(e.created_at)}
                             </span>

@@ -53,6 +53,31 @@ Any agent (or dev) writing to these tables follows this:
 
 People → **HR** (dev-only cluster, next to Review/Scoreboard; `?tab=hr`, no URL gate — Scoreboard's async-`isDev` pattern). Left: roster grouped by kind, searchable, archived collapsed; freshness dot (green current / amber stale + days behind / grey empty) and entry count per person. Right: person header, then **Summary | Narrative | Raw entries**. The composer on Raw entries is the **only UI write**; curated docs are read-only in the UI and written by the agent directly (Supabase MCP / SQL).
 
+## Exhibits (v2.2231)
+
+Files attach to a person's HR file (and optionally a specific entry) via
+`person_file_attachments` + the **private `hr-files` bucket**. UI: Exhibits
+panel + composer "Attach files" on the Raw entries view; chips open 10-minute
+signed URLs. No UPDATE path — replace and note, like entry corrections.
+
+- **Agent uploads**: metadata inserts work as `hr_agent`; the byte upload needs
+  the storage API (service key) — `POST /storage/v1/object/hr-files/<path>`.
+  Path convention: `<person_id>/<uuid>-<sanitized-filename>`; insert the
+  metadata row in the same session.
+- **Storage setup (out-of-band, one-time — matches how the project's existing
+  buckets were created; storage schema is not in the migration ledger):**
+
+  ```sql
+  insert into storage.buckets (id, name, public) values ('hr-files','hr-files', false)
+  on conflict (id) do nothing;
+  create policy hr_files_dev_select on storage.objects for select to authenticated
+    using (bucket_id = 'hr-files' and public.is_dev());
+  create policy hr_files_dev_insert on storage.objects for insert to authenticated
+    with check (bucket_id = 'hr-files' and public.is_dev());
+  create policy hr_files_dev_delete on storage.objects for delete to authenticated
+    using (bucket_id = 'hr-files' and public.is_dev());
+  ```
+
 ## Agent credentials & the write RPC (v2.2232)
 
 - **Write as `hr_agent`, not `postgres`/service-role.** The role's RLS policies make entries **append-only by policy** for the agent and scope it to the HR tables + `people` reads. Password lives only in `.env.local` as `HR_AGENT_DB_PASSWORD` (set once, out-of-band: `ALTER ROLE hr_agent WITH LOGIN PASSWORD '…'`).
@@ -73,6 +98,22 @@ People → **HR** (dev-only cluster, next to Review/Scoreboard; `?tab=hr`, no UR
   It validates the person and sources, stamps `author_label`/`covered_through`, and the archive trigger versions any doc it overwrites.
 - **Corrections are still new entries** — the RPC cannot update or delete entries, by design.
 - Doc history: `select * from person_file_revisions where person_id = … order by replaced_at desc`.
+
+### Agent connection cookbook (verified live 2026-08-24)
+
+- **Connect via the session pooler**, not the direct host — `db.<ref>.supabase.co` resolves flakily (IPv6/DNS) from the office machine:
+
+  ```bash
+  PGPASSWORD="$HR_AGENT_DB_PASSWORD" psql \
+    "host=aws-1-us-east-1.pooler.supabase.com port=5432 dbname=postgres \
+     user=hr_agent.yewfzhbofbbyvkvtaatw sslmode=require"
+  ```
+
+  (`HR_AGENT_DB_PASSWORD` lives in `.env.local`.)
+- **Large or quote-heavy RPC payloads**: don't inline-quote SQL strings — build the JSON in a script, wrap it as `$J$<json>$J$::jsonb`, write a `.sql` file, run `psql -f`. Inline `jsonb_build_object` string literals broke on apostrophes in live testing; the JSON-file pattern is verified.
+- **Docs are markdown** — write real `##` headings (they power the narrative jump list); set `covered_through` on every summary rewrite (the RPC defaults it to `now()`).
+- **Exhibit bytes need the service key** (hr_agent covers metadata only): fetch it via the management API — `GET https://api.supabase.com/v1/projects/<ref>/api-keys?reveal=true` with `SUPABASE_MGMT_TOKEN` from `.env.local` — then `POST /storage/v1/object/hr-files/<person_id>/<uuid>-<sanitized-name>` and insert the `person_file_attachments` row as `hr_agent` in the same session.
+- **Sanity check after a write session**: entries/attachments counts, `person_files` lengths, and the roster dot — a summary left amber means fold entries in (or bump `covered_through` if the content already covers them).
 
 ## Agent recipes
 
