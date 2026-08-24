@@ -6,6 +6,7 @@ import { useDashboardSubSchedule } from '../../hooks/useDashboardSubSchedule'
 import { useFirstAssistantDispatchPhone } from '../../hooks/useFirstAssistantDispatchPhone'
 import { isSubcontractorLikeRole, isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { DashboardMyScheduleSection } from '../dashboard/DashboardMyScheduleSection'
+import { DashboardPersonReportCard } from '../dashboard/DashboardPersonReportCard'
 import DashboardFinancialsSection from '../DashboardFinancialsSection'
 import AdditionalReportModal from '../AdditionalReportModal'
 import { submitLinkJobPicturesDispatchRequestForJob } from '../../lib/linkJobPicturesDispatchRequest'
@@ -80,8 +81,10 @@ export default function DispatchModeHome() {
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // Waiting is usually the longest and least actionable group — start it closed.
-  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(() => new Set(['waiting']))
+  // Ready to bill is the actionable group in Dispatch Mode — every other stage starts closed.
+  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(
+    () => new Set(['waiting', 'working', 'billed', 'collections']),
+  )
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -272,6 +275,10 @@ export default function DispatchModeHome() {
           </div>
         )}
       </section>
+
+      {/* HR Report intake (v2.2235) — same card and role gate as the main Dashboard. */}
+      <DashboardPersonReportCard visible={role === 'dev' || role === 'master_technician'} />
+
       {leaveReportJob ? (
         <AdditionalReportModal
           open={!!leaveReportJob}
