@@ -19,6 +19,7 @@ const speeds: PaySpeedData = {
     commercial: { medianDays: 38, samples: 131 },
   },
   customerTypes: { knight: 'commercial' },
+  receipts: {},
 }
 
 function billedRow(): StageRow {

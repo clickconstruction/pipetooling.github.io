@@ -1,8 +1,14 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
-import type { CustomerSegment, PaySpeedData, PaySpeedStat } from '../../lib/jobs/billedExpectedPay'
-import { PAY_SPEED_MIN_SAMPLES } from '../../lib/jobs/billedExpectedPay'
-import { buildPaySpeedsBreakdown, bucketPaySpeeds, type PaySpeedCustomerRow } from '../../lib/jobs/paySpeedsBreakdown'
+import type { CustomerSegment, PayReceipt, PaySpeedData, PaySpeedStat } from '../../lib/jobs/billedExpectedPay'
+import { PAY_SPEED_MIN_SAMPLES, formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import {
+  buildPaySpeedsBreakdown,
+  bucketPaySpeeds,
+  formatYmdSlash,
+  receiptGapTone,
+  type PaySpeedCustomerRow,
+} from '../../lib/jobs/paySpeedsBreakdown'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 
 /**
@@ -64,6 +70,91 @@ function summaryTile(label: ReactNode, stat: PaySpeedStat | null) {
       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
         {stat ? `${stat.samples} ${stat.samples === 1 ? 'payment' : 'payments'}` : 'no data'}
       </div>
+    </div>
+  )
+}
+
+const GAP_TONE_COLORS: Record<ReturnType<typeof receiptGapTone>, { bg: string; fg: string }> = {
+  fast: { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-800)' },
+  mid: { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' },
+  slow: { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)' },
+  neutral: { bg: 'var(--bg-muted)', fg: 'var(--text-700)' },
+}
+
+/** One "(+16) 05/01–05/17" receipt chip — a single measurable payment. */
+function receiptChip(r: PayReceipt, companyMedian: number | null, key: number) {
+  const tone = GAP_TONE_COLORS[receiptGapTone(r.gapDays, companyMedian)]
+  return (
+    <span
+      key={key}
+      title={`Billed ${formatYmdMonthDay(r.billedYmd)} → paid ${formatYmdMonthDay(r.paidYmd)} (+${r.gapDays} ${r.gapDays === 1 ? 'day' : 'days'})`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'baseline',
+        gap: '0.35rem',
+        border: '1px solid var(--border)',
+        borderRadius: 9999,
+        padding: '1px 8px 1px 3px',
+        fontSize: '0.72rem',
+        background: 'var(--surface)',
+        fontVariantNumeric: 'tabular-nums',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ fontWeight: 700, borderRadius: 9999, padding: '0 6px', fontSize: '0.68rem', background: tone.bg, color: tone.fg }}>
+        +{r.gapDays}
+      </span>
+      <span style={{ fontWeight: 600 }}>
+        {formatYmdSlash(r.billedYmd)}–{formatYmdSlash(r.paidYmd)}
+      </span>
+    </span>
+  )
+}
+
+/** The expanded receipts panel under a customer row (or the why-empty note). */
+function receiptsPanel(c: PaySpeedCustomerRow, companyMedian: number | null, striped: boolean, onOpenBills?: () => void) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.35rem 0.4rem',
+        alignItems: 'center',
+        padding: '0.1rem 0.5rem 0.55rem 2rem',
+        background: striped ? 'var(--bg-muted)' : 'transparent',
+        borderRadius: '0 0 6px 6px',
+      }}
+    >
+      {c.receipts.length > 0 ? (
+        c.receipts.map((r, i) => receiptChip(r, companyMedian, i))
+      ) : (
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+          {c.samples > 0
+            ? 'Payment dates aren’t available yet — reload once the updated pay-speed lookup is live.'
+            : 'No invoice-linked payments in the last 12 months — nothing measurable yet.'}
+        </span>
+      )}
+      {onOpenBills && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpenBills()
+          }}
+          style={{
+            border: 'none',
+            background: 'none',
+            padding: 0,
+            cursor: 'pointer',
+            color: 'var(--text-link)',
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          See these bills on the board →
+        </button>
+      )}
     </div>
   )
 }
@@ -187,6 +278,10 @@ export default function PaySpeedsBreakdownModal({
 }) {
   const breakdown = useMemo(() => buildPaySpeedsBreakdown(rows, paySpeeds), [rows, paySpeeds])
   const [variant, setVariant] = useState<'dots' | 'buckets'>('dots')
+  // Per-customer receipts toggle (row click) — the payments behind each median.
+  const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({})
+  const toggleReceipts = (customerId: string) =>
+    setOpenReceipts((prev) => ({ ...prev, [customerId]: !prev[customerId] }))
   const companyMedian = paySpeeds?.company?.medianDays ?? null
 
   const pillStyle = (active: boolean): CSSProperties => ({
@@ -280,9 +375,11 @@ export default function PaySpeedsBreakdownModal({
 
         {breakdown.ranked.length > 0 && (
           <>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', margin: '0 0 0.4rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', margin: '0 0 0.4rem', flexWrap: 'wrap' }}>
               <h3 style={{ margin: 0, fontSize: '0.85rem' }}>By customer — slowest first</h3>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>the top of this list is your follow-up list</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                the top of this list is your follow-up list · click a row to see the payments behind its median
+              </span>
             </div>
             <div
               style={{
@@ -304,65 +401,83 @@ export default function PaySpeedsBreakdownModal({
               <span />
             </div>
             {breakdown.ranked.map((c, i) => (
-              <div
-                key={c.customerId}
-                role={onOpenCustomerBills ? 'button' : undefined}
-                tabIndex={onOpenCustomerBills ? 0 : undefined}
-                title={onOpenCustomerBills ? `Show ${c.name}'s bills on the board` : undefined}
-                onClick={onOpenCustomerBills ? () => onOpenCustomerBills(c.name) : undefined}
-                onKeyDown={
-                  onOpenCustomerBills
-                    ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          onOpenCustomerBills(c.name)
-                        }
-                      }
-                    : undefined
-                }
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: ROW_GRID,
-                  gap: '0.6rem',
-                  alignItems: 'center',
-                  padding: '0.42rem 0.5rem',
-                  borderRadius: 6,
-                  fontSize: '0.8rem',
-                  background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
-                  cursor: onOpenCustomerBills ? 'pointer' : 'default',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
-                  {segTag(c.segment)}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                </span>
-                <span
+              <div key={c.customerId}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!!openReceipts[c.customerId]}
+                  title={openReceipts[c.customerId] ? 'Hide the payments behind this median' : 'Show the payments behind this median'}
+                  onClick={() => toggleReceipts(c.customerId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleReceipts(c.customerId)
+                    }
+                  }}
                   style={{
-                    fontWeight: 700,
-                    fontVariantNumeric: 'tabular-nums',
-                    textAlign: 'right',
-                    color: (c.medianDays ?? 0) > 30 ? 'var(--text-red-600)' : 'var(--text)',
+                    display: 'grid',
+                    gridTemplateColumns: ROW_GRID,
+                    gap: '0.6rem',
+                    alignItems: 'center',
+                    padding: '0.42rem 0.5rem',
+                    borderRadius: openReceipts[c.customerId] ? '6px 6px 0 0' : 6,
+                    fontSize: '0.8rem',
+                    background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
+                    cursor: 'pointer',
                   }}
                 >
-                  ~{c.medianDays}d
-                </span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {c.samples} pmts
-                </span>
-                <span style={{ color: 'var(--text-700)', fontSize: '0.76rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {formatUsdNoCents(c.open)}
-                </span>
-                <span style={{ height: 8, borderRadius: 4, background: 'var(--border)', overflow: 'hidden', position: 'relative' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                    <span
+                      aria-hidden
+                      style={{
+                        color: 'var(--text-muted)',
+                        fontSize: '0.6rem',
+                        width: '0.7em',
+                        flexShrink: 0,
+                        display: 'inline-block',
+                        transform: openReceipts[c.customerId] ? 'rotate(90deg)' : 'none',
+                      }}
+                    >
+                      ▶
+                    </span>
+                    {segTag(c.segment)}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                  </span>
                   <span
                     style={{
-                      position: 'absolute',
-                      inset: '0 auto 0 0',
-                      width: `${breakdown.maxDays > 0 ? ((c.medianDays ?? 0) / breakdown.maxDays) * 100 : 0}%`,
-                      borderRadius: 4,
-                      background: segColor(c.segment),
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                      textAlign: 'right',
+                      color: (c.medianDays ?? 0) > 30 ? 'var(--text-red-600)' : 'var(--text)',
                     }}
-                  />
-                </span>
+                  >
+                    ~{c.medianDays}d
+                  </span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    {c.samples} pmts
+                  </span>
+                  <span style={{ color: 'var(--text-700)', fontSize: '0.76rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    {formatUsdNoCents(c.open)}
+                  </span>
+                  <span style={{ height: 8, borderRadius: 4, background: 'var(--border)', overflow: 'hidden', position: 'relative' }}>
+                    <span
+                      style={{
+                        position: 'absolute',
+                        inset: '0 auto 0 0',
+                        width: `${breakdown.maxDays > 0 ? ((c.medianDays ?? 0) / breakdown.maxDays) * 100 : 0}%`,
+                        borderRadius: 4,
+                        background: segColor(c.segment),
+                      }}
+                    />
+                  </span>
+                </div>
+                {openReceipts[c.customerId] &&
+                  receiptsPanel(
+                    c,
+                    companyMedian,
+                    i % 2 === 1,
+                    onOpenCustomerBills ? () => onOpenCustomerBills(c.name) : undefined,
+                  )}
               </div>
             ))}
           </>
@@ -375,30 +490,63 @@ export default function PaySpeedsBreakdownModal({
               {companyMedian != null ? ` (~${companyMedian}d)` : ''}
             </p>
             {breakdown.thin.map((c) => (
-              <div
-                key={c.customerId}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: ROW_GRID,
-                  gap: '0.6rem',
-                  alignItems: 'center',
-                  padding: '0.32rem 0.5rem',
-                  fontSize: '0.78rem',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
-                  {segTag(c.segment)}
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                </span>
-                <span style={{ textAlign: 'right' }}>—</span>
-                <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                  {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'}
-                </span>
-                <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
-                  {formatUsdNoCents(c.open)}
-                </span>
-                <span />
+              <div key={c.customerId}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!!openReceipts[c.customerId]}
+                  title={openReceipts[c.customerId] ? 'Hide this customer’s payments' : 'Show this customer’s payments'}
+                  onClick={() => toggleReceipts(c.customerId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleReceipts(c.customerId)
+                    }
+                  }}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: ROW_GRID,
+                    gap: '0.6rem',
+                    alignItems: 'center',
+                    padding: '0.32rem 0.5rem',
+                    fontSize: '0.78rem',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    borderRadius: 6,
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                    <span
+                      aria-hidden
+                      style={{
+                        fontSize: '0.6rem',
+                        width: '0.7em',
+                        flexShrink: 0,
+                        display: 'inline-block',
+                        transform: openReceipts[c.customerId] ? 'rotate(90deg)' : 'none',
+                      }}
+                    >
+                      ▶
+                    </span>
+                    {segTag(c.segment)}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                  </span>
+                  <span style={{ textAlign: 'right' }}>—</span>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'}
+                  </span>
+                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
+                    {formatUsdNoCents(c.open)}
+                  </span>
+                  <span />
+                </div>
+                {openReceipts[c.customerId] &&
+                  receiptsPanel(
+                    c,
+                    companyMedian,
+                    false,
+                    onOpenCustomerBills ? () => onOpenCustomerBills(c.name) : undefined,
+                  )}
               </div>
             ))}
           </div>
@@ -415,7 +563,8 @@ export default function PaySpeedsBreakdownModal({
           }}
         >
           Speeds come from recorded payments (bill date → paid date). "Open now" is what's sitting in Billed Awaiting
-          Payment for that customer today.
+          Payment for that customer today. Expanded receipts read (+16) 05/01–05/17 — billed date to the day money hit;
+          the gap is green at or under the company median, amber above it, red at twice it or more.
         </p>
       </div>
     </div>

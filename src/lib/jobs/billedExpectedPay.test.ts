@@ -18,6 +18,7 @@ const data: PaySpeedData = {
   },
   segments: { residential: null, commercial: null },
   customerTypes: {},
+  receipts: {},
 }
 
 describe('parsePaySpeedsRpc', () => {
@@ -36,6 +37,31 @@ describe('parsePaySpeedsRpc', () => {
       customers: { a: { medianDays: 35, samples: 12 } },
       segments: { residential: null, commercial: null },
       customerTypes: {},
+      receipts: {},
+    })
+  })
+
+  it('parses v3 receipts, dropping malformed entries and empty lists', () => {
+    const parsed = parsePaySpeedsRpc({
+      company: { medianDays: 11, samples: 5 },
+      customers: {},
+      receipts: {
+        knight: [
+          { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16 },
+          { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 30.6 },
+          { billedYmd: 'bad', paidYmd: '2026-05-17', gapDays: 16 },
+          { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: -2 },
+          null,
+        ],
+        empty: [],
+        notAList: { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16 },
+      },
+    })
+    expect(parsed?.receipts).toEqual({
+      knight: [
+        { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16 },
+        { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 31 },
+      ],
     })
   })
 
@@ -61,6 +87,7 @@ describe('parsePaySpeedsRpc', () => {
       customers: {},
       segments: { residential: null, commercial: null },
       customerTypes: {},
+      receipts: {},
     })
   })
 })
@@ -127,7 +154,7 @@ describe('billedExpectedPayModel', () => {
     expect(
       billedExpectedPayModel(
         { ...row, customerId: 'stranger' },
-        { company: null, customers: {}, segments: { residential: null, commercial: null }, customerTypes: {} },
+        { company: null, customers: {}, segments: { residential: null, commercial: null }, customerTypes: {}, receipts: {} },
         '2026-08-20',
       ),
     ).toBeNull()

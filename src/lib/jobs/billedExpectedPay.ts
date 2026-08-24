@@ -18,6 +18,9 @@ export type PaySpeedStat = { medianDays: number; samples: number }
 
 export type CustomerSegment = 'residential' | 'commercial'
 
+/** One measurable payment behind a customer's median: billed date → the day money hit. */
+export type PayReceipt = { billedYmd: string; paidYmd: string; gapDays: number }
+
 export type PaySpeedData = {
   company: PaySpeedStat | null
   customers: Record<string, PaySpeedStat>
@@ -25,6 +28,8 @@ export type PaySpeedData = {
   segments: { residential: PaySpeedStat | null; commercial: PaySpeedStat | null }
   /** Every typed customer's classification (v2 RPC) — forecast rows wear the Res/Comm tag from this. */
   customerTypes: Record<string, CustomerSegment>
+  /** Customer id → their measurable payments, newest paid first, capped at 12 (v3 RPC; empty pre-v3). */
+  receipts: Record<string, PayReceipt[]>
 }
 
 /** Below this many samples a customer's own median is ignored for the company fallback. */
@@ -39,7 +44,20 @@ function asStat(v: unknown): PaySpeedStat | null {
   return { medianDays: Math.max(0, Math.round(m)), samples: Math.round(s) }
 }
 
-/** Defensive parse of the RPC's jsonb (null on gate-refused or malformed payloads; v1 payloads get empty segments/types). */
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+
+function asReceipt(v: unknown): PayReceipt | null {
+  if (v == null || typeof v !== 'object') return null
+  const billed = (v as { billedYmd?: unknown }).billedYmd
+  const paid = (v as { paidYmd?: unknown }).paidYmd
+  const gap = (v as { gapDays?: unknown }).gapDays
+  if (typeof billed !== 'string' || !YMD_RE.test(billed)) return null
+  if (typeof paid !== 'string' || !YMD_RE.test(paid)) return null
+  if (typeof gap !== 'number' || !Number.isFinite(gap) || gap < 0) return null
+  return { billedYmd: billed, paidYmd: paid, gapDays: Math.round(gap) }
+}
+
+/** Defensive parse of the RPC's jsonb (null on gate-refused or malformed payloads; v1/v2 payloads get empty segments/types/receipts). */
 export function parsePaySpeedsRpc(raw: unknown): PaySpeedData | null {
   if (raw == null || typeof raw !== 'object') return null
   const company = asStat((raw as { company?: unknown }).company)
@@ -69,7 +87,16 @@ export function parsePaySpeedsRpc(raw: unknown): PaySpeedData | null {
       if (v === 'residential' || v === 'commercial') customerTypes[id] = v
     }
   }
-  return { company, customers, segments, customerTypes }
+  const receiptsRaw = (raw as { receipts?: unknown }).receipts
+  const receipts: Record<string, PayReceipt[]> = {}
+  if (receiptsRaw != null && typeof receiptsRaw === 'object') {
+    for (const [id, v] of Object.entries(receiptsRaw as Record<string, unknown>)) {
+      if (!Array.isArray(v)) continue
+      const list = v.map(asReceipt).filter((r): r is PayReceipt => r != null)
+      if (list.length > 0) receipts[id] = list
+    }
+  }
+  return { company, customers, segments, customerTypes, receipts }
 }
 
 /** A customer-promised payment date on a job (list_job_promised_pay_dates). */

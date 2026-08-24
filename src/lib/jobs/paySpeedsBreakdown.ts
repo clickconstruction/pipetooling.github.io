@@ -12,7 +12,7 @@
  */
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledRemainingAmount } from './invoiceBilling'
-import { PAY_SPEED_MIN_SAMPLES, type CustomerSegment, type PaySpeedData } from './billedExpectedPay'
+import { PAY_SPEED_MIN_SAMPLES, type CustomerSegment, type PayReceipt, type PaySpeedData } from './billedExpectedPay'
 
 export type PaySpeedCustomerRow = {
   customerId: string
@@ -23,6 +23,8 @@ export type PaySpeedCustomerRow = {
   samples: number
   /** Open billed dollars on the board right now (the header chips' sum rule). */
   open: number
+  /** The measurable payments behind the median (v3 RPC; empty on older payloads). */
+  receipts: PayReceipt[]
 }
 
 export type PaySpeedsBreakdown = {
@@ -56,6 +58,7 @@ export function buildPaySpeedsBreakdown(rows: StageRow[], paySpeeds: PaySpeedDat
       medianDays: hasOwnMedian ? own.medianDays : null,
       samples: own?.samples ?? 0,
       open,
+      receipts: paySpeeds?.receipts[customerId] ?? [],
     })
   }
   const all = [...byCustomer.values()]
@@ -64,6 +67,27 @@ export function buildPaySpeedsBreakdown(rows: StageRow[], paySpeeds: PaySpeedDat
     .sort((a, b) => (b.medianDays ?? 0) - (a.medianDays ?? 0) || b.open - a.open)
   const thin = all.filter((c) => c.medianDays == null).sort((a, b) => b.open - a.open)
   return { ranked, thin, maxDays: ranked.reduce((m, c) => Math.max(m, c.medianDays ?? 0), 0) }
+}
+
+/** "2026-05-01" → "05/01" — the receipt chips' compact date form. */
+export function formatYmdSlash(ymd: string): string {
+  const m = /^\d{4}-(\d{2})-(\d{2})/.exec(ymd)
+  if (!m) return ymd
+  return `${m[1]}/${m[2]}`
+}
+
+export type ReceiptGapTone = 'fast' | 'mid' | 'slow' | 'neutral'
+
+/**
+ * Color rule for a receipt's gap pill, judged against the company median:
+ * green at/under it, amber above, red at 2× or more ('neutral' when there is
+ * no company median to compare against).
+ */
+export function receiptGapTone(gapDays: number, companyMedianDays: number | null): ReceiptGapTone {
+  if (companyMedianDays == null || companyMedianDays <= 0) return 'neutral'
+  if (gapDays >= companyMedianDays * 2) return 'slow'
+  if (gapDays > companyMedianDays) return 'mid'
+  return 'fast'
 }
 
 export type PaySpeedBucket = {
