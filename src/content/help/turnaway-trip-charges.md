@@ -23,6 +23,8 @@ Note (optional): *"no answer, called twice"*
 {{button:outline|Cancel}} &nbsp; {{button:amber|File Turnaway}}
 :::
 
+Not in Job Mode? If the job is **on your schedule today**, the same option appears in yellow when you leave a report — open **New Report**, pick the job, and tap {{button:amber|Turnaway — not ready / not home}} under the report types. Same form, same result.
+
 Pick the reason, add a quick note if it helps, and tap {{button:amber|File Turnaway}}. Two things happen automatically:
 
 - A **field report** is saved on the job (with your location), so there's a permanent record.
