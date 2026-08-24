@@ -5,7 +5,7 @@ file: docs/HR_FILES.md
 type: Feature reference + agent writing convention
 purpose: The dev-only per-person HR files system — schema, access model, the People → HR tab, and (most importantly) the convention any agent or dev follows when writing to it.
 audience: Developers, AI Agents
-last_updated: 2026-08-23
+last_updated: 2026-08-24
 ---
 
 ## What this is
@@ -15,10 +15,11 @@ Per-person HR files, visible to **devs only**, maintained mostly by an AI agent 
 | Layer | Table | Mutability | What it is |
 |---|---|---|---|
 | **Raw entries** | `person_file_entries` | **Append-only** (no UPDATE/DELETE policies exist) | Dated facts: what happened, when, from where. The source of truth. |
-| **Summary** | `person_files` (`kind='summary'`) | Rewritten freely | ≤1 page: trajectory, reliability, pay, watch items. Read first. |
-| **Narrative** | `person_files` (`kind='narrative'`) | Extended, occasionally consolidated | The chronological story, oldest → newest. |
+| **Summary** | `person_files` (`kind='summary'`) | Rewritten freely — **prior versions auto-archive** (v2.2232) | ≤1 page: trajectory, reliability, pay, watch items. Read first. |
+| **Narrative** | `person_files` (`kind='narrative'`) | Extended, occasionally consolidated — **prior versions auto-archive** (v2.2232) | The chronological story, oldest → newest. |
+| **Doc history** | `person_file_revisions` | Written only by trigger; dev read-only | Prior version of every summary/narrative rewrite (v2.2232). |
 
-Shipped in the v2.2220–v2.2221 train: migration `20260824025109_person_hr_files.sql` (see `docs/migrations/`), tab `src/components/people/PeopleHrTab.tsx`, freshness kernel `src/lib/people/personFileFreshness.ts`.
+Shipped in the v2.2220–v2.2221 train: migration `20260824025109_person_hr_files.sql` (see `docs/migrations/`), tab `src/components/people/PeopleHrTab.tsx`, freshness kernel `src/lib/people/personFileFreshness.ts`. Extended in v2.2232 (`20260824141540_person_hr_files_v2.sql`): revisions table + archive trigger, `person_files.covered_through` (explicit coverage marker), `author_label` provenance columns, the `hr_agent_write(jsonb)` RPC, and the least-privilege `hr_agent` role.
 
 ## Access model — read before touching
 
@@ -50,6 +51,27 @@ Any agent (or dev) writing to these tables follows this:
 ## The tab
 
 People → **HR** (dev-only cluster, next to Review/Scoreboard; `?tab=hr`, no URL gate — Scoreboard's async-`isDev` pattern). Left: roster grouped by kind, searchable, archived collapsed; freshness dot (green current / amber stale + days behind / grey empty) and entry count per person. Right: person header, then **Summary | Narrative | Raw entries**. The composer on Raw entries is the **only UI write**; curated docs are read-only in the UI and written by the agent directly (Supabase MCP / SQL).
+
+## Agent credentials & the write RPC (v2.2232)
+
+- **Write as `hr_agent`, not `postgres`/service-role.** The role's RLS policies make entries **append-only by policy** for the agent and scope it to the HR tables + `people` reads. Password lives only in `.env.local` as `HR_AGENT_DB_PASSWORD` (set once, out-of-band: `ALTER ROLE hr_agent WITH LOGIN PASSWORD '…'`).
+- **Prefer the RPC over hand-built SQL** — one validated, atomic call:
+
+  ```sql
+  SELECT public.hr_agent_write(jsonb_build_object(
+    'person_id', '<people.id>',
+    'author_label', 'HR agent',
+    'entries', jsonb_build_array(jsonb_build_object(
+      'entry_date', '2026-08-24', 'source', 'incident', 'content', '…')),
+    'summary', '…full rewrite…',            -- optional
+    'narrative_append', '…new chapter…',    -- optional (or 'narrative' for full rewrite; mutually exclusive)
+    'covered_through', now()::text          -- optional; defaults to now()
+  ));
+  ```
+
+  It validates the person and sources, stamps `author_label`/`covered_through`, and the archive trigger versions any doc it overwrites.
+- **Corrections are still new entries** — the RPC cannot update or delete entries, by design.
+- Doc history: `select * from person_file_revisions where person_id = … order by replaced_at desc`.
 
 ## Agent recipes
 
