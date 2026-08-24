@@ -3,6 +3,7 @@ import type { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklyS
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidBoardEstimatingPulseSection } from './BidBoardEstimatingPulseSection'
 import { BidBoardWeeklyEstimatorLaborDevSection } from './BidBoardWeeklyEstimatorLaborDevSection'
+import { BidBoardSentShareDevSection } from './BidBoardSentShareDevSection'
 
 type BidBoardEstimatingHealthSectionProps = {
   weeklySentSummaries: ReturnType<typeof buildBidBoardWeeklySentSummaries>
@@ -27,7 +28,12 @@ export function BidBoardEstimatingHealthSection({
   return (
     <Fragment>
       <BidBoardEstimatingPulseSection filteredBids={filteredBids} />
-      {isDev && <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} />}
+      {isDev && (
+        <Fragment>
+          <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} />
+          <BidBoardSentShareDevSection filteredBids={filteredBids} />
+        </Fragment>
+      )}
     </Fragment>
   )
 }
