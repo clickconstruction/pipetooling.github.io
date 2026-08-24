@@ -10,6 +10,7 @@ import {
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
  * The pay-speeds drill-down (owner-approved mockup, v2.2022): opened from
@@ -277,6 +278,9 @@ export default function PaySpeedsBreakdownModal({
   onOpenCustomerBills?: (customerName: string) => void
 }) {
   const breakdown = useMemo(() => buildPaySpeedsBreakdown(rows, paySpeeds), [rows, paySpeeds])
+  // ≤640px: the 5-column grid and full-width SVGs are unreadable — rows restack
+  // into two-line cards and the charts keep their size behind sideways scroll.
+  const isMobile = useIsMobile()
   const [variant, setVariant] = useState<'dots' | 'buckets'>('dots')
   // Per-customer receipts toggle (row click) — the payments behind each median.
   const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({})
@@ -309,10 +313,10 @@ export default function PaySpeedsBreakdownModal({
           background: 'var(--surface)',
           borderRadius: 12,
           border: '1px solid var(--border)',
-          width: 'min(720px, calc(100vw - 2rem))',
-          maxHeight: 'min(84vh, 900px)',
+          width: isMobile ? 'calc(100vw - 0.75rem)' : 'min(720px, calc(100vw - 2rem))',
+          maxHeight: isMobile ? '94vh' : 'min(84vh, 900px)',
           overflowY: 'auto',
-          padding: '1.1rem 1.25rem 1.25rem',
+          padding: isMobile ? '0.9rem 0.8rem 1rem' : '1.1rem 1.25rem 1.25rem',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -350,11 +354,15 @@ export default function PaySpeedsBreakdownModal({
                 Count by speed bucket
               </button>
             </div>
-            {variant === 'dots' ? (
-              <DotChart ranked={breakdown.ranked} companyMedian={companyMedian} />
-            ) : (
-              <BucketChart ranked={breakdown.ranked} />
-            )}
+            <div style={isMobile ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch' } : undefined}>
+              <div style={isMobile ? { minWidth: 560 } : undefined}>
+                {variant === 'dots' ? (
+                  <DotChart ranked={breakdown.ranked} companyMedian={companyMedian} />
+                ) : (
+                  <BucketChart ranked={breakdown.ranked} />
+                )}
+              </div>
+            </div>
             <div style={{ display: 'flex', gap: '0.9rem', fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.3rem 0 0.1rem', flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 <span style={{ width: 9, height: 9, borderRadius: 9999, background: RES_COLOR, display: 'inline-block' }} /> Residential
@@ -383,7 +391,7 @@ export default function PaySpeedsBreakdownModal({
             </div>
             <div
               style={{
-                display: 'grid',
+                display: isMobile ? 'none' : 'grid',
                 gridTemplateColumns: ROW_GRID,
                 gap: '0.6rem',
                 padding: '0 0.5rem 0.25rem',
@@ -400,13 +408,65 @@ export default function PaySpeedsBreakdownModal({
               <span style={{ textAlign: 'right' }}>Open now</span>
               <span />
             </div>
-            {breakdown.ranked.map((c, i) => (
+            {breakdown.ranked.map((c, i) => {
+              const expanded = !!openReceipts[c.customerId]
+              const caret = (
+                <span
+                  aria-hidden
+                  style={{
+                    color: 'var(--text-muted)',
+                    fontSize: '0.6rem',
+                    width: '0.7em',
+                    flexShrink: 0,
+                    display: 'inline-block',
+                    transform: expanded ? 'rotate(90deg)' : 'none',
+                  }}
+                >
+                  ▶
+                </span>
+              )
+              const bar = (
+                <span
+                  style={{
+                    height: 8,
+                    borderRadius: 4,
+                    background: 'var(--border)',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    ...(isMobile ? { flex: 1 } : {}),
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute',
+                      inset: '0 auto 0 0',
+                      width: `${breakdown.maxDays > 0 ? ((c.medianDays ?? 0) / breakdown.maxDays) * 100 : 0}%`,
+                      borderRadius: 4,
+                      background: segColor(c.segment),
+                    }}
+                  />
+                </span>
+              )
+              const median = (
+                <span
+                  style={{
+                    fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums',
+                    textAlign: 'right',
+                    flexShrink: 0,
+                    color: (c.medianDays ?? 0) > 30 ? 'var(--text-red-600)' : 'var(--text)',
+                  }}
+                >
+                  ~{c.medianDays}d
+                </span>
+              )
+              return (
               <div key={c.customerId}>
                 <div
                   role="button"
                   tabIndex={0}
-                  aria-expanded={!!openReceipts[c.customerId]}
-                  title={openReceipts[c.customerId] ? 'Hide the payments behind this median' : 'Show the payments behind this median'}
+                  aria-expanded={expanded}
+                  title={expanded ? 'Hide the payments behind this median' : 'Show the payments behind this median'}
                   onClick={() => toggleReceipts(c.customerId)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -415,63 +475,59 @@ export default function PaySpeedsBreakdownModal({
                     }
                   }}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: ROW_GRID,
-                    gap: '0.6rem',
-                    alignItems: 'center',
-                    padding: '0.42rem 0.5rem',
-                    borderRadius: openReceipts[c.customerId] ? '6px 6px 0 0' : 6,
+                    ...(isMobile
+                      ? {}
+                      : { display: 'grid', gridTemplateColumns: ROW_GRID, gap: '0.6rem', alignItems: 'center' }),
+                    padding: isMobile ? '0.5rem 0.5rem' : '0.42rem 0.5rem',
+                    borderRadius: expanded ? '6px 6px 0 0' : 6,
                     fontSize: '0.8rem',
                     background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
                     cursor: 'pointer',
                   }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
-                    <span
-                      aria-hidden
-                      style={{
-                        color: 'var(--text-muted)',
-                        fontSize: '0.6rem',
-                        width: '0.7em',
-                        flexShrink: 0,
-                        display: 'inline-block',
-                        transform: openReceipts[c.customerId] ? 'rotate(90deg)' : 'none',
-                      }}
-                    >
-                      ▶
-                    </span>
-                    {segTag(c.segment)}
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                  </span>
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      fontVariantNumeric: 'tabular-nums',
-                      textAlign: 'right',
-                      color: (c.medianDays ?? 0) > 30 ? 'var(--text-red-600)' : 'var(--text)',
-                    }}
-                  >
-                    ~{c.medianDays}d
-                  </span>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                    {c.samples} pmts
-                  </span>
-                  <span style={{ color: 'var(--text-700)', fontSize: '0.76rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                    {formatUsdNoCents(c.open)}
-                  </span>
-                  <span style={{ height: 8, borderRadius: 4, background: 'var(--border)', overflow: 'hidden', position: 'relative' }}>
-                    <span
-                      style={{
-                        position: 'absolute',
-                        inset: '0 auto 0 0',
-                        width: `${breakdown.maxDays > 0 ? ((c.medianDays ?? 0) / breakdown.maxDays) * 100 : 0}%`,
-                        borderRadius: 4,
-                        background: segColor(c.segment),
-                      }}
-                    />
-                  </span>
+                  {isMobile ? (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                        {caret}
+                        {segTag(c.segment)}
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.name}
+                        </span>
+                        {median}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0.3rem 0 0 1.05rem' }}>
+                        <span
+                          style={{
+                            color: 'var(--text-muted)',
+                            fontSize: '0.72rem',
+                            fontVariantNumeric: 'tabular-nums',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {c.samples} pmts · {formatUsdNoCents(c.open)} open
+                        </span>
+                        {bar}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                        {caret}
+                        {segTag(c.segment)}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                      </span>
+                      {median}
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {c.samples} pmts
+                      </span>
+                      <span style={{ color: 'var(--text-700)', fontSize: '0.76rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {formatUsdNoCents(c.open)}
+                      </span>
+                      {bar}
+                    </>
+                  )}
                 </div>
-                {openReceipts[c.customerId] &&
+                {expanded &&
                   receiptsPanel(
                     c,
                     companyMedian,
@@ -479,7 +535,8 @@ export default function PaySpeedsBreakdownModal({
                     onOpenCustomerBills ? () => onOpenCustomerBills(c.name) : undefined,
                   )}
               </div>
-            ))}
+              )
+            })}
           </>
         )}
 
@@ -504,18 +561,17 @@ export default function PaySpeedsBreakdownModal({
                     }
                   }}
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: ROW_GRID,
-                    gap: '0.6rem',
-                    alignItems: 'center',
-                    padding: '0.32rem 0.5rem',
+                    ...(isMobile
+                      ? { display: 'flex', alignItems: 'center', gap: '0.45rem' }
+                      : { display: 'grid', gridTemplateColumns: ROW_GRID, gap: '0.6rem', alignItems: 'center' }),
+                    padding: isMobile ? '0.42rem 0.5rem' : '0.32rem 0.5rem',
                     fontSize: '0.78rem',
                     color: 'var(--text-muted)',
                     cursor: 'pointer',
                     borderRadius: 6,
                   }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0, ...(isMobile ? { flex: 1 } : {}) }}>
                     <span
                       aria-hidden
                       style={{
@@ -531,14 +587,23 @@ export default function PaySpeedsBreakdownModal({
                     {segTag(c.segment)}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
                   </span>
-                  <span style={{ textAlign: 'right' }}>—</span>
-                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                    {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'}
-                  </span>
-                  <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
-                    {formatUsdNoCents(c.open)}
-                  </span>
-                  <span />
+                  {isMobile ? (
+                    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'} ·{' '}
+                      <span style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(c.open)}</span>
+                    </span>
+                  ) : (
+                    <>
+                      <span style={{ textAlign: 'right' }}>—</span>
+                      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'}
+                      </span>
+                      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
+                        {formatUsdNoCents(c.open)}
+                      </span>
+                      <span />
+                    </>
+                  )}
                 </div>
                 {openReceipts[c.customerId] &&
                   receiptsPanel(

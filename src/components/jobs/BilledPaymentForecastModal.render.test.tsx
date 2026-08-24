@@ -4,12 +4,26 @@
  * Payment "Payment forecast" (v2.1925) with the pay-speeds strip and
  * Res/Comm row tags (v2.1930).
  */
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+
+// jsdom has no matchMedia; useIsMobile (mobile restack, v2.2252) needs a stub.
+beforeAll(() => {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia
+})
 
 const speeds: PaySpeedData = {
   company: { medianDays: 27, samples: 240 },
