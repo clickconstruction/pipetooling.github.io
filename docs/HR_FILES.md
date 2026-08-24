@@ -53,6 +53,31 @@ Any agent (or dev) writing to these tables follows this:
 
 People → **HR** (dev-only cluster, next to Review/Scoreboard; `?tab=hr`, no URL gate — Scoreboard's async-`isDev` pattern). Left: roster grouped by kind, searchable, archived collapsed; freshness dot (green current / amber stale + days behind / grey empty) and entry count per person. Right: person header, then **Summary | Narrative | Raw entries**. The composer on Raw entries is the **only UI write**; curated docs are read-only in the UI and written by the agent directly (Supabase MCP / SQL).
 
+## Exhibits (v2.2231)
+
+Files attach to a person's HR file (and optionally a specific entry) via
+`person_file_attachments` + the **private `hr-files` bucket**. UI: Exhibits
+panel + composer "Attach files" on the Raw entries view; chips open 10-minute
+signed URLs. No UPDATE path — replace and note, like entry corrections.
+
+- **Agent uploads**: metadata inserts work as `hr_agent`; the byte upload needs
+  the storage API (service key) — `POST /storage/v1/object/hr-files/<path>`.
+  Path convention: `<person_id>/<uuid>-<sanitized-filename>`; insert the
+  metadata row in the same session.
+- **Storage setup (out-of-band, one-time — matches how the project's existing
+  buckets were created; storage schema is not in the migration ledger):**
+
+  ```sql
+  insert into storage.buckets (id, name, public) values ('hr-files','hr-files', false)
+  on conflict (id) do nothing;
+  create policy hr_files_dev_select on storage.objects for select to authenticated
+    using (bucket_id = 'hr-files' and public.is_dev());
+  create policy hr_files_dev_insert on storage.objects for insert to authenticated
+    with check (bucket_id = 'hr-files' and public.is_dev());
+  create policy hr_files_dev_delete on storage.objects for delete to authenticated
+    using (bucket_id = 'hr-files' and public.is_dev());
+  ```
+
 ## Agent credentials & the write RPC (v2.2232)
 
 - **Write as `hr_agent`, not `postgres`/service-role.** The role's RLS policies make entries **append-only by policy** for the agent and scope it to the HR tables + `people` reads. Password lives only in `.env.local` as `HR_AGENT_DB_PASSWORD` (set once, out-of-band: `ALTER ROLE hr_agent WITH LOGIN PASSWORD '…'`).
