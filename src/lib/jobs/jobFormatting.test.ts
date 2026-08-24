@@ -5,6 +5,7 @@ import {
   filterLaborCrewNames,
   formatCurrency,
   formatCurrencyNoCents,
+  splitFormattedAmountCents,
   formatEstimatedCompletionDisplay,
   formatJobNameTwoLines,
   formatJobSummaryDurationMinutes,
@@ -208,5 +209,19 @@ describe('stripLeadingRawJobIdPrefix', () => {
     expect(stripLeadingRawJobIdPrefix('e4e6647f-a430-42d7-ab51-a37229a015fd')).toBe(
       'e4e6647f-a430-42d7-ab51-a37229a015fd',
     )
+  })
+})
+
+describe('splitFormattedAmountCents', () => {
+  it('splits a formatted amount into main and cents', () => {
+    expect(splitFormattedAmountCents('40,000.00')).toEqual({ main: '40,000', cents: '.00' })
+    expect(splitFormattedAmountCents('1,234.50')).toEqual({ main: '1,234', cents: '.50' })
+    expect(splitFormattedAmountCents('0.00')).toEqual({ main: '0', cents: '.00' })
+  })
+  it('keeps the sign on negative amounts', () => {
+    expect(splitFormattedAmountCents('-500.00')).toEqual({ main: '-500', cents: '.00' })
+  })
+  it('returns empty cents when there is no decimal point', () => {
+    expect(splitFormattedAmountCents('1,235')).toEqual({ main: '1,235', cents: '' })
   })
 })

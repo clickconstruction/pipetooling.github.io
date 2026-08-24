@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
+import { AmountSmallCents } from './AmountSmallCents'
 import { lineLaborCost } from '../../lib/peopleLaborJobItemLineCost'
 import { normalizeUrl } from '../../lib/projectsForecastStageLineItems'
 import {
@@ -90,7 +91,7 @@ export default function JobsSubLaborTab({
         </button>
         </div>
         <div style={{ fontSize: '1rem', fontWeight: 600 }}>
-          Sub Labor Due: ${formatCurrency(subLaborDueTotal)}
+          Sub Labor Due: <AmountSmallCents value={subLaborDueTotal} />
         </div>
       </div>
       {!laborJobsLoading && laborJobs.length > 0 && (
@@ -115,13 +116,13 @@ export default function JobsSubLaborTab({
                   {visibleOutstandingRows.map((row) => (
                     <tr key={row.key} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }} title={`$${formatCurrency(row.totalCost)}`}>
-                        ${formatCurrency(row.totalCost)}
+                        <AmountSmallCents value={row.totalCost} />
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }} title={`$${formatCurrency(row.paid)}`}>
-                        ${formatCurrency(row.paid)}
+                        <AmountSmallCents value={row.paid} />
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-red-700)' }} title={`$${formatCurrency(row.outstanding)}`}>
-                        ${formatCurrency(row.outstanding)}
+                        <AmountSmallCents value={row.outstanding} />
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         {row.name.trim() || <span style={{ color: 'var(--text-muted)' }}>(No name)</span>}
@@ -137,7 +138,7 @@ export default function JobsSubLaborTab({
                     <td style={{ padding: '0.5rem 0.75rem' }} />
                     <td style={{ padding: '0.5rem 0.75rem' }} />
                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-red-700)' }} title={`$${formatCurrency(subLaborOutstandingByPerson.totalOutstanding)}`}>
-                      ${formatCurrency(subLaborOutstandingByPerson.totalOutstanding)}
+                      <AmountSmallCents value={subLaborOutstandingByPerson.totalOutstanding} />
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       Total
@@ -245,7 +246,7 @@ export default function JobsSubLaborTab({
                   >
                     <td style={{ padding: '0.75rem', width: 32 }}>{expanded ? '▼' : '▶'}</td>
                     <td style={{ padding: '0.75rem' }}>{job.assigned_to_name}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? <AmountSmallCents value={totalCost} /> : '—'}</td>
                     <td style={{ padding: '0.75rem', maxWidth: 220 }}>
                       <div style={{ lineHeight: 1.4 }}>
                         <div style={{ fontWeight: 500 }}>
@@ -295,9 +296,9 @@ export default function JobsSubLaborTab({
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
                       {totalCost > 0 ? (
                         balance > 0 ? (
-                          <span style={{ color: 'var(--text-red-700)' }}>${formatCurrency(balance)} due</span>
+                          <span style={{ color: 'var(--text-red-700)' }}><AmountSmallCents value={balance} /> due</span>
                         ) : balance < 0 ? (
-                          <span style={{ color: 'var(--text-green-600)' }}>Over ${formatCurrency(-balance)}</span>
+                          <span style={{ color: 'var(--text-green-600)' }}>Over <AmountSmallCents value={-balance} /></span>
                         ) : (
                           <span style={{ color: 'var(--text-green-600)' }}>Paid</span>
                         )
@@ -346,7 +347,7 @@ export default function JobsSubLaborTab({
                           <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--surface)', verticalAlign: 'top' }}>
                             <div onClick={(e) => e.stopPropagation()} style={{ padding: '1rem' }}>
                               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                                Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)}
+                                Total cost: <AmountSmallCents value={totalCost} /> · Paid: <AmountSmallCents value={paid} /> · Backcharges: <AmountSmallCents value={backcharges} />
                               </p>
                               <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Invoice link</h4>
                               {job.invoice_link?.trim() ? (
@@ -390,8 +391,8 @@ export default function JobsSubLaborTab({
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : Number(i.count)}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : hrs.toFixed(2)}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : laborHrs.toFixed(2)}</td>
-                                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{isDirect ? '—' : `$${rate.toFixed(2)}`}</td>
-                                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(cost)}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{isDirect ? '—' : <AmountSmallCents value={rate} />}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><AmountSmallCents value={cost} /></td>
                                         </tr>
                                       )
                                     })}
@@ -417,7 +418,7 @@ export default function JobsSubLaborTab({
                                       <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                         <td style={{ padding: '0.5rem 0.75rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
                                         <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
-                                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
+                                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}><AmountSmallCents value={Number(p.amount)} /></td>
                                         <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo?.trim() ? p.memo : '—'}</td>
                                       </tr>
                                     ))}
