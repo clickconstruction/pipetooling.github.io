@@ -1,0 +1,3 @@
+# 20260824140029 — payment_forecast_payload_scope (v2.2227)
+
+Scope fix for `get_payment_forecast_email_payload()` (v2.2223): rows are now **every billed invoice line on any non-collections job** — the board's rule (`jobsStagesBoard.ts` flatMaps billed invoices across all loaded jobs; progressive billing bills lines while jobs are still Working) — instead of the billed-report payload's `j.status = 'billed'` filter, which dropped Working-job break-off lines (live diff: 4 rows / ~$62k). Collections exclusion mirrors `jobInCollections` verbatim (`status='billed' AND collections_at IS NOT NULL`). Function replacement only; no tables, no policies.
