@@ -1185,6 +1185,7 @@ export default function Dashboard() {
       visible: isAssistantLike(role) || role === 'dev' || role === 'master_technician',
     },
     { id: 'dash-projects', label: 'Projects', visible: projectsCardVisible },
+    { id: 'dash-hr-report', label: 'HR', visible: role === 'dev' || role === 'master_technician' },
     { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
   ].filter((sec) => sec.visible)
 
@@ -1547,6 +1548,9 @@ export default function Dashboard() {
       {/* Field reports → HR (v2.2235): masters and devs capture an observation
           while it's fresh; it queues on People → HR for filing. Placement:
           the people cluster — directly above My Team. */}
+      {(role === 'dev' || role === 'master_technician') && (
+        <div id="dash-hr-report" aria-hidden="true" style={dockAnchorStyle} />
+      )}
       <DashboardPersonReportCard visible={role === 'dev' || role === 'master_technician'} />
 
       {authUser?.id && (
