@@ -107,6 +107,11 @@ export type JobsSubLaborFormModalProps = {
   authUserId: string | undefined
   /** Saved-job print thunk (stays in the parent; the list view uses it too). */
   printJobSubSheet: (job: LaborJob) => void
+  /** The board cache loads non-paid scopes only — this merges the paid scope into
+   * `jobs` so the job picker's "Finished jobs" divider can include paid-in-full jobs. */
+  ensurePaidJobsLoaded?: () => void
+  /** True while that paid-scope fetch is in flight (picker subtitle says so). */
+  paidJobsLoading?: boolean
 }
 
 function JobsSubLaborFormModalInner(
@@ -131,6 +136,8 @@ function JobsSubLaborFormModalInner(
     onClearEditPayment,
     authUserId,
     printJobSubSheet,
+    ensurePaidJobsLoaded,
+    paidJobsLoading,
   }: JobsSubLaborFormModalProps,
   ref: ForwardedRef<JobsSubLaborFormModalHandle>,
 ) {
@@ -1093,6 +1100,14 @@ function JobsSubLaborFormModalInner(
     if ((laborModalOpen || editingLaborJob) && authUserId) loadServiceTypes()
   }, [authUserId, laborModalOpen, editingLaborJob])
 
+  // The jobs cache holds non-paid scopes until the board's Paid in Full section
+  // expands — merge the paid scope in as the form opens so the job picker can
+  // offer paid-in-full jobs (under its "Finished jobs" divider) and edit sheets
+  // on paid jobs can resolve their pick.
+  useEffect(() => {
+    if (laborModalOpen || editingLaborJob) ensurePaidJobsLoaded?.()
+  }, [laborModalOpen, editingLaborJob, ensurePaidJobsLoaded])
+
   // Edit mode (v2.2142): the jobs cache can arrive after the sheet opened (a
   // ?editLabor= deep link straight to the tab) — link the typed number once it
   // resolves. Only fills an empty pick; never overrides a job the user chose.
@@ -1263,6 +1278,7 @@ function JobsSubLaborFormModalInner(
                         onClick={() => {
                           setLaborJobPickerSearch('')
                           setLaborJobPickerNumberQuery('')
+                          ensurePaidJobsLoaded?.()
                           setLaborJobPickerOpen(true)
                         }}
                         style={{
@@ -2285,7 +2301,11 @@ function JobsSubLaborFormModalInner(
                 open
                 onClose={() => setLaborJobPickerOpen(false)}
                 title="Which job is this sub labor for?"
-                subtitle="Number, name, address or customer — finished jobs sit under their own divider"
+                subtitle={
+                  paidJobsLoading
+                    ? 'Number, name, address or customer — loading paid-in-full jobs…'
+                    : 'Number, name, address or customer — finished jobs sit under their own divider'
+                }
                 jobRows={subLaborAssignPickerRows(jobs, laborJobPickerSearch, laborJobPickerNumberQuery)}
                 searchValue={laborJobPickerSearch}
                 onSearchChange={setLaborJobPickerSearch}

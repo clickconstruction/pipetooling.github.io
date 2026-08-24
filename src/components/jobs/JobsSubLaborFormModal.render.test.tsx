@@ -108,6 +108,21 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(jobPickerTrigger()).toBeTruthy()
   })
 
+  it('opening the form requests the lazy paid jobs scope so the picker can offer paid-in-full jobs', async () => {
+    const ensurePaidJobsLoaded = vi.fn()
+    const { handleRef } = mountHarness({ ensurePaidJobsLoaded })
+    expect(ensurePaidJobsLoaded).not.toHaveBeenCalled()
+    await act(async () => handleRef.current!.openNew())
+    expect(ensurePaidJobsLoaded).toHaveBeenCalled()
+  })
+
+  it('openEdit also requests the paid jobs scope (paid-job sheets must resolve their pick)', async () => {
+    const ensurePaidJobsLoaded = vi.fn()
+    const { handleRef } = mountHarness({ ensurePaidJobsLoaded })
+    await act(async () => handleRef.current!.openEdit(makeLaborJob({ job_number: 'HCP-12' })))
+    expect(ensurePaidJobsLoaded).toHaveBeenCalled()
+  })
+
   it('openEdit populates the form from the labor job', async () => {
     const { handleRef } = mountHarness()
     const laborJob = makeLaborJob({
