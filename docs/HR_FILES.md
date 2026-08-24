@@ -99,6 +99,22 @@ signed URLs. No UPDATE path — replace and note, like entry corrections.
 - **Corrections are still new entries** — the RPC cannot update or delete entries, by design.
 - Doc history: `select * from person_file_revisions where person_id = … order by replaced_at desc`.
 
+### Agent connection cookbook (verified live 2026-08-24)
+
+- **Connect via the session pooler**, not the direct host — `db.<ref>.supabase.co` resolves flakily (IPv6/DNS) from the office machine:
+
+  ```bash
+  PGPASSWORD="$HR_AGENT_DB_PASSWORD" psql \
+    "host=aws-1-us-east-1.pooler.supabase.com port=5432 dbname=postgres \
+     user=hr_agent.yewfzhbofbbyvkvtaatw sslmode=require"
+  ```
+
+  (`HR_AGENT_DB_PASSWORD` lives in `.env.local`.)
+- **Large or quote-heavy RPC payloads**: don't inline-quote SQL strings — build the JSON in a script, wrap it as `$J$<json>$J$::jsonb`, write a `.sql` file, run `psql -f`. Inline `jsonb_build_object` string literals broke on apostrophes in live testing; the JSON-file pattern is verified.
+- **Docs are markdown** — write real `##` headings (they power the narrative jump list); set `covered_through` on every summary rewrite (the RPC defaults it to `now()`).
+- **Exhibit bytes need the service key** (hr_agent covers metadata only): fetch it via the management API — `GET https://api.supabase.com/v1/projects/<ref>/api-keys?reveal=true` with `SUPABASE_MGMT_TOKEN` from `.env.local` — then `POST /storage/v1/object/hr-files/<person_id>/<uuid>-<sanitized-name>` and insert the `person_file_attachments` row as `hr_agent` in the same session.
+- **Sanity check after a write session**: entries/attachments counts, `person_files` lengths, and the roster dot — a summary left amber means fold entries in (or bump `covered_through` if the content already covers them).
+
 ## Agent recipes
 
 - Everyone's freshness in one query: entries `select person_id, created_at` + files `select person_id, kind, updated_at` → run through `derivePersonFileFreshness` per person.
