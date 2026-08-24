@@ -48,6 +48,9 @@ import { useChecklistTechTreeData, type TaskView } from '../../hooks/useChecklis
 import { useTechTreeTaskMutations } from '../../hooks/useTechTreeTaskMutations'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { GroupNode, type GroupNodeData } from './ChecklistTechTreeGroupNode'
+import { ChecklistTechTreeCanvasMenu, type CanvasMenuState } from './ChecklistTechTreeCanvasMenu'
+import { ChecklistTechTreeRoutedEdge } from './ChecklistTechTreeRoutedEdge'
+import { ChecklistTechTreeReviewHud } from './ChecklistTechTreeReviewHud'
 import { RoadmapCanvasSearchPanel } from './ChecklistTechTreeCanvasSearchPanel'
 import { clientCoordsForConnectEnd } from '../../lib/checklistTechTreeCanvas'
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core'
@@ -105,9 +108,16 @@ type AddGroupModalState =
       /** Top-left in flow space (centered on drop) */
       flowPosition: { x: number; y: number }
     }
+  | {
+      kind: 'pane'
+      /** Top-left in flow space (centered on the right-click pointer). */
+      flowPosition: { x: number; y: number }
+    }
 
 /** React Flow node registry — module-level so the map never re-registers node types. */
 const nodeTypes = { groupNode: GroupNode }
+/** Edge registry — same rule. Routed edges follow dagre's waypoints around stage boxes. */
+const edgeTypes = { techTreeRouted: ChecklistTechTreeRoutedEdge }
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -353,6 +363,13 @@ export function ChecklistTechTreeTab({
   const layoutCacheRef = useRef<{ key: string; nodes: Node[]; edges: Edge[] } | null>(null)
   const rfInstanceRef = useRef<ReactFlowInstance | null>(null)
   const canvasShellRef = useRef<HTMLDivElement | null>(null)
+  // Review mode: walk stages in priority order, one expanded card at a time.
+  // Keyed by group id (not index) so a priority bump keeps you on your card.
+  const [reviewGroupId, setReviewGroupId] = useState<string | null>(null)
+  const [reviewBusy, setReviewBusy] = useState(false)
+  const [reviewFlash, setReviewFlash] = useState<string | null>(null)
+  const reviewPrevCollapsedRef = useRef<ReadonlySet<string> | null>(null)
+  const reviewFlashTimerRef = useRef<number | null>(null)
   // Native (DOM Fullscreen API) state vs. a CSS fallback for platforms without it (e.g. iPhone Safari).
   const [isDomCanvasFullscreen, setIsDomCanvasFullscreen] = useState(false)
   const [cssFullscreen, setCssFullscreen] = useState(false)
@@ -577,6 +594,11 @@ export function ChecklistTechTreeTab({
         .filter((id) => taskIdMatchSetForFlow.has(id))
       return {
         ...n,
+        // Review mode: everything but the card under review fades back.
+        style: {
+          opacity: reviewGroupId && gid !== reviewGroupId ? 0.35 : 1,
+          transition: 'opacity 0.2s',
+        },
         data: {
           groupId: gid,
           title: g?.title ?? 'Group',
@@ -645,6 +667,7 @@ export function ChecklistTechTreeTab({
     roadmapSearch,
     taskIdMatchSetForFlow,
     groupTitleMatchSetForFlow,
+    reviewGroupId,
   ])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes)
@@ -696,10 +719,20 @@ export function ChecklistTechTreeTab({
   }, [organizeVersion])
 
   useEffect(() => {
-    setEdges(layoutEdges)
-  }, [layoutEdges, setEdges])
+    // Dagre's waypoints are only valid at dagre's positions — an edge touching
+    // a manually-moved node (drag, or created-at-pointer) falls back to the
+    // plain smoothstep until Organize re-routes everything.
+    setEdges(
+      layoutEdges.map((e) =>
+        manualGroupPositions.has(e.source) || manualGroupPositions.has(e.target)
+          ? { ...e, type: 'smoothstep', data: undefined }
+          : e,
+      ),
+    )
+  }, [layoutEdges, manualGroupPositions, setEdges])
 
   const [addGroupModal, setAddGroupModal] = useState<AddGroupModalState>(null)
+  const [canvasMenu, setCanvasMenu] = useState<CanvasMenuState | null>(null)
   const [lineUpModalOpen, setLineUpModalOpen] = useState(false)
   const [orderStagesModalOpen, setOrderStagesModalOpen] = useState(false)
   const editingGroup = editingGroupId ? groups.find((g) => g.id === editingGroupId) : null
@@ -872,6 +905,14 @@ export function ChecklistTechTreeTab({
       if (mode.kind === 'toolbar') {
         return addGroupByTitle(title)
       }
+      if (mode.kind === 'pane') {
+        // Right-click "Add stage here": unlinked stage at the pointer.
+        const id = await insertNewGroup(title)
+        if (!id) return false
+        newGroupManualPositionFromConnectRef.current = { id, pos: mode.flowPosition }
+        await load()
+        return true
+      }
       const newId = await insertNewGroup(title)
       if (!newId) return false
       newGroupManualPositionFromConnectRef.current = { id: newId, pos: mode.flowPosition }
@@ -882,7 +923,44 @@ export function ChecklistTechTreeTab({
       }
       return true
     },
-    [addGroupModal, addGroupByTitle, insertNewGroup, addPrereqLink],
+    [addGroupModal, addGroupByTitle, insertNewGroup, addPrereqLink, load],
+  )
+
+  // Pointer menus on the canvas: click a line → Remove link; right-click
+  // whitespace → Add stage here (created at the pointer).
+  const openEdgeMenu = useCallback(
+    (event: ReactMouseEvent, edge: Edge) => {
+      if (!canEditStructure) return
+      event.preventDefault()
+      event.stopPropagation()
+      const titleFor = (id: string) => groups.find((g) => g.id === id)?.title ?? '—'
+      setCanvasMenu({
+        kind: 'edge',
+        edgeId: edge.id,
+        fromTitle: titleFor(edge.source),
+        toTitle: titleFor(edge.target),
+        x: event.clientX,
+        y: event.clientY,
+      })
+    },
+    [canEditStructure, groups],
+  )
+
+  const openPaneMenu = useCallback(
+    (event: ReactMouseEvent | globalThis.MouseEvent) => {
+      if (!canEditStructure) return
+      event.preventDefault()
+      const rf = rfInstanceRef.current
+      if (!rf) return
+      const raw = rf.screenToFlowPosition({ x: event.clientX, y: event.clientY })
+      setCanvasMenu({
+        kind: 'pane',
+        x: event.clientX,
+        y: event.clientY,
+        flowPosition: { x: raw.x - techTreeNodeWidth / 2, y: raw.y - nodeHeightForGroup(0, true) / 2 },
+      })
+    },
+    [canEditStructure],
   )
 
   const onPrereqConnect: OnConnect = useCallback(
@@ -1008,6 +1086,134 @@ export function ChecklistTechTreeTab({
     },
     [canEditStructure, groups, tasks, load, setError],
   )
+
+  // ---- Review mode engine -------------------------------------------------
+  const reviewOrderedIds = useMemo(() => groups.map((g) => g.id), [groups])
+  const reviewIndex = reviewGroupId ? reviewOrderedIds.indexOf(reviewGroupId) : -1
+
+  const focusReviewStage = useCallback(
+    (id: string) => {
+      setCollapsedGroupIds(new Set(reviewOrderedIds.filter((g) => g !== id)))
+      setReviewGroupId(id)
+    },
+    [reviewOrderedIds],
+  )
+
+  const enterReview = useCallback(() => {
+    const first = reviewOrderedIds[0]
+    if (!first) return
+    reviewPrevCollapsedRef.current = collapsedGroupIds
+    focusReviewStage(first)
+  }, [reviewOrderedIds, collapsedGroupIds, focusReviewStage])
+
+  const exitReview = useCallback(() => {
+    setReviewGroupId(null)
+    setReviewFlash(null)
+    const prev = reviewPrevCollapsedRef.current
+    reviewPrevCollapsedRef.current = null
+    if (prev) {
+      const valid = new Set(reviewOrderedIds)
+      setCollapsedGroupIds(new Set([...prev].filter((id) => valid.has(id))))
+    }
+  }, [reviewOrderedIds])
+
+  const stepReview = useCallback(
+    (delta: number) => {
+      if (reviewIndex < 0 || reviewBusy) return
+      const next = reviewOrderedIds[reviewIndex + delta]
+      if (next) focusReviewStage(next)
+    },
+    [reviewIndex, reviewBusy, reviewOrderedIds, focusReviewStage],
+  )
+
+  const bumpReviewPriority = useCallback(
+    async (delta: -1 | 1) => {
+      if (reviewIndex < 0 || reviewBusy || !reviewGroupId) return
+      const swapWith = reviewIndex + delta
+      if (swapWith < 0 || swapWith >= reviewOrderedIds.length) return
+      const swapped = [...reviewOrderedIds]
+      const other = swapped[swapWith]!
+      swapped[swapWith] = reviewGroupId
+      swapped[reviewIndex] = other
+      setReviewBusy(true)
+      try {
+        const ok = await saveStageOrder(swapped, new Map())
+        if (ok) {
+          const otherTitle = groups.find((g) => g.id === other)?.title ?? 'the other stage'
+          setReviewFlash(
+            `#${reviewIndex + 1} → #${swapWith + 1} · “${otherTitle}” moved to #${reviewIndex + 1}`,
+          )
+          if (reviewFlashTimerRef.current) window.clearTimeout(reviewFlashTimerRef.current)
+          reviewFlashTimerRef.current = window.setTimeout(() => setReviewFlash(null), 2600)
+        }
+      } finally {
+        setReviewBusy(false)
+      }
+    },
+    [reviewIndex, reviewBusy, reviewGroupId, reviewOrderedIds, saveStageOrder, groups],
+  )
+
+  // Fly to the current card — also re-centers after the priority-swap reload
+  // and after expand/collapse re-layouts (structuralKey changes). This is a
+  // deliberate extra fitView trigger scoped to active review; the Organize-only
+  // refit rule for normal browsing is untouched.
+  useEffect(() => {
+    if (!reviewGroupId || viewMode !== 'map') return
+    // Two attempts: expanding the card re-runs layout and the node must be
+    // re-measured before fitView can compute bounds — on slow devices the
+    // first shot can land before measurement, so a second follows.
+    const fit = (duration: number) =>
+      void rfInstanceRef.current?.fitView({
+        nodes: [{ id: reviewGroupId }],
+        padding: 0.35,
+        duration,
+        maxZoom: 1.15,
+      })
+    const t1 = window.setTimeout(() => fit(220), 90)
+    const t2 = window.setTimeout(() => fit(0), 600)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [reviewGroupId, structuralKey, viewMode])
+
+  // ← → step, Esc exits — unless focus is in a field or a modal is up.
+  useEffect(() => {
+    if (!reviewGroupId) return
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (typeof target?.closest === 'function' && target.closest('input, textarea, select, [role="dialog"]')) return
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        stepReview(1)
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        stepReview(-1)
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        exitReview()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [reviewGroupId, stepReview, exitReview])
+
+  // Leaving the Map (view toggle / roadmap switch) ends the review quietly;
+  // the collapse snapshot only makes sense on the roadmap it came from.
+  useEffect(() => {
+    if (viewMode !== 'map' && reviewGroupId) {
+      setReviewGroupId(null)
+      setReviewFlash(null)
+      reviewPrevCollapsedRef.current = null
+    }
+  }, [viewMode, reviewGroupId])
+  useEffect(() => {
+    setReviewGroupId(null)
+    setReviewFlash(null)
+    reviewPrevCollapsedRef.current = null
+  }, [effectiveRoadmapId])
+  // -------------------------------------------------------------------------
+
 
   const triggerCanvasResize = useCallback(() => {
     // React Flow v12 has no instance.resize(); a host resize makes the flow re-measure the pane.
@@ -1301,6 +1507,29 @@ export function ChecklistTechTreeTab({
                 </button>
               ))}
             </div>
+            {viewMode === 'map' && groups.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => (reviewGroupId ? exitReview() : enterReview())}
+                aria-pressed={reviewGroupId != null}
+                title="Step through stages in priority order"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  border: reviewGroupId ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                  borderRadius: 8,
+                  background: reviewGroupId ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  color: reviewGroupId ? 'var(--text-blue-800)' : 'var(--text-700)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {/* "Review stages", not "Review" — the page's Review tab is the
+                    sign-off hub; this is a different verb on a different noun. */}
+                {reviewGroupId ? '✓ Reviewing' : 'Review stages'}
+              </button>
+            ) : null}
             {canEditStructure ? (
               // both views: Order stages (and the empty-graph starters) work
               // from Plan just as well as from Map
@@ -1465,6 +1694,9 @@ export function ChecklistTechTreeTab({
               onNodeDragStop={onNodeDragStop}
               onConnect={onPrereqConnect}
               onConnectEnd={onPrereqConnectEnd}
+              onEdgeClick={openEdgeMenu}
+              onEdgeContextMenu={openEdgeMenu}
+              onPaneContextMenu={openPaneMenu}
               isValidConnection={isValidPrereqConnection}
               nodesConnectable={canEditStructure}
               onInit={(instance) => {
@@ -1472,6 +1704,7 @@ export function ChecklistTechTreeTab({
                 void instance.fitView({ padding: 0.1 })
               }}
               nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
               minZoom={0.2}
               maxZoom={1.4}
               proOptions={{ hideAttribution: true }}
@@ -1584,6 +1817,22 @@ export function ChecklistTechTreeTab({
               ) : null}
             </ReactFlow>
           )}
+          {reviewGroupId && reviewIndex >= 0 ? (
+            <ChecklistTechTreeReviewHud
+              index={reviewIndex}
+              total={reviewOrderedIds.length}
+              title={groups.find((g) => g.id === reviewGroupId)?.title ?? ''}
+              stageNumber={stageNumbers.get(reviewGroupId) ?? reviewIndex + 1}
+              canEdit={canEditStructure}
+              busy={reviewBusy}
+              flash={reviewFlash}
+              onPrev={() => stepReview(-1)}
+              onNext={() => stepReview(1)}
+              onRaise={() => void bumpReviewPriority(-1)}
+              onLower={() => void bumpReviewPriority(1)}
+              onExit={exitReview}
+            />
+          ) : null}
           </div>
         </div>
       </div>
@@ -1608,6 +1857,21 @@ export function ChecklistTechTreeTab({
         linkFromGroupTitle={addGroupModal?.kind === 'linkFromGroup' ? addGroupModal.fromGroupTitle : undefined}
         portalContainer={roadmapModalPortalHost ?? undefined}
       />
+      {canvasMenu ? (
+        <ChecklistTechTreeCanvasMenu
+          menu={canvasMenu}
+          portalContainer={roadmapModalPortalHost ?? undefined}
+          onClose={() => setCanvasMenu(null)}
+          onRemoveLink={(edgeId) => {
+            setCanvasMenu(null)
+            void removeEdge(edgeId)
+          }}
+          onAddStage={(flowPosition) => {
+            setCanvasMenu(null)
+            setAddGroupModal({ kind: 'pane', flowPosition })
+          }}
+        />
+      ) : null}
       <ChecklistTechTreeLinksModal
         open={linksModalOpen}
         onClose={closeLinksModal}

@@ -33,7 +33,9 @@ export function layoutTechTreeFlow(args: {
   const { groupIds, taskCountByGroup, flowEdges, collapsedGroupIds } = args
   const g = new dagre.graphlib.Graph()
   g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({ rankdir: 'LR', ranksep: 90, nodesep: 50, marginx: 20, marginy: 20 })
+  // edgesep spreads edges sharing a corridor into their own lanes so parallel
+  // runs don't overlap (perpendicular crossings remain, by design).
+  g.setGraph({ rankdir: 'LR', ranksep: 90, nodesep: 50, edgesep: 28, marginx: 20, marginy: 20 })
 
   const nodeHeights = new Map<string, number>()
   for (const id of groupIds) {
@@ -61,15 +63,57 @@ export function layoutTechTreeFlow(args: {
     }
   })
 
-  const edges: Edge[] = flowEdges.map((e) => ({
-    id: e.id,
-    source: e.from,
-    target: e.to,
-    type: 'smoothstep',
-    animated: false,
-  }))
+  // Dagre routes every edge through the gaps BETWEEN nodes (virtual nodes for
+  // multi-rank spans) — keep its waypoints so the rendered line follows that
+  // route instead of a handle-to-handle smoothstep that slices through boxes.
+  const edges: Edge[] = flowEdges.map((e) => {
+    const routed = g.edge({ v: e.from, w: e.to }) as { points?: Array<{ x: number; y: number }> } | undefined
+    const routePoints = routed?.points ?? []
+    return {
+      id: e.id,
+      source: e.from,
+      target: e.to,
+      type: routePoints.length > 2 ? 'techTreeRouted' : 'smoothstep',
+      animated: false,
+      data: routePoints.length > 2 ? { routePoints } : undefined,
+    }
+  })
 
   return { nodes, edges, nodeHeights }
+}
+
+/**
+ * SVG path through a polyline with rounded bends: straight runs, each interior
+ * waypoint turned via a quadratic whose control point is the waypoint itself.
+ */
+export function buildRoutedEdgePath(
+  points: ReadonlyArray<{ x: number; y: number }>,
+  cornerRadius = 8,
+): string {
+  if (points.length === 0) return ''
+  const first = points[0]!
+  if (points.length === 1) return `M ${first.x},${first.y}`
+  let d = `M ${first.x},${first.y}`
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1]!
+    const p = points[i]!
+    const next = points[i + 1]!
+    const inLen = Math.hypot(p.x - prev.x, p.y - prev.y)
+    const outLen = Math.hypot(next.x - p.x, next.y - p.y)
+    const r = Math.min(cornerRadius, inLen / 2, outLen / 2)
+    if (r < 0.5 || inLen === 0 || outLen === 0) {
+      d += ` L ${p.x},${p.y}`
+      continue
+    }
+    const inX = p.x - ((p.x - prev.x) / inLen) * r
+    const inY = p.y - ((p.y - prev.y) / inLen) * r
+    const outX = p.x + ((next.x - p.x) / outLen) * r
+    const outY = p.y + ((next.y - p.y) / outLen) * r
+    d += ` L ${inX},${inY} Q ${p.x},${p.y} ${outX},${outY}`
+  }
+  const last = points[points.length - 1]!
+  d += ` L ${last.x},${last.y}`
+  return d
 }
 
 export { DEFAULT_WIDTH as techTreeNodeWidth, nodeHeightForTasks as techTreeNodeHeightForTaskCount }

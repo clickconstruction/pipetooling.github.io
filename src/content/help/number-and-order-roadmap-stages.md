@@ -2,7 +2,7 @@
 title: number and order the stages and tasks on a roadmap
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: roadmap, stages, tasks, numbers, badges, order, reorder, drag, tech tree, map, plan, cluster
+keywords: roadmap, stages, tasks, numbers, badges, order, reorder, drag, tech tree, map, plan, cluster, review, priority
 order: 42
 ---
 Every stage on a roadmap wears a **number badge** — on the corner of its cluster in the **Map** view and beside its row in the **Plan** view — and every task inside it carries a quieter **N.M** number: stage 4's tasks read **4.1, 4.2, 4.3**. The numbers match everywhere, so "do 4.2 before 4.1" works out loud, on the Map, in Plan, and on the task card.
@@ -26,3 +26,15 @@ The Plan lists — **Now**, **Up next**, and **Goals** — follow the same stage
 5. **Every drop saves itself** — watch the "✓ Saved" note in the footer, and every number on the Map, Plan, and Timeline updates as you go. Press {{button:outline|Done}} when you're finished.
 
 Each stage row shows its status at a glance — **✓ done**, **N of M** tasks complete, or a 🔒 for stages still locked behind a prerequisite — so you can order by what matters without leaving the list.
+
+## Review the stages one card at a time
+
+For a focused priority pass, press {{button:outline|Review stages}} in the **Map** header. The map flies to stage #1 — expanded and centered, everything else faded — and a floating bar carries the loop:
+
+- **◀ ▶** (or the ← → arrow keys) glide from card to card in priority order.
+- The amber **▲ #n ▼** cluster bumps the current stage's priority: one tap swaps it with its neighbor, saves immediately, and a brief flash names which stage traded places with it. You stay on your card while every number badge renumbers around you.
+- **✕ Done** (or Esc) ends the pass and puts the map back the way you had it.
+
+:::example A Monday priority sweep
+Enter Review, tap ▶ through the open stages, and each time something feels more urgent than its number, tap ▲ until it sits right. Ten cards later the whole roadmap's order matches your gut — no dragging.
+:::
