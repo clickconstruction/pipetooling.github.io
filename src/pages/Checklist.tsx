@@ -38,6 +38,10 @@ import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistRe
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileCaption } from '../lib/checklistReviewTiles'
 import { useToastContext } from '../contexts/ToastContext'
+import { ChecklistCostButton } from '../components/checklist/ChecklistCostButton'
+import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
+import { formatOpenCostSummary, formatWholeDollars, sumEstimateDollars, summarizeOpenTaskCosts } from '../lib/checklistCostEstimate'
+import { recentStageUnlockEvents, stageUnlockPreviewFor, type StageUnlockEvent } from '../lib/roadmapStageReview'
 
 type UserRole =
   | 'dev'
@@ -394,6 +398,7 @@ export default function Checklist() {
         >
           <ChecklistTechTreeTab
             authUserId={authUser?.id ?? null}
+            isDev={role === 'dev'}
             canEditTechTree={canEditTechTree}
             setError={setError}
             roadmapIdFromUrl={searchParams.get('roadmap')}
@@ -1728,6 +1733,15 @@ function OutstandingByPersonSortableRow({
               </span>
             ) : null}
             <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))}</span>
+            {isDev && (
+              // Bridged roadmap tasks key their estimate by the roadmap task id so
+              // Review and the roadmap Plan view share one number per task.
+              <ChecklistCostButton
+                costKey={inst.checklist_items?.roadmap_group_task_id ?? inst.checklist_item_id}
+                taskTitle={title}
+                defaultUserId={userId}
+              />
+            )}
             <span className="obp-sp" aria-hidden />
             {isDev && (
               <button
@@ -1919,6 +1933,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('non_repeating')
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
+  const [remindingStageId, setRemindingStageId] = useState<string | null>(null)
+  const costEstimates = useChecklistCostEstimates(isDev)
   const { showToast } = useToastContext()
   const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -1955,6 +1971,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
   const [goalTaskRows, setGoalTaskRows] = useState<Map<string, Map<string, GoalsLedgerTaskRow[]>>>(new Map())
   /** The one stage row currently unfolded to its tasks (v2.2167). */
   const [expandedStageId, setExpandedStageId] = useState<string | null>(null)
+  /** Per-roadmap "stage finished → unlocked X" events (stage review prototype). */
+  const [goalUnlockEvents, setGoalUnlockEvents] = useState<Map<string, StageUnlockEvent[]>>(new Map())
   /** Bumped after edits made from the Where-this-fits sheet (v2.2182) so the ledger refetches. */
   const [goalsReloadTick, setGoalsReloadTick] = useState(0)
   const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
@@ -2016,14 +2034,18 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
       setGoalRows(goalsStripRows({ roadmaps: rms, groups: grps, tasks: mappedTasks, edges: mappedEdges }))
       const stageMap = new Map<string, GoalsStageRow[]>()
       const taskMap = new Map<string, Map<string, GoalsLedgerTaskRow[]>>()
+      const eventsMap = new Map<string, StageUnlockEvent[]>()
       for (const rm of rms) {
         const rmGroups = grps.filter((g) => g.roadmap_id === rm.id)
         if (rmGroups.length === 0) continue
-        stageMap.set(rm.id, goalsStageRows({ groups: rmGroups, tasks: mappedTasks, edges: mappedEdges }))
+        const rows = goalsStageRows({ groups: rmGroups, tasks: mappedTasks, edges: mappedEdges })
+        stageMap.set(rm.id, rows)
         taskMap.set(rm.id, goalsLedgerTaskRows({ groups: rmGroups, tasks: fullTasks, edges: mappedEdges, nameById, bridgeByTaskId }))
+        eventsMap.set(rm.id, recentStageUnlockEvents({ stageRows: rows, tasks: mappedTasks, edges: mappedEdges, nowMs: Date.now() }))
       }
       setGoalStageRows(stageMap)
       setGoalTaskRows(taskMap)
+      setGoalUnlockEvents(eventsMap)
     })()
     return () => {
       cancelled = true
@@ -2250,6 +2272,55 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
       showToast(`Couldn't send the reminder to ${name} — try again.`, 'error')
     } finally {
       setRemindingUserId(null)
+    }
+  }
+
+  /** Stage-scoped reminder: one push per assignee with THEIR open tasks in the stage. */
+  async function sendStageReminder(
+    stageGroupId: string,
+    stageNumber: number,
+    stageTitle: string,
+    openTasks: GoalsLedgerTaskRow[],
+  ) {
+    setRemindingStageId(stageGroupId)
+    try {
+      const titlesByUser = new Map<string, string[]>()
+      for (const t of openTasks) {
+        for (const uid of t.assigneeIds) titlesByUser.set(uid, [...(titlesByUser.get(uid) ?? []), t.title])
+      }
+      let sentTotal = 0
+      for (const [uid, titles] of titlesByUser) {
+        const n = titles.length
+        const body =
+          n === 1
+            ? `Stage ${stageNumber} “${stageTitle}”: ${titles[0]}`
+            : n <= 3
+              ? `Stage ${stageNumber} “${stageTitle}” — ${n} open tasks: ${titles.join(', ')}`
+              : `Stage ${stageNumber} “${stageTitle}” — ${n} open tasks: ${titles.slice(0, 3).join(', ')} and ${n - 3} more`
+        const { data, error: fnError } = await supabase.functions.invoke('send-checklist-notification', {
+          body: {
+            recipient_user_id: uid,
+            push_title: 'Stage reminder',
+            push_body: body,
+            push_url: '/checklist?tab=today',
+            tag: 'stage-reminder',
+          },
+        })
+        if (fnError) throw fnError
+        sentTotal += (data as { push_sent?: number } | null)?.push_sent ?? 0
+      }
+      if (sentTotal > 0) {
+        showToast(
+          `Stage reminder sent to ${titlesByUser.size} ${titlesByUser.size === 1 ? 'person' : 'people'} (${sentTotal} device${sentTotal === 1 ? '' : 's'}).`,
+          'success',
+        )
+      } else {
+        showToast('No notification-enabled devices among this stage’s assignees — the reminder had nowhere to land.', 'error')
+      }
+    } catch {
+      showToast('Couldn’t send the stage reminder — try again.', 'error')
+    } finally {
+      setRemindingStageId(null)
     }
   }
 
@@ -2554,6 +2625,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
           <p style={{ margin: '0 0 0.4rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.03em', color: 'var(--text-muted)' }}>GOALS</p>
           {goalRows.map((g) => {
             const stages = goalStageRows.get(g.roadmapId) ?? []
+            const unlockEvents = goalUnlockEvents.get(g.roadmapId) ?? []
             const expanded = expandedGoalId === g.roadmapId
             const lockedCount = stages.filter((s) => s.state === 'locked').length
             // Fold the locked tail behind "N more" — but never fold a single row.
@@ -2657,12 +2729,54 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                         </button>
                       ) : null}
                     </div>
+                    {unlockEvents.length > 0 ? (
+                      <div style={{ margin: '0.1rem 0 0.5rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {unlockEvents.map((ev) => (
+                          <div
+                            key={ev.stage.groupId}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'baseline',
+                              gap: 6,
+                              flexWrap: 'wrap',
+                              fontSize: '0.8125rem',
+                              lineHeight: 1.4,
+                              padding: '0.45rem 0.6rem',
+                              borderRadius: 10,
+                              background: 'var(--bg-green-100)',
+                              border: '1px solid #16a34a',
+                            }}
+                          >
+                            <span style={{ fontWeight: 700, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>
+                              ✓ Stage {ev.stage.number} finished
+                            </span>
+                            <span style={{ color: 'var(--text-700)', minWidth: 0 }}>{ev.stage.title}</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                              {new Date(ev.completedAtMs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                            {ev.unlocked.length > 0 ? (
+                              <span style={{ fontWeight: 600, color: 'var(--text-green-700)', minWidth: 0 }}>
+                                → unlocked {ev.unlocked.map((u) => `stage ${u.number} “${u.title}”`).join(', ')}
+                              </span>
+                            ) : null}
+                            {ev.advanced.length > 0 ? (
+                              <span style={{ color: 'var(--text-muted)', minWidth: 0 }}>
+                                · moved {ev.advanced.map((u) => `stage ${u.number}`).join(', ')} closer
+                              </span>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     {visibleStages.map(({ row: s, index }) => {
                       // v2.2167: rows wrap on phones (title never collapses) and unfold in
                       // place to their tasks; a task opens the "Where this task fits" sheet.
                       const stageTasks = goalTaskRows.get(g.roadmapId)?.get(s.groupId) ?? []
                       const canOpen = stageTasks.length > 0
                       const stageOpen = canOpen && expandedStageId === s.groupId
+                      const stageCost = isDev
+                        ? summarizeOpenTaskCosts(stageTasks.filter((t) => !t.done).map((t) => t.id), costEstimates)
+                        : null
                       return (
                         <div key={s.groupId} className={`goal-stage${stageOpen ? ' goal-stage--open' : ''}`}>
                           <button
@@ -2682,6 +2796,14 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                               {canOpen ? <span aria-hidden className="goal-stage-car">{stageOpen ? '▾' : '▸'}</span> : null}
                             </span>
                             <span className="goal-stage-meta">
+                              {stageCost && stageCost.dollars > 0 ? (
+                                <span
+                                  title={`Estimated cost of open tasks — ${stageCost.costed} of ${stageCost.total} costed`}
+                                  style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: '#fbbf24', border: '1px solid #d97706', color: '#451a03' }}
+                                >
+                                  {formatOpenCostSummary(stageCost)}
+                                </span>
+                              ) : null}
                               {s.state === 'complete' ? (
                                 <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: '#16a34a', color: 'white' }}>✓ done</span>
                               ) : s.state === 'current' ? (
@@ -2720,14 +2842,16 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                             </span>
                           </button>
                           {stageOpen ? (
+                            <>
                             <ul className="goal-stage-tasks" aria-label={`Tasks in stage ${index + 1}`}>
                               {stageTasks.map((t) => (
-                                <li key={t.id}>
+                                <li key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                   <button
                                     type="button"
                                     className={`goal-task${t.done ? ' goal-task--done' : ''}`}
                                     onClick={() => setRoadmapContextTaskId(t.id)}
                                     aria-label={`Open task ${t.number} ${t.title}`}
+                                    style={{ flex: 1, minWidth: 0 }}
                                   >
                                     <span className="goal-task-num">{t.number}</span>
                                     <span className={`goal-task-g${t.done ? ' goal-task-g--done' : ''}`} aria-hidden>{t.done ? '✓' : '○'}</span>
@@ -2755,9 +2879,77 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                                       ) : null}
                                     </span>
                                   </button>
+                                  {isDev && !t.done ? (
+                                    <ChecklistCostButton costKey={t.id} taskTitle={t.title} />
+                                  ) : null}
                                 </li>
                               ))}
                             </ul>
+                            {(() => {
+                              if (s.state !== 'current') return null
+                              const preview = stageUnlockPreviewFor(s, stages)
+                              const openAssignees = Array.from(
+                                new Set(stageTasks.filter((t) => !t.done).flatMap((t) => t.assigneeNames)),
+                              )
+                              if (preview.unlocks.length === 0 && preview.helps.length === 0 && openAssignees.length === 0) return null
+                              return (
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    flexWrap: 'wrap',
+                                    padding: '0.35rem 0.35rem 0.5rem 2rem',
+                                    fontSize: '0.78rem',
+                                    color: 'var(--text-muted)',
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  {preview.unlocks.length > 0 ? (
+                                    <span style={{ minWidth: 0 }}>
+                                      <span style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>⚡ Finishing unlocks</span>{' '}
+                                      {preview.unlocks.map((u) => `stage ${u.number} “${u.title}”`).join(', ')}
+                                    </span>
+                                  ) : null}
+                                  {preview.helps.length > 0 ? (
+                                    <span style={{ minWidth: 0 }}>
+                                      {preview.unlocks.length > 0 ? 'and ' : ''}helps unlock{' '}
+                                      {preview.helps.map((u) => `stage ${u.number}`).join(', ')}
+                                    </span>
+                                  ) : null}
+                                  {openAssignees.length > 0 ? (
+                                    <button
+                                      type="button"
+                                      disabled={remindingStageId === s.groupId}
+                                      onClick={() =>
+                                        void sendStageReminder(
+                                          s.groupId,
+                                          index + 1,
+                                          s.title,
+                                          stageTasks.filter((t) => !t.done && t.assigneeIds.length > 0),
+                                        )
+                                      }
+                                      style={{
+                                        marginLeft: 'auto',
+                                        minHeight: 32,
+                                        padding: '0 0.6rem',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 600,
+                                        border: '1px solid var(--border-strong)',
+                                        borderRadius: 8,
+                                        background: 'var(--surface)',
+                                        color: 'var(--text-700)',
+                                        cursor: remindingStageId === s.groupId ? 'not-allowed' : 'pointer',
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      {remindingStageId === s.groupId ? 'Sending…' : `🔔 Remind ${openAssignees.length}`}
+                                    </button>
+                                  ) : null}
+                                </div>
+                              )
+                            })()}
+                            </>
                           ) : null}
                         </div>
                       )
@@ -2826,6 +3018,13 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
               const oldest = oldestAgeDays(instances, todayLocal)
               const oldestSeverity = ageSeverity(oldest)
               const notesTotal = instances.reduce((n, i) => n + (notesByInstance.get(i.id) ?? 0), 0)
+              const costTotal = isDev
+                ? sumEstimateDollars(
+                    instances.map(
+                      (i) => costEstimates[i.checklist_items?.roadmap_group_task_id ?? i.checklist_item_id],
+                    ),
+                  )
+                : 0
               const expanded = expandedUserId === userId
               return (
                 <div key={userId} style={{ border: '1px solid var(--border-strong)', borderRadius: 12, marginBottom: '0.6rem', overflow: 'hidden' }}>
@@ -2884,6 +3083,24 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                           </>
                         ) : null}
                         {notesTotal > 0 ? <> · <span style={{ whiteSpace: 'nowrap' }}>💬 {notesTotal} {notesTotal === 1 ? 'note' : 'notes'}</span></> : null}
+                        {costTotal > 0 ? (
+                          <>
+                            {' · '}
+                            <span
+                              style={{
+                                whiteSpace: 'nowrap',
+                                fontWeight: 700,
+                                padding: '0.05rem 0.4rem',
+                                borderRadius: 7,
+                                background: '#fbbf24',
+                                border: '1px solid #d97706',
+                                color: '#451a03',
+                              }}
+                            >
+                              {formatWholeDollars(costTotal)}
+                            </span>
+                          </>
+                        ) : null}
                       </span>
                     </span>
                     <button

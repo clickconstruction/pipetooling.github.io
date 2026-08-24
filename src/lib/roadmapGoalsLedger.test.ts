@@ -35,6 +35,8 @@ describe('goalsLedgerTaskRows', () => {
     expect(b).toMatchObject({ done: false, pinned: true, nextUp: true, chip: 'on_list', assigneeNames: [] })
     expect(c).toMatchObject({ done: false, pinned: false, nextUp: true })
     expect(rows.get('tools')![0]!.assigneeNames).toEqual(['Robert', '…'])
+    // ids ride along in the same order as names — stage reminders need them
+    expect(rows.get('tools')![0]!.assigneeIds).toEqual(['u1', 'ghost'])
   })
 
   it('tasks outside the roadmap are ignored', () => {

@@ -1776,6 +1776,51 @@ export type Database = {
           },
         ]
       }
+      checklist_item_costs: {
+        Row: {
+          cost_key: string
+          created_by_user_id: string | null
+          hours: number
+          person_name: string
+          person_user_id: string | null
+          rate: number
+          updated_at: string
+        }
+        Insert: {
+          cost_key: string
+          created_by_user_id?: string | null
+          hours: number
+          person_name?: string
+          person_user_id?: string | null
+          rate: number
+          updated_at?: string
+        }
+        Update: {
+          cost_key?: string
+          created_by_user_id?: string | null
+          hours?: number
+          person_name?: string
+          person_user_id?: string | null
+          rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_item_costs_created_by_user_id_fkey"
+            columns: ["created_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_item_costs_person_user_id_fkey"
+            columns: ["person_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_items: {
         Row: {
           created_at: string | null
