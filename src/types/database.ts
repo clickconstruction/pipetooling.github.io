@@ -9638,6 +9638,66 @@ export type Database = {
           },
         ]
       }
+      person_reports: {
+        Row: {
+          author_name: string
+          author_user_id: string | null
+          content: string
+          created_at: string
+          filed_entry_id: string | null
+          id: string
+          occurred_date: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          subject_person_id: string
+        }
+        Insert: {
+          author_name?: string
+          author_user_id?: string | null
+          content: string
+          created_at?: string
+          filed_entry_id?: string | null
+          id?: string
+          occurred_date: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject_person_id: string
+        }
+        Update: {
+          author_name?: string
+          author_user_id?: string | null
+          content?: string
+          created_at?: string
+          filed_entry_id?: string | null
+          id?: string
+          occurred_date?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          subject_person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_reports_subject_person_id_fkey"
+            columns: ["subject_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_reports_filed_entry_id_fkey"
+            columns: ["filed_entry_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_book_entries: {
         Row: {
           created_at: string | null
@@ -14717,6 +14777,10 @@ export type Database = {
           request_id: string
         }[]
       }
+      dismiss_person_report: {
+        Args: { p_reason: string; p_report_id: string }
+        Returns: Json
+      }
       duplicate_bid_to_service_type: {
         Args: { p_source_bid_id: string; p_target_service_type_id: string }
         Returns: string
@@ -14758,6 +14822,10 @@ export type Database = {
           note_count: number
           request_id: string
         }[]
+      }
+      file_person_report: {
+        Args: { p_content?: string; p_report_id: string; p_source?: string }
+        Returns: Json
       }
       find_possible_duplicate_mercury_transactions: {
         Args: {

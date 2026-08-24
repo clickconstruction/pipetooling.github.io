@@ -66,6 +66,7 @@ import CreateTripChargeModal, { type CreateTripChargeTarget } from '../component
 import { DashboardTeamsInboxCard } from '../components/dashboard/DashboardTeamsInboxCard'
 import { DashboardProjectsCard } from '../components/dashboard/DashboardProjectsCard'
 import { DashboardSubMoneySection } from '../components/dashboard/DashboardSubMoneySection'
+import { DashboardPersonReportCard } from '../components/dashboard/DashboardPersonReportCard'
 import { DashboardPartnerLedgerSection } from '../components/dashboard/DashboardPartnerLedgerSection'
 import { DashboardPartnerJobsSection } from '../components/dashboard/DashboardPartnerJobsSection'
 import { DashboardMyInboxCard } from '../components/dashboard/DashboardMyInboxCard'
@@ -1542,6 +1543,11 @@ export default function Dashboard() {
       {/* Sub money view (RUN_SUBS_PLAN PR 3.2) — renders only for sub-like
           roles with data; fail-soft before the 3.1 RLS push. */}
       <DashboardSubMoneySection visible={isSubcontractorLikeRole(role)} />
+
+      {/* Field reports → HR (v2.2235): masters and devs capture an observation
+          while it's fresh; it queues on People → HR for filing. Placement:
+          the people cluster — directly above My Team. */}
+      <DashboardPersonReportCard visible={role === 'dev' || role === 'master_technician'} />
 
       {authUser?.id && (
         <Suspense fallback={<MyTeamSectionSkeleton />}>

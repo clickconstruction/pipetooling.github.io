@@ -7,6 +7,7 @@ import { KINDS, KIND_LABELS } from './peopleUsersTabShared'
 import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { derivePersonFileFreshness, type PersonFileFreshness } from '../../lib/people/personFileFreshness'
 import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../lib/people/hrDocMarkdown'
+import { HrPendingReportsSection } from './HrPendingReportsSection'
 
 /**
  * People → HR (dev-only): per-person HR files. Three layers per person —
@@ -82,6 +83,7 @@ export const HR_ENTRY_SOURCES = [
   'review',
   'milestone',
   'job_event',
+  'report',
 ] as const
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -91,9 +93,11 @@ const SOURCE_LABELS: Record<string, string> = {
   review: 'Review',
   milestone: 'Milestone',
   job_event: 'Job event',
+  report: 'Field report',
 }
 
 const SOURCE_CHIP_STYLE: Record<string, { background: string; color: string }> = {
+  report: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
   conversation: { background: 'var(--bg-slate-100)', color: 'var(--text-slate-600)' },
   payroll_event: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' },
   incident: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
@@ -496,6 +500,12 @@ export default function PeopleHrTab() {
         <span aria-hidden>🔒</span>
         <span><strong>Dev-only.</strong> Curated files are maintained by the agent; raw entries are append-only — corrections are new entries.</span>
       </div>
+
+      <HrPendingReportsSection
+        nameForPerson={(id) => people.find((p) => p.id === id)?.name ?? 'this person'}
+        onOpenPerson={(id) => { setSelectedPersonId(id); setFileView('raw') }}
+        onFiled={() => { void load(); if (selectedPersonId) void loadEntries(selectedPersonId) }}
+      />
 
       <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* Roster */}
