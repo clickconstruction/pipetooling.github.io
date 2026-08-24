@@ -424,6 +424,13 @@ Per-user checklist lines (**`user_dashboard_goals`**) edited by dev, master, or 
 
 ## Access Control
 
+### HR files
+Dev-only per-person employee files on People → HR (v2.2221): a curated **Summary** and **Narrative** plus an append-only **raw entries** log, maintained mostly by an AI agent. Corrections are new entries — the log has no UPDATE/DELETE policies.
+
+**Database**: `person_files` (summary/narrative, `UNIQUE(person_id, kind)`) + `person_file_entries` (append-only), both keyed on `people.id`, RLS `is_dev()` only
+
+**Convention**: `docs/HR_FILES.md` (what gets written and how)
+
 ### Adoption
 Process where a master grants an assistant access to their customers and projects. Creates a many-to-many relationship allowing assistants to work for multiple masters.
 
