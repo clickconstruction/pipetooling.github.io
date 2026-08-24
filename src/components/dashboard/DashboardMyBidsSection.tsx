@@ -284,7 +284,20 @@ export function DashboardMyBidsSection({
   return (
     <>
       {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))) && (
-        <div id="dash-bids" style={{ marginBottom: '1rem', scrollMarginTop: 8 }}>
+        // Card frame (v2.2222): the primary's dashboard showed My Bids as a bare
+        // heading between the Recent Reports and Assigned Jobs cards — same
+        // frame as those two now (owner call).
+        <div
+          id="dash-bids"
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            background: 'var(--surface)',
+            padding: isMobile || myBidsSectionExpanded ? '0.85rem 1rem 1rem' : '0.85rem 1rem',
+            marginBottom: '1rem',
+            scrollMarginTop: 8,
+          }}
+        >
           <div
             style={{
               display: 'flex',
