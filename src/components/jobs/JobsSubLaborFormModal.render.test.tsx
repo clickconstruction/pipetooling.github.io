@@ -196,6 +196,19 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(screen.queryByText('Ghost Not On Roster')).toBeNull()
   })
 
+  it('edit mode: picking a job persists immediately with a confirming toast (closing without Save keeps it)', async () => {
+    const { handleRef } = mountHarness()
+    const laborJob = makeLaborJob({ assigned_to_name: 'Sub Sam', address: '230 Terrell Road', job_number: '944' })
+    await act(async () => handleRef.current!.openEdit(laborJob))
+    // Unmatched number: the Job field reads as unlinked — clicking it opens the picker.
+    fireEvent.click(screen.getByText('No job with this number'))
+    await act(async () => {
+      fireEvent.click(screen.getByText(/JHCP-12 · /))
+    })
+    // The instant-save toast only fires after the people_labor_jobs update succeeds.
+    expect(await screen.findByText(/Sheet moved to JHCP-12 .* saved/)).toBeTruthy()
+  })
+
   it('bare open() preserves prior form state; openNew() resets it (v2.823 quirk)', async () => {
     const { handleRef } = mountHarness()
     await act(async () => handleRef.current!.openNewWithJobNumber('HCP-12'))

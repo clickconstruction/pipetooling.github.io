@@ -10,6 +10,7 @@ import {
 } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useToastContext } from '../../contexts/ToastContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { assigneePersonIdsForNames } from '../../lib/people/assigneePersonIds'
 import { filterLaborCrewNames, formatCurrency } from '../../lib/jobs/jobFormatting'
@@ -142,6 +143,7 @@ function JobsSubLaborFormModalInner(
   ref: ForwardedRef<JobsSubLaborFormModalHandle>,
 ) {
   const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
   // Labor tab state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
@@ -1081,6 +1083,28 @@ function JobsSubLaborFormModalInner(
         rows: laborFixtureRows,
       }),
     )
+  }
+
+  /**
+   * Edit mode: the job link persists the moment it's picked (same instant-save
+   * contract as the invoice-link field) — closing the modal without Save used
+   * to silently drop the pick, leaving the sheet on its old number.
+   */
+  async function persistPickedJobForEdit(sheetId: string, job: JobWithDetails) {
+    setError(null)
+    const { error: err } = await supabase
+      .from('people_labor_jobs')
+      .update({
+        job_number: subLaborJobNumberForStorage(job) || null,
+        address: job.job_address ?? '',
+      })
+      .eq('id', sheetId)
+    if (err) {
+      setError(`Job change didn't save: ${err.message}`)
+      return
+    }
+    showToast(`Sheet moved to ${subLaborJobDisplayLabel(job)} — saved`, 'success')
+    await loadLaborJobs()
   }
 
   /** Picking a job fills Job #, Address, and pre-checks its crew (the old "fill", automatic). */
@@ -2315,7 +2339,10 @@ function JobsSubLaborFormModalInner(
                 onPickJob={(jobId) => {
                   const job = jobs.find((j) => j.id === jobId)
                   // Edit (v2.2142): the sheet's crew is already the truth — picking a job never rewrites it.
-                  if (job) applyPickedLaborJob(job, { keepAssigned: !!editingLaborJob })
+                  if (job) {
+                    applyPickedLaborJob(job, { keepAssigned: !!editingLaborJob })
+                    if (editingLaborJob) void persistPickedJobForEdit(editingLaborJob.id, job)
+                  }
                   setLaborJobPickerOpen(false)
                 }}
               />
