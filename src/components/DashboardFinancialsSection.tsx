@@ -476,9 +476,20 @@ function ItemsModal({
   const [drillQuery, setDrillQuery] = useState('')
   const [drillSort, setDrillSort] = useState<FinanceDrillSort>('amount')
   // AR line items (v2.1595, "Variant B"): one fixtures fetch for every AR job on
-  // open; each row wears an "N line items" chip that expands in place.
+  // open. Line items start EXPANDED — a chevron beside the first line collapses
+  // a stack back to the compact "N line items" chip; collapsedArLineKeys tracks
+  // those opt-outs. (Payroll person-groups below keep the opt-in
+  // expandedLineKeys — they still start collapsed.)
   const [arLinesByJob, setArLinesByJob] = useState<Map<string, ArLineItem[]> | null>(null)
   const [expandedLineKeys, setExpandedLineKeys] = useState<Set<string>>(() => new Set())
+  const [collapsedArLineKeys, setCollapsedArLineKeys] = useState<Set<string>>(() => new Set())
+  const toggleArLineKey = (key: string) =>
+    setCollapsedArLineKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
   useEffect(() => {
     if (cardKey !== 'ar' && cardKey !== 'unbilled') return
     const jobIds = Array.from(
@@ -509,7 +520,7 @@ function ItemsModal({
     return {
       address: item.address ? stripTrailingZip(item.address) : null,
       lines: (item.jobId ? arLinesByJob?.get(item.jobId) : null) ?? [],
-      expanded: expandedLineKeys.has(item.key),
+      expanded: !collapsedArLineKeys.has(item.key),
     }
   }
   const toggleLineKey = (key: string) =>
@@ -581,36 +592,61 @@ function ItemsModal({
   }
   const arLineItemsBlock = (item: FinancialItem, extras: { lines: ArLineItem[]; expanded: boolean }) => {
     if (extras.lines.length === 0) return null
+    // Collapsed: the compact chip. Expanded (the default): the lines themselves
+    // with a chevron beside the first one — no chip row eating vertical space.
+    if (!extras.expanded) {
+      return (
+        <div style={{ marginTop: '0.2rem' }}>
+          <button
+            type="button"
+            onClick={() => toggleArLineKey(item.key)}
+            aria-expanded={false}
+            aria-label={`Show line items for ${item.label}`}
+            style={{
+              padding: '0.05rem 0.5rem',
+              borderRadius: 999,
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
+              color: 'var(--text-700)',
+              fontSize: '0.71875rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {extras.lines.length} line item{extras.lines.length === 1 ? '' : 's'} ▸
+          </button>
+        </div>
+      )
+    }
     return (
-      <div style={{ marginTop: '0.2rem' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem', margin: '0.3rem 0 0.1rem' }}>
         <button
           type="button"
-          onClick={() => toggleLineKey(item.key)}
-          aria-expanded={extras.expanded}
-          aria-label={`${extras.expanded ? 'Hide' : 'Show'} line items for ${item.label}`}
+          onClick={() => toggleArLineKey(item.key)}
+          aria-expanded
+          aria-label={`Hide line items for ${item.label}`}
           style={{
-            padding: '0.05rem 0.5rem',
-            borderRadius: 999,
-            border: '1px solid var(--border-strong)',
-            background: 'var(--surface)',
-            color: 'var(--text-700)',
-            fontSize: '0.71875rem',
+            background: 'none',
+            border: 'none',
+            padding: '0.1rem 0.2rem 0 0',
+            margin: 0,
+            color: 'var(--text-muted)',
+            fontSize: '0.7rem',
+            lineHeight: 1.3,
             cursor: 'pointer',
-            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
-          {extras.lines.length} line item{extras.lines.length === 1 ? '' : 's'} {extras.expanded ? '▴' : '▾'}
+          ▾
         </button>
-        {extras.expanded ? (
-          <div style={{ margin: '0.3rem 0 0.1rem 0.75rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.6rem', maxWidth: 420 }}>
-            {extras.lines.map((l, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-700)', padding: '0.08rem 0' }}>
-                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.label}</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(l.amount)}</span>
-              </div>
-            ))}
-          </div>
-        ) : null}
+        <div style={{ borderLeft: '2px solid var(--border)', paddingLeft: '0.6rem', maxWidth: 420, flex: 1, minWidth: 0 }}>
+          {extras.lines.map((l, idx) => (
+            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-700)', padding: '0.08rem 0' }}>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.label}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(l.amount)}</span>
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
