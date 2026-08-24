@@ -15,6 +15,7 @@ import {
 import { formatBidValueShort, formatDateYYMMDDParts } from '../../lib/bids/bidFormatting'
 import { BidBoardWeeklySentSection } from './BidBoardWeeklySentSection'
 import { BidBoardWeeklyEstimatorLaborDevSection } from './BidBoardWeeklyEstimatorLaborDevSection'
+import { BidBoardEstimatingPulseSection } from './BidBoardEstimatingPulseSection'
 import { BidBoardEstimatingHealthWonPctSliders } from './BidBoardEstimatingHealthSliders'
 import { StaffOutcomeDrilldownCountCell } from './StaffOutcomeDrilldownCountCell'
 import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
@@ -34,6 +35,23 @@ export function BidBoardEstimatingHealthSection({
   isDev,
   ledgerPrefixMap,
 }: BidBoardEstimatingHealthSectionProps) {
+  // Old/New pills (v2.1918): Old is the classic pivot + sliders + scoreboard,
+  // New is the Estimating Pulse. Sticky per device, default Old.
+  const [healthView, setHealthView] = useState<'old' | 'new'>(() => {
+    try {
+      return window.localStorage.getItem('bid_board_health_view_v1') === 'new' ? 'new' : 'old'
+    } catch {
+      return 'old'
+    }
+  })
+  const switchHealthView = (next: 'old' | 'new') => {
+    setHealthView(next)
+    try {
+      window.localStorage.setItem('bid_board_health_view_v1', next)
+    } catch {
+      /* device just won't remember */
+    }
+  }
   const [scoreboardDetailsExpanded, setScoreboardDetailsExpanded] = useState(false)
   const [staffOutcomeDrilldown, setStaffOutcomeDrilldown] = useState<StaffOutcomeDrilldownState | null>(null)
 
@@ -55,6 +73,24 @@ export function BidBoardEstimatingHealthSection({
 
   return (
     <Fragment>
+      <div role="tablist" aria-label="Health view" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '1.25rem' }}>
+        <button type="button" role="tab" aria-selected={healthView === 'old'} onClick={() => switchHealthView('old')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: healthView === 'old' ? '#2563eb' : 'transparent', color: healthView === 'old' ? '#fff' : 'var(--text-muted)' }}>
+          Old
+        </button>
+        <button type="button" role="tab" aria-selected={healthView === 'new'} onClick={() => switchHealthView('new')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: healthView === 'new' ? '#2563eb' : 'transparent', color: healthView === 'new' ? '#fff' : 'var(--text-muted)' }}>
+          New
+        </button>
+        {healthView === 'new' ? (
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>the Pulse — same data as Old, every number clicks through.</span>
+        ) : null}
+      </div>
+      {healthView === 'new' ? (
+        <Fragment>
+          <BidBoardEstimatingPulseSection filteredBids={filteredBids} />
+          {isDev && <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} />}
+        </Fragment>
+      ) : (
+        <Fragment>
       <BidBoardWeeklySentSection weeks={weeklySentSummaries} bids={filteredBids} />
       {isDev && <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} />}
       <div style={{ marginTop: '1.5rem' }}>
@@ -665,6 +701,8 @@ export function BidBoardEstimatingHealthSection({
             )}
           </div>
         </div>
+      )}
+        </Fragment>
       )}
     </Fragment>
   )
