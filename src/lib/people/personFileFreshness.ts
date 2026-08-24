@@ -22,6 +22,13 @@ const DAY_MS = 24 * 60 * 60 * 1000
 export function derivePersonFileFreshness(args: {
   /** person_files.updated_at for kind='summary', or null when no summary row. */
   summaryUpdatedAt: string | null
+  /**
+   * person_files.covered_through for kind='summary' (v2.2228): the explicit
+   * "entries created through this instant are folded in" marker the writer
+   * sets. Preferred over summaryUpdatedAt when present; updated_at is the
+   * fallback for pre-v2.2228 summaries that predate the column.
+   */
+  summaryCoveredThrough?: string | null
   /** person_file_entries.created_at values for this person. */
   entryCreatedAts: string[]
   nowIso: string
@@ -30,8 +37,17 @@ export function derivePersonFileFreshness(args: {
     .map((iso) => Date.parse(iso))
     .filter((t) => Number.isFinite(t))
   const entryCount = entryTimes.length
-  const summaryTime = args.summaryUpdatedAt === null ? null : Date.parse(args.summaryUpdatedAt)
-  const hasSummary = summaryTime !== null && Number.isFinite(summaryTime)
+  const coveredParsed =
+    args.summaryCoveredThrough != null ? Date.parse(args.summaryCoveredThrough) : NaN
+  const updatedParsed = args.summaryUpdatedAt === null ? NaN : Date.parse(args.summaryUpdatedAt)
+  // covered_through is the writer's explicit coverage line; fall back to
+  // updated_at for summaries written before the column existed.
+  const summaryTime = Number.isFinite(coveredParsed)
+    ? coveredParsed
+    : Number.isFinite(updatedParsed)
+      ? updatedParsed
+      : null
+  const hasSummary = summaryTime !== null
 
   if (!hasSummary && entryCount === 0) {
     return { state: 'empty', staleDays: 0, entryCount: 0, coveredCount: 0 }

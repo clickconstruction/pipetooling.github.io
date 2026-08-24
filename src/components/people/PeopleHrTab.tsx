@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -6,6 +6,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { KINDS, KIND_LABELS } from './peopleUsersTabShared'
 import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { derivePersonFileFreshness, type PersonFileFreshness } from '../../lib/people/personFileFreshness'
+import { hrDocMarkdownToSafeHtml, extractHrDocHeadings } from '../../lib/people/hrDocMarkdown'
 
 /**
  * People → HR (dev-only): per-person HR files. Three layers per person —
@@ -31,6 +32,8 @@ type PersonFileRow = {
   kind: string
   content: string
   updated_at: string
+  covered_through: string | null
+  author_label: string | null
 }
 
 type EntryRow = {
@@ -41,6 +44,7 @@ type EntryRow = {
   source: string
   created_by: string | null
   created_at: string
+  author_label: string | null
 }
 
 type FileView = 'summary' | 'narrative' | 'raw'
@@ -101,6 +105,20 @@ function tenureLabel(startYmd: string | null, todayYmd: string): string {
   return `${Math.floor(months / 12)}y ${months % 12}m`
 }
 
+/**
+ * The sanitizer strips id attributes, so headings in the rendered HTML carry
+ * none. Add an id to each successive heading tag from the extracted heading
+ * slugs (same document order) so the jump-list anchors resolve. Slugs are
+ * [a-z0-9-] only (see hrDocMarkdown.slugify), safe to inline as an attribute.
+ */
+function injectHeadingIds(html: string, headings: Array<{ slug: string }>): string {
+  let i = 0
+  return html.replace(/<(h[1-6])>/g, (match, tag) => {
+    const h = headings[i++]
+    return h ? `<${tag} id="${h.slug}">` : match
+  })
+}
+
 const chipStyle = (colors: { background: string; color: string }): React.CSSProperties => ({
   display: 'inline-block',
   padding: '0.1rem 0.55rem',
@@ -131,6 +149,7 @@ export default function PeopleHrTab() {
 
   const [entries, setEntries] = useState<EntryRow[]>([])
   const [entriesLoading, setEntriesLoading] = useState(false)
+  const hrDocRef = useRef<HTMLDivElement>(null)
 
   const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
   const [draftDate, setDraftDate] = useState(todayYmd)
@@ -142,7 +161,7 @@ export default function PeopleHrTab() {
     setLoadError(null)
     const [peopleRes, filesRes, metaRes, usersRes] = await Promise.all([
       supabase.from('people').select('id, name, kind, archived_at, start_date'),
-      supabase.from('person_files').select('person_id, kind, content, updated_at'),
+      supabase.from('person_files').select('person_id, kind, content, updated_at, covered_through, author_label'),
       supabase.from('person_file_entries').select('person_id, created_at'),
       supabase.from('users').select('id, name'),
     ])
@@ -171,7 +190,7 @@ export default function PeopleHrTab() {
     setEntriesLoading(true)
     const { data, error } = await supabase
       .from('person_file_entries')
-      .select('id, person_id, entry_date, content, source, created_by, created_at')
+      .select('id, person_id, entry_date, content, source, created_by, created_at, author_label')
       .eq('person_id', personId)
       .order('entry_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -211,6 +230,7 @@ export default function PeopleHrTab() {
     for (const p of people) {
       map.set(p.id, derivePersonFileFreshness({
         summaryUpdatedAt: filesByPerson.get(p.id)?.summary?.updated_at ?? null,
+        summaryCoveredThrough: filesByPerson.get(p.id)?.summary?.covered_through ?? null,
         entryCreatedAts: createdByPerson.get(p.id) ?? [],
         nowIso,
       }))
@@ -263,15 +283,20 @@ export default function PeopleHrTab() {
 
   const renderDoc = (doc: PersonFileRow | undefined, kind: 'summary' | 'narrative') => {
     const fr = selectedFreshness
+    const html = doc ? hrDocMarkdownToSafeHtml(doc.content) : ''
+    const headings = doc && kind === 'narrative' ? extractHrDocHeadings(doc.content) : []
     return (
       <div>
         {doc ? (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.9rem', fontSize: '0.76rem', color: 'var(--text-muted)', marginBottom: '0.7rem' }}>
-              <span>Maintained by the agent</span>
+              <span>Maintained by {doc.author_label ?? 'the agent'}</span>
               <span>{kind === 'summary' ? 'rewritten' : 'last extended'} {formatIsoDate(doc.updated_at)}</span>
+              {doc.covered_through && (
+                <span>covers through {formatIsoDate(doc.covered_through)}</span>
+              )}
               {kind === 'summary' && fr && fr.entryCount > 0 && (
-                <span>covers {fr.coveredCount} of {fr.entryCount} entries</span>
+                <span>{fr.coveredCount} of {fr.entryCount} entries</span>
               )}
               {kind === 'summary' && fr?.state === 'current' && (
                 <span style={{ color: 'var(--text-green-600)', fontWeight: 600 }}>● current</span>
@@ -283,9 +308,40 @@ export default function PeopleHrTab() {
                 {fr.staleDays > 0 ? ` — ${fr.staleDays}d behind` : ''}. Ask the agent to bring it current.
               </div>
             )}
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem 1.2rem', fontSize: '0.9rem', maxWidth: '70ch', whiteSpace: 'pre-wrap' }}>
-              {doc.content.trim() === '' ? <span style={{ color: 'var(--text-muted)' }}>Empty.</span> : doc.content}
-            </div>
+            {headings.length > 2 && (
+              <nav aria-label="Jump to section" style={{ background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.8rem', marginBottom: '0.8rem', maxWidth: '70ch', fontSize: '0.8rem' }}>
+                <div style={{ textTransform: 'uppercase', fontSize: '0.64rem', letterSpacing: '0.07em', color: 'var(--text-faint)', fontWeight: 700, marginBottom: '0.35rem' }}>Jump to</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.9rem' }}>
+                  {headings.map((h) => (
+                    <a
+                      key={h.slug}
+                      href={`#${h.slug}`}
+                      onClick={(ev) => {
+                        ev.preventDefault()
+                        hrDocRef.current?.querySelector(`#${CSS.escape(h.slug)}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }}
+                      style={{ color: 'var(--text-link)', textDecoration: 'none', paddingLeft: `${(h.level - 1) * 0.7}rem`, whiteSpace: 'nowrap' }}
+                    >
+                      {h.text}
+                    </a>
+                  ))}
+                </div>
+              </nav>
+            )}
+            {doc.content.trim() === '' ? (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem 1.2rem', maxWidth: '70ch' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Empty.</span>
+              </div>
+            ) : (
+              <div
+                ref={hrDocRef}
+                className="hr-doc-body"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1rem 1.2rem', fontSize: '0.9rem', maxWidth: '70ch' }}
+                // Content is agent-authored markdown, rendered via marked and run
+                // through the contract-signing sanitizer (hrDocMarkdownToSafeHtml).
+                dangerouslySetInnerHTML={{ __html: injectHeadingIds(html, headings) }}
+              />
+            )}
           </>
         ) : (
           <div style={{ color: 'var(--text-muted)', fontSize: '0.88rem', maxWidth: '60ch' }}>
@@ -470,7 +526,7 @@ export default function PeopleHrTab() {
                               {SOURCE_LABELS[e.source] ?? e.source}
                             </span>
                             <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: 2 }}>
-                              {e.created_by ? (userNamesById[e.created_by] ?? 'unknown') : 'agent'} · logged {formatIsoDate(e.created_at)}
+                              {e.created_by ? (userNamesById[e.created_by] ?? 'unknown') : (e.author_label ?? 'agent')} · logged {formatIsoDate(e.created_at)}
                             </span>
                           </span>
                         </div>
