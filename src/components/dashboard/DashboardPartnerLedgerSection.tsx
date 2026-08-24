@@ -27,7 +27,6 @@ export function DashboardPartnerLedgerSection() {
   // Settle-up position: posted balance plus charges still waiting for a
   // statement (owner call, v2.2009) — the same number the statement headlines.
   const position = summary.balance + summary.pending_offsets.net
-  const awaiting = summary.latest_statement != null && summary.latest_statement.partner_ack_at == null
   const words = balanceWords(position) || 'even'
 
   return (
@@ -38,8 +37,8 @@ export function DashboardPartnerLedgerSection() {
       >
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: '0.85rem', fontWeight: 650 }}>{weekOfLabel(summary.current_week.week_start, nowYear)} · in progress</span>
-          <span style={{ display: 'block', fontSize: '0.75rem', color: awaiting ? 'var(--text-amber-700)' : 'var(--text-muted)', marginTop: 2 }}>
-            {awaiting ? 'Last week’s statement is waiting on your sign-off' : `${summary.current_week.pending_sessions > 0 ? `${summary.current_week.pending_sessions} session${summary.current_week.pending_sessions === 1 ? '' : 's'} pending approval · ` : ''}updates as hours approve`}
+          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+            {`${summary.current_week.pending_sessions > 0 ? `${summary.current_week.pending_sessions} session${summary.current_week.pending_sessions === 1 ? '' : 's'} pending approval · ` : ''}updates as hours approve`}
           </span>
         </span>
         <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>

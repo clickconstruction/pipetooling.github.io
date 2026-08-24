@@ -543,7 +543,7 @@ export default function Layout() {
             {dashboardIcon}
           </NavLink>
         ) : null}
-        {partnerNav.isPartner ? <PartnerStatementNavLink variant="icon" awaitingSignOff={partnerNav.awaitingSignOff} style={iconLinkStyle} /> : null}
+        {partnerNav.isPartner ? <PartnerStatementNavLink variant="icon" style={iconLinkStyle} /> : null}
         {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="strip" isMobile={isMobile} />}
         {role === 'dev' && !isMobile && (
           <NavLink to="/people?tab=review" style={iconLinkStyle} title="Review" aria-label="Review">
@@ -607,11 +607,10 @@ export default function Layout() {
           )}
           {partnerNav.isPartner ? (
             onNavClick ? (
-              <PartnerStatementNavLink variant="row" awaitingSignOff={partnerNav.awaitingSignOff} style={linkStyle} onClick={onNavClick} />
+              <PartnerStatementNavLink variant="row" style={linkStyle} onClick={onNavClick} />
             ) : !excludeHeaderLinks ? (
               <PartnerStatementNavLink
                 variant="icon"
-                awaitingSignOff={partnerNav.awaitingSignOff}
                 style={({ isActive }) => ({ ...linkStyle({ isActive }), display: 'inline-flex', alignItems: 'center' })}
               />
             ) : null
@@ -681,11 +680,10 @@ export default function Layout() {
         )}
         {partnerNav.isPartner ? (
           onNavClick ? (
-            <PartnerStatementNavLink variant="row" awaitingSignOff={partnerNav.awaitingSignOff} style={linkStyle} onClick={onNavClick} />
+            <PartnerStatementNavLink variant="row" style={linkStyle} onClick={onNavClick} />
           ) : !excludeHeaderLinks ? (
             <PartnerStatementNavLink
               variant="icon"
-              awaitingSignOff={partnerNav.awaitingSignOff}
               style={({ isActive }) => ({ ...linkStyle({ isActive }), display: 'inline-flex', alignItems: 'center' })}
             />
           ) : null

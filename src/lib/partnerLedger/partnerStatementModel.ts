@@ -13,18 +13,6 @@ export function balanceHeadline(n: number): string {
   return 'Even'
 }
 
-/**
- * The last closed statement, only while it awaits the partner's acknowledgment
- * (D7): `cards` are newest-first (index 0 is the live week). The newest closed
- * card that carries a statement is "the last statement"; it is returned only
- * when the partner hasn't acknowledged it yet. Charge-only weeks (no stub)
- * never qualify — there is nothing to sign off.
- */
-export function awaitingStatementCard(cards: readonly WeekCard[]): WeekCard | null {
-  const last = cards.find((c) => !c.open && c.stubId != null)
-  if (!last) return null
-  return last.partnerAckAt == null ? last : null
-}
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
 

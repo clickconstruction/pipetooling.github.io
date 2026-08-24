@@ -26,7 +26,7 @@ const summary = {
 }
 
 describe('DashboardPartnerLedgerSection (entry card)', () => {
-  it('links to /my-statement with the settle-up position in words and the sign-off nudge', async () => {
+  it('links to /my-statement with the settle-up position in words', async () => {
     rpc.mockResolvedValue({ data: summary, error: null })
     renderWithProviders(<DashboardPartnerLedgerSection />)
     await waitFor(() => expect(screen.getByText('Your statement')).toBeTruthy())
@@ -35,7 +35,7 @@ describe('DashboardPartnerLedgerSection (entry card)', () => {
     // posted balance −808.13 + pending charges −200 = the statement's headline
     expect(screen.getByText('−$1,008.13')).toBeTruthy()
     expect(screen.getByText('you owe Click · Open ›')).toBeTruthy()
-    expect(screen.getByText(/waiting on your sign-off/)).toBeTruthy()
+    expect(screen.queryByText(/sign-off/)).toBeNull()
     // summary only — the 520-week ledger is not fetched for the entry card
     expect(rpc).toHaveBeenCalledTimes(1)
     expect(rpc.mock.calls[0]?.[0]).toBe('get_my_partner_summary')

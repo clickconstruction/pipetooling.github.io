@@ -1,8 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { supabase } from '../lib/supabase'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { usePartnerJobs, usePartnerLedger } from '../hooks/usePartnerLedger'
-import { invalidatePartnerNavStatus } from '../hooks/useIsPartner'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { todayLongDate } from '../lib/partnerLedger/partnerStatementModel'
 import { MUTED, PAPER } from '../lib/portal/portalTheme'
@@ -16,24 +14,14 @@ import { PartnerStatementPaper } from '../components/partner/PartnerStatementPap
  * with no live partnership sees a quiet note, never an error.
  */
 export function PartnerStatementView({ asPartnershipId }: { asPartnershipId?: string } = {}) {
-  const { summary, cards, fullRows, loaded, reload } = usePartnerLedger(asPartnershipId)
+  const { summary, cards, fullRows, loaded } = usePartnerLedger(asPartnershipId)
   const { jobs, openJob, costing, costingErr, toggleCosting } = usePartnerJobs(asPartnershipId)
   const [idx, setIdx] = useState(0)
-  const [acking, setAcking] = useState(false)
   const isMobile = useIsMobile()
   const now = new Date()
   const todayLabel = todayLongDate(now)
   const nowYear = now.getFullYear()
 
-  async function acknowledge(stubId: string) {
-    setAcking(true)
-    const { error } = await supabase.rpc('acknowledge_partner_statement', { p_pay_stub_id: stubId })
-    if (!error) {
-      await reload()
-      invalidatePartnerNavStatus()
-    }
-    setAcking(false)
-  }
 
   // D4: print IS the page — the identical paper rendered statically into the
   // print window (inline styles carry over; buttons/nav/costing drop out).
@@ -79,8 +67,6 @@ export function PartnerStatementView({ asPartnershipId }: { asPartnershipId?: st
       costing={costing}
       costingErr={costingErr}
       onToggleCosting={(id) => void toggleCosting(id)}
-      onAcknowledge={(id) => void acknowledge(id)}
-      acking={acking}
       onPrint={() => void print()}
       lens={!!asPartnershipId}
       isMobile={isMobile}
