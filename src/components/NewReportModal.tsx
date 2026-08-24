@@ -18,6 +18,9 @@ import AutoGrowTextarea from './AutoGrowTextarea'
 import ConfirmDialog from './ConfirmDialog'
 import { hasUnsavedReportEntries } from '../lib/reportFormDirty'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import TurnawayModal from './jobMode/TurnawayModal'
+import { denverCalendarDayKey } from '../utils/dateUtils'
+import { TURNAWAY_REPORT_OPTION_LABEL, TURNAWAY_REPORT_OPTION_SUB, shouldOfferTurnawayInReportPicker } from '../lib/turnawayReportOption'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -62,6 +65,9 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const [copyJustClicked, setCopyJustClicked] = useState(false)
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
+  /** Turnaway door (v2.2210): true when the picked ledger job has a schedule block for me today. */
+  const [scheduledToday, setScheduledToday] = useState(false)
+  const [turnawayOpen, setTurnawayOpen] = useState(false)
   /** Once the tech taps Change, emptying the search box must not re-auto-select the last job. */
   const suppressAutoSelectRef = useRef(false)
 
@@ -85,6 +91,27 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
       }
     })
   }, [open, initialTemplateName])
+
+  useEffect(() => {
+    // Turnaway door (v2.2210): show it only when the picked job is on MY schedule
+    // today (same source Job Mode reads). Cheap head-count per job selection.
+    let cancelled = false
+    setScheduledToday(false)
+    if (!open || !authUserId || !selectedJob || selectedJob.source !== 'job_ledger') return
+    void (async () => {
+      const { count } = await supabase
+        .from('job_schedule_blocks')
+        .select('id', { count: 'exact', head: true })
+        .eq('assignee_user_id', authUserId)
+        .eq('job_id', selectedJob.id)
+        .eq('work_date', denverCalendarDayKey(Date.now()))
+      if (!cancelled) setScheduledToday((count ?? 0) > 0)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, authUserId, selectedJob?.id, selectedJob?.source])
 
   useEffect(() => {
     if (open && initialJob) {
@@ -531,6 +558,34 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                 </button>
               ))}
             </div>
+            {shouldOfferTurnawayInReportPicker(selectedJob?.source ?? null, scheduledToday) ? (
+              <button
+                type="button"
+                onClick={() => setTurnawayOpen(true)}
+                title="Opens the Turnaway form — files the field report and alerts Dispatch, same as Job Mode"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  width: '100%',
+                  textAlign: 'left',
+                  marginTop: '0.6rem',
+                  padding: '0.6rem 0.75rem',
+                  background: 'var(--bg-amber-tint, var(--bg-amber-100))',
+                  border: '1px solid var(--border-amber-soft)',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  font: 'inherit',
+                }}
+              >
+                <span aria-hidden style={{ fontSize: '1rem' }}>{'\u26A0\uFE0F'}</span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-amber-800)' }}>{TURNAWAY_REPORT_OPTION_LABEL}</span>
+                  <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{TURNAWAY_REPORT_OPTION_SUB}</span>
+                </span>
+                <span aria-hidden style={{ marginLeft: 'auto', color: 'var(--text-amber-800)', fontSize: '1rem' }}>{'\u203A'}</span>
+              </button>
+            ) : null}
           </div>
 
           {fields.length > 0 && (
@@ -592,6 +647,27 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         }}
       />
     )}
+      {turnawayOpen && selectedJob && selectedJob.source === 'job_ledger' ? (
+        // Lift above this picker's z-index (1100) — TurnawayModal's own overlay sits at 65 for Job Mode.
+        <div style={{ position: 'relative', zIndex: 1200 }}>
+          <TurnawayModal
+          open={turnawayOpen}
+          onClose={() => setTurnawayOpen(false)}
+          onSubmitted={() => {
+            // Turnaway filed (report + dispatch alert) — the picker's job is done too.
+            setTurnawayOpen(false)
+            onSaved()
+            onClose()
+          }}
+          authUserId={authUserId}
+          userRole={userRole}
+          jobId={selectedJob.id}
+          hcpNumber={selectedJob.hcp_number}
+          jobName={selectedJob.display_name}
+          jobAddress={selectedJob.address ?? ''}
+        />
+        </div>
+      ) : null}
     </>
   )
 }
