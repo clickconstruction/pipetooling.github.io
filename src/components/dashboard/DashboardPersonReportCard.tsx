@@ -149,6 +149,7 @@ export function DashboardPersonReportCard({ visible }: { visible: boolean }) {
             listAriaLabel="Who is this about?"
             searchReplacesTrigger
             triggerMinHeightPx={0}
+            fillViewportHeight
           />
         </div>
         <div style={{ flex: '0 1 150px' }}>
