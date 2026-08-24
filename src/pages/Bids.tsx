@@ -260,7 +260,7 @@ export default function Bids() {
   const [lastContactFromEntries, setLastContactFromEntries] = useState<Record<string, string>>({})
   const [bidGcRecipientsByBidId, setBidGcRecipientsByBidId] = useState<BidGcRecipientsMap>({})
   // Bids by GC (v2.2162/v2.2164): one packet load for the board, the Followup lenses and By builder.
-  const { packetsByBid: gcPacketsByBid } = useBidGcPackets(bids, bidGcRecipientsByBidId)
+  const { packetsByBid: gcPacketsByBid, noteCounts: gcNoteCounts } = useBidGcPackets(bids, bidGcRecipientsByBidId)
   const [customerContacts, setCustomerContacts] = useState<CustomerContact[]>([])
   const [customerContactPersons, setCustomerContactPersons] = useState<CustomerContactPerson[]>([])
 
@@ -2852,6 +2852,7 @@ export default function Bids() {
           showLostModalLabor={showLostModalLabor}
                 onSaveLossReason={saveLossReasonFromLostSummaryModal}
           workingBoardArchivedBids={workingBoardArchivedBids}
+          gcNoteCounts={gcNoteCounts}
           gcPacketsByBid={gcPacketsByBid}
           recipientsByBidId={bidGcRecipientsByBidId}
         />

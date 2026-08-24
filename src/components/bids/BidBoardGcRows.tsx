@@ -7,6 +7,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { setGcPacketOutcome, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
+import { gcNoteCountKey } from '../../lib/bids/bidGcNotes'
+import { BidGcNotesPopover } from './BidGcNotesPopover'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatCurrency } from '../../lib/format'
 
@@ -101,9 +103,11 @@ export function GcOutcomePill({ value, gcName, busy, onChange }: { value: Packet
  * The per-GC lines: one per packet — name · sent m/d · state pill (★ value in the tooltip). Shared by the
  * table cell, the phone card and Followup. `nameStyle` lets the caller match the surrounding text.
  */
-export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged, dense }: { bidId: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean }) {
+export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChanged, dense, gcNoteCounts }: { bidId: string; bidLabel?: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean; gcNoteCounts?: Record<string, number> }) {
   const { showToast } = useToastContext()
   const [busyKey, setBusyKey] = useState<string | null>(null)
+  /** Per-GC notes popover (v2.2217): the open packet's key, one at a time. */
+  const [notesKey, setNotesKey] = useState<string | null>(null)
   async function change(p: GcPacket, next: PacketOutcome) {
     setBusyKey(p.key)
     const after = packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === p.key ? next : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter }))
@@ -117,6 +121,30 @@ export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged, dense }
     onChanged()
   }
   const primaryName = packets.find((x) => !x.sharedLetter)?.name ?? 'the bid’s GC'
+  const noteCountOf = (p: GcPacket) => (p.gcId && gcNoteCounts ? gcNoteCounts[gcNoteCountKey(bidId, p.gcId)] ?? 0 : 0)
+  const gcNameButton = (p: GcPacket) => (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        setNotesKey(p.key)
+      }}
+      title={`Notes for ${p.name} on this bid`}
+      style={{ font: 'inherit', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline dotted', textDecorationColor: 'var(--text-faint)', textUnderlineOffset: 3 }}
+    >
+      {p.name}
+    </button>
+  )
+  const noteBadge = (p: GcPacket) => {
+    const n = noteCountOf(p)
+    return n > 0 ? (
+      <span title={`${n} note${n === 1 ? '' : 's'} for ${p.name} on this bid`} style={{ fontSize: '0.66rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderRadius: 7, padding: '0 0.4rem', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+        {'\uD83D\uDCAC'} {n}
+      </span>
+    ) : null
+  }
+  // The bid's own GC has packet key '' — test against null, never truthiness.
+  const openPacket = notesKey != null ? packets.find((x) => x.key === notesKey) ?? null : null
   return (
     <div style={{ display: 'grid', gap: dense ? '0.1rem' : '0.15rem', fontSize: dense ? '0.72rem' : '0.76rem', color: 'var(--text-muted)', minWidth: 0 }}>
       {packets.map((p) => {
@@ -125,19 +153,34 @@ export function BidBoardGcLines({ bidId, bidOutcome, packets, onChanged, dense }
         if (p.sharedLetter) {
           return (
             <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }} title={`${p.name} — on the bid’s “Also sent to” list: same letter as ${primaryName}. Give it its own packet (＋ Add GC) to track its answer.`}>
-              <span style={{ fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>{p.name}</span>
-              <span style={{ whiteSpace: 'nowrap' }}>same letter{p.sentOn ? ` · sent ${fmtSentShort(p.sentOn)}` : ''}</span>
+              <span style={{ whiteSpace: 'nowrap', minWidth: '4.2rem', color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-faint)' }}>{p.sentOn ? `sent ${fmtSentShort(p.sentOn)}` : 'same letter'}</span>
+              {gcNameButton(p)}
+              {noteBadge(p)}
             </div>
           )
         }
         return (
           <div key={p.key} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'nowrap', minWidth: 0 }} title={title}>
-            <span style={{ fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0 }}>{p.name}</span>
-            <span style={{ color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-muted)', whiteSpace: 'nowrap', flex: '0 0 auto' }}>{p.sentOn ? `sent ${fmtSentShort(p.sentOn)}` : 'not sent'}</span>
+            {/* v2.2217: states LEFT of the name (fixed-width date column), then the clickable name → per-GC notes. */}
+            <span style={{ color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-faint)', whiteSpace: 'nowrap', flex: '0 0 auto', minWidth: '4.2rem', fontVariantNumeric: 'tabular-nums' }}>{p.sentOn ? `sent ${fmtSentShort(p.sentOn)}` : 'not sent'}</span>
             <GcOutcomePill value={state} gcName={p.name} busy={busyKey === p.key} onChange={(next) => void change(p, next)} />
+            {gcNameButton(p)}
+            {noteBadge(p)}
           </div>
         )
       })}
+      {openPacket ? (
+        <BidGcNotesPopover
+          bidId={bidId}
+          bidLabel={bidLabel ?? 'this bid'}
+          gcId={openPacket.gcId}
+          gcName={openPacket.name}
+          sentOn={openPacket.sentOn ? fmtSentShort(openPacket.sentOn) : null}
+          outcome={openPacket.outcome === 'won' || openPacket.outcome === 'lost' ? openPacket.outcome : null}
+          onClose={() => setNotesKey(null)}
+          onChanged={onChanged}
+        />
+      ) : null}
     </div>
   )
 }

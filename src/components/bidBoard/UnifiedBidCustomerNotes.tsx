@@ -17,6 +17,7 @@ import {
   SELECT_CUSTOMER_CONTACTS_WITH_CREATOR,
   noteByLineFromEmbed,
   type BidSubmissionEntryWithCreator,
+  gcScopeNameFromEmbed,
   type CustomerContactWithCreatorRow,
 } from '../../lib/noteCreatorDisplay'
 
@@ -308,6 +309,11 @@ function BidUnifiedEntryRow({
           }}
         >
           <span style={bidBadgeStyle}>Bid note</span>
+          {gcScopeNameFromEmbed(entry.gc_customer) ? (
+            <span title={`About ${gcScopeNameFromEmbed(entry.gc_customer)} on this bid`} style={{ fontSize: '0.72rem', fontWeight: 700, border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0 0.45rem', color: 'var(--text-700)', background: 'var(--bg-muted)' }}>
+              {gcScopeNameFromEmbed(entry.gc_customer)}
+            </span>
+          ) : null}
           {entry.contact_method?.trim() ? (
             <span>
               <span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Contact method</span>
@@ -876,6 +882,8 @@ export function UnifiedBidCustomerNotes({
   actionButtonsPosition = 'top',
 }: UnifiedBidCustomerNotesProps) {
   const [merged, setMerged] = useState<UnifiedNoteRow[]>([])
+  /** Per-GC filter (v2.2217): 'all' | 'wholebid' | a gc_customer_id. Chips render only when scoped notes exist. */
+  const [gcFilter, setGcFilter] = useState<string>('all')
   const [loading, setLoading] = useState(true)
   const [internalAddingKind, setInternalAddingKind] = useState<UnifiedNotesAddingKind>(null)
   const controlled = onAddingKindChange != null
@@ -960,12 +968,41 @@ export function UnifiedBidCustomerNotes({
           />
         </div>
       ) : null}
+      {(() => {
+        const gcs = new Map<string, string>()
+        for (const r of merged) {
+          if (r.kind === 'bid' && r.entry.gc_customer_id) gcs.set(r.entry.gc_customer_id, gcScopeNameFromEmbed(r.entry.gc_customer) || 'GC')
+        }
+        if (gcs.size === 0) return null
+        const chip = (key: string, label: string) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setGcFilter(key)}
+            aria-pressed={gcFilter === key}
+            style={{ font: 'inherit', fontSize: '0.74rem', padding: '0.15rem 0.6rem', borderRadius: 999, border: `1px solid ${gcFilter === key ? 'var(--border-blue)' : 'var(--border-strong)'}`, background: gcFilter === key ? 'var(--bg-blue-tint)' : 'var(--surface)', color: gcFilter === key ? 'var(--text-blue-700)' : 'var(--text-muted)', cursor: 'pointer', fontWeight: gcFilter === key ? 600 : 400 }}
+          >
+            {label}
+          </button>
+        )
+        return (
+          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.45rem', fontSize: '0.74rem', color: 'var(--text-faint)' }}>
+            show:
+            {chip('all', 'Everything')}
+            {[...gcs.entries()].map(([id, name]) => chip(id, name))}
+            {chip('wholebid', 'Whole bid')}
+          </div>
+        )
+      })()}
       <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', background: 'var(--bg-subtle)' }}>
         {loading && merged.length === 0 && !hasDraft ? (
           <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
         ) : null}
         {showEmpty ? <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No notes yet.</div> : null}
-        {merged.map((row, i) => (
+        {(gcFilter === 'all'
+          ? merged
+          : merged.filter((row) => row.kind === 'bid' && (gcFilter === 'wholebid' ? !row.entry.gc_customer_id : row.entry.gc_customer_id === gcFilter))
+        ).map((row, i) => (
           <UnifiedEntryRow
             key={`${row.kind}-${row.id}`}
             row={row}

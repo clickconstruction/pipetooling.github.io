@@ -1286,6 +1286,7 @@ export type Database = {
           contact_method: string | null
           created_at: string | null
           created_by: string | null
+          gc_customer_id: string | null
           id: string
           notes: string | null
           occurred_at: string
@@ -1295,6 +1296,7 @@ export type Database = {
           contact_method?: string | null
           created_at?: string | null
           created_by?: string | null
+          gc_customer_id?: string | null
           id?: string
           notes?: string | null
           occurred_at?: string
@@ -1304,6 +1306,7 @@ export type Database = {
           contact_method?: string | null
           created_at?: string | null
           created_by?: string | null
+          gc_customer_id?: string | null
           id?: string
           notes?: string | null
           occurred_at?: string
@@ -1321,6 +1324,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_submission_entries_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
