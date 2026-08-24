@@ -164,6 +164,16 @@ export function BidVersionPicker({
     setNewForGcId(forGcId)
     setModalOpen(true)
   }
+  /** v2.2216: the × on a shared-letter chip — removes the "Also sent to" record (same as Edit Bid's ×). */
+  async function removeSharedLetterGc(gcId: string | null, name: string) {
+    if (!gcId) return
+    if (!(await confirmDialog({ message: `Remove ${name} from this bid's "Also sent to" list? Their sends and answers aren't affected — this only removes the record that they got the letter.`, confirmLabel: 'Remove', danger: true }))) return
+    const { error } = await supabase.from('bid_gc_recipients').delete().eq('bid_id', bidId).eq('customer_id', gcId)
+    if (error) { showToast('Could not remove: ' + error.message, 'error'); return }
+    await reloadVersions()
+    window.dispatchEvent(new Event('bid-gc-outcome-changed'))
+  }
+
   /** Record a GC a version points at as a bid recipient (best-effort, as the rename dialog does). */
   async function stampVersionGc(versionId: string, gcId: string) {
     await supabase.from('bid_versions').update({ customer_id: gcId }).eq('id', versionId)
@@ -360,6 +370,12 @@ export function BidVersionPicker({
         setBusy(false)
         return
       }
+      // v2.2216: ＋ Add GC also recorded the GC on "Also sent to" (source 'version'). If this was
+      // the GC's last version, that auto-record is now an orphan ghost chip — clean it up.
+      // Hand-added rows (source 'manual') are a deliberate record and stay.
+      if (v.customer_id && !bidVersions.some((x) => x.id !== v.id && (x.customer_id ?? null) === v.customer_id)) {
+        await supabase.from('bid_gc_recipients').delete().eq('bid_id', bidId).eq('customer_id', v.customer_id).eq('source', 'version')
+      }
       await reloadVersions()
       if (selectedBidVersionId === v.id) {
         const next = bidVersions.find((x) => x.id !== v.id)
@@ -397,6 +413,15 @@ export function BidVersionPicker({
                   style={{ padding: '0.2rem 0.45rem', background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)' }}
                 >
                   track separately
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void removeSharedLetterGc(g.gcId, g.name)}
+                  title={`Remove ${g.name} from this bid's "Also sent to" list`}
+                  aria-label={`Remove ${g.name} from Also sent to`}
+                  style={{ padding: '0 0.25rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1 }}
+                >
+                  ×
                 </button>
               </div>
             )
