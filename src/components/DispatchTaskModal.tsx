@@ -620,7 +620,22 @@ export default function DispatchTaskModal() {
             </div>
           </div>
           {formError && <p style={{ color: 'var(--text-red-700)', margin: 0, fontSize: '0.875rem' }}>{formError}</p>}
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => !sending && modal.closeDispatchModal()}
+              disabled={sending}
+              style={{
+                padding: '0.6rem 1.25rem',
+                background: 'var(--bg-slate-100)',
+                color: 'var(--text-slate-600)',
+                border: 'none',
+                borderRadius: 8,
+                cursor: sending ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Cancel
+            </button>
             <button
               type="button"
               onClick={handleSend}
@@ -636,21 +651,6 @@ export default function DispatchTaskModal() {
               }}
             >
               {sending ? 'Sending…' : 'Send to Dispatch'}
-            </button>
-            <button
-              type="button"
-              onClick={() => !sending && modal.closeDispatchModal()}
-              disabled={sending}
-              style={{
-                padding: '0.6rem 1.25rem',
-                background: 'var(--bg-slate-100)',
-                color: 'var(--text-slate-600)',
-                border: 'none',
-                borderRadius: 8,
-                cursor: sending ? 'not-allowed' : 'pointer',
-              }}
-            >
-              Cancel
             </button>
           </div>
         </div>
