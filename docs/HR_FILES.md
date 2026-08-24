@@ -42,7 +42,7 @@ Any agent (or dev) writing to these tables follows this:
 ### Summary (`kind='summary'`)
 - Rewritten in full on each update; keep it under ~1 page. Sections that have earned their place: **Trajectory · Reliability · Pay · Watch items** (adapt per person).
 - Must be reconstructible from the raw entries — never introduce a claim that has no entry behind it. Log the fact first, then fold it in.
-- The tab derives coverage and staleness from `person_files.covered_through` (set it explicitly on every rewrite — the RPC defaults it to `now()`), falling back to `updated_at` for pre-v2.2228 rows (`personFileFreshness.ts`). Clearing amber roster dots — summaries with newer entries behind them — is the agent's standing job.
+- The tab derives coverage and staleness from `person_files.covered_through` (set it explicitly on every rewrite — the RPC defaults it to `now()`), falling back to `updated_at` for pre-v2.2232 rows (`personFileFreshness.ts`). Clearing amber roster dots — summaries with newer entries behind them — is the agent's standing job.
 - **Write docs as markdown** (v2.2230): the tab renders summary/narrative through `marked` + the contract sanitizer, with a jump list built from `##` headings. Plain text still renders fine as paragraphs.
 
 ### Narrative (`kind='narrative'`)

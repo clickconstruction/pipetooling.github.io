@@ -68,7 +68,7 @@ describe('derivePersonFileFreshness', () => {
     expect(r).toEqual({ state: 'current', staleDays: 0, entryCount: 0, coveredCount: 0 })
   })
 
-  // v2.2228: covered_through is the explicit coverage line; preferred over updated_at.
+  // v2.2232: covered_through is the explicit coverage line; preferred over updated_at.
   it('prefers covered_through over updated_at when present', () => {
     // Summary was rewritten "now" (updated_at) but only covers entries through Aug 10;
     // an Aug 15 entry is therefore uncovered despite the recent updated_at.
@@ -82,7 +82,7 @@ describe('derivePersonFileFreshness', () => {
     expect(r.coveredCount).toBe(0)
   })
 
-  it('falls back to updated_at when covered_through is null/absent (pre-v2.2228 rows)', () => {
+  it('falls back to updated_at when covered_through is null/absent (pre-v2.2232 rows)', () => {
     const t = '2026-08-19T00:00:00.000Z'
     const r = derivePersonFileFreshness({
       summaryUpdatedAt: t,

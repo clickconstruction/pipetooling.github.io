@@ -23,10 +23,10 @@ export function derivePersonFileFreshness(args: {
   /** person_files.updated_at for kind='summary', or null when no summary row. */
   summaryUpdatedAt: string | null
   /**
-   * person_files.covered_through for kind='summary' (v2.2228): the explicit
+   * person_files.covered_through for kind='summary' (v2.2232): the explicit
    * "entries created through this instant are folded in" marker the writer
    * sets. Preferred over summaryUpdatedAt when present; updated_at is the
-   * fallback for pre-v2.2228 summaries that predate the column.
+   * fallback for pre-v2.2232 summaries that predate the column.
    */
   summaryCoveredThrough?: string | null
   /** person_file_entries.created_at values for this person. */
