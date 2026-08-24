@@ -364,18 +364,22 @@ export function ChecklistTechTreeTab({
   const [reorderMode, setReorderMode] = useState(false)
   // Map = the canvas; Plan = the flat work-front list (v2.1913). Remembered
   // per device — field crews live in Plan, structure edits happen in Map.
+  // Plan is the landing view for a device with no remembered choice; an
+  // explicit toggle (including to Map) still sticks. The key was bumped from
+  // roadmap_view_v1 when Plan became the default, deliberately dropping every
+  // device's remembered view so the whole team lands on Plan once.
   const [viewMode, setViewMode] = useState<'map' | 'plan' | 'timeline'>(() => {
     try {
-      const stored = localStorage.getItem('roadmap_view_v1')
-      return stored === 'plan' || stored === 'timeline' ? stored : 'map'
+      const stored = localStorage.getItem('roadmap_view_v2')
+      return stored === 'map' || stored === 'timeline' ? stored : 'plan'
     } catch {
-      return 'map'
+      return 'plan'
     }
   })
   const setViewModePersisted = useCallback((mode: 'map' | 'plan' | 'timeline') => {
     setViewMode(mode)
     try {
-      localStorage.setItem('roadmap_view_v1', mode)
+      localStorage.setItem('roadmap_view_v2', mode)
     } catch {
       // private mode: toggle still works for the session
     }
