@@ -1,4 +1,4 @@
-import { formatCurrency, splitFormattedAmountCents } from '../../lib/jobs/jobFormatting'
+import { formatCurrency, splitFormattedAmountCents } from '../lib/jobs/jobFormatting'
 
 /**
  * Dollar amount with the cents rendered smaller ("$40,000.00" with a ~30%-size

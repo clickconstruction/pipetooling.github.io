@@ -43,6 +43,7 @@ import {
   paidSegmentCounts,
   type PaidSegment,
 } from '../../lib/people/ledgerPaidSegments'
+import { AmountSmallCents } from '../AmountSmallCents'
 import { UpcomingWeekSessionsModal } from './UpcomingWeekSessionsModal'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
@@ -511,9 +512,13 @@ export default function PeoplePayStubsTab({
                     <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Pay reports</h2>
                     {payStubs.length > 0 && ledgerFilteredPayStubs.length > 0 ? (
                       <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }} aria-live="polite">
-                        {ledgerOpenBalanceSummary.openCount > 0
-                          ? `${ledgerOpenBalanceSummary.openCount} open · $${formatCurrency(ledgerOpenBalanceSummary.totalRemaining)} remaining`
-                          : 'All paid'}
+                        {ledgerOpenBalanceSummary.openCount > 0 ? (
+                          <>
+                            {ledgerOpenBalanceSummary.openCount} open · <AmountSmallCents value={ledgerOpenBalanceSummary.totalRemaining} /> remaining
+                          </>
+                        ) : (
+                          'All paid'
+                        )}
                         {upcomingSummary && upcomingSummary.personWeekCount > 0 ? (
                           <>
                             <span style={{ color: 'var(--text-faint)' }}>{' | '}</span>
@@ -533,7 +538,7 @@ export default function PeoplePayStubsTab({
                                 cursor: 'pointer',
                               }}
                             >
-                              {upcomingSummary.personWeekCount} upcoming: ${formatCurrency(upcomingSummary.estimatedGrossDollars)}
+                              {upcomingSummary.personWeekCount} upcoming: <AmountSmallCents value={upcomingSummary.estimatedGrossDollars} />
                             </button>
                           </>
                         ) : null}
@@ -792,14 +797,14 @@ export default function PeoplePayStubsTab({
                             {ledgerPayPeriodShortLabel(stub.period_start, stub.period_end, showWeekNumber)}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><AmountSmallCents value={stub.gross_pay} /></td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                             {fully ? (
                               <span
                                 title="Fully paid — change payments first to edit Less"
                                 aria-label={`Less for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(lessSum)}, not editable, fully paid`}
                               >
-                                -{formatCurrency(lessSum)}
+                                -<AmountSmallCents value={lessSum} prefix="" />
                               </span>
                             ) : (
                               <button
@@ -818,7 +823,7 @@ export default function PeoplePayStubsTab({
                                   fontFamily: 'inherit',
                                 }}
                               >
-                                -{formatCurrency(lessSum)}
+                                -<AmountSmallCents value={lessSum} prefix="" />
                               </button>
                             )}
                             <span style={{ color: 'var(--text-faint)' }}>{' | '}</span>
@@ -827,7 +832,7 @@ export default function PeoplePayStubsTab({
                                 title="Fully paid — change payments first to edit Additional"
                                 aria-label={`Additional for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(addSumLedger)}, not editable, fully paid`}
                               >
-                                {formatCurrency(addSumLedger)}
+                                <AmountSmallCents value={addSumLedger} prefix="" />
                               </span>
                             ) : (
                               <button
@@ -846,12 +851,12 @@ export default function PeoplePayStubsTab({
                                   fontFamily: 'inherit',
                                 }}
                               >
-                                {formatCurrency(addSumLedger)}
+                                <AmountSmallCents value={addSumLedger} prefix="" />
                               </button>
                             )}
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(netPayLedger)}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(paidSum)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><AmountSmallCents value={netPayLedger} /></td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}><AmountSmallCents value={paidSum} /></td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
                             <span
                               style={{
@@ -863,7 +868,7 @@ export default function PeoplePayStubsTab({
                               }}
                             >
                               <span>
-                                ${formatCurrency(rem)}
+                                <AmountSmallCents value={rem} />
                               </span>
                               <button
                                 type="button"
@@ -1108,7 +1113,7 @@ export default function PeoplePayStubsTab({
                   title="Clocked time (including pending approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to generate these reports."
                 >
                   {upcomingSummary.personWeekCount} person-week{upcomingSummary.personWeekCount === 1 ? '' : 's'} ·{' '}
-                  ${formatCurrency(upcomingSummary.estimatedGrossDollars)} estimated
+                  <AmountSmallCents value={upcomingSummary.estimatedGrossDollars} /> estimated
                 </p>
               </div>
               <button
@@ -1160,7 +1165,7 @@ export default function PeoplePayStubsTab({
                         {l.hours.toFixed(2)}
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        ${formatCurrency(l.estimatedGrossDollars)}
+                        <AmountSmallCents value={l.estimatedGrossDollars} />
                       </td>
                     </tr>
                   ))}
@@ -1174,7 +1179,7 @@ export default function PeoplePayStubsTab({
                       {upcomingSummary.lines.reduce((s, l) => s + l.hours, 0).toFixed(2)}
                     </td>
                     <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      ${formatCurrency(upcomingSummary.estimatedGrossDollars)}
+                      <AmountSmallCents value={upcomingSummary.estimatedGrossDollars} />
                     </td>
                   </tr>
                 </tfoot>
@@ -1274,7 +1279,7 @@ export default function PeoplePayStubsTab({
                 <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
                   {(payStubPaymentsByStubId[payStubNoteDetail.id] ?? []).map((p) => (
                     <li key={p.id} style={{ marginBottom: '0.5rem' }}>
-                      <span style={{ fontWeight: 500 }}>${formatCurrency(p.amount)}</span>
+                      <span style={{ fontWeight: 500 }}><AmountSmallCents value={p.amount} /></span>
                       {' · '}
                       {new Date(p.paid_at).toLocaleDateString()}
                       {p.memo?.trim() ? ` — ${p.memo.trim()}` : ''}
@@ -1290,8 +1295,8 @@ export default function PeoplePayStubsTab({
                   ))}
                 </ul>
                 <div style={{ marginTop: '0.5rem', fontWeight: 600 }}>
-                  Total paid: ${formatCurrency(sumPayStubPaymentAmounts(payStubPaymentsByStubId[payStubNoteDetail.id]))} · Balance: $
-                  {formatCurrency(
+                  Total paid: <AmountSmallCents value={sumPayStubPaymentAmounts(payStubPaymentsByStubId[payStubNoteDetail.id])} /> · Balance:{' '}
+                  <AmountSmallCents value={
                     remainingPayStubBalance(
                       stubNetPay(
                         payStubNoteDetail.gross_pay,
@@ -1299,8 +1304,8 @@ export default function PeoplePayStubsTab({
                         sumPayStubAdditionalAmounts(payStubAdditionalByStubId[payStubNoteDetail.id] ?? []),
                       ),
                       sumPayStubPaymentAmounts(payStubPaymentsByStubId[payStubNoteDetail.id]),
-                    ),
-                  )}
+                    )
+                  } />
                 </div>
               </div>
             ) : payStubNoteDetail.paid_note?.trim() ? (
@@ -1431,16 +1436,16 @@ export default function PeoplePayStubsTab({
                 </div>
                 {payStubCalendarData && (
                   <div style={{ marginTop: '1rem', fontSize: '0.875rem', display: 'flex', gap: '1.5rem' }}>
-                    <span>Earned YTD: ${formatCurrency(Object.values(payStubCalendarData.earnedByDate).reduce((s, v) => s + v, 0))}</span>
-                    <span>Paid YTD: ${formatCurrency(Object.values(payStubCalendarData.paidByDate).reduce((s, v) => s + v, 0))}</span>
+                    <span>Earned YTD: <AmountSmallCents value={Object.values(payStubCalendarData.earnedByDate).reduce((s, v) => s + v, 0)} /></span>
+                    <span>Paid YTD: <AmountSmallCents value={Object.values(payStubCalendarData.paidByDate).reduce((s, v) => s + v, 0)} /></span>
                     <span>
-                      Unpaid: $
-                      {formatCurrency(
+                      Unpaid:{' '}
+                      <AmountSmallCents value={
                         Object.entries(payStubCalendarData.earnedByDate).reduce(
                           (s, [k, earned]) => s + Math.max(0, earned - (payStubCalendarData.paidByDate[k] ?? 0)),
                           0
                         )
-                      )}
+                      } />
                     </span>
                   </div>
                 )}

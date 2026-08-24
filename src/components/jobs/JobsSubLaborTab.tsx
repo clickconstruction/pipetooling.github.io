@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
-import { AmountSmallCents } from './AmountSmallCents'
+import { AmountSmallCents } from '../AmountSmallCents'
 import { lineLaborCost } from '../../lib/peopleLaborJobItemLineCost'
 import { normalizeUrl } from '../../lib/projectsForecastStageLineItems'
 import {

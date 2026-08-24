@@ -17,6 +17,7 @@ import {
 } from '../../lib/people/personLedger'
 import type { PayStubPaymentRow } from '../../lib/payStubPayments'
 import type { PayStubAdditionalLineRow, PayStubDeductionRow } from '../../lib/payStubDeductions'
+import { AmountSmallCents } from '../AmountSmallCents'
 import { PersonOffsetFormModal, type PersonOffsetEditingRow, type PersonOffsetInitialDraft } from '../pay/PersonOffsetFormModal'
 import type { PayStubRow } from './PeoplePayStubsTab'
 
@@ -47,7 +48,10 @@ export type PeoplePayLedgerViewProps = {
 
 const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const moneyWhole = (n: number) => `$${Math.round(Math.abs(n)).toLocaleString('en-US')}`
-const signedBalance = (n: number) => (n > 0.005 ? `+${money(n)}` : n < -0.005 ? `−${money(n)}` : money(0))
+/** Small-cents money (v2.2252) for numeric display spots; the string `money()` above stays for prose sentences. */
+const MoneySC = ({ n }: { n: number }) => <AmountSmallCents value={Math.abs(n)} />
+const SignedBalanceSC = ({ n }: { n: number }) =>
+  n > 0.005 ? <>+<MoneySC n={n} /></> : n < -0.005 ? <>−<MoneySC n={n} /></> : <MoneySC n={0} />
 const balanceColor = (n: number) => (n > 0.005 ? '#16a34a' : n < -0.005 ? 'var(--text-red-600)' : 'var(--text-muted)')
 const balanceWords = (name: string, n: number) => (n > 0.005 ? `we owe ${name}` : n < -0.005 ? `${name} owes us` : 'even')
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -209,8 +213,8 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{roster.rows.length} people</span>
       </div>
       <p style={{ margin: '0 0 0.6rem', fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-        We owe <b style={{ color: '#16a34a', fontVariantNumeric: 'tabular-nums' }}>{money(roster.totals.oweAmount)}</b> across {roster.totals.oweCount} · owed to us{' '}
-        <b style={{ color: 'var(--text-red-600)', fontVariantNumeric: 'tabular-nums' }}>{money(roster.totals.owedAmount)}</b> across {roster.totals.owedCount} · {roster.totals.evenCount} even
+        We owe <b style={{ color: '#16a34a', fontVariantNumeric: 'tabular-nums' }}><MoneySC n={roster.totals.oweAmount} /></b> across {roster.totals.oweCount} · owed to us{' '}
+        <b style={{ color: 'var(--text-red-600)', fontVariantNumeric: 'tabular-nums' }}><MoneySC n={roster.totals.owedAmount} /></b> across {roster.totals.owedCount} · {roster.totals.evenCount} even
       </p>
       <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.55rem' }}>
         {(
@@ -268,7 +272,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
                       <span title={r.caption} style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.caption}</span>
                     </span>
                     <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                      <span style={{ display: 'block', fontWeight: 800, fontSize: '0.85rem', color: balanceColor(r.balance) }}>{signedBalance(r.balance)}</span>
+                      <span style={{ display: 'block', fontWeight: 800, fontSize: '0.85rem', color: balanceColor(r.balance) }}><SignedBalanceSC n={r.balance} /></span>
                       {r.lastPostingDate ? <span style={{ display: 'block', fontSize: '0.64rem', color: 'var(--text-muted)' }}>{shortDate(r.lastPostingDate, nowYear)}</span> : null}
                     </span>
                   </button>
@@ -299,7 +303,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', color: balanceColor(selected.balance) }}>{signedBalance(selected.balance)}</div>
+          <div style={{ fontSize: '1.55rem', fontWeight: 800, lineHeight: 1.05, fontVariantNumeric: 'tabular-nums', color: balanceColor(selected.balance) }}><SignedBalanceSC n={selected.balance} /></div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>{balanceWords(selected.name, selected.balance)}</div>
         </div>
       </div>
@@ -309,11 +313,11 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         {ledgerEquationTerms(selected).map((t, i) => (
           <span key={t.label}>
             {i === 0 ? (t.sign === '−' ? '− ' : '') : ` ${t.sign} `}
-            {t.label} <b style={{ color: 'var(--text)' }}>{money(t.amount)}</b>
+            {t.label} <b style={{ color: 'var(--text)' }}><MoneySC n={t.amount} /></b>
           </span>
         ))}
         {' = '}
-        <b style={{ color: balanceColor(selected.balance) }}>{signedBalance(selected.balance)}</b>
+        <b style={{ color: balanceColor(selected.balance) }}><SignedBalanceSC n={selected.balance} /></b>
       </div>
 
       {selected.unpaid.count > 0 || selected.unpaid.partialCount > 0 ? (
@@ -390,8 +394,8 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
                     </span>
                   </span>
                   <span style={{ textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                    <span style={{ display: 'block', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)' }}>{r.amount >= 0 ? '+' : '−'}{money(r.amount)}</span>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>bal {signedBalance(r.balance)}</span>
+                    <span style={{ display: 'block', fontWeight: 600, color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)' }}>{r.amount >= 0 ? '+' : '−'}<MoneySC n={r.amount} /></span>
+                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>bal <SignedBalanceSC n={r.balance} /></span>
                   </span>
                 </div>
               </Fragment>
@@ -441,10 +445,10 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
                         ) : null}
                       </td>
                       <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, whiteSpace: 'nowrap', color: r.amount >= 0 ? '#16a34a' : 'var(--text-red-600)' }}>
-                        {r.amount >= 0 ? '+' : '−'}{money(r.amount)}
+                        {r.amount >= 0 ? '+' : '−'}<MoneySC n={r.amount} />
                       </td>
                       <td style={{ padding: '0.32rem 0.4rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                        {signedBalance(r.balance)}
+                        <SignedBalanceSC n={r.balance} />
                       </td>
                     </tr>
                   </Fragment>
