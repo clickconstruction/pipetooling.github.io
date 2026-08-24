@@ -2,7 +2,7 @@
 title: add a stage and its tasks to a roadmap
 category: Office
 roles: dev, master_technician, assistant, controller, primary
-keywords: roadmap, stage, group, add stage, add task, sub task, map, connector, prerequisite, plus button
+keywords: roadmap, stage, group, add stage, add task, sub task, map, connector, prerequisite, plus button, crew, team, assignees
 order: 42
 ---
 On **Checklist → Roadmap → Map**, every box is a **stage** (a numbered group of tasks) and the lines between boxes say which stage must finish before the next unlocks. You need to be an **editor** on the roadmap to add anything — check {{button:outline|Members}} if you don't see the buttons below.
@@ -25,6 +25,18 @@ Drag from **Drill a well** into empty space, name the new box **Run water to the
 1. Hover the stage box. Two tiny buttons sit on its right side: a **✎ pencil** (edit the stage) and, just below it, a **+** (*Add task to this group*).
 2. Press **+**. The "Add task" dialog asks for the task title and, optionally, who it's assigned to — tick one or more names.
 3. {{button:blue|Save}}. The task appears inside the stage as its next number (1.1, 1.2, …) and on each assignee's list once the stage unlocks.
+
+## Staff a whole crew at once
+
+Above the assignee list, the dialog shows a **crew chip** for every team on **People → Teams**, with its member count.
+
+- **Tap a chip** to tick everyone in that crew (each name gets a small crew pill). Tap it again to untick them. Untick one person by hand and the chip turns dashed — your manual picks always win.
+- **＋ New crew** builds one without leaving the dialog: name it, tick who's in it, {{button:blue|Save crew}}. It saves to People → Teams, so the same crew shows up everywhere — and it comes back already ticked on this task.
+- **✎ Edit** (or press-and-hold any chip) opens a crew for changes: rename it, change its people, or **Delete crew…** — deleting removes only the grouping, never the people.
+
+:::example Two taps, four assignees
+Tap **Farm crew** and all four members are ticked; untick the one who's out this week and the chip goes dashed to show a partial crew.
+:::
 
 To see a stage's tasks on the map, press the **›** chevron at its left edge (or the ⌄⌄ *Show all* toolbar button to expand every stage). Click any task to open its card — rename it, assign people, or post a note; see *staff and discuss roadmap tasks*.
 
