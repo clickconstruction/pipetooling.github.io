@@ -33,6 +33,8 @@ export type GoalsLedgerTaskRow = {
   nextUp: boolean
   /** Display names (or emails) of assignees; empty = unassigned. */
   assigneeNames: string[]
+  /** User ids behind assigneeNames (same order) — stage reminders need ids. */
+  assigneeIds: string[]
   chip: BridgeChip
 }
 
@@ -79,6 +81,7 @@ export function goalsLedgerTaskRows(args: {
         pinned: Boolean(t.pinned_at),
         nextUp: nextUpIds.has(t.id),
         assigneeNames: t.assigneeIds.map((id) => nameById.get(id) ?? '…'),
+        assigneeIds: [...t.assigneeIds],
         chip: bridgeChipFor(t.completed_at, bridgeByTaskId?.get(t.id)),
       })),
     )

@@ -14,6 +14,35 @@ import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapSta
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import { ChecklistRoadmapNextUpPanel } from './ChecklistRoadmapNextUpPanel'
 import type { TechTreeEdge } from '../../lib/checklistTechTreeGraph'
+import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates'
+import {
+  formatOpenCostSummary,
+  summarizeOpenTaskCosts,
+  type OpenCostSummary,
+} from '../../lib/checklistCostEstimate'
+import { ChecklistCostButton } from './ChecklistCostButton'
+
+/** Gold stage/roadmap cost total (dev-only); `+` marks a partially costed sum. */
+function StageCostChip({ summary }: { summary: OpenCostSummary }) {
+  if (summary.dollars <= 0) return null
+  return (
+    <span
+      title={`Estimated cost of open tasks — ${summary.costed} of ${summary.total} costed`}
+      style={{
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: '#fbbf24',
+        border: '1px solid #d97706',
+        color: '#451a03',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {formatOpenCostSummary(summary)}
+    </span>
+  )
+}
 
 type UserRow = { id: string; name: string; email: string }
 
@@ -77,6 +106,8 @@ type Props = {
   users: UserRow[]
   currentUserId: string | null
   canEditStructure: boolean
+  /** Dev-only cost system: per-task estimator buttons + stage/roadmap totals. */
+  showCosts?: boolean
   /** Adds one assignee to a task; parent reloads + re-syncs on success. */
   onAssign: (taskId: string, userId: string) => Promise<boolean>
   /** Opens the task card modal (thread + notes). */
@@ -100,6 +131,7 @@ export function ChecklistRoadmapPlanView({
   users,
   currentUserId,
   canEditStructure,
+  showCosts,
   onAssign,
   onOpenTask,
 }: Props) {
@@ -137,6 +169,31 @@ export function ChecklistRoadmapPlanView({
   }
 
   const stats = useMemo(() => planHeaderStats(tasks), [tasks])
+  const costEstimates = useChecklistCostEstimates(showCosts === true)
+  const stageCosts = useMemo(() => {
+    if (!showCosts) return new Map<string, OpenCostSummary>()
+    const m = new Map<string, OpenCostSummary>()
+    for (const [groupId, groupTasks] of tasksByGroup) {
+      m.set(
+        groupId,
+        summarizeOpenTaskCosts(
+          groupTasks.filter((t) => t.completed_at == null).map((t) => t.id),
+          costEstimates,
+        ),
+      )
+    }
+    return m
+  }, [showCosts, tasksByGroup, costEstimates])
+  const roadmapCost = useMemo(
+    () =>
+      showCosts
+        ? summarizeOpenTaskCosts(
+            tasks.filter((t) => t.completed_at == null).map((t) => t.id),
+            costEstimates,
+          )
+        : null,
+    [showCosts, tasks, costEstimates],
+  )
   const nowStages = useMemo(
     () => planNowStages({ groups, tasksByGroup, unlockedIds, completeIds, edges }),
     [groups, tasksByGroup, unlockedIds, completeIds, edges],
@@ -211,8 +268,16 @@ export function ChecklistRoadmapPlanView({
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, fontSize: '0.8125rem', color: 'var(--text-700)', marginBottom: 6 }}>
-          <span>
-            <strong style={{ color: 'var(--text-strong)' }}>{stats.done}</strong> of {stats.total} tasks done
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span>
+              <strong style={{ color: 'var(--text-strong)' }}>{stats.done}</strong> of {stats.total} tasks done
+            </span>
+            {roadmapCost && roadmapCost.dollars > 0 ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <StageCostChip summary={roadmapCost} />
+                <span style={{ color: 'var(--text-muted)' }}>left</span>
+              </span>
+            ) : null}
           </span>
           <span>
             <button
@@ -359,6 +424,7 @@ export function ChecklistRoadmapPlanView({
                   {s.done} of {s.total} done
                 </span>
               )}
+              {showCosts && stageCosts.has(s.groupId) ? <StageCostChip summary={stageCosts.get(s.groupId)!} /> : null}
               {canEditStructure ? (
                 <button
                   type="button"
@@ -466,6 +532,13 @@ export function ChecklistRoadmapPlanView({
                     ) : open ? (
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>unassigned</span>
                     ) : null}
+                    {showCosts && open ? (
+                      <ChecklistCostButton
+                        costKey={t.id}
+                        taskTitle={t.title}
+                        defaultUserId={t.assigneeIds[0] ?? pickedUserId ?? undefined}
+                      />
+                    ) : null}
                   </li>
                 )
               })}
@@ -506,6 +579,7 @@ export function ChecklistRoadmapPlanView({
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {s.total} task{s.total === 1 ? '' : 's'} · {lockedStageHint(s.blockingTitles, false) ?? 'blocked'}
               </span>
+              {showCosts && stageCosts.has(s.groupId) ? <StageCostChip summary={stageCosts.get(s.groupId)!} /> : null}
               <div style={{ width: '100%' }}>
                 <PlanTaskSlotBar tasks={tasksByGroup.get(s.groupId) ?? []} locked taskNumbers={taskNumbers} onOpenTask={onOpenTask} />
               </div>
