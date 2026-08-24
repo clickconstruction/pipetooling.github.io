@@ -9309,8 +9309,70 @@ export type Database = {
           },
         ]
       }
+      person_file_attachments: {
+        Row: {
+          author_label: string | null
+          created_at: string
+          entry_id: string | null
+          filename: string
+          id: string
+          mime_type: string | null
+          person_id: string
+          size_bytes: number | null
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          created_at?: string
+          entry_id?: string | null
+          filename: string
+          id?: string
+          mime_type?: string | null
+          person_id: string
+          size_bytes?: number | null
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          created_at?: string
+          entry_id?: string | null
+          filename?: string
+          id?: string
+          mime_type?: string | null
+          person_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_file_attachments_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_file_attachments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_file_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_file_entries: {
         Row: {
+          author_label: string | null
           content: string
           created_at: string
           created_by: string | null
@@ -9320,6 +9382,7 @@ export type Database = {
           source: string
         }
         Insert: {
+          author_label?: string | null
           content: string
           created_at?: string
           created_by?: string | null
@@ -9329,6 +9392,7 @@ export type Database = {
           source?: string
         }
         Update: {
+          author_label?: string | null
           content?: string
           created_at?: string
           created_by?: string | null
@@ -9354,9 +9418,47 @@ export type Database = {
           },
         ]
       }
+      person_file_revisions: {
+        Row: {
+          author_label: string | null
+          content: string
+          covered_through: string | null
+          id: string
+          kind: string
+          person_id: string
+          replaced_at: string
+          replaced_by: string | null
+          replaced_by_label: string | null
+        }
+        Insert: {
+          author_label?: string | null
+          content: string
+          covered_through?: string | null
+          id?: string
+          kind: string
+          person_id: string
+          replaced_at?: string
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+        }
+        Update: {
+          author_label?: string | null
+          content?: string
+          covered_through?: string | null
+          id?: string
+          kind?: string
+          person_id?: string
+          replaced_at?: string
+          replaced_by?: string | null
+          replaced_by_label?: string | null
+        }
+        Relationships: []
+      }
       person_files: {
         Row: {
+          author_label: string | null
           content: string
+          covered_through: string | null
           id: string
           kind: string
           person_id: string
@@ -9364,7 +9466,9 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          author_label?: string | null
           content?: string
+          covered_through?: string | null
           id?: string
           kind: string
           person_id: string
@@ -9372,7 +9476,9 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          author_label?: string | null
           content?: string
+          covered_through?: string | null
           id?: string
           kind?: string
           person_id?: string
@@ -14989,6 +15095,7 @@ export type Database = {
       }
       has_payroll_access: { Args: never; Returns: boolean }
       holds_vehicle: { Args: { p_vehicle_id: string }; Returns: boolean }
+      hr_agent_write: { Args: { p: Json }; Returns: Json }
       humanize_job_status: { Args: { p: string }; Returns: string }
       insert_accounting_label_suggestion_service: {
         Args: { p_rows: Json }

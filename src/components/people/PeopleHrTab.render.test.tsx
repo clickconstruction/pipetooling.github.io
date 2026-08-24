@@ -18,8 +18,9 @@ const TABLE_ROWS: Record<string, unknown[]> = {
   ],
   person_files: [
     // Summary older than one of Marcus's entries → stale banner + partial coverage.
-    { person_id: 'p-marcus', kind: 'summary', content: 'Runs the rough-in crew.', updated_at: '2026-08-01T00:00:00.000Z' },
-    { person_id: 'p-marcus', kind: 'narrative', content: 'Started as a helper.', updated_at: '2026-08-01T00:00:00.000Z' },
+    // Markdown content (v2.2230): the tab renders docs through hrDocMarkdownToSafeHtml.
+    { person_id: 'p-marcus', kind: 'summary', content: 'Runs the **rough-in** crew.', updated_at: '2026-08-01T00:00:00.000Z', covered_through: null, author_label: 'HR agent' },
+    { person_id: 'p-marcus', kind: 'narrative', content: 'Started as a helper.', updated_at: '2026-08-01T00:00:00.000Z', covered_through: null, author_label: null },
   ],
   person_file_entries: [
     { id: 'e1', person_id: 'p-marcus', entry_date: '2026-07-18', content: 'Sit-down about Master hours.', source: 'review', created_by: 'u-dev', created_at: '2026-07-18T12:00:00.000Z' },
@@ -63,9 +64,12 @@ describe('PeopleHrTab', () => {
     // Select Marcus → header + summary doc with meta and stale banner
     // (entry e2 postdates the 2026-08-01 summary rewrite → 1 of 2 covered).
     fireEvent.click(marcusRow)
-    expect(await screen.findByText('Runs the rough-in crew.')).toBeTruthy()
+    // Markdown renders: bold segment becomes its own <strong> element.
+    expect(await screen.findByText(/Runs the/)).toBeTruthy()
+    expect(screen.getByText('rough-in').tagName).toBe('STRONG')
+    expect(screen.getByText(/Maintained by HR agent/)).toBeTruthy()
     expect(screen.getByText(/started Mar 11, 2025/)).toBeTruthy()
-    expect(screen.getByText(/covers 1 of 2 entries/)).toBeTruthy()
+    expect(screen.getByText(/1 of 2 entries/)).toBeTruthy()
     expect(screen.getByText(/1 newer entry since this was rewritten/)).toBeTruthy()
 
     // Raw entries view: both entries, source chips, author line, composer.

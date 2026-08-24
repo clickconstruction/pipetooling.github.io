@@ -2227,3 +2227,27 @@ body.my-time-boundary-dragging {
   overscroll-behavior: contain;
 }
 
+
+/* People → HR — rendered markdown doc body (v2.2230). Theme tokens only. */
+.hr-doc-body h1, .hr-doc-body h2, .hr-doc-body h3, .hr-doc-body h4 {
+  color: var(--text-strong);
+  line-height: 1.25;
+  margin: 1.1em 0 0.45em;
+}
+.hr-doc-body h1 { font-size: 1.15rem; }
+.hr-doc-body h2 { font-size: 1.04rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25em; }
+.hr-doc-body h3 { font-size: 0.95rem; }
+.hr-doc-body h4 { font-size: 0.9rem; }
+.hr-doc-body > :first-child { margin-top: 0; }
+.hr-doc-body p, .hr-doc-body li { line-height: 1.55; }
+.hr-doc-body ul, .hr-doc-body ol { padding-left: 1.4rem; }
+.hr-doc-body blockquote {
+  margin: 0.7em 0;
+  padding: 0.35em 0.9em;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-muted);
+}
+.hr-doc-body table { border-collapse: collapse; margin: 0.7em 0; display: block; overflow-x: auto; max-width: 100%; }
+.hr-doc-body th, .hr-doc-body td { border: 1px solid var(--border); padding: 0.3em 0.6em; font-size: 0.84rem; text-align: left; vertical-align: top; }
+.hr-doc-body th { background: var(--bg-page); color: var(--text-strong); }
+.hr-doc-body a { color: var(--text-link); }
