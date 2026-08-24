@@ -12,6 +12,8 @@
  *   dev / master_technician / assistant-like / primary (same as the header).
  * - Share / Print: dev / master_technician / assistant-like only.
  * - Chart (billed aging bubbles): dev / controller only (wage-derived costs).
+ * - Payment forecast: dev / master_technician / assistant-like / primary
+ *   (mirrors the header's canSeeBilledExpectedPay gate — hidden otherwise).
  * - Ready to Bill notifications + Paid notifications + Paid in Full
  *   notifications: dev / master_technician only.
  */
@@ -27,6 +29,7 @@ export type StagesSectionToolKey =
   | 'accounts-receivable'
   | 'billed-share-print'
   | 'billed-aging-chart'
+  | 'billed-payment-forecast'
   | 'paid-notifications'
   | 'paid-profit-chart'
   | 'paid-in-full-notifications'
@@ -160,6 +163,16 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       key: 'billed-aging-chart',
       label: 'Chart',
       title: 'Aging bubble chart — open $ vs days waiting, bubble = our cost',
+      disabled: false,
+    })
+  }
+  // Same audience as the expected-pay chips the forecast rolls up
+  // (canSeeBilledExpectedPay on the header). Hidden, not disabled, for others.
+  if (isDevOrMaster || isAssistantLike(authRole) || authRole === 'primary') {
+    billedItems.push({
+      key: 'billed-payment-forecast',
+      label: 'Payment forecast',
+      title: 'Open billed dollars bucketed by expected payment date (bill date + customer pay speed)',
       disabled: false,
     })
   }
