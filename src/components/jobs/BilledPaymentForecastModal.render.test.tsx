@@ -118,6 +118,32 @@ describe('BilledPaymentForecastModal render smoke', () => {
     expect(screen.queryByRole('dialog', { name: 'Pay speeds breakdown' })).toBeNull()
   })
 
+  it('shows the Email… button only when onEmail is passed (v2.2226)', () => {
+    const onEmail = vi.fn()
+    const { rerender } = render(
+      <BilledPaymentForecastModal
+        rows={[billedRow()]}
+        paySpeeds={speeds}
+        todayYmd="2026-08-20"
+        onClose={vi.fn()}
+        onOpenInvoice={vi.fn()}
+        onEmail={onEmail}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Email payment forecast' }))
+    expect(onEmail).toHaveBeenCalledTimes(1)
+    rerender(
+      <BilledPaymentForecastModal
+        rows={[billedRow()]}
+        paySpeeds={speeds}
+        todayYmd="2026-08-20"
+        onClose={vi.fn()}
+        onOpenInvoice={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Email payment forecast' })).toBeNull()
+  })
+
   it('shows the still-loading hint while non-paid scopes are fetching', () => {
     render(
       <BilledPaymentForecastModal

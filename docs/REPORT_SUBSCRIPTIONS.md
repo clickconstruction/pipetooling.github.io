@@ -45,6 +45,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `weekly_movement` | scheduled report | `weekly_movement_email_requests` (v2.1437; internal `recipient_user_id`; previous-complete-week semantics; share UI v2.1438) | `weekly-movement-email-dispatch` | ✅ recipient-scoped (v2.1438) | — (scheduled report) |
 | `weekly_money` | scheduled report | `weekly_money_email_requests` (v2.1448; dev/controller only — wage-derived; previous-complete-week semantics; share UI v2.1449) | `weekly-money-email-dispatch` | ✅ recipient-scoped (v2.1449) | — (scheduled report) |
 | `gc_statement` | scheduled report | `gc_statement_email_requests` (v2.1426; free-text `sent_to`; scheduling UI v2.1427) | `gc-statement-email-dispatch` | ✅ requester-scoped (v2.1428) | — (scheduled report, not an event stream) |
+| `payment_forecast` | scheduled report | `payment_forecast_email_requests` (v2.2223; internal `recipient_user_id`; share UI v2.2226) | `payment-forecast-email-dispatch` | ✅ recipient-scoped (v2.2223) | — (scheduled report) |
 
 ## Design rules
 
@@ -60,7 +61,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 
 1. **Payload RPC** (migration): service-role-only SECURITY DEFINER function reproducing the surface's math; verify fidelity against the live surface read-only before proceeding.
 2. **Request table** (migration): `send_at timestamptz`, recipient (`recipient_user_id` or `sent_to text`), `repeat_weekly boolean default false`, `sent_at`, `requested_by`, stream-specific params. RLS: requester can SELECT/INSERT/DELETE own pending rows; both read-only block sweeps.
-3. **Dispatcher edge function** + pg_cron entry (5-minute cadence **on the next free minute offset** — check `select jobname, schedule from cron.job` and pick a lane no other dispatcher uses, per the v2.1919 stagger; `X-Cron-Secret`): due-row scan → payload RPC → HTML render → Resend → stamp `sent_at` → weekly re-insert → audit. There is no tighter delivery SLA than the cron tick — a send lands within one tick of `send_at`.
+3. **Dispatcher edge function** + pg_cron entry (5-minute cadence; `X-Cron-Secret`): due-row scan → payload RPC → HTML render → Resend → stamp `sent_at` → weekly re-insert → audit. There is no tighter delivery SLA than the cron tick — a send lands within one tick of `send_at`. **Minute lanes**: the v2.1919 stagger filled all five */5 lanes (:00 salary anchor, :01 billed, :02 gc, :03 movement, :04 money + payment_forecast since v2.2223) — check `select jobname, schedule from cron.job` and co-ride the least-active lane, documenting the choice; the stagger's goal is breaking the everyone-at-once volley, not one-lane-per-job purity.
 4. **Share modal scheduling UI**: Send now | Schedule… + Repeat weekly + pending list with Cancel (copy the `BilledReportShareModal` shape).
 5. **Schedule integration**: extend `get_my_email_schedule()` and `get_global_email_schedule()`; add the stream's tone/label in `SettingsMyEmailScheduleSection.tsx` and, for event-like behavior, `normalizeMyEmailSubscriptions`.
 6. **Docs**: EDGE_FUNCTIONS.md section, MIGRATIONS.md entries, help guide, RECENT_FEATURES + release note, and a row in this doc's inventory table.
@@ -68,3 +69,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 ## The GC statements stream (`gc_statement`) — SHIPPED
 
 Built 2026-08-06 as the pattern's second full stream (v2.1425–v2.1428): payload RPC `get_gc_statement_email_payload` (fidelity-verified against prod), `gc_statement_email_requests` (free-text `sent_to` — the first stream with outside recipients), `gc-statement-email-dispatch` cron edge fn (empty single-entity statements skipped, weekly chains still advance), scheduling UI in GC Review's Email…/Share-all dialogs with a pending-sends list, and requester-scoped My-email-schedule listing.
+
+## The Payment forecast stream (`payment_forecast`) — SHIPPED
+
+Built 2026-08-24 (v2.2223 schema + v2.2225 dispatcher + v2.2226 UI): the Stages **Payment forecast** modal (v2.1925) as an email. Distinctives vs. the billed report: the payload RPC (`get_payment_forecast_email_payload`) returns **ingredients** (open billed rows + pay-speed medians + promised dates — the speed/promise RPCs' gates block service-role callers, so their SQL is inlined) and the **bucketing runs in the dispatcher** via `supabase/functions/_shared/paymentForecastCore.ts`, a Deno port of the client kernels (`billedExpectedPay.ts`/`billedPaymentForecast.ts` are the source of truth — change them, change the port). Email leads with **Past expected** (the follow-up queue); CTA deep-links `?tab=stages&forecast=1` (opens the modal). Share UI: **Email…** on the modal header (`PaymentForecastShareModal`, sender roles dev/master/assistant-like); recipients internal office-capable incl. primary. Empty board still sends a one-liner. Cron co-rides the :04 lane (see the checklist's lane note).
