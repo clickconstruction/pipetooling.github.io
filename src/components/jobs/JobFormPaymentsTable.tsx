@@ -14,6 +14,7 @@ import {
   stripeBillInvoiceForPaymentRow,
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
+import { autoApplyInvoiceId, paymentDateBeforeBilled, paymentRowNeedsInvoiceLink } from '../../lib/jobs/paymentInvoiceLinking'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 
 const PAYMENT_MEMO_SUB_ROW_CELL_STYLE: CSSProperties = {
@@ -261,9 +262,14 @@ export function JobFormPaymentsTable({
             ]
               .filter(Boolean)
               .join(' · ')
+            // Linking hygiene flags (v2.2240): an unlinked real payment on a
+            // job with open bills, and a paid date earlier than the linked
+            // bill's date. Locked rows manage their own links.
+            const needsInvoiceLink = !paymentReadOnly && paymentRowNeedsInvoiceLink(row, editing?.invoices ?? [])
+            const paidBeforeBilled = !paymentReadOnly && paymentDateBeforeBilled(row, editing?.invoices ?? [])
             const hasMemoSubRow = paymentReadOnly
               ? noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
-              : detailsOpen || detailsSummaryText.length > 0
+              : detailsOpen || detailsSummaryText.length > 0 || needsInvoiceLink || paidBeforeBilled
             const rowSep = idx < visiblePayments.length - 1 ? '1px solid #e5e7eb' : 'none'
             const parentCellPad = hasMemoSubRow ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
             const paymentDateCellStyle = {
@@ -453,7 +459,16 @@ export function JobFormPaymentsTable({
                         </span>
                         <MoneyDecimalAmountInput
                           value={row.amount}
-                          onChange={(amount) => updatePaymentRow(row.id, { amount })}
+                          onChange={(amount) => {
+                            // First real amount on an unlinked row: default the
+                            // Applies-to link when the job has exactly one open
+                            // bill (v2.2240) — visible in the selector, still
+                            // changeable back to Job (unassigned).
+                            const becomingReal = Number(amount) > 0 && !(Number(row.amount) > 0)
+                            const autoInvoiceId =
+                              becomingReal && !row.invoice_id ? autoApplyInvoiceId(editing?.invoices ?? []) : null
+                            updatePaymentRow(row.id, autoInvoiceId ? { amount, invoice_id: autoInvoiceId } : { amount })
+                          }}
                           commitOnType
                           placeholder="0"
                           aria-label="Payment amount"
@@ -709,6 +724,25 @@ export function JobFormPaymentsTable({
                               </select>
                             </div>
                           ) : null}
+                        </div>
+                      )}
+                      {needsInvoiceLink && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-800)', marginTop: '0.25rem' }}>
+                          ⚠ Not applied to a bill — pick which bill this pays under{' '}
+                          <button
+                            type="button"
+                            onClick={() => setDetailsOpenById((prev) => ({ ...prev, [row.id]: true }))}
+                            style={{ padding: 0, border: 'none', background: 'none', font: 'inherit', color: 'var(--text-link)', cursor: 'pointer' }}
+                          >
+                            Applies to
+                          </button>
+                          , so it counts toward that bill and the customer’s pay speed.
+                        </div>
+                      )}
+                      {paidBeforeBilled && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-red-600)', marginTop: '0.25rem' }}>
+                          ⚠ Paid date is earlier than this bill’s billed date — money can’t arrive before the bill goes
+                          out. Double-check the date.
                         </div>
                       )}
                     </td>

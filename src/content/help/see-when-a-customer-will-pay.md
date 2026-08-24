@@ -67,6 +67,14 @@ The strip is a door: click anywhere on it (**See the breakdown ›**) and a seco
 The Comm average says ~25d — but the breakdown shows that's Knight Contracting at ~25d with $16,893 open, while TF Harper runs ~44d with $2,918 open. One number was hiding two very different customers.
 :::
 
+## Recording payments so they count
+
+A payment only teaches the system when it's applied to a bill — that's where the bill-to-paid gap comes from. The Edit-Job payments table now helps that happen on its own:
+
+- Type an amount on a new payment line and, when the job has exactly **one** open bill, **Applies to** fills itself in. You can still switch it back to {{chip:gray|Job (unassigned)}} if the money really isn't for that bill.
+- A real payment left unapplied on a job that *has* open bills wears a small ⚠ note until someone picks the bill — an unapplied payment can't pay a bill down or feed the customer's speed.
+- A paid date **earlier** than the bill's own date gets a red ⚠ — money can't arrive before the bill goes out, so that's almost always a typo'd date.
+
 ## Where the speed number comes from
 
 It's the same "pays in ~N days" stat the customer profile shows: only payments that are linked to a billed invoice count (a payment with no bill date can't be measured), and only the last 12 months, so a customer who cleaned up their act isn't haunted by old habits.
