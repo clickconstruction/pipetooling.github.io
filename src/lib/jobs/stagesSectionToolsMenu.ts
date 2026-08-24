@@ -60,7 +60,10 @@ export type StagesSectionToolsMenuInput = {
   billedRowCount: number
   collectionsRowCount: number
   arBankTxUnallocatedCount: number | null
-  /** Preformatted dollars (no cents), e.g. "12,345". */
+  /**
+   * Preformatted dollars (no cents), e.g. "12,345" — the same display value
+   * the Working section header shows ("…" while header stats are loading).
+   */
   capableToBillTotalFormatted: string
   /** "Recently added" flat view currently open — flips that item's label to the exit (v2.1973). */
   recentViewOpen: boolean

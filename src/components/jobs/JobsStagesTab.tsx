@@ -1103,6 +1103,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
   )
 
+  // Capable of Being Billed dollars, shared by the Working section header and
+  // the jump-bar Section tools menu. Falls back to the lean header stats while
+  // the Working scope hasn't loaded — the live list is empty then, which used
+  // to make the menu say $0 while the collapsed section's header knew better.
+  const capableDisplay = cacheMergedScopes.has(scopeForStagesSection('working'))
+    ? formatCurrencyNoCents(capableToBillTotalFromWorking(stagesBoardLists.working))
+    : cacheHeaderStats
+      ? formatCurrencyNoCents(cacheHeaderStats.capableToBill)
+      : '…'
+
   /**
    * UNFILTERED board lists — the single "what's true" derivation, as opposed
    * to stagesBoardLists' "what's shown". Money surfaces (follow-up cards, the
@@ -2955,9 +2965,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       collectionsRowCount: unfilteredBoardLists.collectionsRows.length,
                       arBankTxUnallocatedCount:
                         typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null,
-                      capableToBillTotalFormatted: formatCurrencyNoCents(
-                        capableToBillTotalFromWorking(stagesBoardLists.working),
-                      ),
+                      capableToBillTotalFormatted: capableDisplay,
                       recentViewOpen: stagesRecentViewOpen,
                     }).map((group) => (
                       <div key={group.section} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -3306,11 +3314,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             const readyToBillHdr = sectionHdr('readyToBill', readyToBillRows.length, readyToBillTotal)
             const billedHdr = sectionHdr('billed', billedActiveRows.length, billedTotal)
             const collectionsHdr = sectionHdr('collections', collectionsRows.length, collectionsTotal)
-            const capableDisplay = sectionMerged('working')
-              ? formatCurrencyNoCents(capableToBillTotal)
-              : cacheHeaderStats
-                ? formatCurrencyNoCents(cacheHeaderStats.capableToBill)
-                : '…'
             // Server RPC is authoritative; this only controls button visibility (same office pool as other stage moves).
             const canManageCollections =
               authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
