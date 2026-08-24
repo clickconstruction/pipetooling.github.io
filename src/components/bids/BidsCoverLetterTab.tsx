@@ -507,7 +507,8 @@ export function BidsCoverLetterTab({
 
   /** "Mark sent today" (v2.2124): one send row per bid in the letter (today, its ★ value), and the bid-level roll-up. */
   async function markSentToday(bidId: string, sections: BundleSection[], boardValue: number | null) {
-    const inLetter = sections.filter((s) => s.bidVersionId)
+    // $0 rule (v2.2213): unpriced sections aren't on the letter, so they don't get send rows either.
+    const inLetter = sections.filter((s) => s.bidVersionId && s.revenueSum > 0)
     if (inLetter.length === 0) return
     setMarkingSent(true)
     try {
@@ -686,7 +687,11 @@ export function BidsCoverLetterTab({
         // New view on a split bid: the headline is the LETTER TOTAL (sum of base bids at their ★),
         // not the active scenario's revenue — that's what "Apply to Bid Value" writes.
         const newBundleActive = coverLetterView === 'new' && bidVersions.length > 0 && bundlePricings.length > 0
-        const newLetterTotal = letterTotal(bundlePricings)
+        // v2.2213 (owner): a $0 section never reaches the letter — unpriced bids are listed in the
+        // studio (grayed) and rejoin the letter the moment they're priced.
+        const pricedBundle = bundlePricings.filter((sec) => sec.revenueSum > 0)
+        const unpricedLeftOff = bundlePricings.length - pricedBundle.length
+        const newLetterTotal = letterTotal(pricedBundle)
         const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
         const latestSends = latestSendByVersion(versionSends)
         const headlineNumber = `$${formatCurrency(headlineAmount)}`
@@ -720,10 +725,10 @@ export function BidsCoverLetterTab({
         }
         // Old: 2+ scenarios make a bundle. New: any included version does (a split bid's letter
         // follows what's checked, even when that's one version that isn't the active one).
-        const gcPackets = bundlePricings.length > (coverLetterView === 'new' ? 0 : 1)
-          ? groupSectionsByEffectiveGc(bundlePricings, versionGcById, bidGcPacketCustomer)
+        const gcPackets = pricedBundle.length > (coverLetterView === 'new' ? 0 : 1)
+          ? groupSectionsByEffectiveGc(pricedBundle, versionGcById, bidGcPacketCustomer)
           : []
-        const baseSectionNames = bundlePricings.filter((sec) => !sec.isAlternate).map((sec) => sec.name)
+        const baseSectionNames = pricedBundle.filter((sec) => !sec.isAlternate).map((sec) => sec.name)
         const bundleLabel = (sec: { name: string; isAlternate: boolean }) =>
           coverLetterView === 'new' ? sectionLabel(sec, baseSectionNames) : `Pricing: ${sec.name}`
         // Default packet follows the ACTIVE Version (v2.1762) — falling back to
@@ -901,7 +906,7 @@ export function BidsCoverLetterTab({
                         const gcName = gcTabs.find((t) => t.key === selectedKey)?.name ?? customerName
                         const gcShort = gcName
                         const packet = gcPackets.find((pk) => pk.key === selectedKey) ?? null
-                        const gcSections = multi ? (packet?.sections ?? []) : bundlePricings
+                        const gcSections = multi ? (packet?.sections ?? []) : pricedBundle
                         const gcBase = letterTotal(gcSections)
                         const gcAlts = gcSections.filter((x) => x.isAlternate).length
                         const latestForGc = (key: string) => { const vids = bidVersions.filter((v) => gcKeyOf(v.id) === key).map((v) => v.id); let best: string | null = null; for (const vid of vids) { const sOn = latestSends[vid]?.sentOn; if (sOn && (!best || sOn > best)) best = sOn } return best }
@@ -936,7 +941,10 @@ export function BidsCoverLetterTab({
                                     <span style={{ flex: 1, minWidth: 0 }}>
                                       <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{v.name}</span>
                                       <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                        {starName ? <>★ {starName}{sec ? ` · $${formatCurrency(sec.revenueSum)}` : ''}</> : 'no prices yet'}
+                                        {starName ? <>★ {starName}{sec && sec.revenueSum > 0 ? ` · $${formatCurrency(sec.revenueSum)}` : ''}</> : 'no prices yet'}
+                                        {v.include_in_submission && (!sec || sec.revenueSum <= 0) ? (
+                                          <span style={{ marginLeft: '0.35rem', fontSize: '0.64rem', fontWeight: 700, color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.03rem 0.4rem', whiteSpace: 'nowrap' }}>unpriced — left off the letter</span>
+                                        ) : null}
                                         {(() => { const b = formatSendBadge(latestSends[v.id], { money: (n) => `$${formatCurrency(n)}` }); return b ? <> · {b}</> : null })()}
                                       </span>
                                     </span>
@@ -954,7 +962,7 @@ export function BidsCoverLetterTab({
                                             <label key={op.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer' }}>
                                               <input type="checkbox" checked={op.include_in_submission} onChange={() => void setScenarioOffered(op, !op.include_in_submission)} style={{ margin: 0 }} aria-label={`Offer ${op.name} as an alternate`} />
                                               <span style={{ color: 'var(--text-600)' }}>{op.name}</span>
-                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? `alternate${osec ? ` · $${formatCurrency(osec.revenueSum)}` : ''}` : 'not offered'}</span>
+                                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? (osec && osec.revenueSum > 0 ? `alternate · $${formatCurrency(osec.revenueSum)}` : 'alternate · unpriced — left off the letter') : 'not offered'}</span>
                                             </label>
                                           )
                                         })}
@@ -1217,11 +1225,22 @@ export function BidsCoverLetterTab({
                     ) : bundlePricings.length > 1 ? (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)' }}>
                         {coverLetterView === 'new'
-                          ? <>In the letter: {bundleSummary(bundlePricings)} — {bundlePricings.map((p) => (p.isAlternate ? `${p.name} (alternate)` : p.name)).join(', ')} — one section each.</>
+                          ? (pricedBundle.length > 0
+                            ? <>In the letter: {bundleSummary(pricedBundle)} — {pricedBundle.map((p) => (p.isAlternate ? `${p.name} (alternate)` : p.name)).join(', ')} — one section each.{unpricedLeftOff > 0 ? <span style={{ color: 'var(--text-amber-700)' }}> {unpricedLeftOff} unpriced left off.</span> : null}</>
+                            : <span style={{ color: 'var(--text-amber-700)' }}>Nothing priced yet — {unpricedLeftOff} bid{unpricedLeftOff === 1 ? '' : 's'} left off the letter until priced; showing the active bid's letter.</span>)
                           : <>Bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')} — one letter each.</>}
                       </div>
                     ) : null}
+                    {/* v2.2213: bundled sections read as separate sheets in the PREVIEW only —
+                        the copied Google-Docs document and the printout are untouched (print
+                        already breaks each section onto its own page). */}
+                    <style>{`
+                      .cl-preview section { border: 1px solid #c9ced6; border-radius: 8px; margin: 0 0 1.2rem; padding: 0 0.9rem 0.7rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.07); overflow: hidden; background: #fff; }
+                      .cl-preview section:last-child { margin-bottom: 0; }
+                      .cl-preview section > h2:first-child { background: #eef2f7; border-bottom: 1px solid #c9ced6; margin: 0 -0.9rem 0.8rem; padding: 0.45rem 0.9rem; font-size: 0.95rem; }
+                    `}</style>
                     <div
+                      className="cl-preview"
                       data-theme="light"
                       key={`studio-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}-${paymentScheduleEnabled}-${paymentScheduleSorted.map((r) => `${r.timing}:${r.percent}`).join(',')}`}
                       style={{
