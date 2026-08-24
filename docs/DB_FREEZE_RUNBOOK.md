@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-08-19
+last_updated: 2026-08-24
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -399,6 +399,42 @@ acknowledgment email arrives (the form takes no attachments pre-submit).
 Note: the confirmation screen said "logged for No specific project"
 despite the project being selected; the ticket body leads with the
 project ref, but verify the association in the acknowledgment email.
+
+### 2026-08-24 — Mode B variant (7-minute stall 19:24–19:31 UTC, self-recovered, REST stayed up)
+
+Fourth Mode B-family event. Owner reported "supabase is down" ~19:26 UTC;
+self-recovered at 19:31:00 with no restart. New wrinkle: **Step 0 stayed
+green the whole time** — this is the first partial stall on record.
+
+- **Step 0 during the stall**: `db-touching` returned **200 in 0.53s** and
+  `http-only` 401 in 0.19s. By the probe alone, "both fast → not a DB
+  freeze" — which was wrong this time. PostgREST's long-lived pool kept
+  executing; only **new** connection establishment was dead.
+- **New-connection paths all timed out** concurrently: `supabase inspect`
+  (blocking + long-running) and a fresh psql session both failed with
+  Supavisor `FATAL: Failed to connect to database: {:error, :timeout}`
+  (port 5432). First success was the **transaction pooler (6543) at
+  19:30:59** — the recovery moment, seconds before the owner said "back up".
+- **Step 2**: single `monitoring.health_checks` gap **19:24:00 → 19:31:00
+  (420s)**; the per-minute cron simply didn't run. **`cron.job_run_details`
+  has zero failed rows** — the silent-gap presentation (08-14 note) now
+  observed *without* a restart, so silence ≠ restart artifact; pg_cron's
+  worker just never started.
+- **Zero `wait_event_type = 'Lock'` rows**; conns steady 72–76 (mostly
+  `idle`/Client), `sample_duration_ms` 6–44ms right up to the gap — abrupt
+  onset, no slow-sampler precursor. One oddity 15 min before onset: conns
+  dropped to ~33–35 for 19:08–19:11 then rebuilt to ~74 — a pool churn
+  cycle worth watching as a possible precursor. Recovery row at 19:31:
+  54 conns (rebuilding), sampler 16ms.
+- **Lesson → Step 0 has a blind spot**: a 200 on the REST probe proves
+  existing backends execute, not that the DB accepts connections. When the
+  office says "down" but Step 0 is green, add a third probe — a fresh
+  psql/CLI connect — before concluding "not a DB freeze". (This entry is
+  that amendment; the probe block above stays as-is for the full-stall case.)
+- Context: earlier that afternoon two `db push` runs (17:00, 19:07 UTC —
+  single CREATE OR REPLACE FUNCTION each, lock_timeout 3s) and a ~530-row
+  backfill transaction (18:0x) all completed cleanly well before onset;
+  no DDL was in flight during the window.
 
 ## Known non-issues (checked 2026-07-30, don't re-litigate without new evidence)
 
