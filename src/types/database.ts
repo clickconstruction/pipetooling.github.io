@@ -9728,10 +9728,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "person_reports_subject_person_id_fkey"
-            columns: ["subject_person_id"]
+            foreignKeyName: "person_reports_author_user_id_fkey"
+            columns: ["author_user_id"]
             isOneToOne: false
-            referencedRelation: "people"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -9739,6 +9739,20 @@ export type Database = {
             columns: ["filed_entry_id"]
             isOneToOne: false
             referencedRelation: "person_file_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_reports_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_reports_subject_person_id_fkey"
+            columns: ["subject_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -14814,6 +14828,10 @@ export type Database = {
         Args: { p_id_a: string; p_id_b: string }
         Returns: undefined
       }
+      dismiss_person_report: {
+        Args: { p_reason: string; p_report_id: string }
+        Returns: Json
+      }
       dispatch_inbox_note_stats: {
         Args: { p_request_ids: string[] }
         Returns: {
@@ -14821,10 +14839,6 @@ export type Database = {
           note_count: number
           request_id: string
         }[]
-      }
-      dismiss_person_report: {
-        Args: { p_reason: string; p_report_id: string }
-        Returns: Json
       }
       duplicate_bid_to_service_type: {
         Args: { p_source_bid_id: string; p_target_service_type_id: string }
