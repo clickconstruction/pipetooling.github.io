@@ -35,7 +35,7 @@ Any agent (or dev) writing to these tables follows this:
 ### Raw entries
 - **Facts with dates, never speculation.** "Missed Tue and Thu, third occurrence this month" — not "seems checked out". If it's an impression, attribute it: "Robert's read after the call: …".
 - One event per entry; `entry_date` is the date it **happened** (in `APP_CALENDAR_TZ`), not the date it was logged (`created_at` covers that).
-- Name the `source`: `conversation` | `payroll_event` | `incident` | `review` | `milestone` | `job_event`.
+- Name the `source`: `conversation` | `payroll_event` | `incident` | `review` | `milestone` | `job_event` | `report` (field reports filed from the Pending reports queue, v2.2235).
 - Write nothing you wouldn't be comfortable having read back in a dispute. Consistent factual documentation protects the company; venting doesn't.
 - Corrections: append a new entry referencing what it corrects ("Correction to 2026-08-19 entry: …").
 
@@ -114,6 +114,30 @@ signed URLs. No UPDATE path — replace and note, like entry corrections.
 - **Docs are markdown** — write real `##` headings (they power the narrative jump list); set `covered_through` on every summary rewrite (the RPC defaults it to `now()`).
 - **Exhibit bytes need the service key** (hr_agent covers metadata only): fetch it via the management API — `GET https://api.supabase.com/v1/projects/<ref>/api-keys?reveal=true` with `SUPABASE_MGMT_TOKEN` from `.env.local` — then `POST /storage/v1/object/hr-files/<person_id>/<uuid>-<sanitized-name>` and insert the `person_file_attachments` row as `hr_agent` in the same session.
 - **Sanity check after a write session**: entries/attachments counts, `person_files` lengths, and the roster dot — a summary left amber means fold entries in (or bump `covered_through` if the content already covers them).
+
+## Pending reports (v2.2235)
+
+Masters and devs write observations about a person from the Dashboard's
+**HR Report** card (collapsed, just above My Team). Rows land in
+`person_reports` (subject person, author user + denormalized name,
+`occurred_date` vs `created_at`, free text, status pending/filed/dismissed —
+**no DELETE**; migration `20260824170000`). The queue renders at the top of
+People → HR (dev-only, hides when empty) with per-report **File / Open their
+file / Dismiss…** (reason required).
+
+Filing goes through `file_person_report(p_report_id)` — appends the
+append-only `person_file_entries` row (source `report`, `entry_date` =
+`occurred_date`, "Reported by <author> — " preamble), links it back via
+`filed_entry_id`, marks the report filed. `dismiss_person_report(p_report_id,
+p_reason)` keeps everything. Both are `is_dev() OR hr_agent` and idempotent.
+
+**Agent review duty**: drain the queue each run — `select * from
+person_reports where status='pending'`, then per report either
+`file_person_report` (optionally passing tightened `p_content` — keep the
+author's facts, and the entry text always carries the byline) or
+`dismiss_person_report` with a reason; then fold the new entries into the
+person's summary/narrative as usual. Authors see their report's status flip on
+their Dashboard card, so don't leave pendings sitting.
 
 ## Agent recipes
 
