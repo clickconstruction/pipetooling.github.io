@@ -404,7 +404,6 @@ export function BidVersionPicker({
           const groupActive = !isUnsplit && g.versions.some((v) => v.id === selectedBidVersionId)
           const sentOn = g.sentOn
           const first = g.versions[0]
-          const star = first ? starNameOf(first) : null
           return (
             <div
               key={g.key || 'bid-default'}
@@ -418,7 +417,7 @@ export function BidVersionPicker({
               >
                 <span style={{ fontWeight: 700, fontSize: '0.82rem', display: 'block' }}>{g.name}</span>
                 <span style={{ display: 'block', fontSize: '0.625rem', color: sentOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
-                  {sentOn ? `sent ${fmtSent(sentOn)}` : 'not sent'}{star ? ` · ★ ${star}` : isUnsplit ? ' · one packet' : ''}{g.versions.length > 1 ? ` · ${g.versions.length} versions` : ''}
+                  {sentOn ? `sent ${fmtSent(sentOn)}` : 'not sent'}{isUnsplit ? ' · one packet' : ''}{g.versions.length > 1 ? ` · ${g.versions.length} versions` : ''}
                   {(() => {
                     // v2.2203: how many prices this GC receives (★ + offered alternates across their versions).
                     const n = g.versions.reduce((sum, v) => sum + (offeredByVersion[v.id] ?? 0), 0)
