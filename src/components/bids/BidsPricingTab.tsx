@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { marginFlag } from '../../lib/bids/bidFormatting'
@@ -300,7 +300,7 @@ export function BidsPricingTab({
   const [wbMarginPct, setWbMarginPct] = useState(45)
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
   /** Last target-total solve: what was asked vs where it landed (cleared on input edit). */
-  const [wbTargetSolveResult, setWbTargetSolveResult] = useState<{ target: number; landed: number } | null>(null)
+  const [, setWbTargetSolveResult] = useState<{ target: number; landed: number } | null>(null)
   const [wbShowUnpricedOnly, setWbShowUnpricedOnly] = useState(false)
   const [wbShowNoCostOnly, setWbShowNoCostOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
@@ -364,6 +364,36 @@ export function BidsPricingTab({
   const shortGc = (name: string) => name
   const [starChoice, setStarChoice] = useState<'star' | 'viewed'>('star')
   const [starBusy, setStarBusy] = useState(false)
+  /** Unpriced solo bids hide the status band; the ＋ Add price door re-homes to the solver line (artifact 0a627c7c). */
+  const wbSolverEnd: { node: React.ReactNode } = { node: null }
+  wbSolverEnd.node = null
+
+  /** The ▾ beside Solve — holds the rarely-used "Price unpriced only" (batch 2, artifact 11c68afc). */
+  const [solveMenuOpen, setSolveMenuOpen] = useState(false)
+  const solveMenuRef = useRef<HTMLSpanElement | null>(null)
+  useEffect(() => {
+    if (!solveMenuOpen) return
+    const onDoc = (e: MouseEvent) => { if (solveMenuRef.current && !solveMenuRef.current.contains(e.target as Node)) setSolveMenuOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setSolveMenuOpen(false) } }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey, true)
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey, true) }
+  }, [solveMenuOpen])
+
+  /** The ✎ on a price card opens this modal — rename + delete, mirroring the Version modal (artifact a4133103). */
+  const [pricingEdit, setPricingEdit] = useState<{ id: string; name: string } | null>(null)
+  async function savePricingEdit() {
+    if (!pricingEdit) return
+    const name = pricingEdit.name.trim()
+    const current = priceBookVersions.find((p) => p.id === pricingEdit.id)?.name
+    setPricingEdit(null)
+    if (!name || !current || name === current) return
+    const { error: renameErr } = await supabase.from('price_book_versions').update({ name }).eq('id', pricingEdit.id)
+    if (renameErr) { showToast('Could not rename: ' + renameErr.message, 'error'); return }
+    if (selectedBidForPricing) await loadBidPricings(selectedBidForPricing.id)
+    window.dispatchEvent(new Event('bid-version-picker-reload'))
+  }
+
   /** v2.2203: the Workbench structure bar lives behind the (i) beside the bid name. */
   const [wbInfoOpen, setWbInfoOpen] = useState(false)
   const [shareOverride, setShareOverride] = useState<{ pricingId: string; name: string; rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null>(null)
@@ -1319,7 +1349,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-solver',
       title: 'Solve to a number',
-      body: 'Drag the blended-margin slider or type a whole-bid target total — rows without Takeoffs costs keep their prices, and their revenue counts toward the target. The note under the box shows exactly where the solve landed.',
+      body: 'Drag the slider, type a margin, or type a whole-bid target total — rows without Takeoffs costs keep their prices, and their revenue counts toward the target. The ▾ beside Solve holds "Price unpriced only". Apply writes the preview; Discard throws it away.',
     },
     {
       anchor: 'workbench-rows',
@@ -2764,6 +2794,12 @@ export function BidsPricingTab({
                         const m = rev != null && rev > 0 ? (rev - totalCost) / rev : null
                         const unpriced = rev === 0
                         const isCustomerFacing = v.id === customerFacingPricingId
+                        if (unpriced) {
+                          // Nothing priced yet: skip the status band entirely — the solver is the next move
+                          // and sits first; ＋ Add price rides at the solver line's end (artifact 0a627c7c).
+                          wbSolverEnd.node = doorBtn
+                          return <>{doorModal}</>
+                        }
                         return (
                           <>
                             <div
@@ -2873,7 +2909,7 @@ export function BidsPricingTab({
                                   onClick={() => { if (!viewing) viewWorkbenchScenario(v.id) }}
                                   title={viewing ? 'The price open on this Workbench' : 'View this price (doesn’t change what the GC sees)'}
                                   style={{
-                                    flex: '1 1 190px', minWidth: 170, textAlign: 'left', font: 'inherit',
+                                    flex: '1 1 215px', minWidth: 215, maxWidth: 300, textAlign: 'left', font: 'inherit',
                                     background: isCustomerFacing ? 'var(--bg-green-tint)' : 'var(--surface)',
                                     border: viewing ? '1px solid #3b82f6' : isCustomerFacing ? '1px solid var(--border-green)' : '1px solid var(--border)',
                                     boxShadow: viewing ? '0 0 0 1px #3b82f6' : 'none',
@@ -2893,7 +2929,18 @@ export function BidsPricingTab({
                                     </span>
                                   ) : null}
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', minWidth: 0 }}>
+                                      <span style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{v.name}</span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setPricingEdit({ id: v.id, name: v.name }) }}
+                                        title="Rename or delete this price"
+                                        aria-label={`Edit ${v.name}`}
+                                        style={{ padding: '0 0.1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.72rem', color: 'var(--text-muted)', flex: '0 0 auto' }}
+                                      >
+                                        ✎
+                                      </button>
+                                    </div>
                                     {unpriced ? (
                                       <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
                                     ) : null}
@@ -2919,7 +2966,7 @@ export function BidsPricingTab({
                                   {/* v2.2203 (option 1): the footer answers "who sees this price?" and carries the actions. */}
                                   {(() => {
                                     const linkStyle: React.CSSProperties = { font: 'inherit', fontSize: '0.66rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'inherit', whiteSpace: 'nowrap' }
-                                    const footBase: React.CSSProperties = { margin: 'auto -0.75rem 0', padding: '0.26rem 0.7rem', borderTop: '1px solid var(--border)', borderRadius: '0 0 9px 9px', fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: 'auto' }
+                                    const footBase: React.CSSProperties = { margin: 'auto -0.75rem 0', padding: '0.26rem 0.7rem', borderTop: '1px solid var(--border)', borderRadius: '0 0 9px 9px', fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '0.3rem 0.55rem', flexWrap: 'wrap', marginTop: 'auto' }
                                     if (isCustomerFacing) {
                                       return (
                                         <div style={{ ...footBase, background: 'var(--bg-green-100)', color: 'var(--text-emerald-800)', fontWeight: 700 }}>
@@ -2936,8 +2983,8 @@ export function BidsPricingTab({
                                     }
                                     return (
                                       <div style={{ ...footBase, ...(offered ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontWeight: 600 } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }) }}>
-                                        {offered ? 'On their letter · alternate' : 'Only you see this'}
-                                        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.55rem' }}>
+                                        <span style={{ whiteSpace: 'nowrap' }}>{offered ? 'On their letter · alternate' : 'Only you see this'}</span>
+                                        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.55rem', whiteSpace: 'nowrap' }}>
                                           <button type="button" style={linkStyle} title={offered ? 'Take this price off their letter' : 'Add this price to their letter as an alternate — same counts, no new version'} onClick={(e) => { e.stopPropagation(); void setScenarioOffered(v, !offered); window.dispatchEvent(new Event('bid-version-picker-reload')) }}>
                                             {offered ? 'stop offering' : 'offer as alternate'}
                                           </button>
@@ -2978,21 +3025,18 @@ export function BidsPricingTab({
                           }
                           runWorkbenchSolve({ targetTotal: v })
                         }
-                        // The no-cost fact lives in the amber banner below; this slot is only the solve echo.
-                        const echo = wbTargetSolveResult
-                          ? `→ previewing $${formatCurrency(wbTargetSolveResult.landed)}${Math.abs(wbTargetSolveResult.landed - wbTargetSolveResult.target) >= 0.005 ? ' (rounded)' : ''}`
-                          : null
                         const labelStyle: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
                         const stat = (k: string, v: string, c: string, title?: string) => (
-                          <span key={k} title={title} style={{ display: 'inline-flex', flexDirection: 'column', flex: '0 0 auto' }}>
+                          <span key={k} title={title} style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', flex: '0 0 auto' }}>
                             <span style={{ fontSize: '0.58rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k}</span>
                             <span style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, color: c }}>{v}</span>
                           </span>
                         )
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
-                            {stat('Revenue', fmtM(effRevenue), 'var(--text-strong)', `our cost $${formatCurrency(totalCost)}`)}
-                            {stat('Profit', fmtM(effProfit), effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `our cost $${formatCurrency(totalCost)}`)}
+                            {/* Whole dollars only — the strip is a scoreboard, cents live in the rows (owner, v2.2205). */}
+                            {stat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}`)}
+                            {stat('Profit', `${effProfit < 0 ? '-' : ''}$${Math.abs(Math.round(effProfit)).toLocaleString('en-US')}`, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `$${formatCurrency(effProfit)} · our cost $${formatCurrency(totalCost)}`)}
                             {stat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
                             <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '1 1 240px', minWidth: 220 }}>
@@ -3041,51 +3085,67 @@ export function BidsPricingTab({
                                   style={{ border: 0, width: `${Math.max(wbTargetTotalInput.length, 6) + 1}ch`, padding: '0.33rem 0.45rem 0.33rem 0', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, background: 'transparent', color: 'var(--text-strong)', outline: 'none' }}
                                 />
                               </div>
-                              <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
-                                Solve
-                              </button>
-                              {echo ? (
-                                <span style={{ fontSize: '0.74rem', color: 'var(--text-green-600)', whiteSpace: 'nowrap' }}>{echo}</span>
+                              <span ref={solveMenuRef} style={{ position: 'relative', display: 'inline-flex' }}>
+                                <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: '6px 0 0 6px', border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
+                                  Solve
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSolveMenuOpen((o) => !o)}
+                                  aria-haspopup="menu"
+                                  aria-expanded={solveMenuOpen}
+                                  aria-label="More ways to solve"
+                                  title="More ways to solve"
+                                  style={{ font: 'inherit', fontSize: '0.7rem', padding: '0.35rem 0.45rem', borderRadius: '0 6px 6px 0', border: '1px solid #3b82f6', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+                                >
+                                  ▾
+                                </button>
+                                {solveMenuOpen ? (
+                                  <span role="menu" aria-label="More ways to solve" style={{ position: 'absolute', left: 0, top: 'calc(100% + 0.3rem)', minWidth: '16.5rem', maxWidth: 'calc(100vw - 1rem)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.3rem', zIndex: 40 }}>
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      onClick={() => { setSolveMenuOpen(false); runWorkbenchSolve({ onlyUnpriced: true }) }}
+                                      style={{ display: 'block', width: '100%', padding: '0.45rem 0.55rem', border: 'none', background: 'none', borderRadius: 6, font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'var(--text-strong)' }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
+                                    >
+                                      Price unpriced only
+                                      <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.74rem' }}>fills only rows with no sale price, at the current margin — priced rows are held as-is</span>
+                                    </button>
+                                  </span>
+                                ) : null}
+                              </span>
+                              {wbSolverEnd.node ? <span style={{ marginLeft: 'auto', flex: '0 0 auto' }}>{wbSolverEnd.node}</span> : null}
+                              {/* Apply/Discard ride the right end of this line and wrap right-pinned on narrow pages (artifact 370f8f3c). */}
+                              {wbPreview && previewCount > 0 ? (
+                                <span style={{ marginLeft: 'auto', display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem', flex: '0 0 auto' }}>
+                                  <span style={{ display: 'inline-flex', gap: '0.5rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => void applyWorkbenchPreview()}
+                                      disabled={wbApplying}
+                                      title={`Write the previewed price${previewCount === 1 ? '' : 's'} to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'this price'}`}
+                                      style={{ padding: '0.35rem 1rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
+                                    >
+                                      {wbApplying ? 'Applying…' : 'Apply'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setWbPreview(null)}
+                                      disabled={wbApplying}
+                                      style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
+                                    >
+                                      Discard
+                                    </button>
+                                  </span>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>nothing saved yet</span>
+                                </span>
                               ) : null}
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => runWorkbenchSolve({ onlyUnpriced: true })}
-                              title="Give a price only to rows that have none yet, at the current margin"
-                              style={{ flex: '0 0 auto', marginLeft: 'auto', padding: '0.38rem 0.7rem', fontSize: '0.8rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
-                            >
-                              Price unpriced only
-                            </button>
                           </div>
                         )
                       })()}
-                      {/* v2.2204: Apply/Discard on their own second line — they appear the moment
-                          the solver previews something (slider, typed margin, Solve, Price
-                          unpriced only) and vanish once applied or discarded. */}
-                      {wbPreview && previewCount > 0 ? (
-                        <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', borderTop: '1px dashed var(--text-amber-700)', paddingTop: '0.5rem' }}>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
-                            Previewing {previewCount} price{previewCount === 1 ? '' : 's'} — nothing saved yet.
-                          </span>
-                          <span style={{ flex: 1 }} />
-                          <button
-                            type="button"
-                            onClick={() => void applyWorkbenchPreview()}
-                            disabled={wbApplying}
-                            style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
-                          >
-                            {wbApplying ? 'Applying…' : `Apply to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'scenario'}`}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setWbPreview(null)}
-                            disabled={wbApplying}
-                            style={{ padding: '0.4rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
-                          >
-                            Discard
-                          </button>
-                        </div>
-                      ) : null}
                       {uncostedRevenue > 0 ? (
                         <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 7, padding: '0.4rem 0.7rem' }}>
                           <span style={{ fontSize: '0.76rem', color: 'var(--text-amber-700)' }}>
@@ -3202,9 +3262,10 @@ export function BidsPricingTab({
                         </div>
                       )
                     })()}
+                    {/* Batch 2: short label — "N of M priced" (owner). */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', marginBottom: '0.7rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
-                        {pricedCount} of {costed.length} costed rows priced{unpricedCost > 0 ? ` — $${formatCurrency(unpricedCost)} of cost has no sale price` : ' — all priced ✓'}
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }} title={unpricedCost > 0 ? `$${formatCurrency(unpricedCost)} of cost has no sale price yet` : undefined}>
+                        {pricedCount} of {costed.length} priced
                       </span>
                       <div style={{ flex: 1, minWidth: 160, height: 8, borderRadius: 999, background: 'var(--bg-muted)', overflow: 'hidden' }}>
                         <div style={{ height: '100%', borderRadius: 999, width: `${costed.length > 0 ? (pricedCount / costed.length) * 100 : 0}%`, background: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)', transition: 'width 0.25s' }} />
@@ -3242,9 +3303,6 @@ export function BidsPricingTab({
                           >
                             {wbFillingBook ? 'Filling…' : `Fill ${bookMatches.length} matching from book`}
                           </button>
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                            exact name matches only — use each row's “assign…” for the rest
-                          </span>
                         </div>
                       )
                     })()}
@@ -4023,6 +4081,44 @@ export function BidsPricingTab({
             </div>
           </div>
         )}
+        {pricingEdit && (() => {
+          const isBase = pricingEdit.id === customerFacingPricingId
+          const close = () => setPricingEdit(null)
+          return (
+            <div role="presentation" onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+              <div role="dialog" aria-label="Price" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close() } }} style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem 1.4rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
+                <h3 style={{ margin: '0 0 1rem' }}>Price</h3>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }} htmlFor="pricing-edit-name">Name</label>
+                <input
+                  id="pricing-edit-name"
+                  autoFocus
+                  value={pricingEdit.name}
+                  onChange={(e) => setPricingEdit({ id: pricingEdit.id, name: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void savePricingEdit() } }}
+                  style={{ width: '100%', padding: '0.5rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.1rem' }}>
+                  <button
+                    type="button"
+                    disabled={isBase}
+                    title={isBase ? "The GC's letter is built on this price — make another price the base first." : 'Delete this price'}
+                    onClick={() => {
+                      const target = priceBookVersions.find((pv) => pv.id === pricingEdit.id)
+                      close()
+                      if (target) { setPricingVersionToDelete(target); setDeletePricingVersionModalOpen(true) }
+                    }}
+                    style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-red)', background: 'var(--surface)', color: isBase ? 'var(--text-faint)' : 'var(--text-red-700)', cursor: isBase ? 'not-allowed' : 'pointer' }}
+                  >
+                    Delete
+                  </button>
+                  <span style={{ flex: 1 }} />
+                  <button type="button" onClick={close} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
+                  <button type="button" onClick={() => void savePricingEdit()} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 1.1rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>Save</button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
         {deletePricingVersionModalOpen && pricingVersionToDelete && (
           <div
             style={{
@@ -4052,7 +4148,7 @@ export function BidsPricingTab({
                 deleted</strong>.
               </p>
               <p style={{ margin: '0 0 0.5rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
-                Type the name of this price scenario to confirm:
+                Type the name of this price to confirm:
               </p>
               <input
                 type="text"
