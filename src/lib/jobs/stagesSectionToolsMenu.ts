@@ -39,6 +39,12 @@ export type StagesSectionToolItem = {
   label: string
   title: string
   disabled: boolean
+  /**
+   * Emoji mark shown before the label — the same mark the tool's board button
+   * wears (v2.2224). Absent only for gc-review, whose hard-hat SVG the view
+   * renders itself (it's a React component, not a character).
+   */
+  icon?: string
   /** Amber count bubble (Accounts Receivable unallocated bank transactions). */
   badgeCount?: number
 }
@@ -85,12 +91,14 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
           ? 'Back to the pipeline board'
           : 'Show the last 100 jobs added, any status',
         disabled: false,
+        icon: '🕒',
       },
       {
         key: 'weekly-movement',
         label: 'Weekly movement',
         title: 'Every job that entered a stage in a chosen week, with who moved it',
         disabled: false,
+        icon: '📆',
       },
       ...(canOpenWeeklyMoney
         ? [
@@ -99,6 +107,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
               label: 'Weekly money movement',
               title: 'Money out and in per job for a chosen week, with the % progress the spend bought',
               disabled: false,
+              icon: '💸',
             },
           ]
         : []),
@@ -113,6 +122,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
         label: `Capable of Being Billed: $${input.capableToBillTotalFormatted}`,
         title: 'Working jobs whose progress can already be billed',
         disabled: false,
+        icon: '🧾',
       },
     ],
   })
@@ -126,6 +136,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
           label: 'Ready to Bill notifications',
           title: 'Ready to Bill notification settings (email + push)',
           disabled: false,
+          icon: '⚙',
         },
       ],
     })
@@ -143,6 +154,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Accounts Receivable',
       title: 'Apply bank deposits to billed lines (non-Stripe)',
       disabled: !canOpenAccountsReceivable,
+      icon: '💵',
       ...(typeof input.arBankTxUnallocatedCount === 'number' && input.arBankTxUnallocatedCount > 0
         ? { badgeCount: input.arBankTxUnallocatedCount }
         : {}),
@@ -154,6 +166,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Share / Print',
       title: 'Email this report to a teammate — now or scheduled — or print it',
       disabled: false,
+      icon: '⇪',
     })
   }
   // Bubble sizes are wage-derived job costs — same dev/controller gate as
@@ -164,6 +177,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Chart',
       title: 'Aging bubble chart — open $ vs days waiting, bubble = our cost',
       disabled: false,
+      icon: '📊',
     })
   }
   // Same audience as the expected-pay chips the forecast rolls up
@@ -174,6 +188,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Payment forecast',
       title: 'Open billed dollars bucketed by expected payment date (bill date + customer pay speed)',
       disabled: false,
+      icon: '📅',
     })
   }
   if (isDevOrMaster) {
@@ -182,6 +197,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Paid notifications',
       title: 'Payment email settings',
       disabled: false,
+      icon: '⚙',
     })
   }
   groups.push({ section: 'Billed Awaiting Payment', items: billedItems })
@@ -194,6 +210,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Chart',
       title: 'Profit vs clocked hours — bubble = revenue, losses below the $0 line',
       disabled: false,
+      icon: '📊',
     })
   }
   if (isDevOrMaster) {
@@ -202,6 +219,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       label: 'Paid in Full notifications',
       title: 'Paid in Full email settings',
       disabled: false,
+      icon: '⚙',
     })
   }
   if (paidItems.length > 0) {
