@@ -37,6 +37,12 @@ import {
   type UpcomingClockSessionRow,
   type UpcomingPayrollLine,
 } from '../../lib/upcomingPayrollSummary'
+import {
+  filterStubsByPaidSegment,
+  hiddenBySegment,
+  paidSegmentCounts,
+  type PaidSegment,
+} from '../../lib/people/ledgerPaidSegments'
 import { UpcomingWeekSessionsModal } from './UpcomingWeekSessionsModal'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
@@ -199,10 +205,11 @@ export default function PeoplePayStubsTab({
     return payStubs.filter((s) => s.person_name.toLowerCase().includes(q))
   }, [payStubs, ledgerPersonSearch])
 
-  // "Hide paid" (v2.1795): drop fully paid reports from the ledger table. Session-only —
-  // the toggle resets on reload so paid history is never silently missing next visit.
-  // Same net/paid math as the rows and the open-balance summary.
-  const [hidePaidStubs, setHidePaidStubs] = useState(false)
+  // Paid-status segments (v2.2238, replacing the v2.1795 "Hide paid" button): the table
+  // defaults to Open (unpaid + partial); Paid and All are one click away, and a line under
+  // the table names how many rows the current segment hides — so paid history is never
+  // silently missing. Same net/paid math as the rows and the open-balance summary.
+  const [paidSegment, setPaidSegment] = useState<PaidSegment>('open')
   const ledgerPaidStubIds = useMemo(() => {
     const ids = new Set<string>()
     for (const stub of ledgerFilteredPayStubs) {
@@ -221,10 +228,15 @@ export default function PeoplePayStubsTab({
     payStubDeductionsByStubId,
     payStubAdditionalByStubId,
   ])
-  const ledgerVisiblePayStubs = useMemo(
-    () => (hidePaidStubs ? ledgerFilteredPayStubs.filter((s) => !ledgerPaidStubIds.has(s.id)) : ledgerFilteredPayStubs),
-    [hidePaidStubs, ledgerFilteredPayStubs, ledgerPaidStubIds],
+  const ledgerSegmentCounts = useMemo(
+    () => paidSegmentCounts(ledgerFilteredPayStubs, ledgerPaidStubIds),
+    [ledgerFilteredPayStubs, ledgerPaidStubIds],
   )
+  const ledgerVisiblePayStubs = useMemo(
+    () => filterStubsByPaidSegment(ledgerFilteredPayStubs, ledgerPaidStubIds, paidSegment),
+    [paidSegment, ledgerFilteredPayStubs, ledgerPaidStubIds],
+  )
+  const ledgerHiddenBySegment = hiddenBySegment(ledgerSegmentCounts, paidSegment)
 
   // Local calendar day for the Payment Delay column's days-outstanding math.
   const todayYmd = localYmdFromDate(new Date())
@@ -535,30 +547,40 @@ export default function PeoplePayStubsTab({
                       you plan how to allocate incoming cash across
                       unpaid balances when the well is running dry. */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      onClick={() => setHidePaidStubs((v) => !v)}
-                      aria-pressed={hidePaidStubs}
-                      title={
-                        hidePaidStubs
-                          ? 'Showing unpaid and partial only — click to show paid reports again'
-                          : 'Hide fully paid reports from the ledger'
-                      }
-                      style={{
-                        padding: '0.5rem 1rem',
-                        fontSize: '0.9375rem',
-                        background: hidePaidStubs ? '#059669' : 'var(--surface)',
-                        color: hidePaidStubs ? 'white' : 'var(--text-700)',
-                        border: hidePaidStubs ? '1px solid #059669' : '1px solid var(--border-strong)',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                      }}
+                    <div
+                      role="group"
+                      aria-label="Filter pay reports by payment status"
+                      style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}
                     >
-                      {hidePaidStubs
-                        ? `Hiding ${ledgerPaidStubIds.size} paid`
-                        : `Hide paid${ledgerPaidStubIds.size > 0 ? ` (${ledgerPaidStubIds.size})` : ''}`}
-                    </button>
+                      {(
+                        [
+                          ['open', 'Open', ledgerSegmentCounts.open, 'Unpaid and partially paid reports'],
+                          ['paid', 'Paid', ledgerSegmentCounts.paid, 'Fully paid reports'],
+                          ['all', 'All', ledgerSegmentCounts.all, 'Every report'],
+                        ] as const
+                      ).map(([v, label, count, hint]) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setPaidSegment(v)}
+                          aria-pressed={paidSegment === v}
+                          title={hint}
+                          style={{
+                            font: 'inherit',
+                            fontSize: '0.875rem',
+                            fontWeight: 600,
+                            padding: '0.5rem 0.8rem',
+                            border: 'none',
+                            background: paidSegment === v ? 'var(--text-link)' : 'var(--surface)',
+                            color: paidSegment === v ? 'var(--surface)' : 'var(--text-700)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {label} ({count})
+                        </button>
+                      ))}
+                    </div>
                     <button
                       type="button"
                       onClick={onOpenPayConfig}
@@ -653,10 +675,12 @@ export default function PeoplePayStubsTab({
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No pay reports match this search.</p>
               ) : ledgerVisiblePayStubs.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-                  All {ledgerFilteredPayStubs.length} pay report{ledgerFilteredPayStubs.length === 1 ? ' is' : 's are'} paid —{' '}
+                  {paidSegment === 'open'
+                    ? `All ${ledgerFilteredPayStubs.length} pay report${ledgerFilteredPayStubs.length === 1 ? ' is' : 's are'} paid — `
+                    : `None of the ${ledgerFilteredPayStubs.length} pay report${ledgerFilteredPayStubs.length === 1 ? ' is' : 's are'} fully paid — `}
                   <button
                     type="button"
-                    onClick={() => setHidePaidStubs(false)}
+                    onClick={() => setPaidSegment('all')}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -667,7 +691,7 @@ export default function PeoplePayStubsTab({
                       cursor: 'pointer',
                     }}
                   >
-                    show paid
+                    show all
                   </button>{' '}
                   to see them.
                 </p>
@@ -1007,6 +1031,26 @@ export default function PeoplePayStubsTab({
                   </table>
                 </div>
               )}
+              {ledgerVisiblePayStubs.length > 0 && ledgerHiddenBySegment ? (
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {ledgerHiddenBySegment.count} {ledgerHiddenBySegment.label} report{ledgerHiddenBySegment.count === 1 ? '' : 's'} hidden —{' '}
+                  <button
+                    type="button"
+                    onClick={() => setPaidSegment('all')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      font: 'inherit',
+                      color: 'var(--text-link)',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    show all
+                  </button>
+                </p>
+              ) : null}
             </section>
           </>
         )}
