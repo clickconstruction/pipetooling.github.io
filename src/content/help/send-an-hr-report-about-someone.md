@@ -4,7 +4,7 @@ category: Office
 roles: master_technician, dev
 keywords: hr report, report someone, pending reports, hr file, record, write up, observation
 ---
-Saw something worth remembering about a person — good or bad? Write it down while it's fresh. Your Dashboard has an **HR Report** card (near the bottom, just above **My Team**) that sends what you saw to HR, where it gets filed on that person's record.
+Saw something worth remembering about a person — good or bad? Write it down while it's fresh. Your Dashboard has an **HR Report** card (near the bottom, just above **My Team**) that sends what you saw to HR, where it gets filed on that person's record. The same card also sits at the bottom of **Dispatch Mode**'s Dashboard tab, right below the Job Pipeline.
 
 ## Writing a report
 
