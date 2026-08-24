@@ -2980,7 +2980,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                                 ...(item.disabled ? { cursor: 'default', opacity: 0.5 } : {}),
                               }}
                             >
-                              <span>{item.label}</span>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                                {/* Fixed-width icon slot so labels align down the menu; same marks
+                                    as the tools' board buttons (gc-review's hard-hat is a component,
+                                    so the kernel leaves its icon to us). */}
+                                <span aria-hidden style={{ width: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  {item.key === 'gc-review' ? <GcHardHatIcon size={13} style={{ flexShrink: 0 }} /> : item.icon}
+                                </span>
+                                <span>{item.label}</span>
+                              </span>
                               {typeof item.badgeCount === 'number' ? (
                                 <span
                                   aria-hidden

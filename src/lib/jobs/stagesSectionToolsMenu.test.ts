@@ -131,6 +131,22 @@ describe('buildStagesSectionToolsMenu', () => {
     }
   })
 
+  it('every item carries its board-button icon except gc-review (SVG supplied by the view)', () => {
+    const items = buildStagesSectionToolsMenu({ ...base, authRole: 'dev' }).flatMap((g) => g.items)
+    for (const item of items) {
+      if (item.key === 'gc-review') expect(item.icon).toBeUndefined()
+      else expect(item.icon, `item ${item.key} is missing an icon`).toBeTruthy()
+    }
+    // Spot-check the marks mirrored from the board buttons.
+    const iconOf = (key: string) => items.find((i) => i.key === key)?.icon
+    expect(iconOf('accounts-receivable')).toBe('💵')
+    expect(iconOf('billed-share-print')).toBe('⇪')
+    expect(iconOf('billed-aging-chart')).toBe('📊')
+    expect(iconOf('billed-payment-forecast')).toBe('📅')
+    expect(iconOf('paid-notifications')).toBe('⚙')
+    expect(iconOf('recently-added')).toBe('🕒')
+  })
+
   it('GC Review disables only when Billed and Collections are both empty', () => {
     const empty = buildStagesSectionToolsMenu({
       ...base,
