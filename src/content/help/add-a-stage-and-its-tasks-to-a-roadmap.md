@@ -9,12 +9,17 @@ On **Checklist → Roadmap → Map**, every box is a **stage** (a numbered group
 
 ## Add a stage
 
-There are two ways; both open the same small "Add group" dialog where you type the stage's name.
+There are three ways; all open the same small "Add group" dialog where you type the stage's name.
 
-- **From the toolbar** — in the top-right cluster of the map, press the *Add a roadmap group* button (the flowchart icon, fourth from the left). The new stage drops onto the canvas on its own, unlinked.
+- **Right-click empty canvas** — the quickest: right-click (or two-finger tap) any open spot and choose **＋ Add stage here**. The new stage lands exactly where you pointed.
+- **From the toolbar** — in the top-right cluster of the map, press the *Add a roadmap group* button (the amber flowchart icon). The new stage drops onto the canvas on its own, unlinked.
 - **By dragging from a stage** — every stage box has a small connector dot on its right edge. Drag that dot out into **empty canvas** and let go: the dialog opens pre-wired so the stage you dragged from becomes the new one's prerequisite (the new box lands to its right). Drop the dot on an *existing* box instead and you just link the two.
 
 The new stage takes the next number. To renumber, press {{button:outline|Order stages}} — see *number and order roadmap stages*.
+
+## Remove a line
+
+Click any line between two stages (right-click works too). A small menu names the link — "**Drill a well** → **make efficient water**" — with **Remove link** in red. Press it and the prerequisite is gone; the downstream stage may unlock immediately. To see every link in one list instead, use the chain-links toolbar button.
 
 :::example Building a chain
 Drag from **Drill a well** into empty space, name the new box **Run water to the garden**, and it appears to the right of Drill a well with the line already drawn — the garden stage stays locked until the well is done.

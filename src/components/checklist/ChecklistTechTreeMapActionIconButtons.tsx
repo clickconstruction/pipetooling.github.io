@@ -113,7 +113,7 @@ export function ChecklistTechTreeMapActionIconButtons(p: Props) {
       onPointerDown={(e) => e.stopPropagation()}
       title="Add a roadmap group"
       aria-label="Add a roadmap group"
-      style={p.mapCanvasFloatButtonStyle}
+      style={{ ...p.mapCanvasFloatButtonStyle, color: '#d97706' }}
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} aria-hidden>
         <path
