@@ -18,6 +18,7 @@ const speeds: PaySpeedData = {
   customers: { knight: { medianDays: 25, samples: 6 } },
   segments: { residential: { medianDays: 7, samples: 8 }, commercial: { medianDays: 25, samples: 32 } },
   customerTypes: { knight: 'commercial', palmer: 'commercial', holub: 'residential' },
+  receipts: {},
 }
 
 function invRow(opts: {

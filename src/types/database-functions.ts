@@ -198,6 +198,15 @@ export interface BidPricingHistoryRow {
 export interface BilledCustomerPaySpeedsResult {
   company: { medianDays: number; samples: number } | null
   customers: Record<string, { medianDays: number; samples: number }>
+  /** v2: residential/commercial medians over the same samples. */
+  segments: {
+    residential: { medianDays: number; samples: number } | null
+    commercial: { medianDays: number; samples: number } | null
+  }
+  /** v2: every typed customer's classification. */
+  customerTypes: Record<string, 'residential' | 'commercial'>
+  /** v3: customer id → measurable payments (newest paid first, max 12). */
+  receipts: Record<string, { billedYmd: string; paidYmd: string; gapDays: number }[]>
 }
 
 /**
