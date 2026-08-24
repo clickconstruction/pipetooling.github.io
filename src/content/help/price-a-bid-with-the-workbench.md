@@ -26,12 +26,12 @@ Above the table, {{button:blue|Fill N matching from book}} assigns every unassig
 ## Price to a number
 
 1. Your **Revenue, Our cost, Profit, and Margin** stay pinned at the top — they move as you work.
-2. Drag the **blended-margin slider** or type a **target bid total** and press Enter — both are for the whole bid, so revenue already sitting on no-cost rows counts toward them, and the note under the box shows exactly where the solve landed.
+2. Drag the **margin slider**, type a **margin**, or type a **target bid total** and press Enter — all for the whole bid, so revenue already sitting on no-cost rows counts toward them. The **▾ beside Solve** holds *Price unpriced only* (fills only rows with no sale price; priced rows are held as-is).
 3. **📌 pin** any row to hold its price while the rest re-solve. Fixed-price rows are always held, and rows with no Takeoffs cost are never auto-priced — when they carry revenue anyway, an amber banner totals it and can filter to just those rows.
 
 ## Preview first, then Apply
 
-Solver results (and your own typed prices) land as amber **preview** values — the summary bar names the scenario they belong to, and nothing is saved until you hit {{button:blue|Apply prices}}. **Discard** throws the preview away, and so does switching to another scenario — previews never follow you across.
+Solver results (and your own typed prices) land as amber **preview** values — the card outlines amber and {{button:blue|Apply}} / **Discard** appear at the line's end with *nothing saved yet* beneath. Nothing is saved until you hit Apply; Discard throws the preview away, and so does switching to another price. Each price card's ✎ opens the **Price** modal — rename it or delete it (the ★ can't be deleted while the letter is built on it).
 
 ## Know where you stand
 
