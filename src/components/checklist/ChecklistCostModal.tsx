@@ -7,11 +7,20 @@ import {
   hourlyWageForUserName,
 } from '../../lib/bidBoardWeeklyEstimatorLaborCost'
 import {
+  ACCURACY_MIN_COUNT,
+  estimateAccuracy,
   estimateDollars,
+  estimateRelativeBands,
+  formatMultiplier,
   formatWholeDollars,
   type ChecklistCostEstimate,
 } from '../../lib/checklistCostEstimate'
-import { cachedChecklistCostEstimates, writeChecklistCostEstimate } from '../../lib/checklistCostStore'
+import {
+  cachedChecklistCostEstimates,
+  writeChecklistCostActual,
+  writeChecklistCostEstimate,
+} from '../../lib/checklistCostStore'
+import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates'
 
 type UserRow = { id: string; name: string | null; email: string | null }
 
@@ -49,7 +58,11 @@ export default function ChecklistCostModal({
   const [rateTouched, setRateTouched] = useState(false)
   const [hoursText, setHoursText] = useState('')
   const [hadEstimate, setHadEstimate] = useState(false)
+  const [actualText, setActualText] = useState('')
+  const [loadedActual, setLoadedActual] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  // Every estimate (cache-backed) — feeds the calibration hint.
+  const allEstimates = useChecklistCostEstimates(open)
 
   useEffect(() => {
     if (!open || !costKey) return
@@ -85,6 +98,8 @@ export default function ChecklistCostModal({
 
       const existing = cachedChecklistCostEstimates()[costKey]
       setHadEstimate(!!existing)
+      setActualText(existing?.actualHours != null ? String(existing.actualHours) : '')
+      setLoadedActual(existing?.actualHours ?? null)
       const startUserId = existing?.userId ?? defaultUserId ?? ''
       setPersonUserId(startUserId)
       setHoursText(existing ? String(existing.hours) : '')
@@ -111,6 +126,19 @@ export default function ChecklistCostModal({
   const hours = Number(hoursText)
   const valid = personUserId !== '' && Number.isFinite(rate) && rate > 0 && Number.isFinite(hours) && hours > 0
   const total = valid ? estimateDollars({ hours, rate }) : null
+  const actualHoursNum = actualText.trim() === '' ? null : Number(actualText)
+  const actualValid = actualHoursNum == null || (Number.isFinite(actualHoursNum) && actualHoursNum > 0)
+  const actualTotal =
+    actualHoursNum != null && actualValid && Number.isFinite(rate) && rate > 0
+      ? estimateDollars({ hours: actualHoursNum, rate })
+      : null
+  // Calibration hint (advice, not autocorrect): only while composing an
+  // estimate with no actual of its own, and only past the sample threshold.
+  const accuracy = estimateAccuracy(Object.values(allEstimates))
+  const hint =
+    loadedActual == null && valid && accuracy && accuracy.count >= ACCURACY_MIN_COUNT && Math.abs(accuracy.multiplier - 1) >= 0.15
+      ? `📐 Estimates have really run ${formatMultiplier(accuracy.multiplier)} (${accuracy.count} with actuals) — ${hours}h may be closer to ${Math.round(hours * accuracy.multiplier * 2) / 2}h (${formatWholeDollars(Math.round(hours * accuracy.multiplier * rate))}).`
+      : null
 
   function pickPerson(userId: string) {
     setPersonUserId(userId)
@@ -129,9 +157,13 @@ export default function ChecklistCostModal({
       rate,
       updatedAt: new Date().toISOString(),
     }
+    if (!actualValid) return
     setSaving(true)
     try {
       await writeChecklistCostEstimate(costKey, estimate)
+      if (hadEstimate && (actualHoursNum ?? null) !== loadedActual) {
+        await writeChecklistCostActual(costKey, actualHoursNum ?? null)
+      }
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
@@ -336,6 +368,86 @@ export default function ChecklistCostModal({
                 {total != null ? formatWholeDollars(total) : '—'}
               </span>
             </div>
+            {hint ? (
+              <div
+                style={{
+                  margin: '-0.4rem 0 1rem',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: 9,
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-blue-800)',
+                  fontSize: '0.78125rem',
+                  lineHeight: 1.45,
+                }}
+              >
+                {hint}
+              </div>
+            ) : null}
+            {hadEstimate ? (
+              <div style={{ margin: '-0.25rem 0 1rem' }}>
+                <label style={fieldLabel} htmlFor="checklist-cost-actual">
+                  Actually took (record any time — blank means not recorded)
+                </label>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {estimateRelativeBands(hours > 0 ? hours : 1).map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setActualText(actualText === String(b) ? '' : String(b))}
+                      style={{
+                        minHeight: 40,
+                        minWidth: 52,
+                        padding: '0.25rem 0.6rem',
+                        fontSize: '0.9375rem',
+                        fontWeight: 600,
+                        border:
+                          actualText === String(b)
+                            ? '2px solid #2563eb'
+                            : b === hours
+                              ? '1.5px solid #d97706'
+                              : '1px solid var(--border-strong)',
+                        borderRadius: 9,
+                        background: actualText === String(b) ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        color: actualText === String(b) ? 'var(--text-blue-800)' : b === hours ? 'var(--text-amber-800)' : 'var(--text-700)',
+                        cursor: 'pointer',
+                      }}
+                      title={b === hours ? 'As estimated' : undefined}
+                    >
+                      {b}h
+                    </button>
+                  ))}
+                  <input
+                    id="checklist-cost-actual"
+                    type="number"
+                    min={0}
+                    step={0.5}
+                    inputMode="decimal"
+                    value={actualText}
+                    onChange={(e) => setActualText(e.target.value)}
+                    placeholder="—"
+                    style={{ ...fieldInput, width: 84, height: 40 }}
+                  />
+                </div>
+                {actualTotal != null && total != null ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'space-between',
+                      padding: '0.45rem 0.75rem',
+                      borderRadius: 9,
+                      marginTop: 8,
+                      background: actualTotal > total ? 'var(--bg-red-100)' : 'var(--bg-green-100)',
+                      border: `1px solid ${actualTotal > total ? '#dc2626' : '#16a34a'}`,
+                      color: actualTotal > total ? 'var(--text-red-700)' : 'var(--text-green-700)',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Actually took · {actualHoursNum}h</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatWholeDollars(actualTotal)}</span>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {hadEstimate ? (
                 <button

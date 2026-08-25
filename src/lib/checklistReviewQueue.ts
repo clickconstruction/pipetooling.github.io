@@ -29,6 +29,7 @@ export type ReviewQueueInstance = {
     title: string
     created_by_user_id?: string | null
     notify_on_complete_user_id?: string | null
+    roadmap_group_task_id?: string | null
   } | null
 }
 
@@ -38,6 +39,8 @@ export type ReviewQueueRow = {
   title: string
   completedAt: string
   completedByUserId: string | null
+  /** Cost-estimate key: roadmap task id for bridged tasks, else the item id. */
+  costKey: string
   /** Latest comment on the card, if any — the "…with a note" preview. */
   latestNoteBody: string | null
   latestNoteAuthorId: string | null
@@ -82,6 +85,7 @@ export function buildReviewQueueRows(args: {
       title: item?.title ?? 'Untitled',
       completedAt: inst.completed_at,
       completedByUserId: inst.completed_by_user_id,
+      costKey: item?.roadmap_group_task_id ?? inst.checklist_item_id,
       latestNoteBody: latest ? latest.body : null,
       latestNoteAuthorId: latest ? latest.actor_user_id : null,
     })

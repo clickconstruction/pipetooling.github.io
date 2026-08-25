@@ -29,6 +29,7 @@ type CostRow = {
   hours: number
   rate: number
   updated_at: string
+  actual_hours: number | null
 }
 
 function notify(costKey: string | null) {
@@ -45,7 +46,7 @@ export function ensureChecklistCostEstimatesLoaded(): Promise<void> {
   if (!loadPromise) {
     loadPromise = (async () => {
       const rows = (await withSupabaseRetry(
-        () => supabase.from('checklist_item_costs').select('cost_key, person_user_id, person_name, hours, rate, updated_at'),
+        () => supabase.from('checklist_item_costs').select('cost_key, person_user_id, person_name, hours, rate, updated_at, actual_hours'),
         'load checklist cost estimates',
       )) as CostRow[] | null
       const next: Record<string, ChecklistCostEstimate> = {}
@@ -56,6 +57,7 @@ export function ensureChecklistCostEstimatesLoaded(): Promise<void> {
           hours: Number(r.hours),
           rate: Number(r.rate),
           updatedAt: r.updated_at,
+          actualHours: r.actual_hours == null ? null : Number(r.actual_hours),
         }
       }
       cache = next
@@ -87,7 +89,7 @@ export async function writeChecklistCostEstimate(
         }),
       'save checklist cost estimate',
     )
-    cache = { ...cache, [costKey]: estimate }
+    cache = { ...cache, [costKey]: { ...estimate, actualHours: estimate.actualHours ?? cache[costKey]?.actualHours ?? null } }
   } else {
     await withSupabaseRetry(
       () => supabase.from('checklist_item_costs').delete().eq('cost_key', costKey),
@@ -96,5 +98,29 @@ export async function writeChecklistCostEstimate(
     const { [costKey]: _removed, ...rest } = cache
     cache = rest
   }
+  notify(costKey)
+}
+
+/**
+ * Record (or clear) how long a costed task really took. Independent of the
+ * estimate write — sign-off taps and the modal's after-the-fact path both land
+ * here. No-op if no estimate row exists for the key.
+ */
+export async function writeChecklistCostActual(costKey: string, actualHours: number | null): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession()
+  await withSupabaseRetry(
+    () =>
+      supabase
+        .from('checklist_item_costs')
+        .update({
+          actual_hours: actualHours,
+          actual_recorded_by_user_id: actualHours == null ? null : (sessionData.session?.user.id ?? null),
+          actual_recorded_at: actualHours == null ? null : new Date().toISOString(),
+        })
+        .eq('cost_key', costKey),
+    'record checklist cost actual',
+  )
+  const existing = cache[costKey]
+  if (existing) cache = { ...cache, [costKey]: { ...existing, actualHours } }
   notify(costKey)
 }
