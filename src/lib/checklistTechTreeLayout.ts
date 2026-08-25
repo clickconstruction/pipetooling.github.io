@@ -68,7 +68,7 @@ export function layoutTechTreeFlow(args: {
   // route instead of a handle-to-handle smoothstep that slices through boxes.
   const edges: Edge[] = flowEdges.map((e) => {
     const routed = g.edge({ v: e.from, w: e.to }) as { points?: Array<{ x: number; y: number }> } | undefined
-    const routePoints = routed?.points ?? []
+    const routePoints = dropHairpinPoints(routed?.points ?? [])
     return {
       id: e.id,
       source: e.from,
@@ -80,6 +80,48 @@ export function layoutTechTreeFlow(args: {
   })
 
   return { nodes, edges, nodeHeights }
+}
+
+/**
+ * Dagre wart (v2.2302): the midpoint of a short edge is a zero-size virtual
+ * label node whose y can be pushed hundreds of px off the corridor by
+ * unrelated nodes in its alignment pass — the rendered line then dives to a
+ * needle apex in empty canvas and doubles straight back (the "stray line").
+ * A real dodge around a node turns ~90° per corner; only a degenerate spike
+ * reverses direction. Drop interior waypoints whose turn is a near-reversal;
+ * an edge reduced to its endpoints falls back to a plain smoothstep.
+ */
+export function dropHairpinPoints(
+  points: ReadonlyArray<{ x: number; y: number }>,
+): Array<{ x: number; y: number }> {
+  const pts = [...points]
+  let changed = true
+  while (changed && pts.length > 2) {
+    changed = false
+    for (let i = 1; i < pts.length - 1; i++) {
+      const a = pts[i - 1]!
+      const b = pts[i]!
+      const c = pts[i + 1]!
+      const v1x = b.x - a.x
+      const v1y = b.y - a.y
+      const v2x = c.x - b.x
+      const v2y = c.y - b.y
+      const l1 = Math.hypot(v1x, v1y)
+      const l2 = Math.hypot(v2x, v2y)
+      if (l1 < 0.5 || l2 < 0.5) {
+        pts.splice(i, 1)
+        changed = true
+        break
+      }
+      const cos = (v1x * v2x + v1y * v2y) / (l1 * l2)
+      if (cos < -0.6) {
+        pts.splice(i, 1)
+        changed = true
+        break
+      }
+    }
+  }
+  return pts
 }
 
 /**
