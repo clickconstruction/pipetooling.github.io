@@ -717,12 +717,13 @@ export function BidsPricingTab({
   const [recentMargins, setRecentMargins] = useState<number[]>(() => loadRecentMargins(window.localStorage))
   // Margin mode (v2.1772, Wendi's row-by-row flow): a per-row apply column so
   // pricing one line at a time never scrolls back to the toolbar. Remembered
-  // per device.
+  // per device; ON by default (v2.NNNN) — only an explicit toggle-off ('0')
+  // keeps it off.
   const [marginRowMode, setMarginRowMode] = useState<boolean>(() => {
     try {
-      return window.localStorage.getItem('bidPricingMarginMode_v1') === '1'
+      return window.localStorage.getItem('bidPricingMarginMode_v1') !== '0'
     } catch {
-      return false
+      return true
     }
   })
   const toggleMarginRowMode = () =>
