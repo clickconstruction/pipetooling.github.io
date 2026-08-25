@@ -16,6 +16,7 @@ import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { QuickfillCompleteNoBillSection } from '../components/quickfill/QuickfillCompleteNoBillSection'
 import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
+import { QuickfillFieldPhotoHandoverSection } from '../components/quickfill/QuickfillFieldPhotoHandoverSection'
 import { QuickfillJobsCleanupSection } from '../components/quickfill/QuickfillJobsCleanupSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
@@ -85,6 +86,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Missing job info' },
   { id: 'quickfill-jobs-cleanup', sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
+  { id: 'quickfill-field-photos', sectionId: 'field-photos', label: 'Field photos → Drive' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
   {
     id: 'quickfill-tomorrow-schedule',
@@ -1256,6 +1258,26 @@ function QuickfillPage() {
               readyToBillNoEmailJobs={quickfillNoCustomerStages.readyToBillNoEmailJobs}
               jobsListBusy={quickfillNoCustomerStages.jobsListBusy}
             />
+          </QuickfillSectionWrapper>
+        )
+      case 'field-photos':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['field-photos']?.marked_at ?? null)}
+            collapsed={isCollapsed('field-photos') && !forceExpandedSections.has('field-photos')}
+            mark={sectionMarks['field-photos']}
+            onMarkUpToDate={() => void markSectionUpToDate('field-photos')}
+            onOpenNow={() => openSectionNow('field-photos')}
+            onOpenHistory={() =>
+              setMarkHistoryModal({ sectionId: 'field-photos', label: 'Field photos → Drive' })
+            }
+          >
+            <QuickfillFieldPhotoHandoverSection />
           </QuickfillSectionWrapper>
         )
       case 'dispatch-inbox':
