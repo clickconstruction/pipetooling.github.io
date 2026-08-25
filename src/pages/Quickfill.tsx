@@ -24,6 +24,7 @@ import { BankingSortingSnapshotSection } from '../components/quickfill/BankingSo
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
 import { QuickfillUnassignedFieldTimeSection } from '../components/quickfill/QuickfillUnassignedFieldTimeSection'
 import { QuickfillVehicleOdometersSection } from '../components/quickfill/QuickfillVehicleOdometersSection'
+import { QuickfillAssistantDailysSection } from '../components/quickfill/QuickfillAssistantDailysSection'
 import { QuickfillDifficultPeopleSection } from '../components/quickfill/QuickfillDifficultPeopleSection'
 import { QuickfillEmailSection } from '../components/quickfill/QuickfillEmailSection'
 import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
@@ -62,6 +63,7 @@ import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH_FOR_Q
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
   { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
+  { id: 'quickfill-assistant-dailys', sectionId: 'assistant-dailys', label: 'Assistant Dailys' },
   { id: 'quickfill-my-inbox', sectionId: 'my-inbox', label: 'My Inbox' },
   { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours' },
   {
@@ -104,7 +106,10 @@ const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 
 const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
 /** Where a later-added section slots into an org's already-saved order (see normalizeQuickfillSectionOrderFromValueText). */
-const SECTION_INSERT_AFTER: Record<string, string> = { 'jobs-cleanup': 'no-customer-stages' }
+const SECTION_INSERT_AFTER: Record<string, string> = {
+  'jobs-cleanup': 'no-customer-stages',
+  'assistant-dailys': 'office-arriving',
+}
 
 const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
 
@@ -660,6 +665,9 @@ function QuickfillPage() {
       if (sectionId === 'difficult-people') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }
+      if (sectionId === 'assistant-dailys') {
+        return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+      }
       if (sectionId === 'unassigned-field-time') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }
@@ -1000,6 +1008,24 @@ function QuickfillPage() {
             }
           >
             <QuickfillVehicleOdometersSection />
+          </QuickfillSectionWrapper>
+        )
+      case 'assistant-dailys':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['assistant-dailys']?.marked_at ?? null)}
+            collapsed={isCollapsed('assistant-dailys') && !forceExpandedSections.has('assistant-dailys')}
+            mark={sectionMarks['assistant-dailys']}
+            onMarkUpToDate={() => void markSectionUpToDate('assistant-dailys')}
+            onOpenNow={() => openSectionNow('assistant-dailys')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'assistant-dailys', label: 'Assistant Dailys' })}
+          >
+            <QuickfillAssistantDailysSection />
           </QuickfillSectionWrapper>
         )
       case 'difficult-people':

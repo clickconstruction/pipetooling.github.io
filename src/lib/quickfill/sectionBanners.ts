@@ -5,6 +5,7 @@
  */
 export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>> = {
   'office-arriving': 'Is the workspace ready for the day?',
+  'assistant-dailys': "Are today's assistant dailys done?",
   texts: 'Did anything fall through the cracks from today or yesterday?',
   'email-inbox': 'Are work@ and bids@ clean, and is nothing stuck in Follow Up or Next Actions?',
   'physical-inbox': 'Can I get to the bottom of the pile?',
