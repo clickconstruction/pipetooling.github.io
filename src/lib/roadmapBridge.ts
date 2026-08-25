@@ -202,6 +202,54 @@ export function blockingStageTitles(args: {
  * get the auto-assign wording — completing the blocker is what pushes those
  * tasks onto people's Today lists via the bridge sync.
  */
+export type LockedChainEntry = {
+  /** The prerequisite stage's Goals row. */
+  row: GoalsStageRow
+  /** 1-based position in the curated stage order (the list's numbering). */
+  number: number
+  /** True: a direct edge into the locked stage — finishing it is what unlocks. */
+  direct: boolean
+}
+
+/**
+ * Every unfinished stage standing between a locked stage and unlocking
+ * (v2.NNNN, the 🔒-chip modal): walk incoming edges upward, skipping complete
+ * ancestors (their own chains no longer matter). Returned in curated stage
+ * order — the numbering the Goals list shows — with direct blockers flagged.
+ */
+export function lockedStagePrerequisiteChain(args: {
+  groupId: string
+  stageRows: ReadonlyArray<GoalsStageRow>
+  edges: ReadonlyArray<TechTreeEdge>
+}): LockedChainEntry[] {
+  const { groupId, stageRows, edges } = args
+  const rowById = new Map(stageRows.map((r, i) => [r.groupId, { row: r, number: i + 1 }]))
+  const incomplete = (id: string) => {
+    const entry = rowById.get(id)
+    return entry != null && entry.row.state !== 'complete'
+  }
+  const directIds = new Set(
+    edges.filter((e) => e.toGroupId === groupId && e.fromGroupId !== groupId && incomplete(e.fromGroupId)).map((e) => e.fromGroupId),
+  )
+  const seen = new Set<string>(directIds)
+  const queue = [...directIds]
+  while (queue.length > 0) {
+    const id = queue.shift()!
+    for (const e of edges) {
+      if (e.toGroupId !== id) continue
+      // Never list the locked stage as its own prerequisite (cycle back to self).
+      if (e.fromGroupId === groupId) continue
+      if (!incomplete(e.fromGroupId) || seen.has(e.fromGroupId)) continue
+      seen.add(e.fromGroupId)
+      queue.push(e.fromGroupId)
+    }
+  }
+  return [...seen]
+    .map((id) => rowById.get(id)!)
+    .sort((a, b) => a.number - b.number)
+    .map(({ row, number }) => ({ row, number, direct: directIds.has(row.groupId) }))
+}
+
 export function lockedStageHint(blockingTitles: string[], hasAssignedTasks: boolean): string | null {
   if (blockingTitles.length === 0) return null
   const first = blockingTitles[0]!

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { blockingStageTitles, bridgeChipFor, goalsStageRows, goalsStripNowSummary, goalsStripRows, lockedStageHint, stageBadgeFor } from './roadmapBridge'
+import { blockingStageTitles, bridgeChipFor, goalsStageRows, goalsStripNowSummary, goalsStripRows, lockedStageHint, lockedStagePrerequisiteChain, stageBadgeFor } from './roadmapBridge'
 
 describe('bridgeChipFor', () => {
   it('no bridge -> no chip', () => {
@@ -190,5 +190,46 @@ describe('goalsStageRows', () => {
       edges: [...edges, { fromGroupId: 'other', toGroupId: 'gA' }],
     })
     expect(rows.find((r) => r.groupId === 'gA')!.state).toBe('complete')
+  })
+})
+
+describe('lockedStagePrerequisiteChain', () => {
+  const row = (groupId: string, state: 'complete' | 'current' | 'locked' | 'unplanned', done = 0, total = 0) => ({
+    groupId,
+    title: groupId.toUpperCase(),
+    done,
+    total,
+    state,
+    openAssigned: 0,
+    blockedBy: [],
+  })
+  // Curated order g1..g5; chain into g4: g1(done) → g2(current) → g3(locked) → g4; g5(done) → g4
+  const stageRows = [row('g1', 'complete', 3, 3), row('g2', 'current', 1, 4), row('g3', 'locked'), row('g4', 'locked'), row('g5', 'complete', 2, 2)]
+  const edges = [
+    { fromGroupId: 'g1', toGroupId: 'g2' },
+    { fromGroupId: 'g2', toGroupId: 'g3' },
+    { fromGroupId: 'g3', toGroupId: 'g4' },
+    { fromGroupId: 'g5', toGroupId: 'g4' },
+  ]
+
+  it('walks the incomplete ancestor chain, skipping complete stages, in curated order', () => {
+    const chain = lockedStagePrerequisiteChain({ groupId: 'g4', stageRows, edges })
+    expect(chain.map((e) => e.row.groupId)).toEqual(['g2', 'g3'])
+    expect(chain.map((e) => e.number)).toEqual([2, 3])
+    expect(chain.map((e) => e.direct)).toEqual([false, true])
+  })
+
+  it('dedupes shared ancestors and survives cycles', () => {
+    const withExtra = [...edges, { fromGroupId: 'g2', toGroupId: 'g4' }, { fromGroupId: 'g4', toGroupId: 'g2' }]
+    const chain = lockedStagePrerequisiteChain({ groupId: 'g4', stageRows, edges: withExtra })
+    expect(chain.map((e) => e.row.groupId)).toEqual(['g2', 'g3'])
+    // g2 now feeds g4 directly too
+    expect(chain.find((e) => e.row.groupId === 'g2')!.direct).toBe(true)
+  })
+
+  it('empty when every predecessor is complete', () => {
+    expect(lockedStagePrerequisiteChain({ groupId: 'g2', stageRows, edges })).toEqual([
+      expect.objectContaining({ direct: false }),
+    ].slice(0, 0))
   })
 })

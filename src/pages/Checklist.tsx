@@ -32,7 +32,7 @@ import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
-import { goalsStageRows, goalsStripRows, lockedStageHint, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
+import { goalsStageRows, goalsStripRows, lockedStageHint, lockedStagePrerequisiteChain, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
 import { computeStageOrderUpdates, computeTaskOrderUpdates } from '../lib/roadmapStageNumbers'
 import { ChecklistTechTreeOrderStagesModal } from '../components/checklist/ChecklistTechTreeOrderStagesModal'
 import { goalsLedgerTaskRows, type GoalsLedgerTaskRow } from '../lib/roadmapGoalsLedger'
@@ -2111,6 +2111,27 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
   const [goalRawTasks, setGoalRawTasks] = useState<Array<{ id: string; group_id: string; sort_index: number }>>([])
   /** Which roadmap's stages the ⇅ Reorder modal is editing; null = closed. */
   const [orderStagesRoadmapId, setOrderStagesRoadmapId] = useState<string | null>(null)
+  /** Roadmap edges (v2.NNNN) — the 🔒-chip modal walks them for the unlock chain. */
+  const [goalEdges, setGoalEdges] = useState<Array<{ fromGroupId: string; toGroupId: string }>>([])
+  /** The locked stage whose prerequisite-chain modal is open; null = closed. */
+  const [lockedChainStage, setLockedChainStage] = useState<{ roadmapId: string; groupId: string } | null>(null)
+  /** Stage briefly flashed blue after a jump from the chain modal. */
+  const [highlightStageId, setHighlightStageId] = useState<string | null>(null)
+  const jumpToStage = (roadmapId: string, groupId: string) => {
+    setLockedChainStage(null)
+    setExpandedGoalId(roadmapId)
+    setShowAllLockedStages(true)
+    setExpandedStageId(null)
+    setHighlightStageId(groupId)
+    window.setTimeout(() => setHighlightStageId((prev) => (prev === groupId ? null : prev)), 2600)
+  }
+  // Scroll AFTER the unfolded rows render (the jump may reveal a folded locked
+  // tail). Instant, not smooth — the flash orients the eye, and smooth
+  // scrolling stalls in rAF-less webviews.
+  useEffect(() => {
+    if (!highlightStageId) return
+    document.getElementById(`goal-stage-${highlightStageId}`)?.scrollIntoView({ block: 'center' })
+  }, [highlightStageId])
   const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
   const onOpenReqCount = useCallback((n: number) => setOpenReqCount(n), [])
 
@@ -2190,6 +2211,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       }
       setGoalGroupOrder(orderMap)
       setGoalRawTasks(fullTasks.map((t) => ({ id: t.id, group_id: t.group_id, sort_index: t.sort_index })))
+      setGoalEdges(mappedEdges)
     })()
     return () => {
       cancelled = true
@@ -2952,15 +2974,25 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                         ? summarizeOpenTaskCosts(stageTasks.filter((t) => !t.done).map((t) => t.id), costEstimates)
                         : null
                       return (
-                        <div key={s.groupId} className={`goal-stage${stageOpen ? ' goal-stage--open' : ''}`}>
+                        <div
+                          key={s.groupId}
+                          id={`goal-stage-${s.groupId}`}
+                          className={`goal-stage${stageOpen ? ' goal-stage--open' : ''}`}
+                          style={
+                            highlightStageId === s.groupId
+                              ? { outline: '2px solid #2563eb', outlineOffset: -1, borderRadius: 8, background: 'var(--bg-blue-tint)', transition: 'background 0.4s' }
+                              : undefined
+                          }
+                        >
                           <button
                             type="button"
                             className="goal-stage-row"
-                            disabled={!canOpen}
+                            disabled={!canOpen && s.state !== 'locked'}
                             aria-expanded={canOpen ? stageOpen : undefined}
-                            aria-label={`Stage ${index + 1}: ${s.title}${canOpen ? (stageOpen ? ' — hide tasks' : ' — show tasks') : ''}`}
+                            aria-label={`Stage ${index + 1}: ${s.title}${canOpen ? (stageOpen ? ' — hide tasks' : ' — show tasks') : s.state === 'locked' ? ' — see what unlocks it' : ''}`}
                             onClick={() => {
                               if (canOpen) setExpandedStageId(stageOpen ? null : s.groupId)
+                              else if (s.state === 'locked') setLockedChainStage({ roadmapId: g.roadmapId, groupId: s.groupId })
                             }}
                           >
                             <span className="goal-stage-n">{index + 1}</span>
@@ -2998,8 +3030,21 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                                 </span>
                               ) : (
                                 <span
-                                  title={lockedStageHint(s.blockedBy, s.openAssigned > 0) ?? undefined}
-                                  style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-muted)', color: 'var(--text-faint)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                  role="button"
+                                  tabIndex={0}
+                                  title={`${lockedStageHint(s.blockedBy, s.openAssigned > 0) ?? 'Locked'} — tap to see every stage that has to finish first`}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setLockedChainStage({ roadmapId: g.roadmapId, groupId: s.groupId })
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      setLockedChainStage({ roadmapId: g.roadmapId, groupId: s.groupId })
+                                    }
+                                  }}
+                                  style={{ fontSize: '0.68rem', fontWeight: 600, padding: '0.08rem 0.4rem', borderRadius: 6, flexShrink: 0, whiteSpace: 'nowrap', background: 'var(--bg-muted)', color: 'var(--text-muted)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
                                 >
                                   🔒{s.blockedBy[0] ? ` after “${s.blockedBy[0]}”` : ''}
                                 </span>
@@ -3144,6 +3189,71 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           })}
         </div>
       ) : null}
+      {/* 🔒 chip (v2.NNNN): which unfinished stages stand between a locked stage and unlocking. */}
+      {lockedChainStage ? (() => {
+        const chainStages = goalStageRows.get(lockedChainStage.roadmapId) ?? []
+        const target = chainStages.find((s) => s.groupId === lockedChainStage.groupId)
+        const targetNumber = chainStages.findIndex((s) => s.groupId === lockedChainStage.groupId) + 1
+        const chain = lockedStagePrerequisiteChain({ groupId: lockedChainStage.groupId, stageRows: chainStages, edges: goalEdges })
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}
+            onClick={() => setLockedChainStage(null)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`What unlocks ${target?.title ?? 'this stage'}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(440px, 100%)', maxHeight: '82vh', overflowY: 'auto', padding: '1rem 1rem 0.75rem' }}
+            >
+              <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)', display: 'flex', gap: '0.45rem', alignItems: 'baseline' }}>
+                <span style={{ color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>{targetNumber > 0 ? targetNumber : ''}</span>
+                <span style={{ minWidth: 0 }}>{target?.title ?? 'Locked stage'}</span>
+              </h3>
+              <p style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                🔒 Locked — these stages have to finish first:
+              </p>
+              {chain.length === 0 ? (
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  No unfinished prerequisites found — it should unlock on the next sync.
+                </p>
+              ) : (
+                chain.map((entry) => (
+                  <button
+                    key={entry.row.groupId}
+                    type="button"
+                    onClick={() => jumpToStage(lockedChainStage.roadmapId, entry.row.groupId)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', width: '100%', padding: '0.5rem 0.4rem', border: 'none', borderTop: '1px solid var(--border)', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-base)' }}
+                  >
+                    <span style={{ color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', width: '1.4rem', textAlign: 'right', flexShrink: 0 }}>{entry.number}</span>
+                    <span style={{ flex: 1, minWidth: 0, color: 'var(--text-strong)' }}>{entry.row.title}</span>
+                    {entry.direct ? (
+                      <span title="Finishing this stage is what unlocks it" style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.06rem 0.35rem', borderRadius: 5, background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        unlocks it
+                      </span>
+                    ) : null}
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                      {entry.row.total > 0 ? `${entry.row.done}/${entry.row.total}` : '—'}
+                    </span>
+                    <span aria-hidden="true" style={{ color: 'var(--text-link)', fontSize: '0.8rem' }}>→</span>
+                  </button>
+                ))
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', marginTop: '0.7rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Tap a stage to jump to it in the list.</span>
+                <button
+                  type="button"
+                  onClick={() => setLockedChainStage(null)}
+                  style={{ padding: '0.4rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-base)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })() : null}
       {/* ⇅ Reorder (v2.NNNN): the roadmap's hold-and-drag Order-stages modal, opened from Goals. */}
       <ChecklistTechTreeOrderStagesModal
         open={orderStagesRoadmapId !== null}
