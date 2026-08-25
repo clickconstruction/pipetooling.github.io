@@ -3,23 +3,33 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { sequentialWaiting, type SequentialTaskLite } from '../../lib/checklistTechTreeGraph'
 
-type ComingUpRow = {
-  taskId: string
-  title: string
-  stageTitle: string
+type WaitingGroup = {
+  blockerId: string
   blockerTitle: string
+  /** Resolved assignee names on the blocking task (unknowns filtered out). */
   blockerNames: string[]
+  stageTitle: string
+  tasks: Array<{
+    taskId: string
+    title: string
+    /** Not directly behind the blocker — queued behind a waiting sibling. */
+    queued: boolean
+  }>
 }
 
+const VISIBLE_GROUPS = 3
+
 /**
- * "⏳ Coming up" (v2.2264): the viewer's roadmap tasks that wait their turn in
- * a sequential stage — grayed, untouchable, each naming the task ahead of it
- * and who's doing it. Self-contained (own fetch; RLS: task assignment grants
- * roadmap read since v2.2261). Renders nothing while empty or for viewers with
- * no waiting tasks.
+ * "⏳ Waiting For" (v2.2264, grouped v2.2269): the viewer's roadmap tasks that
+ * wait their turn in a sequential stage, grouped under the open task holding
+ * them — the blocker, who's on it, and the stage said once per group, the
+ * waiting tasks as one-liners beneath. Self-contained (own fetch; RLS: task
+ * assignment grants roadmap read since v2.2261). Renders nothing while empty
+ * or for viewers with no waiting tasks.
  */
 export function ChecklistComingUpSection({ authUserId }: { authUserId: string | null }) {
-  const [rows, setRows] = useState<ComingUpRow[]>([])
+  const [groups, setGroups] = useState<WaitingGroup[]>([])
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     if (!authUserId) return
@@ -80,24 +90,39 @@ export function ChecklistComingUpSection({ authUserId }: { authUserId: string | 
         const stageTitleById = new Map((groups ?? []).map((g) => [g.id, g.title]))
         const { waitingIds, blockerByTaskId } = sequentialWaiting({ tasksByGroup, sequentialByGroupId })
         const myIds = new Set(myTaskIds)
-        const out: ComingUpRow[] = []
+        const byBlocker = new Map<string, WaitingGroup>()
         for (const taskId of waitingIds) {
           if (!myIds.has(taskId)) continue
           const t = rowById.get(taskId)
           const blocker = blockerByTaskId.get(taskId)
           if (!t || !blocker) continue
-          const blockerRow = rowById.get(blocker.id)
-          out.push({
-            taskId,
-            title: t.title,
-            stageTitle: stageTitleById.get(t.group_id) ?? '',
-            blockerTitle: blocker.title,
-            blockerNames: (blockerRow?.checklist_tech_tree_task_assignees ?? []).map(
-              (a) => nameById.get(a.user_id) ?? '…',
-            ),
+          let g = byBlocker.get(blocker.id)
+          if (!g) {
+            const blockerRow = rowById.get(blocker.id)
+            g = {
+              blockerId: blocker.id,
+              blockerTitle: blocker.title,
+              blockerNames: (blockerRow?.checklist_tech_tree_task_assignees ?? [])
+                .map((a) => nameById.get(a.user_id))
+                .filter((n): n is string => !!n && n !== '…'),
+              stageTitle: stageTitleById.get(t.group_id) ?? '',
+              tasks: [],
+            }
+            byBlocker.set(blocker.id, g)
+          }
+          g.tasks.push({ taskId, title: t.title, queued: false })
+        }
+        const out = [...byBlocker.values()]
+        for (const g of out) {
+          // siblings arrive sort_index-ordered, so within a group the first
+          // waiting task is directly behind the blocker; the rest are queued
+          g.tasks.sort((a, b) => (rowById.get(a.taskId)?.sort_index ?? 0) - (rowById.get(b.taskId)?.sort_index ?? 0))
+          g.tasks.forEach((t2, i) => {
+            t2.queued = i > 0
           })
         }
-        if (!cancelled) setRows(out)
+        out.sort((a, b) => b.tasks.length - a.tasks.length || a.stageTitle.localeCompare(b.stageTitle))
+        if (!cancelled) setGroups(out)
       } catch {
         // RLS/load failure: the section simply doesn't render.
       }
@@ -107,33 +132,34 @@ export function ChecklistComingUpSection({ authUserId }: { authUserId: string | 
     }
   }, [authUserId])
 
-  if (rows.length === 0) return null
+  if (groups.length === 0) return null
+
+  const visible = expanded ? groups : groups.slice(0, VISIBLE_GROUPS)
+  const hiddenCount = groups.length - visible.length
 
   return (
     <div style={{ marginTop: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>⏳ Coming up</span>
+        <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>⏳ Waiting For</span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>yours, once the step ahead clears</span>
       </div>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-        {rows.map((r) => (
+        {visible.map((g) => (
           <li
-            key={r.taskId}
+            key={g.blockerId}
             style={{
               border: '1.5px dashed var(--border-strong)',
               borderRadius: 11,
-              padding: '0.55rem 0.75rem',
-              marginBottom: '0.45rem',
-              opacity: 0.75,
+              padding: '0.55rem 0.75rem 0.6rem',
+              marginBottom: '0.5rem',
+              opacity: 0.85,
             }}
           >
-            <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>{r.title}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 3 }}>
-              after <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>{r.blockerTitle}</b>
-              {r.blockerNames.length > 0 ? (
-                <>
-                  {' · '}
-                  {r.blockerNames.map((n) => (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
+              after <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>{g.blockerTitle}</b>
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 5, marginTop: 5 }}>
+                {g.blockerNames.length > 0 ? (
+                  g.blockerNames.map((n) => (
                     <span
                       key={n}
                       style={{
@@ -146,17 +172,50 @@ export function ChecklistComingUpSection({ authUserId }: { authUserId: string | 
                     >
                       {n}
                     </span>
-                  ))}
-                  <span>is on it</span>
-                </>
-              ) : (
-                <span>· not staffed yet</span>
-              )}
-              {r.stageTitle ? <span style={{ whiteSpace: 'nowrap' }}>· ⛰ {r.stageTitle}</span> : null}
+                  ))
+                ) : (
+                  <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>not staffed yet</span>
+                )}
+                {g.stageTitle ? <span style={{ whiteSpace: 'nowrap', color: 'var(--text-soft, var(--text-muted))' }}>· ⛰ {g.stageTitle}</span> : null}
+              </div>
             </div>
+            <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0 }}>
+              {g.tasks.map((t) => (
+                <li
+                  key={t.taskId}
+                  style={{ display: 'flex', gap: 7, alignItems: 'baseline', fontSize: '0.85rem', color: 'var(--text-muted)', padding: '2.5px 0' }}
+                >
+                  <span aria-hidden style={{ fontSize: '0.7rem', opacity: 0.7, flexShrink: 0 }}>⏳</span>
+                  <span style={{ minWidth: 0 }}>
+                    {t.title}
+                    {t.queued ? <i style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}> then</i> : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </li>
         ))}
       </ul>
+      {hiddenCount > 0 || expanded ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((o) => !o)}
+          style={{
+            width: '100%',
+            textAlign: 'center',
+            border: '1px dashed var(--border)',
+            background: 'none',
+            color: 'var(--text-muted)',
+            borderRadius: 10,
+            padding: 7,
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            marginTop: 2,
+          }}
+        >
+          {expanded ? 'show fewer ⌃' : `…and ${hiddenCount} more step${hiddenCount === 1 ? '' : 's'} ahead ⌄`}
+        </button>
+      ) : null}
     </div>
   )
 }
