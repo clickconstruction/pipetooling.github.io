@@ -7,8 +7,10 @@ import {
   filterBills,
   filterTxns,
   lensCounts,
+  parsePaymentLineItems,
   parsePaySpeedTransactions,
   type DataHealthLens,
+  type PaymentLineItems,
   type PaySpeedTransactions,
   type PaySpeedTxn,
 } from '../../lib/jobs/paySpeedTransactions'
@@ -62,6 +64,10 @@ export default function PaySpeedDataHealthModal({
   const [query, setQuery] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [gearOpen, setGearOpen] = useState(false)
+  // Row expansion (v2.2309): tap a payment → the line items it paid for,
+  // lazy-loaded once per payment and cached for the session.
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [lineItemsById, setLineItemsById] = useState<Record<string, PaymentLineItems | null | 'loading'>>({})
   const [noCountDraft, setNoCountDraft] = useState('')
   const [savingNoCount, setSavingNoCount] = useState(false)
 
@@ -99,6 +105,22 @@ export default function PaySpeedDataHealthModal({
       onChanged?.()
     }
     setSavingNoCount(false)
+  }
+
+
+  function toggleLineItems(paymentId: string) {
+    setExpandedId((prev) => (prev === paymentId ? null : paymentId))
+    if (lineItemsById[paymentId] === undefined) {
+      setLineItemsById((prev) => ({ ...prev, [paymentId]: 'loading' }))
+      void (async () => {
+        try {
+          const { data: raw } = await supabase.rpc('get_payment_line_items' as never, { p_payment_id: paymentId } as never)
+          setLineItemsById((prev) => ({ ...prev, [paymentId]: parsePaymentLineItems(raw as unknown) }))
+        } catch {
+          setLineItemsById((prev) => ({ ...prev, [paymentId]: null }))
+        }
+      })()
+    }
   }
 
   async function toggleExclusion(t: PaySpeedTxn) {
@@ -297,22 +319,46 @@ export default function PaySpeedDataHealthModal({
               ) : (
                 txns.map((t, i) => {
                   const chip = STATUS_CHIP[t.status]
+                  const expanded = expandedId === t.paymentId
+                  const li = lineItemsById[t.paymentId]
                   return (
+                    <div key={t.paymentId}>
                     <div
-                      key={t.paymentId}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expanded}
+                      title={expanded ? 'Hide the line items behind this payment' : 'Show the line items behind this payment'}
+                      onClick={() => toggleLineItems(t.paymentId)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          toggleLineItems(t.paymentId)
+                        }
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.55rem',
                         padding: '0.4rem 0.45rem',
-                        borderRadius: 6,
+                        borderRadius: expanded ? '6px 6px 0 0' : 6,
                         fontSize: '0.76rem',
+                        cursor: 'pointer',
                         background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
                         opacity: t.status === 'excluded' ? 0.6 : 1,
                       }}
                     >
-                      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-700)', width: '3.4em', flexShrink: 0 }}>
-                        {formatYmdSlash(t.paidYmd)}
+                      <span
+                        title={t.sentYmd ? `Sent ${formatYmdSlash(t.sentYmd)} → received ${formatYmdSlash(t.paidYmd)}` : `Received ${formatYmdSlash(t.paidYmd)} — no sent date recorded`}
+                        style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-700)', width: t.sentYmd ? '8.2em' : '3.4em', flexShrink: 0, whiteSpace: 'nowrap' }}
+                      >
+                        {t.sentYmd ? (
+                          <>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{formatYmdSlash(t.sentYmd)} → </span>
+                            {formatYmdSlash(t.paidYmd)}
+                          </>
+                        ) : (
+                          formatYmdSlash(t.paidYmd)
+                        )}
                       </span>
                       <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, width: '4.6em', textAlign: 'right', flexShrink: 0 }}>
                         {formatUsdNoCents(t.amount)}
@@ -328,7 +374,10 @@ export default function PaySpeedDataHealthModal({
                         <button
                           type="button"
                           disabled={busyId === t.paymentId}
-                          onClick={() => void toggleExclusion(t)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void toggleExclusion(t)
+                          }}
                           title={t.status === 'excluded' ? 'Put this payment back into the pay-speed math' : 'Drop this payment from the pay-speed math (you can always include it again)'}
                           style={{ ...actStyle, color: t.status === 'excluded' ? 'var(--text-link)' : 'var(--text-muted)' }}
                         >
@@ -336,10 +385,65 @@ export default function PaySpeedDataHealthModal({
                         </button>
                       )}
                       {t.jobId && onOpenJobDetail && (
-                        <button type="button" onClick={() => onOpenJobDetail(t.jobId!)} style={{ ...actStyle, color: 'var(--text-link)' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onOpenJobDetail(t.jobId!)
+                          }}
+                          style={{ ...actStyle, color: 'var(--text-link)' }}
+                        >
                           Open job ›
                         </button>
                       )}
+                    </div>
+                    {expanded && (
+                      <div
+                        style={{
+                          border: '1px solid var(--border)',
+                          borderTop: 'none',
+                          borderRadius: '0 0 8px 8px',
+                          padding: '0.45rem 0.7rem 0.55rem 2rem',
+                          fontSize: '0.74rem',
+                          marginBottom: '0.3rem',
+                          color: 'var(--text-700)',
+                        }}
+                      >
+                        {li === 'loading' || li === undefined ? (
+                          <span style={{ color: 'var(--text-muted)' }}>Loading line items…</span>
+                        ) : li == null ? (
+                          <span style={{ color: 'var(--text-muted)' }}>Line items aren’t available for this payment.</span>
+                        ) : (
+                          <>
+                            <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                              {li.linked ? 'What this bill charged' : "Not applied to a bill — the job's line items, for context"}
+                            </div>
+                            {li.items.length === 0 ? (
+                              <span style={{ color: 'var(--text-muted)' }}>No line items recorded{li.linked ? ' on this bill' : ' on this job'}.</span>
+                            ) : (
+                              li.items.map((it, j) => (
+                                <div key={j} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', padding: '0.1rem 0' }}>
+                                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {it.name}
+                                    {it.count !== 1 ? <span style={{ color: 'var(--text-muted)' }}> × {it.count}</span> : null}
+                                    {it.description ? <span style={{ color: 'var(--text-muted)' }}> — {it.description}</span> : null}
+                                  </span>
+                                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, flexShrink: 0 }}>
+                                    {it.amount != null ? formatUsdNoCents(it.amount) : '—'}
+                                  </span>
+                                </div>
+                              ))
+                            )}
+                            {li.linked && li.billAmount != null && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', borderTop: '1px solid var(--border)', marginTop: '0.25rem', paddingTop: '0.2rem', color: 'var(--text-muted)' }}>
+                                <span>bill total</span>
+                                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text-700)' }}>{formatUsdNoCents(li.billAmount)}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                     </div>
                   )
                 })
