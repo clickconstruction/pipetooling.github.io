@@ -17,6 +17,9 @@ Each stage card on **Plan** also carries a small bar of **one slot per task**, i
 
 To take someone off later, tap the **✕** on their chip. When the stage unlocks, assigned tasks land on each person's **Today** list automatically.
 
+
+**Crew chips** — above the people list, every team from **People → Teams** shows as a chip. The count shows how many a tap would **add** ("+3"); tapping staffs them all in one save, and tapping a filled chip takes the whole crew off while anyone outside the crew stays. Crews are created and edited from the Add-task dialogs (or People → Teams).
+
 ## Talk about the work
 
 The **Activity** section is the task's conversation — notes as message bubbles, status changes (completed, reopened, signed off) as quiet one-liners. Type in the bar at the bottom and hit the send button; your note follows the task onto the assignee's checklist card, so the field sees it too.

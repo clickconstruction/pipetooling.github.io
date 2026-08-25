@@ -12,6 +12,7 @@ import { MATERIALIZE_HORIZON_DAYS, materializeDates } from '../lib/checklistMate
 import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistScheduleSummary'
 import { REMINDER_PRESETS, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { ymdAddDays } from '../utils/dateUtils'
+import { ChecklistCrewTagsRow } from './checklist/ChecklistCrewTagsRow'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -593,6 +594,29 @@ export default function ChecklistAddModal({
                     <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'inherit' }}>({form.links.length})</span>
                   ) : null}
                 </button>
+              </div>
+              <div style={{ marginTop: '0.35rem' }}>
+                {/* Crew chips (People → Teams): one tap staffs the whole crew; the
+                    solo-self dedupe rule applies to crew taps like manual picks. */}
+                <ChecklistCrewTagsRow
+                  users={users}
+                  assignees={Object.fromEntries(form.assigned_to_user_ids.map((id) => [id, true]))}
+                  currentUserId={authUser?.id ?? null}
+                  onStaffCrew={(memberIds, checked) =>
+                    setForm((f) => {
+                      const prev = f.assigned_to_user_ids
+                      const proposed = checked
+                        ? [...prev, ...memberIds.filter((id) => !prev.includes(id))]
+                        : prev.filter((id) => !memberIds.includes(id))
+                      return {
+                        ...f,
+                        assigned_to_user_ids: checked
+                          ? dedupeSoloSelfWhenAddingOthers(prev, proposed, authUser?.id ?? null)
+                          : proposed,
+                      }
+                    })
+                  }
+                />
               </div>
               <div
                 style={{ marginTop: '0.25rem' }}

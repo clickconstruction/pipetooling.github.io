@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { ChecklistCrewTagsRow } from './ChecklistCrewTagsRow'
 import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import type { BridgeChip, BridgeState } from '../../lib/roadmapBridge'
 import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
@@ -182,6 +183,20 @@ export function ChecklistTechTreeTaskCardModal({
     const has = task.assigneeIds.includes(userId)
     const next = has ? task.assigneeIds.filter((id) => id !== userId) : [...task.assigneeIds, userId]
     setBusyUserId(userId)
+    try {
+      await onSave(task.title, next)
+    } finally {
+      setBusyUserId(null)
+    }
+  }
+
+  /** Crew chip tap: whole roster lands (or leaves) in ONE save — people outside the crew stay put. */
+  async function staffCrew(memberIds: string[], checked: boolean) {
+    if (!task || busyUserId || titleSaving) return
+    const next = checked
+      ? [...task.assigneeIds, ...memberIds.filter((id) => !task.assigneeIds.includes(id))]
+      : task.assigneeIds.filter((id) => !memberIds.includes(id))
+    setBusyUserId('__crew__')
     try {
       await onSave(task.title, next)
     } finally {
@@ -440,6 +455,13 @@ export function ChecklistTechTreeTaskCardModal({
                   background: 'var(--bg-slate-tint)',
                   marginBottom: 8,
                 }}
+              />
+              <ChecklistCrewTagsRow
+                users={users}
+                assignees={Object.fromEntries(task.assigneeIds.map((id) => [id, true]))}
+                onStaffCrew={(memberIds, checked) => void staffCrew(memberIds, checked)}
+                manage={false}
+                countMode="toAdd"
               />
               {suggested.length > 0 ? (
                 <>
