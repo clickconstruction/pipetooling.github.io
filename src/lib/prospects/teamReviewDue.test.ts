@@ -4,6 +4,7 @@ import {
   nextDueIndexAfter,
   overdueReviewSubjects,
   parseTeamReviewCadenceDays,
+  upcomingReviewSchedule,
 } from './teamReviewDue'
 import type { MyReviewStamp } from './teamReviewDue'
 import type { RatableUser } from './teamMemberReviews'
@@ -84,5 +85,39 @@ describe('nextDueIndexAfter', () => {
   it('returns null with nobody due or an empty roster', () => {
     expect(nextDueIndexAfter(roster, new Set(), 0)).toBe(null)
     expect(nextDueIndexAfter([], due, 0)).toBe(null)
+  })
+})
+
+describe('upcomingReviewSchedule', () => {
+  const stamps: MyReviewStamp[] = [
+    stamp('fresh', '2026-07-19T12:00:00Z'), // 3d ago → due in 27d on a 30d cadence
+    stamp('stale', '2026-06-10T12:00:00Z'), // 42d ago → overdue
+  ]
+
+  it('lists due-now people first (roster order), then soonest due date', () => {
+    const schedule = upcomingReviewSchedule(roster, stamps, 'me', 30, NOW)
+    expect(schedule.map((e) => e.user.id)).toEqual(['stale', 'never', 'fresh'])
+  })
+
+  it('excludes the reviewer and computes days/flags per person', () => {
+    const schedule = upcomingReviewSchedule(roster, stamps, 'me', 30, NOW)
+    expect(schedule.some((e) => e.user.id === 'me')).toBe(false)
+    const never = schedule.find((e) => e.user.id === 'never')!
+    expect(never.neverReviewed).toBe(true)
+    expect(never.dueInDays).toBe(0)
+    expect(never.dueAtMs).toBe(null)
+    const fresh = schedule.find((e) => e.user.id === 'fresh')!
+    expect(fresh.neverReviewed).toBe(false)
+    expect(fresh.dueInDays).toBe(27)
+    expect(fresh.dueAtMs).toBe(Date.parse('2026-08-18T12:00:00Z'))
+    const stale = schedule.find((e) => e.user.id === 'stale')!
+    expect(stale.dueInDays).toBeLessThanOrEqual(0)
+  })
+
+  it('agrees with overdueReviewSubjects on who is due now', () => {
+    const schedule = upcomingReviewSchedule(roster, stamps, 'me', 30, NOW)
+    const dueNow = schedule.filter((e) => e.dueInDays <= 0).map((e) => e.user.id)
+    const overdue = overdueReviewSubjects(roster, stamps, 'me', 30, NOW).map((u) => u.id)
+    expect(new Set(dueNow)).toEqual(new Set(overdue))
   })
 })
