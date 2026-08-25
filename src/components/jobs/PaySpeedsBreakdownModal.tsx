@@ -306,6 +306,7 @@ export default function PaySpeedsBreakdownModal({
   onOpenJobDetail,
   canExcludePayments = false,
   isDev = false,
+  onOpenJobStacked,
   onSpeedsChanged,
 }: {
   rows: StageRow[]
@@ -319,6 +320,8 @@ export default function PaySpeedsBreakdownModal({
   canExcludePayments?: boolean
   /** Devs only: the drill-down's ⚙ No Count Date setting (v2.2303). */
   isDev?: boolean
+  /** Open a drill-down row's job STACKED above the modals, with a refresh-on-save callback (v2.2311). */
+  onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
   /** Refetch the pay-speeds RPC after an exclusion toggles, so medians update live. */
   onSpeedsChanged?: () => void
 }) {
@@ -501,6 +504,7 @@ export default function PaySpeedsBreakdownModal({
           <PaySpeedDataHealthModal
             onClose={() => setDataHealthOpen(false)}
             onOpenJobDetail={onOpenJobDetail}
+            onOpenJobStacked={onOpenJobStacked}
             canExclude={canExcludePayments}
             isDev={isDev}
             onChanged={onSpeedsChanged}

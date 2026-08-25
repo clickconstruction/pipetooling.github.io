@@ -4859,6 +4859,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           }}
           canExcludePayments={authRole === 'dev' || authRole === 'master_technician'}
           isDev={authRole === 'dev'}
+          onOpenJobStacked={(jobId, onSaved) => {
+            // v2.2311: the Job window (z 1010) stacks above the drill-down
+            // (z 80) — nothing closes, and every save refreshes the list.
+            tryOpenEditJob(jobId, { initialTab: 'bill', onSaved })
+          }}
           onPaySpeedsChanged={() => void refreshBilledPaySpeeds()}
           onEmail={
             authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)

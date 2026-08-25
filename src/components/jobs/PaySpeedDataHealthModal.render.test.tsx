@@ -92,4 +92,21 @@ describe('PaySpeedDataHealthModal', () => {
     await waitFor(() => expect(screen.getByText(/the job's line items, for context/)).toBeTruthy())
     expect(screen.getByText('Water softener')).toBeTruthy()
   })
+  it('Open job stacks above the drill-down and its onSaved refreshes the list (v2.2311)', async () => {
+    const openStacked = vi.fn()
+    render(<PaySpeedDataHealthModal onClose={vi.fn()} canExclude={false} onOpenJobStacked={openStacked} />)
+    await screen.findByText('03/12')
+    const before = rpc.mock.calls.filter((c) => c[0] === 'get_pay_speed_transactions').length
+    fireEvent.click(screen.getAllByText('Open job ›')[0]!)
+    expect(openStacked).toHaveBeenCalledWith('j1', expect.any(Function))
+    // The modal is still mounted (nothing closed) …
+    expect(screen.getByText('03/12')).toBeTruthy()
+    // … and the refresher hands the list a fresh pull.
+    const onSaved = openStacked.mock.calls[0]![1] as () => void
+    onSaved()
+    await waitFor(() => {
+      const after = rpc.mock.calls.filter((c) => c[0] === 'get_pay_speed_transactions').length
+      expect(after).toBe(before + 1)
+    })
+  })
 })
