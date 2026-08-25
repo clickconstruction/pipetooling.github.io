@@ -1939,20 +1939,18 @@ function EstimateList() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
+                justifyContent: 'center',
                 height: 36,
-                padding: '0 0.75rem',
+                width: 36,
                 border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 background: 'var(--surface)',
                 cursor: 'pointer',
                 color: 'var(--text-700)',
-                fontSize: '0.8125rem',
-                fontWeight: 500,
+                fontSize: '1rem',
               }}
             >
               <span aria-hidden>⚙</span>
-              Accepted notifications
             </button>
           ) : null}
           <button

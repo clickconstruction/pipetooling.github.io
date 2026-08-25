@@ -13,12 +13,12 @@ When a customer accepts an estimate, PipeTooling emails the office. There are tw
 ## Set the always-notify list
 
 1. Go to **Estimates**.
-2. Click {{button:outline|⚙ Accepted notifications}} next to {{button:blue|New estimate}}. (Dev and master technician roles see this button.)
+2. Click the {{button:outline|⚙}} gear next to {{button:blue|New estimate}} — hover it and it says who gets emailed. (Dev and master technician roles see it.)
 3. Check everyone who should hear about every acceptance.
 4. Click {{button:outline|Save recipients}}.
 
 :::example The ⚙ button sits in the Estimates page header
-{{chip:gray|Estimates}} … {{button:outline|⚙ Accepted notifications}} {{button:blue|New estimate}}
+{{chip:gray|Estimates}} … {{button:outline|⚙}} {{button:blue|New estimate}}
 :::
 
 Only a **dev** can change this list. Master technicians can open the window and see who is on it, but the checkboxes and Save button are disabled for them.
