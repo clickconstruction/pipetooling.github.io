@@ -3,6 +3,14 @@ import { pageTabStyle } from '../lib/pageTabStyle'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectTeamActivity'
+import {
+  CALL_INTERACTION_TYPES,
+  CALLING_ORDER_STORAGE_KEY,
+  orderFollowUpProspects,
+  queueAgeLabel,
+  readCallingOrderMode,
+  type CallingOrderMode,
+} from '../lib/prospects/callingOrder'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
@@ -277,6 +285,15 @@ export default function Prospects() {
   // Per-user preference: move to next prospect when Didn't Answer is clicked
   const [didntAnswerMoveNext, setDidntAnswerMoveNext] = useState(false)
 
+  // Calling order (v2.2301): 'coldest' (default) or never-called-first, per user.
+  // The ref mirrors state so loadFollowUpProspects reads the current mode
+  // without being recreated. calledProspectIds = prospects with any
+  // didnt_answer/answered on record; drives ordering + the queue badges.
+  const [callingOrderMode, setCallingOrderMode] = useState<CallingOrderMode>('coldest')
+  const callingOrderModeRef = useRef<CallingOrderMode>('coldest')
+  const [calledProspectIds, setCalledProspectIds] = useState<Set<string>>(() => new Set())
+  const [showCallingOrder, setShowCallingOrder] = useState(false)
+
   // Ref to ignore stale loadComments responses when prospect changes quickly
   const loadCommentsForProspectRef = useRef<string | null>(null)
 
@@ -428,10 +445,12 @@ export default function Prospects() {
   async function loadFollowUpProspects() {
     if (!authUser?.id) return
     setFollowUpLoading(true)
-    const { data: locks } = await supabase
-      .from('prospect_calling_locks')
-      .select('prospect_id')
-      .neq('user_id', authUser.id)
+    const [{ data: locks }, { data: callRows }] = await Promise.all([
+      supabase.from('prospect_calling_locks').select('prospect_id').neq('user_id', authUser.id),
+      supabase.from('prospect_comments').select('prospect_id').in('interaction_type', [...CALL_INTERACTION_TYPES]),
+    ])
+    const called = new Set(((callRows ?? []) as { prospect_id: string }[]).map((r) => r.prospect_id))
+    setCalledProspectIds(called)
     const lockedByOthers = (locks ?? []).map((r) => r.prospect_id)
     let query = supabase
       .from('prospects')
@@ -449,7 +468,11 @@ export default function Prospects() {
       return
     }
     const raw = (data ?? []) as Prospect[]
-    const prospects = raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach')
+    const prospects = orderFollowUpProspects(
+      raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach'),
+      called,
+      callingOrderModeRef.current,
+    )
 
     const prospectId = searchParams.get('prospect_id')
     let finalProspects = prospects
@@ -1057,6 +1080,42 @@ export default function Prospects() {
     const stored = localStorage.getItem(DIDNT_ANSWER_MOVE_NEXT_KEY(authUser.id))
     setDidntAnswerMoveNext(stored === 'true')
   }, [authUser?.id])
+
+  // Load the calling-order preference; reload the queue if it isn't the default
+  // (the initial load already ran with 'coldest' via the ref).
+  useEffect(() => {
+    if (!authUser?.id) return
+    let stored: string | null = null
+    try {
+      stored = localStorage.getItem(`${CALLING_ORDER_STORAGE_KEY}_${authUser.id}`)
+    } catch {
+      /* private mode */
+    }
+    const mode = readCallingOrderMode(stored)
+    if (mode !== callingOrderModeRef.current) {
+      callingOrderModeRef.current = mode
+      setCallingOrderMode(mode)
+      void loadFollowUpProspects()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUser?.id])
+
+  function switchCallingOrder(mode: CallingOrderMode) {
+    if (mode === callingOrderModeRef.current) return
+    callingOrderModeRef.current = mode
+    setCallingOrderMode(mode)
+    setShowCallingOrder(false)
+    if (authUser?.id) {
+      try {
+        localStorage.setItem(`${CALLING_ORDER_STORAGE_KEY}_${authUser.id}`, mode)
+      } catch {
+        /* private mode */
+      }
+    }
+    // Re-runs the query with the new order; the URL-synced prospect_id keeps
+    // the current prospect selected across the reshuffle.
+    void loadFollowUpProspects()
+  }
 
   function updateUrlProspectId(id: string | null) {
     setSearchParams((p) => {
@@ -1823,6 +1882,108 @@ export default function Prospects() {
                 )
               })()}
 
+              {/* Calling order strip (v2.2301): order switch + queue position/peek. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '-0.75rem 0 1.25rem' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Calling order</span>
+                <div role="group" aria-label="Calling order" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
+                  {(
+                    [
+                      ['coldest', 'Coldest first', 'Longest since any contact first (the original order)'],
+                      ['never_called_first', 'Never called first', "Prospects with no Didn't Answer / Answered on record lead, oldest entry first; the cold backlog follows"],
+                    ] as const
+                  ).map(([mode, label, hint]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => switchCallingOrder(mode)}
+                      aria-pressed={callingOrderMode === mode}
+                      title={hint}
+                      style={{
+                        font: 'inherit',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        padding: '0.35rem 0.7rem',
+                        border: 'none',
+                        background: callingOrderMode === mode ? 'var(--text-link)' : 'var(--surface)',
+                        color: callingOrderMode === mode ? 'var(--surface)' : 'var(--text-700)',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  <strong style={{ color: 'var(--text-700)' }}>{currentProspectIndex + 1}</strong> of{' '}
+                  <strong style={{ color: 'var(--text-700)' }}>{followUpProspects.length}</strong>
+                  {' · '}
+                  <button
+                    type="button"
+                    onClick={() => setShowCallingOrder((v) => !v)}
+                    aria-expanded={showCallingOrder}
+                    style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline dotted', textUnderlineOffset: '2px', cursor: 'pointer' }}
+                  >
+                    {showCallingOrder ? 'hide order ▴' : 'show order ▾'}
+                  </button>
+                </span>
+              </div>
+              {showCallingOrder ? (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', margin: '-0.5rem 0 1.25rem', maxWidth: 640 }}>
+                  <div style={{ padding: '0.4rem 0.7rem', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
+                    {callingOrderMode === 'never_called_first'
+                      ? 'Never called first, then coldest. Tap a row to jump to it.'
+                      : 'Coldest first. Tap a row to jump to it.'}
+                  </div>
+                  {(() => {
+                    const start = Math.max(0, Math.min(currentProspectIndex - 2, followUpProspects.length - 15))
+                    const nowMs = Date.now()
+                    return followUpProspects.slice(start, start + 15).map((p, i) => {
+                      const absIdx = start + i
+                      const isCurrent = absIdx === currentProspectIndex
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setCurrentProspectIndex(absIdx)
+                            setFollowUpTimerSeconds(0)
+                            updateUrlProspectId(p.id)
+                            setShowCallingOrder(false)
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.55rem',
+                            width: '100%',
+                            padding: '0.45rem 0.7rem',
+                            border: 'none',
+                            borderBottom: '1px solid var(--border)',
+                            background: isCurrent ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                            font: 'inherit',
+                            fontSize: '0.8125rem',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span style={{ width: '1.8rem', textAlign: 'right', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{absIdx + 1}</span>
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isCurrent ? 600 : 400 }}>
+                            {p.company_name?.trim() || p.contact_name?.trim() || '(no name)'}
+                          </span>
+                          {!calledProspectIds.has(p.id) ? (
+                            <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', borderRadius: 999, padding: '0.1rem 0.5rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              never called
+                            </span>
+                          ) : null}
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', whiteSpace: 'nowrap', flexShrink: 0 }}>{queueAgeLabel(p, calledProspectIds, nowMs)}</span>
+                          {isCurrent ? <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', flexShrink: 0 }}>← you are here</span> : null}
+                        </button>
+                      )
+                    })
+                  })()}
+                </div>
+              ) : null}
+
               {/* Comments first on mobile so visible without scrolling */}
               <div className="followUpCommentsSection">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
@@ -2004,6 +2165,21 @@ export default function Prospects() {
                         }}
                       >
                         {formatDueBadge(currentProspect.last_contact)}
+                      </span>
+                    )}
+                    {!calledProspectIds.has(currentProspect.id) && (
+                      <span
+                        title="No Didn't Answer / Answered has ever been recorded on this prospect"
+                        style={{
+                          padding: '0.125rem 0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          borderRadius: 4,
+                          background: 'var(--bg-green-tint)',
+                          color: 'var(--text-green-700)',
+                        }}
+                      >
+                        never called
                       </span>
                     )}
                   </div>
