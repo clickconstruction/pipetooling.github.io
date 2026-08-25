@@ -4821,6 +4821,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setBilledPaymentForecastOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
+          onOpenJobDetail={(jobId) => {
+            setBilledPaymentForecastOpen(false)
+            jobDetailModal?.openJobDetail({ jobId })
+          }}
           onEmail={
             authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
               ? () => setForecastShareModalOpen(true)

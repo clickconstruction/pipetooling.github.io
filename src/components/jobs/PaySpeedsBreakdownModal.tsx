@@ -10,7 +10,6 @@ import {
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
@@ -83,52 +82,83 @@ const GAP_TONE_COLORS: Record<ReturnType<typeof receiptGapTone>, { bg: string; f
   neutral: { bg: 'var(--bg-muted)', fg: 'var(--text-700)' },
 }
 
-/** One "(+16) 05/01–05/17" receipt chip — a single measurable payment. */
-function receiptChip(r: PayReceipt, companyMedian: number | null, key: number) {
+/**
+ * One payment as a row (v2.2288): gap badge + billed–paid dates, then the job
+ * it belongs to (name · address). Clickable when the payload knows the job —
+ * opens that job's detail. Pre-v7 payloads (no job fields) render dates only.
+ */
+function receiptRow(r: PayReceipt, companyMedian: number | null, key: number, onOpenJob?: (jobId: string) => void) {
   const tone = GAP_TONE_COLORS[receiptGapTone(r.gapDays, companyMedian)]
+  const clickable = r.jobId != null && onOpenJob != null
+  const open = () => {
+    if (r.jobId != null && onOpenJob != null) onOpenJob(r.jobId)
+  }
   return (
-    <span
+    <div
       key={key}
-      title={`Billed ${formatYmdMonthDay(r.billedYmd)} → paid ${formatYmdMonthDay(r.paidYmd)} (+${r.gapDays} ${r.gapDays === 1 ? 'day' : 'days'})`}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      title={
+        `Billed ${formatYmdMonthDay(r.billedYmd)} → paid ${formatYmdMonthDay(r.paidYmd)} (+${r.gapDays} ${r.gapDays === 1 ? 'day' : 'days'})` +
+        (clickable ? ' — open the job' : '')
+      }
+      onClick={(e) => {
+        e.stopPropagation()
+        open()
+      }}
+      onKeyDown={(e) => {
+        if (clickable && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          e.stopPropagation()
+          open()
+        }
+      }}
       style={{
-        display: 'inline-flex',
-        alignItems: 'baseline',
-        gap: '0.35rem',
-        border: '1px solid var(--border)',
-        borderRadius: 9999,
-        padding: '1px 8px 1px 3px',
-        fontSize: '0.72rem',
-        background: 'var(--surface)',
-        fontVariantNumeric: 'tabular-nums',
-        whiteSpace: 'nowrap',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.55rem',
+        padding: '0.32rem 0.45rem',
+        borderRadius: 6,
+        fontSize: '0.76rem',
+        cursor: clickable ? 'pointer' : 'default',
+        borderTop: key > 0 ? '1px solid var(--border)' : 'none',
       }}
     >
-      <span style={{ fontWeight: 700, borderRadius: 9999, padding: '0 6px', fontSize: '0.68rem', background: tone.bg, color: tone.fg }}>
+      <span style={{ fontWeight: 700, borderRadius: 9999, padding: '0 6px', fontSize: '0.68rem', flexShrink: 0, fontVariantNumeric: 'tabular-nums', background: tone.bg, color: tone.fg }}>
         +{r.gapDays}
       </span>
-      <span style={{ fontWeight: 600 }}>
+      <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)', flexShrink: 0 }}>
         {formatYmdSlash(r.billedYmd)}–{formatYmdSlash(r.paidYmd)}
       </span>
-    </span>
+      {(r.jobName || r.address) && (
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {r.jobName ? <span style={{ fontWeight: 650 }}>{r.jobName}</span> : null}
+          {r.address ? <span style={{ color: 'var(--text-muted)' }}>{r.jobName ? ' · ' : ''}{r.address}</span> : null}
+        </span>
+      )}
+      {clickable && <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: '0.7rem', flexShrink: 0, marginLeft: (r.jobName || r.address) ? 0 : 'auto' }}>›</span>}
+    </div>
   )
 }
 
 /** The expanded receipts panel under a customer row (or the why-empty note). */
-function receiptsPanel(c: PaySpeedCustomerRow, companyMedian: number | null, striped: boolean, onOpenBills?: () => void) {
+function receiptsPanel(
+  c: PaySpeedCustomerRow,
+  companyMedian: number | null,
+  striped: boolean,
+  onOpenBills?: () => void,
+  onOpenJob?: (jobId: string) => void,
+) {
   return (
     <div
       style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '0.35rem 0.4rem',
-        alignItems: 'center',
         padding: '0.1rem 0.5rem 0.55rem 2rem',
         background: striped ? 'var(--bg-muted)' : 'transparent',
         borderRadius: '0 0 6px 6px',
       }}
     >
       {c.receipts.length > 0 ? (
-        c.receipts.map((r, i) => receiptChip(r, companyMedian, i))
+        c.receipts.map((r, i) => receiptRow(r, companyMedian, i, onOpenJob))
       ) : (
         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
           {c.samples > 0
@@ -147,6 +177,7 @@ function receiptsPanel(c: PaySpeedCustomerRow, companyMedian: number | null, str
             border: 'none',
             background: 'none',
             padding: 0,
+            marginTop: '0.35rem',
             cursor: 'pointer',
             color: 'var(--text-link)',
             fontSize: '0.72rem',
@@ -271,12 +302,15 @@ export default function PaySpeedsBreakdownModal({
   paySpeeds,
   onClose,
   onOpenCustomerBills,
+  onOpenJobDetail,
 }: {
   rows: StageRow[]
   paySpeeds: PaySpeedData | null
   onClose: () => void
   /** Jump the board to a customer's bills (closes both modals upstream). */
   onOpenCustomerBills?: (customerName: string) => void
+  /** Open one payment's job detail (closes both modals upstream; v2.2288). */
+  onOpenJobDetail?: (jobId: string) => void
 }) {
   const breakdown = useMemo(() => buildPaySpeedsBreakdown(rows, paySpeeds), [rows, paySpeeds])
   // ≤640px: the 5-column grid and full-width SVGs are unreadable — rows restack
@@ -289,7 +323,6 @@ export default function PaySpeedsBreakdownModal({
     setOpenReceipts((prev) => ({ ...prev, [customerId]: !prev[customerId] }))
   const companyMedian = paySpeeds?.company?.medianDays ?? null
   const quality = paySpeeds?.quality ?? null
-  const checklistAddModal = useChecklistAddModal()
 
   const pillStyle = (active: boolean): CSSProperties => ({
     border: `1px solid ${active ? 'var(--text-link)' : 'var(--border-strong)'}`,
@@ -429,33 +462,6 @@ export default function PaySpeedsBreakdownModal({
             >
               <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{quality.quarantined}</b> quarantined
             </span>
-            {checklistAddModal && (
-              <button
-                type="button"
-                onClick={() =>
-                  checklistAddModal.openAddModal({
-                    preset: {
-                      title: 'Billing hygiene — link this week’s unapplied payments to their bills',
-                      links: ['/jobs?forecast=1'],
-                    },
-                  })
-                }
-                title="Create a recurring checklist task carrying these numbers’ worklist — pick who and how often in the next step"
-                style={{
-                  marginLeft: 'auto',
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-link)',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                + Weekly hygiene task
-              </button>
-            )}
           </div>
         )}
 
@@ -651,6 +657,7 @@ export default function PaySpeedsBreakdownModal({
                     companyMedian,
                     i % 2 === 1,
                     onOpenCustomerBills ? () => onOpenCustomerBills(c.name) : undefined,
+                    onOpenJobDetail,
                   )}
               </div>
               )
@@ -729,6 +736,7 @@ export default function PaySpeedsBreakdownModal({
                     companyMedian,
                     false,
                     onOpenCustomerBills ? () => onOpenCustomerBills(c.name) : undefined,
+                    onOpenJobDetail,
                   )}
               </div>
             ))}

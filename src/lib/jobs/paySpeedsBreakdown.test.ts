@@ -19,10 +19,10 @@ const speeds: PaySpeedData = {
   customerTypes: { knight: 'commercial', harper: 'commercial', holub: 'residential', weiss: 'commercial' },
   receipts: {
     knight: [
-      { billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12 },
-      { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16 },
+      { billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: null, jobName: null, address: null },
+      { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
     ],
-    weiss: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7 }],
+    weiss: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }],
   },
   quality: null,
 }
@@ -65,7 +65,7 @@ describe('buildPaySpeedsBreakdown', () => {
     const b = buildPaySpeedsBreakdown(rows, speeds)
     expect(b.ranked.find((c) => c.customerId === 'knight')?.receipts).toHaveLength(2)
     expect(b.ranked.find((c) => c.customerId === 'harper')?.receipts).toEqual([])
-    expect(b.thin[0]?.receipts).toEqual([{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7 }])
+    expect(b.thin[0]?.receipts).toEqual([{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }])
   })
 
   it('skips job rows, fully-paid rows, and rows without a customer', () => {

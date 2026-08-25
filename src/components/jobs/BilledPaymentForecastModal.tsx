@@ -90,6 +90,7 @@ export default function BilledPaymentForecastModal({
   onClose,
   onOpenInvoice,
   onEmail,
+  onOpenJobDetail,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -99,6 +100,8 @@ export default function BilledPaymentForecastModal({
   todayYmd: string
   onClose: () => void
   onOpenInvoice: (invoiceId: string) => void
+  /** Open one payment's job detail from the Pay speeds drill-down (v2.2288). */
+  onOpenJobDetail?: (jobId: string) => void
   /** Opens the Email… share modal (v2.2226) — passed only for sender roles. */
   onEmail?: () => void
 }) {
@@ -281,7 +284,19 @@ export default function BilledPaymentForecastModal({
           </button>
         ) : null}
         {paySpeedsOpen ? (
-          <PaySpeedsBreakdownModal rows={rows} paySpeeds={paySpeeds} onClose={() => setPaySpeedsOpen(false)} />
+          <PaySpeedsBreakdownModal
+            rows={rows}
+            paySpeeds={paySpeeds}
+            onClose={() => setPaySpeedsOpen(false)}
+            onOpenJobDetail={
+              onOpenJobDetail
+                ? (jobId) => {
+                    setPaySpeedsOpen(false)
+                    onOpenJobDetail(jobId)
+                  }
+                : undefined
+            }
+          />
         ) : null}
 
         {filteredTitle ? (
