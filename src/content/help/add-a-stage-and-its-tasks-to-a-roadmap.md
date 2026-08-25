@@ -62,13 +62,13 @@ You can add tasks with nobody ticked and staff them later from the task card —
 
 ## Move a task to another stage
 
-Turn on the map's **task-edit mode** (the grip button in the toolbar) and every task row grows a **⠿ grip**. Drag by the grip and the row floats above the map while the stage under your pointer lights up blue:
+**Press and hold any task row** and it lifts to your pointer — no special mode needed (the toolbar's task-edit grip mode works too). While you carry it, the stage under your pointer lights up blue:
 
 - **Drop between rows** in another stage to slot it in at that exact spot.
 - **Drop anywhere on a stage box** — its title, its edges, even a **collapsed** box — and the task goes to the end of that stage; a dashed strip shows *Move here — becomes 7.3* while you hover.
 - Let go over empty canvas (or press **Esc**) and nothing moves.
 
-The task keeps its people, notes, and history — only its number changes, and both stages renumber. If it lands mid-chain in an in-order stage, it waits its turn like any other task there.
+Dropping on a **different** stage asks first: a small card shows the task, where it's coming from, and the number it takes on arrival — {{button:blue|Move task}} or **Cancel**. Reordering inside the same stage never asks. The task keeps its people, notes, and history — only its number changes, both stages renumber, and it follows the new stage's in-order rule.
 
 ## Find anything on the map
 

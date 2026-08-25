@@ -81,6 +81,7 @@ import {
 import { RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import { GripVertical } from 'lucide-react'
 import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
+import { ChecklistTechTreeMoveTaskModal, type PendingTaskMove } from './ChecklistTechTreeMoveTaskModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
@@ -1230,6 +1231,34 @@ export function ChecklistTechTreeTab({
     return []
   }, [])
 
+  /** Cross-stage drop awaiting the owner's confirmation (v2.2305). */
+  const [pendingTaskMove, setPendingTaskMove] = useState<PendingTaskMove | null>(null)
+
+  const applyTaskReorderUpdates = useCallback(
+    async (updates: Array<{ id: string; group_id: string; sort_index: number }>) => {
+      setError(null)
+      try {
+        await Promise.all(
+          updates.map((u) =>
+            withSupabaseRetry(
+              () =>
+                supabase
+                  .from('checklist_tech_tree_group_tasks')
+                  .update({ group_id: u.group_id, sort_index: u.sort_index })
+                  .eq('id', u.id),
+              'reorder tech tree task',
+            ),
+          ),
+        )
+        await load()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not reorder task')
+        await load()
+      }
+    },
+    [load, setError],
+  )
+
   const onTaskDragEnd = useCallback(
     async (event: DragEndEvent) => {
       setActiveDragTask(null)
@@ -1253,27 +1282,31 @@ export function ChecklistTechTreeTab({
         allGroupIds: groups.map((g) => g.id),
       })
       if (updates == null || updates.length === 0) return
-      setError(null)
-      try {
-        await Promise.all(
-          updates.map((u) =>
-            withSupabaseRetry(
-              () =>
-                supabase
-                  .from('checklist_tech_tree_group_tasks')
-                  .update({ group_id: u.group_id, sort_index: u.sort_index })
-                  .eq('id', u.id),
-              'reorder tech tree task',
-            ),
-          ),
-        )
-        await load()
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Could not reorder task')
-        await load()
+      // A drop that changes which stage owns the task asks first (v2.2305);
+      // reordering inside the same stage applies immediately, as before.
+      const sourceGroupId = taskById.get(activeId)?.group_id
+      const moved = updates.find((u) => u.id === activeId)
+      const destGroupId = moved?.group_id ?? sourceGroupId
+      if (moved && sourceGroupId && destGroupId && destGroupId !== sourceGroupId) {
+        const fromGroup = groups.find((g) => g.id === sourceGroupId)
+        const toGroup = groups.find((g) => g.id === destGroupId)
+        setPendingTaskMove({
+          taskId: activeId,
+          taskTitle: tasks.find((t) => t.id === activeId)?.title ?? '—',
+          fromStageNumber: stageNumbers.get(sourceGroupId) ?? 0,
+          fromStageTitle: fromGroup?.title ?? '—',
+          wasLabel: taskNumbers.get(activeId) ?? '—',
+          toGroupId: destGroupId,
+          toStageNumber: stageNumbers.get(destGroupId) ?? 0,
+          toStageTitle: toGroup?.title ?? '—',
+          becomesLabel: `${stageNumbers.get(destGroupId) ?? '?'}.${moved.sort_index}`,
+          updates,
+        })
+        return
       }
+      await applyTaskReorderUpdates(updates)
     },
-    [reorderMode, canEditStructure, tasks, groups, load, setError],
+    [canEditStructure, tasks, groups, stageNumbers, taskNumbers, applyTaskReorderUpdates],
   )
 
   const saveStageOrder = useCallback(
@@ -2234,6 +2267,16 @@ export function ChecklistTechTreeTab({
         portalContainer={roadmapModalPortalHost ?? undefined}
       />
     </div>
+    <ChecklistTechTreeMoveTaskModal
+      move={pendingTaskMove}
+      onConfirm={async () => {
+        const m = pendingTaskMove
+        setPendingTaskMove(null)
+        if (m) await applyTaskReorderUpdates(m.updates)
+      }}
+      onCancel={() => setPendingTaskMove(null)}
+      portalContainer={roadmapModalPortalHost ?? undefined}
+    />
     <DragOverlay dropAnimation={null} zIndex={10035}>
       {activeDragTask ? (
         <div
