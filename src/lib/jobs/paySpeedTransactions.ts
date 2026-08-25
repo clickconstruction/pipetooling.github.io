@@ -13,6 +13,8 @@ export type PaySpeedTxnStatus = 'measurable' | 'unlinked' | 'quarantined' | 'exc
 export type PaySpeedTxn = {
   paymentId: string
   paidYmd: string
+  /** When the payment was SENT (check date) — null until someone records it (v2.2309). */
+  sentYmd: string | null
   amount: number
   paymentType: string | null
   customerName: string | null
@@ -62,6 +64,7 @@ function asTxn(v: unknown): PaySpeedTxn | null {
   return {
     paymentId,
     paidYmd,
+    sentYmd: typeof o.sentYmd === 'string' && YMD_RE.test(o.sentYmd) ? o.sentYmd : null,
     amount,
     paymentType: str(o.paymentType),
     customerName: str(o.customerName),
@@ -133,4 +136,46 @@ export function filterTxns(data: PaySpeedTransactions, lens: DataHealthLens, que
 
 export function filterBills(data: PaySpeedTransactions, query: string): UndatedBill[] {
   return data.undatedBills.filter((b) => matchesQuery([b.customerName, b.jobName, b.address], query))
+}
+
+export type PaymentLineItem = {
+  name: string
+  count: number
+  unitPrice: number | null
+  description: string | null
+  amount: number | null
+}
+
+export type PaymentLineItems = {
+  /** true = these are the linked bill's lines; false = the job's lines shown as context. */
+  linked: boolean
+  billAmount: number | null
+  items: PaymentLineItem[]
+}
+
+/** Defensive parse of get_payment_line_items; null on gate-refused/malformed. */
+export function parsePaymentLineItems(raw: unknown): PaymentLineItems | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  if (typeof o.linked !== 'boolean' || !Array.isArray(o.items)) return null
+  const items: PaymentLineItem[] = []
+  for (const v of o.items) {
+    if (v == null || typeof v !== 'object') continue
+    const it = v as Record<string, unknown>
+    const name = typeof it.name === 'string' ? it.name : null
+    const count = typeof it.count === 'number' && Number.isFinite(it.count) ? it.count : null
+    if (name == null || count == null) continue
+    items.push({
+      name,
+      count,
+      unitPrice: typeof it.unitPrice === 'number' && Number.isFinite(it.unitPrice) ? it.unitPrice : null,
+      description: typeof it.description === 'string' && it.description.trim() !== '' ? it.description : null,
+      amount: typeof it.amount === 'number' && Number.isFinite(it.amount) ? it.amount : null,
+    })
+  }
+  return {
+    linked: o.linked,
+    billAmount: typeof o.billAmount === 'number' && Number.isFinite(o.billAmount) ? o.billAmount : null,
+    items,
+  }
 }
