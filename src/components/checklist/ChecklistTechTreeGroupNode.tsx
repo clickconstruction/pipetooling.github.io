@@ -1,12 +1,13 @@
-import { useCallback, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useRef, type CSSProperties, type ReactNode , type PointerEvent as ReactPointerEvent } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Pencil, Plus, ChevronDown, ChevronRight, GripVertical, Lock } from 'lucide-react'
+import { Pencil, Plus, ChevronDown, ChevronRight, GripVertical, Lock , Settings } from 'lucide-react'
 import type { StageBadge } from '../../lib/roadmapBridge'
 import { splitTextForHighlight } from '../../lib/checklistTechTreeSearch'
 import { techTreeEmptyGroupDropId } from '../../lib/techTreeTaskOrder'
+import { RoadmapParallelBadge } from './RoadmapParallelBadge'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 
 /**
@@ -56,6 +57,10 @@ export type GroupNodeData = {
   canEditStructure: boolean
   onOpenGroupSettings: (groupId: string) => void
   onOpenAddTask: (groupId: string) => void
+  /** Stage-mode gear (v2.2266): opens the in-order/parallel menu at the pointer. */
+  onOpenStageMode: (groupId: string, x: number, y: number) => void
+  /** false = ⇊ parallel (every task offered at once). */
+  sequential: boolean
   /** When set, list uses drag-and-drop; only when canEditStructure. */
   reorderMode: boolean
   onEditTask: (taskId: string) => void
@@ -163,6 +168,41 @@ function TechTreeEmptyGroupDrop({ groupId, visible }: { groupId: string; visible
 const TASK_TITLE_LONG_PRESS_MS = 500
 const TASK_TITLE_LONG_PRESS_MOVE_PX = 10
 
+/** Row-level press-and-hold → open the task card, for every viewer. Ignores
+ *  presses that start on interactive children (checkbox, buttons, links). */
+function useTaskRowLongPress(taskId: string, onEditTask: (taskId: string) => void) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const startRef = useRef<{ x: number; y: number } | null>(null)
+  const clear = useCallback(() => {
+    if (timerRef.current != null) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    startRef.current = null
+  }, [])
+  return {
+    onPointerDown: (e: ReactPointerEvent) => {
+      const t = e.target as HTMLElement
+      if (t.closest('input, button, a')) return
+      startRef.current = { x: e.clientX, y: e.clientY }
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null
+        startRef.current = null
+        onEditTask(taskId)
+      }, TASK_TITLE_LONG_PRESS_MS)
+    },
+    onPointerMove: (e: ReactPointerEvent) => {
+      if (!startRef.current) return
+      const dx = e.clientX - startRef.current.x
+      const dy = e.clientY - startRef.current.y
+      if (dx * dx + dy * dy > TASK_TITLE_LONG_PRESS_MOVE_PX * TASK_TITLE_LONG_PRESS_MOVE_PX) clear()
+    },
+    onPointerUp: clear,
+    onPointerCancel: clear,
+    onPointerLeave: clear,
+  }
+}
+
 function TechTreeEditableTaskTitle({
   taskId,
   canEdit,
@@ -258,6 +298,7 @@ function TechTreeDndTaskRow({
   searchQuery?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
+  const rowLongPress = useTaskRowLongPress(task.id, onEditTask)
   const cbId = `tt-task-cb-${task.id}`
 
   let style: CSSProperties = {
@@ -307,7 +348,12 @@ function TechTreeDndTaskRow({
         >
           <GripVertical size={16} strokeWidth={2} aria-hidden />
         </button>
-        <div className="nodrag" style={{ display: 'flex', alignItems: 'flex-start', flex: 1, minWidth: 0, gap: 4, ...(task.waiting ? { opacity: 0.5 } : {}) }}>
+        <div
+          className="nodrag"
+          title="Press and hold to open"
+          {...rowLongPress}
+          style={{ display: 'flex', alignItems: 'flex-start', flex: 1, minWidth: 0, gap: 4, ...(task.waiting ? { opacity: 0.5 } : {}) }}
+        >
           {task.numberLabel ? (
             <span style={{ marginTop: 1 }}>
               <RoadmapTaskNumber label={task.numberLabel} />
@@ -436,6 +482,37 @@ export function GroupNode({ data }: NodeProps) {
           >
             <Plus size={16} strokeWidth={2} aria-hidden />
           </button>
+          <button
+            type="button"
+            className="nodrag nopan"
+            aria-label="Stage settings"
+            title="How tasks in this stage go out"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              d.onOpenStageMode(d.groupId, e.clientX, e.clientY)
+            }}
+            style={{
+              position: 'absolute',
+              top: 70,
+              right: 6,
+              zIndex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 28,
+              height: 28,
+              padding: 0,
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              background: 'var(--surface)',
+              color: 'var(--text-slate-600)',
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            }}
+          >
+            <Settings size={16} strokeWidth={2} aria-hidden />
+          </button>
         </>
       ) : null}
       <Handle
@@ -513,6 +590,7 @@ export function GroupNode({ data }: NodeProps) {
                   ⚡ {d.nextUpCount === 1 ? 'next up' : `${d.nextUpCount} next up`}
                 </span>
               ) : null}
+              {!d.sequential ? <RoadmapParallelBadge /> : null}
               {d.unplanned ? (
                 <span
                   title="No tasks and nothing leading into it — add tasks, or link a stage into it"

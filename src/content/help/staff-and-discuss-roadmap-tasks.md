@@ -40,6 +40,10 @@ Tap the **✎** next to the title, type, and press **Enter** (Esc cancels). Edit
 
 The task card's {{chip:green|○ Mark done}} button completes the roadmap task right there — the same as ticking its box on the Map — and turns into **✓ done · reopen** so one more tap undoes it. Editors always can; an assignee can when the stage is unlocked. The card opens from the Map, Plan, Next up, the Review tab's Goals ledger, and the "Where this task fits" window, so you can finish a task from wherever you found it.
 
+## Delete a task
+
+Editors see **Delete task…** in red under the Assigned section. It asks once — {{button:red|Delete permanently}} or **Keep it** — then removes the task from the roadmap and any unfinished list entry. Completed history stays: if the task was already done and reviewed, that record is never touched.
+
 ## Pin a task
 
 Tap the **★** beside the title to say "this one, now": the task jumps to the top of its lane on the Plan's ⚡ Next up shortlist (see *see what to do next on a roadmap*). Tap again to unpin. Editors only.

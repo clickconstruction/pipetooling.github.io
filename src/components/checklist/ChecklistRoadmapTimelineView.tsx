@@ -1,3 +1,4 @@
+import { RoadmapParallelBadge } from './RoadmapParallelBadge'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { approxDateLabel, paceProjection, taskSlotRects, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
 import { bandFraction, calendarBand, monthLabelStride, observedPace, paceLabel } from '../../lib/roadmapCalendar'
@@ -8,6 +9,8 @@ import type { TechTreeEdge } from '../../lib/checklistTechTreeGraph'
 
 type Props = {
   groups: Array<{ id: string; title: string }>
+  /** Stages running ⇊ parallel (sequential = false); compact badge on the rail row. */
+  parallelGroupIds?: ReadonlySet<string>
   tasks: PlanTask[]
   edges: TechTreeEdge[]
   unlockedIds: ReadonlySet<string>
@@ -42,7 +45,7 @@ function waveName(index: number, count: number): string {
  * anchored by a "▲ you" tick at the observed pace, never mistaken for truth.
  * Tapping a row unfolds its N.M tasks; tapping a task opens the task card.
  */
-export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds, completeIds, users, onOpenTask }: Props) {
+export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds, completeIds, users, onOpenTask, parallelGroupIds }: Props) {
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
   // What-if dial (v2.2090): ephemeral, never persisted — the solid flag stays the
   // observed truth; this only drives the dashed ghost. null until touched.
@@ -528,6 +531,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                     <span className="roadmap-timeline-rail-title" style={{ fontSize: '0.76rem', fontWeight: 600, color: r.locked ? 'var(--text-muted)' : 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.title}
                     </span>
+                    {parallelGroupIds?.has(r.groupId) ? <RoadmapParallelBadge compact /> : null}
                     {!r.isMilestone ? (
                       <span className="roadmap-timeline-rail-title" style={{ flex: 'none', marginLeft: 'auto', fontSize: '0.64rem', color: r.done ? DONE : 'var(--text-muted)', fontWeight: r.done ? 700 : 400, fontVariantNumeric: 'tabular-nums' }}>
                         {r.locked ? '🔒 ' : ''}{r.doneTasks}/{r.totalTasks}

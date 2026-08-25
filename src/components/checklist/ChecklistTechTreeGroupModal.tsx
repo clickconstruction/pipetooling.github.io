@@ -139,7 +139,7 @@ export function ChecklistTechTreeGroupModal({
         <div style={{ fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}>Tasks run</div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
           {([
-            [true, '→ In order (4.1 then 4.2 …)'],
+            [true, '→ In order'],
             [false, '⇄ Any order'],
           ] as const).map(([value, label]) => (
             <button

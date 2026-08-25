@@ -1,7 +1,16 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { ParallelArrowsIcon } from './RoadmapParallelBadge'
 
 export type CanvasMenuState =
+  | {
+      kind: 'stageMode'
+      groupId: string
+      groupTitle: string
+      sequential: boolean
+      x: number
+      y: number
+    }
   | {
       kind: 'edge'
       edgeId: string
@@ -22,6 +31,8 @@ type Props = {
   menu: CanvasMenuState
   onRemoveLink: (edgeId: string) => void
   onAddStage: (flowPosition: { x: number; y: number }) => void
+  /** Stage-mode gear (v2.2266): write sequential (false = parallel). */
+  onSetStageMode: (groupId: string, sequential: boolean) => void
   onClose: () => void
   /** Roadmap canvas in fullscreen — menu must mount inside the fullscreen element. */
   portalContainer?: HTMLElement | null
@@ -37,7 +48,7 @@ const MENU_WIDTH = 240
  * the dismissing click, and Esc closes. Amber = create, red = remove — same
  * color language as the toolbar.
  */
-export function ChecklistTechTreeCanvasMenu({ menu, onRemoveLink, onAddStage, onClose, portalContainer }: Props) {
+export function ChecklistTechTreeCanvasMenu({ menu, onRemoveLink, onAddStage, onSetStageMode, onClose, portalContainer }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -65,7 +76,7 @@ export function ChecklistTechTreeCanvasMenu({ menu, onRemoveLink, onAddStage, on
     >
       <div
         role="menu"
-        aria-label={menu.kind === 'edge' ? 'Link actions' : 'Canvas actions'}
+        aria-label={menu.kind === 'edge' ? 'Link actions' : menu.kind === 'stageMode' ? 'Stage mode' : 'Canvas actions'}
         style={{
           position: 'fixed',
           left,
@@ -87,7 +98,47 @@ export function ChecklistTechTreeCanvasMenu({ menu, onRemoveLink, onAddStage, on
           .ttcm-item--add { color: #d97706; }
           .ttcm-item--add:hover { background: var(--bg-amber-tint); }
         `}</style>
-        {menu.kind === 'edge' ? (
+        {menu.kind === 'stageMode' ? (
+          <>
+            <div
+              style={{
+                padding: '6px 10px 7px',
+                fontSize: '0.71875rem',
+                color: 'var(--text-muted)',
+                borderBottom: '1px solid var(--border)',
+                marginBottom: 4,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              How tasks in <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{menu.groupTitle}</b> go out
+            </div>
+            <button
+              type="button"
+              role="menuitem"
+              className="ttcm-item"
+              style={menu.sequential ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' } : { color: 'var(--text-700)' }}
+              onClick={() => onSetStageMode(menu.groupId, true)}
+            >
+              → In order, one at a time{menu.sequential ? ' ✓' : ''}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="ttcm-item"
+              style={!menu.sequential ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' } : { color: 'var(--text-700)' }}
+              onClick={() => onSetStageMode(menu.groupId, false)}
+            >
+              <ParallelArrowsIcon size={14} /> All at once (parallel){!menu.sequential ? ' ✓' : ''}
+            </button>
+            <div style={{ padding: '2px 10px 6px', fontSize: '0.6875rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+              {menu.sequential
+                ? 'Only the next task sits on its assignee’s list.'
+                : 'Every task goes to its assignee’s list immediately.'}
+            </div>
+          </>
+        ) : menu.kind === 'edge' ? (
           <>
             {/* Two lines so long stage titles both survive — you must be able
                 to read what you're cutting before you cut it. */}

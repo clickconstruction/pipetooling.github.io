@@ -13,6 +13,7 @@ import { nextUpPicks } from '../../lib/roadmapNextUp'
 import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import { ChecklistRoadmapNextUpPanel } from './ChecklistRoadmapNextUpPanel'
+import { RoadmapParallelBadge } from './RoadmapParallelBadge'
 import type { TechTreeEdge } from '../../lib/checklistTechTreeGraph'
 import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates'
 import {
@@ -112,6 +113,8 @@ type Props = {
   waitingTaskIds?: ReadonlySet<string>
   /** waiting task id → "after 3.2" label. */
   waitingAfterByTaskId?: ReadonlyMap<string, string>
+  /** Stages running ⇊ parallel (sequential = false). */
+  parallelGroupIds?: ReadonlySet<string>
   /** Adds one assignee to a task; parent reloads + re-syncs on success. */
   onAssign: (taskId: string, userId: string) => Promise<boolean>
   /** Opens the task card modal (thread + notes). */
@@ -138,6 +141,7 @@ export function ChecklistRoadmapPlanView({
   showCosts,
   waitingTaskIds,
   waitingAfterByTaskId,
+  parallelGroupIds,
   onAssign,
   onOpenTask,
 }: Props) {
@@ -430,6 +434,7 @@ export function ChecklistRoadmapPlanView({
                   {s.done} of {s.total} done
                 </span>
               )}
+              {parallelGroupIds?.has(s.groupId) ? <RoadmapParallelBadge /> : null}
               {showCosts && stageCosts.has(s.groupId) ? <StageCostChip summary={stageCosts.get(s.groupId)!} /> : null}
               {canEditStructure ? (
                 <button
