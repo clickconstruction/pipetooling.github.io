@@ -5,22 +5,27 @@ import type { GoalsStageRow } from '../../lib/roadmapBridge'
  * curated order: done solid green, current amber-ringed with its own blue
  * fill, locked muted, unplanned dashed.
  *
- * Wraps into rows once segments outgrow the card (50+ stages on a phone) —
- * each keeps a legible 12px minimum instead of bleeding off-screen; desktop
- * still reads as one full-width row. rowGap clears the amber "current"
- * outline between rows. First shipped as v2.2263, silently reverted by a
- * stale-checkout merge in v2.2264, restored and extracted here (v2.2278) —
- * the render test pins the wrap styling so that cannot happen quietly again.
+ * Lays out as a uniform grid (v2.2281): every segment is the same width on
+ * every row — auto-fit columns with a legible 12px floor — so a roadmap that
+ * wraps (50+ stages on a phone) packs rows evenly and a short last row simply
+ * ends early, instead of flex-growing its few segments into giants. auto-fit
+ * collapses the unused tracks when a small roadmap fits one row, so those
+ * still fill the card edge-to-edge like always. The row gap clears the amber
+ * "current" outline. History: wrap first shipped as v2.2263, was silently
+ * reverted by a stale-checkout merge in v2.2264, restored in v2.2278 — the
+ * render test pins this layout so that cannot happen quietly again.
  */
 export function GoalsStageStrip({ stages }: { stages: GoalsStageRow[] }) {
   return (
-    <div data-testid="goals-stage-strip" style={{ display: 'flex', flexWrap: 'wrap', gap: 2, rowGap: 6 }}>
+    <div
+      data-testid="goals-stage-strip"
+      style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(12px, 1fr))', gap: '6px 2px' }}
+    >
       {stages.map((s, stageIndex) => (
         <span
           key={s.groupId}
           title={`${stageIndex + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : s.state === 'unplanned' ? 'not planned yet' : 'milestone'}`}
           style={{
-            flex: '1 0 12px',
             height: 13,
             borderRadius: 3,
             position: 'relative',

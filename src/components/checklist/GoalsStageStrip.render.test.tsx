@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 /**
- * Regression guard for the Goals bar phone fix (v2.2263 → clobbered by a
- * stale-checkout merge in v2.2264 → restored + extracted in v2.2278).
- * These assertions pin the wrap styling: if a future PR reverts the strip to
- * a non-wrapping row with shrinkable segments, this fails loudly instead of
- * the bar silently bleeding off 375px screens again.
+ * Regression guard for the Goals bar phone layout (v2.2263 wrap → clobbered
+ * by a stale-checkout merge in v2.2264 → restored in v2.2278 → uniform grid
+ * in v2.2281). These assertions pin the grid: uniform auto-fit columns with a
+ * 12px floor mean every segment is the same size on every row and a short
+ * last row ends early instead of stretching. If a future PR reverts to a
+ * plain flex row, this fails loudly instead of the bar silently bleeding off
+ * (or ballooning on) 375px screens again.
  */
 import { describe, expect, it, afterEach } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
@@ -26,17 +28,19 @@ function makeStages(n: number): GoalsStageRow[] {
 }
 
 describe('GoalsStageStrip', () => {
-  it('wraps 50 stages instead of overflowing: flex-wrap on the row, 12px flex-basis floor per segment', () => {
+  it('lays 50 stages on a uniform auto-fit grid: equal columns with a 12px floor, no per-segment flex', () => {
     render(<GoalsStageStrip stages={makeStages(50)} />)
     const strip = screen.getByTestId('goals-stage-strip')
-    expect(strip.style.flexWrap).toBe('wrap')
+    // Uniform columns by construction: every segment is the same width on
+    // every row, and a short last row ends early instead of flex-growing its
+    // few segments into giants (the v2.2278 regression) or shrinking the
+    // tail off-screen (the pre-v2.2263 one).
+    expect(strip.style.display).toBe('grid')
+    expect(strip.style.gridTemplateColumns).toBe('repeat(auto-fit, minmax(12px, 1fr))')
     const segments = Array.from(strip.children) as HTMLElement[]
     expect(segments).toHaveLength(50)
     for (const seg of segments) {
-      // '1 0 12px' — grow, no shrink, legible minimum. A shrinkable basis is
-      // exactly the regression that pushed the tail off-screen.
-      expect(seg.style.flexBasis).toBe('12px')
-      expect(seg.style.flexShrink).toBe('0')
+      expect(seg.style.flex).toBe('')
     }
   })
 
