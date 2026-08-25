@@ -639,6 +639,7 @@ export function ChecklistTechTreeTab({
           searchIsActive: Boolean(roadmapSearch.normalizedQuery),
           searchGroupTitleMatch: groupTitleMatchSetForFlow.has(gid),
           searchMatchingTaskIds: matchingTaskIds,
+          searchQuery: roadmapSearch.normalizedQuery,
         } as GroupNodeData,
       }
     })
