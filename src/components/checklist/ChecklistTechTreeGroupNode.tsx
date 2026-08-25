@@ -1,12 +1,12 @@
 import { useCallback, useRef, type CSSProperties, type ReactNode , type PointerEvent as ReactPointerEvent } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { useDroppable } from '@dnd-kit/core'
+import { useDndContext, useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Pencil, Plus, ChevronDown, ChevronRight, GripVertical, Lock , Settings } from 'lucide-react'
 import type { StageBadge } from '../../lib/roadmapBridge'
 import { splitTextForHighlight } from '../../lib/checklistTechTreeSearch'
-import { techTreeEmptyGroupDropId } from '../../lib/techTreeTaskOrder'
+import { techTreeEmptyGroupDropId, techTreeGroupDropId } from '../../lib/techTreeTaskOrder'
 import { RoadmapParallelBadge } from './RoadmapParallelBadge'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 
@@ -307,7 +307,7 @@ function TechTreeDndTaskRow({
     textDecoration: task.completedAt ? 'line-through' : undefined,
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.75 : 1,
+    opacity: isDragging ? 0.35 : 1,
     zIndex: isDragging ? 2 : undefined,
   }
   if (searchRowHighlight) {
@@ -395,11 +395,26 @@ function TechTreeDndTaskRow({
 export function GroupNode({ data }: NodeProps) {
   const d = data as GroupNodeData
   const { collapsed } = d
+  // Cross-stage drag (v2.2267): the whole box accepts a dropped task row —
+  // anywhere that isn't a row sends the task to the end of this stage.
+  const dropEnabled = d.reorderMode && d.canEditStructure
+  const { active: dndActive, over: dndOver } = useDndContext()
+  const boxDrop = useDroppable({ id: techTreeGroupDropId(d.groupId), disabled: !dropEnabled })
+  const dragActive = dropEnabled && dndActive != null
+  const activeIsForeign = dragActive && !d.tasks.some((t) => t.id === String(dndActive.id))
+  const dndOverId = dragActive && dndOver ? String(dndOver.id) : null
+  const dropTargetHere =
+    dndOverId != null &&
+    (dndOverId === techTreeGroupDropId(d.groupId) ||
+      dndOverId === techTreeEmptyGroupDropId(d.groupId) ||
+      d.tasks.some((t) => t.id === dndOverId))
+  const showEndSlot = activeIsForeign && dndOverId === techTreeGroupDropId(d.groupId)
   const taskMatch = (id: string) => d.searchMatchingTaskIds.includes(id)
   const cardHasHit = d.searchGroupTitleMatch || d.searchMatchingTaskIds.length > 0
   const cardSearchOutline = d.searchIsActive && cardHasHit ? '0 0 0 2px #facc15' : undefined
   return (
     <div
+      ref={boxDrop.setNodeRef}
       style={{
         position: 'relative',
         // Search spotlight: stages with no hit fade back but stay in place, so
@@ -414,7 +429,7 @@ export function GroupNode({ data }: NodeProps) {
         background: d.locked ? 'var(--bg-slate-tint)' : 'var(--surface)',
         fontSize: 13,
         boxSizing: 'border-box',
-        boxShadow: cardSearchOutline,
+        boxShadow: dropTargetHere ? '0 0 0 3px rgba(59, 130, 246, 0.45)' : cardSearchOutline,
       }}
     >
       {d.stageNumber > 0 ? <RoadmapStageNumberBadge n={d.stageNumber} corner /> : null}
@@ -751,6 +766,27 @@ export function GroupNode({ data }: NodeProps) {
       ) : null}
       {!collapsed && d.tasks.length === 0 && d.canEditStructure && !d.reorderMode ? (
         <div style={{ color: 'var(--text-slate-400)', fontSize: 12 }}>No tasks yet — add below</div>
+      ) : null}
+      {showEndSlot ? (
+        <div
+          style={{
+            marginTop: 6,
+            minHeight: 30,
+            border: '1.5px dashed #3b82f6',
+            background: 'rgba(59, 130, 246, 0.08)',
+            borderRadius: 6,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 12,
+            color: '#3b82f6',
+            fontWeight: 600,
+            padding: 4,
+            boxSizing: 'border-box',
+          }}
+        >
+          {d.stageNumber > 0 ? `Move here — becomes ${d.stageNumber}.${d.tasks.length + 1}` : 'Move here'}
+        </div>
       ) : null}
       <Handle
         type="source"

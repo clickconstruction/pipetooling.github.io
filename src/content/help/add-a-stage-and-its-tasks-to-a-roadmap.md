@@ -60,6 +60,16 @@ To see a stage's tasks on the map, press the **›** chevron at its left edge (o
 You can add tasks with nobody ticked and staff them later from the task card — the card says "Not on anyone's list yet" until you do.
 :::
 
+## Move a task to another stage
+
+Turn on the map's **task-edit mode** (the grip button in the toolbar) and every task row grows a **⠿ grip**. Drag by the grip and the row floats above the map while the stage under your pointer lights up blue:
+
+- **Drop between rows** in another stage to slot it in at that exact spot.
+- **Drop anywhere on a stage box** — its title, its edges, even a **collapsed** box — and the task goes to the end of that stage; a dashed strip shows *Move here — becomes 7.3* while you hover.
+- Let go over empty canvas (or press **Esc**) and nothing moves.
+
+The task keeps its people, notes, and history — only its number changes, and both stages renumber. If it lands mid-chain in an in-order stage, it waits its turn like any other task there.
+
 ## Find anything on the map
 
 Press the 🔍 search icon in the map's corner and type — a stage title, a task, or a person's name. The map answers as you type: **stages with no hit fade back to 30%** (they keep their place, so the arrows still make sense) and the **exact text that matched glows amber** inside the cards that stay lit. The panel counts the hits, **Show on map** pans to them, and clearing the search brings the whole map back.
