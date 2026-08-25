@@ -46,6 +46,7 @@ Expand a goal and the stage list now works for you, not just reports:
 - **Unlock banners** — when a stage finishes, a green banner names it and exactly which stages it opened ("✓ Stage 6 finished → unlocked stage 9"). Banners cover the last 30 days.
 - **What's next** — tap an open stage to unfold its tasks; the footer tells you what finishing it would unlock, so you know what's riding on it.
 - **{{button:outline|🔔 Remind}}** on an unfolded stage nudges everyone who still has open tasks in it — each person gets their own list, not a generic blast.
+- **⇅ Reorder** (beside "Open roadmap →", structure editors only) opens the same hold-and-drag card tool the roadmap uses — drag stages into a new order and it saves as you go; numbering and the goal bar follow.
 
 The goal's bar is **one segment per stage**, in the order you arranged them: green segments are finished stages, amber-ringed ones are the current work front (they fill blue as their tasks complete), and pale ones are still locked. A **dashed, hollow** segment is a stage that's *not planned yet* — no tasks and nothing leading into it — so it never reads as done by accident.
 

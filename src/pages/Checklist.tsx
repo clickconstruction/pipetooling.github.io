@@ -33,6 +33,8 @@ import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/c
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { goalsStageRows, goalsStripRows, lockedStageHint, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
+import { computeStageOrderUpdates, computeTaskOrderUpdates } from '../lib/roadmapStageNumbers'
+import { ChecklistTechTreeOrderStagesModal } from '../components/checklist/ChecklistTechTreeOrderStagesModal'
 import { goalsLedgerTaskRows, type GoalsLedgerTaskRow } from '../lib/roadmapGoalsLedger'
 import { canSeeRoadmapTab } from '../lib/roadmapVisibility'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
@@ -2104,6 +2106,11 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
   const [goalUnlockEvents, setGoalUnlockEvents] = useState<Map<string, StageUnlockEvent[]>>(new Map())
   /** Bumped after edits made from the Where-this-fits sheet (v2.2182) so the ledger refetches. */
   const [goalsReloadTick, setGoalsReloadTick] = useState(0)
+  /** Raw stage/task sort_index per roadmap — the ⇅ Reorder modal's save baseline (v2.NNNN). */
+  const [goalGroupOrder, setGoalGroupOrder] = useState<Map<string, Array<{ id: string; sort_index: number }>>>(new Map())
+  const [goalRawTasks, setGoalRawTasks] = useState<Array<{ id: string; group_id: string; sort_index: number }>>([])
+  /** Which roadmap's stages the ⇅ Reorder modal is editing; null = closed. */
+  const [orderStagesRoadmapId, setOrderStagesRoadmapId] = useState<string | null>(null)
   const onReviewCount = useCallback((n: number) => setReviewCount(n), [])
   const onOpenReqCount = useCallback((n: number) => setOpenReqCount(n), [])
 
@@ -2175,6 +2182,14 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       setGoalStageRows(stageMap)
       setGoalTaskRows(taskMap)
       setGoalUnlockEvents(eventsMap)
+      // Raw sort_index baselines for the ⇅ Reorder modal's diff-only saves.
+      const orderMap = new Map<string, Array<{ id: string; sort_index: number }>>()
+      for (const g of grps) {
+        if (!orderMap.has(g.roadmap_id)) orderMap.set(g.roadmap_id, [])
+        orderMap.get(g.roadmap_id)!.push({ id: g.id, sort_index: g.sort_index })
+      }
+      setGoalGroupOrder(orderMap)
+      setGoalRawTasks(fullTasks.map((t) => ({ id: t.id, group_id: t.group_id, sort_index: t.sort_index })))
     })()
     return () => {
       cancelled = true
@@ -2866,15 +2881,27 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                   <div onClick={(e) => e.stopPropagation()} style={{ borderTop: '1px solid var(--border)', marginTop: '0.55rem', paddingTop: '0.35rem', cursor: 'default' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.1rem 0 0.3rem' }}>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-muted)' }}>STAGES</span>
-                      {onOpenRoadmap ? (
-                        <button
-                          type="button"
-                          onClick={() => onOpenRoadmap(g.roadmapId)}
-                          style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)' }}
-                        >
-                          Open roadmap →
-                        </button>
-                      ) : null}
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.8rem' }}>
+                        {canEditRoadmapTasks && stages.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setOrderStagesRoadmapId(g.roadmapId)}
+                            title="Hold and drag stage cards into a new order"
+                            style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)' }}
+                          >
+                            ⇅ Reorder
+                          </button>
+                        ) : null}
+                        {onOpenRoadmap ? (
+                          <button
+                            type="button"
+                            onClick={() => onOpenRoadmap(g.roadmapId)}
+                            style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)' }}
+                          >
+                            Open roadmap →
+                          </button>
+                        ) : null}
+                      </span>
                     </div>
                     {unlockEvents.length > 0 ? (
                       <div style={{ margin: '0.1rem 0 0.5rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -3117,6 +3144,50 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           })}
         </div>
       ) : null}
+      {/* ⇅ Reorder (v2.NNNN): the roadmap's hold-and-drag Order-stages modal, opened from Goals. */}
+      <ChecklistTechTreeOrderStagesModal
+        open={orderStagesRoadmapId !== null}
+        onClose={() => setOrderStagesRoadmapId(null)}
+        groups={(orderStagesRoadmapId ? goalStageRows.get(orderStagesRoadmapId) ?? [] : []).map((s) => {
+          const stageTasks = orderStagesRoadmapId ? goalTaskRows.get(orderStagesRoadmapId)?.get(s.groupId) ?? [] : []
+          const meta = s.state === 'complete' ? '✓ done' : s.state === 'locked' ? '🔒' : s.total > 0 ? `${s.done} of ${s.total}` : null
+          return {
+            id: s.groupId,
+            title: s.title,
+            meta,
+            tasks: stageTasks.map((t) => ({ id: t.id, title: t.title, done: t.done })),
+          }
+        })}
+        onSave={async (orderedStageIds, taskOrdersByGroup) => {
+          const current = orderStagesRoadmapId ? goalGroupOrder.get(orderStagesRoadmapId) ?? [] : []
+          const stageUpdates = computeStageOrderUpdates(orderedStageIds, current)
+          const taskUpdates = computeTaskOrderUpdates(taskOrdersByGroup, goalRawTasks)
+          if (stageUpdates.length === 0 && taskUpdates.length === 0) return true
+          setError(null)
+          try {
+            await Promise.all([
+              ...stageUpdates.map((u) =>
+                withSupabaseRetry(
+                  () => supabase.from('checklist_tech_tree_groups').update({ sort_index: u.sort_index }).eq('id', u.id),
+                  'reorder goal stage',
+                ),
+              ),
+              ...taskUpdates.map((u) =>
+                withSupabaseRetry(
+                  () => supabase.from('checklist_tech_tree_group_tasks').update({ sort_index: u.sort_index }).eq('id', u.id),
+                  'reorder goal stage task',
+                ),
+              ),
+            ])
+            setGoalsReloadTick((t) => t + 1)
+            return true
+          } catch (e) {
+            setError(e instanceof Error ? e.message : 'Could not save the order')
+            setGoalsReloadTick((t) => t + 1)
+            return false
+          }
+        }}
+      />
       <div ref={foldReviewRef} style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', scrollMarginTop: 70 }}>
         {foldHeader('Review: completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
         <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
