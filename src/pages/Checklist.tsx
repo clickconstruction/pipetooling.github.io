@@ -40,7 +40,7 @@ import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileC
 import { useToastContext } from '../contexts/ToastContext'
 import { ChecklistCostButton } from '../components/checklist/ChecklistCostButton'
 import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
-import { formatOpenCostSummary, formatWholeDollars, sumEstimateDollars, summarizeOpenTaskCosts } from '../lib/checklistCostEstimate'
+import { canSeeTaskCosts, formatOpenCostSummary, formatWholeDollars, sumEstimateDollars, summarizeOpenTaskCosts } from '../lib/checklistCostEstimate'
 import { recentStageUnlockEvents, stageUnlockPreviewFor, type StageUnlockEvent } from '../lib/roadmapStageReview'
 
 type UserRole =
@@ -398,7 +398,7 @@ export default function Checklist() {
         >
           <ChecklistTechTreeTab
             authUserId={authUser?.id ?? null}
-            isDev={role === 'dev'}
+            showTaskCosts={canSeeTaskCosts(role)}
             canEditTechTree={canEditTechTree}
             setError={setError}
             roadmapIdFromUrl={searchParams.get('roadmap')}
@@ -409,7 +409,7 @@ export default function Checklist() {
         </div>
       )}
       {activeTab === 'review' && canManageChecklists && (
-        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canManageChecklists={canManageChecklists} canEditRoadmapTasks={canEditTechTree} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
+        <ChecklistOutstandingTab authUserId={authUser?.id ?? null} isDev={role === 'dev'} canSeeCosts={canSeeTaskCosts(role)} canManageChecklists={canManageChecklists} canEditRoadmapTasks={canEditTechTree} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
       )}
       {activeTab === 'manage' && canManageChecklists && (
         <ChecklistManageTab authUserId={authUser?.id ?? null} role={role} setError={setError} setEditItemId={setEditItemId} onOpenRoadmap={canSeeRoadmap ? onRoadmapUrlParamChange : undefined} />
@@ -1558,6 +1558,7 @@ function OutstandingByPersonSortableRow({
   dragDisabled,
   canManageChecklists,
   isDev,
+  canSeeCosts,
   authUserId,
   completingInstanceId,
   deletingInstanceId,
@@ -1577,6 +1578,7 @@ function OutstandingByPersonSortableRow({
   dragDisabled: boolean
   canManageChecklists: boolean
   isDev: boolean
+  canSeeCosts: boolean
   authUserId: string | null
   completingInstanceId: string | null
   deletingInstanceId: string | null
@@ -1733,7 +1735,7 @@ function OutstandingByPersonSortableRow({
               </span>
             ) : null}
             <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))}</span>
-            {isDev && (
+            {canSeeCosts && (
               // Bridged roadmap tasks key their estimate by the roadmap task id so
               // Review and the roadmap Plan view share one number per task.
               <ChecklistCostButton
@@ -1820,6 +1822,7 @@ function OutstandingByPersonSortableList({
   reorderingUserId,
   canManageChecklists,
   isDev,
+  canSeeCosts,
   authUserId,
   onDragEnd,
   completingInstanceId,
@@ -1840,6 +1843,7 @@ function OutstandingByPersonSortableList({
   reorderingUserId: string | null
   canManageChecklists: boolean
   isDev: boolean
+  canSeeCosts: boolean
   onDragEnd: (e: DragEndEvent) => void
   completingInstanceId: string | null
   deletingInstanceId: string | null
@@ -1905,6 +1909,7 @@ function OutstandingByPersonSortableList({
               dragDisabled={dragDisabled}
               canManageChecklists={canManageChecklists}
               isDev={isDev}
+              canSeeCosts={canSeeCosts}
               authUserId={authUserId}
               completingInstanceId={completingInstanceId}
               deletingInstanceId={deletingInstanceId}
@@ -1926,7 +1931,7 @@ function OutstandingByPersonSortableList({
   )
 }
 
-function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEditRoadmapTasks, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; isDev: boolean; canManageChecklists: boolean; /** Roadmap structure editors (v2.2182) — may edit tasks from the Where-this-fits sheet. */ canEditRoadmapTasks: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
+function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChecklists, canEditRoadmapTasks, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; isDev: boolean; /** Cost lens (dev or controller — mirrors checklist_item_costs RLS). */ canSeeCosts: boolean; canManageChecklists: boolean; /** Roadmap structure editors (v2.2182) — may edit tasks from the Where-this-fits sheet. */ canEditRoadmapTasks: boolean; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [loading, setLoading] = useState(true)
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
@@ -1934,7 +1939,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
   const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('non_repeating')
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
   const [remindingStageId, setRemindingStageId] = useState<string | null>(null)
-  const costEstimates = useChecklistCostEstimates(isDev)
+  const costEstimates = useChecklistCostEstimates(canSeeCosts)
   const { showToast } = useToastContext()
   const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
   const [fwdTitle, setFwdTitle] = useState('')
@@ -2774,7 +2779,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                       const stageTasks = goalTaskRows.get(g.roadmapId)?.get(s.groupId) ?? []
                       const canOpen = stageTasks.length > 0
                       const stageOpen = canOpen && expandedStageId === s.groupId
-                      const stageCost = isDev
+                      const stageCost = canSeeCosts
                         ? summarizeOpenTaskCosts(stageTasks.filter((t) => !t.done).map((t) => t.id), costEstimates)
                         : null
                       return (
@@ -2879,7 +2884,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                                       ) : null}
                                     </span>
                                   </button>
-                                  {isDev && !t.done ? (
+                                  {canSeeCosts && !t.done ? (
                                     <ChecklistCostButton costKey={t.id} taskTitle={t.title} />
                                   ) : null}
                                 </li>
@@ -3018,7 +3023,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
               const oldest = oldestAgeDays(instances, todayLocal)
               const oldestSeverity = ageSeverity(oldest)
               const notesTotal = instances.reduce((n, i) => n + (notesByInstance.get(i.id) ?? 0), 0)
-              const costTotal = isDev
+              const costTotal = canSeeCosts
                 ? sumEstimateDollars(
                     instances.map(
                       (i) => costEstimates[i.checklist_items?.roadmap_group_task_id ?? i.checklist_item_id],
@@ -3135,6 +3140,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, canEd
                         reorderingUserId={reorderingUserId}
                         canManageChecklists={canManageChecklists}
                         isDev={isDev}
+                        canSeeCosts={canSeeCosts}
                         authUserId={authUserId}
                         onDragEnd={onOutstandingDragEnd(userId, instances)}
                         completingInstanceId={completingInstanceId}
