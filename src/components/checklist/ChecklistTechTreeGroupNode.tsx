@@ -63,6 +63,8 @@ export type GroupNodeData = {
   sequential: boolean
   /** Just placed (v2.2291): brief glow so the new stage is findable without a camera move. */
   justAdded: boolean
+  /** Stage focus (v2.2308): selected card, its feeders (upstream), its unlocks (downstream), or faded. */
+  focusRole: 'selected' | 'upstream' | 'downstream' | 'dimmed' | null
   /** When set, list uses drag-and-drop; only when canEditStructure. */
   reorderMode: boolean
   onEditTask: (taskId: string) => void
@@ -378,7 +380,7 @@ export function GroupNode({ data }: NodeProps) {
         position: 'relative',
         // Search spotlight: stages with no hit fade back but stay in place, so
         // the graph's shape keeps reading while you search.
-        opacity: d.searchIsActive && !cardHasHit ? 0.3 : undefined,
+        opacity: d.searchIsActive && !cardHasHit ? 0.3 : !d.searchIsActive && d.focusRole === 'dimmed' ? 0.35 : undefined,
         transition: 'opacity 120ms ease, box-shadow 400ms ease',
         width: 280,
         minHeight: 80,
@@ -392,7 +394,13 @@ export function GroupNode({ data }: NodeProps) {
           ? '0 0 0 3px rgba(59, 130, 246, 0.45)'
           : d.justAdded
             ? '0 0 0 4px rgba(59, 130, 246, 0.5)'
-            : cardSearchOutline,
+            : !d.searchIsActive && d.focusRole === 'selected'
+              ? '0 0 0 4px rgba(37, 99, 235, 0.55), 0 6px 18px rgba(0, 0, 0, 0.2)'
+              : !d.searchIsActive && d.focusRole === 'upstream'
+                ? '0 0 0 3px rgba(217, 119, 6, 0.5)'
+                : !d.searchIsActive && d.focusRole === 'downstream'
+                  ? '0 0 0 3px rgba(22, 163, 74, 0.5)'
+                  : cardSearchOutline,
       }}
     >
       {d.stageNumber > 0 ? <RoadmapStageNumberBadge n={d.stageNumber} corner /> : null}
