@@ -1,4 +1,4 @@
-import { useCallback, useRef, type CSSProperties, type ReactNode , type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useDndContext, useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -165,43 +165,7 @@ function TechTreeEmptyGroupDrop({ groupId, visible }: { groupId: string; visible
   )
 }
 
-const TASK_TITLE_LONG_PRESS_MS = 500
-const TASK_TITLE_LONG_PRESS_MOVE_PX = 10
 
-/** Row-level press-and-hold → open the task card, for every viewer. Ignores
- *  presses that start on interactive children (checkbox, buttons, links). */
-function useTaskRowLongPress(taskId: string, onEditTask: (taskId: string) => void) {
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const startRef = useRef<{ x: number; y: number } | null>(null)
-  const clear = useCallback(() => {
-    if (timerRef.current != null) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-    startRef.current = null
-  }, [])
-  return {
-    onPointerDown: (e: ReactPointerEvent) => {
-      const t = e.target as HTMLElement
-      if (t.closest('input, button, a')) return
-      startRef.current = { x: e.clientX, y: e.clientY }
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null
-        startRef.current = null
-        onEditTask(taskId)
-      }, TASK_TITLE_LONG_PRESS_MS)
-    },
-    onPointerMove: (e: ReactPointerEvent) => {
-      if (!startRef.current) return
-      const dx = e.clientX - startRef.current.x
-      const dy = e.clientY - startRef.current.y
-      if (dx * dx + dy * dy > TASK_TITLE_LONG_PRESS_MOVE_PX * TASK_TITLE_LONG_PRESS_MOVE_PX) clear()
-    },
-    onPointerUp: clear,
-    onPointerCancel: clear,
-    onPointerLeave: clear,
-  }
-}
 
 function TechTreeEditableTaskTitle({
   taskId,
@@ -214,64 +178,27 @@ function TechTreeEditableTaskTitle({
   onEditTask: (taskId: string) => void
   children: ReactNode
 }) {
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const longPressStartRef = useRef<{ x: number; y: number } | null>(null)
-  const suppressNextClickRef = useRef(false)
-
-  const clearLongPress = useCallback(() => {
-    if (longPressTimerRef.current != null) {
-      clearTimeout(longPressTimerRef.current)
-      longPressTimerRef.current = null
-    }
-    longPressStartRef.current = null
-  }, [])
-
-  if (!canEdit) {
-    return <span className="nodrag">{children}</span>
-  }
-
+  // Tap opens the task card for EVERY role (mockup 9727d235) — the old
+  // 500ms press-and-hold is gone because holding now means "lift to
+  // reorder". The row-level ghost-click guard stops a drop from opening.
+  void canEdit
   return (
     <span
       className="nodrag"
-      style={{
-        cursor: 'text',
-        userSelect: 'text' as const,
-        touchAction: 'manipulation' as const,
-      }}
-      title="Press and hold to open"
+      role="button"
+      tabIndex={0}
+      title="Tap to open"
+      style={{ cursor: 'pointer' }}
       onClick={(e) => {
-        if (suppressNextClickRef.current) {
-          e.preventDefault()
-          e.stopPropagation()
-        }
-      }}
-      onPointerDown={(e) => {
         e.stopPropagation()
-        longPressStartRef.current = { x: e.clientX, y: e.clientY }
-        longPressTimerRef.current = setTimeout(() => {
-          longPressTimerRef.current = null
-          longPressStartRef.current = null
-          suppressNextClickRef.current = true
-          onEditTask(taskId)
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              suppressNextClickRef.current = false
-            })
-          })
-        }, TASK_TITLE_LONG_PRESS_MS)
+        onEditTask(taskId)
       }}
-      onPointerMove={(e) => {
-        if (!longPressStartRef.current) return
-        const { x, y } = longPressStartRef.current
-        const dx = e.clientX - x
-        const dy = e.clientY - y
-        if (dx * dx + dy * dy > TASK_TITLE_LONG_PRESS_MOVE_PX * TASK_TITLE_LONG_PRESS_MOVE_PX) {
-          clearLongPress()
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onEditTask(taskId)
         }
       }}
-      onPointerUp={() => clearLongPress()}
-      onPointerCancel={() => clearLongPress()}
-      onPointerLeave={() => clearLongPress()}
     >
       {children}
     </span>
@@ -287,6 +214,7 @@ function TechTreeDndTaskRow({
   disabled,
   searchRowHighlight = false,
   searchQuery = '',
+  showGrip = true,
 }: {
   task: GroupTask
   onToggle: (id: string) => void
@@ -296,19 +224,34 @@ function TechTreeDndTaskRow({
   disabled: boolean
   searchRowHighlight?: boolean
   searchQuery?: string
+  /** Reorder mode still shows the grip; hold-anywhere works regardless. */
+  showGrip?: boolean
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
-  const rowLongPress = useTaskRowLongPress(task.id, onEditTask)
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, disabled })
+  // Suppress the ghost click after a drop — it would open the task card.
+  const wasDraggedRef = useRef(false)
+  useEffect(() => {
+    if (isDragging) wasDraggedRef.current = true
+  }, [isDragging])
   const cbId = `tt-task-cb-${task.id}`
 
   let style: CSSProperties = {
     marginBottom: 4,
     color: task.completedAt ? 'var(--text-slate-500)' : 'var(--text-strong)',
     textDecoration: task.completedAt ? 'line-through' : undefined,
-    transform: CSS.Transform.toString(transform),
+    // Lift (mockup 9727d235): the held row scales up on a shadow — picked
+    // up, not ghosted — mirroring the Outstanding boards (v2.2270).
+    transform:
+      isDragging && transform ? `${CSS.Transform.toString(transform)} scale(1.02)` : CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.35 : 1,
-    zIndex: isDragging ? 2 : undefined,
+    zIndex: isDragging ? 5 : undefined,
+    position: 'relative',
+    touchAction: 'none',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    ...(isDragging
+      ? { background: 'var(--surface)', boxShadow: '0 12px 32px rgba(0, 0, 0, 0.28)', borderRadius: 8, opacity: 1 }
+      : {}),
   }
   if (searchRowHighlight) {
     style = {
@@ -323,8 +266,25 @@ function TechTreeDndTaskRow({
     }
   }
   return (
-    <li ref={setNodeRef} style={style}>
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="nodrag"
+      {...attributes}
+      {...listeners}
+      onPointerDownCapture={() => {
+        wasDraggedRef.current = false
+      }}
+      onClickCapture={(e) => {
+        if (wasDraggedRef.current) {
+          wasDraggedRef.current = false
+          e.preventDefault()
+          e.stopPropagation()
+        }
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, flex: 1, minWidth: 0 }}>
+        {showGrip ? (
         <button
           type="button"
           className="nodrag nopan"
@@ -343,15 +303,12 @@ function TechTreeDndTaskRow({
             alignItems: 'center',
             touchAction: 'none',
           }}
-          {...attributes}
-          {...listeners}
         >
           <GripVertical size={16} strokeWidth={2} aria-hidden />
         </button>
+        ) : null}
         <div
           className="nodrag"
-          title="Press and hold to open"
-          {...rowLongPress}
           style={{ display: 'flex', alignItems: 'flex-start', flex: 1, minWidth: 0, gap: 4, ...(task.waiting ? { opacity: 0.5 } : {}) }}
         >
           {task.numberLabel ? (
@@ -683,7 +640,7 @@ export function GroupNode({ data }: NodeProps) {
           {d.lockedHint ?? 'Complete prerequisite groups to unlock'}
         </div>
       ) : null}
-      {!collapsed && d.reorderMode && d.canEditStructure ? (
+      {!collapsed && d.canEditStructure ? (
         <>
           <SortableContext items={d.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
             <ul style={{ margin: 0, padding: '0 0 0 0', listStyle: 'none' }}>
@@ -698,11 +655,12 @@ export function GroupNode({ data }: NodeProps) {
                   disabled={false}
                   searchRowHighlight={d.searchIsActive && taskMatch(t.id)}
                   searchQuery={d.searchIsActive ? d.searchQuery : ''}
+                  showGrip={d.reorderMode}
                 />
               ))}
             </ul>
           </SortableContext>
-          <TechTreeEmptyGroupDrop groupId={d.groupId} visible={d.tasks.length === 0} />
+          <TechTreeEmptyGroupDrop groupId={d.groupId} visible={d.reorderMode && d.tasks.length === 0} />
         </>
       ) : !collapsed ? (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
