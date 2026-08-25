@@ -356,7 +356,7 @@ export function GroupNode({ data }: NodeProps) {
   const { collapsed } = d
   // Cross-stage drag (v2.2267): the whole box accepts a dropped task row —
   // anywhere that isn't a row sends the task to the end of this stage.
-  const dropEnabled = d.reorderMode && d.canEditStructure
+  const dropEnabled = d.canEditStructure
   const { active: dndActive, over: dndOver } = useDndContext()
   const boxDrop = useDroppable({ id: techTreeGroupDropId(d.groupId), disabled: !dropEnabled })
   const dragActive = dropEnabled && dndActive != null
@@ -666,7 +666,7 @@ export function GroupNode({ data }: NodeProps) {
               ))}
             </ul>
           </SortableContext>
-          <TechTreeEmptyGroupDrop groupId={d.groupId} visible={d.reorderMode && d.tasks.length === 0} />
+          <TechTreeEmptyGroupDrop groupId={d.groupId} visible={(d.reorderMode || dragActive) && d.tasks.length === 0} />
         </>
       ) : !collapsed ? (
         <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
