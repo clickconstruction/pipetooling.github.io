@@ -936,7 +936,6 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
           return (
             <>
               <ChecklistTitleWithLinks title={isVehicleTaskTitle(rawTitle) ? stripVehicleTaskMarker(rawTitle) : rawTitle} links={item?.links} />
-      <ChecklistComingUpSection authUserId={authUserId} />
               {isVehicleTaskTitle(rawTitle) ? <> {vehicleTaskChip((inst as ChecklistInstance).id, setVehicleCtxInstanceId)}</> : null}
               {item?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(item)}</div> : null}
             </>
@@ -962,6 +961,8 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
         }}
         setError={setError}
       />
+
+      <ChecklistComingUpSection authUserId={authUserId} />
 
       <section>
         <button
