@@ -2196,6 +2196,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
         setError('Could not mark this task complete (no rows updated).')
         return
       }
+      // The completion belongs in the sign-off queue right above this board.
+      window.dispatchEvent(new CustomEvent('checklist-instance-completed', { detail: inst.id }))
       const { data: item } = await supabase
         .from('checklist_items')
         .select('notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, title')
