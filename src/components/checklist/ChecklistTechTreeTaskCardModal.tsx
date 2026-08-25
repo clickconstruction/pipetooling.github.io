@@ -46,6 +46,8 @@ type Props = {
   waitingAfterLabel?: string | null
   /** Done ⇄ open (same field the Map checkbox writes); pass only when the viewer may act. */
   onToggleDone?: () => Promise<boolean>
+  /** Editors only: deletes the task (and its unfinished list item). */
+  onDeleteTask?: () => Promise<boolean>
   /** Jump to the Today tab (the live checklist card). */
   onOpenTodayTab?: () => void
   onClose: () => void
@@ -83,6 +85,7 @@ export function ChecklistTechTreeTaskCardModal({
   done = false,
   waitingAfterLabel = null,
   onToggleDone,
+  onDeleteTask,
   onOpenTodayTab,
   onClose,
   portalContainer,
@@ -100,6 +103,8 @@ export function ChecklistTechTreeTaskCardModal({
   const [titleEditing, setTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [titleSaving, setTitleSaving] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const threadRef = useRef<HTMLDivElement | null>(null)
 
   const instanceId = bridge?.instanceId ?? null
@@ -114,6 +119,7 @@ export function ChecklistTechTreeTaskCardModal({
     setPersonSearch('')
     setTitleEditing(false)
     setBusyUserId(null)
+    setDeleteConfirm(false)
   }, [open, taskId])
 
   useEffect(() => {
@@ -572,6 +578,43 @@ export function ChecklistTechTreeTaskCardModal({
                   {task.assigneeIds.length === 0
                     ? 'Not on anyone’s list yet — assign someone and this task lands on their list when the stage unlocks.'
                     : 'Lands on their Today list when this stage unlocks.'}
+                </div>
+              ) : null}
+              {onDeleteTask ? (
+                <div style={{ marginTop: 10 }}>
+                  {deleteConfirm ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-red-700)' }}>
+                        Removes this task from the roadmap and any unfinished list entry. Completed history stays.
+                      </span>
+                      <button
+                        type="button"
+                        disabled={deleting}
+                        onClick={() => {
+                          setDeleting(true)
+                          void onDeleteTask()
+                            .then((ok) => {
+                              if (ok) onClose()
+                            })
+                            .finally(() => setDeleting(false))
+                        }}
+                        style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        {deleting ? 'Deleting…' : 'Delete permanently'}
+                      </button>
+                      <button type="button" disabled={deleting} onClick={() => setDeleteConfirm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                        Keep it
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(true)}
+                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-red-700)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Delete task…
+                    </button>
+                  )}
                 </div>
               ) : null}
             </>

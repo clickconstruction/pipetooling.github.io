@@ -79,6 +79,41 @@ export function useTechTreeTaskMutations(args: {
     [authUserId, canActOnTask, getTask, isGroupUnlocked, reload, setError],
   )
 
+  /** Editors only: removes the task, its assignees (cascade), and its bridged
+   *  list item — unless an instance was completed/reviewed (history stays; the
+   *  orphaned item simply stops rendering roadmap chips). */
+  const deleteTask = useCallback(
+    async (taskId: string): Promise<boolean> => {
+      if (!canEditStructure) return false
+      try {
+        setError(null)
+        const { data: items } = await supabase
+          .from('checklist_items')
+          .select('id, checklist_instances(completed_at, reviewed_at)')
+          .eq('roadmap_group_task_id', taskId)
+        for (const it of (items ?? []) as Array<{ id: string; checklist_instances: Array<{ completed_at: string | null; reviewed_at: string | null }> }>) {
+          const keep = (it.checklist_instances ?? []).some((ci) => ci.completed_at || ci.reviewed_at)
+          if (!keep) {
+            await withSupabaseRetry(
+              () => supabase.from('checklist_items').delete().eq('id', it.id),
+              'delete bridged checklist item',
+            )
+          }
+        }
+        await withSupabaseRetry(
+          () => supabase.from('checklist_tech_tree_group_tasks').delete().eq('id', taskId),
+          'delete tech tree task',
+        )
+        await reload()
+        return true
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not delete task')
+        return false
+      }
+    },
+    [canEditStructure, reload, setError],
+  )
+
   const loadInstanceEvents = useCallback(async (instanceId: string): Promise<ChecklistCardEvent[]> => {
     const { data } = await supabase
       .from('checklist_instance_events')
@@ -191,5 +226,5 @@ export function useTechTreeTaskMutations(args: {
     [canEditStructure, getTask, reload, setError],
   )
 
-  return { canActOnTask, toggleTaskDone, loadInstanceEvents, postInstanceComment, assignTaskToUser, updateTaskInGroup, toggleTaskPin }
+  return { canActOnTask, deleteTask, toggleTaskDone, loadInstanceEvents, postInstanceComment, assignTaskToUser, updateTaskInGroup, toggleTaskPin }
 }

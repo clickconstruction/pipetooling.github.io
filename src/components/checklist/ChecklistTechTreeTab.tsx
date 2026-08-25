@@ -325,6 +325,22 @@ export function ChecklistTechTreeTab({
   )
 
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const openStageModeMenu = useCallback(
+    (groupId: string, x: number, y: number) => {
+      const g = groups.find((gg) => gg.id === groupId)
+      if (!g) return
+      setCanvasMenu({
+        kind: 'stageMode',
+        groupId,
+        groupTitle: g.title,
+        sequential: (g as { sequential?: boolean }).sequential !== false,
+        x,
+        y,
+      })
+    },
+    [groups],
+  )
+
   const openGroupSettings = useCallback((groupId: string) => {
     setEditingGroupId(groupId)
   }, [])
@@ -442,6 +458,7 @@ export function ChecklistTechTreeTab({
   const isGroupUnlockedForMutation = useCallback((groupId: string) => unlockedIds.has(groupId), [unlockedIds])
   const {
     canActOnTask,
+    deleteTask,
     toggleTaskDone,
     loadInstanceEvents,
     postInstanceComment,
@@ -641,6 +658,8 @@ export function ChecklistTechTreeTab({
           onToggle: onToggleTask,
           onOpenGroupSettings: openGroupSettings,
           onOpenAddTask: openAddTask,
+          onOpenStageMode: openStageModeMenu,
+          sequential: sequentialByGroupId.get(gid) !== false,
           onEditTask: openEditTask,
           collapsed: collapsedGroupIds.has(gid),
           taskCount: tlist.length,
@@ -697,6 +716,8 @@ export function ChecklistTechTreeTab({
     reviewGroupId,
     seqWaiting,
     waitingAfterLabelByTaskId,
+    openStageModeMenu,
+    sequentialByGroupId,
   ])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes)
@@ -1318,6 +1339,22 @@ export function ChecklistTechTreeTab({
     }
   }, [cssFullscreen, triggerCanvasResize])
 
+  /** Stage-mode gear (v2.2266): flips groups.sequential; reload re-runs the
+   *  sync, so flipping to parallel materializes everything and flipping back
+   *  returns not-yet-due tasks to Coming up. */
+  const setStageMode = async (groupId: string, sequential: boolean) => {
+    if (!canEditStructure) return
+    try {
+      await withSupabaseRetry(
+        () => supabase.from('checklist_tech_tree_groups').update({ sequential }).eq('id', groupId),
+        'set stage task mode',
+      )
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not change the stage mode')
+    }
+  }
+
   const removeEdge = async (id: string) => {
     if (!canEditStructure) return
     try {
@@ -1581,6 +1618,7 @@ export function ChecklistTechTreeTab({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: '1rem' }}>
           <ChecklistRoadmapTimelineView
             groups={groups.map((g) => ({ id: g.id, title: g.title }))}
+            parallelGroupIds={new Set(groups.filter((g) => (g as { sequential?: boolean }).sequential === false).map((g) => g.id))}
             tasks={tasks}
             edges={graphEdges}
             unlockedIds={unlockedIds}
@@ -1604,6 +1642,7 @@ export function ChecklistTechTreeTab({
             showCosts={showTaskCosts === true}
             waitingTaskIds={seqWaiting.waitingIds}
             waitingAfterByTaskId={waitingAfterLabelByTaskId}
+            parallelGroupIds={new Set(groups.filter((g) => (g as { sequential?: boolean }).sequential === false).map((g) => g.id))}
             onAssign={assignTaskToUser}
             onOpenTask={openEditTask}
           />
@@ -1901,6 +1940,10 @@ export function ChecklistTechTreeTab({
             setCanvasMenu(null)
             setAddGroupModal({ kind: 'pane', flowPosition })
           }}
+          onSetStageMode={(groupId, sequential) => {
+            setCanvasMenu(null)
+            void setStageMode(groupId, sequential)
+          }}
         />
       ) : null}
       <ChecklistTechTreeLinksModal
@@ -1991,6 +2034,9 @@ export function ChecklistTechTreeTab({
           editTaskForModal && canActOnTask(editTaskForModal, unlockedIds.has(editTaskForModal.group_id))
             ? async () => (editTaskId ? toggleTaskDone(editTaskId) : false)
             : undefined
+        }
+        onDeleteTask={
+          canEditStructure && editTaskId ? async () => deleteTask(editTaskId) : undefined
         }
         onOpenTodayTab={onOpenTodayTab}
         onClose={() => setEditTaskId(null)}
