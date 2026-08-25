@@ -441,7 +441,10 @@ export function ChecklistTechTreeTab({
   useEffect(() => {
     if (viewFromUrl === 'map' || viewFromUrl === 'plan' || viewFromUrl === 'timeline') setViewModePersisted(viewFromUrl)
   }, [viewFromUrl, setViewModePersisted])
-  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  // Hold-to-lift (mockup 9727d235): a ~300ms press on any task row picks it
+  // up — no Reorder mode needed. Short moves before the delay cancel, so
+  // taps and canvas gestures stay untouched.
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 280, tolerance: 8 } }))
 
   /** Re-layout the graph in dagre only when group set, links, or collapse changes — not on task add/complete. */
   const structuralKey = useMemo(() => {
@@ -1117,7 +1120,7 @@ export function ChecklistTechTreeTab({
     async (event: DragEndEvent) => {
       setActiveDragTask(null)
       activeDragGroupRef.current = null
-      if (!reorderMode || !canEditStructure) return
+      if (!canEditStructure) return
       const { active, over } = event
       if (!over) return
       const activeId = String(active.id)
@@ -1868,7 +1871,9 @@ export function ChecklistTechTreeTab({
                     justifyContent: 'flex-end',
                     alignItems: 'center',
                     gap: 8,
-                    padding: '8px 12px',
+                    // Below the phone status bar — the toolbar (and its exit ✕)
+                    // used to sit under the clock with no way off the map.
+                    padding: 'calc(8px + env(safe-area-inset-top, 0px)) 12px 8px',
                     background: 'var(--surface)',
                     borderBottom: '1px solid var(--border)',
                     boxSizing: 'border-box',
@@ -1933,7 +1938,7 @@ export function ChecklistTechTreeTab({
                         onPointerDown={(e) => e.stopPropagation()}
                         title="Exit full screen (Esc)"
                         aria-label="Exit full screen (Esc)"
-                        style={roadmapExitFullscreenIconButtonStyle}
+                        style={{ ...roadmapExitFullscreenIconButtonStyle, minWidth: 44, minHeight: 44 }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} aria-hidden>
                           <path

@@ -54,7 +54,7 @@ If a stage is really a do-in-any-order checklist, switch it to parallel — two 
 
 Parallel stages wear a small blue **⇊ parallel** badge — on the Map box, the Plan stage header, and the Timeline row — so you can tell at a glance which stages hand out everything at once. Switching back to **In order** pulls not-yet-due tasks off people's lists and returns them to ⏳ Waiting For (finished work is never touched).
 
-To see a stage's tasks on the map, press the **›** chevron at its left edge (or the ⌄⌄ *Show all* toolbar button to expand every stage). Click — or **press and hold**, on a phone — any task to open its card; rename it, assign people, or post a note; see *staff and discuss roadmap tasks*.
+To see a stage's tasks on the map, press the **›** chevron at its left edge (or the ⌄⌄ *Show all* toolbar button to expand every stage). **Tap any task title** to open its card; rename it, assign people, or post a note; see *staff and discuss roadmap tasks*. **Press and hold** a task instead and it lifts to your finger — drag it up, down, or into another stage, exactly like the task boards. In full screen, the toolbar sits below your phone's clock and the **✕** at its end always brings you back.
 
 :::example Unassigned is fine
 You can add tasks with nobody ticked and staff them later from the task card — the card says "Not on anyone's list yet" until you do.
