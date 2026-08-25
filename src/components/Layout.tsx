@@ -14,6 +14,7 @@ import AddTaskShortcutBanner from './AddTaskShortcutBanner'
 import AssistantReadyToBillBanner from './AssistantReadyToBillBanner'
 import CustomerContactCardIcon from './icons/CustomerContactCardIcon'
 import { RouteChunkBoundary } from './RouteChunkBoundary'
+import { RouteLoadingFallback } from './RouteLoadingFallback'
 import { consumePendingOpenAddTask } from '../lib/iosPwa'
 import { loadAndApplyExtraJobAddressLocalities } from '../lib/jobAddressLocalitySettings'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
@@ -1811,7 +1812,7 @@ export default function Layout() {
           }}
         >
           <RouteChunkBoundary resetKey={location.pathname}>
-            <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>}>
+            <Suspense fallback={<RouteLoadingFallback />}>
               <Outlet />
             </Suspense>
           </RouteChunkBoundary>
