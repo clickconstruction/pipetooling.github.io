@@ -38,6 +38,7 @@ import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistRe
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
 import { ChecklistComingUpSection } from '../components/checklist/ChecklistComingUpSection'
 import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileCaption } from '../lib/checklistReviewTiles'
+import { collapseMissedInstances, type MissedGroup } from '../lib/checklistMissedGroups'
 import { useToastContext } from '../contexts/ToastContext'
 import { ChecklistCostButton } from '../components/checklist/ChecklistCostButton'
 import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
@@ -1599,6 +1600,7 @@ function OutstandingByPersonSortableRow({
   onOpenRoadmapContext,
   setEditItemId,
   setError,
+  missedCount = 1,
 }: {
   inst: OutstandingInstance
   userId: string
@@ -1611,6 +1613,8 @@ function OutstandingByPersonSortableRow({
   deletingInstanceId: string | null
   expanded: boolean
   notesCount: number
+  /** Missed view: how many missed copies this row stands for (v2.2272). */
+  missedCount?: number
   onToggleExpanded: (instanceId: string) => void
   onMarkComplete: (inst: OutstandingInstance) => void
   onDeleteInstance: (inst: OutstandingInstance) => void
@@ -1692,7 +1696,8 @@ function OutstandingByPersonSortableRow({
       {/* Two-line phone rows (v2.2201): desktop keeps the single line; under 720px the grip hides,
           the ✓ becomes a boxed 34px target spanning both lines, the title takes the full width and
           the meta cluster (roadmap chip · age · notes · 🗑) drops to its own line. Styles: .obp-* in
-          OutstandingByPersonSortableList. */}
+          OutstandingByPersonSortableList. Hold-to-lift: drag listeners live on the <li> itself —
+          the grip below is a desktop affordance, not the only handle. */}
       <div className={`obp-row${isDev ? '' : ' obp-row--nocheck'}`}>
         {canManageChecklists && (
           <button
@@ -1794,6 +1799,14 @@ function OutstandingByPersonSortableRow({
               </span>
             ) : null}
             <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))}</span>
+            {missedCount > 1 ? (
+              <span
+                title={`Missed on ${missedCount} scheduled days — completing or deleting this row resolves all of them`}
+                style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.45rem', borderRadius: 7, background: 'var(--bg-muted)', border: '1px solid var(--border)', color: 'var(--text-muted)', flexShrink: 0, whiteSpace: 'nowrap' }}
+              >
+                missed ×{missedCount}
+              </span>
+            ) : null}
             {canSeeCosts && (
               // Bridged roadmap tasks key their estimate by the roadmap task id so
               // Review and the roadmap Plan view share one number per task.
@@ -1888,6 +1901,7 @@ function OutstandingByPersonSortableList({
   deletingInstanceId,
   expandedInstanceId,
   notesByInstance,
+  missedCountByInstance,
   onToggleExpanded,
   onMarkComplete,
   onDeleteInstance,
@@ -1915,6 +1929,8 @@ function OutstandingByPersonSortableList({
   authUserId: string | null
   expandedInstanceId: string | null
   notesByInstance: Map<string, number>
+  /** Missed view: representative instance id → missed-copy count (v2.2272). */
+  missedCountByInstance?: Map<string, number>
   onToggleExpanded: (instanceId: string) => void
   setError: (s: string | null) => void
 }) {
@@ -1977,6 +1993,7 @@ function OutstandingByPersonSortableList({
               deletingInstanceId={deletingInstanceId}
               expanded={expandedInstanceId === inst.id}
               notesCount={notesByInstance.get(inst.id) ?? 0}
+              missedCount={missedCountByInstance?.get(inst.id) ?? 1}
               onToggleExpanded={onToggleExpanded}
               onMarkComplete={onMarkComplete}
               onDeleteInstance={onDeleteInstance}
@@ -1999,6 +2016,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
   const [byUser, setByUser] = useState<Array<{ userId: string; name: string; count: number; instances: OutstandingInstance[] }>>([])
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<'next_day' | 'next_week' | 'non_repeating' | 'missed'>('non_repeating')
+  /** Missed view: representative instance id → its whole missed group (collapse, v2.2272). */
+  const [missedGroups, setMissedGroups] = useState<Map<string, MissedGroup<OutstandingInstance>>>(new Map())
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
   const [remindingStageId, setRemindingStageId] = useState<string | null>(null)
   const costEstimates = useChecklistCostEstimates(canSeeCosts)
@@ -2155,7 +2174,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
     setDeletingInstanceId(inst.id)
     setError(null)
     try {
-      const { error: err } = await supabase.from('checklist_instances').delete().eq('id', inst.id)
+      // Missed view: the row stands for every missed copy — delete them all.
+      const targetIds = missedGroups.get(inst.id)?.instanceIds ?? [inst.id]
+      const { error: err } = await supabase.from('checklist_instances').delete().in('id', targetIds)
       if (err) throw err
       setOutstandingDeletePending(null)
       await loadOutstanding()
@@ -2183,13 +2204,19 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
     setCompletingInstanceId(inst.id)
     setError(null)
     try {
+      // Missed view: the row stands for every missed copy of the item — one ✓
+      // resolves the whole backlog (one update, one notification, one next
+      // occurrence), and the repeat math runs off the NEWEST missed date.
+      const group = missedGroups.get(inst.id)
+      const targetIds = group ? group.instanceIds : [inst.id]
+      const repeatFromDate = group ? group.newestScheduledDate : inst.scheduled_date
       const { data: updatedRows, error: err } = await supabase
         .from('checklist_instances')
         .update({
           completed_at: new Date().toISOString(),
           completed_by_user_id: authUserId,
         })
-        .eq('id', inst.id)
+        .in('id', targetIds)
         .select('id')
       if (err) throw err
       if (!updatedRows?.length) {
@@ -2234,7 +2261,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           if (daysAfter) {
             const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
             if (assigneeIds.length > 0) {
-              const nextDate = new Date(inst.scheduled_date)
+              const nextDate = new Date(repeatFromDate)
               nextDate.setDate(nextDate.getDate() + daysAfter)
               const nextDateStr = toLocalDateString(nextDate)
               if (!endDate || nextDateStr <= endDate) {
@@ -2523,18 +2550,28 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
         userMap.set(row.checklist_item_id, row.display_order ?? 999999)
       }
     }
+    const groupsByRep = new Map<string, MissedGroup<OutstandingInstance>>()
     const rows = Array.from(map.entries()).map(([userId, list]) => {
       const name = list[0]?.name ?? 'Unknown'
       const userOrderMap = orderMap.get(userId)
-      const sortedInstances = [...list.map((x) => x.inst)].sort((a, b) => {
+      let sortedInstances = [...list.map((x) => x.inst)].sort((a, b) => {
         const orderA = userOrderMap?.get(a.checklist_item_id) ?? 999999
         const orderB = userOrderMap?.get(b.checklist_item_id) ?? 999999
         if (orderA !== orderB) return orderA - orderB
         return a.scheduled_date.localeCompare(b.scheduled_date)
       })
-      return { userId, name, count: list.length, instances: sortedInstances }
+      if (dateRange === 'missed') {
+        // A missed task is ONE task, incomplete for X days — not one row per
+        // missed day (a daily item missed for months was 180 rows and made
+        // "505 outstanding" counts). ✓/🗑 act on the whole group.
+        const groups = collapseMissedInstances(sortedInstances)
+        for (const g of groups) groupsByRep.set(g.representative.id, g)
+        sortedInstances = groups.map((g) => g.representative)
+      }
+      return { userId, name, count: sortedInstances.length, instances: sortedInstances }
     })
     rows.sort((a, b) => b.count - a.count)
+    setMissedGroups(groupsByRep)
     setByUser(rows)
     setLoading(false)
     // 💬 chips: count comment events per listed instance. Non-blocking, and
@@ -3246,6 +3283,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                         deletingInstanceId={deletingInstanceId}
                         expandedInstanceId={expandedInstanceId}
                         notesByInstance={notesByInstance}
+                        missedCountByInstance={new Map([...missedGroups.values()].map((g) => [g.representative.id, g.count]))}
                         onToggleExpanded={(instanceId) => setExpandedInstanceId((prev) => (prev === instanceId ? null : instanceId))}
                         onMarkComplete={markComplete}
                         onDeleteInstance={openOutstandingDeleteModal}
@@ -3334,7 +3372,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
               <span style={{ color: 'var(--text-muted)' }}> ({outstandingDeletePending.scheduled_date})</span>
             </p>
             <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              This cannot be undone.
+              {(missedGroups.get(outstandingDeletePending.id)?.count ?? 1) > 1
+                ? `Removes all ${missedGroups.get(outstandingDeletePending.id)!.count} missed copies of this task. This cannot be undone.`
+                : 'This cannot be undone.'}
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
