@@ -28,7 +28,7 @@ Drag from **Drill a well** into empty space, name the new box **Run water to the
 ## Add tasks to a stage
 
 1. Hover the stage box. Two tiny buttons sit on its right side: a **✎ pencil** (edit the stage) and, just below it, a **+** (*Add task to this group*).
-2. Press **+**. The "Add task" dialog asks for the task title and, optionally, who it's assigned to — tick one or more names.
+2. Press **+**. The "Add task" dialog asks for the task title and, optionally, who it's assigned to — tick one or more names, or type in the **search box** to filter the list (Enter ticks the only match).
 3. {{button:blue|Save}}. The task appears inside the stage as its next number (1.1, 1.2, …) and on each assignee's list once the stage unlocks.
 
 ## Staff a whole crew at once
