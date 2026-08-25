@@ -125,6 +125,7 @@ import {
   type CustomerAttachmentPayload,
 } from '../lib/estimateCustomerAttachment'
 import { pageTabStyle } from '../lib/pageTabStyle'
+import { TAP_HINT_DURATION_MS, isDeadTap, tapHintCss } from '../lib/tapHint'
 import { JobThreadNotesPanel, type JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { useEstimateThreadNotes, type EstimateThreadNoteStats } from '../hooks/useEstimateThreadNotes'
@@ -497,7 +498,7 @@ const estimateDetailLineItemRowCss = `
 
 const estimateDetailPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisibleCss}\n${estimateCustomerSearchHighlightCss}\n${estimateDetailLineItemRowCss}`
 
-const estimatesListPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisibleCss}\n${estimatesListCustomerSnapshotBtnCss}`
+const estimatesListPageCss = `${estimatesPageShellCss}\n${estimatesFocusVisibleCss}\n${estimatesListCustomerSnapshotBtnCss}\n${tapHintCss('.estimate-card--tap-hint')}`
 
 /** Keeps wide estimate tables from widening the whole page (flex min-width chain). */
 const estimateListTableScrollWrapStyle: CSSProperties = {
@@ -1342,6 +1343,17 @@ function EstimateListCards({
 }: EstimateListTableProps) {
   const { role: estimateListViewerRole } = useAuth()
 
+  // Dead-tap hint (v2.2289): tapping a card where nothing is clickable
+  // flashes the card's real click zones (mockup-approved). Fires only on
+  // dead taps — a tap on a link/button just does its job.
+  const [tapHintCardId, setTapHintCardId] = useState<string | null>(null)
+  const tapHintTimerRef = useRef<number | null>(null)
+  const showTapHint = (cardId: string) => {
+    if (tapHintTimerRef.current != null) window.clearTimeout(tapHintTimerRef.current)
+    setTapHintCardId(cardId)
+    tapHintTimerRef.current = window.setTimeout(() => setTapHintCardId(null), TAP_HINT_DURATION_MS)
+  }
+
   function renderExpandControl(estimateId: string) {
     if (!stagesThread) return null
     const expanded = stagesThread.expandedEstimateThreadId === estimateId
@@ -1616,6 +1628,10 @@ function EstimateListCards({
           <div
             key={r.id}
             role="listitem"
+            className={tapHintCardId === r.id ? 'estimate-card--tap-hint' : undefined}
+            onClick={(e) => {
+              if (isDeadTap(e.target)) showTapHint(r.id)
+            }}
             style={{
               border: '1px solid var(--border)',
               borderRadius: 8,
