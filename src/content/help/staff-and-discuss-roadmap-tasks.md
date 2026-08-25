@@ -34,18 +34,20 @@ In the **Plan** view's header, **N assigned** and **N unstaffed** are tappable. 
 
 ## Rename a task
 
-Tap the **✎** next to the title, type, and press **Enter** (Esc cancels). Editors only.
+Tap the **title itself** (the faint ✎ marks it), type, and press **Enter** (Esc cancels). Editors only.
 
-## Mark a task done (or reopen it)
+## The dock — Mark done, Pin, Delete
 
-The task card's {{chip:green|○ Mark done}} button completes the roadmap task right there — the same as ticking its box on the Map — and turns into **✓ done · reopen** so one more tap undoes it. Editors always can; an assignee can when the stage is unlocked. The card opens from the Map, Plan, Next up, the Review tab's Goals ledger, and the "Where this task fits" window, so you can finish a task from wherever you found it.
+Everything you press lives in one **dock at the bottom of the card**, the same on phone and desktop:
 
-## Delete a task
+- {{button:green|○ Mark done}} completes the roadmap task right there — same as ticking its box on the Map — and flips to **✓ Done · reopen** so one more tap undoes it. It responds the moment you tap; if the save doesn't stick (bad signal), the button says **Tap to retry — not saved** instead of quietly reverting.
+- The **☆ square** pins the task (amber ★ when pinned) — it jumps to the top of its lane on the Plan's ⚡ Next up shortlist.
+- The **🗑 square** starts the two-step delete: {{button:red|Delete permanently}} or **Keep it**. Completed history always stays.
 
-Editors see **Delete task…** in red under the Assigned section. It asks once — {{button:red|Delete permanently}} or **Keep it** — then removes the task from the roadmap and any unfinished list entry. Completed history stays: if the task was already done and reviewed, that record is never touched.
+Editors see all three; an assignee sees Mark done when the stage is unlocked. The card opens from the Map, Plan, Next up, the Review tab's Goals ledger, and the "Where this task fits" window.
 
-## Pin a task
+## On a phone in the field
 
-Tap the **★** beside the title to say "this one, now": the task jumps to the top of its lane on the Plan's ⚡ Next up shortlist (see *see what to do next on a roadmap*). Tap again to unpin. Editors only.
+Crew members get a simpler card built for sunlight: the task in big bold text, who's on it, the latest note, and one giant green **✓ DONE**. Two one-tap replies — **👍 On it** and **⚠️ Problem** — post straight to the task's conversation without opening the keyboard. A task that ⏳ waits its turn shows who it's waiting on instead of a button.
 
 The card's stage crumb wears the stage's **number badge**, so "the gate task on stage 4" is easy to find from either view.
