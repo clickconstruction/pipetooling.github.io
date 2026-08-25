@@ -91,6 +91,8 @@ export default function BilledPaymentForecastModal({
   onOpenInvoice,
   onEmail,
   onOpenJobDetail,
+  canExcludePayments,
+  onPaySpeedsChanged,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -102,6 +104,10 @@ export default function BilledPaymentForecastModal({
   onOpenInvoice: (invoiceId: string) => void
   /** Open one payment's job detail from the Pay speeds drill-down (v2.2288). */
   onOpenJobDetail?: (jobId: string) => void
+  /** Devs + master techs may exclude payments in the Data health drill-down (v2.2290). */
+  canExcludePayments?: boolean
+  /** Refetch pay speeds after an exclusion toggles (v2.2290). */
+  onPaySpeedsChanged?: () => void
   /** Opens the Email… share modal (v2.2226) — passed only for sender roles. */
   onEmail?: () => void
 }) {
@@ -296,6 +302,8 @@ export default function BilledPaymentForecastModal({
                   }
                 : undefined
             }
+            canExcludePayments={canExcludePayments}
+            onSpeedsChanged={onPaySpeedsChanged}
           />
         ) : null}
 

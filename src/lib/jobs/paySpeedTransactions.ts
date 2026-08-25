@@ -1,0 +1,129 @@
+/**
+ * Kernel for the Data health drill-down (v2.2289): parses
+ * get_pay_speed_transactions() and drives the modal's filter pills.
+ *
+ * Buckets mirror the strip's counts — measurable / unlinked / quarantined /
+ * excluded for payments, plus the all-time undated-bills backlog as its own
+ * lens. Excluded wins over the other statuses (the owner said so), matching
+ * the RPC's CASE order.
+ */
+
+export type PaySpeedTxnStatus = 'measurable' | 'unlinked' | 'quarantined' | 'excluded'
+
+export type PaySpeedTxn = {
+  paymentId: string
+  paidYmd: string
+  amount: number
+  paymentType: string | null
+  customerName: string | null
+  jobId: string | null
+  jobName: string | null
+  address: string | null
+  billedYmd: string | null
+  gapDays: number | null
+  status: PaySpeedTxnStatus
+}
+
+export type UndatedBill = {
+  invoiceId: string
+  amount: number
+  status: string | null
+  customerName: string | null
+  jobId: string | null
+  jobName: string | null
+  address: string | null
+}
+
+export type PaySpeedTransactions = { payments: PaySpeedTxn[]; undatedBills: UndatedBill[] }
+
+export type DataHealthLens = 'all' | PaySpeedTxnStatus | 'undated'
+
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+const STATUSES: PaySpeedTxnStatus[] = ['measurable', 'unlinked', 'quarantined', 'excluded']
+
+function str(v: unknown): string | null {
+  return typeof v === 'string' && v.trim() !== '' ? v : null
+}
+
+function asTxn(v: unknown): PaySpeedTxn | null {
+  if (v == null || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const paymentId = str(o.paymentId)
+  const paidYmd = typeof o.paidYmd === 'string' && YMD_RE.test(o.paidYmd) ? o.paidYmd : null
+  const amount = typeof o.amount === 'number' && Number.isFinite(o.amount) ? o.amount : null
+  const status = STATUSES.includes(o.status as PaySpeedTxnStatus) ? (o.status as PaySpeedTxnStatus) : null
+  if (paymentId == null || paidYmd == null || amount == null || status == null) return null
+  const gap = o.gapDays
+  return {
+    paymentId,
+    paidYmd,
+    amount,
+    paymentType: str(o.paymentType),
+    customerName: str(o.customerName),
+    jobId: str(o.jobId),
+    jobName: str(o.jobName),
+    address: str(o.address),
+    billedYmd: typeof o.billedYmd === 'string' && YMD_RE.test(o.billedYmd) ? o.billedYmd : null,
+    gapDays: typeof gap === 'number' && Number.isFinite(gap) && gap >= 0 ? Math.round(gap) : null,
+    status,
+  }
+}
+
+function asBill(v: unknown): UndatedBill | null {
+  if (v == null || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const invoiceId = str(o.invoiceId)
+  const amount = typeof o.amount === 'number' && Number.isFinite(o.amount) ? o.amount : null
+  if (invoiceId == null || amount == null) return null
+  return {
+    invoiceId,
+    amount,
+    status: str(o.status),
+    customerName: str(o.customerName),
+    jobId: str(o.jobId),
+    jobName: str(o.jobName),
+    address: str(o.address),
+  }
+}
+
+/** Defensive parse; null on gate-refused or malformed payloads. */
+export function parsePaySpeedTransactions(raw: unknown): PaySpeedTransactions | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const p = (raw as { payments?: unknown }).payments
+  const u = (raw as { undatedInvoices?: unknown }).undatedInvoices
+  if (!Array.isArray(p) || !Array.isArray(u)) return null
+  return {
+    payments: p.map(asTxn).filter((t): t is PaySpeedTxn => t != null),
+    undatedBills: u.map(asBill).filter((b): b is UndatedBill => b != null),
+  }
+}
+
+export function lensCounts(data: PaySpeedTransactions): Record<DataHealthLens, number> {
+  const c: Record<DataHealthLens, number> = {
+    all: data.payments.length,
+    measurable: 0,
+    unlinked: 0,
+    quarantined: 0,
+    excluded: 0,
+    undated: data.undatedBills.length,
+  }
+  for (const t of data.payments) c[t.status] += 1
+  return c
+}
+
+function matchesQuery(hay: (string | null)[], q: string): boolean {
+  const needle = q.trim().toLowerCase()
+  if (needle === '') return true
+  return hay.some((h) => h != null && h.toLowerCase().includes(needle))
+}
+
+export function filterTxns(data: PaySpeedTransactions, lens: DataHealthLens, query: string): PaySpeedTxn[] {
+  if (lens === 'undated') return []
+  return data.payments.filter(
+    (t) => (lens === 'all' || t.status === lens) && matchesQuery([t.customerName, t.jobName, t.address], query),
+  )
+}
+
+export function filterBills(data: PaySpeedTransactions, query: string): UndatedBill[] {
+  return data.undatedBills.filter((b) => matchesQuery([b.customerName, b.jobName, b.address], query))
+}
