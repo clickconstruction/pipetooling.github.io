@@ -19,6 +19,7 @@ const data: PaySpeedData = {
   segments: { residential: null, commercial: null },
   customerTypes: {},
   receipts: {},
+  quality: null,
 }
 
 describe('parsePaySpeedsRpc', () => {
@@ -38,6 +39,7 @@ describe('parsePaySpeedsRpc', () => {
       segments: { residential: null, commercial: null },
       customerTypes: {},
       receipts: {},
+      quality: null,
     })
   })
 
@@ -76,6 +78,16 @@ describe('parsePaySpeedsRpc', () => {
     expect(parsed?.customerTypes).toEqual({ a: 'commercial', b: 'residential' })
   })
 
+  it('parses the v6 quality block and rejects partial ones', () => {
+    const ok = parsePaySpeedsRpc({
+      company: null,
+      quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70 },
+    })
+    expect(ok?.quality).toEqual({ payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70 })
+    expect(parsePaySpeedsRpc({ company: null, quality: { payments12mo: 545 } })?.quality).toBeNull()
+    expect(parsePaySpeedsRpc({ company: null })?.quality).toBeNull()
+  })
+
   it('returns null for gate-refused (null) and malformed payloads', () => {
     expect(parsePaySpeedsRpc(null)).toBeNull()
     expect(parsePaySpeedsRpc('nope')).toBeNull()
@@ -88,6 +100,7 @@ describe('parsePaySpeedsRpc', () => {
       segments: { residential: null, commercial: null },
       customerTypes: {},
       receipts: {},
+      quality: null,
     })
   })
 })
@@ -154,7 +167,7 @@ describe('billedExpectedPayModel', () => {
     expect(
       billedExpectedPayModel(
         { ...row, customerId: 'stranger' },
-        { company: null, customers: {}, segments: { residential: null, commercial: null }, customerTypes: {}, receipts: {} },
+        { company: null, customers: {}, segments: { residential: null, commercial: null }, customerTypes: {}, receipts: {}, quality: null },
         '2026-08-20',
       ),
     ).toBeNull()

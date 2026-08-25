@@ -21,6 +21,15 @@ export type CustomerSegment = 'residential' | 'commercial'
 /** One measurable payment behind a customer's median: billed date → the day money hit. */
 export type PayReceipt = { billedYmd: string; paidYmd: string; gapDays: number }
 
+/** Data-health counts for the breakdown's health line (v6 RPC). */
+export type PaySpeedQuality = {
+  payments12mo: number
+  measurable: number
+  unlinked: number
+  undatedInvoices: number
+  quarantined: number
+}
+
 export type PaySpeedData = {
   company: PaySpeedStat | null
   customers: Record<string, PaySpeedStat>
@@ -30,6 +39,8 @@ export type PaySpeedData = {
   customerTypes: Record<string, CustomerSegment>
   /** Customer id → their measurable payments, newest paid first, capped at 12 (v3 RPC; empty pre-v3). */
   receipts: Record<string, PayReceipt[]>
+  /** Measurability health counts (v6 RPC; null pre-v6). */
+  quality: PaySpeedQuality | null
 }
 
 /** Below this many samples a customer's own median is ignored for the company fallback. */
@@ -96,7 +107,24 @@ export function parsePaySpeedsRpc(raw: unknown): PaySpeedData | null {
       if (list.length > 0) receipts[id] = list
     }
   }
-  return { company, customers, segments, customerTypes, receipts }
+  return { company, customers, segments, customerTypes, receipts, quality: asQuality((raw as { quality?: unknown }).quality) }
+}
+
+function asQuality(v: unknown): PaySpeedQuality | null {
+  if (v == null || typeof v !== 'object') return null
+  const n = (key: string): number | null => {
+    const x = (v as Record<string, unknown>)[key]
+    return typeof x === 'number' && Number.isFinite(x) && x >= 0 ? Math.round(x) : null
+  }
+  const payments12mo = n('payments12mo')
+  const measurable = n('measurable')
+  const unlinked = n('unlinked')
+  const undatedInvoices = n('undatedInvoices')
+  const quarantined = n('quarantined')
+  if (payments12mo == null || measurable == null || unlinked == null || undatedInvoices == null || quarantined == null) {
+    return null
+  }
+  return { payments12mo, measurable, unlinked, undatedInvoices, quarantined }
 }
 
 /** A customer-promised payment date on a job (list_job_promised_pay_dates). */

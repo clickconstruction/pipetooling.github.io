@@ -45,6 +45,7 @@ const speeds: PaySpeedData = {
     ],
     ingram: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7 }],
   },
+  quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70 },
 }
 
 function invRow(customerId: string, name: string, amount: number): StageRow {
@@ -116,5 +117,22 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     } finally {
       narrowMatches = false
     }
+  })
+})
+
+describe('data-health line (v2.2259)', () => {
+  it('renders the measurability meter and counts from the quality block', () => {
+    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    expect(screen.getByText(/238 of 545/)).toBeTruthy()
+    expect(screen.getByText(/measurable \(44%\)/)).toBeTruthy()
+    expect(screen.getByText('164')).toBeTruthy()
+    expect(screen.getByText(/unlinked payments/)).toBeTruthy()
+    expect(screen.getByText(/undated bills/)).toBeTruthy()
+    expect(screen.getByText(/quarantined/)).toBeTruthy()
+  })
+
+  it('hides the line entirely on pre-v6 payloads', () => {
+    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={{ ...speeds, quality: null }} onClose={vi.fn()} />)
+    expect(screen.queryByText(/Data health/)).toBeNull()
   })
 })

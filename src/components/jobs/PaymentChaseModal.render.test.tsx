@@ -27,6 +27,7 @@ const speeds: PaySpeedData = {
   segments: { residential: { medianDays: 7, samples: 8 }, commercial: { medianDays: 25, samples: 32 } },
   customerTypes: { knight: 'commercial' },
   receipts: {},
+  quality: null,
 }
 
 function invRow(jobId: string, invoiceId: string, amount: number, billedAt: string): StageRow {

@@ -21,6 +21,7 @@ const speeds: PaySpeedData = {
   },
   customerTypes: { knight: 'commercial' },
   receipts: {},
+  quality: null,
 }
 
 function job(over: Partial<JobWithDetails>): JobWithDetails {
