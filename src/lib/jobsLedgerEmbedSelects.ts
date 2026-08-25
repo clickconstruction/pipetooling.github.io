@@ -43,6 +43,7 @@ export const JOBS_LEDGER_PAYMENTS_EMBED = [
   'paid_on',
   'payment_type',
   'reference_number',
+  'sent_on',
   'sequence_order',
 ].join(', ')
 

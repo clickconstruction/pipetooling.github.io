@@ -34,7 +34,12 @@ export type UndatedBill = {
   address: string | null
 }
 
-export type PaySpeedTransactions = { payments: PaySpeedTxn[]; undatedBills: UndatedBill[] }
+export type PaySpeedTransactions = {
+  payments: PaySpeedTxn[]
+  undatedBills: UndatedBill[]
+  /** Dev-set floor (v2.2303): payments paid before this YMD are not counted anywhere. */
+  noCountDate: string | null
+}
 
 export type DataHealthLens = 'all' | PaySpeedTxnStatus | 'undated'
 
@@ -92,9 +97,11 @@ export function parsePaySpeedTransactions(raw: unknown): PaySpeedTransactions | 
   const p = (raw as { payments?: unknown }).payments
   const u = (raw as { undatedInvoices?: unknown }).undatedInvoices
   if (!Array.isArray(p) || !Array.isArray(u)) return null
+  const noCount = (raw as { noCountDate?: unknown }).noCountDate
   return {
     payments: p.map(asTxn).filter((t): t is PaySpeedTxn => t != null),
     undatedBills: u.map(asBill).filter((b): b is UndatedBill => b != null),
+    noCountDate: typeof noCount === 'string' && YMD_RE.test(noCount) ? noCount : null,
   }
 }
 

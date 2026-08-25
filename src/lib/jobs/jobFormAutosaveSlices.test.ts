@@ -24,6 +24,7 @@ function payment(over: Partial<PaymentRow> = {}): PaymentRow {
     id: 'p1',
     amount: 50,
     paid_on: null,
+    sent_on: null,
     note: null,
     payment_type: null,
     reference_number: null,

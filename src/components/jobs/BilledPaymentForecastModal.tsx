@@ -92,6 +92,7 @@ export default function BilledPaymentForecastModal({
   onEmail,
   onOpenJobDetail,
   canExcludePayments,
+  isDev,
   onPaySpeedsChanged,
 }: {
   rows: StageRow[]
@@ -106,6 +107,8 @@ export default function BilledPaymentForecastModal({
   onOpenJobDetail?: (jobId: string) => void
   /** Devs + master techs may exclude payments in the Data health drill-down (v2.2290). */
   canExcludePayments?: boolean
+  /** Devs only: the Data health ⚙ No Count Date setting (v2.2303). */
+  isDev?: boolean
   /** Refetch pay speeds after an exclusion toggles (v2.2290). */
   onPaySpeedsChanged?: () => void
   /** Opens the Email… share modal (v2.2226) — passed only for sender roles. */
@@ -303,6 +306,7 @@ export default function BilledPaymentForecastModal({
                 : undefined
             }
             canExcludePayments={canExcludePayments}
+            isDev={isDev}
             onSpeedsChanged={onPaySpeedsChanged}
           />
         ) : null}

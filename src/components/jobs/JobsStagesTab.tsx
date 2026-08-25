@@ -4821,10 +4821,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             applyStagesInvoiceFocus(invoiceId)
           }}
           onOpenJobDetail={(jobId) => {
+            // Land on the Bill tab (v2.2303, owner call): payments + invoice
+            // links are what these doors exist to fix.
             setBilledPaymentForecastOpen(false)
-            jobDetailModal?.openJobDetail({ jobId })
+            tryOpenEditJob(jobId, { initialTab: 'bill' })
           }}
           canExcludePayments={authRole === 'dev' || authRole === 'master_technician'}
+          isDev={authRole === 'dev'}
           onPaySpeedsChanged={() => void refreshBilledPaySpeeds()}
           onEmail={
             authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)

@@ -23,7 +23,7 @@ import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmok
 
 function renderList(
   invoices: ReturnType<typeof makeInvoice>[],
-  payments: Array<{ id: string; amount: number; paid_on: string | null; note: string | null; payment_type: string | null; reference_number: string | null; invoice_id: string | null; mercury_transaction_id: string | null }> = [],
+  payments: Array<{ id: string; amount: number; paid_on: string | null; sent_on: string | null; note: string | null; payment_type: string | null; reference_number: string | null; invoice_id: string | null; mercury_transaction_id: string | null }> = [],
 ) {
   const job = makeJob({ invoices })
   return renderWithProviders(
@@ -72,6 +72,7 @@ describe('JobFormInvoiceList billed send-back (v2.1653)', () => {
     id: `pay-${invoice_id}-${amount}`,
     amount,
     paid_on: null,
+    sent_on: null,
     note: null,
     payment_type: null,
     reference_number: null,
