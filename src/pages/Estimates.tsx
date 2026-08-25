@@ -19,6 +19,7 @@ import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { resolveEstimateMasterUserId as resolveMasterUserId } from '../lib/estimateMasterUser'
+import { EstimateFieldPhotosStrip } from '../components/estimates/EstimateFieldPhotosStrip'
 import {
   EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS,
   formatSignedCentsUsd,
@@ -711,6 +712,30 @@ function formatMoney(cents: number): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
 
+/** Amber "With Dispatch" chip on drafts a field write-up handed to Dispatch (Quick Estimate, v2.2293). */
+function withDispatchChip(r: EstimateListRow): ReactNode {
+  if (r.status !== 'draft' || !r.sent_to_dispatch_at) return null
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        fontSize: '0.65rem',
+        fontWeight: 800,
+        letterSpacing: '0.05em',
+        textTransform: 'uppercase',
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: 'var(--bg-amber-100)',
+        color: 'var(--text-amber-800)',
+        marginRight: 6,
+      }}
+      title="Sent to Dispatch from the field — Dispatch owns finishing this draft"
+    >
+      With Dispatch
+    </span>
+  )
+}
+
 function statusLabel(s: EstimateRow['status']): string {
   switch (s) {
     case 'draft':
@@ -1238,6 +1263,7 @@ function EstimateListTable({
                     const d = readinessDots(computeEstimateListReadiness(r))
                     return (
                       <span style={{ fontSize: '0.75rem', fontWeight: 600, color: d.ready ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
+                        {withDispatchChip(r)}
                         <span aria-hidden style={{ letterSpacing: '0.1em' }}>
                           <span style={{ color: 'var(--text-green-600)' }}>{'●'.repeat(d.done)}</span>
                           <span style={{ color: 'var(--border-strong)' }}>{'○'.repeat(d.todo)}</span>
@@ -4339,6 +4365,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             }
             lineItemsSlot={
           <section style={{ marginTop: 0 }}>
+            <EstimateFieldPhotosStrip estimateId={row.id} />
             {isCO ? (
               <div
                 id="est-step-change"

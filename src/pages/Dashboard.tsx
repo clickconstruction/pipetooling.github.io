@@ -97,6 +97,7 @@ import SubcontractorJobActivityModal from '../components/dashboard/Subcontractor
 import { useDashboardSubSchedule } from '../hooks/useDashboardSubSchedule'
 import { useDashboardAssignedJobs } from '../hooks/useDashboardAssignedJobs'
 import { DashboardMyScheduleSection } from '../components/dashboard/DashboardMyScheduleSection'
+import { QuickEstimateWizard, isQuickEstimateRole } from '../components/estimates/QuickEstimateWizard'
 import { DashboardTeamReadyToBillSection } from '../components/dashboard/DashboardTeamReadyToBillSection'
 import { DashboardBillingPipelineSection } from '../components/dashboard/DashboardBillingPipelineSection'
 import { DashboardAssignedJobsSection } from '../components/dashboard/DashboardAssignedJobsSection'
@@ -680,6 +681,32 @@ export default function Dashboard() {
       })
   }, [authUser?.id, role])
 
+  // Quick Estimate (v2.2293): per-user opt-in button for field roles. Default
+  // OFF — a user_dashboard_buttons row with visible=true turns it on (Settings
+  // → Dashboard). Separate from dashboardButtonVisibility, whose defaults are
+  // all-true and whose role gate excludes most field roles.
+  const [quickEstimateEnabled, setQuickEstimateEnabled] = useState(false)
+  const [quickEstimateOpen, setQuickEstimateOpen] = useState(false)
+  useEffect(() => {
+    if (!authUser?.id || !isQuickEstimateRole(role)) {
+      setQuickEstimateEnabled(false)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('user_dashboard_buttons')
+      .select('visible')
+      .eq('user_id', authUser.id)
+      .eq('button_key', 'quick_estimate')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setQuickEstimateEnabled((data as { visible?: boolean } | null)?.visible === true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role])
+
   useEffect(() => {
     if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) {
       setQuickButtonsPlacement('top')
@@ -1252,6 +1279,18 @@ export default function Dashboard() {
   return (
     <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
       {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Dashboard sections" /> : null}
+      {quickEstimateEnabled && (
+        <div style={{ display: 'flex', marginBottom: '1rem', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={() => setQuickEstimateOpen(true)}
+            style={{ ...quickActionLinkStyle, background: '#7c3aed', border: 'none', cursor: 'pointer' }}
+          >
+            ⚡ Quick Estimate
+          </button>
+        </div>
+      )}
+      <QuickEstimateWizard open={quickEstimateOpen} onClose={() => setQuickEstimateOpen(false)} />
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
           {quickActionDefs.map((b) => (

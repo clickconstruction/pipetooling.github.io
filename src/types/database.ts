@@ -1815,6 +1815,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "checklist_item_costs_actual_recorded_by_user_id_fkey"
+            columns: ["actual_recorded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "checklist_item_costs_created_by_user_id_fkey"
             columns: ["created_by_user_id"]
             isOneToOne: false
@@ -3913,6 +3920,54 @@ export type Database = {
           },
         ]
       }
+      estimate_field_photos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          estimate_id: string
+          filename: string | null
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          estimate_id: string
+          filename?: string | null
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          estimate_id?: string
+          filename?: string | null
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_field_photos_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_field_photos_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: false
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimates: {
         Row: {
           accept_header_brand: string | null
@@ -3945,6 +4000,7 @@ export type Database = {
           public_token_expires_at: string | null
           public_token_hash: string | null
           sent_at: string | null
+          sent_to_dispatch_at: string | null
           status: Database["public"]["Enums"]["estimate_status"]
           terms_snapshot: string
           title: string
@@ -3983,6 +4039,7 @@ export type Database = {
           public_token_expires_at?: string | null
           public_token_hash?: string | null
           sent_at?: string | null
+          sent_to_dispatch_at?: string | null
           status?: Database["public"]["Enums"]["estimate_status"]
           terms_snapshot?: string
           title?: string
@@ -4021,6 +4078,7 @@ export type Database = {
           public_token_expires_at?: string | null
           public_token_hash?: string | null
           sent_at?: string | null
+          sent_to_dispatch_at?: string | null
           status?: Database["public"]["Enums"]["estimate_status"]
           terms_snapshot?: string
           title?: string
@@ -8355,6 +8413,45 @@ export type Database = {
             columns: ["master_id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_speed_exclusions: {
+        Row: {
+          excluded_at: string
+          excluded_by: string | null
+          excluded_by_name: string
+          payment_id: string
+          reason: string | null
+        }
+        Insert: {
+          excluded_at?: string
+          excluded_by?: string | null
+          excluded_by_name?: string
+          payment_id: string
+          reason?: string | null
+        }
+        Update: {
+          excluded_at?: string
+          excluded_by?: string | null
+          excluded_by_name?: string
+          payment_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_speed_exclusions_excluded_by_fkey"
+            columns: ["excluded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_speed_exclusions_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -15210,6 +15307,7 @@ export type Database = {
               price_count: number
             }[]
           }
+      get_pay_speed_transactions: { Args: never; Returns: Json }
       get_payment_forecast_email_payload: { Args: never; Returns: Json }
       get_projects_by_ids: {
         Args: { p_ids: string[] }

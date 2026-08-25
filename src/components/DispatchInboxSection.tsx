@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { Link } from 'react-router-dom'
 import { Archive } from 'lucide-react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
 import { DispatchNoteCombobox } from './DispatchNoteCombobox'
@@ -268,6 +269,30 @@ export function DispatchInboxSection({
                     Open Share with supply house
                   </button>
                 ) : null
+                // Quick Estimate (v2.2293): field write-up → open the draft the
+                // wizard created (links[0] is /estimates/<number>).
+                const fieldEstimateLink =
+                  !isClosed && req.pending_action === 'review_field_estimate' ? (req.links?.[0] ?? null) : null
+                const openFieldEstimateBtn = fieldEstimateLink ? (
+                  <Link
+                    to={fieldEstimateLink}
+                    onClick={(e) => e.stopPropagation()}
+                    title="Open the draft the field sent — finish pricing and send it to the customer"
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-amber)',
+                      borderRadius: 4,
+                      fontSize: '0.875rem',
+                      color: 'var(--text-amber-700)',
+                      fontWeight: 500,
+                      flexShrink: 0,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Open the draft
+                  </Link>
+                ) : null
                 const showCreateTripChargeAction =
                   !isClosed &&
                   req.pending_action === 'trip_charge_turnaway' &&
@@ -465,6 +490,7 @@ export function DispatchInboxSection({
                         {linkJobPicturesBtn}
                         {openSupplyShareBtn}
                         {createTripChargeBtn}
+                        {openFieldEstimateBtn}
                       </div>
                     </div>
                     {expanded && (
