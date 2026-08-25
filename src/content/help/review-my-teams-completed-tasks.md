@@ -32,6 +32,7 @@ If it's not done right, type a comment — it's required, so the person always k
 
 ## Good to know
 
+- **Rearrange someone's list by feel**: press and hold any card on the by-person board (about a third of a second, mouse or finger) — it lifts to you, and you drag it above or below the others. A quick tap still opens the card, and scrolling never picks one up. The order saves per person and is the same order their Today list follows.
 - You review tasks you created or are set to be notified about; devs see everything. Your own completions never queue to you.
 - Quiet items age out on their own after 7 days — the queue doesn't pile up if you skip a few.
 - Anyone who can see a task can add notes on it, so the conversation can continue right on the card.

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties, type PointerEvent } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { useSearchParams } from 'react-router-dom'
 import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -1620,17 +1620,40 @@ function OutstandingByPersonSortableRow({
   setEditItemId: (id: string) => void
   setError: (s: string | null) => void
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: inst.id })
-  const { onPointerDown: sortablePointerDown, ...restSortableListeners } = (listeners ?? {}) as {
-    onPointerDown?: (e: PointerEvent<HTMLButtonElement>) => void
-  } & Record<string, unknown>
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: inst.id,
+    disabled: dragDisabled || !canManageChecklists,
+  })
+  // Suppresses the ghost click that follows a drop (it would toggle the
+  // expansion or hit a row button). Set while dragging, consumed by the
+  // li's onClickCapture, reset at the start of every fresh gesture.
+  const wasDraggedRef = useRef(false)
+  useEffect(() => {
+    if (isDragging) wasDraggedRef.current = true
+  }, [isDragging])
   const style: CSSProperties = {
     marginBottom: '0.25rem',
-    transform: CSS.Transform.toString(transform),
+    // Lift (mockup 1647b4e5): while held, the card scales up and floats on a
+    // shadow instead of ghosting — it should feel picked up, not dimmed.
+    transform:
+      isDragging && transform
+        ? `${CSS.Transform.toString(transform)} scale(1.02)`
+        : CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.85 : 1,
     position: 'relative',
-    zIndex: isDragging ? 2 : undefined,
+    zIndex: isDragging ? 5 : undefined,
+    // The whole row is the drag surface: keep vertical scrolling alive on
+    // touch until the hold activates, and stop long-press text selection.
+    touchAction: 'pan-y',
+    userSelect: 'none',
+    WebkitUserSelect: 'none',
+    ...(isDragging
+      ? {
+          background: 'var(--surface)',
+          boxShadow: '0 12px 32px rgba(0, 0, 0, 0.28)',
+          borderRadius: 12,
+        }
+      : {}),
   }
   const title = inst.checklist_items?.title ?? '\u2014'
   const footerLink = (label: string, onClick: () => void, danger = false) => (
@@ -1651,7 +1674,21 @@ function OutstandingByPersonSortableRow({
     </button>
   )
   return (
-    <li ref={setNodeRef} style={style}>
+    <li
+      ref={setNodeRef}
+      style={style}
+      {...(canManageChecklists ? listeners : {})}
+      onPointerDownCapture={() => {
+        wasDraggedRef.current = false
+      }}
+      onClickCapture={(e) => {
+        if (wasDraggedRef.current) {
+          wasDraggedRef.current = false
+          e.preventDefault()
+          e.stopPropagation()
+        }
+      }}
+    >
       {/* Two-line phone rows (v2.2201): desktop keeps the single line; under 720px the grip hides,
           the ✓ becomes a boxed 34px target spanning both lines, the title takes the full width and
           the meta cluster (roadmap chip · age · notes · 🗑) drops to its own line. Styles: .obp-* in
@@ -1661,12 +1698,7 @@ function OutstandingByPersonSortableRow({
           <button
             type="button"
             {...attributes}
-            {...restSortableListeners}
             disabled={dragDisabled}
-            onPointerDown={(e) => {
-              sortablePointerDown?.(e)
-              e.stopPropagation()
-            }}
             title="Drag to reorder"
             aria-label={`Drag to reorder: ${title}`}
             className="obp-grip"
@@ -1886,7 +1918,10 @@ function OutstandingByPersonSortableList({
   onToggleExpanded: (instanceId: string) => void
   setError: (s: string | null) => void
 }) {
-  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  // Hold-to-lift (mockup 1647b4e5): a ~300ms press anywhere on a card picks it
+  // up — mouse or finger, no grip hunting. A quick tap still expands, and a
+  // finger that starts scrolling (moves >8px before the delay) never lifts.
+  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 280, tolerance: 8 } }))
   const dragDisabled = reorderingUserId === userId
 
   if (!canManageChecklists) {
