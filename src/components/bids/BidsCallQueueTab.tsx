@@ -23,6 +23,8 @@ import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../
 import { setGcPacketLossCategory, setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { BidTabCapturePanel } from './BidTabCapturePanel'
+import { clearBidTabEntries, replaceBidTabEntries } from '../../lib/bids/bidTabEntriesData'
+import type { BidTabEntryDraft } from '../../lib/bids/bidTabPaste'
 import {
   type LedgerPrefixMap,
   bidNumberMatchesQuery,
@@ -186,7 +188,7 @@ export function BidsCallQueueTab({
   }
 
   /** One chase tap — entry + last_contact stamp (+ outcome / tab when given), then reload. */
-  function chaseAction(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null) {
+  function chaseAction(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null, tabEntries: BidTabEntryDraft[] | null = null) {
     if (!authUserId) {
       onError('You must be signed in to log a call.')
       return
@@ -231,6 +233,11 @@ export function BidsCallQueueTab({
         if (tab && hasAnyBidTabValue(tab)) Object.assign(patch, buildBidTabPatch(tab))
         await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save call outcome')
         onError(null)
+        // Paste capture (v2.2296): the full per-bidder tab rides along. Fail-soft.
+        if (tabEntries?.length) {
+          const res = await replaceBidTabEntries(b.id, tabEntries, authUserId ?? null)
+          if (!res.ok) onError('Tab summary saved, but the full bidder list could not be stored yet.')
+        }
         onReloadBids()
       } catch (err) {
         onError(err instanceof Error ? `Could not log the call: ${err.message}` : 'Could not log the call.')
@@ -268,14 +275,22 @@ export function BidsCallQueueTab({
   }
 
   /** Tab save/edit outside a chase — patch only, like the lens doors. */
-  function saveTab(b: MappedBid, values: BidTabValues) {
+  function saveTab(b: MappedBid, values: BidTabValues, entries: BidTabEntryDraft[] | null = null) {
     if (savingBidId) return
     setSavingBidId(b.id)
     const patch: Record<string, number | null> = { ...buildBidTabPatch(values) }
+    const clearing = !hasAnyBidTabValue(values)
     void (async () => {
       try {
         await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save bid tab')
         onError(null)
+        // Paste capture (v2.2296): full per-bidder tab rides along; clears clear it. Fail-soft.
+        if (entries?.length) {
+          const res = await replaceBidTabEntries(b.id, entries, authUserId ?? null)
+          if (!res.ok) onError('Tab summary saved, but the full bidder list could not be stored yet.')
+        } else if (clearing) {
+          await clearBidTabEntries(b.id)
+        }
         setTabOpenBidId(null)
         onReloadBids()
       } catch (err) {
@@ -340,7 +355,7 @@ export function BidsCallQueueTab({
                       ourValue={b.value}
                       initial={bidTabValuesFromRow(b.raw)}
                       saving={savingBidId != null}
-                      onSave={(values) => chaseAction(b, 'bid_tab', null, values)}
+                      onSave={(values, _noteLine, entries) => chaseAction(b, 'bid_tab', null, values, entries ?? null)}
                       secondaryLabel="Log without numbers"
                       onSecondary={() => chaseAction(b, 'bid_tab')}
                     />
@@ -417,7 +432,7 @@ export function BidsCallQueueTab({
                     ourValue={b.value}
                     initial={bidTabValuesFromRow(b.raw)}
                     saving={savingBidId != null}
-                    onSave={(values) => saveTab(b, values)}
+                    onSave={(values, _noteLine, entries) => saveTab(b, values, entries ?? null)}
                     secondaryLabel="Cancel"
                     onSecondary={() => setTabOpenBidId(null)}
                   />
@@ -462,7 +477,7 @@ export function BidsCallQueueTab({
                       ourValue={b.value}
                       initial={bidTabValuesFromRow(b.raw)}
                       saving={savingBidId != null}
-                      onSave={(values) => saveTab(b, values)}
+                      onSave={(values, _noteLine, entries) => saveTab(b, values, entries ?? null)}
                       secondaryLabel="Cancel"
                       onSecondary={() => setTabOpenBidId(null)}
                       onRemove={() => saveTab(b, EMPTY_BID_TAB_VALUES)}

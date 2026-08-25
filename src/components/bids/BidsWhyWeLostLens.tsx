@@ -1,6 +1,8 @@
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { BidLossLearnPanel } from './BidLossLearnPanel'
-import { BidTabCapturePanel, BidTabRecordedLine } from './BidTabCapturePanel'
+import { BidTabCapturePanel, BidTabEntriesLadder, BidTabRecordedLine } from './BidTabCapturePanel'
+import { clearBidTabEntries, fetchBidTabEntries, replaceBidTabEntries, type BidTabEntryRow } from '../../lib/bids/bidTabEntriesData'
+import type { BidTabEntryDraft } from '../../lib/bids/bidTabPaste'
 import type { BidLossLearnRow } from '../../lib/bidLossLearn'
 import {
   EMPTY_BID_TAB_VALUES,
@@ -122,6 +124,8 @@ export function BidsWhyWeLostLens({
   const [lossSearchQuery, setLossSearchQuery] = useState('')
   const [tabCaptureOpen, setTabCaptureOpen] = useState(false)
   const [savingTabBidId, setSavingTabBidId] = useState<string | null>(null)
+  /** Full per-bidder tabs (v2.2296), fetched lazily for the open bid; keyed by bid id. */
+  const [tabEntriesByBid, setTabEntriesByBid] = useState<Record<string, BidTabEntryRow[]>>({})
   /** "bids by" estimator scope (v2.2053) — '' = all; scopes the WHOLE lens (headline, rail, queue). */
   const [estimatorFilter, setEstimatorFilter] = useState('')
 
@@ -250,9 +254,24 @@ export function BidsWhyWeLostLens({
     setTabCaptureOpen(false)
   }, [selectedBid?.rowKey])
 
-  function saveBidTab(b: LensBid, values: BidTabValues) {
+  // Lazy full-tab fetch for the open bid (fail-soft: pre-migration reads just
+  // leave the ladder off).
+  useEffect(() => {
+    const bidId = selectedBid?.id
+    if (!bidId || tabEntriesByBid[bidId] != null) return
+    let cancelled = false
+    void fetchBidTabEntries(bidId).then((res) => {
+      if (!cancelled && res.available) setTabEntriesByBid((prev) => ({ ...prev, [bidId]: res.entries }))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBid?.id, tabEntriesByBid])
+
+  function saveBidTab(b: LensBid, values: BidTabValues, entries: BidTabEntryDraft[] | null = null) {
     setSavingTabBidId(b.id)
     const patch: Record<string, number | null> = { ...buildBidTabPatch(values) }
+    const clearing = !hasAnyBidTabValue(values)
     void (async () => {
       try {
         await withSupabaseRetry(
@@ -260,6 +279,16 @@ export function BidsWhyWeLostLens({
           'save bid tab',
         )
         onError(null)
+        // Paste capture (v2.2296): the full per-bidder tab rides along; a
+        // summary clear ("Remove bid tab") clears the rungs too. Fail-soft.
+        if (entries?.length) {
+          const res = await replaceBidTabEntries(b.id, entries, null)
+          if (res.ok) setTabEntriesByBid((prev) => ({ ...prev, [b.id]: entries.map((e, i) => ({ ...e, id: `local-${i}` })) }))
+          else onError('Tab summary saved, but the full bidder list could not be stored yet.')
+        } else if (clearing) {
+          await clearBidTabEntries(b.id)
+          setTabEntriesByBid((prev) => ({ ...prev, [b.id]: [] }))
+        }
         setTabCaptureOpen(false)
         onReloadBids()
       } catch (err) {
@@ -627,8 +656,12 @@ export function BidsWhyWeLostLens({
                 const tabValues = bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)
                 if (tabCaptureOpen) return null
                 if (hasAnyBidTabValue(tabValues)) {
+                  const entries = tabEntriesByBid[selectedBid.id] ?? []
                   return (
-                    <BidTabRecordedLine values={tabValues} ourValue={selectedBid.value} onEdit={() => setTabCaptureOpen(true)} />
+                    <>
+                      <BidTabRecordedLine values={tabValues} ourValue={selectedBid.value} onEdit={() => setTabCaptureOpen(true)} />
+                      {entries.length > 0 ? <BidTabEntriesLadder entries={entries} /> : null}
+                    </>
                   )
                 }
                 return (
@@ -699,7 +732,7 @@ export function BidsWhyWeLostLens({
                 ourValue={selectedBid.value}
                 initial={bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)}
                 saving={savingTabBidId != null}
-                onSave={(values) => saveBidTab(selectedBid, values)}
+                onSave={(values, _noteLine, entries) => saveBidTab(selectedBid, values, entries ?? null)}
                 secondaryLabel="Cancel"
                 onSecondary={() => setTabCaptureOpen(false)}
                 onRemove={() => saveBidTab(selectedBid, EMPTY_BID_TAB_VALUES)}

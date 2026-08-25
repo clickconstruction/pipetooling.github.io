@@ -25,7 +25,9 @@ import {
   type BidTabRow,
   type BidTabValues,
 } from '../../lib/bidTabCapture'
-import { BidTabCapturePanel, BidTabRecordedLine } from './BidTabCapturePanel'
+import { BidTabCapturePanel, BidTabEntriesLadder, BidTabRecordedLine } from './BidTabCapturePanel'
+import { clearBidTabEntries, fetchBidTabEntries, replaceBidTabEntries, type BidTabEntryRow } from '../../lib/bids/bidTabEntriesData'
+import type { BidTabEntryDraft } from '../../lib/bids/bidTabPaste'
 import { looksLikeCombinedGcName, type BidGcRecipientsMap } from '../../lib/bids/bidGcRecipients'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
@@ -128,6 +130,8 @@ export function BidsWaitingToHearLens({
   const [noteDraft, setNoteDraft] = useState('')
   const [lostPickerOpen, setLostPickerOpen] = useState(false)
   const [tabCaptureOpen, setTabCaptureOpen] = useState(false)
+  /** Full per-bidder tabs (v2.2296), fetched lazily for the open bid; keyed by bid id. */
+  const [tabEntriesByBid, setTabEntriesByBid] = useState<Record<string, BidTabEntryRow[]>>({})
   const [savingBidId, setSavingBidId] = useState<string | null>(null)
   // Optimistic layers over props so taps feel instant while the reload catches up.
   const [localTouches, setLocalTouches] = useState<Record<string, string>>({})
@@ -218,6 +222,20 @@ export function BidsWaitingToHearLens({
     setTabCaptureOpen(false)
   }, [selectedBid?.id])
 
+  // Lazy full-tab fetch for the open bid (fail-soft: pre-migration reads just
+  // leave the ladder off).
+  useEffect(() => {
+    const bidId = selectedBid?.id
+    if (!bidId || tabEntriesByBid[bidId] != null) return
+    let cancelled = false
+    void fetchBidTabEntries(bidId).then((res) => {
+      if (!cancelled && res.available) setTabEntriesByBid((prev) => ({ ...prev, [bidId]: res.entries }))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBid?.id, tabEntriesByBid])
+
   function selectBuilder(key: string) {
     setSelectedBuilderKey(key)
     setSelectedBidId(null)
@@ -227,7 +245,7 @@ export function BidsWaitingToHearLens({
     b: LensBid,
     action: PendingChaseActionKey,
     lossCategory: BidLossCategoryKey | null = null,
-    tab: { values: BidTabValues; noteLine: string } | null = null,
+    tab: { values: BidTabValues; noteLine: string; entries?: BidTabEntryDraft[] | null } | null = null,
   ) {
     if (!authUserId) {
       onError('You must be signed in to log a chase.')
@@ -292,6 +310,13 @@ export function BidsWaitingToHearLens({
           'save chase outcome',
         )
         onError(null)
+        // Paste capture (v2.2296): the full per-bidder tab rides along. Fail-soft
+        // — the summary above already saved, so a missing table only costs rungs.
+        if (tab?.entries?.length) {
+          const res = await replaceBidTabEntries(b.id, tab.entries, authUserId)
+          if (res.ok) setTabEntriesByBid((prev) => ({ ...prev, [b.id]: tab.entries!.map((e, i) => ({ ...e, id: `local-${i}` })) }))
+          else onError('Tab summary saved, but the full bidder list could not be stored yet.')
+        }
         onReloadBids()
       } catch (err) {
         onError(err instanceof Error ? `Could not log the chase: ${err.message}` : 'Could not log the chase.')
@@ -320,6 +345,8 @@ export function BidsWaitingToHearLens({
     void (async () => {
       try {
         await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'remove bid tab')
+        await clearBidTabEntries(b.id)
+        setTabEntriesByBid((prev) => ({ ...prev, [b.id]: [] }))
         onError(null)
         setTabCaptureOpen(false)
         onReloadBids()
@@ -603,12 +630,16 @@ export function BidsWaitingToHearLens({
                 {(() => {
                   const tabValues = bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)
                   if (!hasAnyBidTabValue(tabValues) || tabCaptureOpen) return null
+                  const entries = tabEntriesByBid[selectedBid.id] ?? []
                   return (
-                    <BidTabRecordedLine
-                      values={tabValues}
-                      ourValue={selectedBid.value}
-                      onEdit={() => { setTabCaptureOpen(true); setLostPickerOpen(false) }}
-                    />
+                    <>
+                      <BidTabRecordedLine
+                        values={tabValues}
+                        ourValue={selectedBid.value}
+                        onEdit={() => { setTabCaptureOpen(true); setLostPickerOpen(false) }}
+                      />
+                      {entries.length > 0 ? <BidTabEntriesLadder entries={entries} /> : null}
+                    </>
                   )
                 })()}
                 {(() => {
@@ -714,7 +745,7 @@ export function BidsWaitingToHearLens({
                   ourValue={selectedBid.value}
                   initial={bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)}
                   saving={savingBidId != null}
-                  onSave={(values, noteLine) => runAction(selectedBid, 'bid_tab', null, { values, noteLine })}
+                  onSave={(values, noteLine, entries) => runAction(selectedBid, 'bid_tab', null, { values, noteLine, entries: entries ?? null })}
                   secondaryLabel="Log without numbers"
                   onSecondary={() => runAction(selectedBid, 'bid_tab')}
                   onRemove={() => removeBidTab(selectedBid)}
