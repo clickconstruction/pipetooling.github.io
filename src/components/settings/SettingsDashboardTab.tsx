@@ -30,6 +30,7 @@ import type { UserRow } from '../../types/settingsRows'
 import type { ReportForEdit } from '../ReportEditModal'
 import type { ReportForMyReports } from '../MyReportsModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { isQuickEstimateRole } from '../estimates/QuickEstimateWizard'
 
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 
@@ -446,6 +447,8 @@ export default function SettingsDashboardTab({
           )}
         </div>
       )}
+
+      <QuickEstimateToggleSection authUserId={authUser?.id ?? null} myRole={myRole} />
 
       {myRole != null && (
         <div style={{ marginBottom: '2rem' }}>
@@ -1557,5 +1560,83 @@ export default function SettingsDashboardTab({
         )}
 
     </>
+  )
+}
+
+/**
+ * Quick Estimate opt-in (v2.2293): per-user, default OFF, field roles only
+ * (masters, primaries, devs, estimators, superintendents, subcontractors).
+ * Stored as user_dashboard_buttons button_key 'quick_estimate' — but rendered
+ * as its own section because the "Dashboard buttons" block above is gated to
+ * office-ish roles and defaults everything to on; this one must default off.
+ */
+function QuickEstimateToggleSection({
+  authUserId,
+  myRole,
+}: {
+  authUserId: string | null
+  myRole: UserRole | null
+}) {
+  const [enabled, setEnabled] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!authUserId || !isQuickEstimateRole(myRole)) return
+    let cancelled = false
+    supabase
+      .from('user_dashboard_buttons')
+      .select('visible')
+      .eq('user_id', authUserId)
+      .eq('button_key', 'quick_estimate')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        setEnabled((data as { visible?: boolean } | null)?.visible === true)
+        setLoaded(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [authUserId, myRole])
+
+  if (!authUserId || !isQuickEstimateRole(myRole)) return null
+
+  return (
+    <div
+      style={{
+        marginBottom: '2rem',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: 'var(--bg-subtle)',
+        padding: '1rem',
+      }}
+    >
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={enabled}
+          disabled={!loaded || saving}
+          onChange={async (e) => {
+            const visible = e.target.checked
+            setEnabled(visible)
+            setSaving(true)
+            await supabase.from('user_dashboard_buttons').upsert(
+              { user_id: authUserId, button_key: 'quick_estimate', visible },
+              { onConflict: 'user_id,button_key' },
+            )
+            setSaving(false)
+          }}
+          style={{ marginTop: 3 }}
+        />
+        <span>
+          <span style={{ fontWeight: 600 }}>⚡ Quick Estimate button</span>
+          <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Write up a change order (or estimate) from the field and send it to Dispatch to finish. Adds a button to
+            the top of your Dashboard. Off by default.
+          </span>
+        </span>
+      </label>
+    </div>
   )
 }
