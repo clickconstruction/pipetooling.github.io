@@ -10655,6 +10655,35 @@ export type Database = {
         }
         Relationships: []
       }
+      quickfill_assistant_dailys_daily_checks: {
+        Row: {
+          checked_at: string
+          checked_by: string | null
+          item_id: string
+          work_date: string
+        }
+        Insert: {
+          checked_at?: string
+          checked_by?: string | null
+          item_id: string
+          work_date: string
+        }
+        Update: {
+          checked_at?: string
+          checked_by?: string | null
+          item_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quickfill_assistant_dailys_daily_checks_checked_by_fkey"
+            columns: ["checked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quickfill_difficult_people_daily_checks: {
         Row: {
           checked_at: string

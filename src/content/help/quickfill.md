@@ -48,6 +48,7 @@ On a phone the jump buttons are a single row you flick sideways, with a one-line
 The sections cover the office's recurring review surfaces — among them:
 
 - **Warnings** and **Office Arriving / Office Leaving** — start and end of day checks.
+- **Assistant Dailys** — the office's shared daily duties (schedule conflict check, email and physical inboxes, time-off heads-up, trash out at day's end). One set of checkboxes for the whole team each day: whoever does a duty checks it off, the row shows who and when, and the list clears overnight. There's no assigning — if a box is open, it's anyone's to take.
 - **Vehicle check-ins** — vehicles due for an odometer reading: assigned trucks weekly, motor-pool trucks monthly (those rows say *walk out & check* — there's nobody to call). Each row has the holder's name as a tap-to-call link, the last reading with its age, a **Miles** box, and the check-in questions as checkboxes — *Any lights on the dash?* out of the box. Check a box and a short note about what you saw is required; {{button:blue|Save}} writes the reading, puts the whole check-in on the vehicle's history, and files a problem report for anything you checked. Unassigned vehicles are skipped, and a dev can tune the cadence and questions from People → Vehicles → **⚙ Check-ins ›**.
 
 :::example Saving a check-in
