@@ -1529,6 +1529,7 @@ function EstimateListCards({
                     const d = readinessDots(computeEstimateListReadiness(r))
                     return (
                       <span style={{ fontSize: '0.75rem', fontWeight: 600, color: d.ready ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
+                        {withDispatchChip(r)}
                         <span aria-hidden style={{ letterSpacing: '0.1em' }}>
                           <span style={{ color: 'var(--text-green-600)' }}>{'●'.repeat(d.done)}</span>
                           <span style={{ color: 'var(--border-strong)' }}>{'○'.repeat(d.todo)}</span>
