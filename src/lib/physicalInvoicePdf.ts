@@ -227,6 +227,32 @@ function drawPaymentHistory(
     doc.text(p.amountFormatted, doc.internal.pageSize.getWidth() - PAGE_MARGIN, y, { align: 'right' })
     y += bodyLineHeight
   }
+  // Total paid / balance due (v2.2313), matching the preview and email box.
+  const t = docModel.paymentTotals
+  if (t) {
+    const rightX = doc.internal.pageSize.getWidth() - PAGE_MARGIN
+    if (y > PAGE_CONTENT_MAX_Y - bodyLineHeight * 2) {
+      doc.addPage()
+      y = PAGE_MARGIN + 10
+    }
+    doc.setDrawColor(180)
+    doc.line(PAGE_MARGIN, y - bodyLineHeight * 0.55, rightX, y - bodyLineHeight * 0.55)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Total paid', PAGE_MARGIN, y)
+    doc.text(t.totalPaidFormatted, rightX, y, { align: 'right' })
+    y += bodyLineHeight
+    if (t.paidInFull) {
+      doc.setTextColor(22, 163, 74)
+      doc.text('Paid in full', PAGE_MARGIN, y)
+    } else {
+      doc.setTextColor(179, 38, 30)
+      doc.text('Balance due', PAGE_MARGIN, y)
+      doc.text(t.balanceDueFormatted, rightX, y, { align: 'right' })
+    }
+    doc.setTextColor(0, 0, 0)
+    doc.setFont('helvetica', 'normal')
+    y += bodyLineHeight
+  }
   return y + 6
 }
 
@@ -516,6 +542,9 @@ async function buildPhysicalInvoicePdfBlobSimple(docModel: PhysicalInvoiceDocume
     y = advanceYForWrappedLines(doc, y, descLines, bodyLineHeight)
     y += 6
   }
+
+  // Simple layout gains the same payment history as detailed (v2.2313).
+  y = drawPaymentHistory(doc, y, docModel, bodyLineHeight)
 
   if (docModel.memo) {
     if (y > PAGE_CONTENT_MAX_Y - 16) {

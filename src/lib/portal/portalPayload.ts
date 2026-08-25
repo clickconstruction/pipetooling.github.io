@@ -29,6 +29,10 @@ export type PortalBill = {
   asGc: boolean
   /** Owner's name for the AS GC tag, when known. */
   ownerName: string | null
+  /** Payments already applied to this bill, oldest first (v2.2313). */
+  payments: Array<{ date: string | null; method: string; amount: number }>
+  /** Sum of payments (dollars); may exceed the rows when only the aggregate is known. */
+  totalPaid: number
 }
 
 export type PortalPayload = {
@@ -77,6 +81,16 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         checkRef: str(b.checkRef),
         asGc: b.asGc === true,
         ownerName: typeof b.ownerName === 'string' && b.ownerName.trim() ? b.ownerName : null,
+        payments: Array.isArray(b.payments)
+          ? (b.payments as Array<Record<string, unknown>>)
+              .filter((p) => p != null && typeof p === 'object' && num(p.amount) > 0)
+              .map((p) => ({
+                date: typeof p.date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(p.date) ? p.date.slice(0, 10) : null,
+                method: str(p.method, 'Payment'),
+                amount: num(p.amount),
+              }))
+          : [],
+        totalPaid: num(b.totalPaid),
       })
     }
   }

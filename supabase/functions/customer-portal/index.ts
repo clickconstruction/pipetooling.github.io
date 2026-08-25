@@ -156,9 +156,11 @@ serve(async (req) => {
         .eq('status', 'billed')
       invoices = (invRaw ?? []) as PortalInvoiceRow[]
       if (invoices.length > 0) {
+        // paid_on + payment_type feed the statement's per-payment rows
+        // (v2.2313); the internal `note` is deliberately NOT selected.
         const { data: payRaw } = await admin
           .from('jobs_ledger_payments')
-          .select('invoice_id, amount')
+          .select('invoice_id, amount, paid_on, payment_type, sequence_order')
           .in('invoice_id', invoices.map((i) => i.id))
         payments = (payRaw ?? []) as PortalPaymentRow[]
       }

@@ -339,17 +339,54 @@ export function PhysicalInvoicePreview({
         </div>
 
         {d.paymentHistory.length > 0 ? (
-          <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid var(--border)' }}>
+          // HCP-style boxed ledger (v2.2313): right-aligned card with total
+          // paid + balance due, mirroring the PDF and email renderings.
+          <div
+            style={{
+              marginTop: '0.75rem',
+              marginLeft: 'auto',
+              maxWidth: 340,
+              border: '1px solid var(--border-strong)',
+              borderRadius: 8,
+              padding: '0.6rem 0.85rem 0.4rem',
+            }}
+          >
             <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Payment history</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
               <tbody>
                 {d.paymentHistory.map((p, i) => (
                   <tr key={i}>
-                    <td style={{ padding: '0.25rem 0', color: 'var(--text-700)' }}>{p.dateDisplay}</td>
-                    <td style={{ padding: '0.25rem 0', color: 'var(--text-strong)' }}>{p.method}</td>
-                    <td style={{ padding: '0.25rem 0', textAlign: 'right' }}>{p.amountFormatted}</td>
+                    <td style={{ padding: '0.22rem 0.6rem 0.22rem 0', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>{p.dateDisplay}</td>
+                    <td style={{ padding: '0.22rem 0.6rem 0.22rem 0', color: 'var(--text-700)' }}>{p.method}</td>
+                    <td style={{ padding: '0.22rem 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {p.amountFormatted}
+                    </td>
                   </tr>
                 ))}
+                {d.paymentTotals ? (
+                  <>
+                    <tr>
+                      <td colSpan={2} style={{ padding: '0.35rem 0 0.1rem', borderTop: '1px solid var(--border-strong)', fontWeight: 700 }}>
+                        Total paid
+                      </td>
+                      <td style={{ padding: '0.35rem 0 0.1rem', borderTop: '1px solid var(--border-strong)', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                        {d.paymentTotals.totalPaidFormatted}
+                      </td>
+                    </tr>
+                    {d.paymentTotals.paidInFull ? (
+                      <tr>
+                        <td colSpan={3} style={{ padding: '0.1rem 0 0.3rem', color: '#16a34a', fontWeight: 700 }}>Paid in full</td>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <td colSpan={2} style={{ padding: '0.1rem 0 0.3rem', color: '#b3261e', fontWeight: 700 }}>Balance due</td>
+                        <td style={{ padding: '0.1rem 0 0.3rem', textAlign: 'right', color: '#b3261e', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                          {d.paymentTotals.balanceDueFormatted}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ) : null}
               </tbody>
             </table>
           </div>
