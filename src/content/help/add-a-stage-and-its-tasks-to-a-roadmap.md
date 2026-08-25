@@ -12,10 +12,10 @@ On **Checklist → Roadmap → Map**, every box is a **stage** (a numbered group
 There are three ways; all open the same small "Add group" dialog where you type the stage's name.
 
 - **Right-click empty canvas** — the quickest: right-click (or two-finger tap) any open spot and choose **＋ Add stage here**. The new stage lands exactly where you pointed.
-- **From the toolbar** — in the top-right cluster of the map, press the *Add a roadmap group* button (the amber flowchart icon). The new stage drops onto the canvas on its own, unlinked.
+- **From the toolbar** — in the top-right cluster of the map, press the *Add a roadmap group* button (the amber flowchart icon). The new stage drops, unlinked, in the middle of your current view.
 - **By dragging from a stage** — every stage box has a small connector dot on its right edge. Drag that dot out into **empty canvas** and let go: the dialog opens pre-wired so the stage you dragged from becomes the new one's prerequisite (the new box lands to its right). Drop the dot on an *existing* box instead and you just link the two.
 
-The new stage takes the next number. To renumber, press {{button:outline|Order stages}} — see *number and order roadmap stages*.
+However you add it, the map holds still — nothing else moves, and the new stage glows blue for a moment so you can't lose it. The new stage takes the next number. To renumber, press {{button:outline|Order stages}} — see *number and order roadmap stages*.
 
 ## Remove a line
 

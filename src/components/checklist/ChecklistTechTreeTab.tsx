@@ -393,6 +393,10 @@ export function ChecklistTechTreeTab({
   } | null>(null)
 
   const layoutCacheRef = useRef<{ key: string; nodes: Node[]; edges: Edge[] } | null>(null)
+  /** After an add-patch, the auto-collapse of the new (empty) stage re-keys the
+   *  layout one render later with no group delta — this is that anticipated
+   *  key, accepted as a cache hit so the add never triggers a full reflow. */
+  const patchedAltKeyRef = useRef<string | null>(null)
   const rfInstanceRef = useRef<ReactFlowInstance | null>(null)
   const canvasShellRef = useRef<HTMLDivElement | null>(null)
   // Review mode: walk stages in priority order, one expanded card at a time.
@@ -413,6 +417,9 @@ export function ChecklistTechTreeTab({
     () => new Map<string, { x: number; y: number }>(),
   )
   const [organizeVersion, setOrganizeVersion] = useState(0)
+  /** Just-placed stage wears a short blue glow so it's findable without any camera move (v2.2291). */
+  const [recentlyAddedGroupId, setRecentlyAddedGroupId] = useState<string | null>(null)
+  const recentAddGlowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [reorderMode, setReorderMode] = useState(false)
   // Map = the canvas; Plan = the flat work-front list (v2.1913). Remembered
   // per device — field crews live in Plan, structure edits happen in Map.
@@ -510,6 +517,89 @@ export function ChecklistTechTreeTab({
         edges: layoutCacheRef.current.edges,
       }
     }
+    if (structuralKey && layoutCacheRef.current && patchedAltKeyRef.current === structuralKey) {
+      patchedAltKeyRef.current = null
+      layoutCacheRef.current = { ...layoutCacheRef.current, key: structuralKey }
+      return {
+        nodes: layoutCacheRef.current.nodes,
+        edges: layoutCacheRef.current.edges,
+      }
+    }
+    // Steady camera (v2.2291): adding or deleting a stage must not reflow the
+    // whole graph (the old full dagre pass moved every box and, with the
+    // organizeVersion bump, re-fit the camera — you lost your place after each
+    // add). When the only structural change is added/removed groups (plus
+    // edges touching them), patch the cached layout in place: survivors keep
+    // their exact positions and waypointed edges, new stages get their
+    // pointer/center position, and Organize remains the explicit tidy-up.
+    const cache = layoutCacheRef.current
+    if (structuralKey && cache) {
+      const cachedIds = new Set(cache.nodes.map((n) => n.id))
+      const currentIds = new Set(groups.map((g) => g.id))
+      const addedIds = groups.map((g) => g.id).filter((id) => !cachedIds.has(id))
+      const removedIds = [...cachedIds].filter((id) => !currentIds.has(id))
+      const cachedEdgeIds = new Set(cache.edges.map((e) => e.id))
+      const touchesDelta = (a: string, b: string) =>
+        addedIds.includes(a) || addedIds.includes(b) || removedIds.includes(a) || removedIds.includes(b)
+      const newEdges = flowEdgeList.filter((e) => !cachedEdgeIds.has(e.id))
+      const currentEdgeIds = new Set(flowEdgeList.map((e) => e.id))
+      const goneEdges = cache.edges.filter((e) => !currentEdgeIds.has(e.id))
+      const pureGroupDelta =
+        (addedIds.length > 0 || removedIds.length > 0) &&
+        newEdges.every((e) => touchesDelta(e.from, e.to)) &&
+        goneEdges.every((e) => touchesDelta(String(e.source), String(e.target)))
+      if (pureGroupDelta) {
+        const keptNodes = cache.nodes.filter((n) => currentIds.has(n.id))
+        const maxRight = keptNodes.reduce((m, n) => Math.max(m, n.position.x), 0)
+        const placed = newGroupManualPositionFromConnectRef.current
+        const addedNodes: Node[] = addedIds.map((id, i) => {
+          const h = nodeHeightForGroup(taskCountByGroup.get(id) ?? 0, true)
+          let pos: { x: number; y: number } | null = placed && placed.id === id ? placed.pos : null
+          if (!pos) {
+            const pane = typeof document !== 'undefined' ? document.querySelector('.react-flow') : null
+            const rect = pane?.getBoundingClientRect()
+            const rf = rfInstanceRef.current
+            if (rect && rf) {
+              const c = rf.screenToFlowPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+              pos = { x: c.x - techTreeNodeWidth / 2 + i * 24, y: c.y - h / 2 + i * 24 }
+            } else {
+              pos = { x: maxRight + techTreeNodeWidth + 90, y: 40 + i * (h + 30) }
+            }
+          }
+          return {
+            id,
+            type: 'groupNode',
+            position: pos,
+            data: { groupId: id, height: h, width: techTreeNodeWidth },
+          }
+        })
+        const patchedNodes = [...keptNodes, ...addedNodes]
+        const keptEdges = cache.edges.filter(
+          (e) => currentEdgeIds.has(e.id) && currentIds.has(String(e.source)) && currentIds.has(String(e.target)),
+        )
+        const addedEdgeStubs: Edge[] = newEdges.map((e) => ({
+          id: e.id,
+          source: e.from,
+          target: e.to,
+          type: 'smoothstep',
+          animated: false,
+        }))
+        const patchedEdges = [...keptEdges, ...addedEdgeStubs]
+        layoutCacheRef.current = { key: structuralKey, nodes: patchedNodes, edges: patchedEdges }
+        if (addedIds.length > 0) {
+          // Mirror the structuralKey construction with the added ids collapsed.
+          const edgeKeys = flowEdgeList
+            .map((e) => ({ id: e.id, from: e.from, to: e.to }))
+            .sort((a, b) => a.id.localeCompare(b.id))
+          patchedAltKeyRef.current = JSON.stringify({
+            gids: groups.map((g) => g.id),
+            edges: edgeKeys,
+            collapsed: [...new Set([...collapsedGroupIds, ...addedIds])].sort(),
+          })
+        }
+        return { nodes: patchedNodes, edges: patchedEdges }
+      }
+    }
     const res = layoutTechTreeFlow({
       groupIds: groups.map((g) => g.id),
       taskCountByGroup,
@@ -584,16 +674,38 @@ export function ChecklistTechTreeTab({
       return next
     })
     if (added.length > 0 || removed.length > 0) {
+      const initialPopulation = knownGroupIdsRef.current.size === 0
       const placeFromConnect = newGroupManualPositionFromConnectRef.current
       if (placeFromConnect && added.includes(placeFromConnect.id)) {
         newGroupManualPositionFromConnectRef.current = null
-        setManualGroupPositions(
-          new Map([[placeFromConnect.id, placeFromConnect.pos]]),
-        )
-      } else {
-        setManualGroupPositions(new Map())
       }
-      setOrganizeVersion((v) => v + 1)
+      if (initialPopulation) {
+        // First data after mount/auth/roadmap switch: lay out fresh and fit.
+        setManualGroupPositions(
+          placeFromConnect && added.includes(placeFromConnect.id)
+            ? new Map([[placeFromConnect.id, placeFromConnect.pos]])
+            : new Map(),
+        )
+        setOrganizeVersion((v) => v + 1)
+      } else {
+        // Steady camera (v2.2291): an add/delete keeps every survivor (and any
+        // hand-dragged position) exactly where it is and never re-fits — the
+        // layout memo patches the cache; Organize is the explicit tidy-up.
+        setManualGroupPositions((prev) => {
+          const next = new Map(prev)
+          for (const id of removed) next.delete(id)
+          if (placeFromConnect && added.includes(placeFromConnect.id)) {
+            next.set(placeFromConnect.id, placeFromConnect.pos)
+          }
+          return next
+        })
+        if (added.length > 0) {
+          const newest = added[added.length - 1]!
+          setRecentlyAddedGroupId(newest)
+          if (recentAddGlowTimerRef.current) clearTimeout(recentAddGlowTimerRef.current)
+          recentAddGlowTimerRef.current = setTimeout(() => setRecentlyAddedGroupId(null), 2500)
+        }
+      }
     }
     knownGroupIdsRef.current = new Set(current)
   }, [authUserId, groups])
@@ -678,6 +790,7 @@ export function ChecklistTechTreeTab({
           onOpenAddTask: openAddTask,
           onOpenStageMode: openStageModeMenu,
           sequential: sequentialByGroupId.get(gid) !== false,
+          justAdded: gid === recentlyAddedGroupId,
           onEditTask: openEditTask,
           collapsed: collapsedGroupIds.has(gid),
           taskCount: tlist.length,
@@ -736,6 +849,7 @@ export function ChecklistTechTreeTab({
     waitingAfterLabelByTaskId,
     openStageModeMenu,
     sequentialByGroupId,
+    recentlyAddedGroupId,
   ])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes)

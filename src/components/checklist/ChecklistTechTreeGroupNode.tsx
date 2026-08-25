@@ -61,6 +61,8 @@ export type GroupNodeData = {
   onOpenStageMode: (groupId: string, x: number, y: number) => void
   /** false = ⇊ parallel (every task offered at once). */
   sequential: boolean
+  /** Just placed (v2.2291): brief glow so the new stage is findable without a camera move. */
+  justAdded: boolean
   /** When set, list uses drag-and-drop; only when canEditStructure. */
   reorderMode: boolean
   onEditTask: (taskId: string) => void
@@ -377,7 +379,7 @@ export function GroupNode({ data }: NodeProps) {
         // Search spotlight: stages with no hit fade back but stay in place, so
         // the graph's shape keeps reading while you search.
         opacity: d.searchIsActive && !cardHasHit ? 0.3 : undefined,
-        transition: 'opacity 120ms ease',
+        transition: 'opacity 120ms ease, box-shadow 400ms ease',
         width: 280,
         minHeight: 80,
         padding: 10,
@@ -386,7 +388,11 @@ export function GroupNode({ data }: NodeProps) {
         background: d.locked ? 'var(--bg-slate-tint)' : 'var(--surface)',
         fontSize: 13,
         boxSizing: 'border-box',
-        boxShadow: dropTargetHere ? '0 0 0 3px rgba(59, 130, 246, 0.45)' : cardSearchOutline,
+        boxShadow: dropTargetHere
+          ? '0 0 0 3px rgba(59, 130, 246, 0.45)'
+          : d.justAdded
+            ? '0 0 0 4px rgba(59, 130, 246, 0.5)'
+            : cardSearchOutline,
       }}
     >
       {d.stageNumber > 0 ? <RoadmapStageNumberBadge n={d.stageNumber} corner /> : null}
