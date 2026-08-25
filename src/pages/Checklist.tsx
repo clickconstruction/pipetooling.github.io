@@ -105,6 +105,10 @@ type RoadmapTaskEmbed = {
 function roadmapGoalChip(
   item: { roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null | undefined,
   onOpen?: (roadmapGroupTaskId: string) => void,
+  opts?: {
+    /** Full-width bar placement (v2.2286): wrap long stage names instead of truncating. */
+    wrap?: boolean
+  },
 ) {
   if (!item?.roadmap_group_task_id) return null
   const group = item.checklist_tech_tree_group_tasks?.checklist_tech_tree_groups
@@ -119,13 +123,13 @@ function roadmapGoalChip(
     borderRadius: 7,
     background: 'var(--bg-purple-tint, var(--bg-blue-tint))',
     color: 'var(--text-purple-800, var(--text-blue-800))',
-    // One line, never two: long stage names truncate; the tooltip has the full path.
-    whiteSpace: 'nowrap',
     verticalAlign: 'middle',
-    maxWidth: 230,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
     display: 'inline-block',
+    ...(opts?.wrap
+      ? // Bar placement: the full stage name, wrapping onto extra lines as needed.
+        ({ whiteSpace: 'normal', lineHeight: 1.35, textAlign: 'left' } as const)
+      : // Inline placement: one line, never two — long stage names truncate; the tooltip has the full path.
+        ({ whiteSpace: 'nowrap', maxWidth: 230, overflow: 'hidden', textOverflow: 'ellipsis' } as const)),
   } as const
   if (!onOpen) {
     return (
@@ -1795,11 +1799,15 @@ function OutstandingByPersonSortableRow({
               : {}),
           }}
         >
+          {/* Group context first (v2.2286): the stage bar sits above the title, full width and
+              wrapping, so long stage names never push the meta icons off the screen. */}
+          {inst.checklist_items?.roadmap_group_task_id ? (
+            <span className="obp-goalbar">{roadmapGoalChip(inst.checklist_items, onOpenRoadmapContext, { wrap: true })}</span>
+          ) : null}
           <span className="obp-title" style={{ minWidth: 0 }}>
             <ChecklistTitleWithLinks title={title} links={inst.checklist_items?.links} />
           </span>
           <span className="obp-meta">
-            {roadmapGoalChip(inst.checklist_items, onOpenRoadmapContext)}
             {notesCount > 0 ? (
               <span
                 style={{
@@ -1984,10 +1992,12 @@ function OutstandingByPersonSortableList({
       <SortableContext items={instances.map((i) => i.id)} strategy={verticalListSortingStrategy}>
         {/* Two-line phone rows (v2.2201): desktop = one line (grip · ✓ · title · meta); under 720px the
             grip hides, the ✓ boxes up and spans both lines, the title runs edge to edge, and the meta
-            cluster (chip · age · 💬 · spacer · 🗑) becomes the second line. */}
+            cluster (age · 💬 · spacer · 🗑) becomes the second line. Tasks with a roadmap stage carry
+            a full-width wrapping group bar above the title (v2.2286) instead of an inline chip. */}
         <style>{`
           .obp-row { display: flex; align-items: center; gap: 0.125rem; }
-          .obp-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.45rem; padding: 0.3rem 0.35rem; }
+          .obp-main { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; padding: 0.3rem 0.35rem; }
+          .obp-goalbar { flex: 1 1 100%; min-width: 0; }
           .obp-title { flex: 1; min-width: 0; }
           .obp-meta { display: inline-flex; align-items: center; gap: 0.35rem; flex-shrink: 0; }
           .obp-sp { display: none; }
