@@ -73,3 +73,13 @@ export function summarizeOpenTaskCosts(
 export function formatOpenCostSummary(s: OpenCostSummary): string {
   return `${formatWholeDollars(s.dollars)}${s.costed < s.total ? '+' : ''}`
 }
+
+/**
+ * Who sees the cost lens (chips, totals, the estimator). Estimates derive
+ * from payroll wages, so this mirrors the `checklist_item_costs` RLS:
+ * dev or controller — deliberately not `has_payroll_access()`, which would
+ * also include pay-approved masters.
+ */
+export function canSeeTaskCosts(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'controller'
+}

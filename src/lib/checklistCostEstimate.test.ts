@@ -56,3 +56,14 @@ describe('formatOpenCostSummary', () => {
     expect(formatOpenCostSummary({ dollars: 300, costed: 4, total: 4 })).toBe('$300')
   })
 })
+
+describe('canSeeTaskCosts', () => {
+  it('allows exactly dev and controller', async () => {
+    const { canSeeTaskCosts } = await import('./checklistCostEstimate')
+    expect(canSeeTaskCosts('dev')).toBe(true)
+    expect(canSeeTaskCosts('controller')).toBe(true)
+    for (const r of ['master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', null, undefined]) {
+      expect(canSeeTaskCosts(r)).toBe(false)
+    }
+  })
+})

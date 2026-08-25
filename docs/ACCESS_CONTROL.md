@@ -81,7 +81,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 6. **estimator** - Bid estimation specialists
 7. **primary** - Materials and job reports specialist, **scoped to their own work since v2.2174–2177**: bids they are estimator/account manager/creator of, estimates they created or on jobs they are Account Man for, jobs they are Account Man for; Jobs page shows the Reports tab only; Dashboard with Recent Reports, My Bids and Send task
 8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only; no People page)
-9. **controller** - Bookkeeper/financial controller (v2.662): **acts like an assistant everywhere** (client `isAssistantLike()`, DB `is_assistant()` are assistant-LIKE) **plus dev-level financial visibility** — Payroll tab, wages/pay stubs (`has_payroll_access()`), team labor totals, Job Summary labor/profit, Cost breakdown team labor. Not dev admin (no user management, impersonation, backups, deletes).
+9. **controller** - Bookkeeper/financial controller (v2.662): **acts like an assistant everywhere** (client `isAssistantLike()`, DB `is_assistant()` are assistant-LIKE) **plus dev-level financial visibility** — Payroll tab, wages/pay stubs (`has_payroll_access()`), team labor totals, Job Summary labor/profit, Cost breakdown team labor, and the checklist/roadmap **task cost lens** (`checklist_item_costs` RLS `is_dev() OR is_controller()`, migration 20260824235336 — deliberately narrower than `has_payroll_access()`). Not dev admin (no user management, impersonation, backups, deletes).
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 

@@ -124,7 +124,7 @@ const UUID_RE =
 
 export function ChecklistTechTreeTab({
   authUserId,
-  isDev,
+  showTaskCosts,
   canEditTechTree,
   setError,
   roadmapIdFromUrl,
@@ -133,8 +133,8 @@ export function ChecklistTechTreeTab({
   onOpenTodayTab,
 }: {
   authUserId: string | null
-  /** Gates the dev-only cost system (chips + estimator) on the Plan view. */
-  isDev?: boolean
+  /** Cost lens on the Plan view (dev or controller — mirrors checklist_item_costs RLS). */
+  showTaskCosts?: boolean
   /** true for dev, master, assistant, primary (matches is_dev_or_master_or_assistant RLS) */
   canEditTechTree: boolean
   setError: (s: string | null) => void
@@ -1572,7 +1572,7 @@ export function ChecklistTechTreeTab({
             users={users}
             currentUserId={authUserId}
             canEditStructure={canEditStructure}
-            showCosts={isDev === true}
+            showCosts={showTaskCosts === true}
             onAssign={assignTaskToUser}
             onOpenTask={openEditTask}
           />
