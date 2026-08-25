@@ -154,22 +154,25 @@ export default function DispatchModeCustomers({
 
   return (
     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-      <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: 'center' }}>
-        Customers
-      </h1>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} role="group" aria-label="Sort customers">
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Sort By:</span>
-        <button type="button" aria-pressed={sort === 'name'} style={sortChipBtn(sort === 'name')} onClick={() => setSort('name')}>
-          Name
-        </button>
-        <button
-          type="button"
-          aria-pressed={sort === 'interacted'}
-          style={sortChipBtn(sort === 'interacted')}
-          onClick={() => setSort('interacted')}
-        >
-          Interacted
-        </button>
+      {/* Title rides the sort row's dead space (v2.2277) instead of its own centered row. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} role="group" aria-label="Sort customers">
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Sort By:</span>
+          <button type="button" aria-pressed={sort === 'name'} style={sortChipBtn(sort === 'name')} onClick={() => setSort('name')}>
+            Name
+          </button>
+          <button
+            type="button"
+            aria-pressed={sort === 'interacted'}
+            style={sortChipBtn(sort === 'interacted')}
+            onClick={() => setSort('interacted')}
+          >
+            Interacted
+          </button>
+        </div>
+        <h1 style={{ margin: '0 0 0 auto', fontSize: '1.1rem', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>
+          Customers
+        </h1>
       </div>
       <input
         type="search"
