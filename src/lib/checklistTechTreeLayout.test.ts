@@ -85,3 +85,56 @@ describe('buildRoutedEdgePath', () => {
     expect(d).toContain('Q 4,0 4,2')
   })
 })
+
+describe('dropHairpinPoints', () => {
+  it('removes a needle apex that reverses direction (the stray-line spike)', async () => {
+    const { dropHairpinPoints } = await import('./checklistTechTreeLayout')
+    // Real prod shape (v2.2302): endpoints ~90px apart, midpoint ~500px below.
+    const out = dropHairpinPoints([
+      { x: 1782, y: 985 },
+      { x: 1825, y: 1469 },
+      { x: 1868, y: 960 },
+    ])
+    expect(out).toEqual([
+      { x: 1782, y: 985 },
+      { x: 1868, y: 960 },
+    ])
+  })
+
+  it('keeps a legitimate right-angle dodge around a node', async () => {
+    const { dropHairpinPoints } = await import('./checklistTechTreeLayout')
+    const dodge = [
+      { x: 0, y: 0 },
+      { x: 0, y: 120 },
+      { x: 300, y: 120 },
+      { x: 300, y: 0 },
+      { x: 400, y: 0 },
+    ]
+    expect(dropHairpinPoints(dodge)).toEqual(dodge)
+  })
+
+  it('drops zero-length duplicate points, then re-checks the joined turn', async () => {
+    const { dropHairpinPoints } = await import('./checklistTechTreeLayout')
+    const out = dropHairpinPoints([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 0 },
+      { x: 0, y: 1 },
+    ])
+    // duplicate removed, then the ~180° turn at (100,0) collapses too
+    expect(out).toEqual([
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+    ])
+  })
+
+  it('leaves two-point and empty inputs alone', async () => {
+    const { dropHairpinPoints } = await import('./checklistTechTreeLayout')
+    expect(dropHairpinPoints([])).toEqual([])
+    const two = [
+      { x: 0, y: 0 },
+      { x: 10, y: 10 },
+    ]
+    expect(dropHairpinPoints(two)).toEqual(two)
+  })
+})
