@@ -18,6 +18,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
+import { useJobFollowupQueueCount } from '../../hooks/useJobFollowupQueueCount'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
 import SendBackReasonField from './SendBackReasonField'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
@@ -932,6 +933,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [stagesSearchBarFocused, setStagesSearchBarFocused] = useState(false)
   /** Job Follow-Up Mode deck (v2.1718). */
   const [followupOpen, setFollowupOpen] = useState(false)
+  // Bumped when the deck closes so the button badge recounts (v2.2307).
+  const [followupCountRefresh, setFollowupCountRefresh] = useState(0)
+  const followupQueueCount = useJobFollowupQueueCount(followupCountRefresh)
   // Dashboard card entry (v2.1720): ?followups=1 opens the deck once, then
   // strips itself so refresh/back doesn't re-open it.
   const followupParamConsumedRef = useRef(false)
@@ -2296,7 +2300,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             <button
               type="button"
               onClick={() => setFollowupOpen(true)}
-              aria-label="Open job follow-ups"
+              aria-label={
+                followupQueueCount != null && followupQueueCount > 0
+                  ? `Open job follow-ups — ${followupQueueCount} outstanding`
+                  : 'Open job follow-ups'
+              }
               style={{
                 padding: '0.5rem 0.9rem',
                 background: 'var(--bg-amber-tint)',
@@ -2306,14 +2314,37 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 cursor: 'pointer',
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
               }}
             >
               Follow-ups
+              {followupQueueCount != null && followupQueueCount > 0 ? (
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    background: '#f59e0b',
+                    color: '#241a05',
+                    borderRadius: 999,
+                    padding: '0.1rem 0.45rem',
+                    minWidth: '1.3em',
+                    textAlign: 'center',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {followupQueueCount}
+                </span>
+              ) : null}
             </button>
             {followupOpen ? (
               <JobsFollowupModal
                 open
-                onClose={() => setFollowupOpen(false)}
+                onClose={() => {
+                  setFollowupOpen(false)
+                  setFollowupCountRefresh((n) => n + 1)
+                }}
                 renderStageRow={renderFollowupStageRow}
                 onOpenBoardRow={openFollowupBoardRow}
                 onOpenActivity={openFollowupActivity}
