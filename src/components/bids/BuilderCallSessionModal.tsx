@@ -342,6 +342,7 @@ export function BuilderCallSessionModal({
                       }}
                       secondaryLabel="Cancel"
                       onSecondary={() => setTabOpenBidId(null)}
+                      allowPaste={false}
                     />
                   </div>
                 )

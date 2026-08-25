@@ -623,6 +623,54 @@ export type Database = {
           },
         ]
       }
+      bid_tab_entries: {
+        Row: {
+          alternate_amount: number | null
+          amount: number
+          bid_id: string
+          bidder_name: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_ours: boolean
+        }
+        Insert: {
+          alternate_amount?: number | null
+          amount: number
+          bid_id: string
+          bidder_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_ours?: boolean
+        }
+        Update: {
+          alternate_amount?: number | null
+          amount?: number
+          bid_id?: string
+          bidder_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_ours?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_tab_entries_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_tab_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_version_sends: {
         Row: {
           bid_id: string
