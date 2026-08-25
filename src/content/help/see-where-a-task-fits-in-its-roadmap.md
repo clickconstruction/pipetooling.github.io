@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller
 keywords: roadmap, goal, stage, checklist review, outstanding, task context, farm, chip
 order: 42
 ---
-Tasks born from a roadmap carry a purple {{chip:purple|⛰ Farm 1}} chip next to their title on **Checklist → Review → Outstanding by person**. Tap the chip to see where that task sits in the bigger picture — without leaving the page.
+Tasks born from a roadmap carry a purple stage chip — {{chip:purple|make efficent water and feeding}} — under their title on your **Today** cards and next to the title on **Checklist → Review → Outstanding by person**. It names the **stage** the task belongs to (the full "roadmap · stage" path sits in the tooltip). Tap the chip to see where that task sits in the bigger picture — without leaving the page.
 
 ## What the window shows
 
