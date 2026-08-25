@@ -43,6 +43,7 @@ const LENSES: { key: DataHealthLens; label: string }[] = [
 export default function PaySpeedDataHealthModal({
   onClose,
   onOpenJobDetail,
+  onOpenJobStacked,
   canExclude,
   isDev = false,
   onChanged,
@@ -50,6 +51,12 @@ export default function PaySpeedDataHealthModal({
   onClose: () => void
   /** Open a row's job detail (closes the modal stack upstream). */
   onOpenJobDetail?: (jobId: string) => void
+  /**
+   * Preferred (v2.2311): open the job's Bill tab STACKED ABOVE this modal —
+   * the drill-down stays put (filters/search/scroll intact) and `onSaved`
+   * refreshes the list + medians after any save inside the job.
+   */
+  onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
   /** Devs + master techs can exclude/include; everyone else just reads. */
   canExclude: boolean
   /** Devs only: the ⚙ No Count Date setting (v2.2303). */
@@ -120,6 +127,17 @@ export default function PaySpeedDataHealthModal({
           setLineItemsById((prev) => ({ ...prev, [paymentId]: null }))
         }
       })()
+    }
+  }
+
+  function openJob(jobId: string) {
+    if (onOpenJobStacked) {
+      onOpenJobStacked(jobId, () => {
+        void load()
+        onChanged?.()
+      })
+    } else {
+      onOpenJobDetail?.(jobId)
     }
   }
 
@@ -384,12 +402,12 @@ export default function PaySpeedDataHealthModal({
                           {busyId === t.paymentId ? '…' : t.status === 'excluded' ? 'Include again' : 'Exclude'}
                         </button>
                       )}
-                      {t.jobId && onOpenJobDetail && (
+                      {t.jobId && (onOpenJobStacked || onOpenJobDetail) && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            onOpenJobDetail(t.jobId!)
+                            openJob(t.jobId!)
                           }}
                           style={{ ...actStyle, color: 'var(--text-link)' }}
                         >
@@ -471,8 +489,8 @@ export default function PaySpeedDataHealthModal({
                   <span style={{ fontSize: '0.64rem', fontWeight: 700, borderRadius: 9999, padding: '0 6px', flexShrink: 0, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
                     no bill date
                   </span>
-                  {b.jobId && onOpenJobDetail && (
-                    <button type="button" onClick={() => onOpenJobDetail(b.jobId!)} style={{ ...actStyle, color: 'var(--text-link)' }}>
+                  {b.jobId && (onOpenJobStacked || onOpenJobDetail) && (
+                    <button type="button" onClick={() => openJob(b.jobId!)} style={{ ...actStyle, color: 'var(--text-link)' }}>
                       Open job ›
                     </button>
                   )}
