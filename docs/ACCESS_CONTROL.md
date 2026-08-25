@@ -687,11 +687,13 @@ Route access for the restricted roles above comes from the per-role allowed-path
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | **Roadmap** tab — **UI visibility** (temporary, v2.1559): the tab is rendered for **dev only**; other roles' deep links (`?tab=roadmap`) bounce to their default tab. RLS below is unchanged — widen `canSeeRoadmap` in `src/pages/Checklist.tsx` to re-release. | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Roadmap** tab (tech tree): **see** a roadmap row (`can_select_checklist_tech_tree_roadmap`) | ✅ all | ✅ all | ✅ all | ✅ if member | ✅ if member | ✅ all | ✅ if member |
+| **Roadmap** tab (tech tree): **see** a roadmap row (`can_select_checklist_tech_tree_roadmap`) | ✅ all | ✅ all | ✅ all | ✅ if member **or task assignee** | ✅ if member **or task assignee** | ✅ all | ✅ if member **or task assignee** |
 | **Roadmap**: **create** roadmap, **delete** roadmap | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | **Roadmap**: **edit graph** (groups/tasks/edges) — `can_edit_checklist_tech_tree_structure_for_roadmap` | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |
 | **Roadmap**: **Members** modal — add/remove, **viewer** / **editor** (`can_manage_checklist_tech_tree_roadmap_members`) | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |
 | Header **Task** (global modal — add checklist item + assignees + instances on allowed routes) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+**v2.2261** (`20260825001101_roadmap_read_for_task_assignees.sql`): being an **assignee of any task** in a roadmap now also grants **select** on its structure (roadmaps/members/groups/tasks/edges) — powers the stage-context chip on field roles’ task cards. Read-only; edit capabilities unchanged.
 
 **RLS notes** (v2.408, [`20270427120000_checklist_tech_tree_multi_roadmap.sql`](../supabase/archive/migrations-pre-baseline/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **Dev**, **master_technician**, **assistant**, and **primary** bypass membership for **select** and **structure** (see all roadmaps). **Subcontractor**, **estimator**, **superintendent** (and anyone not in that bypass set) need a row in **`checklist_tech_tree_roadmap_members`** for each roadmap they can open. Migration backfill adds **viewer** on the **Default** roadmap for all non-archived users, so everyone typically retains access to that graph; additional named roadmaps are visible only to bypass roles or invited members.
 
