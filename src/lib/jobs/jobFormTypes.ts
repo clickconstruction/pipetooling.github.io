@@ -22,6 +22,8 @@ export type PaymentRow = {
   id: string
   amount: number
   paid_on: string | null
+  /** Optional: the date the payment was SENT (check date); paid_on stays "received" (v2.2303). */
+  sent_on: string | null
   note: string | null
   payment_type: string | null
   reference_number: string | null

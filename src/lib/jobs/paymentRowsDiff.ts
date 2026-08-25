@@ -23,6 +23,7 @@ export type PaymentUpsertRow = {
   amount: number
   sequence_order: number
   paid_on: string | null
+  sent_on: string | null
   note: string | null
   payment_type: string | null
   reference_number: string | null
@@ -57,6 +58,7 @@ export function diffPaymentRows(
       amount: Number(p.amount) || 0,
       sequence_order: i,
       paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
+      sent_on: p.sent_on?.trim() ? p.sent_on.trim() : null,
       note: p.note?.trim() ? p.note.trim() : null,
       payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
       reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,

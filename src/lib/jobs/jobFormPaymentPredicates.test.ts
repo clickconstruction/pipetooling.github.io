@@ -10,7 +10,7 @@ import {
 import type { JobsLedgerInvoiceRow, PaymentRow } from './jobFormTypes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
-const payment = (o: Partial<PaymentRow> = {}): PaymentRow => ({ id: 'p', amount: 0, paid_on: null, note: null, payment_type: null, reference_number: null, invoice_id: null, mercury_transaction_id: null, ...o })
+const payment = (o: Partial<PaymentRow> = {}): PaymentRow => ({ id: 'p', amount: 0, paid_on: null, sent_on: null, note: null, payment_type: null, reference_number: null, invoice_id: null, mercury_transaction_id: null, ...o })
 const jobWithInvoice = (inv: Partial<JobsLedgerInvoiceRow>) => ({ invoices: [{ id: 'i1', ...inv }] }) as unknown as JobWithDetails
 
 describe('linkage predicates', () => {

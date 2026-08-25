@@ -19,6 +19,7 @@ function paymentRow(overrides: Partial<PaymentRow> = {}): PaymentRow {
     id: 'p1',
     amount: 3000,
     paid_on: '2026-02-26',
+    sent_on: null,
     note: null,
     payment_type: null,
     reference_number: null,

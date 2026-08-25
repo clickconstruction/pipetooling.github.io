@@ -6352,6 +6352,7 @@ export type Database = {
           paid_on: string | null
           payment_type: string | null
           reference_number: string | null
+          sent_on: string | null
           sequence_order: number
         }
         Insert: {
@@ -6365,6 +6366,7 @@ export type Database = {
           paid_on?: string | null
           payment_type?: string | null
           reference_number?: string | null
+          sent_on?: string | null
           sequence_order?: number
         }
         Update: {
@@ -6378,6 +6380,7 @@ export type Database = {
           paid_on?: string | null
           payment_type?: string | null
           reference_number?: string | null
+          sent_on?: string | null
           sequence_order?: number
         }
         Relationships: [

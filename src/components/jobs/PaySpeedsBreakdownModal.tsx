@@ -305,6 +305,7 @@ export default function PaySpeedsBreakdownModal({
   onOpenCustomerBills,
   onOpenJobDetail,
   canExcludePayments = false,
+  isDev = false,
   onSpeedsChanged,
 }: {
   rows: StageRow[]
@@ -316,6 +317,8 @@ export default function PaySpeedsBreakdownModal({
   onOpenJobDetail?: (jobId: string) => void
   /** Devs + master techs may exclude payments in the Data health drill-down (v2.2290). */
   canExcludePayments?: boolean
+  /** Devs only: the drill-down's ⚙ No Count Date setting (v2.2303). */
+  isDev?: boolean
   /** Refetch the pay-speeds RPC after an exclusion toggles, so medians update live. */
   onSpeedsChanged?: () => void
 }) {
@@ -499,6 +502,7 @@ export default function PaySpeedsBreakdownModal({
             onClose={() => setDataHealthOpen(false)}
             onOpenJobDetail={onOpenJobDetail}
             canExclude={canExcludePayments}
+            isDev={isDev}
             onChanged={onSpeedsChanged}
           />
         )}

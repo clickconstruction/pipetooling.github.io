@@ -42,6 +42,7 @@ export default function PaySpeedDataHealthModal({
   onClose,
   onOpenJobDetail,
   canExclude,
+  isDev = false,
   onChanged,
 }: {
   onClose: () => void
@@ -49,6 +50,8 @@ export default function PaySpeedDataHealthModal({
   onOpenJobDetail?: (jobId: string) => void
   /** Devs + master techs can exclude/include; everyone else just reads. */
   canExclude: boolean
+  /** Devs only: the ⚙ No Count Date setting (v2.2303). */
+  isDev?: boolean
   /** Fired after an exclude/include lands so the medians refresh live. */
   onChanged?: () => void
 }) {
@@ -58,6 +61,9 @@ export default function PaySpeedDataHealthModal({
   const [lens, setLens] = useState<DataHealthLens>('all')
   const [query, setQuery] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [gearOpen, setGearOpen] = useState(false)
+  const [noCountDraft, setNoCountDraft] = useState('')
+  const [savingNoCount, setSavingNoCount] = useState(false)
 
   async function load() {
     try {
@@ -76,6 +82,24 @@ export default function PaySpeedDataHealthModal({
   const counts = useMemo(() => (data ? lensCounts(data) : null), [data])
   const txns = useMemo(() => (data ? filterTxns(data, lens, query) : []), [data, lens, query])
   const bills = useMemo(() => (data && lens === 'undated' ? filterBills(data, query) : []), [data, lens, query])
+
+
+  async function saveNoCountDate(value: string | null) {
+    if (!isDev || savingNoCount) return
+    setSavingNoCount(true)
+    const { error } =
+      value == null
+        ? await supabase.from('app_settings').delete().eq('key', 'pay_speed_no_count_date_v1')
+        : await supabase
+            .from('app_settings')
+            .upsert({ key: 'pay_speed_no_count_date_v1', value_text: value }, { onConflict: 'key' })
+    if (!error) {
+      setGearOpen(false)
+      await load()
+      onChanged?.()
+    }
+    setSavingNoCount(false)
+  }
 
   async function toggleExclusion(t: PaySpeedTxn) {
     if (!canExclude || busyId != null) return
@@ -150,11 +174,26 @@ export default function PaySpeedDataHealthModal({
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Data health — the payments behind the numbers</h2>
+          {isDev && (
+            <button
+              type="button"
+              aria-label="Data health settings"
+              aria-expanded={gearOpen}
+              onClick={() => {
+                setNoCountDraft(data?.noCountDate ?? '')
+                setGearOpen((o) => !o)
+              }}
+              title="No Count Date and other dev settings"
+              style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '0.95rem', cursor: 'pointer', lineHeight: 1, padding: '0.15rem' }}
+            >
+              ⚙
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
             aria-label="Close data health transactions"
-            style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '1.05rem', cursor: 'pointer', lineHeight: 1, padding: '0.15rem' }}
+            style={{ marginLeft: isDev ? 0 : 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '1.05rem', cursor: 'pointer', lineHeight: 1, padding: '0.15rem' }}
           >
             ✕
           </button>
@@ -163,6 +202,60 @@ export default function PaySpeedDataHealthModal({
           Every recorded payment from the last 12 months. Excluding one drops it from the medians and the counts;
           opening the job is where dates and invoice links get fixed.
         </p>
+
+        {gearOpen && isDev && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              flexWrap: 'wrap',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              background: 'var(--bg-muted)',
+              padding: '0.5rem 0.7rem',
+              marginBottom: '0.7rem',
+              fontSize: '0.78rem',
+            }}
+          >
+            <span style={{ fontWeight: 650 }}>No Count Date</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+              payments received before this date don't count — anywhere
+            </span>
+            <input
+              type="date"
+              value={noCountDraft}
+              onChange={(e) => setNoCountDraft(e.target.value)}
+              aria-label="No Count Date"
+              style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.25rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
+            />
+            <button
+              type="button"
+              disabled={savingNoCount || noCountDraft === ''}
+              onClick={() => void saveNoCountDate(noCountDraft)}
+              style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 650, padding: '0.25rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', opacity: savingNoCount || noCountDraft === '' ? 0.5 : 1 }}
+            >
+              {savingNoCount ? 'Saving…' : 'Save'}
+            </button>
+            {data?.noCountDate && (
+              <button
+                type="button"
+                disabled={savingNoCount}
+                onClick={() => void saveNoCountDate(null)}
+                style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}
+              >
+                Clear — count everything
+              </button>
+            )}
+          </div>
+        )}
+
+        {data?.noCountDate && !gearOpen && (
+          <p style={{ margin: '-0.3rem 0 0.6rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            Not counting payments received before <b style={{ color: 'var(--text-700)' }}>{data.noCountDate}</b>
+            {isDev ? ' — change it under ⚙' : ''}.
+          </p>
+        )}
 
         {!loaded ? (
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading…</p>

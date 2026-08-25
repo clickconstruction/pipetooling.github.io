@@ -9,6 +9,7 @@ function row(id: string, amount: number, extra: Partial<PaymentRow> = {}): Payme
     id,
     amount,
     paid_on: '2026-07-30',
+    sent_on: null,
     note: null,
     payment_type: null,
     reference_number: null,

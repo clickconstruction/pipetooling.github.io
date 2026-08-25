@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import { useAuth } from '../../hooks/useAuth'
+import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PaymentRow } from '../../lib/jobs/jobFormTypes'
@@ -16,6 +17,24 @@ import {
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
 import { autoApplyInvoiceId, paymentDateBeforeBilled, paymentRowNeedsInvoiceLink } from '../../lib/jobs/paymentInvoiceLinking'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
+
+const DATE_MINI_LABEL_STYLE: CSSProperties = {
+  fontSize: '0.58rem',
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: 'var(--text-muted)',
+}
+
+const DATE_MINI_INPUT_STYLE: CSSProperties = {
+  width: '100%',
+  maxWidth: '100%',
+  boxSizing: 'border-box',
+  padding: '0.375rem 0.5rem',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 6,
+  fontSize: '0.875rem',
+}
 
 const PAYMENT_MEMO_SUB_ROW_CELL_STYLE: CSSProperties = {
   paddingTop: 0,
@@ -145,6 +164,31 @@ export function JobFormPaymentsTable({
 }: JobFormPaymentsTableProps) {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
+
+  // Sent-vs-received (v2.2303): bank-linked rows can offer the Mercury
+  // posting date as a one-tap Sent fill; fail-soft if the read is refused.
+  const [mercuryPostedById, setMercuryPostedById] = useState<Record<string, string>>({})
+  const mercuryIdsKey = payments
+    .map((r) => r.mercury_transaction_id)
+    .filter(Boolean)
+    .sort()
+    .join(',')
+  useEffect(() => {
+    const ids = mercuryIdsKey ? mercuryIdsKey.split(',') : []
+    if (ids.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('mercury_transactions').select('id, posted_at').in('id', ids)
+      if (cancelled || !data) return
+      const m: Record<string, string> = {}
+      for (const t of data) if (t.posted_at) m[t.id] = String(t.posted_at).slice(0, 10)
+      setMercuryPostedById(m)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [mercuryIdsKey])
+  const todayYmdLocal = new Date().toLocaleDateString('en-CA')
 
   // Consolidated start: blank manual draft rows (the seeded empty row) stay
   // hidden behind a "Record non-Stripe payment received" button until the user
@@ -294,40 +338,82 @@ export function JobFormPaymentsTable({
               <Fragment key={row.id}>
                 <tr style={{ borderBottom: hasMemoSubRow ? 'none' : rowSep }}>
                   <td style={paymentDateCellStyle}>
-                    {stripePaymentLocked ? (
-                      <span
-                        style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}
-                        title="Recorded from the Stripe invoice."
-                        aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
-                      >
-                        {formatPaymentDateForDisplay(row.paid_on)}
-                      </span>
-                    ) : mercuryPaymentLocked ? (
-                      <span
-                        style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}
-                        title="Recorded from Bank Payments (Mercury)."
-                        aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
-                      >
-                        {formatPaymentDateForDisplay(row.paid_on)}
-                      </span>
-                    ) : (
-                      <input
-                        id={`edit-job-payment-date-${row.id}`}
-                        type="date"
-                        value={row.paid_on ?? ''}
-                        onChange={(e) => updatePaymentRow(row.id, { paid_on: e.target.value ? e.target.value : null })}
-                        aria-label="Payment date"
-                        style={{
-                          width: '100%',
-                          maxWidth: '100%',
-                          boxSizing: 'border-box',
-                          padding: '0.375rem 0.5rem',
-                          border: '1px solid var(--border-strong)',
-                          borderRadius: 6,
-                          fontSize: '0.875rem',
-                        }}
-                      />
-                    )}
+                    {/* Sent before Received (v2.2303, owner-approved mockup):
+                        Sent = the date on the check, optional and editable even
+                        on locked rows; Received keeps its lock rules and stays
+                        the pay-speed clock. */}
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 45%', minWidth: 96 }}>
+                        <span style={DATE_MINI_LABEL_STYLE}>Sent</span>
+                        <input
+                          id={`edit-job-payment-sent-${row.id}`}
+                          type="date"
+                          value={row.sent_on ?? ''}
+                          onChange={(e) => updatePaymentRow(row.id, { sent_on: e.target.value ? e.target.value : null })}
+                          aria-label="Payment sent date"
+                          title="The date the payment was sent — the date on the check. Optional."
+                          style={DATE_MINI_INPUT_STYLE}
+                        />
+                        {!row.sent_on && row.mercury_transaction_id && mercuryPostedById[row.mercury_transaction_id] ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updatePaymentRow(row.id, { sent_on: mercuryPostedById[row.mercury_transaction_id!] ?? null })
+                            }
+                            title="Use the bank's posting date as the sent date"
+                            style={{
+                              border: 'none',
+                              background: 'none',
+                              padding: 0,
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              fontSize: '0.68rem',
+                              fontWeight: 600,
+                              color: 'var(--text-link)',
+                            }}
+                          >
+                            bank {formatPaymentDateForDisplay(mercuryPostedById[row.mercury_transaction_id] ?? null)} →
+                          </button>
+                        ) : null}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 45%', minWidth: 96 }}>
+                        <span style={DATE_MINI_LABEL_STYLE}>Received</span>
+                        {stripePaymentLocked ? (
+                          <span
+                            style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', padding: '0.375rem 0' }}
+                            title="Recorded from the Stripe invoice."
+                            aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
+                          >
+                            {formatPaymentDateForDisplay(row.paid_on)}
+                          </span>
+                        ) : mercuryPaymentLocked ? (
+                          <span
+                            style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', padding: '0.375rem 0' }}
+                            title="Recorded from Bank Payments (Mercury)."
+                            aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
+                          >
+                            {formatPaymentDateForDisplay(row.paid_on)}
+                          </span>
+                        ) : (
+                          <input
+                            id={`edit-job-payment-date-${row.id}`}
+                            type="date"
+                            value={row.paid_on ?? ''}
+                            onChange={(e) => updatePaymentRow(row.id, { paid_on: e.target.value ? e.target.value : null })}
+                            aria-label="Payment date"
+                            style={{
+                              ...DATE_MINI_INPUT_STYLE,
+                              ...(row.paid_on && row.paid_on > todayYmdLocal ? { borderColor: '#d97706' } : {}),
+                            }}
+                          />
+                        )}
+                        {row.paid_on && row.paid_on > todayYmdLocal ? (
+                          <span style={{ fontSize: '0.66rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
+                            ⚠ received date is in the future
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
                   </td>
                   <td style={paymentPaidCellStyle}>
                     {stripePaymentLocked ? (
