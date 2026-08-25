@@ -70,6 +70,10 @@ You can add tasks with nobody ticked and staff them later from the task card —
 
 Dropping on a **different** stage asks first: a small card shows the task, where it's coming from, and the number it takes on arrival — {{button:blue|Move task}} or **Cancel**. Reordering inside the same stage never asks. The task keeps its people, notes, and history — only its number changes, both stages renumber, and it follows the new stage's in-order rule.
 
+## See a stage's neighborhood
+
+Click any stage card (its title or an empty spot on it) and the map focuses: the card gets a **blue ring**, the stages that must finish before it glow **amber**, the ones it unlocks glow **green** — wires included — and everything unrelated fades back. A small legend appears at the bottom while you're focused. Click the card again, anywhere on the canvas, or press **Esc** to clear. Task rows still open their card as usual.
+
 ## Find anything on the map
 
 Press the 🔍 search icon in the map's corner and type — a stage title, a task, or a person's name. The map answers as you type: **stages with no hit fade back to 30%** (they keep their place, so the arrows still make sense) and the **exact text that matched glows amber** inside the cards that stay lit. The panel counts the hits, **Show on map** pans to them, and clearing the search brings the whole map back.

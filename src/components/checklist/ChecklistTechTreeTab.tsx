@@ -305,6 +305,30 @@ export function ChecklistTechTreeTab({
     [treeEdges],
   )
 
+  /** Stage focus (v2.2308): clicked stage + its direct feeders/unlocks light up, the rest fade. */
+  const [focusGroupId, setFocusGroupId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!focusGroupId) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFocusGroupId(null)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [focusGroupId])
+
+  const focusNeighbors = useMemo(() => {
+    if (!focusGroupId) return null
+    const upstream = new Set<string>()
+    const downstream = new Set<string>()
+    for (const e of flowEdgeList) {
+      if (e.to === focusGroupId) upstream.add(e.from)
+      if (e.from === focusGroupId) downstream.add(e.to)
+    }
+    return { upstream, downstream }
+  }, [focusGroupId, flowEdgeList])
+
+
   const [roadmapSearchQuery, setRoadmapSearchQuery] = useState('')
 
   const groupsForRoadmapSearch = useMemo(
@@ -792,6 +816,16 @@ export function ChecklistTechTreeTab({
           onOpenStageMode: openStageModeMenu,
           sequential: sequentialByGroupId.get(gid) !== false,
           justAdded: gid === recentlyAddedGroupId,
+          focusRole:
+            focusGroupId == null
+              ? null
+              : gid === focusGroupId
+                ? ('selected' as const)
+                : focusNeighbors?.upstream.has(gid)
+                  ? ('upstream' as const)
+                  : focusNeighbors?.downstream.has(gid)
+                    ? ('downstream' as const)
+                    : ('dimmed' as const),
           onEditTask: openEditTask,
           collapsed: collapsedGroupIds.has(gid),
           taskCount: tlist.length,
@@ -851,6 +885,8 @@ export function ChecklistTechTreeTab({
     openStageModeMenu,
     sequentialByGroupId,
     recentlyAddedGroupId,
+    focusGroupId,
+    focusNeighbors,
   ])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes)
@@ -906,13 +942,24 @@ export function ChecklistTechTreeTab({
     // a manually-moved node (drag, or created-at-pointer) falls back to the
     // plain smoothstep until Organize re-routes everything.
     setEdges(
-      layoutEdges.map((e) =>
-        manualGroupPositions.has(e.source) || manualGroupPositions.has(e.target)
-          ? { ...e, type: 'smoothstep', data: undefined }
-          : e,
-      ),
+      layoutEdges.map((raw) => {
+        const e =
+          manualGroupPositions.has(raw.source) || manualGroupPositions.has(raw.target)
+            ? { ...raw, type: 'smoothstep', data: undefined }
+            : raw
+        if (!focusGroupId) return e
+        // Stage focus (v2.2308): wires into the selected stage go amber, wires
+        // out go green, everything unrelated fades with its nodes.
+        if (String(e.target) === focusGroupId) {
+          return { ...e, style: { stroke: '#d97706', strokeWidth: 2.5 } }
+        }
+        if (String(e.source) === focusGroupId) {
+          return { ...e, style: { stroke: '#16a34a', strokeWidth: 2.5 } }
+        }
+        return { ...e, style: { opacity: 0.2 } }
+      }),
     )
-  }, [layoutEdges, manualGroupPositions, setEdges])
+  }, [layoutEdges, manualGroupPositions, setEdges, focusGroupId])
 
   const [addGroupModal, setAddGroupModal] = useState<AddGroupModalState>(null)
   const [canvasMenu, setCanvasMenu] = useState<CanvasMenuState | null>(null)
@@ -1977,6 +2024,13 @@ export function ChecklistTechTreeTab({
               onEdgeClick={openEdgeMenu}
               onEdgeContextMenu={openEdgeMenu}
               onPaneContextMenu={openPaneMenu}
+              onPaneClick={() => setFocusGroupId(null)}
+              onNodeClick={(e, node) => {
+                // Task rows and card buttons keep their own click meanings.
+                const el = e.target as HTMLElement | null
+                if (el?.closest('li, button, input, a, textarea')) return
+                setFocusGroupId((f) => (f === node.id ? null : node.id))
+              }}
               isValidConnection={isValidPrereqConnection}
               nodesConnectable={canEditStructure}
               onInit={(instance) => {
@@ -2095,6 +2149,43 @@ export function ChecklistTechTreeTab({
                         </svg>
                       </button>
                     </div>
+                </div>
+              ) : null}
+              {focusGroupId ? (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 10,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 6,
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 999,
+                    padding: '4px 14px',
+                    fontSize: '0.72rem',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    gap: 12,
+                    alignItems: 'center',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <span>
+                    <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#d97706', marginRight: 5, verticalAlign: -1 }} />
+                    leads in
+                  </span>
+                  <span>
+                    <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#2563eb', marginRight: 5, verticalAlign: -1 }} />
+                    selected
+                  </span>
+                  <span>
+                    <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#16a34a', marginRight: 5, verticalAlign: -1 }} />
+                    unlocks next
+                  </span>
+                  <span style={{ opacity: 0.7 }}>· tap canvas to clear</span>
                 </div>
               ) : null}
             </ReactFlow>
