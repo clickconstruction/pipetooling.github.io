@@ -83,6 +83,8 @@ Trip charges from Turnaways also land in Ready to Bill as their own standalone l
 
 ## The Ready to Bill queue
 
+**Assistants can't miss it**: whenever anything is waiting in Ready to Bill, a slim orange bar sits just under the header on every page — {{chip:yellow|3 ready to bill — send them}}. Tap anywhere on it and you land on Jobs with the Ready to Bill section already open and scrolled into view. The bar disappears the moment the queue is empty.
+
 On the Dashboard, office roles see **Ready to Bill (N)** — every job and invoice line waiting to be billed, each with its own billing button:
 
 :::example A Ready to Bill card

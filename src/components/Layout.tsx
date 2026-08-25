@@ -11,6 +11,7 @@ import { useForceReload } from '../contexts/ForceReloadContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
+import AssistantReadyToBillBanner from './AssistantReadyToBillBanner'
 import CustomerContactCardIcon from './icons/CustomerContactCardIcon'
 import { RouteChunkBoundary } from './RouteChunkBoundary'
 import { consumePendingOpenAddTask } from '../lib/iosPwa'
@@ -1800,6 +1801,7 @@ export default function Layout() {
               : '0px',
         }}
       >
+        <AssistantReadyToBillBanner />
         <div
           style={{
             flex: 1,

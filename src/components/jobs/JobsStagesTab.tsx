@@ -1316,6 +1316,43 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     })
   }, [])
 
+  /**
+   * `?rtb=1` deep link (v2.2276): the assistants' ready-to-bill banner lands
+   * on the Ready to Bill section. Unlike the modal params above, this one
+   * needs the board DOM, so the scroll polls for the section header while
+   * data loads; and the strip re-runs unguarded because the tab-router
+   * effect can resurrect the param from its own pre-strip snapshot.
+   */
+  useEffect(() => {
+    if (searchParams.get('rtb') !== '1') return
+    const p = new URLSearchParams(searchParams)
+    p.delete('rtb')
+    navigate({ search: p.toString() }, { replace: true })
+    // Window-level arm (not a ref/state): survives the StrictMode double
+    // mount that loses component state here, and expires so a later banner
+    // tap re-arms. The scroll itself waits for the board's layout to hold
+    // still — the section header exists while sections above it are still
+    // streaming in, and scrolling early gets eaten by the growth.
+    const w = window as unknown as { __rtbFocusArmedAt?: number }
+    if (w.__rtbFocusArmedAt != null && Date.now() - w.__rtbFocusArmedAt < 5000) return
+    w.__rtbFocusArmedAt = Date.now()
+    let lastTop: number | null = null
+    let tries = 0
+    const tick = () => {
+      const el = document.getElementById('stages-ready-to-bill')
+      if (el) {
+        const top = Math.round(el.getBoundingClientRect().top)
+        if (lastTop != null && Math.abs(top - lastTop) < 2) {
+          focusStagesSection('readyToBill')
+          return
+        }
+        lastTop = top
+      }
+      if (++tries < 50) window.setTimeout(tick, 300)
+    }
+    window.setTimeout(tick, 400)
+  }, [searchParams, navigate, focusStagesSection])
+
   /** "Follow cards I move": open the destination section, then scroll to + flash the job row. */
   const followMovedJob = useCallback(
     (jobId: string, toStatus: string) => {
