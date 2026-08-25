@@ -134,3 +134,17 @@ describe('draft lines + title', () => {
     expect(quickEstimateDraftTitle('estimate', '')).toBe('')
   })
 })
+
+describe('quickEstimateBackTarget', () => {
+  it('walks the stages backwards per branch, no Back on kind/done', async () => {
+    const { quickEstimateBackTarget } = await import('./quickEstimate')
+    expect(quickEstimateBackTarget('job', 'change_order')).toBe('kind')
+    expect(quickEstimateBackTarget('customer', 'estimate')).toBe('kind')
+    expect(quickEstimateBackTarget('work', 'change_order')).toBe('job')
+    expect(quickEstimateBackTarget('work', 'estimate')).toBe('customer')
+    expect(quickEstimateBackTarget('cost', 'change_order')).toBe('work')
+    expect(quickEstimateBackTarget('review', 'estimate')).toBe('cost')
+    expect(quickEstimateBackTarget('kind', 'change_order')).toBeNull()
+    expect(quickEstimateBackTarget('done', 'change_order')).toBeNull()
+  })
+})
