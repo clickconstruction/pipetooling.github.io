@@ -1042,6 +1042,10 @@ Sorting by price count that queries database for global sort order (not just cur
 
 ---
 
+## System of record (billing)
+
+Since the migration off HouseCall Pro, **the app is the system of record for all billing** — open money, bill dates, payment dates. HCP-era history is repaired only through **Settings → Jobs & billing → HCP reconcile** (dev-only, v2.2255) from HCP's own exports; open HCP invoices are never imported and money is never auto-added. Date provenance ranks Mercury (bank) > Stripe > HCP payments report > hand-entered > jobs-export import, and the pay-speed math quarantines unverified import same-day pairs (v2.2248). Full policy: [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) → "System of record".
+
 ## Database Concepts
 
 ### Migration
