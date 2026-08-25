@@ -26,6 +26,13 @@ export async function completeChecklistInstance(args: {
   if (!updated?.length) return { ok: false, error: 'Could not complete this task (already complete, or no access).' }
   void sendCompletionNotifications(checklistItemId, instanceId, authUserId)
   void maybeCreateNextInstance(checklistItemId, scheduledDate)
+  // Completions land in the sign-off queue — tell any mounted queue to refetch
+  // (same cross-surface pattern as `checklist-item-saved`). Matters when the
+  // queue shares the screen with the completer: the Review tab's fold above
+  // Outstanding-by-person, the Dashboard's Teams Inbox card.
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('checklist-instance-completed', { detail: instanceId }))
+  }
   return { ok: true }
 }
 

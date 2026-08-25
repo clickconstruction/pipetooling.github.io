@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { canSeeTaskCosts, estimateDollars, estimateRelativeBands, formatWholeDollars } from '../../lib/checklistCostEstimate'
 import { writeChecklistCostActual } from '../../lib/checklistCostStore'
 import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates'
@@ -122,6 +122,22 @@ export function ChecklistReviewInboxSection({
   useEffect(() => {
     void load()
   }, [load])
+
+  // Completing a task anywhere on the same screen (Outstanding-by-person's ✓,
+  // a card panel's ✓ Complete) puts it in this queue — refetch on the
+  // completion event, and on `checklist-item-saved` since edits/deletes can
+  // change queue membership too. Same loadRef pattern as Review/Manage.
+  const loadRef = useRef(load)
+  loadRef.current = load
+  useEffect(() => {
+    const handler = () => void loadRef.current()
+    window.addEventListener('checklist-instance-completed', handler)
+    window.addEventListener('checklist-item-saved', handler)
+    return () => {
+      window.removeEventListener('checklist-instance-completed', handler)
+      window.removeEventListener('checklist-item-saved', handler)
+    }
+  }, [])
 
   const name = (id: string | null): string => {
     if (!id) return 'Someone'
