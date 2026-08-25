@@ -569,7 +569,7 @@ export function ChecklistTechTreeTaskCardModal({
               {!instanceId ? (
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 7 }}>
                   {task.assigneeIds.length === 0
-                    ? 'Not on anyone’s list yet — assign someone and this task lands on their list when the stage unlocks.'
+                    ? 'Not on anyone’s list yet.'
                     : 'Lands on their Today list when this stage unlocks.'}
                 </div>
               ) : null}
@@ -581,9 +581,7 @@ export function ChecklistTechTreeTaskCardModal({
         <div ref={threadRef} style={{ padding: '10px 16px 8px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           <div style={{ ...sectionLabelStyle, marginBottom: 8 }}>Activity</div>
           {!instanceId ? (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
-              Nothing yet — notes posted here follow the task onto the assignee’s list.
-            </p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Nothing yet.</p>
           ) : eventsLoading ? (
             <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>Loading…</p>
           ) : events.length === 0 ? (

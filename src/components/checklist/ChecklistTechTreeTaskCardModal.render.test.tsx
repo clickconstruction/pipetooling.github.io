@@ -74,7 +74,7 @@ describe('ChecklistTechTreeTaskCardModal', () => {
       chip: null,
       canEditStructure: true,
     })
-    expect(screen.getByText(/assign someone and this task lands/)).toBeTruthy()
+    expect(screen.getByText(/Not on anyone’s list yet/)).toBeTruthy()
     expect(screen.getByText('＋ Assign someone')).toBeTruthy()
     expect(screen.queryByPlaceholderText('Add a note…')).toBeNull()
     expect(loadEvents).not.toHaveBeenCalled()
