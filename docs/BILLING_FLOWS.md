@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-08-14
+last_updated: 2026-08-24
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -20,6 +20,8 @@ key_sections:
     anchor: "#collect-payment-field-flow"
   - name: "Payments and reconciliation"
     anchor: "#payments-jobs_ledger_payments"
+  - name: "System of record"
+    anchor: "#system-of-record-the-2026-08-24-policy"
   - name: "Send-back / revert paths"
     anchor: "#send-back--revert-paths"
   - name: "Routes map"
@@ -266,6 +268,16 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 ### Display surfaces
 
 Edit Job "Payments received" table (locked Stripe/Mercury rows; refs via `src/lib/abbreviatePaymentReference.ts`); Dashboard billing pipeline Applied/Open; `useDashboardFinancials` AR buckets; Quickfill `BilledAwaitingPaymentSection`; `useBilledTotal` headline; `HostedStripeBillPanel` paid-at fallback; Job Summary charges timeline (`src/lib/jobChargesTimeline.ts`); physical-invoice payment history; the job activity feed.
+
+## System of record (the 2026-08-24 policy)
+
+The company migrated off HouseCall Pro; **this app is the system of record for all billing** — open money, bill dates, and payment dates. Written down after the Billing Truth Plan investigation (802 jobs, 5 measurable pay-speed samples) so the policy survives staff and sessions:
+
+- **New work bills and collects through the app only.** That path is self-healing for the pay-speed model: `billed_at` stamps at billing and survives payment (v2.2236 — the v1 trigger used to erase it), manual payments auto-link to the job's single open bill and flag impossible dates (v2.2240), and the stats and aging chips share one bill-date clock (v2.2241).
+- **Open HCP invoices are never imported.** The live ones already exist as app bills; importing would double-count. (54 existed at ruling time; deliberately left.)
+- **HCP-era history is repaired only via the Settings importer** (Settings → Jobs & billing → HCP reconcile, v2.2255) from HCP's own exports — bill dates, payment links, true payment dates, rollup splits. It never adds money: HCP payments with no app match are surfaced for owner review, not written (a $438k candidate list was reviewed and declined 2026-08-24).
+- **Date provenance ranks: Mercury (bank) > Stripe > HCP payments report > hand-entered > jobs-export import.** Reconciliation never overwrites a higher-provenance date with a lower one, and the pay-speed math quarantines unverified import same-day pairs entirely (v2.2248; verified-date note tags `hcp-paydate-corrected-*` / `hcp-payments-split-*` are its trust markers).
+- **Import provenance is tagged, not modeled**: created invoices carry `external_send_note` `hcp-backfill-*`; corrected/split payments carry the note tags above. Greppable, reversible, and recognized by the quarantine.
 
 ## Send-back / revert paths
 
