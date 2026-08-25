@@ -3968,6 +3968,42 @@ export type Database = {
           },
         ]
       }
+      estimate_photo_handover: {
+        Row: {
+          drive_link: string
+          estimate_id: string
+          moved_at: string
+          moved_by: string | null
+        }
+        Insert: {
+          drive_link: string
+          estimate_id: string
+          moved_at?: string
+          moved_by?: string | null
+        }
+        Update: {
+          drive_link?: string
+          estimate_id?: string
+          moved_at?: string
+          moved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estimate_photo_handover_estimate_id_fkey"
+            columns: ["estimate_id"]
+            isOneToOne: true
+            referencedRelation: "estimates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimate_photo_handover_moved_by_fkey"
+            columns: ["moved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       estimates: {
         Row: {
           accept_header_brand: string | null
