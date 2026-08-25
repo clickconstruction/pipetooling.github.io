@@ -30,21 +30,27 @@ export function useTechTreeTaskMutations(args: {
   canEditStructure: boolean
   getTask: (taskId: string) => MutableTechTreeTask | undefined
   isGroupUnlocked: (groupId: string) => boolean
+  /** Sequential stages (v2.2264): true = an earlier sibling is still open. */
+  isTaskWaiting?: (taskId: string) => boolean
   reload: () => Promise<void>
   setError: (s: string | null) => void
 }) {
-  const { authUserId, canEditStructure, getTask, isGroupUnlocked, reload, setError } = args
+  const { authUserId, canEditStructure, getTask, isGroupUnlocked, isTaskWaiting, reload, setError } = args
 
-  /** Staff always; otherwise the stage must be unlocked AND the user an assignee — unassigned tasks are staff-only. */
+  /** Staff always; otherwise the stage must be unlocked, the task not waiting
+   *  behind an earlier sibling (sequential stages), AND the user an assignee —
+   *  unassigned tasks are staff-only. Staff bypass the waiting rule on purpose:
+   *  unblocking a stuck chain from the Map is a two-tap fix. */
   const canActOnTask = useCallback(
-    (t: Pick<MutableTechTreeTask, 'assigneeIds'>, groupUnlocked: boolean) => {
+    (t: Pick<MutableTechTreeTask, 'assigneeIds' | 'id'>, groupUnlocked: boolean) => {
       if (!authUserId) return false
       if (canEditStructure) return true
       if (!groupUnlocked) return false
+      if (isTaskWaiting?.(t.id)) return false
       if (t.assigneeIds.length === 0) return false
       return t.assigneeIds.includes(authUserId)
     },
-    [authUserId, canEditStructure],
+    [authUserId, canEditStructure, isTaskWaiting],
   )
 
   /** Done ⇄ open. Same field the Map checkbox writes, so bridge / Goals / Timeline agree instantly. */

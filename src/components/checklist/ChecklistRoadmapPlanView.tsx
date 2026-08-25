@@ -108,6 +108,10 @@ type Props = {
   canEditStructure: boolean
   /** Dev-only cost system: per-task estimator buttons + stage/roadmap totals. */
   showCosts?: boolean
+  /** Sequential stages (v2.2264): tasks waiting behind an open sibling. */
+  waitingTaskIds?: ReadonlySet<string>
+  /** waiting task id → "after 3.2" label. */
+  waitingAfterByTaskId?: ReadonlyMap<string, string>
   /** Adds one assignee to a task; parent reloads + re-syncs on success. */
   onAssign: (taskId: string, userId: string) => Promise<boolean>
   /** Opens the task card modal (thread + notes). */
@@ -132,6 +136,8 @@ export function ChecklistRoadmapPlanView({
   currentUserId,
   canEditStructure,
   showCosts,
+  waitingTaskIds,
+  waitingAfterByTaskId,
   onAssign,
   onOpenTask,
 }: Props) {
@@ -487,6 +493,7 @@ export function ChecklistRoadmapPlanView({
             <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0 }}>
               {stageTasks.map((t) => {
                 const open = t.completed_at == null
+                const waiting = open && (waitingTaskIds?.has(t.id) ?? false)
                 const assignable = staffing && pickedUserId && open && !t.assigneeIds.includes(pickedUserId)
                 return (
                   <li
@@ -497,6 +504,7 @@ export function ChecklistRoadmapPlanView({
                       gap: 8,
                       padding: '0.3rem 0',
                       borderTop: '1px solid var(--border)',
+                      ...(waiting ? { opacity: 0.5 } : {}),
                     }}
                   >
                     {taskNumbers.has(t.id) ? <RoadmapTaskNumber label={taskNumbers.get(t.id)!} /> : null}
@@ -531,6 +539,11 @@ export function ChecklistRoadmapPlanView({
                       <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)' }}>tap to assign</span>
                     ) : open ? (
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>unassigned</span>
+                    ) : null}
+                    {waiting && waitingAfterByTaskId?.get(t.id) ? (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        after {waitingAfterByTaskId.get(t.id)}
+                      </span>
                     ) : null}
                     {showCosts && open ? (
                       <ChecklistCostButton

@@ -43,6 +43,12 @@ Above the assignee list, the dialog shows a **crew chip** for every team on **Pe
 Tap **Farm crew** and all four members are ticked; untick the one who's out this week and the chip goes dashed to show a partial crew.
 :::
 
+## Tasks run in order
+
+By default a stage is **step-by-step**: its tasks go in their numbers' order, and only the next one appears on its assignee's list — the rest wait grayed out (each shows *after 4.2*, and the person sees theirs in **⏳ Coming up** with the name of who's ahead). The moment a step is completed, the next one lands on its assignee's list by itself.
+
+If a stage is really a do-in-any-order checklist, open its **✎ pencil** and switch **Tasks run** to **⇄ Any order** — every task goes out at once, like before.
+
 To see a stage's tasks on the map, press the **›** chevron at its left edge (or the ⌄⌄ *Show all* toolbar button to expand every stage). Click any task to open its card — rename it, assign people, or post a note; see *staff and discuss roadmap tasks*.
 
 :::example Unassigned is fine

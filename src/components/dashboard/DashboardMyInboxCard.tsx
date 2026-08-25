@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChecklistComingUpSection } from '../checklist/ChecklistComingUpSection'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { UserRole } from '../../hooks/useAuth'
@@ -1195,6 +1196,7 @@ export function DashboardMyInboxCard({
           </div>
         </div>
       )}
+      <ChecklistComingUpSection authUserId={authUserId ?? null} />
       <ChecklistItemMuteModal
         open={!!muteModalItemId}
         checklistItemId={muteModalItemId}

@@ -42,6 +42,8 @@ type Props = {
   onTogglePin?: () => Promise<boolean>
   /** Done state (v2.2182). */
   done?: boolean
+  /** Sequential stages: "after 3.2 — ⟨title⟩" when this task waits its turn. */
+  waitingAfterLabel?: string | null
   /** Done ⇄ open (same field the Map checkbox writes); pass only when the viewer may act. */
   onToggleDone?: () => Promise<boolean>
   /** Jump to the Today tab (the live checklist card). */
@@ -79,6 +81,7 @@ export function ChecklistTechTreeTaskCardModal({
   pinned = false,
   onTogglePin,
   done = false,
+  waitingAfterLabel = null,
   onToggleDone,
   onOpenTodayTab,
   onClose,
@@ -384,7 +387,12 @@ export function ChecklistTechTreeTaskCardModal({
           </div>
           {chip || pinned || onToggleDone || done ? (
             <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              {onToggleDone ? (
+              {waitingAfterLabel ? (
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 6px' }}>
+              ⏳ Waits its turn — {waitingAfterLabel}
+            </div>
+          ) : null}
+          {onToggleDone ? (
                 // Mark done / Reopen (v2.2182): the one control the card never had.
                 // Writes the same field as the Map checkbox, so bridge / Goals /
                 // Timeline agree instantly. Chip-button so it reads as status + action.

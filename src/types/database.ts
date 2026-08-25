@@ -2008,6 +2008,7 @@ export type Database = {
           created_by_user_id: string
           id: string
           roadmap_id: string
+          sequential: boolean
           sort_index: number
           title: string
         }
@@ -2016,6 +2017,7 @@ export type Database = {
           created_by_user_id: string
           id?: string
           roadmap_id: string
+          sequential?: boolean
           sort_index?: number
           title: string
         }
@@ -2024,6 +2026,7 @@ export type Database = {
           created_by_user_id?: string
           id?: string
           roadmap_id?: string
+          sequential?: boolean
           sort_index?: number
           title?: string
         }

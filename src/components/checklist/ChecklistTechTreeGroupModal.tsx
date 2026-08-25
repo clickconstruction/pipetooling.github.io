@@ -11,6 +11,8 @@ type Props = {
   /** Called after save or delete; parent should reload data */
   onSuccess: () => void
   /** Only after delete — e.g. clear UI selection for this group */
+  /** Current tasks-run-in-order flag (v2.2264); default true. */
+  initialSequential?: boolean
   onDeletedGroup?: (groupId: string) => void
   setError: (s: string | null) => void
   /** e.g. roadmap canvas in Fullscreen API — modals must mount inside the fullscreen element */
@@ -24,6 +26,7 @@ export function ChecklistTechTreeGroupModal({
   open,
   groupId,
   initialTitle,
+  initialSequential = true,
   onClose,
   onSuccess,
   onDeletedGroup,
@@ -31,6 +34,7 @@ export function ChecklistTechTreeGroupModal({
   portalContainer,
 }: Props) {
   const [title, setTitle] = useState(initialTitle)
+  const [sequential, setSequential] = useState(initialSequential)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -38,9 +42,10 @@ export function ChecklistTechTreeGroupModal({
   useEffect(() => {
     if (open) {
       setTitle(initialTitle)
+      setSequential(initialSequential)
       setShowDeleteConfirm(false)
     }
-  }, [open, initialTitle, groupId])
+  }, [open, initialTitle, initialSequential, groupId])
 
   if (!open || !groupId) return null
 
@@ -54,7 +59,7 @@ export function ChecklistTechTreeGroupModal({
     setSaving(true)
     try {
       await withSupabaseRetry(
-        () => supabase.from('checklist_tech_tree_groups').update({ title: trimmed }).eq('id', groupId),
+        () => supabase.from('checklist_tech_tree_groups').update({ title: trimmed, sequential }).eq('id', groupId),
         'update tech tree group title',
       )
       onSuccess()
@@ -131,6 +136,39 @@ export function ChecklistTechTreeGroupModal({
           style={{ width: '100%', padding: '8px 10px', marginBottom: 16, boxSizing: 'border-box' }}
           disabled={saving || deleting}
         />
+        <div style={{ fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}>Tasks run</div>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          {([
+            [true, '→ In order (4.1 then 4.2 …)'],
+            [false, '⇄ Any order'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={String(value)}
+              type="button"
+              onClick={() => setSequential(value)}
+              aria-pressed={sequential === value}
+              disabled={saving || deleting}
+              style={{
+                flex: 1,
+                padding: '7px 10px',
+                borderRadius: 9,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: sequential === value ? '1.5px solid #2563eb' : '1.5px solid var(--border-strong)',
+                background: sequential === value ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: sequential === value ? 'var(--text-blue-800)' : 'var(--text-muted)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {sequential ? (
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '-8px 0 16px' }}>
+            One task at a time: the next task lands on its assignee's list only when the one before it is done.
+          </p>
+        ) : null}
         {showDeleteConfirm ? (
           <p style={{ color: 'var(--text-red-700)', fontSize: 14, margin: '0 0 1rem' }}>
             Delete this group and all of its tasks and related links? This cannot be undone.

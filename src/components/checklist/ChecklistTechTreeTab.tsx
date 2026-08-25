@@ -51,6 +51,7 @@ import { GroupNode, type GroupNodeData } from './ChecklistTechTreeGroupNode'
 import { ChecklistTechTreeCanvasMenu, type CanvasMenuState } from './ChecklistTechTreeCanvasMenu'
 import { ChecklistTechTreeRoutedEdge } from './ChecklistTechTreeRoutedEdge'
 import { ChecklistTechTreeReviewHud } from './ChecklistTechTreeReviewHud'
+import { sequentialWaiting } from '../../lib/checklistTechTreeGraph'
 import { RoadmapCanvasSearchPanel } from './ChecklistTechTreeCanvasSearchPanel'
 import { clientCoordsForConnectEnd } from '../../lib/checklistTechTreeCanvas'
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core'
@@ -424,6 +425,18 @@ export function ChecklistTechTreeTab({
     })
   }, [groups, flowEdgeList, collapsedGroupIds])
 
+
+  // Sequential stages (v2.2264): default in-order; groups may opt out.
+  const sequentialByGroupId = useMemo(
+    () => new Map(groups.map((g) => [g.id, (g as { sequential?: boolean }).sequential !== false])),
+    [groups],
+  )
+  const seqWaiting = useMemo(
+    () => sequentialWaiting({ tasksByGroup, sequentialByGroupId }),
+    [tasksByGroup, sequentialByGroupId],
+  )
+  const isTaskWaiting = useCallback((taskId: string) => seqWaiting.waitingIds.has(taskId), [seqWaiting])
+
   // Task write path (v2.2182): shared with the Review tab's "Where this task fits" sheet.
   const getTaskForMutation = useCallback((taskId: string) => tasks.find((t) => t.id === taskId), [tasks])
   const isGroupUnlockedForMutation = useCallback((groupId: string) => unlockedIds.has(groupId), [unlockedIds])
@@ -440,6 +453,7 @@ export function ChecklistTechTreeTab({
     canEditStructure,
     getTask: getTaskForMutation,
     isGroupUnlocked: isGroupUnlockedForMutation,
+    isTaskWaiting,
     reload: load,
     setError,
   })
@@ -576,6 +590,16 @@ export function ChecklistTechTreeTab({
   // tasks arrive sort_index-ordered too — task #N.M rides on both orders
   const taskNumbers = useMemo(() => taskNumbersByTaskId(stageNumbers, tasksByGroup), [stageNumbers, tasksByGroup])
 
+  const waitingAfterLabelByTaskId = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const [taskId, blocker] of seqWaiting.blockerByTaskId) {
+      const n = taskNumbers.get(blocker.id)
+      m.set(taskId, n ? n : `“${blocker.title.slice(0, 32)}”`)
+    }
+    return m
+  }, [seqWaiting, taskNumbers])
+
+
   // people already staffed somewhere on this roadmap — the task card's "likely names" picker tier
   const roadmapAssigneeIds = useMemo(() => {
     const ids = new Set<string>()
@@ -633,6 +657,8 @@ export function ChecklistTechTreeTab({
               bridgeChip: bridgeChipFor(t.completed_at, bridgeByTaskId.get(t.id)),
               nextUp: nextUpTaskIds.has(t.id),
               pinned: Boolean(t.pinned_at),
+              waiting: t.completed_at == null && seqWaiting.waitingIds.has(t.id),
+              waitingAfter: waitingAfterLabelByTaskId.get(t.id) ?? null,
             }
           }),
           reorderMode: canEditStructure && reorderMode,
@@ -669,6 +695,8 @@ export function ChecklistTechTreeTab({
     taskIdMatchSetForFlow,
     groupTitleMatchSetForFlow,
     reviewGroupId,
+    seqWaiting,
+    waitingAfterLabelByTaskId,
   ])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes)
@@ -1574,6 +1602,8 @@ export function ChecklistTechTreeTab({
             currentUserId={authUserId}
             canEditStructure={canEditStructure}
             showCosts={showTaskCosts === true}
+            waitingTaskIds={seqWaiting.waitingIds}
+            waitingAfterByTaskId={waitingAfterLabelByTaskId}
             onAssign={assignTaskToUser}
             onOpenTask={openEditTask}
           />
@@ -1952,6 +1982,11 @@ export function ChecklistTechTreeTab({
         pinned={Boolean(editTaskForModal?.pinned_at)}
         onTogglePin={async () => (editTaskId ? toggleTaskPin(editTaskId) : false)}
         done={Boolean(editTaskForModal?.completed_at)}
+        waitingAfterLabel={
+          editTaskForModal && seqWaiting.waitingIds.has(editTaskForModal.id)
+            ? `after ${waitingAfterLabelByTaskId.get(editTaskForModal.id) ?? 'the step before it'}`
+            : null
+        }
         onToggleDone={
           editTaskForModal && canActOnTask(editTaskForModal, unlockedIds.has(editTaskForModal.group_id))
             ? async () => (editTaskId ? toggleTaskDone(editTaskId) : false)
@@ -1965,6 +2000,7 @@ export function ChecklistTechTreeTab({
         open={editingGroupId !== null}
         groupId={editingGroupId}
         initialTitle={editingGroup?.title ?? ''}
+        initialSequential={editingGroup ? (editingGroup as { sequential?: boolean }).sequential !== false : true}
         onClose={() => setEditingGroupId(null)}
         onSuccess={() => {
           void load()
