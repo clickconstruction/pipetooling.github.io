@@ -17,7 +17,7 @@ const stats: StagesHeaderStats = {
   paid: { count: 630 },
   capableToBill: 71969,
   billedAging: { count30_90: 10, sum30_90: 40000, count90: 4, sum90: 44000 },
-  collectedByWeek: [12000, 30000, 40000, 36000].map((total, i) => ({ weekStart: `2026-08-0${i + 1}`, total })),
+  collectedByDay: [12000, 30000, 40000, 36000].map((total, i) => ({ dayYmd: `2026-08-0${i + 1}`, total })),
   billedNoDate: 0,
 }
 

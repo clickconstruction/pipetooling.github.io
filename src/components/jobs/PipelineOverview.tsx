@@ -25,7 +25,7 @@ type PipelineOverviewProps = {
   stats: StagesHeaderStats | null
   canOpenAr: boolean
   canSeeCharts: boolean
-  /** dev/master only (owner call, v2.1916): the collected-cash card. */
+  /** dev/controller only (owner calls, v2.1916 + v2.2299): the collected-cash card. */
   canSeeCollected: boolean
   arUnallocatedCount: number | null
   onOpenCapable: () => void
@@ -174,7 +174,7 @@ export function PipelineOverview({
     'ready-to-ask': 'Finished work not yet billed — open the Capable of Being Billed list',
     'waiting-on-customers': 'See who owes what — open the per-customer breakdown',
     'in-collections': 'Jump to Collections',
-    collected: canSeeCharts ? 'Open the paid profit chart' : 'Payments recorded in the last 8 weeks',
+    collected: canSeeCharts ? 'Open the paid profit chart' : 'Payments recorded in the last 30 days',
   }
   const moveAction: Record<PipelineMoveKey, () => void> = {
     'bill-capable': onOpenCapable,

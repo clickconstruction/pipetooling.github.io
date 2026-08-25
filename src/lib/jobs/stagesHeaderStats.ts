@@ -23,11 +23,10 @@ import {
   type BilledAgingBuckets,
 } from './invoiceBilling'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
-import { mondayOfWeekYmd } from './stagesWeeklyMovement'
 
 export type StagesSectionStat = { count: number; total: number }
 
-export type CollectedWeekPoint = { weekStart: string; total: number }
+export type CollectedDayPoint = { dayYmd: string; total: number }
 
 export type StagesHeaderStats = {
   waiting: StagesSectionStat
@@ -39,41 +38,43 @@ export type StagesHeaderStats = {
   /** "Capable of Being Billed" figure over the Working section. */
   capableToBill: number
   billedAging: BilledAgingBuckets
-  /** Payments by Monday-start week, oldest→newest, last COLLECTED_WEEKS weeks (Pipeline money card). */
-  collectedByWeek: CollectedWeekPoint[]
+  /** Payments by day, oldest→newest, last COLLECTED_DAYS days (Pipeline money card). */
+  collectedByDay: CollectedDayPoint[]
   /** Billed rows with a positive remainder but no billed_at / est. date (can't age or be chased). */
   billedNoDate: number
 }
 
-export const COLLECTED_WEEKS = 8
+// v2.2299 (owner call): the collected card reads the last 30 days, not 8
+// Monday-start weeks — and only devs + controllers see it.
+export const COLLECTED_DAYS = 30
 
-/** Σ payment.amount per Monday-start week over the trailing COLLECTED_WEEKS weeks (UTC clock). */
-export function collectedByWeekFromPayments(
+/** Σ payment.amount per day over the trailing COLLECTED_DAYS days incl. today (UTC clock). */
+export function collectedByDayFromPayments(
   payments: ReadonlyArray<{ paid_on?: string | null; amount: number | null }>,
   now = new Date(),
-): CollectedWeekPoint[] {
-  const thisMonday = mondayOfWeekYmd(now.toISOString().slice(0, 10))
-  const weeks: CollectedWeekPoint[] = []
+): CollectedDayPoint[] {
+  const todayYmd = now.toISOString().slice(0, 10)
+  const days: CollectedDayPoint[] = []
   const index = new Map<string, number>()
-  for (let i = COLLECTED_WEEKS - 1; i >= 0; i--) {
-    const weekStart = addDaysYmd(thisMonday, -7 * i)
-    index.set(weekStart, weeks.length)
-    weeks.push({ weekStart, total: 0 })
+  for (let i = COLLECTED_DAYS - 1; i >= 0; i--) {
+    const dayYmd = addDaysYmd(todayYmd, -i)
+    index.set(dayYmd, days.length)
+    days.push({ dayYmd, total: 0 })
   }
   for (const p of payments) {
     const paidOn = p.paid_on
     if (!paidOn) continue
-    const at = index.get(mondayOfWeekYmd(paidOn.slice(0, 10)))
-    const week = at == null ? undefined : weeks[at]
-    if (!week) continue
-    week.total += Number(p.amount ?? 0)
+    const at = index.get(paidOn.slice(0, 10))
+    const day = at == null ? undefined : days[at]
+    if (!day) continue
+    day.total += Number(p.amount ?? 0)
   }
-  return weeks
+  return days
 }
 
-/** collectedByWeek over the payments attached to `jobs` (the full-row board path). */
-export function collectedByWeekFromJobs(jobs: JobWithDetails[], now = new Date()): CollectedWeekPoint[] {
-  return collectedByWeekFromPayments(
+/** collectedByDay over the payments attached to `jobs` (the full-row board path). */
+export function collectedByDayFromJobs(jobs: JobWithDetails[], now = new Date()): CollectedDayPoint[] {
+  return collectedByDayFromPayments(
     jobs.flatMap((j) => (j.payments ?? []) as Array<{ paid_on?: string | null; amount: number | null }>),
     now,
   )
@@ -105,7 +106,7 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
     paid: { count: l.paid.length },
     capableToBill: capableToBillTotalFromWorking(l.working),
     billedAging: buildBilledAgingBuckets(l.filtered, now),
-    collectedByWeek: collectedByWeekFromJobs(jobs, now),
+    collectedByDay: collectedByDayFromJobs(jobs, now),
     billedNoDate: countBilledRowsMissingDates(l.filtered),
   }
 }

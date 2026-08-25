@@ -2863,7 +2863,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
             }
             canSeeCharts={authRole === 'dev' || authRole === 'controller'}
-            canSeeCollected={authRole === 'dev' || authRole === 'master_technician'}
+            canSeeCollected={authRole === 'dev' || authRole === 'controller'}
             arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
             // Money-move buttons clear a live search first (v2.1960, owner
             // request) — a leftover query would narrow the very list each

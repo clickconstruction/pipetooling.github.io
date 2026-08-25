@@ -2,15 +2,14 @@ import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   assembleLeanStatsJobs,
-  COLLECTED_WEEKS,
-  collectedByWeekFromPayments,
+  COLLECTED_DAYS,
+  collectedByDayFromPayments,
   computeStagesHeaderStats,
   type LeanStatsInvoiceRow,
   type LeanStatsJobRow,
   type LeanStatsPaymentRow,
 } from './stagesHeaderStats'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
-import { mondayOfWeekYmd } from './stagesWeeklyMovement'
 
 const NOW = new Date('2026-08-19T18:00:00Z')
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86400000).toISOString().slice(0, 10)
@@ -173,11 +172,11 @@ describe('computeStagesHeaderStats', () => {
     // b3 is the only billed row with a positive remainder and no billed_at/est date
     // (b1-a and k1-b carry est dates; b2 is Collections and excluded).
     expect(s.billedNoDate).toBe(1)
-    // b1's $400 payment landed 3 days before NOW (Sun 2026-08-16 → week of Mon 2026-08-10).
-    expect(s.collectedByWeek).toHaveLength(8)
-    expect(s.collectedByWeek[7]).toEqual({ weekStart: '2026-08-17', total: 0 })
-    expect(s.collectedByWeek[6]).toEqual({ weekStart: '2026-08-10', total: 400 })
-    expect(s.collectedByWeek.reduce((t, w) => t + w.total, 0)).toBe(400)
+    // b1's $400 payment landed 3 days before NOW → 27th of the 30 daily buckets.
+    expect(s.collectedByDay).toHaveLength(COLLECTED_DAYS)
+    expect(s.collectedByDay[29]!.total).toBe(0)
+    expect(s.collectedByDay[26]).toEqual({ dayYmd: '2026-08-16', total: 400 })
+    expect(s.collectedByDay.reduce((t, d) => t + d.total, 0)).toBe(400)
   })
 
   it('lean-assembled rows produce IDENTICAL stats to full objects (parity by construction)', () => {
@@ -187,7 +186,7 @@ describe('computeStagesHeaderStats', () => {
   })
 
   it('bounded fetch simulation (v2.1917) matches the unbounded path, with paid count + collected overridden', () => {
-    // A paid job whose recent unlinked payment must still land in collectedByWeek.
+    // A paid job whose recent unlinked payment must still land in collectedByDay.
     const paidWithRecentPayment = job('p2', {
       status: 'paid',
       revenue: 100,
@@ -198,7 +197,7 @@ describe('computeStagesHeaderStats', () => {
     const { jobRows, invoiceRows, paymentRows } = stripToLean(all)
 
     // Mirror the four bounded queries in fetchStagesHeaderStats:
-    const windowStart = addDaysYmd(mondayOfWeekYmd(NOW.toISOString().slice(0, 10)), -7 * (COLLECTED_WEEKS - 1))
+    const windowStart = addDaysYmd(NOW.toISOString().slice(0, 10), -(COLLECTED_DAYS - 1))
     const activeJobRows = jobRows.filter(
       (j) => j.status == null || ['waiting', 'working', 'ready_to_bill', 'billed'].includes(j.status),
     )
@@ -211,7 +210,7 @@ describe('computeStagesHeaderStats', () => {
     const bounded = {
       ...computeStagesHeaderStats(assembleLeanStatsJobs(activeJobRows, activeInvoiceRows, boundedPaymentRows), NOW),
       paid: { count: paidCount },
-      collectedByWeek: collectedByWeekFromPayments(boundedPaymentRows, NOW),
+      collectedByDay: collectedByDayFromPayments(boundedPaymentRows, NOW),
     }
     expect(bounded).toEqual(computeStagesHeaderStats(all, NOW))
   })
@@ -248,7 +247,7 @@ describe('computeStagesHeaderStats', () => {
     expect(s.readyToBill).toEqual({ count: 0, total: 0 })
     expect(s.billedAging).toEqual({ count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 })
     expect(s.billedNoDate).toBe(0)
-    expect(s.collectedByWeek).toHaveLength(8)
-    expect(s.collectedByWeek.every((w) => w.total === 0)).toBe(true)
+    expect(s.collectedByDay).toHaveLength(COLLECTED_DAYS)
+    expect(s.collectedByDay.every((d) => d.total === 0)).toBe(true)
   })
 })
