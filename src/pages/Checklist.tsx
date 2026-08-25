@@ -628,7 +628,9 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   }
 
   async function loadUpcoming() {
-    if (!authUserId) return
+    // Upcoming (future-dated instances) is dev-only since v2.2269 — it was
+    // empty for nearly everyone and its name collided with the waiting list.
+    if (!authUserId || !isDev) return
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
@@ -964,6 +966,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
 
       <ChecklistComingUpSection authUserId={authUserId} />
 
+      {isDev ? (
       <section>
         <button
           type="button"
@@ -1052,6 +1055,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
           </div>
         )}
       </section>
+      ) : null}
 
       {fwdInstance && (
         <div

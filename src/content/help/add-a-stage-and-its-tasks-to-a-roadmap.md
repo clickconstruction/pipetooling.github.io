@@ -45,14 +45,14 @@ Tap **Farm crew** and all four members are ticked; untick the one who's out this
 
 ## Tasks run in order
 
-By default a stage is **step-by-step**: its tasks go in their numbers' order, and only the next one appears on its assignee's list — the rest wait grayed out (each shows *after 4.2*, and the person sees theirs in **⏳ Coming up** with the name of who's ahead). The moment a step is completed, the next one lands on its assignee's list by itself.
+By default a stage is **step-by-step**: its tasks go in their numbers' order, and only the next one appears on its assignee's list — the rest wait grayed out (each shows *after 4.2*, and the person sees theirs in **⏳ Waiting For** with the name of who's ahead). The moment a step is completed, the next one lands on its assignee's list by itself.
 
 If a stage is really a do-in-any-order checklist, switch it to parallel — two doors to the same setting:
 
 - **The ⚙ gear on the stage box** (under the ✎ and ＋ buttons): a small menu offers **→ In order, one at a time** or **⇊ All at once (parallel)**, with a checkmark on the current mode. One tap switches; every open task goes out immediately.
 - **The ✎ pencil** → **Tasks run** → **⇄ Any order** does the same from the edit dialog.
 
-Parallel stages wear a small blue **⇊ parallel** badge — on the Map box, the Plan stage header, and the Timeline row — so you can tell at a glance which stages hand out everything at once. Switching back to **In order** pulls not-yet-due tasks off people's lists and returns them to ⏳ Coming up (finished work is never touched).
+Parallel stages wear a small blue **⇊ parallel** badge — on the Map box, the Plan stage header, and the Timeline row — so you can tell at a glance which stages hand out everything at once. Switching back to **In order** pulls not-yet-due tasks off people's lists and returns them to ⏳ Waiting For (finished work is never touched).
 
 To see a stage's tasks on the map, press the **›** chevron at its left edge (or the ⌄⌄ *Show all* toolbar button to expand every stage). Click — or **press and hold**, on a phone — any task to open its card; rename it, assign people, or post a note; see *staff and discuss roadmap tasks*.
 

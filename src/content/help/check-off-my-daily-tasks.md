@@ -52,6 +52,6 @@ On a computer, History is two lists. **Repeating** tasks keep the day-by-day gri
 
 Assigned to a task someone else marked done — but it isn't? On **History**, tap the row, write a note saying why (required), and tap {{button:amber|Reopen}}. Whoever completed it gets notified with your reason, and the task returns to **Today → Outstanding** until it's actually finished.
 
-## ⏳ Coming up
+## ⏳ Waiting For
 
-Roadmap tasks that are yours but not yet ready show in **Coming up** (on Today and your Dashboard) — grayed, with no checkbox. Each one names the task ahead of it and who's doing it, so you always know what you're waiting on. The moment that step is done, the task moves onto your list on its own.
+Roadmap tasks that are yours but not yet ready show in **Waiting For** (on Today and your Dashboard) — grayed, with no checkbox. They're grouped under the step that's holding them: each group names that task once, with who's on it and the stage, and your waiting tasks listed beneath in the order they'll unlock (a small *then* marks the ones queued behind another). Only the first three groups show — tap **…and N more steps ahead** for the rest. The moment a step ahead is done, your task moves onto your list on its own.
