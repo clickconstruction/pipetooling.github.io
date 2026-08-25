@@ -54,7 +54,18 @@ import { ChecklistTechTreeReviewHud } from './ChecklistTechTreeReviewHud'
 import { sequentialWaiting } from '../../lib/checklistTechTreeGraph'
 import { RoadmapCanvasSearchPanel } from './ChecklistTechTreeCanvasSearchPanel'
 import { clientCoordsForConnectEnd } from '../../lib/checklistTechTreeCanvas'
-import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core'
+import {
+  DndContext,
+  DragOverlay,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  pointerWithin,
+} from '@dnd-kit/core'
 import {
   getCurrentFullscreenElement,
   isDomFullscreenEnabled,
@@ -63,8 +74,12 @@ import {
 } from '../../lib/domFullscreen'
 import {
   computeTaskReorderUpdates,
+  isTechTreeGroupDropId,
   orderedTaskIdsByGroup,
+  techTreeGroupIdFromGroupDropId,
 } from '../../lib/techTreeTaskOrder'
+import { RoadmapTaskNumber } from './RoadmapStageNumberBadge'
+import { GripVertical } from 'lucide-react'
 import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
@@ -1060,8 +1075,48 @@ export function ChecklistTechTreeTab({
     return true
   }, [])
 
+  /** The task row being carried (v2.2267) — rendered in a DragOverlay so it
+   *  floats above every stage box instead of sliding underneath neighbors. */
+  const [activeDragTask, setActiveDragTask] = useState<{ id: string; title: string; numberLabel: string } | null>(null)
+  const activeDragGroupRef = useRef<string | null>(null)
+
+  const onTaskDragStart = useCallback(
+    (event: DragStartEvent) => {
+      const id = String(event.active.id)
+      const t = tasks.find((x) => x.id === id)
+      if (!t) return
+      activeDragGroupRef.current = t.group_id
+      setActiveDragTask({ id, title: t.title, numberLabel: taskNumbers.get(id) ?? '' })
+    },
+    [tasks, taskNumbers],
+  )
+
+  /** Rows win; a stage box is the fallback target (append to end). A gap
+   *  between rows inside the dragged task's own stage snaps to the nearest
+   *  row so in-stage sorting doesn't flash "move to end"; empty canvas is a
+   *  no-op instead of snapping to the nearest faraway row. */
+  const taskDropCollision: CollisionDetection = useCallback((args) => {
+    const within = pointerWithin(args)
+    const rowHits = within.filter((c) => !isTechTreeGroupDropId(String(c.id)))
+    if (rowHits.length > 0) return rowHits
+    const boxHit = within.find((c) => isTechTreeGroupDropId(String(c.id)))
+    if (boxHit) {
+      if (activeDragGroupRef.current === techTreeGroupIdFromGroupDropId(String(boxHit.id))) {
+        const nearestRow = closestCenter({
+          ...args,
+          droppableContainers: args.droppableContainers.filter((c) => !isTechTreeGroupDropId(String(c.id))),
+        })
+        if (nearestRow.length > 0) return nearestRow
+      }
+      return [boxHit]
+    }
+    return []
+  }, [])
+
   const onTaskDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      setActiveDragTask(null)
+      activeDragGroupRef.current = null
       if (!reorderMode || !canEditStructure) return
       const { active, over } = event
       if (!over) return
@@ -1526,7 +1581,12 @@ export function ChecklistTechTreeTab({
     <ReactFlowProvider>
     <DndContext
       sensors={dndSensors}
-      collisionDetection={closestCenter}
+      collisionDetection={taskDropCollision}
+      onDragStart={onTaskDragStart}
+      onDragCancel={() => {
+        setActiveDragTask(null)
+        activeDragGroupRef.current = null
+      }}
       onDragEnd={(e) => {
         void onTaskDragEnd(e)
       }}
@@ -2055,6 +2115,31 @@ export function ChecklistTechTreeTab({
         portalContainer={roadmapModalPortalHost ?? undefined}
       />
     </div>
+    <DragOverlay dropAnimation={null} zIndex={10035}>
+      {activeDragTask ? (
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1.5px solid #3b82f6',
+            borderRadius: 8,
+            boxShadow: '0 14px 34px rgba(0, 0, 0, 0.3)',
+            padding: '6px 12px',
+            fontSize: 13,
+            color: 'var(--text-strong)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            transform: 'rotate(-2deg)',
+            maxWidth: 280,
+            cursor: 'grabbing',
+          }}
+        >
+          <GripVertical size={14} strokeWidth={2} aria-hidden style={{ color: 'var(--text-slate-400)', flexShrink: 0 }} />
+          {activeDragTask.numberLabel ? <RoadmapTaskNumber label={activeDragTask.numberLabel} /> : null}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeDragTask.title}</span>
+        </div>
+      ) : null}
+    </DragOverlay>
     </DndContext>
     </ReactFlowProvider>
     </div>

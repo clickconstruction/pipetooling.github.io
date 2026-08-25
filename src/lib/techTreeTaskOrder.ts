@@ -7,6 +7,15 @@ export const isTechTreeEmptyGroupDropId = (id: string) => id.startsWith('__empty
 
 export const techTreeGroupIdFromEmptyDropId = (id: string) => id.slice('__empty__'.length)
 
+/** Prefix for the whole-box useDroppable id (v2.2267) — dropping a task on a
+ *  stage box (title, edges, or a collapsed box) sends it to the end of that
+ *  stage. Row drops keep exact-position semantics. */
+export const techTreeGroupDropId = (groupId: string) => `__group__${groupId}`
+
+export const isTechTreeGroupDropId = (id: string) => id.startsWith('__group__')
+
+export const techTreeGroupIdFromGroupDropId = (id: string) => id.slice('__group__'.length)
+
 export type TechTreeTaskIdRow = { id: string; group_id: string; sort_index: number }
 
 /**
@@ -47,6 +56,23 @@ export function computeTaskReorderUpdates(args: {
 }): { id: string; group_id: string; sort_index: number }[] | null {
   const { activeId, overId, taskById, orderedIdsByGroup, allGroupIds } = args
   if (activeId === overId) return null
+  if (isTechTreeGroupDropId(overId)) {
+    // Whole-box drop: append at the end of the target stage (also how a task
+    // is sent to the end of its own stage).
+    const targetG = techTreeGroupIdFromGroupDropId(overId)
+    const t = taskById.get(activeId)
+    if (!t) return null
+    const newMap = new Map(orderedIdsByGroup)
+    const fromList = [...(newMap.get(t.group_id) ?? [])]
+    const fromIdx = fromList.indexOf(activeId)
+    if (fromIdx < 0) return null
+    fromList.splice(fromIdx, 1)
+    newMap.set(t.group_id, fromList)
+    const toList = t.group_id === targetG ? fromList : [...(newMap.get(targetG) ?? [])]
+    toList.push(activeId)
+    newMap.set(targetG, toList)
+    return toUpdateRowsFromMaps(taskById, newMap, allGroupIds)
+  }
   if (isTechTreeEmptyGroupDropId(overId)) {
     const targetG = techTreeGroupIdFromEmptyDropId(overId)
     const t = taskById.get(activeId)
