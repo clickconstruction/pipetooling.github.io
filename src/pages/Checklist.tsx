@@ -40,7 +40,7 @@ import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileC
 import { useToastContext } from '../contexts/ToastContext'
 import { ChecklistCostButton } from '../components/checklist/ChecklistCostButton'
 import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
-import { canSeeTaskCosts, formatOpenCostSummary, formatWholeDollars, sumEstimateDollars, summarizeOpenTaskCosts } from '../lib/checklistCostEstimate'
+import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatOpenCostSummary, formatWholeDollars, sumEstimateDollars, summarizeOpenTaskCosts } from '../lib/checklistCostEstimate'
 import { recentStageUnlockEvents, stageUnlockPreviewFor, type StageUnlockEvent } from '../lib/roadmapStageReview'
 
 type UserRole =
@@ -81,22 +81,32 @@ type ChecklistInstance = {
 type RoadmapTaskEmbed = {
   group_id?: string
   checklist_tech_tree_groups?: {
+    title?: string | null
     roadmap_id?: string
     checklist_tech_tree_roadmaps?: { title?: string | null } | null
   } | null
 }
 
 /**
- * "⛰ <roadmap title>" chip for roadmap-born items; title falls back to "goal"
- * when RLS hides the tree (field roles). With `onOpen` it becomes a button
- * opening the "Where this task fits" modal (v2.2087).
+ * Stage-name chip for roadmap-born items: JUST the stage title (owner call,
+ * 2026-08-25 — "cards don't need to know about ⛰ Farm 1"; the roadmap name
+ * lives in the tooltip and the "Where this task fits" sheet). Shown to every
+ * role on every status — assignees can read structure titles since migration
+ * 20260825001101; falls back to "⛰ goal" only if RLS still hides the tree.
+ * With `onOpen` it becomes a button opening "Where this task fits" (v2.2087).
+ * Card surfaces render it on its own line below the title; row surfaces keep
+ * it inline in their chip cluster.
  */
 function roadmapGoalChip(
   item: { roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null | undefined,
   onOpen?: (roadmapGroupTaskId: string) => void,
 ) {
   if (!item?.roadmap_group_task_id) return null
-  const title = item.checklist_tech_tree_group_tasks?.checklist_tech_tree_groups?.checklist_tech_tree_roadmaps?.title?.trim()
+  const group = item.checklist_tech_tree_group_tasks?.checklist_tech_tree_groups
+  const roadmapTitle = group?.checklist_tech_tree_roadmaps?.title?.trim()
+  const stageTitle = group?.title?.trim()
+  const label = stageTitle || roadmapTitle || '⛰ goal'
+  const fullPath = [roadmapTitle, stageTitle].filter(Boolean).join(' · ') || 'roadmap goal'
   const chipStyle = {
     fontSize: '0.72rem',
     fontWeight: 600,
@@ -104,24 +114,33 @@ function roadmapGoalChip(
     borderRadius: 7,
     background: 'var(--bg-purple-tint, var(--bg-blue-tint))',
     color: 'var(--text-purple-800, var(--text-blue-800))',
+    // One line, never two: long stage names truncate; the tooltip has the full path.
     whiteSpace: 'nowrap',
     verticalAlign: 'middle',
+    maxWidth: 230,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: 'inline-block',
   } as const
   if (!onOpen) {
-    return <span style={chipStyle}>⛰ {title || 'goal'}</span>
+    return (
+      <span title={fullPath} style={chipStyle}>
+        {label}
+      </span>
+    )
   }
   const taskId = item.roadmap_group_task_id
   return (
     <button
       type="button"
-      title="See where this task fits in the roadmap"
+      title={`${fullPath} — see where this task fits in the roadmap`}
       onClick={(e) => {
         e.stopPropagation()
         onOpen(taskId)
       }}
       style={{ ...chipStyle, font: 'inherit', ...{ fontSize: chipStyle.fontSize, fontWeight: chipStyle.fontWeight }, border: 'none', cursor: 'pointer' }}
     >
-      ⛰ {title || 'goal'}
+      {label}
     </button>
   )
 }
@@ -481,7 +500,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -496,7 +515,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     // client-side so the reopened check can share the same rows.
     const { data: pastData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, show_until_completed, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, show_until_completed, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .lt('scheduled_date', today)
@@ -612,7 +631,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     const today = toLocalDateString(new Date())
     const { data, error: e } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .gt('scheduled_date', today)
       .order('scheduled_date', { ascending: true })
@@ -834,7 +853,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                 <ChecklistInstanceCard
                   key={inst.id}
                   instance={inst}
-                  title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} /> {roadmapGoalChip(inst.checklist_items)}{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}</>}
+                  title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items)}</div> : null}</>}
                   events={eventsByInstance.get(inst.id) ?? []}
                   nameById={eventActorNameById}
                   currentUserId={authUserId}
@@ -915,8 +934,9 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
           const rawTitle = item?.title ?? 'Untitled'
           return (
             <>
-              <ChecklistTitleWithLinks title={isVehicleTaskTitle(rawTitle) ? stripVehicleTaskMarker(rawTitle) : rawTitle} links={item?.links} /> {roadmapGoalChip(item)}
+              <ChecklistTitleWithLinks title={isVehicleTaskTitle(rawTitle) ? stripVehicleTaskMarker(rawTitle) : rawTitle} links={item?.links} />
               {isVehicleTaskTitle(rawTitle) ? <> {vehicleTaskChip((inst as ChecklistInstance).id, setVehicleCtxInstanceId)}</> : null}
+              {item?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(item)}</div> : null}
             </>
           )
         }}
@@ -2389,7 +2409,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
 
     let query = supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, checklist_items(title, links, repeat_type, reminder_scope, created_at, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees(user_id, users(name, email))')
+      .select('id, checklist_item_id, scheduled_date, checklist_items(title, links, repeat_type, reminder_scope, created_at, created_by_user_id, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees(user_id, users(name, email))')
       .is('completed_at', null)
       .order('scheduled_date', { ascending: true })
 
@@ -2979,6 +2999,41 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
         {foldHeader('Checklist review — sign off completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
         <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
           <ChecklistReviewInboxSection onCountChange={onReviewCount} renderWhenEmpty />
+          {(() => {
+            // Calibration strip (dev/controller): one line, only once it means something.
+            if (!canSeeCosts) return null
+            const all = Object.values(costEstimates)
+            const acc = estimateAccuracy(all)
+            if (!acc || acc.count < ACCURACY_MIN_COUNT) return null
+            const perPerson = estimateAccuracyByPerson(all).slice(0, 3)
+            return (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: '0.6rem',
+                  flexWrap: 'wrap',
+                  margin: '0.5rem 0 0',
+                  padding: '0.45rem 0.75rem',
+                  borderRadius: 9,
+                  background: 'var(--bg-amber-tint)',
+                  border: '1px solid #d97706',
+                  fontSize: '0.78rem',
+                  color: 'var(--text-amber-800)',
+                }}
+              >
+                <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>{formatMultiplier(acc.multiplier)}</span>
+                <span>
+                  estimates run {acc.multiplier > 1.05 ? 'hot' : acc.multiplier < 0.95 ? 'cold' : 'true'} · {acc.count} task{acc.count === 1 ? '' : 's'} with actuals
+                </span>
+                {perPerson.map((pp) => (
+                  <span key={pp.personName} style={{ whiteSpace: 'nowrap', color: 'var(--text-700)' }}>
+                    {pp.personName} {formatMultiplier(pp.multiplier)}
+                  </span>
+                ))}
+              </div>
+            )
+          })()}
         </div>
       </div>
       <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '1.25rem', overflow: 'hidden' }}>
@@ -3429,7 +3484,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   }
 
   async function loadItems() {
-    const baseSelect = 'id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(roadmap_id, checklist_tech_tree_roadmaps(title)))'
+    const baseSelect = 'id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))'
     const { data, error } = filterUserId
       ? await supabase
           .from('checklist_items')

@@ -67,3 +67,54 @@ describe('canSeeTaskCosts', () => {
     }
   })
 })
+
+describe('actuals', () => {
+  it('actualDollars: null without a positive actual, whole dollars with one', async () => {
+    const { actualDollars } = await import('./checklistCostEstimate')
+    expect(actualDollars({ rate: 50, actualHours: null })).toBe(null)
+    expect(actualDollars({ rate: 50 })).toBe(null)
+    expect(actualDollars({ rate: 50, actualHours: 4 })).toBe(200)
+    expect(actualDollars({ rate: 33, actualHours: 1.5 })).toBe(50)
+  })
+
+  it('estimateRelativeBands scales with the estimate and snaps to halves', async () => {
+    const { estimateRelativeBands } = await import('./checklistCostEstimate')
+    expect(estimateRelativeBands(2)).toEqual([1, 2, 3, 4])
+    expect(estimateRelativeBands(16)).toEqual([8, 16, 24, 32])
+    expect(estimateRelativeBands(1)).toEqual([0.5, 1, 1.5, 2])
+    expect(estimateRelativeBands(0.5)).toEqual([0.5, 1])
+    expect(estimateRelativeBands(0)).toEqual([0.5, 1, 2, 4])
+  })
+
+  it('estimateAccuracy is hours-weighted and null with no actuals', async () => {
+    const { estimateAccuracy } = await import('./checklistCostEstimate')
+    expect(estimateAccuracy([{ hours: 2, actualHours: null }])).toBe(null)
+    const a = estimateAccuracy([
+      { hours: 2, actualHours: 4 },
+      { hours: 8, actualHours: 8 },
+      { hours: 1, actualHours: null },
+    ])
+    expect(a?.count).toBe(2)
+    expect(a?.multiplier).toBeCloseTo(12 / 10)
+  })
+
+  it('estimateAccuracyByPerson groups and sorts by count', async () => {
+    const { estimateAccuracyByPerson } = await import('./checklistCostEstimate')
+    const rows = [
+      { hours: 2, actualHours: 4, personName: 'Malachi' },
+      { hours: 2, actualHours: 3, personName: 'Malachi' },
+      { hours: 4, actualHours: 4, personName: 'Darren' },
+      { hours: 1, actualHours: null, personName: 'Darren' },
+    ]
+    const out = estimateAccuracyByPerson(rows)
+    expect(out.map((o) => o.personName)).toEqual(['Malachi', 'Darren'])
+    expect(out[0]?.multiplier).toBeCloseTo(7 / 4)
+    expect(out[1]?.multiplier).toBe(1)
+  })
+
+  it('formatMultiplier keeps one decimal', async () => {
+    const { formatMultiplier } = await import('./checklistCostEstimate')
+    expect(formatMultiplier(1.62)).toBe('×1.6')
+    expect(formatMultiplier(1)).toBe('×1.0')
+  })
+})

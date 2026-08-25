@@ -1778,6 +1778,9 @@ export type Database = {
       }
       checklist_item_costs: {
         Row: {
+          actual_hours: number | null
+          actual_recorded_at: string | null
+          actual_recorded_by_user_id: string | null
           cost_key: string
           created_by_user_id: string | null
           hours: number
@@ -1787,6 +1790,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          actual_hours?: number | null
+          actual_recorded_at?: string | null
+          actual_recorded_by_user_id?: string | null
           cost_key: string
           created_by_user_id?: string | null
           hours: number
@@ -1796,6 +1802,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          actual_hours?: number | null
+          actual_recorded_at?: string | null
+          actual_recorded_by_user_id?: string | null
           cost_key?: string
           created_by_user_id?: string | null
           hours?: number

@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { canSeeTaskCosts, estimateDollars, estimateRelativeBands, formatWholeDollars } from '../../lib/checklistCostEstimate'
+import { writeChecklistCostActual } from '../../lib/checklistCostStore'
+import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -32,8 +35,24 @@ export function ChecklistReviewInboxSection({
   renderWhenEmpty?: boolean
 } = {}) {
   const { user: authUser, role } = useAuth()
+  // Actuals capture (dev/controller): one tap per costed sign-off; untouched records nothing.
+  const canSeeCosts = canSeeTaskCosts(role)
+  const costEstimates = useChecklistCostEstimates(canSeeCosts)
+  async function recordActual(costKey: string, hours: number | null) {
+    if (actualBusyKey) return
+    setActualBusyKey(costKey)
+    try {
+      await writeChecklistCostActual(costKey, hours)
+    } catch {
+      // non-blocking: sign-off never depends on this
+    } finally {
+      setActualBusyKey(null)
+    }
+  }
   const isDev = role === 'dev'
   const [rows, setRows] = useState<ReviewQueueRow[]>([])
+  /** costKey with an actual write in flight (Took-about strip). */
+  const [actualBusyKey, setActualBusyKey] = useState<string | null>(null)
   const [eventsByInstance, setEventsByInstance] = useState<Map<string, ChecklistCardEvent[]>>(new Map())
   const [nameById, setNameById] = useState<Record<string, string>>({})
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -49,7 +68,7 @@ export function ChecklistReviewInboxSection({
           supabase
             .from('checklist_instances')
             .select(
-              'id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, reviewed_at, checklist_items(title, created_by_user_id, notify_on_complete_user_id)',
+              'id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, reviewed_at, checklist_items(title, created_by_user_id, notify_on_complete_user_id, roadmap_group_task_id)',
             )
             .not('completed_at', 'is', null)
             .is('reviewed_at', null)
@@ -292,6 +311,72 @@ export function ChecklistReviewInboxSection({
                   {row.latestNoteBody ? <> · “{row.latestNoteBody}”</> : <> · no note</>}
                 </div>
               </button>
+              {(() => {
+                if (!canSeeCosts) return null
+                const est = costEstimates[row.costKey]
+                if (!est) return null
+                const strapBusy = actualBusyKey === row.costKey
+                return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      flexWrap: 'wrap',
+                      padding: '0 0.9rem 0.6rem',
+                      borderTop: '1px dashed var(--border)',
+                      paddingTop: '0.5rem',
+                      margin: '0 0 0',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        padding: '0.1rem 0.45rem',
+                        borderRadius: 7,
+                        background: '#fbbf24',
+                        border: '1px solid #d97706',
+                        color: '#451a03',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      est {formatWholeDollars(estimateDollars(est))} · {est.hours}h
+                    </span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>Took about</span>
+                    {estimateRelativeBands(est.hours).map((b) => {
+                      const selected = est.actualHours === b
+                      return (
+                        <button
+                          key={b}
+                          type="button"
+                          disabled={strapBusy}
+                          onClick={() => void recordActual(row.costKey, selected ? null : b)}
+                          title={b === est.hours ? 'As estimated' : undefined}
+                          style={{
+                            minWidth: 44,
+                            minHeight: 32,
+                            padding: '0 0.4rem',
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                            borderRadius: 8,
+                            border: selected
+                              ? '2px solid #2563eb'
+                              : b === est.hours
+                                ? '1.5px solid #d97706'
+                                : '1px solid var(--border-strong)',
+                            background: selected ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                            color: selected ? 'var(--text-blue-800)' : b === est.hours ? 'var(--text-amber-800)' : 'var(--text-700)',
+                            cursor: strapBusy ? 'wait' : 'pointer',
+                          }}
+                        >
+                          {b}h{selected ? ' ✓' : ''}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
               {expanded ? (
                 <div style={{ padding: '0 0.9rem 0.75rem' }}>
                   {events.length > 0 ? (
