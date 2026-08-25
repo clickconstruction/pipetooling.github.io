@@ -49,20 +49,20 @@ describe('parsePaySpeedsRpc', () => {
       customers: {},
       receipts: {
         knight: [
-          { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16 },
+          { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
           { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 30.6 },
-          { billedYmd: 'bad', paidYmd: '2026-05-17', gapDays: 16 },
+          { billedYmd: 'bad', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
           { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: -2 },
           null,
         ],
         empty: [],
-        notAList: { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16 },
+        notAList: { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
       },
     })
     expect(parsed?.receipts).toEqual({
       knight: [
-        { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16 },
-        { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 31 },
+        { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
+        { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 31, jobId: null, jobName: null, address: null },
       ],
     })
   })

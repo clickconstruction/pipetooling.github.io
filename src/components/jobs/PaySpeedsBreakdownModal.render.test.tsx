@@ -38,12 +38,12 @@ const speeds: PaySpeedData = {
   customerTypes: { knight: 'commercial', ingram: 'residential', rmc: 'commercial' },
   receipts: {
     knight: [
-      { billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12 },
-      { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16 },
-      { billedYmd: '2026-07-22', paidYmd: '2026-08-11', gapDays: 20 },
-      { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 31 },
+      { billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: null, jobName: null, address: null },
+      { billedYmd: '2026-05-01', paidYmd: '2026-05-17', gapDays: 16, jobId: null, jobName: null, address: null },
+      { billedYmd: '2026-07-22', paidYmd: '2026-08-11', gapDays: 20, jobId: null, jobName: null, address: null },
+      { billedYmd: '2026-03-10', paidYmd: '2026-04-10', gapDays: 31, jobId: null, jobName: null, address: null },
     ],
-    ingram: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7 }],
+    ingram: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }],
   },
   quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70 },
 }
@@ -80,6 +80,28 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(screen.getByTitle('Billed May 1 → paid May 17 (+16 days)')).toBeTruthy()
     fireEvent.click(screen.getByTitle('Hide the payments behind this median'))
     expect(screen.queryByText('05/01–05/17')).toBeNull()
+  })
+
+  it('a receipt that knows its job shows name · address and opens the job detail on click (v2.2288)', () => {
+    const withJob: PaySpeedData = {
+      ...speeds,
+      receipts: {
+        ...speeds.receipts,
+        knight: [
+          { billedYmd: '2026-06-03', paidYmd: '2026-06-15', gapDays: 12, jobId: 'job-9', jobName: 'Panel swap', address: '1207 Kingsbury Ln' },
+          ...speeds.receipts.knight!.slice(1),
+        ],
+      },
+    }
+    const openJob = vi.fn()
+    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={withJob} onClose={vi.fn()} onOpenJobDetail={openJob} />)
+    fireEvent.click(screen.getByTitle('Show the payments behind this median'))
+    expect(screen.getByText('Panel swap')).toBeTruthy()
+    expect(screen.getByText(/1207 Kingsbury Ln/)).toBeTruthy()
+    fireEvent.click(screen.getByTitle('Billed Jun 3 → paid Jun 15 (+12 days) — open the job'))
+    expect(openJob).toHaveBeenCalledWith('job-9')
+    // Jobless receipts render dates only, unclickable — no stray chevron handler.
+    expect(screen.getByTitle('Billed May 1 → paid May 17 (+16 days)')).toBeTruthy()
   })
 
   it('thin-history rows expand too — receipts when they exist, the why-empty note when they do not', () => {

@@ -19,7 +19,15 @@ export type PaySpeedStat = { medianDays: number; samples: number }
 export type CustomerSegment = 'residential' | 'commercial'
 
 /** One measurable payment behind a customer's median: billed date → the day money hit. */
-export type PayReceipt = { billedYmd: string; paidYmd: string; gapDays: number }
+export type PayReceipt = {
+  billedYmd: string
+  paidYmd: string
+  gapDays: number
+  /** Job identity (v2.2288) — null on pre-v7 payloads or payments with no job link. */
+  jobId: string | null
+  jobName: string | null
+  address: string | null
+}
 
 /** Data-health counts for the breakdown's health line (v6 RPC). */
 export type PaySpeedQuality = {
@@ -65,7 +73,17 @@ function asReceipt(v: unknown): PayReceipt | null {
   if (typeof billed !== 'string' || !YMD_RE.test(billed)) return null
   if (typeof paid !== 'string' || !YMD_RE.test(paid)) return null
   if (typeof gap !== 'number' || !Number.isFinite(gap) || gap < 0) return null
-  return { billedYmd: billed, paidYmd: paid, gapDays: Math.round(gap) }
+  const jobId = (v as { jobId?: unknown }).jobId
+  const jobName = (v as { jobName?: unknown }).jobName
+  const address = (v as { address?: unknown }).address
+  return {
+    billedYmd: billed,
+    paidYmd: paid,
+    gapDays: Math.round(gap),
+    jobId: typeof jobId === 'string' && jobId !== '' ? jobId : null,
+    jobName: typeof jobName === 'string' && jobName.trim() !== '' ? jobName : null,
+    address: typeof address === 'string' && address.trim() !== '' ? address : null,
+  }
 }
 
 /** Defensive parse of the RPC's jsonb (null on gate-refused or malformed payloads; v1/v2 payloads get empty segments/types/receipts). */
