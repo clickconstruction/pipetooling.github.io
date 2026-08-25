@@ -71,3 +71,29 @@ export function computeRoadmapSearchMatches(
     matchCount,
   }
 }
+
+export type HighlightSegment = { text: string; hit: boolean }
+
+/**
+ * Split `text` into segments around every case-insensitive occurrence of
+ * `normalizedQuery` (already trimmed + lowercased — pass
+ * RoadmapSearchResult.normalizedQuery) so the canvas can wrap the exact
+ * matching characters in a mark. Empty query, or no occurrence, returns the
+ * whole text as one non-hit segment. Preserves the original casing.
+ */
+export function splitTextForHighlight(text: string, normalizedQuery: string): HighlightSegment[] {
+  if (!normalizedQuery) return [{ text, hit: false }]
+  const lower = text.toLowerCase()
+  const segments: HighlightSegment[] = []
+  let cursor = 0
+  for (;;) {
+    const at = lower.indexOf(normalizedQuery, cursor)
+    if (at === -1) break
+    if (at > cursor) segments.push({ text: text.slice(cursor, at), hit: false })
+    segments.push({ text: text.slice(at, at + normalizedQuery.length), hit: true })
+    cursor = at + normalizedQuery.length
+  }
+  if (segments.length === 0) return [{ text, hit: false }]
+  if (cursor < text.length) segments.push({ text: text.slice(cursor), hit: false })
+  return segments
+}

@@ -5,6 +5,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { Pencil, Plus, ChevronDown, ChevronRight, GripVertical, Lock } from 'lucide-react'
 import type { StageBadge } from '../../lib/roadmapBridge'
+import { splitTextForHighlight } from '../../lib/checklistTechTreeSearch'
 import { techTreeEmptyGroupDropId } from '../../lib/techTreeTaskOrder'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 
@@ -59,9 +60,32 @@ export type GroupNodeData = {
   searchGroupTitleMatch: boolean
   /** Task ids in this group that match the roadmap search. */
   searchMatchingTaskIds: string[]
+  /** Normalized (trimmed, lowercased) canvas search query — for substring marks. */
+  searchQuery: string
 }
 
 type GroupTask = GroupNodeData['tasks'][0]
+
+/** Wraps the exact characters matching the canvas search in an amber mark. */
+function SearchMarkedText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>
+  return (
+    <>
+      {splitTextForHighlight(text, query).map((seg, i) =>
+        seg.hit ? (
+          <mark
+            key={i}
+            style={{ background: 'rgba(250, 204, 21, 0.45)', color: 'inherit', borderRadius: 3, padding: '0 1px' }}
+          >
+            {seg.text}
+          </mark>
+        ) : (
+          <span key={i}>{seg.text}</span>
+        ),
+      )}
+    </>
+  )
+}
 
 /** ⚡ / ★ markers for tasks on the Plan's Next up shortlist (v2.2138) and pinned tasks (v2.2140) — static and reorder rows. */
 function TaskNextUpSpan({ on, pinned }: { on: boolean; pinned?: boolean }) {
@@ -218,6 +242,7 @@ function TechTreeDndTaskRow({
   canAct,
   disabled,
   searchRowHighlight = false,
+  searchQuery = '',
 }: {
   task: GroupTask
   onToggle: (id: string) => void
@@ -226,6 +251,7 @@ function TechTreeDndTaskRow({
   canAct: boolean
   disabled: boolean
   searchRowHighlight?: boolean
+  searchQuery?: string
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
   const cbId = `tt-task-cb-${task.id}`
@@ -296,10 +322,13 @@ function TechTreeDndTaskRow({
           />
           <div style={{ flex: 1, minWidth: 0, lineHeight: 1.4 }}>
             <TechTreeEditableTaskTitle taskId={task.id} canEdit={canEditTaskTitle} onEditTask={onEditTask}>
-              {task.title}
+              <SearchMarkedText text={task.title} query={searchQuery} />
             </TechTreeEditableTaskTitle>
             {task.assigneeLabel ? (
-              <span style={{ color: 'var(--text-slate-500)' }}> — {task.assigneeLabel}</span>
+              <span style={{ color: 'var(--text-slate-500)' }}>
+                {' — '}
+                <SearchMarkedText text={task.assigneeLabel} query={searchQuery} />
+              </span>
             ) : null}
             <TaskNextUpSpan on={task.nextUp} pinned={task.pinned} />
             <TaskBridgeChipSpan chip={task.bridgeChip} />
@@ -314,14 +343,16 @@ export function GroupNode({ data }: NodeProps) {
   const d = data as GroupNodeData
   const { collapsed } = d
   const taskMatch = (id: string) => d.searchMatchingTaskIds.includes(id)
-  const cardSearchOutline =
-    d.searchIsActive && (d.searchGroupTitleMatch || d.searchMatchingTaskIds.length > 0)
-      ? '0 0 0 2px #facc15'
-      : undefined
+  const cardHasHit = d.searchGroupTitleMatch || d.searchMatchingTaskIds.length > 0
+  const cardSearchOutline = d.searchIsActive && cardHasHit ? '0 0 0 2px #facc15' : undefined
   return (
     <div
       style={{
         position: 'relative',
+        // Search spotlight: stages with no hit fade back but stay in place, so
+        // the graph's shape keeps reading while you search.
+        opacity: d.searchIsActive && !cardHasHit ? 0.3 : undefined,
+        transition: 'opacity 120ms ease',
         width: 280,
         minHeight: 80,
         padding: 10,
@@ -452,13 +483,9 @@ export function GroupNode({ data }: NodeProps) {
               lineHeight: 1.25,
               display: 'inline-block',
               maxWidth: '100%',
-              borderRadius: 4,
-              padding: d.searchGroupTitleMatch && d.searchIsActive ? '2px 4px' : 0,
-              background:
-                d.searchIsActive && d.searchGroupTitleMatch ? 'rgba(250, 204, 21, 0.35)' : undefined,
             }}
           >
-            {d.title}
+            <SearchMarkedText text={d.title} query={d.searchIsActive ? d.searchQuery : ''} />
           </div>
           {d.badge || d.locked || d.unplanned || d.nextUpCount > 0 ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
@@ -572,6 +599,7 @@ export function GroupNode({ data }: NodeProps) {
                   canAct={t.canAct}
                   disabled={false}
                   searchRowHighlight={d.searchIsActive && taskMatch(t.id)}
+                  searchQuery={d.searchIsActive ? d.searchQuery : ''}
                 />
               ))}
             </ul>
@@ -620,9 +648,14 @@ export function GroupNode({ data }: NodeProps) {
                       canEdit
                       onEditTask={d.onEditTask}
                     >
-                      {t.title}
+                      <SearchMarkedText text={t.title} query={d.searchIsActive ? d.searchQuery : ''} />
                     </TechTreeEditableTaskTitle>
-                    {t.assigneeLabel ? <span style={{ color: 'var(--text-slate-500)' }}> — {t.assigneeLabel}</span> : null}
+                    {t.assigneeLabel ? (
+                      <span style={{ color: 'var(--text-slate-500)' }}>
+                        {' — '}
+                        <SearchMarkedText text={t.assigneeLabel} query={d.searchIsActive ? d.searchQuery : ''} />
+                      </span>
+                    ) : null}
                     <TaskNextUpSpan on={t.nextUp} pinned={t.pinned} />
                     <TaskBridgeChipSpan chip={t.bridgeChip} />
                   </div>

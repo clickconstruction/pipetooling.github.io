@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeRoadmapSearchMatches } from './checklistTechTreeSearch'
+import { computeRoadmapSearchMatches, splitTextForHighlight } from './checklistTechTreeSearch'
 
 const G = (id: string, title: string) => ({ id, title })
 const T = (
@@ -59,5 +59,29 @@ describe('computeRoadmapSearchMatches', () => {
     expect(r.groupIdsWithTitleMatch).toEqual(['g1'])
     expect(r.taskIdsMatching).toEqual(['t2'])
     expect(r.matchCount).toBe(2)
+  })
+})
+
+describe('splitTextForHighlight', () => {
+  it('marks every case-insensitive occurrence, preserving original casing', () => {
+    expect(splitTextForHighlight('Water the water tank', 'water')).toEqual([
+      { text: 'Water', hit: true },
+      { text: ' the ', hit: false },
+      { text: 'water', hit: true },
+      { text: ' tank', hit: false },
+    ])
+  })
+
+  it('no occurrence or empty query returns one non-hit segment', () => {
+    expect(splitTextForHighlight('Furnish Kitchen', 'water')).toEqual([{ text: 'Furnish Kitchen', hit: false }])
+    expect(splitTextForHighlight('anything', '')).toEqual([{ text: 'anything', hit: false }])
+  })
+
+  it('handles a match at the very start and very end', () => {
+    expect(splitTextForHighlight('well pump well', 'well')).toEqual([
+      { text: 'well', hit: true },
+      { text: ' pump ', hit: false },
+      { text: 'well', hit: true },
+    ])
   })
 })
