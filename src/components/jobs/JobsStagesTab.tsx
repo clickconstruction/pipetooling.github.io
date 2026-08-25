@@ -744,21 +744,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const canSeeBilledExpectedPay =
     authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
   const [billedPaySpeeds, setBilledPaySpeeds] = useState<PaySpeedData | null>(null)
-  useEffect(() => {
+  // Extracted so the Data health drill-down can refresh medians right after
+  // an exclusion toggles (v2.2290) — same fail-soft posture as the mount load.
+  const refreshBilledPaySpeeds = useCallback(async () => {
     if (!canSeeBilledExpectedPay) return
-    let cancelled = false
-    void (async () => {
-      try {
-        const { data } = await supabase.rpc('get_billed_customer_pay_speeds' as never)
-        if (!cancelled) setBilledPaySpeeds(parsePaySpeedsRpc(data as unknown))
-      } catch {
-        // glanceable extra — never block the tab
-      }
-    })()
-    return () => {
-      cancelled = true
+    try {
+      const { data } = await supabase.rpc('get_billed_customer_pay_speeds' as never)
+      setBilledPaySpeeds(parsePaySpeedsRpc(data as unknown))
+    } catch {
+      // glanceable extra — never block the tab
     }
   }, [canSeeBilledExpectedPay])
+  useEffect(() => {
+    void refreshBilledPaySpeeds()
+  }, [refreshBilledPaySpeeds])
   // Promised pay dates: real dates a customer named, marked by the office —
   // they override the statistical estimate (chip turns green, forecast
   // buckets by the promise). Same fail-soft posture as the pay-speed fetch.
@@ -4825,6 +4824,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setBilledPaymentForecastOpen(false)
             jobDetailModal?.openJobDetail({ jobId })
           }}
+          canExcludePayments={authRole === 'dev' || authRole === 'master_technician'}
+          onPaySpeedsChanged={() => void refreshBilledPaySpeeds()}
           onEmail={
             authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
               ? () => setForecastShareModalOpen(true)

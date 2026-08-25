@@ -6,6 +6,15 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
+
+// The Data health drill-down (v2.2290) fetches + writes through supabase and
+// reads useAuth; stub both so the strip-click test can mount it in jsdom.
+vi.mock('../../lib/supabase', () => ({
+  supabase: { rpc: vi.fn(async () => ({ data: null })), from: vi.fn() },
+}))
+vi.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({ user: { id: 'u1' }, profileName: 'Robert' }),
+}))
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -45,7 +54,7 @@ const speeds: PaySpeedData = {
     ],
     ingram: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7, jobId: null, jobName: null, address: null }],
   },
-  quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70 },
+  quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70, excluded: 0 },
 }
 
 function invRow(customerId: string, name: string, amount: number): StageRow {
@@ -126,6 +135,19 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     fireEvent.click(screen.getByTitle('Show the payments behind this median'))
     fireEvent.click(screen.getByRole('button', { name: 'See these bills on the board →' }))
     expect(onOpen).toHaveBeenCalledWith('Knight Contracting')
+  })
+
+  it('the Data health strip is a button — clicking it opens the transactions drill-down (v2.2290)', async () => {
+    const withQuality: PaySpeedData = {
+      ...speeds,
+      quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 58, excluded: 0 },
+    }
+    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={withQuality} onClose={vi.fn()} />)
+    expect(screen.getByText('see the transactions ›')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'See the transactions behind the data health numbers' }))
+    expect(screen.getByRole('dialog', { name: 'Data health transactions' })).toBeTruthy()
+    // Gate-refused / pre-push payload → the fail-soft copy, not a crash.
+    expect(await screen.findByText(/isn’t available yet/)).toBeTruthy()
   })
 
   it('mobile restack (v2.2252): ranked rows show payments and open dollars on one combined line', () => {

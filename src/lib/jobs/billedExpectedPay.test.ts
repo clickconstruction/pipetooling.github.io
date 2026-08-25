@@ -83,7 +83,8 @@ describe('parsePaySpeedsRpc', () => {
       company: null,
       quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70 },
     })
-    expect(ok?.quality).toEqual({ payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70 })
+    // pre-v8 payloads have no `excluded` — it defaults to 0 (fail-soft)
+    expect(ok?.quality).toEqual({ payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 70, excluded: 0 })
     expect(parsePaySpeedsRpc({ company: null, quality: { payments12mo: 545 } })?.quality).toBeNull()
     expect(parsePaySpeedsRpc({ company: null })?.quality).toBeNull()
   })

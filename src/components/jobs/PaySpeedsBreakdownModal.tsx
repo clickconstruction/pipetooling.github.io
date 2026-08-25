@@ -10,6 +10,7 @@ import {
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
@@ -303,6 +304,8 @@ export default function PaySpeedsBreakdownModal({
   onClose,
   onOpenCustomerBills,
   onOpenJobDetail,
+  canExcludePayments = false,
+  onSpeedsChanged,
 }: {
   rows: StageRow[]
   paySpeeds: PaySpeedData | null
@@ -311,6 +314,10 @@ export default function PaySpeedsBreakdownModal({
   onOpenCustomerBills?: (customerName: string) => void
   /** Open one payment's job detail (closes both modals upstream; v2.2288). */
   onOpenJobDetail?: (jobId: string) => void
+  /** Devs + master techs may exclude payments in the Data health drill-down (v2.2290). */
+  canExcludePayments?: boolean
+  /** Refetch the pay-speeds RPC after an exclusion toggles, so medians update live. */
+  onSpeedsChanged?: () => void
 }) {
   const breakdown = useMemo(() => buildPaySpeedsBreakdown(rows, paySpeeds), [rows, paySpeeds])
   // ≤640px: the 5-column grid and full-width SVGs are unreadable — rows restack
@@ -319,6 +326,7 @@ export default function PaySpeedsBreakdownModal({
   const [variant, setVariant] = useState<'dots' | 'buckets'>('dots')
   // Per-customer receipts toggle (row click) — the payments behind each median.
   const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({})
+  const [dataHealthOpen, setDataHealthOpen] = useState(false)
   const toggleReceipts = (customerId: string) =>
     setOpenReceipts((prev) => ({ ...prev, [customerId]: !prev[customerId] }))
   const companyMedian = paySpeeds?.company?.medianDays ?? null
@@ -382,7 +390,19 @@ export default function PaySpeedsBreakdownModal({
           // the good number leads as a meter; only the two counts the office
           // can act on wear amber; quarantined stays plain (nothing shrinks
           // it directly). Every stat says what to do about it on hover.
+          // Clickable since v2.2290: the whole strip opens the transactions
+          // drill-down (exclude from the math / open the job to fix it).
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="See the transactions behind the data health numbers"
+            onClick={() => setDataHealthOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setDataHealthOpen(true)
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -395,6 +415,7 @@ export default function PaySpeedsBreakdownModal({
               background: 'var(--bg-muted)',
               fontSize: '0.76rem',
               color: 'var(--text-muted)',
+              cursor: 'pointer',
             }}
           >
             <span style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -462,7 +483,24 @@ export default function PaySpeedsBreakdownModal({
             >
               <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{quality.quarantined}</b> quarantined
             </span>
+            {quality.excluded > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap' }}>
+                <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{quality.excluded}</b> excluded
+              </span>
+            )}
+            <span style={{ marginLeft: 'auto', whiteSpace: 'nowrap', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-link)' }}>
+              see the transactions ›
+            </span>
           </div>
+        )}
+
+        {dataHealthOpen && (
+          <PaySpeedDataHealthModal
+            onClose={() => setDataHealthOpen(false)}
+            onOpenJobDetail={onOpenJobDetail}
+            canExclude={canExcludePayments}
+            onChanged={onSpeedsChanged}
+          />
         )}
 
         {breakdown.ranked.length > 0 ? (

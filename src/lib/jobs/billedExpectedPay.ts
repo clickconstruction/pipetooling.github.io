@@ -36,6 +36,8 @@ export type PaySpeedQuality = {
   unlinked: number
   undatedInvoices: number
   quarantined: number
+  /** Owner-excluded payments in the 12-month window (v2.2290; 0 on pre-v8 payloads). */
+  excluded: number
 }
 
 export type PaySpeedData = {
@@ -142,7 +144,7 @@ function asQuality(v: unknown): PaySpeedQuality | null {
   if (payments12mo == null || measurable == null || unlinked == null || undatedInvoices == null || quarantined == null) {
     return null
   }
-  return { payments12mo, measurable, unlinked, undatedInvoices, quarantined }
+  return { payments12mo, measurable, unlinked, undatedInvoices, quarantined, excluded: n('excluded') ?? 0 }
 }
 
 /** A customer-promised payment date on a job (list_job_promised_pay_dates). */
