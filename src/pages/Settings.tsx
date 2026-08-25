@@ -49,6 +49,7 @@ import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { SETTINGS_ZONE_LABELS, SETTINGS_ZONE_ORDER, getZonedSettingsGroups, type SettingsGroupDef } from '../lib/settingsGroups'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
+import SettingsHcpReconcileSection from '../components/settings/SettingsHcpReconcileSection'
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
 import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCadenceSettingsBlock'
 import EasterEggsSettingsBlock from '../components/settings/EasterEggsSettingsBlock'
@@ -1489,6 +1490,7 @@ export default function Settings() {
           <BillCustomerMemoDevSettingsBlock />
         </>
       )}
+      {myRole === 'dev' && <SettingsHcpReconcileSection />}
       </SettingsGroup>
 
       {activeSettingsTab === 'settings-catalogs' && myRole === 'dev' && (
