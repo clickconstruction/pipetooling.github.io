@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from 'react'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { useSearchParams } from 'react-router-dom'
-import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, closestCenter, type DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
@@ -1953,7 +1953,15 @@ function OutstandingByPersonSortableList({
   // Hold-to-lift (mockup 1647b4e5): a ~300ms press anywhere on a card picks it
   // up — mouse or finger, no grip hunting. A quick tap still expands, and a
   // finger that starts scrolling (moves >8px before the delay) never lifts.
-  const dragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 280, tolerance: 8 } }))
+  // TouchSensor (not PointerSensor) on touch: pointer events can't stop the
+  // browser's scroll, so a lifted card was dropped the moment the page panned
+  // (v2.2280). TouchSensor preventDefaults touchmove only while a drag is
+  // active — scroll stays locked from lift to drop, and works normally
+  // otherwise (rows keep touch-action: pan-y).
+  const dragSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { delay: 280, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 280, tolerance: 8 } }),
+  )
   const dragDisabled = reorderingUserId === userId
 
   if (!canManageChecklists) {
