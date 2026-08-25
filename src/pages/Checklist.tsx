@@ -36,6 +36,7 @@ import { goalsLedgerTaskRows, type GoalsLedgerTaskRow } from '../lib/roadmapGoal
 import { canSeeRoadmapTab } from '../lib/roadmapVisibility'
 import { ChecklistReviewInboxSection } from '../components/checklist/ChecklistReviewInboxSection'
 import { ChecklistOutstandingSection } from '../components/checklist/ChecklistOutstandingSection'
+import { ChecklistComingUpSection } from '../components/checklist/ChecklistComingUpSection'
 import { missedTileCaption, outstandingTileCaption, reviewTileTone, signOffTileCaption } from '../lib/checklistReviewTiles'
 import { useToastContext } from '../contexts/ToastContext'
 import { ChecklistCostButton } from '../components/checklist/ChecklistCostButton'
@@ -935,6 +936,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
           return (
             <>
               <ChecklistTitleWithLinks title={isVehicleTaskTitle(rawTitle) ? stripVehicleTaskMarker(rawTitle) : rawTitle} links={item?.links} />
+      <ChecklistComingUpSection authUserId={authUserId} />
               {isVehicleTaskTitle(rawTitle) ? <> {vehicleTaskChip((inst as ChecklistInstance).id, setVehicleCtxInstanceId)}</> : null}
               {item?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(item)}</div> : null}
             </>
@@ -1542,16 +1544,10 @@ type OutstandingInstance = {
 }
 
 /** Severity-tinted "Nd" age chip shared by the Review rows (v2.2012). */
-function outstandingAgeChip(scheduledDate: string, todayStr: string, createdAtIso?: string | null) {
+function outstandingAgeChip(scheduledDate: string, todayStr: string) {
   const days = oldestAgeDays([{ scheduled_date: scheduledDate }], todayStr)
   if (days <= 0) {
-    // Scheduled today: a raw ISO date reads like a bug on phones — say how
-    // fresh it is instead ("15h ago"), falling back to "today".
-    return (
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
-        {createdAtIso ? compactTimeAgo(createdAtIso) : 'today'}
-      </span>
-    )
+    return <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>({scheduledDate})</span>
   }
   const sev = ageSeverity(days)
   const tone =
@@ -1760,7 +1756,7 @@ function OutstandingByPersonSortableRow({
                 {'\uD83D\uDCAC'} {notesCount}
               </span>
             ) : null}
-            <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'), inst.checklist_items?.created_at)}</span>
+            <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))}</span>
             {canSeeCosts && (
               // Bridged roadmap tasks key their estimate by the roadmap task id so
               // Review and the roadmap Plan view share one number per task.
@@ -2701,18 +2697,14 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                 {stages.length > 0 ? (
                   /* Segmented bar (v2.2021): one segment per stage in curated order —
                      done solid green, current amber-ringed with its own fill, locked muted. */
-                  // Wraps into rows once segments outgrow the card (50+ stages on a
-                  // phone) — each keeps a legible 12px minimum instead of bleeding
-                  // off-screen; desktop still reads as one full-width row. rowGap
-                  // clears the amber "current" outline between rows.
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, rowGap: 6 }}>
+                  <div style={{ display: 'flex', gap: 2, height: 13 }}>
                     {stages.map((s, stageIndex) => (
                       <span
                         key={s.groupId}
                         title={`${stageIndex + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : s.state === 'unplanned' ? 'not planned yet' : 'milestone'}`}
                         style={{
-                          flex: '1 0 12px',
-                          height: 13,
+                          flex: 1,
+                          minWidth: 5,
                           borderRadius: 3,
                           position: 'relative',
                           overflow: 'hidden',
@@ -3006,7 +2998,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
         </div>
       ) : null}
       <div ref={foldReviewRef} style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', scrollMarginTop: 70 }}>
-        {foldHeader('Review: completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
+        {foldHeader('Checklist review — sign off completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
         <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
           <ChecklistReviewInboxSection onCountChange={onReviewCount} renderWhenEmpty />
           {(() => {

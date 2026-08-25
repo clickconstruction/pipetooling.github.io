@@ -42,6 +42,10 @@ export type GroupNodeData = {
     completedAt: string | null
     assigneeLabel: string
     canAct: boolean
+    /** Sequential stages: an earlier sibling is still open (v2.2264). */
+    waiting: boolean
+    /** "after 3.2" — the open sibling this task waits behind. */
+    waitingAfter: string | null
     bridgeChip: 'in_review' | 'signed_off' | 'on_list' | null
     /** On the Plan's ⚡ Next up shortlist (v2.2138). */
     nextUp: boolean
@@ -303,7 +307,7 @@ function TechTreeDndTaskRow({
         >
           <GripVertical size={16} strokeWidth={2} aria-hidden />
         </button>
-        <div className="nodrag" style={{ display: 'flex', alignItems: 'flex-start', flex: 1, minWidth: 0, gap: 4 }}>
+        <div className="nodrag" style={{ display: 'flex', alignItems: 'flex-start', flex: 1, minWidth: 0, gap: 4, ...(task.waiting ? { opacity: 0.5 } : {}) }}>
           {task.numberLabel ? (
             <span style={{ marginTop: 1 }}>
               <RoadmapTaskNumber label={task.numberLabel} />
@@ -329,6 +333,9 @@ function TechTreeDndTaskRow({
                 {' — '}
                 <SearchMarkedText text={task.assigneeLabel} query={searchQuery} />
               </span>
+            ) : null}
+            {task.waiting && task.waitingAfter ? (
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', whiteSpace: 'nowrap' }}> · after {task.waitingAfter}</span>
             ) : null}
             <TaskNextUpSpan on={task.nextUp} pinned={task.pinned} />
             <TaskBridgeChipSpan chip={task.bridgeChip} />

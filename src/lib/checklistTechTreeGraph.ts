@@ -194,3 +194,42 @@ export function getAddPrereqLinkBlockReason(
   return null
 }
 
+
+export type SequentialTaskLite = {
+  id: string
+  title: string
+  completed_at: string | null
+}
+
+/**
+ * Sequential stages (v2.2264): tasks run in the array's order (sort_index,
+ * as loaded). A task is WAITING when the stage is sequential and any earlier
+ * sibling is incomplete — waiting tasks stay off lists and can't be completed
+ * by non-staff. Returns the waiting ids plus, per waiting task, the first
+ * open sibling it waits behind (the "after X" name).
+ */
+export function sequentialWaiting(args: {
+  tasksByGroup: ReadonlyMap<string, readonly SequentialTaskLite[]>
+  sequentialByGroupId: ReadonlyMap<string, boolean>
+}): {
+  waitingIds: Set<string>
+  /** waiting task id → the open task it waits behind. */
+  blockerByTaskId: Map<string, SequentialTaskLite>
+} {
+  const waitingIds = new Set<string>()
+  const blockerByTaskId = new Map<string, SequentialTaskLite>()
+  for (const [groupId, tasks] of args.tasksByGroup) {
+    if (args.sequentialByGroupId.get(groupId) === false) continue
+    let firstOpen: SequentialTaskLite | null = null
+    for (const t of tasks) {
+      if (t.completed_at != null) continue
+      if (firstOpen == null) {
+        firstOpen = t
+      } else {
+        waitingIds.add(t.id)
+        blockerByTaskId.set(t.id, firstOpen)
+      }
+    }
+  }
+  return { waitingIds, blockerByTaskId }
+}

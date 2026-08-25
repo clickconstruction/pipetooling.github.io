@@ -160,3 +160,41 @@ describe('getAddPrereqLinkBlockReason', () => {
     expect(getAddPrereqLinkBlockReason(true, 'b', 'c', edges)).toBeNull()
   })
 })
+
+describe('sequentialWaiting', () => {
+  const t = (id: string, done = false) => ({ id, title: id, completed_at: done ? '2026-08-25T00:00:00Z' : null })
+
+  it('everything after the first open task waits behind it', async () => {
+    const { sequentialWaiting } = await import('./checklistTechTreeGraph')
+    const out = sequentialWaiting({
+      tasksByGroup: new Map([['g1', [t('a', true), t('b'), t('c'), t('d')]]]),
+      sequentialByGroupId: new Map([['g1', true]]),
+    })
+    expect([...out.waitingIds].sort()).toEqual(['c', 'd'])
+    expect(out.blockerByTaskId.get('c')?.id).toBe('b')
+    expect(out.blockerByTaskId.get('d')?.id).toBe('b')
+  })
+
+  it('completed tasks never wait and a fully open group waits behind its first task', async () => {
+    const { sequentialWaiting } = await import('./checklistTechTreeGraph')
+    const out = sequentialWaiting({
+      tasksByGroup: new Map([['g1', [t('a'), t('b')]]]),
+      sequentialByGroupId: new Map([['g1', true]]),
+    })
+    expect([...out.waitingIds]).toEqual(['b'])
+  })
+
+  it('any-order groups (sequential=false) never wait; missing entries default sequential', async () => {
+    const { sequentialWaiting } = await import('./checklistTechTreeGraph')
+    const out = sequentialWaiting({
+      tasksByGroup: new Map([
+        ['par', [t('a'), t('b')]],
+        ['seq', [t('x'), t('y')]],
+      ]),
+      sequentialByGroupId: new Map([['par', false]]),
+    })
+    expect(out.waitingIds.has('a')).toBe(false)
+    expect(out.waitingIds.has('b')).toBe(false)
+    expect(out.waitingIds.has('y')).toBe(true)
+  })
+})
