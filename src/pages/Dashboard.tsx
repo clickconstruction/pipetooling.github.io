@@ -1286,7 +1286,7 @@ export default function Dashboard() {
             onClick={() => setQuickEstimateOpen(true)}
             style={{ ...quickActionLinkStyle, background: '#7c3aed', border: 'none', cursor: 'pointer' }}
           >
-            ⚡ Quick Estimate
+            Quick Estimate
           </button>
         </div>
       )}

@@ -638,7 +638,7 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <strong style={{ fontSize: '0.95rem' }}>⚡ Quick Estimate</strong>
+          <strong style={{ fontSize: '0.95rem' }}>Quick Estimate</strong>
           <button
             type="button"
             aria-label="Save and close"
