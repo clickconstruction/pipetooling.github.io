@@ -1279,17 +1279,6 @@ export default function Dashboard() {
   return (
     <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
       {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Dashboard sections" /> : null}
-      {quickEstimateEnabled && (
-        <div style={{ display: 'flex', marginBottom: '1rem', justifyContent: 'center' }}>
-          <button
-            type="button"
-            onClick={() => setQuickEstimateOpen(true)}
-            style={{ ...quickActionLinkStyle, background: '#7c3aed', border: 'none', cursor: 'pointer' }}
-          >
-            Quick Estimate
-          </button>
-        </div>
-      )}
       <QuickEstimateWizard open={quickEstimateOpen} onClose={() => setQuickEstimateOpen(false)} />
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
@@ -1316,7 +1305,22 @@ export default function Dashboard() {
             />
           ) : undefined
         }
-        afterJobReportRow={myScheduleSection}
+        afterJobReportRow={
+          <>
+            {quickEstimateEnabled && (
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '0 0 1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setQuickEstimateOpen(true)}
+                  style={{ ...quickActionLinkStyle, background: '#7c3aed', border: 'none', cursor: 'pointer' }}
+                >
+                  Quick Estimate
+                </button>
+              </div>
+            )}
+            {myScheduleSection}
+          </>
+        }
         interstitial={
           showFinancials ? (
             <>
