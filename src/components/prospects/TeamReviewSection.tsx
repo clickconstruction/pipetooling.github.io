@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
+// Short spoken role names ("Master", "Sub") — the long displayLabelForUserRole
+// slugs ("Master_technician") overflowed the phone-width person picker.
+import { guideLensRoleLabel } from '../../lib/roleGuideLens'
 import type { UserRole } from '../../hooks/useAuth'
 import { COMMENT_KEY_BY_RATING, RATING_DEFS, RatingSliders, type RatingKey } from './ratingDimensions'
 import TeamMemberRatingChart from './TeamMemberRatingChart'
@@ -43,6 +45,7 @@ import {
   nextDueIndexAfter,
   overdueReviewSubjects,
   parseTeamReviewCadenceDays,
+  upcomingReviewSchedule,
   type MyReviewStamp,
 } from '../../lib/prospects/teamReviewDue'
 
@@ -115,6 +118,8 @@ export default function TeamReviewSection({
   const [weightsDraft, setWeightsDraft] = useState<{ ability: string; drive: string; integrity: string }>({ ability: '', drive: '', integrity: '' })
   const [weightsSaving, setWeightsSaving] = useState(false)
   const [cadenceDays, setCadenceDays] = useState(DEFAULT_TEAM_REVIEW_CADENCE_DAYS)
+  /** The due pill's "Upcoming reviews" schedule modal (who's due when). */
+  const [scheduleOpen, setScheduleOpen] = useState(false)
 
   const baselines = useMemo(() => reviewerBaselines(reviews), [reviews])
   const company = useMemo(() => companyDimensionMeans(reviews), [reviews])
@@ -186,6 +191,11 @@ export default function TeamReviewSection({
       new Set(
         overdueReviewSubjects(roster, stampsFrom(reviews), authUserId, cadenceDays, new Date()).map((u) => u.id),
       ),
+    [roster, reviews, stampsFrom, authUserId, cadenceDays],
+  )
+  // Full schedule for the due pill + its modal: due-now first, then soonest.
+  const schedule = useMemo(
+    () => upcomingReviewSchedule(roster, stampsFrom(reviews), authUserId, cadenceDays, new Date()),
     [roster, reviews, stampsFrom, authUserId, cadenceDays],
   )
 
@@ -346,13 +356,155 @@ export default function TeamReviewSection({
 
       {subTab === 'rate' && (() => {
         const myBaseline = baselines.get(authUserId)
-        return myBaseline && myBaseline.overallMean != null ? (
-          <p style={{ textAlign: 'center', margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Knowing your own center of gravity keeps ratings calibrated across reviewers">
-            Your average: <strong style={{ color: 'var(--text-strong)' }}>{myBaseline.overallMean}</strong> across {myBaseline.subjectCount}{' '}
-            {myBaseline.subjectCount === 1 ? 'person' : 'people'}
-          </p>
-        ) : null
+        // The due pill lives up front, left of the average (v2.NNNN): orange
+        // when reviews are owed, calm green with the next due date otherwise.
+        // Either way it opens the Upcoming reviews schedule.
+        const nextUp = schedule.find((e) => e.dueInDays > 0)
+        const pillBase = {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.3rem',
+          padding: '0.18rem 0.65rem',
+          borderRadius: 999,
+          fontSize: '0.8125rem',
+          whiteSpace: 'nowrap' as const,
+          cursor: 'pointer',
+        }
+        const duePill =
+          dueIds.size > 0 ? (
+            <button
+              type="button"
+              onClick={() => setScheduleOpen(true)}
+              title={`${dueIds.size} teammate${dueIds.size === 1 ? '' : 's'} due for your review (no review in ${cadenceDays}+ days) — see who's next`}
+              style={{ ...pillBase, fontWeight: 700, background: 'var(--bg-orange-100)', color: 'var(--text-orange-800)', border: '1px solid var(--text-orange-700)' }}
+            >
+              <span aria-hidden="true" style={{ fontSize: '0.55rem' }}>●</span>
+              {dueIds.size} due
+              <span aria-hidden="true" style={{ fontWeight: 400, opacity: 0.7 }}>›</span>
+            </button>
+          ) : nextUp ? (
+            <button
+              type="button"
+              onClick={() => setScheduleOpen(true)}
+              title="Nobody is due right now — see when each next review comes due"
+              style={{ ...pillBase, fontWeight: 600, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', border: '1px solid var(--border-green)' }}
+            >
+              ✓ Caught up · next in {nextUp.dueInDays}d
+              <span aria-hidden="true" style={{ fontWeight: 400, opacity: 0.7 }}>›</span>
+            </button>
+          ) : null
+        const avg =
+          myBaseline && myBaseline.overallMean != null ? (
+            <span title="Knowing your own center of gravity keeps ratings calibrated across reviewers">
+              Your average: <strong style={{ color: 'var(--text-strong)' }}>{myBaseline.overallMean}</strong> across {myBaseline.subjectCount}{' '}
+              {myBaseline.subjectCount === 1 ? 'person' : 'people'}
+            </span>
+          ) : null
+        if (!duePill && !avg) return null
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            {duePill}
+            {avg}
+          </div>
+        )
       })()}
+
+      {subTab === 'rate' && scheduleOpen ? (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}
+          onClick={() => setScheduleOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Upcoming reviews"
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(420px, 100%)', maxHeight: '82vh', overflowY: 'auto', padding: '1rem 1rem 0.75rem' }}
+          >
+            <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>Upcoming reviews</h3>
+            <p style={{ margin: '0.2rem 0 0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Your cadence: every person, every {cadenceDays} days.
+            </p>
+            {(() => {
+              const shortMd = (ms: number) => new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              const nowMs = Date.now()
+              const personRow = (entry: (typeof schedule)[number]) => {
+                const isDue = entry.dueInDays <= 0
+                const agoDays = entry.lastReviewedMs != null ? Math.max(0, Math.floor((nowMs - entry.lastReviewedMs) / 86400000)) : null
+                return (
+                  <button
+                    key={entry.user.id}
+                    type="button"
+                    onClick={() => {
+                      const i = roster.findIndex((u) => u.id === entry.user.id)
+                      if (i >= 0) goTo(i)
+                      setScheduleOpen(false)
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', width: '100%', padding: '0.45rem 0.35rem', border: 'none', borderTop: '1px solid var(--border)', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-base)' }}
+                  >
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{entry.user.name ?? 'Unnamed'}</span>
+                      <span style={{ fontSize: '0.72rem', padding: '0.05rem 0.5rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)', marginLeft: '0.4rem' }}>
+                        {guideLensRoleLabel(entry.user.role as UserRole)}
+                      </span>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                        {entry.neverReviewed || entry.lastReviewedMs == null
+                          ? 'Never reviewed'
+                          : `Last review ${agoDays}d ago · ${shortMd(entry.lastReviewedMs)}`}
+                      </span>
+                    </span>
+                    <span
+                      style={{
+                        whiteSpace: 'nowrap',
+                        fontVariantNumeric: 'tabular-nums',
+                        fontSize: '0.8125rem',
+                        ...(isDue ? { color: 'var(--text-orange-700)', fontWeight: 700 } : { color: 'var(--text-muted)' }),
+                      }}
+                    >
+                      {isDue || entry.dueAtMs == null ? 'due' : `in ${entry.dueInDays}d · ${shortMd(entry.dueAtMs)}`}
+                    </span>
+                  </button>
+                )
+              }
+              const dueNow = schedule.filter((e) => e.dueInDays <= 0)
+              const comingUp = schedule.filter((e) => e.dueInDays > 0)
+              return (
+                <>
+                  {dueNow.length > 0 ? (
+                    <>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-orange-700)', margin: '0.6rem 0 0.2rem' }}>
+                        Due now · {dueNow.length}
+                      </div>
+                      {dueNow.map(personRow)}
+                    </>
+                  ) : null}
+                  {comingUp.length > 0 ? (
+                    <>
+                      <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', margin: '0.7rem 0 0.2rem' }}>
+                        Coming up
+                      </div>
+                      {comingUp.map(personRow)}
+                    </>
+                  ) : null}
+                  {schedule.length === 0 ? (
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nobody else to review yet.</p>
+                  ) : null}
+                </>
+              )
+            })()}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', marginTop: '0.7rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Tap a person to open their review card.</span>
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(false)}
+                style={{ padding: '0.4rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-base)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {subTab === 'rate' && (
         roster.length === 0 ? (
@@ -373,19 +525,11 @@ export default function TeamReviewSection({
                 {roster.map((u) => (
                   <option key={u.id} value={u.id}>
                     {dueIds.has(u.id) ? '● ' : ''}
-                    {u.name ?? 'Unnamed'} — {displayLabelForUserRole(u.role as UserRole)}
+                    {u.name ?? 'Unnamed'} — {guideLensRoleLabel(u.role as UserRole)}
                     {dueIds.has(u.id) ? ' · due' : ''}
                   </option>
                 ))}
               </select>
-              {dueIds.size > 0 ? (
-                <span
-                  title={`${dueIds.size} teammate${dueIds.size === 1 ? '' : 's'} due for your review (no review in ${cadenceDays}+ days)`}
-                  style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}
-                >
-                  {dueIds.size} due
-                </span>
-              ) : null}
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                 {index + 1} of {roster.length}
               </span>
@@ -398,7 +542,7 @@ export default function TeamReviewSection({
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{subject.name ?? 'Unnamed'}</span>
                 <span style={{ fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                  {displayLabelForUserRole(subject.role as UserRole)}
+                  {guideLensRoleLabel(subject.role as UserRole)}
                 </span>
                 <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {(() => {
@@ -550,7 +694,7 @@ export default function TeamReviewSection({
                 >
                   <span style={{ fontWeight: 700 }}>{u.name ?? 'Unnamed'}</span>
                   <span style={{ fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                    {displayLabelForUserRole(u.role as UserRole)}
+                    {guideLensRoleLabel(u.role as UserRole)}
                   </span>
                   {tenure && (
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title={`At the company since ${startedOnByUser.get(u.id) ?? ''}`}>

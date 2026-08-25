@@ -59,6 +59,66 @@ export function overdueReviewSubjects(
   })
 }
 
+export type UpcomingReviewEntry = {
+  user: RatableUser
+  /** True: never reviewed by this reviewer (due now, no last date). */
+  neverReviewed: boolean
+  /** Epoch ms of the reviewer's last save for this person; null when never reviewed. */
+  lastReviewedMs: number | null
+  /** Whole days until their next review comes due; 0 or negative = due now. */
+  dueInDays: number
+  /** Epoch ms the review comes (or came) due; null when never reviewed. */
+  dueAtMs: number | null
+}
+
+/**
+ * The reviewer's full review schedule (v2.NNNN, the due-pill modal): every
+ * roster member with when their next review is due, due-now people first,
+ * then soonest first. Same last-save math as overdueReviewSubjects, so
+ * `dueInDays <= 0` here agrees exactly with that function's due set.
+ */
+export function upcomingReviewSchedule(
+  roster: RatableUser[],
+  myStamps: MyReviewStamp[],
+  reviewerUserId: string,
+  cadenceDays: number,
+  now: Date,
+): UpcomingReviewEntry[] {
+  const lastBySubject = new Map<string, number>()
+  for (const stamp of myStamps) {
+    const ms = stampMs(stamp)
+    const prev = lastBySubject.get(stamp.subject_user_id)
+    if (prev == null || ms > prev) lastBySubject.set(stamp.subject_user_id, ms)
+  }
+  const nowMs = now.getTime()
+  const entries: UpcomingReviewEntry[] = []
+  for (const user of roster) {
+    if (user.id === reviewerUserId) continue
+    const last = lastBySubject.get(user.id) ?? null
+    if (last == null) {
+      entries.push({ user, neverReviewed: true, lastReviewedMs: null, dueInDays: 0, dueAtMs: null })
+      continue
+    }
+    const dueAtMs = last + cadenceDays * DAY_MS
+    entries.push({
+      user,
+      neverReviewed: false,
+      lastReviewedMs: last,
+      dueInDays: Math.ceil((dueAtMs - nowMs) / DAY_MS),
+      dueAtMs,
+    })
+  }
+  // Due now first (never-reviewed ahead of long-overdue ties by staying stable
+  // on roster order), then soonest due date.
+  return entries.sort((a, b) => {
+    const aDue = a.dueInDays <= 0 ? 0 : 1
+    const bDue = b.dueInDays <= 0 ? 0 : 1
+    if (aDue !== bDue) return aDue - bDue
+    if (aDue === 0) return 0
+    return a.dueInDays - b.dueInDays
+  })
+}
+
 /**
  * Rate-deck "next due" hop (v2.1564): the first roster index AFTER fromIndex
  * (wrapping) whose user is in the due set — skipping fromIndex itself, so
