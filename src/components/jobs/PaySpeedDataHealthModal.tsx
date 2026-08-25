@@ -7,7 +7,7 @@ import {
   filterBills,
   filterTxns,
   lensCounts,
-  parsePaymentLineItems,
+  parsePaymentLineItemsBulk,
   parsePaySpeedTransactions,
   type DataHealthLens,
   type PaymentLineItems,
@@ -71,17 +71,19 @@ export default function PaySpeedDataHealthModal({
   const [query, setQuery] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [gearOpen, setGearOpen] = useState(false)
-  // Row expansion (v2.2309): tap a payment → the line items it paid for,
-  // lazy-loaded once per payment and cached for the session.
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [lineItemsById, setLineItemsById] = useState<Record<string, PaymentLineItems | null | 'loading'>>({})
+  // Line items are always expanded (v2.2315): fetched in bulk (chunks of
+  // 150) right after the list loads, rendered under every row as they land.
+  const [lineItemsById, setLineItemsById] = useState<Record<string, PaymentLineItems>>({})
+  const [lineItemsLoaded, setLineItemsLoaded] = useState(false)
   const [noCountDraft, setNoCountDraft] = useState('')
   const [savingNoCount, setSavingNoCount] = useState(false)
 
   async function load() {
     try {
       const { data: raw } = await supabase.rpc('get_pay_speed_transactions' as never)
-      setData(parsePaySpeedTransactions(raw as unknown))
+      const parsed = parsePaySpeedTransactions(raw as unknown)
+      setData(parsed)
+      if (parsed) void loadLineItems(parsed.payments.map((t) => t.paymentId))
     } catch {
       setData(null)
     }
@@ -115,19 +117,19 @@ export default function PaySpeedDataHealthModal({
   }
 
 
-  function toggleLineItems(paymentId: string) {
-    setExpandedId((prev) => (prev === paymentId ? null : paymentId))
-    if (lineItemsById[paymentId] === undefined) {
-      setLineItemsById((prev) => ({ ...prev, [paymentId]: 'loading' }))
-      void (async () => {
-        try {
-          const { data: raw } = await supabase.rpc('get_payment_line_items' as never, { p_payment_id: paymentId } as never)
-          setLineItemsById((prev) => ({ ...prev, [paymentId]: parsePaymentLineItems(raw as unknown) }))
-        } catch {
-          setLineItemsById((prev) => ({ ...prev, [paymentId]: null }))
-        }
-      })()
+  async function loadLineItems(paymentIds: string[]) {
+    setLineItemsLoaded(false)
+    for (let i = 0; i < paymentIds.length; i += 150) {
+      const chunk = paymentIds.slice(i, i + 150)
+      try {
+        const { data: raw } = await supabase.rpc('get_payment_line_items_bulk' as never, { p_payment_ids: chunk } as never)
+        const parsed = parsePaymentLineItemsBulk(raw as unknown)
+        setLineItemsById((prev) => ({ ...prev, ...parsed }))
+      } catch {
+        // fail-soft: rows without data show a quiet placeholder
+      }
     }
+    setLineItemsLoaded(true)
   }
 
   function openJob(jobId: string) {
@@ -337,30 +339,17 @@ export default function PaySpeedDataHealthModal({
               ) : (
                 txns.map((t, i) => {
                   const chip = STATUS_CHIP[t.status]
-                  const expanded = expandedId === t.paymentId
                   const li = lineItemsById[t.paymentId]
                   return (
                     <div key={t.paymentId}>
                     <div
-                      role="button"
-                      tabIndex={0}
-                      aria-expanded={expanded}
-                      title={expanded ? 'Hide the line items behind this payment' : 'Show the line items behind this payment'}
-                      onClick={() => toggleLineItems(t.paymentId)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          toggleLineItems(t.paymentId)
-                        }
-                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '0.55rem',
                         padding: '0.4rem 0.45rem',
-                        borderRadius: expanded ? '6px 6px 0 0' : 6,
+                        borderRadius: '6px 6px 0 0',
                         fontSize: '0.76rem',
-                        cursor: 'pointer',
                         background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
                         opacity: t.status === 'excluded' ? 0.6 : 1,
                       }}
@@ -415,22 +404,22 @@ export default function PaySpeedDataHealthModal({
                         </button>
                       )}
                     </div>
-                    {expanded && (
+                    {(
                       <div
                         style={{
                           border: '1px solid var(--border)',
                           borderTop: 'none',
                           borderRadius: '0 0 8px 8px',
-                          padding: '0.45rem 0.7rem 0.55rem 2rem',
+                          padding: '0.35rem 0.7rem 0.45rem 2rem',
                           fontSize: '0.74rem',
-                          marginBottom: '0.3rem',
+                          marginBottom: '0.35rem',
                           color: 'var(--text-700)',
                         }}
                       >
-                        {li === 'loading' || li === undefined ? (
-                          <span style={{ color: 'var(--text-muted)' }}>Loading line items…</span>
-                        ) : li == null ? (
-                          <span style={{ color: 'var(--text-muted)' }}>Line items aren’t available for this payment.</span>
+                        {li === undefined ? (
+                          <span style={{ color: 'var(--text-muted)' }}>
+                            {lineItemsLoaded ? 'Line items aren’t available for this payment.' : 'Loading line items…'}
+                          </span>
                         ) : (
                           <>
                             <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
