@@ -2054,7 +2054,7 @@ body.my-time-boundary-dragging {
 }
 .roadmap-task-card {
   background: var(--surface);
-  border-radius: 14px;
+  border-radius: 18px;
   width: 100%;
   max-width: 560px;
   max-height: min(92vh, 100%);

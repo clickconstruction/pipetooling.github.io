@@ -105,6 +105,12 @@ export function ChecklistTechTreeTaskCardModal({
   const [titleSaving, setTitleSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  /** Optimistic done (v2.2303): the button flips instantly; the write runs
+   *  behind it. On failure the button turns into an explicit retry — never a
+   *  silent revert (field crews on one bar of signal must know it saved). */
+  const [optimisticDone, setOptimisticDone] = useState<boolean | null>(null)
+  const [doneFailed, setDoneFailed] = useState(false)
+  const [quickPosting, setQuickPosting] = useState<string | null>(null)
   const threadRef = useRef<HTMLDivElement | null>(null)
 
   const instanceId = bridge?.instanceId ?? null
@@ -118,6 +124,8 @@ export function ChecklistTechTreeTaskCardModal({
     setPickerOpen(false)
     setPersonSearch('')
     setTitleEditing(false)
+    setOptimisticDone(null)
+    setDoneFailed(false)
     setBusyUserId(null)
     setDeleteConfirm(false)
   }, [open, taskId])
@@ -169,6 +177,34 @@ export function ChecklistTechTreeTaskCardModal({
     if (!id) return 'Someone'
     if (id === currentUserId) return 'You'
     return nameById[id] ?? 'Someone'
+  }
+
+  const effectiveDone = optimisticDone ?? done
+
+  function pressDone() {
+    if (doneSaving || !onToggleDone) return
+    setDoneFailed(false)
+    setDoneSaving(true)
+    setOptimisticDone(!effectiveDone)
+    void onToggleDone()
+      .then(() => setOptimisticDone(null))
+      .catch(() => {
+        setOptimisticDone(null)
+        setDoneFailed(true)
+      })
+      .finally(() => setDoneSaving(false))
+  }
+
+  /** One-tap field replies — a real note on the thread, no keyboard needed. */
+  async function postQuick(body: string) {
+    if (!instanceId || quickPosting || posting) return
+    setQuickPosting(body)
+    try {
+      const ok = await postComment(instanceId, body)
+      if (ok) setEvents(await loadEvents(instanceId))
+    } finally {
+      setQuickPosting(null)
+    }
   }
 
   async function post() {
@@ -302,6 +338,14 @@ export function ChecklistTechTreeTaskCardModal({
             {taskNumberLabel ? (
               <span style={{ flex: 'none', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>· task {taskNumberLabel}</span>
             ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              style={{ ...iconBtnStyle, marginLeft: 'auto', width: 34, height: 34, border: 'none', background: 'transparent', fontSize: 16 }}
+            >
+              ✕
+            </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             {titleEditing ? (
@@ -357,92 +401,36 @@ export function ChecklistTechTreeTaskCardModal({
                   {titleSaving ? '…' : '✓'}
                 </button>
               </form>
+            ) : canEditStructure ? (
+              // The title IS the rename control (v2.2303) — the boxed ✎ is gone.
+              <h2
+                id="tech-tree-task-card-title"
+                onClick={startTitleEdit}
+                title="Tap to rename"
+                style={{ margin: 0, fontSize: '1.0625rem', lineHeight: 1.35, flex: 1, minWidth: 0, color: 'var(--text-strong)', cursor: 'text' }}
+              >
+                {task.title}
+                <span aria-hidden style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)', marginLeft: 7, fontWeight: 400 }}>✎</span>
+              </h2>
             ) : (
-              <h2 id="tech-tree-task-card-title" style={{ margin: 0, fontSize: '1.0625rem', lineHeight: 1.35, flex: 1, minWidth: 0, color: 'var(--text-strong)' }}>
+              // Crew view: bigger, heavier — built for glare.
+              <h2 id="tech-tree-task-card-title" style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, lineHeight: 1.3, flex: 1, minWidth: 0, color: 'var(--text-strong)' }}>
                 {task.title}
               </h2>
             )}
-            {canEditStructure && onTogglePin && !titleEditing ? (
-              <button
-                type="button"
-                onClick={() => {
-                  if (pinSaving) return
-                  setPinSaving(true)
-                  void onTogglePin().finally(() => setPinSaving(false))
-                }}
-                aria-pressed={pinned}
-                aria-label={pinned ? 'Unpin task' : 'Pin task — do this next'}
-                title={pinned ? 'Unpin — drop it back into the ranked order' : 'Pin — leads the Plan\'s ⚡ Next up shortlist'}
-                disabled={pinSaving}
-                style={{
-                  ...iconBtnStyle,
-                  ...(pinned ? { background: 'var(--bg-amber-100)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' } : {}),
-                }}
-              >
-                {pinned ? '★' : '☆'}
-              </button>
-            ) : null}
-            {canEditStructure && !titleEditing ? (
-              <button type="button" onClick={startTitleEdit} aria-label="Rename task" title="Rename task" style={iconBtnStyle}>
-                ✎
-              </button>
-            ) : null}
-            <button type="button" onClick={onClose} aria-label="Close" style={iconBtnStyle}>
-              ✕
-            </button>
           </div>
-          {chip || pinned || onToggleDone || done ? (
-            <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              {waitingAfterLabel ? (
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 6px' }}>
-              ⏳ Waits its turn — {waitingAfterLabel}
-            </div>
-          ) : null}
-          {onToggleDone ? (
-                // Mark done / Reopen (v2.2182): the one control the card never had.
-                // Writes the same field as the Map checkbox, so bridge / Goals /
-                // Timeline agree instantly. Chip-button so it reads as status + action.
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (doneSaving) return
-                    setDoneSaving(true)
-                    void onToggleDone().finally(() => setDoneSaving(false))
-                  }}
-                  disabled={doneSaving}
-                  aria-pressed={done}
-                  aria-label={done ? 'Reopen task' : 'Mark task done'}
-                  title={done ? 'Reopen — back to open' : 'Mark done'}
-                  style={{
-                    font: 'inherit',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    padding: '3px 10px',
-                    borderRadius: 999,
-                    whiteSpace: 'nowrap',
-                    cursor: doneSaving ? 'default' : 'pointer',
-                    border: '1.5px solid #16a34a',
-                    background: done ? '#16a34a' : 'transparent',
-                    color: done ? 'white' : 'var(--text-green-700)',
-                  }}
-                >
-                  {doneSaving ? '…' : done ? '✓ done · reopen' : '○ Mark done'}
-                </button>
-              ) : done ? (
+          {chip || done || waitingAfterLabel ? (
+            <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {done ? (
                 <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', background: '#16a34a', color: 'white' }}>✓ done</span>
-              ) : null}
-              {pinned ? (
-                <span
-                  title="Leads the Plan's ⚡ Next up shortlist"
-                  style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)' }}
-                >
-                  ★ pinned — next up
-                </span>
               ) : null}
               {chip ? (
                 <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 999, whiteSpace: 'nowrap', ...chipStyles[chip] }}>
                   {chipLabel}
                 </span>
+              ) : null}
+              {waitingAfterLabel && canEditStructure ? (
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>⏳ waits its turn — {waitingAfterLabel}</span>
               ) : null}
             </div>
           ) : null}
@@ -451,7 +439,12 @@ export function ChecklistTechTreeTaskCardModal({
         {/* people */}
         <div style={{ padding: '10px 16px 12px', borderBottom: '1px solid var(--border)', flex: 'none' }}>
           <div style={{ ...sectionLabelStyle, marginBottom: 7 }}>{pickerOpen ? 'Assign — saves as you tap' : 'Assigned'}</div>
-          {pickerOpen ? (
+          {!canEditStructure ? (
+            // Crew view: names as plain bold text — no controls, nothing subtle.
+            <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-700)' }}>
+              {task.assigneeIds.length === 0 ? 'unassigned' : task.assigneeIds.map((id) => nameById[id] ?? '…').join(' · ')}
+            </div>
+          ) : pickerOpen ? (
             <div>
               <input
                 type="text"
@@ -529,10 +522,10 @@ export function ChecklistTechTreeTaskCardModal({
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 6,
-                      fontSize: 13,
+                      gap: 8,
+                      fontSize: 14,
                       fontWeight: 600,
-                      padding: '6px 11px',
+                      padding: '9px 13px',
                       borderRadius: 999,
                       background: 'var(--bg-blue-tint)',
                       color: 'var(--text-blue-800)',
@@ -545,7 +538,7 @@ export function ChecklistTechTreeTaskCardModal({
                         onClick={() => void toggleAssignee(id)}
                         disabled={busyUserId !== null}
                         aria-label={`Unassign ${nameById[id] ?? 'person'}`}
-                        style={{ border: 'none', background: 'none', color: 'inherit', opacity: 0.75, cursor: 'pointer', padding: 0, fontSize: 13, lineHeight: 1 }}
+                        style={{ border: 'none', background: 'none', color: 'inherit', opacity: 0.75, cursor: 'pointer', padding: '6px', margin: '-6px', fontSize: 14, lineHeight: 1 }}
                       >
                         {busyUserId === id ? '…' : '✕'}
                       </button>
@@ -557,9 +550,9 @@ export function ChecklistTechTreeTaskCardModal({
                     type="button"
                     onClick={() => setPickerOpen(true)}
                     style={{
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: 600,
-                      padding: '6px 12px',
+                      padding: '9px 14px',
                       borderRadius: 999,
                       border: '1.5px dashed var(--border-strong)',
                       background: 'transparent',
@@ -578,43 +571,6 @@ export function ChecklistTechTreeTaskCardModal({
                   {task.assigneeIds.length === 0
                     ? 'Not on anyone’s list yet — assign someone and this task lands on their list when the stage unlocks.'
                     : 'Lands on their Today list when this stage unlocks.'}
-                </div>
-              ) : null}
-              {onDeleteTask ? (
-                <div style={{ marginTop: 10 }}>
-                  {deleteConfirm ? (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-red-700)' }}>
-                        Removes this task from the roadmap and any unfinished list entry. Completed history stays.
-                      </span>
-                      <button
-                        type="button"
-                        disabled={deleting}
-                        onClick={() => {
-                          setDeleting(true)
-                          void onDeleteTask()
-                            .then((ok) => {
-                              if (ok) onClose()
-                            })
-                            .finally(() => setDeleting(false))
-                        }}
-                        style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        {deleting ? 'Deleting…' : 'Delete permanently'}
-                      </button>
-                      <button type="button" disabled={deleting} onClick={() => setDeleteConfirm(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                        Keep it
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirm(true)}
-                      style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-red-700)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Delete task…
-                    </button>
-                  )}
                 </div>
               ) : null}
             </>
@@ -688,6 +644,34 @@ export function ChecklistTechTreeTaskCardModal({
           </button>
         ) : null}
 
+        {/* one-tap field replies (v2.2303): most of what a crew member says is
+            one of these — a real note on the thread, no keyboard needed. */}
+        {instanceId && !canEditStructure ? (
+          <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0', flex: 'none' }}>
+            {(['👍 On it', '⚠️ Problem'] as const).map((label) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => void postQuick(label)}
+                disabled={quickPosting !== null}
+                style={{
+                  flex: 1,
+                  minHeight: 44,
+                  borderRadius: 12,
+                  border: '1.5px solid var(--border-strong)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-700)',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  cursor: quickPosting ? 'default' : 'pointer',
+                }}
+              >
+                {quickPosting === label ? '…' : label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
         {/* composer */}
         {instanceId ? (
           <form
@@ -713,7 +697,7 @@ export function ChecklistTechTreeTaskCardModal({
               style={{
                 flex: 1,
                 minWidth: 0,
-                height: 42,
+                height: 44,
                 boxSizing: 'border-box',
                 padding: '0 14px',
                 fontSize: '0.9375rem',
@@ -728,8 +712,8 @@ export function ChecklistTechTreeTaskCardModal({
               aria-label="Post"
               style={{
                 flex: 'none',
-                width: 42,
-                height: 42,
+                width: 44,
+                height: 44,
                 borderRadius: 999,
                 border: 'none',
                 background: posting || !draft.trim() ? '#9ca3af' : '#2563eb',
@@ -741,6 +725,158 @@ export function ChecklistTechTreeTaskCardModal({
               {posting ? '…' : '➤'}
             </button>
           </form>
+        ) : null}
+
+        {/* thumb dock (v2.2303): everything you press, at the bottom on both
+            screens. Editors: Mark done + Pin + Delete, all 48px. Crew: one
+            giant filled DONE — outlines wash out in sunlight, fills don't. */}
+        {canEditStructure ? (
+          deleteConfirm && onDeleteTask ? (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 16px 14px', borderTop: '1px solid var(--border)', flex: 'none', flexWrap: 'wrap' }}>
+              <span style={{ flexBasis: '100%', fontSize: 12.5, color: 'var(--text-red-700)' }}>
+                Removes this task from the roadmap and any unfinished list entry. Completed history stays.
+              </span>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setDeleting(true)
+                  void onDeleteTask()
+                    .then((ok) => {
+                      if (ok) onClose()
+                    })
+                    .finally(() => setDeleting(false))
+                }}
+                style={{ flex: 1, height: 48, borderRadius: 12, border: 'none', background: '#dc2626', color: '#fff', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer' }}
+              >
+                {deleting ? 'Deleting…' : 'Delete permanently'}
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeleteConfirm(false)}
+                style={{ flex: 'none', height: 48, padding: '0 18px', borderRadius: 12, border: '1.5px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Keep it
+              </button>
+            </div>
+          ) : onToggleDone || done || onTogglePin || onDeleteTask ? (
+            <div style={{ display: 'flex', gap: 10, padding: '10px 16px 14px', borderTop: '1px solid var(--border)', flex: 'none' }}>
+              {onToggleDone ? (
+                <button
+                  type="button"
+                  onClick={pressDone}
+                  aria-pressed={effectiveDone}
+                  aria-label={effectiveDone ? 'Reopen task' : 'Mark task done'}
+                  style={{
+                    flex: 1,
+                    height: 48,
+                    borderRadius: 12,
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    ...(doneFailed
+                      ? { border: '1.5px solid #dc2626', background: 'transparent', color: 'var(--text-red-700)' }
+                      : effectiveDone
+                        ? { border: '1.5px solid #16a34a', background: '#16a34a', color: 'white' }
+                        : { border: '1.5px solid #16a34a', background: 'transparent', color: 'var(--text-green-700)' }),
+                  }}
+                >
+                  {doneFailed ? 'Tap to retry — not saved' : effectiveDone ? '✓ Done · reopen' : '○ Mark done'}
+                </button>
+              ) : done ? (
+                <span style={{ flex: 1, height: 48, borderRadius: 12, background: '#16a34a', color: 'white', fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  ✓ done
+                </span>
+              ) : (
+                <span style={{ flex: 1 }} />
+              )}
+              {onTogglePin ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pinSaving) return
+                    setPinSaving(true)
+                    void onTogglePin().finally(() => setPinSaving(false))
+                  }}
+                  disabled={pinSaving}
+                  aria-pressed={pinned}
+                  aria-label={pinned ? 'Unpin task' : 'Pin task — do this next'}
+                  title={pinned ? 'Unpin — drop it back into the ranked order' : "Pin — leads the Plan's ⚡ Next up shortlist"}
+                  style={{
+                    width: 48,
+                    height: 48,
+                    flex: 'none',
+                    borderRadius: 12,
+                    fontSize: 18,
+                    cursor: 'pointer',
+                    ...(pinned
+                      ? { border: '1.5px solid var(--border-amber)', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+                      : { border: '1.5px solid var(--border-strong)', background: 'transparent', color: 'var(--text-muted)' }),
+                  }}
+                >
+                  {pinSaving ? '…' : pinned ? '★' : '☆'}
+                </button>
+              ) : null}
+              {onDeleteTask ? (
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm(true)}
+                  aria-label="Delete task"
+                  title="Delete task…"
+                  style={{ width: 48, height: 48, flex: 'none', borderRadius: 12, border: '1.5px solid var(--border)', background: 'transparent', color: 'var(--text-red-700)', fontSize: 17, cursor: 'pointer' }}
+                >
+                  🗑
+                </button>
+              ) : null}
+            </div>
+          ) : null
+        ) : onToggleDone || done ? (
+          <div style={{ padding: '8px 16px 14px', flex: 'none' }}>
+            <button
+              type="button"
+              onClick={pressDone}
+              disabled={!onToggleDone}
+              aria-pressed={effectiveDone}
+              aria-label={effectiveDone ? 'Reopen task' : 'Mark task done'}
+              style={{
+                width: '100%',
+                height: 58,
+                borderRadius: 14,
+                fontSize: '1.1rem',
+                fontWeight: 800,
+                letterSpacing: '0.01em',
+                cursor: onToggleDone ? 'pointer' : 'default',
+                ...(doneFailed
+                  ? { background: 'transparent', border: '2px solid #dc2626', color: 'var(--text-red-700)' }
+                  : { background: '#15803d', border: 'none', color: 'white' }),
+              }}
+            >
+              {doneFailed ? 'Tap to retry — not saved' : effectiveDone ? (onToggleDone ? '✓ Done · tap to undo' : '✓ Done') : '✓ DONE'}
+            </button>
+          </div>
+        ) : waitingAfterLabel ? (
+          <div style={{ padding: '8px 16px 14px', flex: 'none' }}>
+            <div
+              style={{
+                minHeight: 58,
+                borderRadius: 14,
+                border: '2px solid var(--border-amber)',
+                background: 'var(--bg-amber-100)',
+                color: 'var(--text-amber-800)',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '10px 16px',
+                textAlign: 'center',
+                lineHeight: 1.4,
+              }}
+            >
+              ⏳ Waits its turn — {waitingAfterLabel}
+            </div>
+          </div>
         ) : null}
       </div>
     </div>,

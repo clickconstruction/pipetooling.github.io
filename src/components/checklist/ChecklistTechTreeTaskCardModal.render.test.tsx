@@ -104,7 +104,8 @@ describe('ChecklistTechTreeTaskCardModal', () => {
 
   it('editor: inline title edit saves on submit (Enter) with assignees preserved', async () => {
     const { onSave } = renderModal({ canEditStructure: true })
-    fireEvent.click(screen.getByLabelText('Rename task'))
+    // v2.2303: the title itself is the rename control
+    fireEvent.click(screen.getByText('add posts to pig pin'))
     const input = screen.getByLabelText('Task title') as HTMLTextAreaElement
     fireEvent.change(input, { target: { value: 'add posts and a gate' } })
     // Enter in the input triggers the browser's implicit form submission
@@ -122,21 +123,50 @@ describe('ChecklistTechTreeTaskCardModal', () => {
   })
 })
 
-describe('ChecklistTechTreeTaskCardModal — ★ pin (v2.2140)', () => {
-  it('editors get a pin toggle that calls onTogglePin; pinned state shows the chip', async () => {
+describe('ChecklistTechTreeTaskCardModal — ★ pin (v2.2140, dock since v2.2303)', () => {
+  it('editors get the dock pin square; pressed state flips to Unpin', async () => {
     const onTogglePin = vi.fn().mockResolvedValue(true)
     renderModal({ canEditStructure: true, onTogglePin })
     fireEvent.click(screen.getByRole('button', { name: 'Pin task — do this next' }))
     await waitFor(() => expect(onTogglePin).toHaveBeenCalledTimes(1))
-    expect(screen.queryByText('★ pinned — next up')).toBeNull()
     renderModal({ canEditStructure: true, onTogglePin, pinned: true })
     expect(screen.getByRole('button', { name: 'Unpin task' })).toBeTruthy()
-    expect(screen.getByText('★ pinned — next up')).toBeTruthy()
   })
-  it('non-editors never see the toggle (but do see the chip when pinned)', () => {
+  it('non-editors never see the pin control', () => {
     renderModal({ canEditStructure: false, onTogglePin: vi.fn(), pinned: true })
     expect(screen.queryByRole('button', { name: /pin task/i })).toBeNull()
-    expect(screen.getByText('★ pinned — next up')).toBeTruthy()
+  })
+})
+
+describe('ChecklistTechTreeTaskCardModal — crew view + dock (v2.2303)', () => {
+  it('crew: plain names line, giant DONE, one-tap replies post to the thread', async () => {
+    const onToggleDone = vi.fn().mockResolvedValue(undefined)
+    const { postComment, loadEvents } = renderModal({ onToggleDone })
+    expect(screen.getByText('Robert')).toBeTruthy()
+    await waitFor(() => expect(screen.getByText('👍 On it')).toBeTruthy())
+    fireEvent.click(screen.getByText('👍 On it'))
+    await waitFor(() => expect(postComment).toHaveBeenCalledWith('inst-1', '👍 On it'))
+    await waitFor(() => expect(loadEvents.mock.calls.length).toBeGreaterThanOrEqual(2))
+    fireEvent.click(screen.getByRole('button', { name: 'Mark task done' }))
+    // optimistic: label flips before the save resolves
+    expect(screen.getByText('✓ Done · tap to undo')).toBeTruthy()
+    await waitFor(() => expect(onToggleDone).toHaveBeenCalledTimes(1))
+  })
+  it('crew waiting task: amber explainer instead of a dead button; no quick replies without an instance', () => {
+    renderModal({ bridge: undefined, chip: null, waitingAfterLabel: 'after 11.2', onToggleDone: undefined })
+    expect(screen.getByText(/Waits its turn — after 11.2/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Mark task done/ })).toBeNull()
+    expect(screen.queryByText('👍 On it')).toBeNull()
+  })
+  it('editors: quick replies are not shown; 🗑 opens the two-step confirm and Keep it backs out', async () => {
+    const onDeleteTask = vi.fn().mockResolvedValue(true)
+    renderModal({ canEditStructure: true, onDeleteTask })
+    expect(screen.queryByText('👍 On it')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete task' }))
+    expect(screen.getByText('Delete permanently')).toBeTruthy()
+    fireEvent.click(screen.getByText('Keep it'))
+    expect(screen.queryByText('Delete permanently')).toBeNull()
+    expect(onDeleteTask).not.toHaveBeenCalled()
   })
 })
 
@@ -149,9 +179,11 @@ describe('ChecklistTechTreeTaskCardModal — Mark done / Reopen (v2.2182)', () =
     renderModal({ onToggleDone, done: true })
     expect(screen.getByRole('button', { name: 'Reopen task' })).toBeTruthy()
   })
-  it('without onToggleDone a done task shows a static ✓ done chip', () => {
+  it('without onToggleDone a done task reads done but cannot be toggled', () => {
     renderModal({ done: true })
-    expect(screen.queryByRole('button', { name: /Mark task done|Reopen task/ })).toBeNull()
     expect(screen.getByText('✓ done')).toBeTruthy()
+    // crew still sees the big green slab, but it is inert
+    const slab = screen.queryByRole('button', { name: /Reopen task/ }) as HTMLButtonElement | null
+    if (slab) expect(slab.disabled).toBe(true)
   })
 })
