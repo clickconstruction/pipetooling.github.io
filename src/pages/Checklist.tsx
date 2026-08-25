@@ -1739,10 +1739,15 @@ function OutstandingByPersonSortableRow({
               className="obp-check-btn"
               style={{
                 padding: '0.25rem',
-                background: 'none',
+                // Instant answer to the press (mockup 55d69b29): fill + pop
+                // the moment the finger lands; the save runs behind it.
+                background: completingInstanceId === inst.id ? '#16a34a' : 'none',
                 border: 'none',
                 cursor: completingInstanceId === inst.id ? 'not-allowed' : 'pointer',
-                color: '#16a34a',
+                color: completingInstanceId === inst.id ? 'white' : '#16a34a',
+                transform: completingInstanceId === inst.id ? 'scale(1.08)' : undefined,
+                transition: 'background 120ms ease, color 120ms ease, transform 120ms ease',
+                borderRadius: 8,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1775,6 +1780,9 @@ function OutstandingByPersonSortableRow({
             borderRadius: 8,
             cursor: 'pointer',
             background: expanded ? 'var(--bg-muted)' : undefined,
+            ...(completingInstanceId === inst.id
+              ? { textDecoration: 'line-through', opacity: 0.65, transition: 'opacity 150ms ease' }
+              : {}),
           }}
         >
           <span className="obp-title" style={{ minWidth: 0 }}>
@@ -2020,6 +2028,25 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
   const [missedGroups, setMissedGroups] = useState<Map<string, MissedGroup<OutstandingInstance>>>(new Map())
   const [remindingUserId, setRemindingUserId] = useState<string | null>(null)
   const [remindingStageId, setRemindingStageId] = useState<string | null>(null)
+  /** 5s undo window after a row ✓ (mockup 55d69b29): the completion is saved
+   *  immediately, but notifications + the next repeat occurrence are HELD in
+   *  pendingSideEffectsRef until the window closes — Undo reverses the save
+   *  and cancels them, so an undone completion pings no one. */
+  const [undoToast, setUndoToast] = useState<{ title: string; count: number; instanceIds: string[] } | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSideEffectsRef = useRef<(() => void) | null>(null)
+  const flushPendingCompletion = useCallback(() => {
+    if (undoTimerRef.current != null) {
+      clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = null
+    }
+    const fn = pendingSideEffectsRef.current
+    pendingSideEffectsRef.current = null
+    if (fn) fn()
+    setUndoToast(null)
+  }, [])
+  // Leaving the tab commits any pending window — side effects are deferred, never lost.
+  useEffect(() => () => flushPendingCompletion(), [flushPendingCompletion])
   const costEstimates = useChecklistCostEstimates(canSeeCosts)
   const { showToast } = useToastContext()
   const [fwdInstance, setFwdInstance] = useState<OutstandingInstance | null>(null)
@@ -2225,6 +2252,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       }
       // The completion belongs in the sign-off queue right above this board.
       window.dispatchEvent(new CustomEvent('checklist-instance-completed', { detail: inst.id }))
+      // Everything below (watcher pushes + the next repeat occurrence) waits
+      // out the 5s undo window; Undo cancels it wholesale.
+      const runSideEffects = () => void (async () => {
       const { data: item } = await supabase
         .from('checklist_items')
         .select('notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id, title')
@@ -2276,11 +2306,43 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           }
         }
       }
+      })()
+      flushPendingCompletion() // a second ✓ inside a window commits the first
+      pendingSideEffectsRef.current = runSideEffects
+      undoTimerRef.current = setTimeout(flushPendingCompletion, 5000)
+      setUndoToast({
+        title: inst.checklist_items?.title ?? 'Task',
+        count: targetIds.length,
+        instanceIds: targetIds,
+      })
       await loadOutstanding()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to mark complete')
     } finally {
       setCompletingInstanceId(null)
+    }
+  }
+
+  /** Undo inside the window: reverse the save, cancel the held side effects. */
+  async function undoComplete() {
+    const toast = undoToast
+    if (!toast) return
+    if (undoTimerRef.current != null) {
+      clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = null
+    }
+    pendingSideEffectsRef.current = null
+    setUndoToast(null)
+    try {
+      const { error: err } = await supabase
+        .from('checklist_instances')
+        .update({ completed_at: null, completed_by_user_id: null })
+        .in('id', toast.instanceIds)
+      if (err) throw err
+      window.dispatchEvent(new CustomEvent('checklist-instance-completed', { detail: null }))
+      await loadOutstanding()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to undo')
     }
   }
 
@@ -3331,6 +3393,59 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           onChanged={() => setGoalsReloadTick((t) => t + 1)}
         />
       )}
+      {undoToast ? (
+        <div
+          style={{
+            position: 'fixed',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
+            zIndex: 1001,
+            width: 'min(560px, calc(100vw - 24px))',
+            background: 'var(--text-strong)',
+            color: 'var(--surface)',
+            borderRadius: 12,
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
+            padding: '0.75rem 0.9rem 0.9rem',
+            overflow: 'hidden',
+          }}
+        >
+          <style>{'@keyframes checklist-undo-drain { from { width: 100% } to { width: 0% } }'}</style>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: '0.875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              ✓ Completed{undoToast.count > 1 ? ` ×${undoToast.count}` : ''} — {undoToast.title}
+            </span>
+            <button
+              type="button"
+              onClick={() => void undoComplete()}
+              style={{
+                flexShrink: 0,
+                minHeight: 40,
+                padding: '0 1.1rem',
+                fontSize: '0.9375rem',
+                fontWeight: 700,
+                color: '#4ade80',
+                background: 'transparent',
+                border: '1.5px solid #4ade80',
+                borderRadius: 9,
+                cursor: 'pointer',
+              }}
+            >
+              Undo
+            </button>
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              bottom: 0,
+              height: 3,
+              background: '#4ade80',
+              animation: 'checklist-undo-drain 5s linear forwards',
+            }}
+          />
+        </div>
+      ) : null}
       {outstandingDeletePending && (
         <div
           style={{
