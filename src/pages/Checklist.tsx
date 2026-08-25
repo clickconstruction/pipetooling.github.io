@@ -14,6 +14,7 @@ import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import { compactTimeAgo } from '../lib/subcontractorLastActivityCompact'
+import { GoalsStageStrip } from '../components/checklist/GoalsStageStrip'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
@@ -1550,10 +1551,17 @@ type OutstandingInstance = {
 }
 
 /** Severity-tinted "Nd" age chip shared by the Review rows (v2.2012). */
-function outstandingAgeChip(scheduledDate: string, todayStr: string) {
+function outstandingAgeChip(scheduledDate: string, todayStr: string, createdAtIso?: string | null) {
   const days = oldestAgeDays([{ scheduled_date: scheduledDate }], todayStr)
   if (days <= 0) {
-    return <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>({scheduledDate})</span>
+    // Scheduled today: a raw ISO date reads like a bug on phones — say how
+    // fresh it is instead ("15h ago"), falling back to "today" (v2.2263,
+    // restored v2.2278 after a merge race reverted it).
+    return (
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+        {createdAtIso ? compactTimeAgo(createdAtIso) : 'today'}
+      </span>
+    )
   }
   const sev = ageSeverity(days)
   const tone =
@@ -1806,7 +1814,7 @@ function OutstandingByPersonSortableRow({
                 {'\uD83D\uDCAC'} {notesCount}
               </span>
             ) : null}
-            <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'))}</span>
+            <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'), inst.checklist_items?.created_at)}</span>
             {missedCount > 1 ? (
               <span
                 title={`Missed on ${missedCount} scheduled days — completing or deleting this row resolves all of them`}
@@ -2836,48 +2844,11 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                   </span>
                 </div>
                 {stages.length > 0 ? (
-                  /* Segmented bar (v2.2021): one segment per stage in curated order —
-                     done solid green, current amber-ringed with its own fill, locked muted. */
-                  <div style={{ display: 'flex', gap: 2, height: 13 }}>
-                    {stages.map((s, stageIndex) => (
-                      <span
-                        key={s.groupId}
-                        title={`${stageIndex + 1} · ${s.title} — ${s.total > 0 ? `${s.done} of ${s.total}` : s.state === 'unplanned' ? 'not planned yet' : 'milestone'}`}
-                        style={{
-                          flex: 1,
-                          minWidth: 5,
-                          borderRadius: 3,
-                          position: 'relative',
-                          overflow: 'hidden',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxSizing: 'border-box',
-                          background: s.state === 'complete' ? '#16a34a' : s.state === 'unplanned' ? 'transparent' : 'var(--bg-muted)',
-                          ...(s.state === 'current' ? { outline: '1.5px solid #d97706', outlineOffset: 1 } : {}),
-                          ...(s.state === 'unplanned' ? { border: '1px dashed var(--border-strong)' } : {}),
-                        }}
-                      >
-                        {s.state === 'current' && s.total > 0 && s.done > 0 ? (
-                          <span style={{ position: 'absolute', inset: 0, display: 'block', width: `${Math.round((s.done / s.total) * 100)}%`, background: '#2563eb' }} />
-                        ) : null}
-                        {stages.length <= 40 ? (
-                          <span
-                            style={{
-                              position: 'relative',
-                              fontSize: '0.58rem',
-                              fontWeight: 700,
-                              lineHeight: 1,
-                              pointerEvents: 'none',
-                              color: s.state === 'complete' ? 'white' : s.state === 'current' ? 'var(--text-700)' : 'var(--text-faint)',
-                            }}
-                          >
-                            {stageIndex + 1}
-                          </span>
-                        ) : null}
-                      </span>
-                    ))}
-                  </div>
+                  /* Segmented bar (v2.2021) — extracted to GoalsStageStrip (v2.2278):
+                     wraps on phones instead of bleeding off-screen; the component's
+                     render test pins the wrap so a stale-checkout merge can't
+                     silently revert it again (that happened once: v2.2263 → v2.2264). */
+                  <GoalsStageStrip stages={stages} />
                 ) : (
                   <div style={{ height: 8, borderRadius: 4, background: 'var(--bg-muted)', overflow: 'hidden' }}>
                     <span style={{ display: 'block', width: `${g.pct}%`, height: '100%', background: '#2563eb' }} />
@@ -3139,7 +3110,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
         </div>
       ) : null}
       <div ref={foldReviewRef} style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.6rem', overflow: 'hidden', scrollMarginTop: 70 }}>
-        {foldHeader('Checklist review — sign off completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
+        {foldHeader('Review: completed work', reviewCount == null ? null : String(reviewCount), 'blue', foldReviewOpen, () => setFoldReviewOpen((o) => !o))}
         <div style={{ display: foldReviewOpen ? 'block' : 'none', borderTop: '1px solid var(--border)', padding: foldReviewOpen ? '0.5rem 0.5rem 0.2rem' : 0 }}>
           <ChecklistReviewInboxSection onCountChange={onReviewCount} renderWhenEmpty />
           {(() => {
