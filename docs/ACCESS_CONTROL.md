@@ -91,6 +91,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### Subcontractors can author estimates — Quick Estimate groundwork (v2.2292, `20260825190000_quick_estimate_groundwork.sql`)
+
+- **What changed — call this out**: `estimates` previously had **no subcontractor access at all**. v2.2292 adds `subcontractor` to the **outer role arrays only** of `estimates_insert` / `estimates_select` / `estimates_update_draft`, so a sub can create and edit their own drafts (the Quick Estimate field wizard). The inner broad-visibility arrays are unchanged: a sub passes only through `user_can_access_estimate` — rows they created / own as `master_user_id` (`resolveEstimateMasterUserId` maps subs to themselves) — never the whole ledger, and they gain no delete rights.
+- New `estimate_field_photos` table (wizard photos): select mirrors estimate visibility, insert author-only onto accessible drafts, delete author-or-dev; read-only training blocks applied. Bytes live in the private `estimate-field-photos` bucket (out-of-band, signed-URL reads).
+
 ### Banking attributors — scoped non-card attribution capability (v2.1308, `20260802220000_banking_attributors_substrate.sql`)
 
 `banking_attributors` (dev-granted, dev-managed; self-readable so the client can gate UI) lets specific users work the **unattributed non-card queue** (ACH/wire/check money-out Mercury transactions) with **no other Banking access**. The queue UI lives on **Moneyfill** (`/moneyfill`, dev + controller — moved off Quickfill in v2.1378), so in practice holders are dev/controller; the capability remains the data-access gate regardless of role. **Since v2.1380 the controller role auto-holds it**: a `users` statement trigger (`20260804100000`) inserts `auto_role_grant = true` rows for active controllers and revokes them on demotion/archive; manual dev grants (`auto_role_grant = false`) are never touched by the sync. What a holder can do — all via SECURITY DEFINER RPCs gated `is_dev() OR is_banking_attributor()`, EXECUTE revoked from `anon`:
