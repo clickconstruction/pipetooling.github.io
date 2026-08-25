@@ -444,10 +444,13 @@ export default function DispatchModePo() {
 
   return (
     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column' }}>
-      <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: 'center' }}>PO Generator</h1>
-      <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: 'center' }}>
-        Hold down a name to sort it into Other
-      </p>
+      {/* Title rides the header row's dead space (v2.2279), matching Customers (v2.2277). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+          Hold down a name to sort it into Other
+        </p>
+        <h1 style={{ margin: '0 0 0 auto', fontSize: '1.1rem', color: 'var(--text-strong)', whiteSpace: 'nowrap' }}>PO Generator</h1>
+      </div>
 
       {stepLabel(1, 'Job (On schedule today)')}
       {job ? (
