@@ -10,6 +10,7 @@ import {
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
@@ -287,6 +288,8 @@ export default function PaySpeedsBreakdownModal({
   const toggleReceipts = (customerId: string) =>
     setOpenReceipts((prev) => ({ ...prev, [customerId]: !prev[customerId] }))
   const companyMedian = paySpeeds?.company?.medianDays ?? null
+  const quality = paySpeeds?.quality ?? null
+  const checklistAddModal = useChecklistAddModal()
 
   const pillStyle = (active: boolean): CSSProperties => ({
     border: `1px solid ${active ? 'var(--text-link)' : 'var(--border-strong)'}`,
@@ -335,11 +338,126 @@ export default function PaySpeedsBreakdownModal({
           customer under {PAY_SPEED_MIN_SAMPLES} payments falls back to the company median.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginBottom: '0.6rem' }}>
           {summaryTile(<span style={{ color: 'var(--text-700)' }}>Company</span>, paySpeeds?.company ?? null)}
           {summaryTile(segTag('residential'), paySpeeds?.segments.residential ?? null)}
           {summaryTile(segTag('commercial'), paySpeeds?.segments.commercial ?? null)}
         </div>
+
+        {quality && (
+          // The data-health line (v2.2259, mockup-approved): one quiet row —
+          // the good number leads as a meter; only the two counts the office
+          // can act on wear amber; quarantined stays plain (nothing shrinks
+          // it directly). Every stat says what to do about it on hover.
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem 0.9rem',
+              flexWrap: 'wrap',
+              marginBottom: '1rem',
+              padding: '0.45rem 0.7rem',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              background: 'var(--bg-muted)',
+              fontSize: '0.76rem',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <span style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Data health
+            </span>
+            <span
+              title={`${quality.measurable} of ${quality.payments12mo} payments in the last 12 months carry a verified bill→paid pair the medians can use.`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap', cursor: 'help' }}
+            >
+              <span style={{ width: 72, height: 6, borderRadius: 4, background: 'var(--border)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
+                <span
+                  style={{
+                    position: 'absolute',
+                    inset: '0 auto 0 0',
+                    width: `${quality.payments12mo > 0 ? Math.round((quality.measurable / quality.payments12mo) * 100) : 0}%`,
+                    background: 'var(--text-green-800)',
+                    borderRadius: 4,
+                  }}
+                />
+              </span>
+              <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
+                {quality.measurable} of {quality.payments12mo}
+              </b>{' '}
+              measurable ({quality.payments12mo > 0 ? Math.round((quality.measurable / quality.payments12mo) * 100) : 0}%)
+            </span>
+            <span
+              title="Payments not applied to any bill — they can’t feed pay speeds or pay a bill down. Link them from each job’s payments table."
+              style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
+            >
+              <span
+                style={{
+                  background: quality.unlinked > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
+                  color: quality.unlinked > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)',
+                  borderRadius: 9999,
+                  padding: '0 6px',
+                  fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {quality.unlinked}
+              </span>
+              unlinked payments
+            </span>
+            <span
+              title="Billed/paid bills with no bill date at all — their payments can’t be measured. Date them from the job, or via Settings → HCP reconcile for HCP-era bills."
+              style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
+            >
+              <span
+                style={{
+                  background: quality.undatedInvoices > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
+                  color: quality.undatedInvoices > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)',
+                  borderRadius: 9999,
+                  padding: '0 6px',
+                  fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {quality.undatedInvoices}
+              </span>
+              undated bills
+            </span>
+            <span
+              title="Import-era same-day pairs excluded from the math because their dates can’t be verified. This only shrinks when a verified date replaces one (Settings → HCP reconcile)."
+              style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
+            >
+              <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{quality.quarantined}</b> quarantined
+            </span>
+            {checklistAddModal && (
+              <button
+                type="button"
+                onClick={() =>
+                  checklistAddModal.openAddModal({
+                    preset: {
+                      title: 'Billing hygiene — link this week’s unapplied payments to their bills',
+                      links: ['/jobs?forecast=1'],
+                    },
+                  })
+                }
+                title="Create a recurring checklist task carrying these numbers’ worklist — pick who and how often in the next step"
+                style={{
+                  marginLeft: 'auto',
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-link)',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                + Weekly hygiene task
+              </button>
+            )}
+          </div>
+        )}
 
         {breakdown.ranked.length > 0 ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.8rem 0.8rem 0.5rem', marginBottom: '1rem' }}>

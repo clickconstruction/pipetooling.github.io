@@ -24,6 +24,7 @@ const speeds: PaySpeedData = {
     ],
     weiss: [{ billedYmd: '2026-04-28', paidYmd: '2026-05-05', gapDays: 7 }],
   },
+  quality: null,
 }
 
 function invRow(customerId: string | null, name: string, amount: number, invoiceId = `inv-${name}-${amount}`): StageRow {

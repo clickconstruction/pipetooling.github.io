@@ -34,6 +34,7 @@ const speeds: PaySpeedData = {
   },
   customerTypes: { knight: 'commercial' },
   receipts: {},
+  quality: null,
 }
 
 function billedRow(): StageRow {
