@@ -20,7 +20,7 @@ export type PipelineStoryCard = {
   /** waiting-on-customers only: dollar weights for the age bar segments. */
   ageBar?: { fresh: number; mid: number; old: number }
   ageBarLabels?: { left: string; right: string }
-  /** collected only: weekly totals oldest→newest for the sparkline. */
+  /** collected only: daily totals oldest→newest for the sparkline. */
   spark?: number[]
 }
 
@@ -36,7 +36,7 @@ export function buildPipelineMoneyStory(
   const oldSum = aging.sum90
   const midSum = aging.sum30_90
   const freshSum = Math.max(0, billed.total - oldSum - midSum)
-  const collectedTotal = stats.collectedByWeek.reduce((s, w) => s + w.total, 0)
+  const collectedTotal = stats.collectedByDay.reduce((s, d) => s + d.total, 0)
   const cards: PipelineStoryCard[] = [
     {
       key: 'ready-to-ask',
@@ -66,11 +66,11 @@ export function buildPipelineMoneyStory(
     },
     {
       key: 'collected',
-      label: `collected · last ${stats.collectedByWeek.length} wks`,
+      label: `collected · last ${stats.collectedByDay.length} days`,
       value: formatUsdNoCents(collectedTotal),
       sub: 'payments recorded, all stages',
       tone: 'plain',
-      spark: stats.collectedByWeek.map((w) => w.total),
+      spark: stats.collectedByDay.map((d) => d.total),
     },
   ]
   return includeCollected ? cards : cards.filter((c) => c.key !== 'collected')

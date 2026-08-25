@@ -12,7 +12,7 @@
  * select beats chunked `.in()` round trips).
  *
  * Two stats bypass job attachment: `paid.count` (head-count) and
- * `collectedByWeek` (from the raw payment rows) — both would otherwise need
+ * `collectedByDay` (from the raw payment rows) — both would otherwise need
  * paid jobs' rows, which is most of the table and none of the other math.
  *
  * Known delta vs the pre-bound fetch: a `billed` invoice left hanging on a
@@ -23,12 +23,11 @@
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
-import { mondayOfWeekYmd } from './stagesWeeklyMovement'
 import { buildJobsStagesBoardLists, type StageRow } from '../jobsStagesBoard'
 import {
   assembleLeanStatsJobs,
-  COLLECTED_WEEKS,
-  collectedByWeekFromPayments,
+  COLLECTED_DAYS,
+  collectedByDayFromPayments,
   computeStagesHeaderStats,
   LEAN_STATS_INVOICE_COLUMNS,
   LEAN_STATS_JOB_COLUMNS,
@@ -54,9 +53,9 @@ export const LEAN_STATS_ACTIVE_JOB_STATUSES = ['waiting', 'working', 'ready_to_b
 /** Invoice statuses any formula reads — `paid` invoices are ignored by every header expression. */
 export const LEAN_STATS_ACTIVE_INVOICE_STATUSES = ['ready_to_bill', 'billed'] as const
 
-/** First Monday of the trailing collected-by-week window (payments fetch bound). */
+/** First day of the trailing collected window (payments fetch bound). */
 export function collectedWindowStartYmd(now = new Date()): string {
-  return addDaysYmd(mondayOfWeekYmd(now.toISOString().slice(0, 10)), -7 * (COLLECTED_WEEKS - 1))
+  return addDaysYmd(now.toISOString().slice(0, 10), -(COLLECTED_DAYS - 1))
 }
 
 export async function fetchStagesHeaderStats(
@@ -106,7 +105,7 @@ export async function fetchStagesHeaderStats(
       stats: {
         ...stats,
         paid: { count: paidCount },
-        collectedByWeek: collectedByWeekFromPayments(payments, now),
+        collectedByDay: collectedByDayFromPayments(payments, now),
       },
       // Lean billed rows for the chase-queue card (v2.2025): the same
       // assembled jobs the stats ran over, shaped by the board kernel. Lean
