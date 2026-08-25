@@ -497,37 +497,6 @@ export function GroupNode({ data }: NodeProps) {
           >
             <Plus size={16} strokeWidth={2} aria-hidden />
           </button>
-          <button
-            type="button"
-            className="nodrag nopan"
-            aria-label="Stage settings"
-            title="How tasks in this stage go out"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation()
-              d.onOpenStageMode(d.groupId, e.clientX, e.clientY)
-            }}
-            style={{
-              position: 'absolute',
-              top: 70,
-              right: 6,
-              zIndex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 28,
-              height: 28,
-              padding: 0,
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              background: 'var(--surface)',
-              color: 'var(--text-slate-600)',
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            }}
-          >
-            <Settings size={16} strokeWidth={2} aria-hidden />
-          </button>
         </>
       ) : null}
       <Handle
@@ -586,8 +555,37 @@ export function GroupNode({ data }: NodeProps) {
           >
             <SearchMarkedText text={d.title} query={d.searchIsActive ? d.searchQuery : ''} />
           </div>
-          {d.badge || d.locked || d.unplanned || d.nextUpCount > 0 ? (
+          {d.badge || d.locked || d.unplanned || d.nextUpCount > 0 || d.canEditStructure ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+              {d.canEditStructure ? (
+                <button
+                  type="button"
+                  className="nodrag nopan"
+                  aria-label="Stage settings"
+                  title="How tasks in this stage go out"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    d.onOpenStageMode(d.groupId, e.clientX, e.clientY)
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 20,
+                    height: 20,
+                    padding: 0,
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    background: 'var(--surface)',
+                    color: 'var(--text-slate-500)',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Settings size={13} strokeWidth={2} aria-hidden />
+                </button>
+              ) : null}
               {d.nextUpCount > 0 ? (
                 <span
                   title="Tasks in this stage on the Plan's ⚡ Next up shortlist"
@@ -779,7 +777,7 @@ export function GroupNode({ data }: NodeProps) {
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: 12,
-            color: '#3b82f6',
+            color: 'var(--text-blue-500)',
             fontWeight: 600,
             padding: 4,
             boxSizing: 'border-box',
