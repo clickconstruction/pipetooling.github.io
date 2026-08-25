@@ -33,7 +33,22 @@ export type PortalInvoiceRow = {
   hosted_invoice_url: string | null
 }
 
-export type PortalPaymentRow = { invoice_id: string | null; amount: number | null }
+export type PortalPaymentRow = {
+  invoice_id: string | null
+  amount: number | null
+  /** Optional detail (v2.2313): when present, per-payment rows render on the statement. */
+  paid_on?: string | null
+  payment_type?: string | null
+  sequence_order?: number | null
+}
+
+/** One customer-visible payment line under a bill (v2.2313). Never includes internal notes. */
+export type PortalBillPaymentOut = {
+  /** YYYY-MM-DD (null = undated). */
+  date: string | null
+  method: string
+  amount: number
+}
 
 export type PortalBillOut = {
   jobLabel: string
@@ -49,6 +64,10 @@ export type PortalBillOut = {
   checkRef: string
   asGc: boolean
   ownerName: string | null
+  /** Payments already applied to this bill, oldest first (v2.2313). */
+  payments: PortalBillPaymentOut[]
+  /** Sum of `payments` (dollars). */
+  totalPaid: number
 }
 
 export function jobNumber(j: PortalJobRow): string {
@@ -116,9 +135,20 @@ export function buildPortalBills(args: {
   const jobById = new Map(billedJobs.map((j) => [j.id, j]))
 
   const paymentsByInvoice = new Map<string, number>()
+  const paymentRowsByInvoice = new Map<string, PortalBillPaymentOut[]>()
   for (const p of payments) {
     if (!p.invoice_id) continue
     paymentsByInvoice.set(p.invoice_id, (paymentsByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
+    const rows = paymentRowsByInvoice.get(p.invoice_id) ?? []
+    rows.push({
+      date: (p.paid_on ?? '').trim() ? String(p.paid_on).slice(0, 10) : null,
+      method: (p.payment_type ?? '').trim() || 'Payment',
+      amount: round2(Number(p.amount ?? 0)),
+    })
+    paymentRowsByInvoice.set(p.invoice_id, rows)
+  }
+  for (const rows of paymentRowsByInvoice.values()) {
+    rows.sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999'))
   }
 
   const asGcFields = (job: PortalJobRow): Pick<PortalBillOut, 'asGc' | 'ownerName'> => {
@@ -146,6 +176,8 @@ export function buildPortalBills(args: {
       payUrl: (inv.hosted_invoice_url ?? '').trim() || null,
       checkRef: jobNumber(job) || String(inv.sequence_order ?? ''),
       ...asGcFields(job),
+      payments: paymentRowsByInvoice.get(inv.id) ?? [],
+      totalPaid: round2(paymentsByInvoice.get(inv.id) ?? 0),
     })
   }
   for (const job of billedJobs) {
@@ -163,6 +195,8 @@ export function buildPortalBills(args: {
       payUrl: null,
       checkRef: jobNumber(job),
       ...asGcFields(job),
+      payments: [],
+      totalPaid: round2(Number(job.payments_made ?? 0)),
     })
   }
   bills.sort((a, b) => (b.billedOn ?? '9999').localeCompare(a.billedOn ?? '9999'))

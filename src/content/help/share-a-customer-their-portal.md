@@ -37,3 +37,7 @@ Visit and bid requests appear in the **dispatch inbox** like any dispatch item, 
 ## Safety
 
 Treat the link like a mailed invoice: it exposes that customer's balances only, and Rotate is always one click away. Requests are rate-limited per link, so a leaked link can't flood the inbox.
+
+## Payments show on their statement
+
+Each open bill on the portal lists the **payments already received** on it — date, method, amount, and a **Total paid** line — so a customer can confirm their check landed without calling the office. The same payment history box prints on the invoice itself (preview, PDF, and the invoice email) with the balance due. Internal payment notes never appear; customers see the payment method only.

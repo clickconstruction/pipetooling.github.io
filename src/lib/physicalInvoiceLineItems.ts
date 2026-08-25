@@ -251,12 +251,16 @@ function formatPaymentDateYmd(ymd: string | null | undefined): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t)
   if (!m) return t
   const ref = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0)
-  return new Intl.DateTimeFormat('en-US', {
+  const date = new Intl.DateTimeFormat('en-US', {
     timeZone: APP_CALENDAR_TZ,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   }).format(ref)
+  // "Dec 17, 2025 · Wed" — the weekday HCP shows, minus the time-of-day we
+  // don't honestly have (paid_on is date-only; created_at is entry time).
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short' }).format(ref)
+  return `${date} · ${weekday}`
 }
 
 export function formatPaymentHistoryRows(
@@ -265,13 +269,44 @@ export function formatPaymentHistoryRows(
 ): PhysicalInvoicePaymentHistoryRow[] {
   return payments.map((p) => {
     const amt = Number(p.amount)
-    const note = (p.note ?? '').trim()
-    const methodBase = (p.payment_type ?? '').trim() || 'Payment'
-    const method = note ? `${methodBase} — ${note}` : methodBase
+    // Customer-facing method is the payment type ONLY (v2.2313): `note` is an
+    // internal field and now carries hygiene tags (hcp-paydate-corrected-…)
+    // that must never print on customer paper.
+    const method = (p.payment_type ?? '').trim() || 'Payment'
     return {
       dateDisplay: formatPaymentDateYmd(p.paid_on),
       method,
       amountFormatted: formatUsd(Number.isFinite(amt) ? amt : 0),
     }
   })
+}
+
+export type PhysicalInvoicePaymentTotals = {
+  totalPaidFormatted: string
+  /** Meaningful only when paidInFull is false. */
+  balanceDueFormatted: string
+  paidInFull: boolean
+}
+
+/**
+ * Total-paid / balance-due rows under the payment history (v2.2313).
+ * `invoiceAmountDollars` is the document's own amount — invoice-scoped when
+ * the history is invoice-scoped, the job total for job-level bills.
+ */
+export function buildPaymentHistoryTotals(
+  payments: PhysicalInvoicePaymentInput[],
+  invoiceAmountDollars: number,
+  formatUsd: (n: number) => string,
+): PhysicalInvoicePaymentTotals | null {
+  if (payments.length === 0) return null
+  const totalPaid = payments.reduce((a, p) => {
+    const amt = Number(p.amount)
+    return a + (Number.isFinite(amt) ? amt : 0)
+  }, 0)
+  const balance = invoiceAmountDollars - totalPaid
+  return {
+    totalPaidFormatted: formatUsd(totalPaid),
+    balanceDueFormatted: formatUsd(Math.max(balance, 0)),
+    paidInFull: balance <= 0.005,
+  }
 }

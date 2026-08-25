@@ -266,6 +266,28 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
                     check · ref {b.checkRef || '—'}
                   </span>
                 )}
+                {b.payments.length > 0 ? (
+                  // Payments already received on this bill (v2.2313): quiet
+                  // sub-ledger so a customer sees their check landed without
+                  // calling the office. Dates/method only — never notes.
+                  <div style={{ gridColumn: '1 / -1', margin: '7px 0 0', paddingTop: 6, borderTop: `1px dashed ${HAIR}` }}>
+                    {b.payments.map((pm, pi) => (
+                      <div
+                        key={pi}
+                        style={{ display: 'flex', gap: 14, fontSize: 11.5, color: MUTED, padding: '1.5px 0', fontVariantNumeric: 'tabular-nums' }}
+                      >
+                        <span style={{ minWidth: 84 }}>{formatPortalDate(pm.date) ?? '—'}</span>
+                        <span>{pm.method}</span>
+                        <span style={{ marginLeft: 'auto' }}>{formatPortalUsd(pm.amount)}</span>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', gap: 14, fontSize: 11.5, color: INK, fontWeight: 700, padding: '2.5px 0 0', fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ minWidth: 84 }} />
+                      <span>Total paid</span>
+                      <span style={{ marginLeft: 'auto' }}>{formatPortalUsd(b.totalPaid)}</span>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ))}
             <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '11px 0 4px', fontSize: 14 }}>

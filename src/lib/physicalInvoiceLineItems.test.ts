@@ -126,3 +126,42 @@ describe('physicalInvoiceLineItems', () => {
     expect(rows[0]?.amount).toBe(2)
   })
 })
+
+describe('payment history customer rows (v2.2313)', () => {
+  const usd = (n: number) => `$${n.toFixed(2)}`
+  const pay = (over: Partial<import('./physicalInvoiceLineItems').PhysicalInvoicePaymentInput>) => ({
+    amount: 100,
+    paid_on: '2025-12-17',
+    payment_type: 'Check',
+    note: null,
+    invoice_id: null,
+    sequence_order: 1,
+    ...over,
+  })
+
+  it('never prints the internal note in the customer-facing method', async () => {
+    const { formatPaymentHistoryRows } = await import('./physicalInvoiceLineItems')
+    const rows = formatPaymentHistoryRows([pay({ note: 'hcp-paydate-corrected-2026-08-24' })], usd)
+    expect(rows[0]!.method).toBe('Check')
+    expect(JSON.stringify(rows)).not.toContain('hcp-paydate')
+  })
+
+  it('shows date with weekday, no time-of-day', async () => {
+    const { formatPaymentHistoryRows } = await import('./physicalInvoiceLineItems')
+    const rows = formatPaymentHistoryRows([pay({})], usd)
+    expect(rows[0]!.dateDisplay).toBe('Dec 17, 2025 · Wed')
+  })
+
+  it('totals: balance due when partially paid', async () => {
+    const { buildPaymentHistoryTotals } = await import('./physicalInvoiceLineItems')
+    const t = buildPaymentHistoryTotals([pay({ amount: 8880 }), pay({ amount: 20 }), pay({ amount: 8000 })], 17800, usd)
+    expect(t).toEqual({ totalPaidFormatted: '$16900.00', balanceDueFormatted: '$900.00', paidInFull: false })
+  })
+
+  it('totals: paid in full at (or above) the invoice amount', async () => {
+    const { buildPaymentHistoryTotals } = await import('./physicalInvoiceLineItems')
+    expect(buildPaymentHistoryTotals([pay({ amount: 500 })], 500, usd)!.paidInFull).toBe(true)
+    expect(buildPaymentHistoryTotals([pay({ amount: 510 })], 500, usd)!.paidInFull).toBe(true)
+    expect(buildPaymentHistoryTotals([], 500, usd)).toBeNull()
+  })
+})
