@@ -9,6 +9,7 @@ import {
   filterBills,
   filterTxns,
   lensCounts,
+  isBilledAfterPaid,
   missingInfoLabel,
   parsePaymentLineItemsBulk,
   parsePaySpeedTransactions,
@@ -414,9 +415,11 @@ export default function PaySpeedDataHealthModal({
                   const chip = STATUS_CHIP[t.status]
                   const li = lineItemsById[t.paymentId]
                   const editing = t.invoiceId != null && dateEditId === t.invoiceId
-                  const canAddDate = canExclude && t.invoiceId != null && t.billedYmd == null
+                  const badDate = isBilledAfterPaid(t)
+                  // Fixable in place: no date at all, or a provably wrong one (v2.2337).
+                  const canAddDate = canExclude && t.invoiceId != null && (t.billedYmd == null || badDate)
                   const hoverDates = t.billedYmd
-                    ? `Billed ${formatYmdSlash(t.billedYmd)} → paid ${formatYmdSlash(t.paidYmd)}${t.sentYmd ? ` · sent ${formatYmdSlash(t.sentYmd)}` : ''}`
+                    ? `Billed ${formatYmdSlash(t.billedYmd)} → paid ${formatYmdSlash(t.paidYmd)}${t.sentYmd ? ` · sent ${formatYmdSlash(t.sentYmd)}` : ''}${badDate ? ' — the recorded bill date is after the payment, so it can’t be right' : ''}`
                     : `Received ${formatYmdSlash(t.paidYmd)}${t.sentYmd ? ` · sent ${formatYmdSlash(t.sentYmd)}` : ''} — no bill date to measure from`
                   return (
                     <div key={t.paymentId}>
@@ -448,13 +451,13 @@ export default function PaySpeedDataHealthModal({
                       >
                         {editing ? (
                           <>{dateEditor(t.invoiceId!)}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> → {formatYmdSlash(t.paidYmd)}</span></>
+                        ) : canAddDate ? (
+                          <>{addDateButton(t.invoiceId!)}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> → {formatYmdSlash(t.paidYmd)}</span></>
                         ) : t.billedYmd ? (
                           <>
                             <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{formatYmdSlash(t.billedYmd)} → </span>
                             {formatYmdSlash(t.paidYmd)}
                           </>
-                        ) : canAddDate ? (
-                          <>{addDateButton(t.invoiceId!)}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> → {formatYmdSlash(t.paidYmd)}</span></>
                         ) : (
                           <>
                             <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>— → </span>

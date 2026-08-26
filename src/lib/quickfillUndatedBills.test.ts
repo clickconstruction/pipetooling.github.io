@@ -73,6 +73,13 @@ describe('undatedBillClue', () => {
     expect(undatedBillClue(d.bills[2]!)).toBe('billed, unpaid · created 08/12')
     expect(undatedBillClue({ ...d.bills[2]!, createdYmd: null })).toBe('billed, unpaid')
   })
+  it('names the contradiction on billed-after-paid rows (v2.2337 guard)', () => {
+    const bad = { ...d.bills[0]!, billedYmd: '2026-08-30' }
+    expect(undatedBillClue(bad)).toBe('billed 08/30 after paid 08/24')
+    // earliest contradicted payment wins, not the newest
+    const multi = { ...d.bills[1]!, billedYmd: '2026-08-15' }
+    expect(undatedBillClue(multi)).toBe('billed 08/15 after paid 08/12')
+  })
 })
 
 describe('filterUndatedBills', () => {
