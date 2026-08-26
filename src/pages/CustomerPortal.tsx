@@ -208,9 +208,10 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
 
 /**
  * One job's slice of the statement (v2.2318): a quiet note-band header, the
- * job's bills newest-first, every payment received (oldest first), and a
- * right-aligned boxed recap — Billed to date / Paid to date / Balance — the
- * same totals grammar the invoice preview, PDF, and email box use (v2.2313).
+ * job's bills newest-first, and a right-aligned boxed recap that reads like a
+ * little ledger (v2.2320) — Billed to date, every payment received by date,
+ * Balance — the same totals grammar the invoice preview, PDF, and email box
+ * use (v2.2313).
  */
 function PortalJobGroupSection({ group, todayYmd, isLast }: { group: PortalJobGroup; todayYmd: string; isLast: boolean }) {
   const addr = splitPortalAddress(group.jobAddress)
@@ -262,34 +263,34 @@ function PortalJobGroupSection({ group, todayYmd, isLast }: { group: PortalJobGr
       {group.bills.map((b, i) => (
         <PortalBillRow key={i} bill={b} todayYmd={todayYmd} isLast={i === group.bills.length - 1} />
       ))}
-      {group.payments.length > 0 && (
-        <div style={{ padding: '8px 0 2px 10px', borderTop: `1px dashed ${HAIR}` }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, paddingBottom: 3 }}>
-            Payments received
-          </div>
-          {group.payments.map((pm, i) => (
-            <div key={i} style={{ display: 'flex', gap: 14, fontSize: 11.5, color: MUTED, padding: '1.5px 0', fontVariantNumeric: 'tabular-nums' }}>
-              <span style={{ minWidth: 84 }}>{formatPortalDate(pm.date) ?? '—'}</span>
-              <span>{pm.method}</span>
-              <span style={{ marginLeft: 'auto' }}>&minus; {formatPortalUsd(pm.amount)}</span>
-            </div>
-          ))}
-        </div>
-      )}
       {group.showRecap && (
         <div style={{ margin: '10px 0 2px auto', width: 'min(320px, 100%)', boxSizing: 'border-box', background: CARD, border: `1px solid ${HAIR}`, padding: '10px 14px 11px', fontSize: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
             <span>Billed to date</span>
             <span style={{ color: INK, fontWeight: 600 }}>{formatPortalUsd(group.billedToDate)}</span>
           </div>
-          {/* A multi-bill job with no payments still gets its closing balance,
-              but "Paid to date − $0.00" would just be noise. */}
-          {group.totalPaid > 0 && (
+          {/* Each payment by date (v2.2320) — the recap reads like a little
+              ledger: billed, minus every payment received, equals balance.
+              When the rows can't account for the whole cached total
+              (job-remainder bills carry only the aggregate), one Paid-to-date
+              line keeps the arithmetic honest instead. A multi-bill job with
+              no payments shows neither — "− $0.00" would just be noise. */}
+          {group.payments.length > 0 && Math.abs(group.paymentRowsTotal - group.totalPaid) < 0.005 ? (
+            group.payments.map((pm, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
+                <span>
+                  Paid {formatPortalDate(pm.date) ?? '—'}
+                  <span style={{ color: FAINT }}> · {pm.method}</span>
+                </span>
+                <span style={{ color: PAPER_GREEN, fontWeight: 600, whiteSpace: 'nowrap' }}>&minus; {formatPortalUsd(pm.amount)}</span>
+              </div>
+            ))
+          ) : group.totalPaid > 0 ? (
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
               <span>Paid to date</span>
               <span style={{ color: PAPER_GREEN, fontWeight: 600 }}>&minus; {formatPortalUsd(group.totalPaid)}</span>
             </div>
-          )}
+          ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${INK}`, fontSize: 13, fontWeight: 700, color: INK, fontVariantNumeric: 'tabular-nums' }}>
             <span>Balance on this job</span>
             <span>{formatPortalUsd(group.balance)}</span>

@@ -69,16 +69,16 @@ describe('CustomerPortal render smoke', () => {
     // One band for the job, not one line per bill.
     expect(screen.getAllByText('612')).toHaveLength(1)
     expect(screen.getByText('3827 Sage Ridge Dr')).toBeTruthy()
-    // Payments merged under the job, "other" softened to "Payment", shown as a credit.
-    expect(screen.getByText('Payments received')).toBeTruthy()
-    expect(screen.getByText('Payment')).toBeTruthy()
-    expect(screen.queryByText('other')).toBeNull()
     // Bill row shows what was originally billed when money has landed.
     expect(screen.getByText('$2,000.00')).toBeTruthy()
-    // The recap box: billed − paid = balance.
+    // The recap box is the payment ledger (v2.2320): each payment by date,
+    // "other" softened to "Payment", no aggregate Paid-to-date line.
     expect(screen.getByText('Billed to date')).toBeTruthy()
     expect(screen.getByText('$2,300.00')).toBeTruthy()
-    expect(screen.getByText('Paid to date')).toBeTruthy()
+    expect(screen.getByText(/Paid Jul 20, 2026/)).toBeTruthy()
+    expect(screen.getByText(/· Payment/)).toBeTruthy()
+    expect(screen.queryByText(/other/)).toBeNull()
+    expect(screen.queryByText('Paid to date')).toBeNull()
     expect(screen.getByText('Balance on this job')).toBeTruthy()
     // Balance figure appears in the recap and again as the grand total.
     expect(screen.getAllByText('$1,750.00').length).toBeGreaterThanOrEqual(2)
@@ -105,7 +105,21 @@ describe('CustomerPortal render smoke', () => {
     mountAt('/portal?t=abcdef1234567890abcdef')
     await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
     expect(screen.queryByText('Balance on this job')).toBeNull()
-    expect(screen.queryByText('Payments received')).toBeNull()
+    expect(screen.queryByText(/^Paid /)).toBeNull()
+  })
+
+  it('aggregate-only paid total falls back to one Paid to date line', async () => {
+    const grouped = {
+      ...payload,
+      bills: [
+        { jobLabel: 'Remodel · Job 512', jobNumber: '512', jobName: 'Remodel', serviceTag: 'plum', jobAddress: '2 Oak Ave, Austin, TX 78701', amount: 400, billedOn: '2026-08-01', payUrl: null, checkRef: '512', totalPaid: 150, payments: [] },
+      ],
+      totalDue: 400,
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(grouped), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Balance on this job')).toBeTruthy())
+    expect(screen.getByText('Paid to date')).toBeTruthy()
   })
 
   it('all-paid state', async () => {
