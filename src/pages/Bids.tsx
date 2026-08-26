@@ -2841,7 +2841,8 @@ export default function Bids() {
           onEditBid={openEditBid}
           onOpenGcBuilderOrCustomer={openGcBuilderOrCustomerModal}
           onLastContactClick={handleLastContactClick}
-          onOpenCounts={(bid) => selectBidAndSyncUrl(bid, 'counts')}
+          onOpenBidTab={(bid, tab) => selectBidAndSyncUrl(bid, tab)}
+          canSeePricingTabs={myRole !== 'superintendent'}
           onError={setError}
           onReloadBids={() => { void loadBids() }}
           onReloadCustomerContacts={() => { void loadCustomerContacts() }}
