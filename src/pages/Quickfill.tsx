@@ -25,6 +25,7 @@ import { BankingSortingSnapshotSection } from '../components/quickfill/BankingSo
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
 import { QuickfillUnassignedFieldTimeSection } from '../components/quickfill/QuickfillUnassignedFieldTimeSection'
 import { QuickfillVehicleOdometersSection } from '../components/quickfill/QuickfillVehicleOdometersSection'
+import { QuickfillUndatedBillsSection } from '../components/quickfill/QuickfillUndatedBillsSection'
 import { QuickfillAssistantDailysSection } from '../components/quickfill/QuickfillAssistantDailysSection'
 import { QuickfillDifficultPeopleSection } from '../components/quickfill/QuickfillDifficultPeopleSection'
 import { QuickfillEmailSection } from '../components/quickfill/QuickfillEmailSection'
@@ -83,6 +84,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
   { id: 'quickfill-complete-no-bill', sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' },
+  { id: 'quickfill-undated-bills', sectionId: 'undated-bills', label: 'Missing bill dates' },
   { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Missing job info' },
   { id: 'quickfill-jobs-cleanup', sectionId: 'jobs-cleanup', label: 'Jobs Cleanup' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
@@ -111,6 +113,7 @@ const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
 const SECTION_INSERT_AFTER: Record<string, string> = {
   'jobs-cleanup': 'no-customer-stages',
   'assistant-dailys': 'office-arriving',
+  'undated-bills': 'complete-no-bill',
 }
 
 const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
@@ -658,6 +661,9 @@ function QuickfillPage() {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
+      if (sectionId === 'undated-bills') {
+        return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+      }
       if (sectionId === 'complete-no-bill') return quickfillCompleteNoBill.fetchEnabled
       if (sectionId === 'dispatch-inbox') return dispatchInboxEligible
       if (sectionId === 'schedule' || sectionId === 'tomorrow-schedule') {
@@ -1215,6 +1221,24 @@ function QuickfillPage() {
               clockSummaryByJobId={quickfillCompleteNoBill.clockSummaryByJobId}
               jobsListBusy={quickfillCompleteNoBill.jobsListBusy}
             />
+          </QuickfillSectionWrapper>
+        )
+      case 'undated-bills':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['undated-bills']?.marked_at ?? null)}
+            collapsed={isCollapsed('undated-bills') && !forceExpandedSections.has('undated-bills')}
+            mark={sectionMarks['undated-bills']}
+            onMarkUpToDate={() => void markSectionUpToDate('undated-bills')}
+            onOpenNow={() => openSectionNow('undated-bills')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'undated-bills', label: 'Missing bill dates' })}
+          >
+            <QuickfillUndatedBillsSection />
           </QuickfillSectionWrapper>
         )
       case 'jobs-cleanup':

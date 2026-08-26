@@ -3,13 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdSlash } from '../../lib/jobs/paySpeedsBreakdown'
-import {
-  BILL_DATE_PLACEHOLDER,
-  billDateInputWidthCh,
-  billedAtIsoFromYmd,
-  formatBillDateInput,
-  parseBillDateInput,
-} from '../../lib/jobs/billDateEntry'
+import { billedAtIsoFromYmd } from '../../lib/jobs/billDateEntry'
+import InlineBillDateEditor, { AddBillDateButton } from './InlineBillDateEditor'
 import {
   filterBills,
   filterTxns,
@@ -91,7 +86,6 @@ export default function PaySpeedDataHealthModal({
   // Inline bill-date editor (v2.2316), keyed by invoice id (works on payment
   // rows and undated-bill rows alike).
   const [dateEditId, setDateEditId] = useState<string | null>(null)
-  const [dateDraft, setDateDraft] = useState('')
   const [savingDate, setSavingDate] = useState(false)
 
   async function load() {
@@ -174,14 +168,8 @@ export default function PaySpeedDataHealthModal({
     setBusyId(null)
   }
 
-  function openDateEditor(invoiceId: string) {
-    setDateEditId(invoiceId)
-    setDateDraft('')
-  }
-
-  async function saveBillDate(invoiceId: string) {
-    const ymd = parseBillDateInput(dateDraft)
-    if (ymd == null || savingDate) return
+  async function saveBillDate(invoiceId: string, ymd: string) {
+    if (savingDate) return
     setSavingDate(true)
     const { error } = await supabase
       .from('jobs_ledger_invoices')
@@ -189,7 +177,6 @@ export default function PaySpeedDataHealthModal({
       .eq('id', invoiceId)
     if (!error) {
       setDateEditId(null)
-      setDateDraft('')
       await load()
       onChanged?.()
     }
@@ -242,89 +229,24 @@ export default function PaySpeedDataHealthModal({
     )
   }
 
-  /** The inline MM/DD/YY editor (v2.2316) — the field hugs exactly what's typed. */
+  // Editor + button are the shared components (v2.2326) — same UI in the
+  // Quickfill Missing bill dates station.
   function dateEditor(invoiceId: string) {
-    const valid = parseBillDateInput(dateDraft) != null
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-        <input
-          type="text"
-          inputMode="numeric"
-          autoFocus
-          value={dateDraft}
-          placeholder={BILL_DATE_PLACEHOLDER}
-          aria-label="Bill date (MM/DD/YY)"
-          onChange={(e) => setDateDraft(formatBillDateInput(e.target.value))}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && valid) void saveBillDate(invoiceId)
-            if (e.key === 'Escape') setDateEditId(null)
-          }}
-          style={{
-            font: 'inherit',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '0.03em',
-            padding: '0.22rem 0.4rem',
-            border: '1px solid var(--text-link)',
-            borderRadius: 6,
-            background: 'var(--surface)',
-            color: 'var(--text-700)',
-            width: `calc(${billDateInputWidthCh(dateDraft)}ch + 1.1em)`,
-          }}
-        />
-        <button
-          type="button"
-          disabled={!valid || savingDate}
-          onClick={() => void saveBillDate(invoiceId)}
-          style={{
-            font: 'inherit',
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            padding: '0.22rem 0.55rem',
-            borderRadius: 6,
-            border: 'none',
-            background: 'var(--text-link)',
-            color: '#fff',
-            cursor: 'pointer',
-            opacity: !valid || savingDate ? 0.5 : 1,
-          }}
-        >
-          {savingDate ? '…' : 'Save'}
-        </button>
-        <button
-          type="button"
-          onClick={() => setDateEditId(null)}
-          aria-label="Cancel bill date"
-          style={{ border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', padding: '0.1rem' }}
-        >
-          ✕
-        </button>
-      </span>
+      <InlineBillDateEditor
+        saving={savingDate}
+        onSave={(ymd) => void saveBillDate(invoiceId, ymd)}
+        onCancel={() => setDateEditId(null)}
+      />
     )
   }
 
   function addDateButton(invoiceId: string) {
     return (
-      <button
-        type="button"
-        onClick={() => openDateEditor(invoiceId)}
+      <AddBillDateButton
+        onClick={() => setDateEditId(invoiceId)}
         title="Type the bill date right here — the row becomes measurable on save"
-        style={{
-          font: 'inherit',
-          fontSize: '0.66rem',
-          fontWeight: 600,
-          color: 'var(--text-link)',
-          border: '1px dashed var(--border-strong)',
-          borderRadius: 6,
-          background: 'none',
-          padding: '0.05rem 0.4rem',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        ＋ add date
-      </button>
+      />
     )
   }
 
