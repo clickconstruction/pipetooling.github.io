@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPreview'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from '../jobs/HostedStripeBillPanel'
@@ -196,7 +197,7 @@ export default function DocumentsJobBilledInvoiceModal({
                 <div style={{ marginBottom: '0.75rem' }}>
                   <PhysicalInvoicePreview document={physicalDoc} />
                 </div>
-                <div style={{ marginBottom: '1rem' }}>
+                <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => void openPdfInNewTab()}
@@ -213,6 +214,33 @@ export default function DocumentsJobBilledInvoiceModal({
                     }}
                   >
                     {pdfOpening ? 'Opening…' : 'Open PDF in new tab'}
+                  </button>
+                  {/* Preview email (v2.2344, placement 2): how this invoice's
+                      email reads TODAY — reconstructed from current job data
+                      like the PDF above; nothing is sent. */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openInvoiceEmailPreviewInNewTab(physicalDoc, {
+                        toEmail: job?.customer_email ?? '',
+                        contextNote: 'Reconstructed preview — nothing is sent',
+                        onBlocked: () =>
+                          showToast('Pop-up blocked. Allow pop-ups for this site to preview the email.', 'warning'),
+                      })
+                    }
+                    title="See the email this invoice produces — reconstructed from current job data, nothing is sent"
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: '1px solid var(--border-strong)',
+                      background: 'var(--bg-subtle)',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      color: 'var(--text-700)',
+                      fontWeight: 500,
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    Preview email
                   </button>
                 </div>
               </>
