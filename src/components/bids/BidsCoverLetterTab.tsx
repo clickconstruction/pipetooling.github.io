@@ -813,6 +813,9 @@ export function BidsCoverLetterTab({
         const samePagePlan = coverLetterView === 'new' && altsLayout === 'same-page' && selectedGcPacket
           ? planSamePageLetter(selectedGcPacket.sections)
           : null
+        // The layout toggle follows the packet the LETTER shows (selectedGcPacket), not the studio's
+        // GC tab — they can differ when the active version's GC has nothing priced yet.
+        const showAltsLayoutToggle = coverLetterView === 'new' && selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
         const samePageHtml = (editable: boolean) =>
           samePagePlan
             ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable))
@@ -1048,7 +1051,7 @@ export function BidsCoverLetterTab({
                                 {multi ? <> <strong style={{ color: 'var(--text-strong)' }}>{gcShort}: base ${formatCurrency(gcBase)}{gcAlts ? ` + ${gcAlts} alternate${gcAlts === 1 ? '' : 's'}` : ''}</strong></> : null}
                                 {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
                               </div>
-                              {gcAlts > 0 && gcSections.length > 1 ? (
+                              {showAltsLayoutToggle ? (
                                 <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }}>Alternates in the letter</span>
                                   <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
