@@ -268,7 +268,31 @@ serve(async (req) => {
             .is('completed_at', null)
           if (dueDate == null) query = query.lte('scheduled_date', cutoff)
           const { data: instances } = await query
-          if ((instances ?? []).length > 0) bucketFor(creatorId).escalated.push(title)
+          if ((instances ?? []).length > 0) {
+            // Pushed-back rider (v2.2371): escalation can't be dodged by
+            // date-nudging — the creator sees the pushes. Mirrors
+            // src/lib/checklistDuePushes.ts summarizeDuePushes (keep in sync).
+            let suffix = ''
+            if (dueDate != null) {
+              const { data: pushRows } = await adminClient
+                .from('checklist_item_due_changes')
+                .select('from_due, to_due')
+                .eq('checklist_item_id', item.id)
+                .order('changed_at', { ascending: true })
+              const rows = (pushRows ?? []) as Array<{ from_due: string | null; to_due: string | null }>
+              let original: string | null = null
+              for (const r of rows) {
+                if (r.from_due) { original = r.from_due; break }
+                if (r.to_due) { original = r.to_due; break }
+              }
+              if (original != null && dueDate > original) {
+                const pushCount = Math.max(rows.filter((r) => r.from_due != null && r.to_due != null && r.to_due > r.from_due).length, 1)
+                const slip = Math.round((new Date(dueDate + 'T00:00:00Z').getTime() - new Date(original + 'T00:00:00Z').getTime()) / 86_400_000)
+                suffix = ` (pushed ×${pushCount}, +${slip}d)`
+              }
+            }
+            bucketFor(creatorId).escalated.push(title + suffix)
+          }
         }
       }
     }

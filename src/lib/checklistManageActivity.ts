@@ -7,6 +7,7 @@
  */
 
 import type { ChecklistCardEvent } from './checklistCardEvents'
+import { dueChangeEntryText, type DueChangeRow } from './checklistDuePushes'
 
 export type ManageInstanceLite = {
   id: string
@@ -16,6 +17,7 @@ export type ManageInstanceLite = {
 
 export type ManageTimelineEntry =
   | { kind: 'created'; at: string; actorUserId: string | null }
+  | { kind: 'due_change'; id: string; at: string; actorUserId: string | null; text: string }
   | {
       kind: 'event'
       id: string
@@ -36,6 +38,8 @@ export function buildManageTimeline(
   item: { created_at: string | null; created_by_user_id: string | null },
   instances: ManageInstanceLite[],
   events: ChecklistCardEvent[],
+  /** Due-change ledger rows (v2.2371) — render as "pushed the due date …" lines. */
+  dueChanges: DueChangeRow[] = [],
 ): ManageTimelineEntry[] {
   const dayByInstance = new Map<string, string>()
   for (const inst of instances) dayByInstance.set(inst.id, inst.scheduled_date)
@@ -43,6 +47,9 @@ export function buildManageTimeline(
   if (item.created_at) {
     entries.push({ kind: 'created', at: item.created_at, actorUserId: item.created_by_user_id })
   }
+  dueChanges.forEach((d, i) => {
+    entries.push({ kind: 'due_change', id: `due-${i}-${d.changed_at}`, at: d.changed_at, actorUserId: d.changed_by, text: dueChangeEntryText(d) })
+  })
   for (const e of events) {
     entries.push({
       kind: 'event',

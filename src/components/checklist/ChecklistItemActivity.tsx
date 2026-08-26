@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../../lib/supabase'
 import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { buildManageTimeline, commentTargetInstance, type ManageInstanceLite } from '../../lib/checklistManageActivity'
+import type { DueChangeRow } from '../../lib/checklistDuePushes'
 
 /** A long-running repeating task can have years of instances — cap the activity fetch. */
 export const ITEM_ACTIVITY_INSTANCE_CAP = 120
@@ -59,6 +60,7 @@ export function ChecklistItemActivity({
 }) {
   const [loading, setLoading] = useState(true)
   const [instances, setInstances] = useState<ManageInstanceLite[]>([])
+  const [dueChanges, setDueChanges] = useState<DueChangeRow[]>([])
   const [events, setEvents] = useState<ChecklistCardEvent[]>([])
   const [nameById, setNameById] = useState<Record<string, string>>({})
   const [draft, setDraft] = useState('')
@@ -123,9 +125,17 @@ export function ChecklistItemActivity({
           }
           evs = (evData ?? []) as ChecklistCardEvent[]
         }
+        // Due-change ledger (v2.2371): "pushed the due date …" spine lines.
+        const { data: pushData } = await supabase
+          .from('checklist_item_due_changes')
+          .select('changed_at, changed_by, from_due, to_due')
+          .eq('checklist_item_id', item.id)
+          .order('changed_at', { ascending: true })
+        const pushes = (pushData ?? []) as DueChangeRow[]
         const personIds = new Set<string>()
         if (item.created_by_user_id) personIds.add(item.created_by_user_id)
         for (const e of evs) if (e.actor_user_id) personIds.add(e.actor_user_id)
+        for (const d of pushes) if (d.changed_by) personIds.add(d.changed_by)
         const names: Record<string, string> = {}
         if (personIds.size > 0) {
           const { data } = await supabase.from('users').select('id, name').in('id', [...personIds])
@@ -136,6 +146,7 @@ export function ChecklistItemActivity({
         if (cancelled) return
         setInstances(insts)
         setEvents(evs)
+        setDueChanges(pushes)
         setNameById(names)
       } finally {
         if (!cancelled) setLoading(false)
@@ -156,7 +167,7 @@ export function ChecklistItemActivity({
   const dayLabel = (d: string): string =>
     new Date(`${d}T00:00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
 
-  const timeline = useMemo(() => buildManageTimeline(item, instances, events), [item, instances, events])
+  const timeline = useMemo(() => buildManageTimeline(item, instances, events, dueChanges), [item, instances, events, dueChanges])
   const commentTarget = useMemo(
     () => commentTargetInstance(instances, new Date().toLocaleDateString('en-CA')),
     [instances],
@@ -257,6 +268,13 @@ export function ChecklistItemActivity({
               return (
                 <div key="created" style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   {name(entry.actorUserId)} created this task · {stripStamp(entry.at)}
+                </div>
+              )
+            }
+            if (entry.kind === 'due_change') {
+              return (
+                <div key={entry.id} style={{ fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
+                  {name(entry.actorUserId)} {entry.text} · {stripStamp(entry.at)}
                 </div>
               )
             }

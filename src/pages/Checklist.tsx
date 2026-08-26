@@ -32,6 +32,7 @@ import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { dueChipLabel } from '../lib/checklistDueDates'
+import { pushedChipLabel, summarizeDuePushes, type DueChangeRow } from '../lib/checklistDuePushes'
 import { isScheduledAhead, nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { goalsStageRows, goalsStripRows, lockedStageHint, lockedStagePrerequisiteChain, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
 import { computeStageOrderUpdates, computeTaskOrderUpdates } from '../lib/roadmapStageNumbers'
@@ -3843,6 +3844,8 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   const [itemCompletion, setItemCompletion] = useState<Map<string, { total: number; hasIncomplete: boolean }>>(new Map())
   /** Oldest incomplete instance date per item — powers the "open N days" chip (v2.1873). */
   const [oldestOpenByItem, setOldestOpenByItem] = useState<Map<string, string>>(new Map())
+  /** Due-change ledger rows per item (v2.2371) — powers the "pushed ×N" chip. */
+  const [duePushesByItem, setDuePushesByItem] = useState<Map<string, DueChangeRow[]>>(new Map())
   const [openMenuItemId, setOpenMenuItemId] = useState<string | null>(null)
   const [completedOpen, setCompletedOpen] = useState(false)
   /** Card expanded to show its activity spine (history + notes), v2.2010. */
@@ -3920,6 +3923,17 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
     setItemCompletion(completion)
     setOldestOpenByItem(oldestOpen)
     setNextOpenByItem(nextOpen)
+    // Pushed-back markers (v2.2371): the due-change ledger, chronological.
+    const { data: pushData } = await supabase
+      .from('checklist_item_due_changes')
+      .select('checklist_item_id, changed_at, changed_by, from_due, to_due')
+      .in('checklist_item_id', ids)
+      .order('changed_at', { ascending: true })
+    const pushes = new Map<string, DueChangeRow[]>()
+    for (const r of (pushData ?? []) as Array<DueChangeRow & { checklist_item_id: string }>) {
+      pushes.set(r.checklist_item_id, [...(pushes.get(r.checklist_item_id) ?? []), r])
+    }
+    setDuePushesByItem(pushes)
   }
 
   async function performDeleteChecklistItem(id: string) {
@@ -4051,6 +4065,15 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
                 {openAge}
               </span>
             ) : null}
+            {(() => {
+              // "pushed ×N" (v2.2371): only while the current due sits later than the original commitment.
+              const label = item.due_date ? pushedChipLabel(summarizeDuePushes(duePushesByItem.get(item.id) ?? [], item.due_date)) : ''
+              return label ? (
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>
+                  {label}
+                </span>
+              ) : null
+            })()}
             {isRepeating(item) && nextOccurrenceLabel(nextOpenByItem.get(item.id), todayLocalStr) ? (
               <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }}>
                 {nextOccurrenceLabel(nextOpenByItem.get(item.id), todayLocalStr)}
