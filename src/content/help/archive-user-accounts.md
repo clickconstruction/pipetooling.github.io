@@ -20,12 +20,16 @@ The confirmation explains exactly what will happen before you commit. If the acc
 - **Reassign them to another master** — pick who inherits them, and the button becomes {{button:red|Reassign & archive}} so both happen in one step.
 
 :::example What archiving does
-Sign-in banned · hidden from active lists and assignment pickers · nothing deleted · restorable anytime
+Sign-in banned · hidden from active lists and assignment pickers · taken off open roadmap tasks · nothing deleted · restorable anytime
 :::
+
+**Roadmap tasks**: archiving also takes the person off every *open* roadmap task, so that work drops into the Plan view's **Needs a person** lane instead of sitting assigned to someone who's gone. Completed tasks keep their name — history stays credited.
 
 ## Restore
 
 Open the **Archived users** section at the bottom of the panel and click **Restore** — the account is un-archived and can sign in again.
+
+Restoring also puts them back on their old roadmap tasks — but only the ones that are still open and that nobody else has picked up in the meantime. A task with a new person keeps its new person.
 
 ## Related
 
