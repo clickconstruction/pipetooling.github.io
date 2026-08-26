@@ -13,6 +13,7 @@ import { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { BidPickerSortToggle } from './BidPickerSortToggle'
 
 type BidRfiTabProps = {
   bids: BidWithBuilder[]
@@ -34,13 +35,16 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
   return (
     <div>
       {!selectedBid && (
-        <input
-          type="text"
-          placeholder="Search bids (project name or GC/Builder)..."
-          value={rfiSearchQuery}
-          onChange={(e) => setRfiSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-        />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+          <input
+            type="text"
+            placeholder="Search bids (project name or GC/Builder)..."
+            value={rfiSearchQuery}
+            onChange={(e) => setRfiSearchQuery(e.target.value)}
+            style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+          />
+          <BidPickerSortToggle />
+        </div>
       )}
       {!selectedBid ? (
         (() => {

@@ -35,6 +35,7 @@ import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { MyBidsToggle } from './MyBidsToggle'
+import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
@@ -1687,7 +1688,7 @@ export function BidsPricingTab({
     <>
       <div>
         {!selectedBidForPricing && (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
             <input
               type="text"
               placeholder="Search bids (bid #, project name, or GC/Builder)..."
@@ -1695,6 +1696,7 @@ export function BidsPricingTab({
               onChange={(e) => setPricingSearchQuery(e.target.value)}
               style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
+            <BidPickerSortToggle />
             <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
           </div>
         )}
