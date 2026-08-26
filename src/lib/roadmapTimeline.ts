@@ -7,6 +7,7 @@
  */
 
 import type { TechTreeEdge } from './checklistTechTreeGraph'
+import { taskWeightDays, type EffortTask } from './roadmapEffort'
 
 /** Topological depth per group: no prereqs → wave 0, else 1 + max(prereq wave). */
 export function timelineWaves(
@@ -44,6 +45,10 @@ export type TimelineRow = {
   totalTasks: number
   doneTasks: number
   remainingTasks: number
+  /** Effort sums in days (v2.2358): estimated_days per task, roadmap average for unestimated. */
+  totalDays: number
+  doneDays: number
+  remainingDays: number
   /** Task-less stage — renders as a ◆ milestone at its wave boundary. */
   isMilestone: boolean
   /** Task-less AND no prerequisites — "not planned yet" (v2.2127): a hollow ◇, never reached. */
@@ -58,12 +63,14 @@ export type TimelineRow = {
  */
 export function timelineRows(args: {
   groups: ReadonlyArray<{ id: string; title: string }>
-  tasksByGroup: ReadonlyMap<string, ReadonlyArray<{ completed_at: string | null }>>
+  tasksByGroup: ReadonlyMap<string, ReadonlyArray<EffortTask>>
   edges: ReadonlyArray<TechTreeEdge>
   unlockedIds: ReadonlySet<string>
   completeIds: ReadonlySet<string>
+  /** Roadmap-average estimate for unestimated tasks (v2.2358); 1 preserves the old task-count math. */
+  avgDays?: number
 }): TimelineRow[] {
-  const { groups, tasksByGroup, edges, unlockedIds, completeIds } = args
+  const { groups, tasksByGroup, edges, unlockedIds, completeIds, avgDays = 1 } = args
   const waves = timelineWaves(
     groups.map((g) => g.id),
     edges,
@@ -73,6 +80,8 @@ export function timelineRows(args: {
   const rows: TimelineRow[] = groups.map((g, i) => {
     const tasks = tasksByGroup.get(g.id) ?? []
     const done = tasks.filter((t) => t.completed_at != null).length
+    const totalDays = tasks.reduce((a, t) => a + taskWeightDays(t, avgDays), 0)
+    const doneDays = tasks.reduce((a, t) => a + (t.completed_at != null ? taskWeightDays(t, avgDays) : 0), 0)
     return {
       groupId: g.id,
       title: g.title,
@@ -81,6 +90,9 @@ export function timelineRows(args: {
       totalTasks: tasks.length,
       doneTasks: done,
       remainingTasks: tasks.length - done,
+      totalDays,
+      doneDays,
+      remainingDays: totalDays - doneDays,
       isMilestone: tasks.length === 0,
       unplanned: tasks.length === 0 && !hasIncoming.has(g.id),
       locked: !unlockedIds.has(g.id),
@@ -95,6 +107,8 @@ export type TimelineWaveSummary = {
   wave: number
   totalTasks: number
   remainingTasks: number
+  /** Effort remaining in days (v2.2358) — what the projection now divides. */
+  remainingDays: number
   /** Weeks this wave needs at the given pace (0 when nothing remains). */
   weeks: number
   /** Projected completion of this wave (waves run serially). */
@@ -102,27 +116,29 @@ export type TimelineWaveSummary = {
 }
 
 /**
- * Serial-by-wave projection: each wave finishes (its remaining tasks ÷
- * tasksPerWeek) weeks after the previous one. Honest and explainable —
- * clearly a what-if, not a promise.
+ * Serial-by-wave projection: each wave finishes (its remaining DAYS of work
+ * ÷ daysPerWeek) weeks after the previous one (v2.2358 — was task counts ÷
+ * tasks/week; identical when nothing is estimated, since every weight is
+ * then 1). Honest and explainable — clearly a what-if, not a promise.
  */
-export function paceProjection(rows: ReadonlyArray<TimelineRow>, tasksPerWeek: number, now: Date): TimelineWaveSummary[] {
-  const byWave = new Map<number, { total: number; remaining: number }>()
+export function paceProjection(rows: ReadonlyArray<TimelineRow>, daysPerWeek: number, now: Date): TimelineWaveSummary[] {
+  const byWave = new Map<number, { total: number; remaining: number; remainingDays: number }>()
   for (const r of rows) {
-    const w = byWave.get(r.wave) ?? { total: 0, remaining: 0 }
+    const w = byWave.get(r.wave) ?? { total: 0, remaining: 0, remainingDays: 0 }
     w.total += r.totalTasks
     w.remaining += r.remainingTasks
+    w.remainingDays += r.remainingDays
     byWave.set(r.wave, w)
   }
   const waves = [...byWave.keys()].sort((a, b) => a - b)
-  const pace = Math.max(tasksPerWeek, 0.1) // guard divide-by-zero; observed paces can honestly be < 1/week
+  const pace = Math.max(daysPerWeek, 0.1) // guard divide-by-zero; observed paces can honestly be < 1/week
   let cursor = now.getTime()
   const out: TimelineWaveSummary[] = []
   for (const w of waves) {
     const info = byWave.get(w)!
-    const weeks = info.remaining / pace
+    const weeks = info.remainingDays / pace
     cursor += weeks * 7 * 24 * 60 * 60 * 1000
-    out.push({ wave: w, totalTasks: info.total, remainingTasks: info.remaining, weeks, finish: new Date(cursor) })
+    out.push({ wave: w, totalTasks: info.total, remainingTasks: info.remaining, remainingDays: info.remainingDays, weeks, finish: new Date(cursor) })
   }
   return out
 }
@@ -149,6 +165,34 @@ export function taskSlotRects(
   const rects: TaskSlotRect[] = []
   for (let i = 0; i < count; i++) {
     rects.push({ left: barLeft + i * (width + gap), width })
+  }
+  return rects
+}
+
+/**
+ * Weight-proportional slots (v2.2358): slot i's width is its share of the
+ * total weight, floored at minWidth so a half-day task stays tappable (the
+ * row may then slightly overrun its bar — sequence, not calendar, exactly
+ * like the equal-slot floor before it). Equal weights reproduce
+ * taskSlotRects bit-for-bit.
+ */
+export function taskSlotRectsWeighted(
+  barLeft: number,
+  barWidth: number,
+  weights: ReadonlyArray<number>,
+  gap = 0.004,
+  minWidth = 0.008,
+): TaskSlotRect[] {
+  const count = weights.length
+  if (count === 0) return []
+  const usable = barWidth - gap * (count - 1)
+  const total = weights.reduce((a, b) => a + Math.max(b, 0), 0) || 1
+  const rects: TaskSlotRect[] = []
+  let x = barLeft
+  for (let i = 0; i < count; i++) {
+    const width = Math.max((usable * Math.max(weights[i] ?? 0, 0)) / total, minWidth)
+    rects.push({ left: x, width })
+    x += width + gap
   }
   return rects
 }

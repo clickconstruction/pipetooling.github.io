@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { approxDateLabel, paceProjection, taskSlotRects, timelineRows, timelineWaves } from './roadmapTimeline'
+import { approxDateLabel, paceProjection, taskSlotRects, taskSlotRectsWeighted, timelineRows, timelineWaves } from './roadmapTimeline'
 
 const t = (done: boolean) => ({ completed_at: done ? '2026-08-20T00:00:00Z' : null })
 
@@ -111,5 +111,53 @@ describe('taskSlotRects', () => {
 
   it('zero tasks → no slots', () => {
     expect(taskSlotRects(0, 0.5, 0)).toEqual([])
+  })
+})
+
+describe('effort weighting (v2.2358)', () => {
+  it('timelineRows sums days with the average filling unestimated tasks', () => {
+    const rows = timelineRows({
+      groups: [{ id: 'a', title: 'A' }],
+      tasksByGroup: new Map([
+        ['a', [
+          { completed_at: '2026-08-20T00:00:00Z', estimated_days: 4 },
+          { completed_at: null, estimated_days: 2 },
+          { completed_at: null }, // avg fills
+        ]],
+      ]),
+      edges: [],
+      unlockedIds: new Set(['a']),
+      completeIds: new Set(),
+      avgDays: 3,
+    })
+    expect(rows[0]!.totalDays).toBe(9)
+    expect(rows[0]!.doneDays).toBe(4)
+    expect(rows[0]!.remainingDays).toBe(5)
+  })
+
+  it('paceProjection divides remaining days by days/week', () => {
+    const rows = timelineRows({
+      groups: [{ id: 'a', title: 'A' }],
+      tasksByGroup: new Map([['a', [{ completed_at: null, estimated_days: 10 }]]]),
+      edges: [],
+      unlockedIds: new Set(['a']),
+      completeIds: new Set(),
+    })
+    const now = new Date('2026-08-26T00:00:00')
+    const proj = paceProjection(rows, 5, now)
+    expect(proj[0]!.remainingDays).toBe(10)
+    expect(proj[0]!.weeks).toBe(2)
+  })
+
+  it('taskSlotRectsWeighted: widths proportional; equal weights match taskSlotRects', () => {
+    const w = taskSlotRectsWeighted(0, 1, [5, 1, 4], 0)
+    expect(w[0]!.width).toBeCloseTo(0.5, 5)
+    expect(w[1]!.width).toBeCloseTo(0.1, 5)
+    expect(w[2]!.width).toBeCloseTo(0.4, 5)
+    expect(w[1]!.left).toBeCloseTo(0.5, 5)
+    const eq = taskSlotRectsWeighted(0.1, 0.8, [2, 2], 0.004)
+    const classic = taskSlotRects(0.1, 0.8, 2, 0.004)
+    expect(eq[0]!.width).toBeCloseTo(classic[0]!.width, 5)
+    expect(eq[1]!.left).toBeCloseTo(classic[1]!.left, 5)
   })
 })
