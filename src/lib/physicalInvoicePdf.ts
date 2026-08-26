@@ -260,7 +260,11 @@ function drawPaymentHistory(
   }
   if (t) {
     doc.setDrawColor(...PAYMENT_BOX_GRAY)
+    // Same weight as the frame (v2.2348) — at hairline width the rule
+    // rendered thinner and paler than the outside line.
+    doc.setLineWidth(0.35)
     doc.line(labelX, cy - bodyLineHeight * 0.55, amountX, cy - bodyLineHeight * 0.55)
+    doc.setLineWidth(0.200025) // jsPDF default
     doc.setFont('helvetica', 'bold')
     if (t.paidInFull) {
       doc.setTextColor(22, 163, 74)
