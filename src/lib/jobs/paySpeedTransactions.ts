@@ -21,6 +21,8 @@ export type PaySpeedTxn = {
   jobId: string | null
   jobName: string | null
   address: string | null
+  /** The linked bill (v2.2316) — null when the payment isn't applied to any bill, or on pre-v4 payloads. */
+  invoiceId: string | null
   billedYmd: string | null
   gapDays: number | null
   status: PaySpeedTxnStatus
@@ -71,6 +73,7 @@ function asTxn(v: unknown): PaySpeedTxn | null {
     jobId: str(o.jobId),
     jobName: str(o.jobName),
     address: str(o.address),
+    invoiceId: str(o.invoiceId),
     billedYmd: typeof o.billedYmd === 'string' && YMD_RE.test(o.billedYmd) ? o.billedYmd : null,
     gapDays: typeof gap === 'number' && Number.isFinite(gap) && gap >= 0 ? Math.round(gap) : null,
     status,
@@ -136,6 +139,17 @@ export function filterTxns(data: PaySpeedTransactions, lens: DataHealthLens, que
 
 export function filterBills(data: PaySpeedTransactions, query: string): UndatedBill[] {
   return data.undatedBills.filter((b) => matchesQuery([b.customerName, b.jobName, b.address], query))
+}
+
+/**
+ * Chip label for the old "unlinked" bucket, split into its two real problems
+ * (v2.2316): 'no bill' — the payment isn't applied to any bill (fix = link it
+ * from the job); 'no bill date' — it's on a bill whose date is missing (fix =
+ * type the date in place). Pre-v4 payloads have no invoiceId and fall back to
+ * 'no bill', which also (correctly) hides the inline date editor.
+ */
+export function missingInfoLabel(t: PaySpeedTxn): 'no bill' | 'no bill date' {
+  return t.invoiceId != null ? 'no bill date' : 'no bill'
 }
 
 export type PaymentLineItem = {

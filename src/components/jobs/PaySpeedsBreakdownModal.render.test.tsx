@@ -170,7 +170,7 @@ describe('data-health line (v2.2259)', () => {
     expect(screen.getByText(/238 of 545/)).toBeTruthy()
     expect(screen.getByText(/measurable \(44%\)/)).toBeTruthy()
     expect(screen.getByText('164')).toBeTruthy()
-    expect(screen.getByText(/unlinked payments/)).toBeTruthy()
+    expect(screen.getByText(/payments missing info/)).toBeTruthy()
     expect(screen.getByText(/undated bills/)).toBeTruthy()
     expect(screen.getByText(/quarantined/)).toBeTruthy()
   })
