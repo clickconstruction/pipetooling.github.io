@@ -59,7 +59,7 @@ describe('CustomerPortal render smoke', () => {
       ...payload,
       bills: [
         { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612', totalPaid: 550, payments: [{ date: '2026-07-20', method: 'other', amount: 550 }] },
-        { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 300, billedOn: '2026-07-01', payUrl: null, checkRef: '612' },
+        { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 300, billedOn: '2026-07-01', payUrl: null, checkRef: '612', totalPaid: 200, payments: [{ date: '2026-06-15', method: 'check · 1042', amount: 200 }] },
       ],
       totalDue: 1750,
     }
@@ -71,12 +71,14 @@ describe('CustomerPortal render smoke', () => {
     expect(screen.getByText('3827 Sage Ridge Dr')).toBeTruthy()
     // Bill row shows what was originally billed when money has landed.
     expect(screen.getByText('$2,000.00')).toBeTruthy()
-    // The recap box is the payment ledger (v2.2320): each payment by date,
-    // "other" softened to "Payment", no aggregate Paid-to-date line.
+    // The recap box is the payment ledger (v2.2320): each payment by date, no
+    // aggregate Paid-to-date line. Generic "other" rows are date-only
+    // (v2.2322); a real method keeps its suffix.
     expect(screen.getByText('Billed to date')).toBeTruthy()
-    expect(screen.getByText('$2,300.00')).toBeTruthy()
+    expect(screen.getByText('$2,500.00')).toBeTruthy()
     expect(screen.getByText(/Paid Jul 20, 2026/)).toBeTruthy()
-    expect(screen.getByText(/· Payment/)).toBeTruthy()
+    expect(screen.queryByText(/· Payment/)).toBeNull()
+    expect(screen.getByText(/· check · 1042/)).toBeTruthy()
     expect(screen.queryByText(/other/)).toBeNull()
     expect(screen.queryByText('Paid to date')).toBeNull()
     expect(screen.getByText('Balance on this job')).toBeTruthy()
