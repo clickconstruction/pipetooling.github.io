@@ -48,7 +48,9 @@ type BidsBidBoardTabProps = {
   onEditBid: (bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' | 'bidValue' }) => void
   onOpenGcBuilderOrCustomer: (bid: BidWithBuilder) => void
   onLastContactClick: (bid: BidWithBuilder) => void
-  onOpenCounts: (bid: BidWithBuilder) => void
+  onOpenBidTab: (bid: BidWithBuilder, tab: BidBoardJumpTabKey) => void
+  /** Superintendents have no Pricing / Cover Letter tabs — hide those jumps too. */
+  canSeePricingTabs: boolean
   onError: (msg: string | null) => void
   onReloadBids: () => void
   onReloadCustomerContacts: () => void
@@ -86,8 +88,15 @@ function isCappedSectionKey(key: SubmissionSectionKey): key is CappedSectionKey 
   return (BID_BOARD_CAPPED_SECTIONS as readonly string[]).includes(key)
 }
 
+/** The workflow tabs a board row can jump straight into (v2.2360). */
+export type BidBoardJumpTabKey = 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter'
+
 /** Font Awesome 640-viewbox paths reused across the table and phone cards. */
 const BID_BOARD_ICON_PATHS = {
+  takeoffs: 'M64 192 L64 448 L576 448 L576 192 L492 192 L492 288 L452 288 L452 192 L368 192 L368 288 L328 288 L328 192 L244 192 L244 288 L204 288 L204 192 L148 192 L148 288 L108 288 L108 192 Z',
+  labor: 'M320 96 C302.3 96 288 110.3 288 128 L288 134.7 C215.4 149.5 160 213.9 160 291.2 L160 352 L128 352 C110.3 352 96 366.3 96 384 C96 401.7 110.3 416 128 416 L512 416 C529.7 416 544 401.7 544 384 C544 366.3 529.7 352 512 352 L480 352 L480 291.2 C480 213.9 424.6 149.5 352 134.7 L352 128 C352 110.3 337.7 96 320 96 Z M96 448 L544 448 L544 480 C544 497.7 529.7 512 512 512 L128 512 C110.3 512 96 497.7 96 480 Z',
+  pricing: 'M96 64 L272 64 C284.7 64 296.9 69.1 305.9 78.1 L545.9 318.1 C564.6 336.8 564.6 367.2 545.9 385.9 L407.8 524 C389.1 542.7 358.7 542.7 340 524 L100 284 C91 275 85.9 262.8 85.9 250.1 L85.9 112 C85.9 85.5 107.4 64 133.9 64 Z M256 200 A48 48 0 1 0 160 200 A48 48 0 1 0 256 200 Z',
+  coverLetter: 'M64 208 L320 368 L576 208 L576 448 C576 465.7 561.7 480 544 480 L96 480 C78.3 480 64 465.7 64 448 Z M64 160 C64 142.3 78.3 128 96 128 L544 128 C561.7 128 576 142.3 576 160 L576 169.5 L320 320 L64 169.5 Z',
   folder: 'M129.5 464L179.5 304L558.9 304L508.9 464L129.5 464zM320.2 512L509 512C530 512 548.6 498.4 554.8 478.3L604.8 318.3C614.5 287.4 591.4 256 559 256L179.6 256C158.6 256 140 269.6 133.8 289.7L112.2 358.4L112.2 160C112.2 151.2 119.4 144 128.2 144L266.9 144C270.4 144 273.7 145.1 276.5 147.2L314.9 176C328.7 186.4 345.6 192 362.9 192L480.2 192C489 192 496.2 199.2 496.2 208L544.2 208C544.2 172.7 515.5 144 480.2 144L362.9 144C356 144 349.2 141.8 343.7 137.6L305.3 108.8C294.2 100.5 280.8 96 266.9 96L128.2 96C92.9 96 64.2 124.7 64.2 160L64.2 448C64.2 483.3 92.9 512 128.2 512L320.2 512z',
   plans: 'M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM387.4 496L252.6 496C236.8 496 224 483.2 224 467.4C224 461 226.1 454.9 230 449.8L297.6 362.9C303 356 311.3 352 320 352C328.7 352 337 356 342.4 362.9L410 449.9C413.9 454.9 416 461.1 416 467.5C416 483.3 403.2 496.1 387.4 496.1zM240 288C257.7 288 272 302.3 272 320C272 337.7 257.7 352 240 352C222.3 352 208 337.7 208 320C208 302.3 222.3 288 240 288z',
   countTool: 'M320 48C337.7 48 352 62.3 352 80L352 98.3C450.1 112.3 527.7 189.9 541.7 288L560 288C577.7 288 592 302.3 592 320C592 337.7 577.7 352 560 352L541.7 352C527.7 450.1 450.1 527.7 352 541.7L352 560C352 577.7 337.7 592 320 592C302.3 592 288 577.7 288 560L288 541.7C189.9 527.7 112.3 450.1 98.3 352L80 352C62.3 352 48 337.7 48 320C48 302.3 62.3 288 80 288L98.3 288C112.3 189.9 189.9 112.3 288 98.3L288 80C288 62.3 302.3 48 320 48zM163.2 352C175.9 414.7 225.3 464.1 288 476.8L288 464C288 446.3 302.3 432 320 432C337.7 432 352 446.3 352 464L352 476.8C414.7 464.1 464.1 414.7 476.8 352L464 352C446.3 352 432 337.7 432 320C432 302.3 446.3 288 464 288L476.8 288C464.1 225.3 414.7 175.9 352 163.2L352 176C352 193.7 337.7 208 320 208C302.3 208 288 193.7 288 176L288 163.2C225.3 175.9 175.9 225.3 163.2 288L176 288C193.7 288 208 302.3 208 320C208 337.7 193.7 352 176 352L163.2 352zM320 272C346.5 272 368 293.5 368 320C368 346.5 346.5 368 320 368C293.5 368 272 346.5 272 320C272 293.5 293.5 272 320 272z',
@@ -95,6 +104,16 @@ const BID_BOARD_ICON_PATHS = {
   counts: 'M348 62.7C330.7 52.7 309.3 52.7 292 62.7L207.8 111.3C190.5 121.3 179.8 139.8 179.8 159.8L179.8 261.7L91.5 312.7C74.2 322.7 63.5 341.2 63.5 361.2L63.5 458.5C63.5 478.5 74.2 497 91.5 507L175.8 555.6C193.1 565.6 214.5 565.6 231.8 555.6L320.1 504.6L408.4 555.6C425.7 565.6 447.1 565.6 464.4 555.6L548.5 507C565.8 497 576.5 478.5 576.5 458.5L576.5 361.2C576.5 341.2 565.8 322.7 548.5 312.7L460.2 261.7L460.2 159.8C460.2 139.8 449.5 121.3 432.2 111.3L348 62.7zM296 356.6L296 463.1L207.7 514.1C206.5 514.8 205.1 515.2 203.7 515.2L203.7 409.9L296 356.6zM527.4 357.2C528.1 358.4 528.5 359.8 528.5 361.2L528.5 458.5C528.5 461.4 527 464 524.5 465.4L440.2 514C439 514.7 437.6 515.1 436.2 515.1L436.2 409.8L527.4 357.2zM412.3 159.8L412.3 261.7L320 315L320 208.5L411.2 155.9C411.9 157.1 412.3 158.5 412.3 159.9z',
   gear: 'M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z',
 } as const
+
+/** One jump icon per workflow tab, in tab-strip order — the cluster doubles as
+    a mini map of the flow. RFI/CO/Lien stay off the board to keep rows calm. */
+const BID_BOARD_JUMP_TABS: Array<{ tab: BidBoardJumpTabKey; icon: keyof typeof BID_BOARD_ICON_PATHS; label: string }> = [
+  { tab: 'counts', icon: 'counts', label: 'Open in Counts' },
+  { tab: 'takeoffs', icon: 'takeoffs', label: 'Open in Takeoffs' },
+  { tab: 'labor', icon: 'labor', label: 'Open in Labor' },
+  { tab: 'pricing', icon: 'pricing', label: 'Open in Pricing' },
+  { tab: 'cover-letter', icon: 'coverLetter', label: 'Open in Cover Letter' },
+]
 
 function BidBoardIcon({ d, size = 20 }: { d: string; size?: number }) {
   return (
@@ -127,7 +146,8 @@ export function BidsBidBoardTab({
   onEditBid,
   onOpenGcBuilderOrCustomer,
   onLastContactClick,
-  onOpenCounts,
+  onOpenBidTab,
+  canSeePricingTabs,
   onError,
   onReloadBids,
   onReloadCustomerContacts,
@@ -461,17 +481,20 @@ export function BidsBidBoardTab({
             {badgeText}
           </span>
         ) : null}
-        <button
-          type="button"
-          onClick={() => onOpenCounts(bid)}
-          title="Open in Counts"
-          aria-label="Open in Counts"
-          style={actionStyle}
-          onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-        >
-          <BidBoardIcon d={BID_BOARD_ICON_PATHS.counts} />
-        </button>
+        {BID_BOARD_JUMP_TABS.filter((j) => canSeePricingTabs || (j.tab !== 'pricing' && j.tab !== 'cover-letter')).map((j) => (
+          <button
+            key={j.tab}
+            type="button"
+            onClick={() => onOpenBidTab(bid, j.tab)}
+            title={j.label}
+            aria-label={`${j.label} — ${bid.project_name ?? 'bid'}`}
+            style={actionStyle}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+          >
+            <BidBoardIcon d={BID_BOARD_ICON_PATHS[j.icon]} size={18} />
+          </button>
+        ))}
         {numberNode}
         <button
           type="button"
