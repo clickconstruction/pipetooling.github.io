@@ -15,6 +15,7 @@ import { getNextDisplayOrders } from '../../utils/checklistOrder'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { formatTDays, getDaysUntilDue } from '../../lib/dashboardMyInbox'
+import { effectiveDueDate } from '../../lib/checklistDueDates'
 import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
 import { ChecklistInstanceCard } from '../checklist/ChecklistInstanceCard'
 import { groupEventsByInstance, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
@@ -252,7 +253,7 @@ export function DashboardMyInboxCard({
     const today = toLocalDateString(new Date())
     const { data: todayData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -265,7 +266,7 @@ export function DashboardMyInboxCard({
     if (itemIds.length > 0) {
       const { data } = await supabase
         .from('checklist_instances')
-        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
+        .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, checklist_items(title, links, due_date, created_at, repeat_type, notify_on_complete_user_id, notify_creator_on_complete, created_by_user_id), checklist_instance_assignees!inner(user_id)')
         .eq('checklist_instance_assignees.user_id', authUserId)
         .is('completed_at', null)
         .lt('scheduled_date', today)
@@ -762,7 +763,7 @@ export function DashboardMyInboxCard({
                   <ChecklistInstanceCard
                     key={inst.id}
                     instance={{ id: inst.id, completed_at: inst.completed_at, reviewed_at: inst.reviewed_at ?? null }}
-                    title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleChip(inst.id)}</> : null}<span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 400 }}> ({formatTDays(getDaysUntilDue(inst.scheduled_date))})</span></>}
+                    title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleChip(inst.id)}</> : null}<span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 400 }}> ({formatTDays(getDaysUntilDue(effectiveDueDate((inst.checklist_items as { due_date?: string | null } | null)?.due_date, inst.scheduled_date)))})</span></>}
                     events={eventsByInstance.get(inst.id) ?? []}
                     nameById={eventActorNameById}
                     currentUserId={authUserId ?? null}

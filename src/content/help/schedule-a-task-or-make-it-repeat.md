@@ -17,6 +17,16 @@ Pick **Do on** and the task appears on that day instead — until then it waits 
 
 On **Manage**, a future-dated task sits in its own **Scheduled** section below the open list, wearing a blue {{chip:blue|starts Mon, Aug 31}} chip instead of the red open clock — "open" only counts tasks someone can act on today.
 
+### Due by — startable Monday, late after Friday
+
+One-off tasks can also carry an optional **Due by** date. The task lands on the list on its **Do on** day as usual, shows a calm {{chip:gray|due Fri, Sep 4}} chip through its window, turns {{chip:yellow|due today}} on the day, and only goes red — {{chip:red|2 days late}} — once the deadline passes. Setting a due date locks **Stays on the list until done** on (a deadline is meaningless for a task that vanishes first), and History marks completions that ran past it with *done N days late*.
+
+:::example The sentence tells you
+One task on Robert's list from Mon, Aug 31 — due Fri, Sep 4, stays until completed.
+:::
+
+Reminders follow the deadline too: **remind the day before** fires the day before the due date, and **escalate after N days** now means N days *late*. Leave Due by empty and everything works exactly as it always has.
+
 :::example The sentence tells you
 One task on Robert's list on Fri, Aug 28 — stays until completed.
 :::

@@ -11,6 +11,7 @@ import {
   weekStartSunday,
   type LedgerInstance,
 } from '../../lib/checklistHistoryLedger'
+import { doneLateLabel } from '../../lib/checklistDueDates'
 import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
 
 /**
@@ -219,8 +220,16 @@ export function ChecklistHistoryLedger({
       whiteSpace: 'nowrap' as const,
     }
     switch (chip.kind) {
-      case 'done':
-        return <span style={{ ...base, background: '#16a34a', color: 'white' }}>✓ {stripStamp(chip.completedAt)}</span>
+      case 'done': {
+        // "done N days late" rider (v2.2351): only when the item carried a due date and the completion day passed it.
+        const late = doneLateLabel(chip.completedAt, inst.checklist_items?.due_date)
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <span style={{ ...base, background: '#16a34a', color: 'white' }}>✓ {stripStamp(chip.completedAt)}</span>
+            {late ? <span style={{ ...base, fontWeight: 500, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>{late}</span> : null}
+          </span>
+        )
+      }
       case 'done_by_other':
         return (
           <span style={{ ...base, background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>

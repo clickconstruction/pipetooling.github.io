@@ -175,7 +175,7 @@ serve(async (req) => {
 
     const { data: items } = await adminClient
       .from('checklist_items')
-      .select('id, title, reminder_time, reminder_scope, remind_day_before, escalate_after_days, created_by_user_id')
+      .select('id, title, reminder_time, reminder_scope, remind_day_before, escalate_after_days, created_by_user_id, due_date')
       .not('reminder_time', 'is', null)
 
     if (!items || items.length === 0) {
@@ -234,27 +234,42 @@ serve(async (req) => {
       }
 
       if (dayBefore) {
-        const { data: instances } = await adminClient
-          .from('checklist_instances')
-          .select('id, checklist_instance_assignees(user_id)')
-          .eq('checklist_item_id', item.id)
-          .is('completed_at', null)
-          .eq('scheduled_date', tomorrowCst)
-        for (const inst of instances ?? []) {
-          const assignees = (inst as { checklist_instance_assignees?: Array<{ user_id: string }> }).checklist_instance_assignees ?? []
-          for (const a of assignees) bucketFor(a.user_id).tomorrow.push(title)
+        // Day-before keys on the EFFECTIVE due date (v2.2351): the item's
+        // due_date when set, else each instance's scheduled date — so legacy
+        // items behave exactly as before and windowed tasks nudge the day
+        // before their deadline, not the day before they appear.
+        const dueDate = (item as { due_date?: string | null }).due_date ?? null
+        if (dueDate == null || dueDate === tomorrowCst) {
+          let query = adminClient
+            .from('checklist_instances')
+            .select('id, checklist_instance_assignees(user_id)')
+            .eq('checklist_item_id', item.id)
+            .is('completed_at', null)
+          if (dueDate == null) query = query.eq('scheduled_date', tomorrowCst)
+          const { data: instances } = await query
+          for (const inst of instances ?? []) {
+            const assignees = (inst as { checklist_instance_assignees?: Array<{ user_id: string }> }).checklist_instance_assignees ?? []
+            for (const a of assignees) bucketFor(a.user_id).tomorrow.push(title)
+          }
         }
       }
 
       if (escalateAfter != null && escalateAfter >= 1 && creatorId) {
+        // Escalation counts from the EFFECTIVE due date (v2.2351): with a
+        // due_date, "N days" means N days LATE; without one, unchanged — N
+        // days past the instance's scheduled date.
         const cutoff = ymdAddDaysStr(todayCst, -escalateAfter)
-        const { data: instances } = await adminClient
-          .from('checklist_instances')
-          .select('id')
-          .eq('checklist_item_id', item.id)
-          .is('completed_at', null)
-          .lte('scheduled_date', cutoff)
-        if ((instances ?? []).length > 0) bucketFor(creatorId).escalated.push(title)
+        const dueDate = (item as { due_date?: string | null }).due_date ?? null
+        if (dueDate == null || dueDate <= cutoff) {
+          let query = adminClient
+            .from('checklist_instances')
+            .select('id')
+            .eq('checklist_item_id', item.id)
+            .is('completed_at', null)
+          if (dueDate == null) query = query.lte('scheduled_date', cutoff)
+          const { data: instances } = await query
+          if ((instances ?? []).length > 0) bucketFor(creatorId).escalated.push(title)
+        }
       }
     }
 

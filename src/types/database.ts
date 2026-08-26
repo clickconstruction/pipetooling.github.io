@@ -1889,6 +1889,7 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by_user_id: string
+          due_date: string | null
           escalate_after_days: number | null
           id: string
           links: string[] | null
@@ -1910,6 +1911,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by_user_id: string
+          due_date?: string | null
           escalate_after_days?: number | null
           id?: string
           links?: string[] | null
@@ -1931,6 +1933,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by_user_id?: string
+          due_date?: string | null
           escalate_after_days?: number | null
           id?: string
           links?: string[] | null
@@ -10681,6 +10684,30 @@ export type Database = {
           },
         ]
       }
+      public_page_views: {
+        Row: {
+          entity_id: string | null
+          id: string
+          occurred_at: string
+          surface: string
+          via: string | null
+        }
+        Insert: {
+          entity_id?: string | null
+          id?: string
+          occurred_at?: string
+          surface: string
+          via?: string | null
+        }
+        Update: {
+          entity_id?: string | null
+          id?: string
+          occurred_at?: string
+          surface?: string
+          via?: string | null
+        }
+        Relationships: []
+      }
       purchase_order_items: {
         Row: {
           created_at: string | null
@@ -17021,6 +17048,44 @@ export type Database = {
       upsert_mercury_tally_transaction_note: {
         Args: { p_body: string; p_mercury_transaction_id: string }
         Returns: undefined
+      }
+      usage_customer_views: {
+        Args: { p_days?: number }
+        Returns: {
+          bucket: string
+          entities: number
+          surface: string
+          views: number
+        }[]
+      }
+      usage_nav_clicks: {
+        Args: { p_days?: number }
+        Returns: {
+          clicks: number
+          control: string
+          people: number
+          role: string
+          target: string
+        }[]
+      }
+      usage_page_minutes: {
+        Args: { p_days?: number }
+        Returns: {
+          minutes: number
+          page: string
+          people: number
+          role: string
+        }[]
+      }
+      usage_user_minutes: {
+        Args: { p_days?: number }
+        Returns: {
+          active_days: number
+          minutes: number
+          page: string
+          role: string
+          user_name: string
+        }[]
       }
       user_assigned_to_project_as_superintendent: {
         Args: { project_id_param: string }

@@ -16,7 +16,7 @@ export type LedgerInstance = {
   scheduled_date: string
   completed_at: string | null
   completed_by_user_id: string | null
-  checklist_items?: { title: string; links?: string[] | null } | null
+  checklist_items?: { title: string; links?: string[] | null; due_date?: string | null } | null
 }
 
 export type LedgerDay = {
@@ -170,9 +170,15 @@ export function overdueAgeLabel(dateStr: string, todayStr: string): string {
   return `${due} · ${days === 1 ? '1 day' : `${days} days`} ago`
 }
 
-/** Sort for the Outstanding list: most recently due first. */
-export function sortOutstanding<T extends { scheduled_date: string }>(rows: T[]): T[] {
-  return [...rows].sort((a, b) => b.scheduled_date.localeCompare(a.scheduled_date))
+/**
+ * Sort for the Outstanding list (v2.2351): most overdue first — effective
+ * due date (due_date ?? scheduled_date) ascending, so the longest-late work
+ * tops the list and in-window tasks (due in the future) sink to the bottom.
+ * Before due dates this was newest-first; oldest-first is the triage order.
+ */
+export function sortOutstanding<T extends { scheduled_date: string; checklist_items?: { due_date?: string | null } | null }>(rows: T[]): T[] {
+  const key = (r: T) => r.checklist_items?.due_date || r.scheduled_date
+  return [...rows].sort((a, b) => key(a).localeCompare(key(b)))
 }
 
 /**
