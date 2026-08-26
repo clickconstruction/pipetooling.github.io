@@ -14,6 +14,7 @@ import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBid
 import DashboardJobFollowupsBanner from '../components/DashboardJobFollowupsBanner'
 import DashboardGcReviewWeeklyBanner from '../components/DashboardGcReviewWeeklyBanner'
 import { useLostBidNudge } from '../hooks/useLostBidNudge'
+import { QuickfillNeedsYouSection } from '../components/quickfill/QuickfillNeedsYouSection'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { QuickfillMyInboxSection } from '../components/quickfill/QuickfillMyInboxSection'
@@ -107,6 +108,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
   { id: 'quickfill-physical-inbox', sectionId: 'physical-inbox', label: 'Physical inbox' },
   { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
+  { id: 'quickfill-needs-you', sectionId: 'needs-you', label: 'Needs you' },
 ]
 
 const APP_SETTINGS_KEY_QUICKFILL_HIDDEN = 'quickfill_hidden_section_ids'
@@ -642,6 +644,7 @@ function QuickfillPage() {
   const lostBidNudgeState = useLostBidNudge(warningsSectionEligible)
   const [jobFollowupsCount, setJobFollowupsCount] = useState<number | null>(null)
   const [gcReviewRemaining, setGcReviewRemaining] = useState<number | null>(null)
+  const [needsYouSectionCount, setNeedsYouSectionCount] = useState<number | null>(null)
 
   const canAccessProspects = useMemo(
     () =>
@@ -680,6 +683,7 @@ function QuickfillPage() {
       if (sectionId === 'lost-bid-reasons' || sectionId === 'gc-weekly-review' || sectionId === 'job-followups') {
         return warningsSectionEligible
       }
+      if (sectionId === 'needs-you') return warningsSectionEligible
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
       if (sectionId === 'undated-bills') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
@@ -1199,6 +1203,29 @@ function QuickfillPage() {
               loading={jobFollowupsCount === null}
             />
             <DashboardJobFollowupsBanner onCount={setJobFollowupsCount} />
+          </QuickfillSectionWrapper>
+        )
+      case 'needs-you':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['needs-you']?.marked_at ?? null)}
+            collapsed={isCollapsed('needs-you') && !forceExpandedSections.has('needs-you')}
+            mark={sectionMarks['needs-you']}
+            onMarkUpToDate={() => markSectionUpToDate('needs-you')}
+            onOpenNow={() => openSectionNow('needs-you')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'needs-you', label: 'Needs you' })}
+          >
+            <QuickfillMetricReporter
+              sectionId="needs-you"
+              count={needsYouSectionCount}
+              loading={needsYouSectionCount === null}
+            />
+            <QuickfillNeedsYouSection onCount={setNeedsYouSectionCount} />
           </QuickfillSectionWrapper>
         )
       case 'unpriced-fixtures':
