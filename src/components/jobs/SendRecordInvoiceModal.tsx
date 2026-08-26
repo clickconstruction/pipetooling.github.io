@@ -62,6 +62,7 @@ import {
   formatPhysicalInvoiceLongDateYmd,
   physicalInvoiceEmailSubject,
 } from '../../lib/physicalInvoiceDocument'
+import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPreview'
 import { type JobBillingContext } from '../../lib/jobBillingContext'
 import { fixturesForInvoiceBill } from '../../lib/invoiceScopedFixtures'
 import { buildPhysicalInvoiceDetailFromJob, jobContextForPhysicalDoc } from '../../lib/physicalInvoiceJobContext'
@@ -1769,22 +1770,14 @@ export default function SendRecordInvoiceModal({
     physicalDocPreview != null
 
   // Preview email (v2.2340): the exact bodies the send builds, a moment
-  // earlier — what you preview is byte-for-byte what sends. Sync build, so
-  // the tab opens without pop-up-blocker games.
+  // earlier — what you preview is byte-for-byte what sends.
   function openPhysicalInvoiceEmailPreviewInNewTab() {
     if (!physicalDocPreview) return
-    const win = window.open('', '_blank')
-    if (!win) {
-      showToast('Pop-up blocked. Allow pop-ups for this site to preview the email.', 'warning')
-      return
-    }
-    const { html } = buildPhysicalInvoiceEmailBodies(physicalDocPreview)
-    const subject = physicalInvoiceEmailSubject(physicalDocPreview)
-    const to = (job?.customer_email ?? '').trim() || '—'
-    const page = `<!doctype html><html><head><meta charset="utf-8"><title>Email preview — ${subject.replace(/</g, '&lt;')}</title></head><body style="margin:0;background:#f3f4f6"><div style="max-width:680px;margin:24px auto;background:#fff;padding:24px 28px;border:1px solid #e5e7eb;border-radius:8px"><div style="font-family:system-ui,sans-serif;font-size:12px;color:#9ca3af;border-bottom:1px solid #f3f4f6;padding-bottom:10px;margin-bottom:14px">Preview — nothing has been sent · To: ${to.replace(/</g, '&lt;')} · Subject: ${subject.replace(/</g, '&lt;')} · the invoice PDF rides along as an attachment</div>${html}</div></body></html>`
-    const objectUrl = URL.createObjectURL(new Blob([page], { type: 'text/html' }))
-    win.location.href = objectUrl
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+    openInvoiceEmailPreviewInNewTab(physicalDocPreview, {
+      toEmail: job?.customer_email ?? '',
+      contextNote: 'Preview — nothing has been sent',
+      onBlocked: () => showToast('Pop-up blocked. Allow pop-ups for this site to preview the email.', 'warning'),
+    })
   }
 
   async function openPhysicalInvoicePdfInNewTab() {
