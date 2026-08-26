@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
+import { buildProfitLegend, clampTooltipLeft, formatProfitShare } from '../../lib/bids/profitBarLegend'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
@@ -304,6 +305,20 @@ export function BidsPricingTab({
   const [wbShowUnpricedOnly, setWbShowUnpricedOnly] = useState(false)
   const [wbShowNoCostOnly, setWbShowNoCostOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
+  // "Where the profit lives" bar (v2.2353): hovered slice + tooltip position,
+  // click-pinned detail card (keyed by count-row id so re-solves keep it), the
+  // collapsible legend, and the jump-to-row flash.
+  const [wbBarHover, setWbBarHover] = useState<number | null>(null)
+  const [wbBarTipLeft, setWbBarTipLeft] = useState(0)
+  const [wbBarPinnedId, setWbBarPinnedId] = useState<string | null>(null)
+  const [wbLegendCollapsed, setWbLegendCollapsed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('wbProfitLegendCollapsed_v1') === '1'
+    } catch {
+      return false
+    }
+  })
+  const [wbFlashRowId, setWbFlashRowId] = useState<string | null>(null)
   const [wbCopyingPrices, setWbCopyingPrices] = useState(false)
   const [wbFillingBook, setWbFillingBook] = useState(false)
   /** The spotlight walkthrough (v2.2021): null = closed, else the steps whose anchors exist. */
@@ -438,10 +453,20 @@ export function BidsPricingTab({
       if (addPricingMenuOpen && !target.closest('[data-add-pricing-menu]')) {
         setAddPricingMenuOpen(false)
       }
+      if (wbBarPinnedId && !target.closest('[data-profit-bar]')) {
+        setWbBarPinnedId(null)
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape' && wbBarPinnedId) setWbBarPinnedId(null)
     }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [pricingAssignmentDropdownOpen, addPricingMenuOpen])
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [pricingAssignmentDropdownOpen, addPricingMenuOpen, wbBarPinnedId])
 
   // --- Bid Pricings vs Templates panel ---
   // The Price Book panel can show either the bid's Pricings or the shared template catalog.
@@ -3323,8 +3348,13 @@ export function BidsPricingTab({
                             return (
                               <tr
                                 key={r.countRow.id}
+                                id={`wb-row-${r.countRow.id}`}
                                 onClick={() => openRowBreakdown(r)}
-                                style={{ cursor: 'pointer', background: r.effUnit == null && r.cost > 0 ? 'var(--bg-amber-tint)' : undefined }}
+                                style={{
+                                  cursor: 'pointer',
+                                  background: wbFlashRowId === r.countRow.id ? 'var(--bg-blue-tint)' : r.effUnit == null && r.cost > 0 ? 'var(--bg-amber-tint)' : undefined,
+                                  transition: 'background 400ms ease',
+                                }}
                               >
                                 <td style={{ padding: '0.35rem 0.4rem 0.35rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
                                   <button
@@ -3453,28 +3483,185 @@ export function BidsPricingTab({
                       </table>
                     </div>
 
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginTop: '0.9rem' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Where the profit lives</span>
-                      {conc.top2Share != null && conc.top2Share > 0.6 && conc.segments.length >= 2 ? (
-                        <span style={{ marginLeft: '0.6rem', fontSize: '0.78rem', color: 'var(--text-amber-700)' }}>
-                          ⚠ {Math.round(conc.top2Share * 100)}% of profit sits in {conc.segments[0]?.label} + {conc.segments[1]?.label} — a VE cut there guts the job.
-                        </span>
-                      ) : null}
-                      <div style={{ display: 'flex', height: 16, borderRadius: 6, overflow: 'hidden', marginTop: '0.45rem' }}>
-                        {conc.totalProfit <= 0 ? (
-                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No profit yet — price some rows.</span>
-                        ) : (
-                          conc.segments.map((s, i) => (
-                            <div key={s.id} title={`${s.label}: $${formatCurrency(s.profit)} (${Math.round(s.share * 100)}%)`} style={{ width: `${s.share * 100}%`, minWidth: 2, background: concColors[i % concColors.length] }} />
-                          ))
-                        )}
-                      </div>
-                      {conc.totalProfit > 0 ? (
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-                          {conc.segments.slice(0, 4).map((s) => `${s.label} ${Math.round(s.share * 100)}%`).join(' · ')}{conc.segments.length > 4 ? ' · …' : ''}
+                    {(() => {
+                      const legend = buildProfitLegend(conc.segments)
+                      const hoverSeg = wbBarHover != null ? conc.segments[wbBarHover] : null
+                      const pinnedIdx = wbBarPinnedId != null ? conc.segments.findIndex((s) => s.id === wbBarPinnedId) : -1
+                      const pinnedSeg = pinnedIdx >= 0 ? conc.segments[pinnedIdx] : null
+                      const pinnedRow = pinnedSeg ? eff.find((r) => r.countRow.id === pinnedSeg.id) : null
+                      const hoverSlice = (i: number, el: HTMLElement) => {
+                        const bar = el.closest('[data-profit-bar-track]') as HTMLElement | null
+                        setWbBarHover(i)
+                        if (bar) setWbBarTipLeft(clampTooltipLeft(el.offsetLeft + el.offsetWidth / 2, bar.offsetWidth, 130))
+                      }
+                      const jumpToRow = (rowId: string) => {
+                        setWbShowNoCostOnly(false)
+                        setWbShowUnpricedOnly(false)
+                        setWbFlashRowId(rowId)
+                        window.setTimeout(() => {
+                          document.getElementById(`wb-row-${rowId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        }, 50)
+                        window.setTimeout(() => setWbFlashRowId((cur) => (cur === rowId ? null : cur)), 2000)
+                      }
+                      const statCell = (label: string, value: string, color?: string) => (
+                        <div>
+                          <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{label}</div>
+                          <div style={{ fontSize: '0.86rem', fontWeight: 600, color: color ?? 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
                         </div>
-                      ) : null}
-                    </div>
+                      )
+                      return (
+                        <div data-profit-bar style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', marginTop: '0.9rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Where the profit lives</span>
+                            {conc.top2Share != null && conc.top2Share > 0.6 && conc.segments.length >= 2 ? (
+                              <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)' }}>
+                                ⚠ {Math.round(conc.top2Share * 100)}% of profit sits in {conc.segments[0]?.label} + {conc.segments[1]?.label} — a VE cut there guts the job.
+                              </span>
+                            ) : null}
+                            {conc.totalProfit > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setWbLegendCollapsed((prev) => {
+                                    const next = !prev
+                                    try {
+                                      window.localStorage.setItem('wbProfitLegendCollapsed_v1', next ? '1' : '0')
+                                    } catch {
+                                      /* private browsing */
+                                    }
+                                    return next
+                                  })
+                                }}
+                                style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.72rem', color: 'var(--text-muted)', border: 'none', background: 'none', cursor: 'pointer', padding: '0 0.2rem' }}
+                              >
+                                {wbLegendCollapsed ? 'Show legend ▸' : 'Hide legend ▾'}
+                              </button>
+                            ) : null}
+                          </div>
+                          <div data-profit-bar-track style={{ position: 'relative', marginTop: '0.45rem' }} onMouseLeave={() => setWbBarHover(null)}>
+                            <div style={{ display: 'flex', height: 16, borderRadius: 6, overflow: 'hidden' }}>
+                              {conc.totalProfit <= 0 ? (
+                                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No profit yet — price some rows.</span>
+                              ) : (
+                                conc.segments.map((s, i) => (
+                                  <button
+                                    key={s.id}
+                                    type="button"
+                                    aria-label={`${s.label}: $${formatCurrency(s.profit)} profit (${formatProfitShare(s.share)} of job) — click for details`}
+                                    onMouseEnter={(e) => hoverSlice(i, e.currentTarget)}
+                                    onFocus={(e) => hoverSlice(i, e.currentTarget)}
+                                    onBlur={() => setWbBarHover(null)}
+                                    onClick={() => setWbBarPinnedId((cur) => (cur === s.id ? null : s.id))}
+                                    style={{
+                                      width: `${s.share * 100}%`,
+                                      minWidth: 2,
+                                      border: 'none',
+                                      padding: 0,
+                                      cursor: 'pointer',
+                                      background: concColors[i % concColors.length],
+                                      opacity: wbBarHover == null || wbBarHover === i ? 1 : 0.35,
+                                      transform: wbBarHover === i ? 'scaleY(1.25)' : undefined,
+                                      transition: 'opacity 120ms ease, transform 120ms ease',
+                                    }}
+                                  />
+                                ))
+                              )}
+                            </div>
+                            {hoverSeg ? (
+                              <div
+                                role="tooltip"
+                                style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: wbBarTipLeft, transform: 'translateX(-50%)', background: 'var(--text-strong)', color: 'var(--surface)', borderRadius: 8, padding: '0.4rem 0.6rem', fontSize: '0.78rem', lineHeight: 1.35, whiteSpace: 'nowrap', boxShadow: '0 8px 20px rgba(0,0,0,0.25)', pointerEvents: 'none', zIndex: 20 }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+                                  <span style={{ width: 9, height: 9, borderRadius: 3, flex: 'none', background: concColors[(wbBarHover ?? 0) % concColors.length] }} />
+                                  {hoverSeg.label}
+                                </div>
+                                <div style={{ opacity: 0.75, fontVariantNumeric: 'tabular-nums' }}>
+                                  ${formatCurrency(hoverSeg.profit)} profit · {formatProfitShare(hoverSeg.share)} of job
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                          {conc.totalProfit > 0 && !wbLegendCollapsed ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.15rem 0.35rem', marginTop: '0.4rem' }}>
+                              {legend.chips.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onMouseEnter={(e) => {
+                                    const track = (e.currentTarget.closest('[data-profit-bar]') as HTMLElement | null)?.querySelector('[data-profit-bar-track]') as HTMLElement | null
+                                    const slice = track?.querySelectorAll('button')[c.colorIndex] as HTMLElement | undefined
+                                    if (slice) hoverSlice(c.colorIndex, slice)
+                                  }}
+                                  onMouseLeave={() => setWbBarHover(null)}
+                                  onClick={() => setWbBarPinnedId((cur) => (cur === c.id ? null : c.id))}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.35rem',
+                                    font: 'inherit',
+                                    fontSize: '0.72rem',
+                                    color: wbBarHover === c.colorIndex || wbBarPinnedId === c.id ? 'var(--text-strong)' : 'var(--text-muted)',
+                                    background: wbBarHover === c.colorIndex || wbBarPinnedId === c.id ? 'var(--bg-subtle)' : 'none',
+                                    border: 'none',
+                                    padding: '0.12rem 0.45rem',
+                                    borderRadius: 999,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <span style={{ width: 8, height: 8, borderRadius: 3, flex: 'none', background: concColors[c.colorIndex % concColors.length] }} />
+                                  <span style={{ fontWeight: 600 }}>{c.label}</span>
+                                  <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.85 }}>{formatProfitShare(c.share)}</span>
+                                </button>
+                              ))}
+                              {legend.moreCount > 0 ? (
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '0.12rem 0.45rem' }}>+{legend.moreCount} more</span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                          {pinnedSeg && pinnedRow ? (
+                            <div role="region" aria-label={`Detail for ${pinnedSeg.label}`} style={{ marginTop: '0.55rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', boxShadow: '0 10px 24px rgba(0,0,0,0.12)', padding: '0.6rem 0.8rem 0.7rem', maxWidth: '32rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                <span style={{ width: 10, height: 10, borderRadius: 3, flex: 'none', background: concColors[pinnedIdx % concColors.length] }} />
+                                <b style={{ fontSize: '0.85rem', color: 'var(--text-strong)' }}>{pinnedSeg.label}</b>
+                                {pinnedRow.entry ? (
+                                  <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-blue-700)', background: 'var(--bg-blue-tint)', padding: '0.1rem 0.5rem', borderRadius: 999, letterSpacing: '0.02em' }}>
+                                    {pinnedRow.entry.fixture_types?.name ?? 'book entry'}
+                                  </span>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={() => setWbBarPinnedId(null)}
+                                  aria-label="Close line item detail"
+                                  style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.95rem', lineHeight: 1, padding: '0 0.2rem' }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(6.5rem, 1fr))', gap: '0.5rem 1rem', marginTop: '0.55rem' }}>
+                                {statCell('Qty', String(pinnedRow.count))}
+                                {statCell('Unit cost', pinnedRow.cost > 0 ? `$${formatCurrency(pinnedRow.cost / pinnedRow.count)}` : 'no cost')}
+                                {statCell('Sale / unit', pinnedRow.effUnit != null ? `$${formatCurrency(pinnedRow.effUnit)}` : '—')}
+                                {statCell('Revenue', `$${formatCurrency(pinnedRow.effRevenue)}`)}
+                                {statCell('Cost', pinnedRow.cost > 0 ? `$${formatCurrency(pinnedRow.cost)}` : '—')}
+                                {statCell('Profit', `$${formatCurrency(pinnedSeg.profit)}`, mColor(pinnedRow.effMargin))}
+                                {statCell('Margin', pinnedRow.effMargin != null ? `${Math.round(pinnedRow.effMargin * 100)}%` : '—', mColor(pinnedRow.effMargin))}
+                                {statCell('Share of job profit', formatProfitShare(pinnedSeg.share))}
+                              </div>
+                              <div style={{ marginTop: '0.6rem' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => jumpToRow(pinnedSeg.id)}
+                                  style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', border: '1px solid var(--border-strong)', background: 'none', borderRadius: 6, padding: '0.22rem 0.6rem', cursor: 'pointer' }}
+                                >
+                                  ↑ Jump to row in worksheet
+                                </button>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    })()}
                   </>
                 )
               })()
