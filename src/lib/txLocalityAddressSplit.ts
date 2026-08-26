@@ -25,6 +25,9 @@ export const TX_JOB_ADDRESS_LOCALITY_KEYWORDS = [
   'Cibolo',
   'Boerne',
   'Leon Valley',
+  // v2.2323: cities with real jobs whose addresses weren't splitting.
+  'Round Rock',
+  'Liberty Hill',
 ] as const
 
 /**

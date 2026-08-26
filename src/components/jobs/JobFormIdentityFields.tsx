@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
+import JobFormAddressNudge from './JobFormAddressNudge'
 
 /* height 36 = the SearchableSelect trigger's rendered height — Job Name and
    Job Address sit flush with Service type and the number boxes (v2.1702). */
@@ -248,6 +249,10 @@ export function JobFormIdentityFields({
               <ClipboardPasteGlyph />
             </button>
           </div>
+          {/* Live statement preview + one-tap comma fix (v2.2323) — reacts to
+              typing and to the paste button alike, since both go through
+              setJobAddress. */}
+          <JobFormAddressNudge address={jobAddress} onApply={setJobAddress} />
         </div>
       </div>
     </>
