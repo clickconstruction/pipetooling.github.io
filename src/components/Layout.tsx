@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { DEFAULT_BID_LEDGER_PREFIX } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
+import type { UserRole } from '../hooks/useAuth'
 import { EasterEggHost } from './FloatingEasterEgg'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useNavFitCollapse } from '../hooks/useNavFitCollapse'
@@ -39,7 +40,7 @@ import {
   migrateLocalPinsToSupabase,
   type PinnedItem,
 } from '../lib/pinnedTabs'
-import { isEstimatorPathAllowed } from '../lib/layoutRouteAccess'
+import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
 import {
   HeaderGlobalSearchNavLayer,
@@ -70,7 +71,6 @@ import {
   writeDispatchModePoEnabled,
 } from '../lib/dispatchModePoToggle'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
-import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../lib/scheduleDispatchEditRoles'
 import {
   isDispatchModeReturnAfterAway,
   readDispatchModeLastActive,
@@ -96,10 +96,6 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 })
 
 const IMPERSONATION_KEY = 'impersonation_original'
-
-const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
-const PRIMARY_PATHS = ['/dashboard', '/my-statement', '/materials', '/estimates', '/documents', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
-const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
 
@@ -138,7 +134,9 @@ export default function Layout() {
     authUser?.id ?? null,
     isAssistantLike(role) || role === 'master_technician',
   )
-  const dispatchModeMenuEligible = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
+  // Staff only: every /dispatch-mode* tab is outside the superintendent allowlist, so offering
+  // them the toggle rendered a footer of dead tabs (they keep /schedule-dispatch editing itself).
+  const dispatchModeMenuEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible && !farmModeActive
 
   // Org-added address-split cities (Stages/Billing rows, lien prefill) — hydrate once per session.
@@ -250,7 +248,7 @@ export default function Layout() {
   const navOverflowCollapsed = useNavFitCollapse(navRef, !viewportNarrow, navContentKey)
   const isMobile = viewportNarrow || navOverflowCollapsed
   const jobModeContactRowFits = jobModeFooterActive && !isMobile
-  const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string; role: UserRole | null; estimatorProspectsAccess: boolean }>>([])
   const [pinForUserId, setPinForUserId] = useState('')
   const [pinForMessage, setPinForMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [pinForSaving, setPinForSaving] = useState(false)
@@ -334,17 +332,9 @@ export default function Layout() {
   }, [gearOpen, menuOpen, pinForOpen])
 
   useEffect(() => {
-    if (isSubcontractorLikeRole(role) && !SUBCONTRACTOR_PATHS.includes(location.pathname)) {
-      navigate('/dashboard', { replace: true })
-    }
-    if (role === 'estimator' && (location.pathname === '/' || !isEstimatorPathAllowed(location.pathname, estimatorProspectsAccess))) {
-      navigate('/bids', { replace: true })
-    }
-    if (role === 'primary' && (location.pathname === '/' || (!PRIMARY_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
-      navigate('/dashboard', { replace: true })
-    }
-    if (role === 'superintendent' && (location.pathname === '/' || (!SUPERINTENDENT_PATHS.includes(location.pathname) && !location.pathname.startsWith('/workflows/')))) {
-      navigate('/dashboard', { replace: true })
+    if (role == null) return
+    if (!isPathAllowedForRole(role, location.pathname, estimatorProspectsAccess)) {
+      navigate(role === 'estimator' ? '/bids' : '/dashboard', { replace: true })
     }
   }, [role, location.pathname, navigate, estimatorProspectsAccess])
 
@@ -395,8 +385,15 @@ export default function Layout() {
 
   useEffect(() => {
     if (role === 'dev') {
-      supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
-        const users = (data ?? []) as Array<{ id: string; name: string; email: string }>
+      supabase.from('users').select('id, name, email, role, estimator_prospects_access').order('name').then(({ data }) => {
+        const rows = (data ?? []) as Array<{ id: string; name: string; email: string; role: string | null; estimator_prospects_access: boolean | null }>
+        const users = rows.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: (u.role ?? null) as UserRole | null,
+          estimatorProspectsAccess: u.estimator_prospects_access ?? false,
+        }))
         setPinForUsers(users)
         if (users.length > 0 && !pinForUserId) setPinForUserId(users[0]?.id ?? '')
       })
@@ -547,11 +544,6 @@ export default function Layout() {
         ) : null}
         {partnerNav.isPartner ? <PartnerStatementNavLink variant="icon" style={iconLinkStyle} /> : null}
         {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="strip" isMobile={isMobile} />}
-        {role === 'dev' && !isMobile && (
-          <NavLink to="/people?tab=review" style={iconLinkStyle} title="Review" aria-label="Review">
-            {reviewIcon}
-          </NavLink>
-        )}
       </span>
     )
   }
@@ -692,7 +684,7 @@ export default function Layout() {
         ) : null}
         {!isSubcontractorLikeRole(role) && (
           <>
-            {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
+            {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent') && (
               <>
                 <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
                 <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
@@ -720,7 +712,10 @@ export default function Layout() {
               </>
             )}
             {role === 'superintendent' && (
-              <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
+              <>
+                <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
+                <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
+              </>
             )}
             {role === 'master_technician' && onNavClick ? (
               <>
@@ -1108,7 +1103,7 @@ export default function Layout() {
             {checklistNavIcon}
           </NavLink>
           )}
-          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && !farmModeActive && (
+          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && role !== 'superintendent' && !farmModeActive && (
             <>
               {!(isMobile && (role === 'dev' || role === 'master_technician')) && (
                 <NavLink
@@ -1518,6 +1513,7 @@ export default function Layout() {
                 )}
                 {(role === 'estimator' ||
                   role === 'primary' ||
+                  role === 'superintendent' ||
                   role === null ||
                   role === 'dev' ||
                   role === 'master_technician' ||
@@ -1969,6 +1965,15 @@ export default function Layout() {
                       onClick={async () => {
                         if (!pinForUserId) return
                         const path = location.pathname
+                        const target = pinForUsers.find((u) => u.id === pinForUserId)
+                        const targetName = target?.name?.trim() || target?.email || 'That user'
+                        // A pin to a page the target's role allowlist rejects would just bounce
+                        // them to /dashboard on tap — refuse it here instead (v2.2325).
+                        if (target && !isPathAllowedForRole(target.role, path, target.estimatorProspectsAccess)) {
+                          setPinForMessage({ type: 'error', text: `${targetName} can't open this page — their role doesn't have access.` })
+                          setTimeout(() => setPinForMessage(null), 4000)
+                          return
+                        }
                         const tab = getTabFromPath(path, location.search)
                         const label = pinBidId ? await resolveBidPinLabel(pinBidId) : pathToLabel(path)
                         const item = {

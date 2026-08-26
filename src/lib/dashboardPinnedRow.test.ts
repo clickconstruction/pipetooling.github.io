@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   filterPinnedByRole,
   filterPinsToShow,
-  getAllowedPathsForRole,
   getPinnedChipDisplay,
   getTallyLinkAccessibleName,
   type PinnedRowFinancialTotals,
@@ -17,43 +16,7 @@ const noTotals: PinnedRowFinancialTotals = {
   subLaborDueTotal: null,
 }
 
-describe('getAllowedPathsForRole', () => {
-  it('returns the subcontractor set for subcontractor and helpers', () => {
-    for (const role of ['subcontractor', 'helpers']) {
-      const allowed = getAllowedPathsForRole(role)
-      expect(allowed).not.toBeNull()
-      expect(allowed!.has('/tally')).toBe(true)
-      expect(allowed!.has('/jobs')).toBe(false)
-    }
-  })
-
-  it('treats null role as primary (prevents flash before role loads)', () => {
-    const allowed = getAllowedPathsForRole(null)
-    expect(allowed).toEqual(getAllowedPathsForRole('primary'))
-    expect(allowed!.has('/jobs')).toBe(true)
-    expect(allowed!.has('/projects')).toBe(false)
-  })
-
-  it('gives superintendent projects and workflows access', () => {
-    const allowed = getAllowedPathsForRole('superintendent')
-    expect(allowed!.has('/projects')).toBe(true)
-    expect(allowed!.has('/workflows')).toBe(true)
-  })
-
-  it('returns null (no filter) for dev, master_technician, assistant, controller', () => {
-    for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
-      expect(getAllowedPathsForRole(role)).toBeNull()
-    }
-  })
-
-  it('adds /prospects for estimators only with prospects access', () => {
-    expect(getAllowedPathsForRole('estimator', false)!.has('/prospects')).toBe(false)
-    expect(getAllowedPathsForRole('estimator', true)!.has('/prospects')).toBe(true)
-    expect(getAllowedPathsForRole('estimator', true)!.has('/people')).toBe(true)
-  })
-})
-
-describe('filterPinnedByRole', () => {
+describe('filterPinnedByRole (v2.2325: driven by the layoutRouteAccess allowlists)', () => {
   const pins: PinnedItem[] = [
     { path: '/jobs', label: 'Jobs', tab: 'billing' },
     { path: '/people', label: 'People', tab: 'hours' },
@@ -72,6 +35,21 @@ describe('filterPinnedByRole', () => {
 
   it('lets estimators keep /people pins', () => {
     expect(filterPinnedByRole(pins, 'estimator').map((p) => p.path)).toEqual(['/people', '/tally'])
+  })
+
+  it('treats null role as primary (prevents flash before role loads)', () => {
+    expect(filterPinnedByRole(pins, null).map((p) => p.path)).toEqual(['/jobs', '/tally'])
+  })
+
+  it('keeps pins the true allowlist admits that the old local sets hid', () => {
+    const morePins: PinnedItem[] = [
+      { path: '/my-statement', label: 'Statement' },
+      { path: '/estimates', label: 'Estimates' },
+      { path: '/documents', label: 'Documents' },
+    ]
+    expect(filterPinnedByRole(morePins, 'subcontractor').map((p) => p.path)).toEqual(['/my-statement'])
+    expect(filterPinnedByRole(morePins, 'primary').map((p) => p.path)).toEqual(['/my-statement', '/estimates', '/documents'])
+    expect(filterPinnedByRole(morePins, 'superintendent').map((p) => p.path)).toEqual(['/estimates', '/documents'])
   })
 })
 
