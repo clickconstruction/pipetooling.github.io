@@ -9,10 +9,12 @@ import {
   portalDaysSinceBilled,
   PORTAL_TRADE_COLORS,
   splitPortalAddress,
+  type PortalBill,
   type PortalPayload,
 } from '../lib/portal/portalPayload'
+import { groupPortalBillsByJob, portalBillBilledAmount, type PortalJobGroup } from '../lib/portal/portalJobGroups'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
-import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER } from '../lib/portal/portalTheme'
+import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN } from '../lib/portal/portalTheme'
 
 /**
  * Customer / GC portal (portal train PR 1): the no-login "account statement"
@@ -173,123 +175,21 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
           <div style={{ minWidth: 560 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, padding: '0 0 7px', borderBottom: `1.5px solid ${INK}` }}>
               <span>Billed</span>
-              <span>Work</span>
-              <span style={{ textAlign: 'right' }}>Amount</span>
               <span />
+              <span style={{ textAlign: 'right' }}>Amount due</span>
+              {/* Hidden pay-button twin: gives the header's last column the same
+                  width as the rows' button column, so "Amount due" sits over
+                  the money figures instead of the sheet edge. */}
+              <span aria-hidden style={{ visibility: 'hidden', height: 0, overflow: 'hidden', padding: '0 16px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                PAY ONLINE
+              </span>
             </div>
-            {payload.bills.map((b, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '13px 0', borderBottom: `1px solid ${HAIR}`, fontSize: 13.5 }}>
-                <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
-                  {formatPortalDate(b.billedOn) ?? '—'}
-                  {(() => {
-                    const age = portalDaysSinceBilled(b.billedOn, todayYmd)
-                    if (!age) return null
-                    return (
-                      <>
-                        <br />
-                        <span style={{ fontSize: 10.5, color: age.aging ? COPPER : FAINT, fontWeight: age.aging ? 600 : 400 }}>
-                          {age.label}
-                        </span>
-                      </>
-                    )
-                  })()}
-                </span>
-                <span style={{ minWidth: 0 }}>
-                  {/* Trade-first job line (v2.2041): TRADE in its company color,
-                      number in ink, street on the headline; city drops to the
-                      quiet line. A job with no address falls back to its name. */}
-                  {(() => {
-                    const addr = splitPortalAddress(b.jobAddress)
-                    const headline = addr?.street ?? b.jobName ?? b.jobLabel
-                    return (
-                      <>
-                        {b.serviceTag && (
-                          <>
-                            <span style={{ fontWeight: 800, letterSpacing: '0.04em', color: PORTAL_TRADE_COLORS[b.serviceTag] }}>
-                              {b.serviceTag.toUpperCase()}
-                            </span>{' '}
-                          </>
-                        )}
-                        {b.jobNumber && (
-                          <>
-                            <span style={{ fontWeight: 700 }}>{b.jobNumber}</span>
-                            <span style={{ color: FAINT, padding: '0 2px' }}>&nbsp;•&nbsp;</span>
-                          </>
-                        )}
-                        <span style={{ fontWeight: 600 }}>{headline}</span>
-                      </>
-                    )
-                  })()}
-                  {b.asGc && (
-                    <span
-                      style={{
-                        marginLeft: 7,
-                        verticalAlign: 1,
-                        fontSize: 8.5,
-                        fontWeight: 800,
-                        letterSpacing: '0.12em',
-                        textTransform: 'uppercase',
-                        color: COPPER,
-                        border: `1px solid ${COPPER}`,
-                        borderRadius: 3,
-                        padding: '1.5px 5px',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      As GC
-                    </span>
-                  )}
-                  {(() => {
-                    const rest = splitPortalAddress(b.jobAddress)?.rest ?? null
-                    const owner = b.asGc && b.ownerName ? `owner: ${b.ownerName}` : null
-                    if (!rest && !owner) return null
-                    return (
-                      <>
-                        <br />
-                        <span style={{ fontSize: 11.5, color: FAINT }}>{[rest, owner].filter(Boolean).join(' — ')}</span>
-                      </>
-                    )
-                  })()}
-                </span>
-                <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(b.amount)}</span>
-                {b.payUrl ? (
-                  <a
-                    href={b.payUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ background: INK, color: PAPER, padding: '7px 16px', fontSize: 12.5, fontWeight: 600, letterSpacing: '0.02em', textDecoration: 'none', whiteSpace: 'nowrap' }}
-                  >
-                    PAY ONLINE
-                  </a>
-                ) : (
-                  <span style={{ border: '1px solid #b9c2cc', color: MUTED, padding: '6px 12px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
-                    check · ref {b.checkRef || '—'}
-                  </span>
-                )}
-                {b.payments.length > 0 ? (
-                  // Payments already received on this bill (v2.2313): quiet
-                  // sub-ledger so a customer sees their check landed without
-                  // calling the office. Dates/method only — never notes.
-                  <div style={{ gridColumn: '1 / -1', margin: '7px 0 0', paddingTop: 6, borderTop: `1px dashed ${HAIR}` }}>
-                    {b.payments.map((pm, pi) => (
-                      <div
-                        key={pi}
-                        style={{ display: 'flex', gap: 14, fontSize: 11.5, color: MUTED, padding: '1.5px 0', fontVariantNumeric: 'tabular-nums' }}
-                      >
-                        <span style={{ minWidth: 84 }}>{formatPortalDate(pm.date) ?? '—'}</span>
-                        <span>{pm.method}</span>
-                        <span style={{ marginLeft: 'auto' }}>{formatPortalUsd(pm.amount)}</span>
-                      </div>
-                    ))}
-                    <div style={{ display: 'flex', gap: 14, fontSize: 11.5, color: INK, fontWeight: 700, padding: '2.5px 0 0', fontVariantNumeric: 'tabular-nums' }}>
-                      <span style={{ minWidth: 84 }} />
-                      <span>Total paid</span>
-                      <span style={{ marginLeft: 'auto' }}>{formatPortalUsd(b.totalPaid)}</span>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ))}
+            {(() => {
+              const groups = groupPortalBillsByJob(payload.bills)
+              return groups.map((g, i) => (
+                <PortalJobGroupSection key={i} group={g} todayYmd={todayYmd} isLast={i === groups.length - 1} />
+              ))
+            })()}
             <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '11px 0 4px', fontSize: 14 }}>
               <span />
               <span style={{ fontWeight: 700, textAlign: 'right' }}>Total due</span>
@@ -303,6 +203,147 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
       )}
 
     </>
+  )
+}
+
+/**
+ * One job's slice of the statement (v2.2318): a quiet note-band header, the
+ * job's bills newest-first, every payment received (oldest first), and a
+ * right-aligned boxed recap — Billed to date / Paid to date / Balance — the
+ * same totals grammar the invoice preview, PDF, and email box use (v2.2313).
+ */
+function PortalJobGroupSection({ group, todayYmd, isLast }: { group: PortalJobGroup; todayYmd: string; isLast: boolean }) {
+  const addr = splitPortalAddress(group.jobAddress)
+  const headline = addr?.street ?? group.jobName ?? group.jobLabel
+  const quiet = [addr?.rest ?? null, group.asGc && group.ownerName ? `owner: ${group.ownerName}` : null]
+    .filter(Boolean)
+    .join(' — ')
+  return (
+    <div style={{ borderBottom: isLast ? 'none' : `1px solid ${HAIR}`, paddingBottom: 8 }}>
+      {/* Trade-first job line (v2.2041), promoted from row to band. */}
+      <div style={{ background: NOTE_BAND, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', padding: '8px 10px', marginTop: 16, fontSize: 13.5 }}>
+        <span style={{ minWidth: 0 }}>
+          {group.serviceTag && (
+            <>
+              <span style={{ fontWeight: 800, letterSpacing: '0.04em', color: PORTAL_TRADE_COLORS[group.serviceTag] }}>
+                {group.serviceTag.toUpperCase()}
+              </span>{' '}
+            </>
+          )}
+          {group.jobNumber && (
+            <>
+              <span style={{ fontWeight: 700 }}>{group.jobNumber}</span>
+              <span style={{ color: FAINT, padding: '0 2px' }}>&nbsp;•&nbsp;</span>
+            </>
+          )}
+          <span style={{ fontWeight: 600 }}>{headline}</span>
+          {group.asGc && (
+            <span
+              style={{
+                marginLeft: 7,
+                verticalAlign: 1,
+                fontSize: 8.5,
+                fontWeight: 800,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+                color: COPPER,
+                border: `1px solid ${COPPER}`,
+                borderRadius: 3,
+                padding: '1.5px 5px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              As GC
+            </span>
+          )}
+        </span>
+        {quiet && <span style={{ fontSize: 11.5, color: FAINT }}>{quiet}</span>}
+      </div>
+      {group.bills.map((b, i) => (
+        <PortalBillRow key={i} bill={b} todayYmd={todayYmd} isLast={i === group.bills.length - 1} />
+      ))}
+      {group.payments.length > 0 && (
+        <div style={{ padding: '8px 0 2px 10px', borderTop: `1px dashed ${HAIR}` }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, paddingBottom: 3 }}>
+            Payments received
+          </div>
+          {group.payments.map((pm, i) => (
+            <div key={i} style={{ display: 'flex', gap: 14, fontSize: 11.5, color: MUTED, padding: '1.5px 0', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ minWidth: 84 }}>{formatPortalDate(pm.date) ?? '—'}</span>
+              <span>{pm.method}</span>
+              <span style={{ marginLeft: 'auto' }}>&minus; {formatPortalUsd(pm.amount)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {group.showRecap && (
+        <div style={{ margin: '10px 0 2px auto', width: 'min(320px, 100%)', boxSizing: 'border-box', background: CARD, border: `1px solid ${HAIR}`, padding: '10px 14px 11px', fontSize: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
+            <span>Billed to date</span>
+            <span style={{ color: INK, fontWeight: 600 }}>{formatPortalUsd(group.billedToDate)}</span>
+          </div>
+          {/* A multi-bill job with no payments still gets its closing balance,
+              but "Paid to date − $0.00" would just be noise. */}
+          {group.totalPaid > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
+              <span>Paid to date</span>
+              <span style={{ color: PAPER_GREEN, fontWeight: 600 }}>&minus; {formatPortalUsd(group.totalPaid)}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 6, paddingTop: 6, borderTop: `1px solid ${INK}`, fontSize: 13, fontWeight: 700, color: INK, fontVariantNumeric: 'tabular-nums' }}>
+            <span>Balance on this job</span>
+            <span>{formatPortalUsd(group.balance)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** One bill line inside a job group: date + age, what was billed, what's still due, how to pay. */
+function PortalBillRow({ bill, todayYmd, isLast }: { bill: PortalBill; todayYmd: string; isLast: boolean }) {
+  const age = portalDaysSinceBilled(bill.billedOn, todayYmd)
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '12px 0 12px 10px', borderBottom: isLast ? 'none' : `1px solid ${HAIR}`, fontSize: 13.5 }}>
+      <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
+        {formatPortalDate(bill.billedOn) ?? '—'}
+        {age && (
+          <>
+            <br />
+            <span style={{ fontSize: 10.5, color: age.aging ? COPPER : FAINT, fontWeight: age.aging ? 600 : 400 }}>
+              {age.label}
+            </span>
+          </>
+        )}
+      </span>
+      <span style={{ minWidth: 0, fontSize: 11.5, color: FAINT }}>
+        {/* Original billed amount, so billed − paid = due is visible on the
+            page. Redundant when nothing's been paid, so it stays quiet then. */}
+        {bill.totalPaid > 0 && (
+          <>
+            billed{' '}
+            <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
+              {formatPortalUsd(portalBillBilledAmount(bill))}
+            </span>
+          </>
+        )}
+      </span>
+      <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(bill.amount)}</span>
+      {bill.payUrl ? (
+        <a
+          href={bill.payUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ background: INK, color: PAPER, padding: '7px 16px', fontSize: 12.5, fontWeight: 600, letterSpacing: '0.02em', textDecoration: 'none', whiteSpace: 'nowrap' }}
+        >
+          PAY ONLINE
+        </a>
+      ) : (
+        <span style={{ border: '1px solid #b9c2cc', color: MUTED, padding: '6px 12px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+          check · ref {bill.checkRef || '—'}
+        </span>
+      )}
+    </div>
   )
 }
 
