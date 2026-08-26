@@ -651,3 +651,7 @@ verify_jwt = false
 # Public portal form intake — token-authenticated like customer-portal.
 [functions.submit-portal-request]
 verify_jwt = false
+
+# JWT validated in the function body (getUser) — gateway verify_jwt caused 401s for browser sessions.
+[functions.address-autocomplete]
+verify_jwt = false
