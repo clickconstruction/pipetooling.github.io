@@ -6,6 +6,8 @@ keywords: expected payment, pay speed, billed awaiting payment, accounts receiva
 ---
 Every row in **Jobs → Pipeline → Billed Awaiting Payment** now predicts its own payment date, so "when should we expect payment?" is answered on the board instead of in someone's head.
 
+Each billed row's **View Bill** button also carries a small **PDF tail** — the page icon attached to its right edge. One click opens the invoice PDF in a new tab, freshly generated with the current payment history, ready to print or send. It's the same paper the View Bill window's "Open PDF in new tab" produces, without the trip through the window.
+
 ## Reading the chip
 
 Each billed row carries a small chip under its buttons:
