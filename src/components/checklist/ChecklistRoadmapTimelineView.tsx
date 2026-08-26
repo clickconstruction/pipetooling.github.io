@@ -19,6 +19,10 @@ type Props = {
   users: Array<{ id: string; name: string; email: string }>
   /** Opens the task card modal. */
   onOpenTask: (taskId: string) => void
+  /** Editors may drag a slot's right edge to resize its estimate (v2.2361). */
+  canEdit?: boolean
+  /** Persists a dragged estimate; resolves true on success. Absent = no drag handles. */
+  onEstimateChange?: (taskId: string, days: number) => Promise<boolean>
 }
 
 const FRONT = '#f59e0b'
@@ -46,11 +50,21 @@ function waveName(index: number, count: number): string {
  * anchored by a "▲ you" tick at the observed pace, never mistaken for truth.
  * Tapping a row unfolds its N.M tasks; tapping a task opens the task card.
  */
-export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds, completeIds, users, onOpenTask, parallelGroupIds }: Props) {
+export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds, completeIds, users, onOpenTask, parallelGroupIds, canEdit = false, onEstimateChange }: Props) {
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null)
   // What-if dial (v2.2090): ephemeral, never persisted — the solid flag stays the
   // observed truth; this only drives the dashed ghost. null until touched.
   const [whatIf, setWhatIf] = useState<number | null>(null)
+  // Edge drag (v2.2361): resizing an estimate, never scheduling. The override
+  // feeds every derived number (widths, sums, pace, 🎯) live during the drag;
+  // release persists via onEstimateChange, Escape cancels. Pointer devices
+  // only — touch uses the task card's ⏱ stepper.
+  const [dragOverride, setDragOverride] = useState<Map<string, number>>(new Map())
+  const dragRef = useRef<{ taskId: string; startX: number; startDays: number; pxPerDay: number; days: number } | null>(null)
+  const [dragLive, setDragLive] = useState<{ taskId: string; fromDays: number; toDays: number } | null>(null)
+  const [hoverSlotTaskId, setHoverSlotTaskId] = useState<string | null>(null)
+  const finePointer = useMemo(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches === true, [])
+  const dragEnabled = canEdit && finePointer && onEstimateChange != null
   // Calendar band width (v2.2136): month labels thin to every Nth month on
   // narrow screens instead of overprinting each other ("AUG SEP OC NOVDEC…").
   const bandRef = useRef<HTMLDivElement | null>(null)
@@ -69,11 +83,15 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     return () => ro.disconnect()
   }, [])
 
+  const effectiveTasks = useMemo(
+    () => (dragOverride.size === 0 ? tasks : tasks.map((t) => (dragOverride.has(t.id) ? { ...t, estimated_days: dragOverride.get(t.id)! } : t))),
+    [tasks, dragOverride],
+  )
   const tasksByGroup = useMemo(() => {
     const m = new Map<string, PlanTask[]>()
-    for (const t of tasks) m.set(t.group_id, [...(m.get(t.group_id) ?? []), t])
+    for (const t of effectiveTasks) m.set(t.group_id, [...(m.get(t.group_id) ?? []), t])
     return m
-  }, [tasks])
+  }, [effectiveTasks])
 
   const stageNumbers = useMemo(() => stageNumbersByGroupId(groups), [groups])
   const taskNumbers = useMemo(() => taskNumbersByTaskId(stageNumbers, tasksByGroup), [stageNumbers, tasksByGroup])
@@ -82,8 +100,8 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
   // Effort weighting (v2.2358): estimated_days is a task's WEIGHT — never its
   // dates. avg fills unestimated tasks; with no estimates anywhere every
   // weight is 1 and all math below reduces to the old tasks/week behavior.
-  const avg = useMemo(() => averageEstimatedDays(tasks), [tasks])
-  const hasEstimates = useMemo(() => tasks.some((t) => t.estimated_days != null), [tasks])
+  const avg = useMemo(() => averageEstimatedDays(effectiveTasks), [effectiveTasks])
+  const hasEstimates = useMemo(() => effectiveTasks.some((t) => t.estimated_days != null), [effectiveTasks])
   const rows = useMemo(
     () => timelineRows({ groups, tasksByGroup, edges, unlockedIds, completeIds, avgDays: avg }),
     [groups, tasksByGroup, edges, unlockedIds, completeIds, avg],
@@ -91,7 +109,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
   const now = useMemo(() => new Date(), [])
   // Observed pace (last 4 weeks; all-time fallback; null before any completion)
   // — the projection's only input. There is no dial: dates come from the real rate.
-  const pace = useMemo(() => observedEffortPace(tasks, now), [tasks, now])
+  const pace = useMemo(() => observedEffortPace(effectiveTasks, now), [effectiveTasks, now])
   const projection = useMemo(() => paceProjection(rows, pace?.daysPerWeek ?? 1, now), [rows, pace, now])
   const whatIfProjection = useMemo(() => (whatIf == null ? null : paceProjection(rows, whatIf, now)), [rows, whatIf, now])
   // Band months follow the real pace; with no real pace yet, the what-if dial alone stretches them.
@@ -155,6 +173,68 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
       ? paceLabel(remainingDaysTotal / Math.max((band.horizonEnd.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000), 1))
       : null
   const horizonLabel = band.months[band.months.length - 1]?.label ?? ''
+
+  // ---- estimate edge-drag handlers (v2.2361) ----
+  const beginEstimateDrag = (e: React.PointerEvent<HTMLElement>, taskId: string, currentDays: number) => {
+    if (!dragEnabled) return
+    e.preventDefault()
+    e.stopPropagation()
+    const slotEl = e.currentTarget.parentElement
+    const widthPx = slotEl?.getBoundingClientRect().width ?? 0
+    if (widthPx <= 0 || currentDays <= 0) return
+    dragRef.current = { taskId, startX: e.clientX, startDays: currentDays, pxPerDay: widthPx / currentDays, days: currentDays }
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setDragLive({ taskId, fromDays: currentDays, toDays: currentDays })
+  }
+  const moveEstimateDrag = (e: React.PointerEvent<HTMLElement>) => {
+    const d = dragRef.current
+    if (!d) return
+    const days = Math.min(Math.max(Math.round((d.startDays + (e.clientX - d.startX) / d.pxPerDay) * 2) / 2, 0.5), 90)
+    if (days === d.days) return
+    d.days = days
+    setDragOverride((m) => {
+      const nm = new Map(m)
+      nm.set(d.taskId, days)
+      return nm
+    })
+    setDragLive({ taskId: d.taskId, fromDays: d.startDays, toDays: days })
+  }
+  const endEstimateDrag = () => {
+    const d = dragRef.current
+    if (!d) return
+    dragRef.current = null
+    setDragLive(null)
+    const clear = () =>
+      setDragOverride((m) => {
+        const nm = new Map(m)
+        nm.delete(d.taskId)
+        return nm
+      })
+    if (d.days !== d.startDays && onEstimateChange) {
+      // Keep the override until the parent reload lands so the width never snaps back.
+      void onEstimateChange(d.taskId, d.days).finally(clear)
+    } else {
+      clear()
+    }
+  }
+  useEffect(() => {
+    if (dragLive == null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const d = dragRef.current
+      dragRef.current = null
+      setDragLive(null)
+      if (d) {
+        setDragOverride((m) => {
+          const nm = new Map(m)
+          nm.delete(d.taskId)
+          return nm
+        })
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dragLive])
 
   const laneVlines = (
     <>
@@ -629,6 +709,8 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                                       e.stopPropagation()
                                       onOpenTask(t.id)
                                     }}
+                                    onMouseEnter={() => setHoverSlotTaskId(t.id)}
+                                    onMouseLeave={() => setHoverSlotTaskId((h) => (h === t.id ? null : h))}
                                     title={`${num ?? ''} ${t.title}`}
                                     aria-label={`Open task ${t.title}`}
                                     style={{
@@ -649,7 +731,54 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                                     <span style={{ fontSize: '0.6rem', fontWeight: 700, color: done ? DONE : 'var(--text-muted)', pointerEvents: 'none' }}>
                                       {done ? '✓' : num ?? ''}
                                     </span>
+                                    {dragEnabled && !done ? (
+                                      // Right-edge resize handle (v2.2361): drag = size the estimate, never schedule.
+                                      <span
+                                        role="slider"
+                                        aria-label={`Estimate for ${t.title}, drag to resize`}
+                                        aria-valuenow={dragOverride.get(t.id) ?? t.estimated_days ?? avg}
+                                        onPointerDown={(e) => beginEstimateDrag(e, t.id, dragOverride.get(t.id) ?? t.estimated_days ?? avg)}
+                                        onPointerMove={moveEstimateDrag}
+                                        onPointerUp={endEstimateDrag}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                          position: 'absolute',
+                                          top: 0,
+                                          bottom: 0,
+                                          right: 0,
+                                          width: 8,
+                                          cursor: 'ew-resize',
+                                          borderRadius: '0 4px 4px 0',
+                                          background: 'var(--text-link)',
+                                          opacity: dragLive?.taskId === t.id ? 0.95 : hoverSlotTaskId === t.id ? 0.75 : 0,
+                                          transition: 'opacity 120ms',
+                                          touchAction: 'none',
+                                        }}
+                                      />
+                                    ) : null}
                                   </button>
+                                ) : null}
+                                {slot && dragLive?.taskId === t.id ? (
+                                  <span
+                                    aria-live="polite"
+                                    style={{
+                                      position: 'absolute',
+                                      top: -24,
+                                      left: pct(slot.left + slot.width),
+                                      transform: 'translateX(-50%)',
+                                      background: 'var(--text-strong)',
+                                      color: 'var(--surface)',
+                                      fontSize: '0.68rem',
+                                      fontWeight: 700,
+                                      padding: '0.15rem 0.5rem',
+                                      borderRadius: 6,
+                                      whiteSpace: 'nowrap',
+                                      pointerEvents: 'none',
+                                      zIndex: 5,
+                                    }}
+                                  >
+                                    {effortDaysLabel(dragLive.fromDays)} → {effortDaysLabel(dragLive.toDays)}
+                                  </span>
                                 ) : null}
                                 <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: pct(frontX), borderLeft: `2px solid ${FRONT}`, opacity: 0.55, pointerEvents: 'none' }} />
                               </div>
