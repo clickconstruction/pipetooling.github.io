@@ -228,8 +228,7 @@ export function BidsCoverLetterTab({
   async function saveAltTexts(bidId: string, next: CoverLetterAltTexts) {
     setAltTexts(next)
     setAltTextEditor(null)
-    // Cast until the generated types pick up cover_letter_alt_texts (same dance as the v2.2117 letter columns).
-    const { error } = await supabase.from('bids').update({ cover_letter_alt_texts: next } as unknown as never).eq('id', bidId)
+    const { error } = await supabase.from('bids').update({ cover_letter_alt_texts: next }).eq('id', bidId)
     if (error) showToast('Could not save the letter wording: ' + error.message, 'error')
   }
 
