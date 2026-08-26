@@ -41,6 +41,7 @@ import {
   type PinnedItem,
 } from '../lib/pinnedTabs'
 import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
+import { recordNavClickFromEvent } from '../lib/navClickTelemetry'
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
 import {
   HeaderGlobalSearchNavLayer,
@@ -771,6 +772,8 @@ export default function Layout() {
       <nav
         ref={navRef}
         className="appNav"
+        data-navtrack="top-nav"
+        onClickCapture={(e) => recordNavClickFromEvent(authUser?.id, role, e)}
         style={{
           borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid var(--chrome-border)',
           background: impersonating && isMobile ? 'var(--bg-amber-100)' : undefined,
@@ -808,6 +811,7 @@ export default function Layout() {
               {menuOpen && (
                 <div
                   id="mobile-nav"
+                  data-navtrack="mobile-menu"
                   style={{
                     position: 'absolute',
                     left: 0,
@@ -1063,7 +1067,7 @@ export default function Layout() {
               Bid
             </button>
           )}
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.125rem' }}>
+          <span data-navtrack="icon-cluster" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.125rem' }}>
             {canShowMapNav && !isMobile && (
               <NavLink
                 to="/map"
@@ -1177,6 +1181,7 @@ export default function Layout() {
             </button>
             {gearOpen && (
               <div
+                data-navtrack="gear-menu"
                 style={{
                   position: 'absolute',
                   right: 0,

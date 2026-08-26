@@ -102,6 +102,7 @@ import { DashboardTeamReadyToBillSection } from '../components/dashboard/Dashboa
 import { DashboardBillingPipelineSection } from '../components/dashboard/DashboardBillingPipelineSection'
 import { DashboardAssignedJobsSection } from '../components/dashboard/DashboardAssignedJobsSection'
 import { DashboardSuperintendentJobsSection } from '../components/dashboard/DashboardSuperintendentJobsSection'
+import { recordNavClick } from '../lib/navClickTelemetry'
 
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
 import type { Database } from '../types/database'
@@ -1278,7 +1279,13 @@ export default function Dashboard() {
 
   return (
     <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
-      {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Dashboard sections" /> : null}
+      {dockSections.length > 1 ? (
+        <SectionDock
+          sections={dockSections}
+          ariaLabel="Dashboard sections"
+          onChipClick={(id) => recordNavClick(authUser?.id, role, 'dock', `#${id}`)}
+        />
+      ) : null}
       <QuickEstimateWizard open={quickEstimateOpen} onClose={() => setQuickEstimateOpen(false)} />
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>

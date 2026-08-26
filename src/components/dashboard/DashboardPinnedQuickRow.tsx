@@ -10,6 +10,7 @@ import {
   useArBankUnallocatedCount,
 } from '../../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
+import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import DashboardArBankUnallocatedBanner from '../DashboardArBankUnallocatedBanner'
 import DashboardGcReviewWeeklyBanner from '../DashboardGcReviewWeeklyBanner'
 import DashboardTallyStaleBanner from '../DashboardTallyStaleBanner'
@@ -460,6 +461,7 @@ export function DashboardPinnedQuickRow({
           count={arBankUnallocatedCount ?? 0}
           loading={arBankUnallocatedCount === null}
           onGoToAr={() => {
+            recordNavClick(authUserId, role, 'banner', '/accounts-receivable')
             showToast('Opening Accounts Receivable…', 'info', 2800)
             navigate('/accounts-receivable')
           }}
@@ -470,14 +472,20 @@ export function DashboardPinnedQuickRow({
           staleCount={typeof tallyStaleUnlinkedCount === 'number' ? tallyStaleUnlinkedCount : 0}
           loading={tallyStaleUnlinkedCount === null}
           minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
-          onGoToTally={() => navigate('/tally?tab=transactions')}
+          onGoToTally={() => {
+            recordNavClick(authUserId, role, 'banner', '/tally?tab=transactions')
+            navigate('/tally?tab=transactions')
+          }}
         />
       )}
       {!hideBanners && (
         <DashboardLostBidsMissingReasonBanner
           nudge={lostBidNudge}
           loading={lostBidNudgeLoading}
-          onStartCallMode={() => navigate('/bids?tab=why-we-lost')}
+          onStartCallMode={() => {
+            recordNavClick(authUserId, role, 'banner', '/bids?tab=why-we-lost')
+            navigate('/bids?tab=why-we-lost')
+          }}
         />
       )}
       {!hideBanners && <DashboardTeamReviewsDueBanner authUserId={authUserId} />}
@@ -508,11 +516,14 @@ export function DashboardPinnedQuickRow({
       {!bannersOnly && interstitial}
       {!bannersOnly && showPinnedRowWithQuickActions && (
         <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          <div
+            style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}
+            onClickCapture={(e) => recordNavClickFromEvent(authUserId, role, e)}
+          >
             {quickButtonsPlacement === 'with_pins' &&
               showDashboardQuickButtons &&
               quickActionDefs.map((b) => (
-                <Link key={b.key} to={b.to} style={pinnedItemLinkStyle}>
+                <Link key={b.key} to={b.to} style={pinnedItemLinkStyle} data-navtrack="quick-button">
                   {b.label}
                 </Link>
               ))}
@@ -525,7 +536,7 @@ export function DashboardPinnedQuickRow({
                 subLaborDueTotal,
               })
               return (
-                <Link key={item.path + (item.tab ?? '') + (item.bidId ?? '')} to={to} style={pinnedItemLinkStyle}>
+                <Link key={item.path + (item.tab ?? '') + (item.bidId ?? '')} to={to} style={pinnedItemLinkStyle} data-navtrack="pin">
                   {displayLabel}
                 </Link>
               )
