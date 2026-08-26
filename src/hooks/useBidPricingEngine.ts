@@ -7,6 +7,7 @@ import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLab
 import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
 import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
 import { pickActiveVersion, deriveActivePricingId, resolveTaggedVersion, versionSwitchStillActive } from '../lib/bids/pickActiveVersion'
+import { IDLE_PRICING_RESOLVE, beginPricingResolve, settlePricingResolve, type PricingResolveState } from '../lib/bids/pricingResolve'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
 import { fetchLastPriceBookTemplateId, saveLastPriceBookTemplateId } from '../lib/bids/pricingUserPrefs'
 import type { BidCountRow } from '../types/bids'
@@ -163,6 +164,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // NULL-version-tagged). The ref mirrors the state so the many takeoff loaders/writers can
   // read the current version without stale closures.
   const [bidVersions, setBidVersions] = useState<BidVersion[]>([])
+  // Lifecycle of the per-bid pricing resolve (v2.2367): lets the Pricing surfaces tell
+  // "still loading" / "load failed" apart from a genuinely empty bid. The retry tick
+  // re-fires the resolve effect after a failure (the failed run never stamps
+  // pricingBidIdRef, so the re-run takes the full bid-changed path again).
+  const [pricingResolve, setPricingResolve] = useState<PricingResolveState>(IDLE_PRICING_RESOLVE)
+  const [pricingResolveRetryTick, setPricingResolveRetryTick] = useState(0)
   const [selectedBidVersionId, setSelectedBidVersionIdState] = useState<string | null>(null)
   // Tagged with the bid the version belongs to, so a synchronous reader only uses it when it
   // matches the bid being loaded (else falls back to that bid's Base — never another bid's version).
@@ -764,7 +771,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   /** A bid's own Pricings (frozen copies). Sets `priceBookVersions` and returns the list for selection. */
-  async function loadBidPricings(bidId: string): Promise<PriceBookVersion[]> {
+  /** Null return = the fetch failed (state untouched) — the resolve effect turns that into the error panel. */
+  async function loadBidPricings(bidId: string): Promise<PriceBookVersion[] | null> {
     const { data, error } = await supabase
       .from('price_book_versions')
       .select('*')
@@ -772,7 +780,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       .order('sort_order', { ascending: true })
     if (error) {
       setError(`Failed to load bid pricings: ${error.message}`)
-      return []
+      return null
     }
     const pricings = (data as PriceBookVersion[]) ?? []
     setPriceBookVersions(pricings)
@@ -786,7 +794,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     return versions.find((x) => x.id === versionId)?.starred_price_book_version_id ?? null
   }
 
-  async function loadBidVersions(bidId: string): Promise<BidVersion[]> {
+  /** Null return = the fetch failed (state untouched) — the resolve effect turns that into the error panel. */
+  async function loadBidVersions(bidId: string): Promise<BidVersion[] | null> {
     const { data, error } = await supabase
       .from('bid_versions')
       .select('*')
@@ -794,7 +803,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       .order('sort_order', { ascending: true })
     if (error) {
       setError(`Failed to load bid versions: ${error.message}`)
-      return []
+      return null
     }
     const versions = (data as BidVersion[]) ?? []
     setBidVersions(versions)
@@ -1162,9 +1171,14 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     void saveLastPriceBookTemplateId(authUser.id, selectedServiceTypeId, templateId)
   }
 
+  /** Re-run the failed per-bid pricing resolve (the error panel's Retry). */
+  function retryPricingResolve() {
+    setPricingResolveRetryTick((t) => t + 1)
+  }
+
   async function switchActiveVersion(bidId: string, versionId: string | null) {
     setSelectedBidVersionId(bidId, versionId)
-    const pricings = await loadBidPricings(bidId)
+    const pricings = (await loadBidPricings(bidId)) ?? []
     // Switching twice in a row leaves two of these awaits in flight and they can
     // finish out of order. Only the switch that is still active may write — a
     // stale one would resolve the pricing facet for the version the user already
@@ -1253,7 +1267,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       // (landing directly on Counts must show the right bid's rows); a version switch (same bid)
       // re-runs this via selectedBidVersionId.
       if (selectedBidVersionIdRef.current?.bidId !== bid.id) {
-        const versions = await loadBidVersions(bid.id)
+        const versions = (await loadBidVersions(bid.id)) ?? []
         if (cancelled) return
         setSelectedBidVersionId(bid.id, pickActiveVersion({ savedVersionId: bid.selected_bid_version_id, bidVersions: versions }))
       }
@@ -1281,7 +1295,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       // switch (same bid) the ref is already set by the picker — just reload.
       if (bidChanged) {
         takeoffBidIdRef.current = bid.id
-        const versions = await loadBidVersions(bid.id)
+        const versions = (await loadBidVersions(bid.id)) ?? []
         if (cancelled) return
         setSelectedBidVersionId(bid.id, pickActiveVersion({ savedVersionId: bid.selected_bid_version_id, bidVersions: versions }))
       }
@@ -1368,6 +1382,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setPricingMaterialTotalTopOut(null)
       setPricingMaterialTotalTrimSet(null)
       setPricingLaborRate(null)
+      setPricingResolve(IDLE_PRICING_RESOLVE)
       return
     }
     const controller = new AbortController()
@@ -1377,12 +1392,20 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     if (bidJustChanged) {
       const savedBidVersionId = selectedBidForPricing.selected_bid_version_id
       const legacyPricingFallback = selectedBidForPricing.selected_price_book_version_id
+      setPricingResolve(beginPricingResolve(bidId))
       // Resolve the active Version first (it drives both takeoff and pricing), set the
       // version ref BEFORE the takeoff reads in loadPricingDataForBid, then derive the
       // active pricing facet. Unsplit bids resolve to null → reads the Base (NULL) data.
       void (async () => {
         const [versions, pricings] = await Promise.all([loadBidVersions(bidId), loadBidPricings(bidId)])
         if (signal.aborted) return
+        if (versions == null || pricings == null) {
+          // Fetch failed. The ref stays unstamped so Retry (or any dep change)
+          // re-enters this bid-changed path; pre-v2.2367 this fell through as
+          // versions=[] and painted the bid as unsplit-and-empty until reload.
+          setPricingResolve((s) => settlePricingResolve(s, bidId, false))
+          return
+        }
         // Stamp the ref only now that this run will actually write the
         // resolution. Stamping before the await (pre-v2.1763) meant an abort —
         // e.g. the takeoff resolver's setSelectedBidVersionId re-firing this
@@ -1400,12 +1423,19 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           versionStarredPricingId: versionStarredId(versions, activeVersionId),
         })
         setSelectedPricingVersionId(activePricingId)
-        loadBidPricingAssignments(bidId, activePricingId, signal)
-        loadPricingDataForBid(bidId, signal)
+        await Promise.all([loadBidPricingAssignments(bidId, activePricingId, signal), loadPricingDataForBid(bidId, signal)])
+        if (signal.aborted) return
+        setPricingResolve((s) => settlePricingResolve(s, bidId, true))
       })()
     } else {
-      loadBidPricingAssignments(bidId, selectedPricingVersionId, signal)
-      loadPricingDataForBid(bidId, signal)
+      void (async () => {
+        await Promise.all([loadBidPricingAssignments(bidId, selectedPricingVersionId, signal), loadPricingDataForBid(bidId, signal)])
+        if (signal.aborted) return
+        // The bid-changed run above often gets aborted mid-flight by its own
+        // setSelected* writes re-firing this effect — this re-run is the one
+        // that actually finishes, so it settles the pending resolve.
+        setPricingResolve((s) => settlePricingResolve(s, bidId, true))
+      })()
     }
     return () => controller.abort()
   }, [
@@ -1416,6 +1446,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     selectedBidForPricing?.materials_model,
     selectedBidVersionId,
     selectedPricingVersionId,
+    pricingResolveRetryTick,
   ])
 
   // Workbench view/★ split (v2.2013): the Pricing Workbench lets you VIEW a scenario without
@@ -1567,6 +1598,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setBidVersions,
     selectedBidVersionId,
     setSelectedBidVersionId,
+    pricingResolve,
+    retryPricingResolve,
     // pricing
     priceBookVersions,
     setPriceBookVersions,

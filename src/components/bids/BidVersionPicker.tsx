@@ -28,6 +28,9 @@ type BidVersionPickerProps = {
   bidGcName?: string | null
   /** bids.bid_date_sent — shown on every GC group when the bid has no per-version sends yet (pre-v2.2124 bids). */
   bidDateSent?: string | null
+  /** Per-bid pricing resolve (v2.2367): 'skeleton' shimmers placeholder chips while versions
+      load, 'error' says the load failed — both instead of asserting "one packet" too early. */
+  resolvePanel?: 'skeleton' | 'error' | 'content'
 }
 
 const chipBase: React.CSSProperties = {
@@ -58,6 +61,7 @@ export function BidVersionPicker({
   pricingSourceNames,
   bidGcName,
   bidDateSent,
+  resolvePanel = 'content',
 }: BidVersionPickerProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -392,6 +396,38 @@ export function BidVersionPicker({
   if (!groups.some((g) => g.key === '') && (isUnsplit || groups.length === 0)) groups.unshift({ key: '', gcId: null, name: bidGcName ?? 'the GC', versions: [], sentOn: null, sentValue: null, outcome: null })
   const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
   const starNameOf = (v: BidVersion) => (v.starred_price_book_version_id ? pricingSourceNames?.[v.starred_price_book_version_id] ?? null : null)
+
+  if (resolvePanel !== 'content') {
+    // Loading (or failed) resolve: never claim "one packet" from a not-yet-loaded list.
+    const ghost = (w1: number, w2: number) => (
+      <span key={w1} aria-hidden style={{ display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.4rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+        <span style={{ padding: '0 0.3rem' }}>
+          <span className="bid-resolve-shimmer" style={{ display: 'block', width: w1, height: 11, borderRadius: 4, marginBottom: 5 }} />
+          <span className="bid-resolve-shimmer" style={{ display: 'block', width: w2, height: 8, borderRadius: 4 }} />
+        </span>
+      </span>
+    )
+    return (
+      <div style={{ marginBottom: '1rem' }} data-tour="send-to">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }} title="One packet per GC — versions draft this bid for different GCs">Send to</span>
+          {resolvePanel === 'skeleton' ? (
+            <span role="status" aria-label="Loading this bid's packets" style={{ display: 'inline-flex', gap: '0.5rem' }}>
+              {ghost(150, 86)}
+              {ghost(118, 70)}
+            </span>
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.7rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+              <span>
+                <span style={{ fontWeight: 700, fontSize: '0.82rem', display: 'block', color: 'var(--text-red-700)' }}>Couldn't load this bid's packets</span>
+                <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)' }}>your versions are safe — nothing was deleted</span>
+              </span>
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ marginBottom: '1rem' }} data-tour="send-to">
