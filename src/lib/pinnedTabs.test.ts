@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest'
-import { computeReorderedSort, isPinnedIn, pinKey, type PinnedItem } from './pinnedTabs'
+import { computeReorderedSort, filterPinnedByRole, isPinnedIn, PATH_TO_LABEL, PINNABLE_PATHS, pinKey, type PinnedItem } from './pinnedTabs'
+
+describe('front-door pins (v2.2330)', () => {
+  it('makes /tally and /accounts-receivable pinnable with proper labels', () => {
+    expect(PINNABLE_PATHS).toContain('/tally')
+    expect(PINNABLE_PATHS).toContain('/accounts-receivable')
+    expect(PATH_TO_LABEL['/tally']).toBe('Job Parts Tally')
+    expect(PATH_TO_LABEL['/accounts-receivable']).toBe('Accounts Receivable')
+  })
+
+  it('role-filters through the layoutRouteAccess kernel (stale local sets removed)', () => {
+    const pins: PinnedItem[] = [
+      { path: '/tally', label: 'Job Parts Tally' },
+      { path: '/accounts-receivable', label: 'Accounts Receivable' },
+      { path: '/my-statement', label: 'Statement' },
+    ]
+    expect(filterPinnedByRole(pins, 'subcontractor').map((p) => p.path)).toEqual(['/tally', '/my-statement'])
+    expect(filterPinnedByRole(pins, 'assistant').map((p) => p.path)).toEqual(pins.map((p) => p.path))
+    // null role = primary stand-in while auth loads
+    expect(filterPinnedByRole(pins, null).map((p) => p.path)).toEqual(['/tally', '/my-statement'])
+  })
+})
 
 describe('isPinnedIn', () => {
   const list: PinnedItem[] = [
