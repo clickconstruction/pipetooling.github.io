@@ -7,6 +7,8 @@ order: 12
 ---
 The **My Inbox** card on the Dashboard is your personal task inbox — everything in it is waiting on you. Treat it like email: work it down to empty.
 
+On a **desktop screen** each item is a compact one-line row: checkbox, title, then small chips for status ({{chip:yellow|Reopened · Sun 3:17 PM}} — hover it for the reason) and notes ({{chip:blue|2 notes}} opens the thread). The quiet **＋ Note** and forward buttons at the end of a row brighten when you hover it, and the **Overdue** / **Due Today** headers carry a count of what's waiting. On a **phone** you get the big glove-friendly cards described below — nothing there has changed.
+
 ## What's inside
 
 - **Due Today** — checklist items scheduled for today, as full conversation cards (v2.2193 — the same cards as Checklist → Today): the big **✓** completes, {{button:outline|＋ Add a note}} (or {{button:outline|💬 Notes N}}) drops the thread down right there, and tapping the **title** opens the task's whole history with a composer that can {{button:outline|✓ Post & complete}} — write "posts are in the trailer" and close the card in one motion. Status chips ({{chip:yellow|Reopened by …}}, {{chip:blue|Waiting on review}}) show on the card itself. The arrow still forwards it to someone else.

@@ -665,6 +665,11 @@ export function DashboardMyInboxCard({
         <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
             Due Today
+            {!isMobile && todayChecklist.some((i) => !i.completed_at) ? (
+              <span style={{ marginLeft: '0.5rem', verticalAlign: '2px', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 999, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700 }}>
+                {todayChecklist.filter((i) => !i.completed_at).length}
+              </span>
+            ) : null}
             <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               View all →
             </Link>
@@ -684,6 +689,7 @@ export function DashboardMyInboxCard({
                   events={eventsByInstance.get(inst.id) ?? []}
                   nameById={eventActorNameById}
                   currentUserId={authUserId ?? null}
+                  variant={isMobile ? 'card' : 'row'}
                   onToggleComplete={() => void toggleChecklistComplete(inst)}
                   onPostComment={(body) => postCardComment(inst, body)}
                   fullHistory={{
@@ -736,6 +742,11 @@ export function DashboardMyInboxCard({
         <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
             Overdue
+            {!isMobile && outstandingItems.some((i) => !i.completed_at) ? (
+              <span style={{ marginLeft: '0.5rem', verticalAlign: '2px', background: 'var(--bg-red-100)', color: 'var(--text-red-700)', borderRadius: 999, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700 }}>
+                {outstandingItems.filter((i) => !i.completed_at).length}
+              </span>
+            ) : null}
             <Link to="/checklist?tab=review" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               View all →
             </Link>
@@ -755,6 +766,7 @@ export function DashboardMyInboxCard({
                     events={eventsByInstance.get(inst.id) ?? []}
                     nameById={eventActorNameById}
                     currentUserId={authUserId ?? null}
+                    variant={isMobile ? 'card' : 'row'}
                     onToggleComplete={() => void toggleOutstandingComplete(inst)}
                     onPostComment={(body) => postCardComment(inst, body)}
                     fullHistory={{

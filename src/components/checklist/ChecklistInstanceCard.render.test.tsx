@@ -138,3 +138,50 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
     expect(screen.queryByLabelText(/activity for/)).toBeNull()
   })
 })
+
+describe('ChecklistInstanceCard row variant (v2.2336 desktop ledger)', () => {
+  it('renders the compact row: 22px checkbox, no big Add-a-note bar, quiet ＋ Note chip', () => {
+    renderCard({ variant: 'row' })
+    const toggle = screen.getByLabelText('Mark done')
+    expect(toggle.style.width).toBe('22px')
+    expect(screen.queryByText(/Add a note/)).toBeNull()
+    const noteBtn = screen.getByText('＋ Note')
+    expect(noteBtn.closest('button')?.className).toContain('myInboxRowActions')
+  })
+
+  it('shows the notes count as a chip and toggles the thread from it', () => {
+    renderCard({
+      variant: 'row',
+      events: [
+        ev({ event_type: 'comment', created_at: '2026-08-24T15:00:00Z', body: 'left it soaking' }),
+        ev({ event_type: 'comment', created_at: '2026-08-25T09:00:00Z', body: 'still soaking' }),
+      ],
+    })
+    const chip = screen.getByText('2 notes')
+    fireEvent.click(chip)
+    expect(chip.getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('reopened renders as a compact chip carrying the reason as a tooltip', () => {
+    renderCard({
+      variant: 'row',
+      events: [
+        ev({ event_type: 'completed', created_at: '2026-08-23T10:00:00Z' }),
+        ev({ event_type: 'reopened', created_at: '2026-08-24T15:17:00Z', actor_user_id: 'lead-1' }),
+        ev({ event_type: 'comment', created_at: '2026-08-24T15:17:00Z', actor_user_id: 'lead-1', body: 'water line still exposed' }),
+      ],
+    })
+    const chip = screen.getByText(/Reopened ·/)
+    expect(chip.getAttribute('title')).toContain('water line still exposed')
+    // The full-width amber callout from the card layout must not render in rows.
+    expect(screen.queryByText(/Reopened by/)).toBeNull()
+  })
+
+  it('the row li carries the hover class and marks completed items struck through', () => {
+    renderCard({ variant: 'row', instance: { id: 'inst-1', completed_at: '2026-08-25T10:00:00Z', reviewed_at: null } })
+    const li = screen.getByLabelText('Mark not done').closest('li') as HTMLLIElement
+    expect(li.className).toContain('myInboxRow')
+    const title = screen.getByText('Feed and water chickens')
+    expect(title.style.textDecoration).toBe('line-through')
+  })
+})
