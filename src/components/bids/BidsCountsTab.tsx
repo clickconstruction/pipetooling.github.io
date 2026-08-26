@@ -20,6 +20,7 @@ import { ClearAllCountsModal } from './ClearAllCountsModal'
 import { ModalShell } from './ModalShell'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
+import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens } from '../../lib/bids/countSheet'
 import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, summarizeRowsByUnit, type CountUnit } from '../../lib/bids/countRowUnit'
@@ -1133,7 +1134,7 @@ export function BidsCountsTab({
         </ModalShell>
       )}
       {!selectedBidForCounts && (
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
           <input
             type="text"
             placeholder="Search bids (bid #, project name, or GC/Builder)..."
@@ -1141,6 +1142,7 @@ export function BidsCountsTab({
             onChange={(e) => setCountsSearchQuery(e.target.value)}
             style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
+          <BidPickerSortToggle />
           <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
         </div>
       )}

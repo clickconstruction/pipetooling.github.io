@@ -9,6 +9,7 @@ import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../l
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
+import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import {
   printCostEstimatePage as printCostEstimatePageDoc,
@@ -966,7 +967,7 @@ export function BidsLaborTab({
   return (
     <div>
       {!selectedBidForCostEstimate && (
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
           <input
             type="text"
             placeholder="Search bids (bid #, project name, or GC/Builder)..."
@@ -974,6 +975,7 @@ export function BidsLaborTab({
             onChange={(e) => setCostEstimateSearchQuery(e.target.value)}
             style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
+          <BidPickerSortToggle />
           <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
         </div>
       )}

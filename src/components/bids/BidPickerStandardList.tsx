@@ -7,11 +7,16 @@
  *
  * Rows are already-loaded `BidWithBuilder`s, so the evidence is built locally
  * from the row itself — no fetch. Selection stays the host's `onSelectBid`.
+ * Rows render in the user's picker sort view (`BidPickerSortToggle` store),
+ * so hosts pass bids unsorted and every tab stays consistent.
  */
+import { useMemo } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import type { BidSearchEvidence } from '../../lib/jobSearchEvidence'
 import { bidDisplayName } from '../../lib/bids/bidFormatting'
+import { sortBidsForPicker } from '../../lib/bidPickerSort'
+import { useBidPickerSortView } from './BidPickerSortToggle'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
 
@@ -49,6 +54,8 @@ export function BidPickerStandardList({
   /** Rendered instead of the list when `bids` is empty; omit to render nothing. */
   emptyMessage?: string | null
 }) {
+  const sortView = useBidPickerSortView()
+  const sortedBids = useMemo(() => sortBidsForPicker(bids, sortView), [bids, sortView])
   if (bids.length === 0) {
     return emptyMessage ? (
       <p style={{ margin: 0, padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{emptyMessage}</p>
@@ -56,7 +63,7 @@ export function BidPickerStandardList({
   }
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', background: 'var(--surface)' }}>
-      {bids.map((bid) => (
+      {sortedBids.map((bid) => (
         <button
           key={bid.id}
           type="button"
