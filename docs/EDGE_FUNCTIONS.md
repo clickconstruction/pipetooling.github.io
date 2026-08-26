@@ -860,6 +860,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Auth**: none (`verify_jwt = false` in `config.toml` — the link IS the capability, minted/rotated by `mint_customer_portal_link`). Service-role reads; never returns costs, notes, or other customers' data.
 
+**View counting** (v2.2341, migration `20260826160132`): each validated load appends a `public_page_views` row (`surface='portal'`, `entity_id` = customer id, `via` token/slug) via the service role, fire-and-forget — measurement can never fail the statement. No anon-writable path; reads are dev-only RLS. (Estimate-accept views were already counted separately — see `get-estimate-for-customer` → Audit.)
+
 ### submit-portal-request
 
 **Purpose**: Portal form intake (portal train PR 2, v2.1986): validates a visit/bid request from `/portal` (honeypot, length caps, https-only plans link, job-in-scope check), rate-limits 5/hour per portal link, inserts a `dispatch_requests` row (details in `pending_payload.source = 'portal'`; `from_user_id` = `app_settings.portal_requests_from_user_id` → link minter → first dev), then triggers `notify-dispatch-request` and (v2.1988) emails the `portal_request_email_recipients_v1` app_settings list via Resend, best-effort.

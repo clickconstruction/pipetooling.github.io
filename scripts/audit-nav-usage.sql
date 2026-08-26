@@ -57,3 +57,23 @@ FROM public.ui_nav_clicks
 WHERE control = 'dock' AND occurred_at >= now() - interval '30 days'
 GROUP BY target
 ORDER BY clicks DESC;
+
+-- 6. Customer-side views (v2.2341): portal statement loads (public_page_views,
+--    written server-side by the customer-portal edge function)...
+SELECT date_trunc('week', occurred_at)::date AS week, via, count(*) AS views,
+       count(DISTINCT entity_id) AS customers
+FROM public.public_page_views
+WHERE surface = 'portal'
+GROUP BY 1, 2
+ORDER BY 1 DESC
+LIMIT 20;
+
+-- 7. ...and estimate-accept opens, which were ALREADY recorded (since Apr 2026)
+--    in estimate_customer_events as public_link_view — months of history today.
+SELECT date_trunc('month', created_at)::date AS month, count(*) AS opens,
+       count(DISTINCT estimate_id) AS estimates
+FROM public.estimate_customer_events
+WHERE event_type = 'public_link_view'
+GROUP BY 1
+ORDER BY 1 DESC
+LIMIT 12;
