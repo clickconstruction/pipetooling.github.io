@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { supabase } from '../../lib/supabase'
+import { addGcsButtonLabel, filterPickableGcs, tickedSummary } from '../../lib/bids/gcRecipientPicker'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 
@@ -35,12 +36,14 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
   const [available, setAvailable] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [ticked, setTicked] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     setRows([])
     setPickerOpen(false)
     setSearch('')
+    setTicked(new Set())
     if (!bidId) return
     let cancelled = false
     void (async () => {
@@ -68,27 +71,41 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
   if (!available) return null
 
   const recipientIds = new Set(rows.map((r) => r.customer_id))
-  const pickable = customers.filter((c) => {
-    if (c.id === bidCustomerId || recipientIds.has(c.id)) return false
-    const q = search.toLowerCase()
-    return !q || c.name.toLowerCase().includes(q) || (c.address || '').toLowerCase().includes(q)
-  })
+  const pickable = filterPickableGcs(customers, { bidCustomerId, recipientIds, search })
+  const bidGcName = customers.find((c) => c.id === bidCustomerId)?.name ?? "the bid's GC"
 
-  async function addRecipient(customerId: string) {
-    if (!bidId || busy) return
+  function toggleTicked(customerId: string) {
+    setTicked((prev) => {
+      const next = new Set(prev)
+      if (next.has(customerId)) next.delete(customerId)
+      else next.add(customerId)
+      return next
+    })
+  }
+
+  function closePicker() {
+    setPickerOpen(false)
+    setSearch('')
+    setTicked(new Set())
+  }
+
+  async function addTickedRecipients() {
+    if (!bidId || busy || ticked.size === 0) return
+    const customerIds = [...ticked].filter((id) => !recipientIds.has(id))
+    if (customerIds.length === 0) {
+      closePicker()
+      return
+    }
     setBusy(true)
     try {
       await withSupabaseRetry(
         async () => (supabase as never as { from: (t: string) => { insert: (v: object) => Promise<{ data: unknown; error: { message: string } | null }> } })
           .from('bid_gc_recipients')
-          .insert({ bid_id: bidId, customer_id: customerId, source: 'manual' }),
-        'add bid recipient',
+          .insert(customerIds.map((customerId) => ({ bid_id: bidId, customer_id: customerId, source: 'manual' }))),
+        'add bid recipients',
       )
-      const c = customers.find((x) => x.id === customerId)
-      setRows((prev) => [...prev, { id: `local-${customerId}`, bid_id: bidId, customer_id: customerId, source: 'manual' }])
-      setSearch('')
-      setPickerOpen(false)
-      void c
+      setRows((prev) => [...prev, ...customerIds.map((customerId) => ({ id: `local-${customerId}`, bid_id: bidId, customer_id: customerId, source: 'manual' as const }))])
+      closePicker()
     } finally {
       setBusy(false)
     }
@@ -171,7 +188,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
             <span style={{ position: 'relative' }}>
               <button
                 type="button"
-                onClick={() => setPickerOpen((v) => !v)}
+                onClick={() => (pickerOpen ? closePicker() : setPickerOpen(true))}
                 disabled={busy}
                 style={{
                   fontSize: '0.8125rem',
@@ -183,7 +200,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
                   cursor: 'pointer',
                 }}
               >
-                + Add GC
+                + Add GCs
               </button>
               {pickerOpen ? (
                 <div
@@ -191,7 +208,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
                     position: 'absolute',
                     top: '110%',
                     left: 0,
-                    width: 280,
+                    width: 300,
                     background: 'var(--surface)',
                     border: '1px solid var(--border)',
                     borderRadius: 4,
@@ -203,27 +220,64 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search customers..."
+                    placeholder="Search customers — tick all that apply"
                     aria-label="Search recipients to add"
                     autoFocus
+                    onKeyDown={(e) => { if (e.key === 'Escape') closePicker() }}
                     style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.5rem', border: 'none', borderBottom: '1px solid var(--border)', borderRadius: '4px 4px 0 0', fontSize: '0.8125rem' }}
                   />
                   <div style={{ maxHeight: 180, overflowY: 'auto' }}>
                     {pickable.slice(0, 30).map((c) => (
                       <div
                         key={c.id}
-                        onClick={() => void addRecipient(c.id)}
-                        style={{ padding: '0.45rem 0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                        onClick={() => toggleTicked(c.id)}
+                        style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.45rem 0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-muted)' }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                       >
-                        <div style={{ fontWeight: 500 }}>{c.name}</div>
-                        {c.address ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.address}</div> : null}
+                        <input
+                          type="checkbox"
+                          checked={ticked.has(c.id)}
+                          onChange={() => toggleTicked(c.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Add ${c.name}`}
+                          style={{ marginTop: 2 }}
+                        />
+                        <span>
+                          <span style={{ display: 'block', fontWeight: 500 }}>{c.name}</span>
+                          {c.address ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.address}</span> : null}
+                        </span>
                       </div>
                     ))}
                     {pickable.length === 0 ? (
                       <div style={{ padding: '0.45rem 0.5rem', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.8125rem' }}>No customers found</div>
                     ) : null}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.4rem 0.5rem', borderTop: '1px solid var(--border)', background: 'var(--bg-muted)', borderRadius: '0 0 4px 4px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tickedSummary(ticked.size)}</span>
+                    <span style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button type="button" onClick={closePicker} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8125rem', cursor: 'pointer' }}>
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void addTickedRecipients()}
+                        disabled={busy || ticked.size === 0}
+                        style={{
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 4,
+                          padding: '0.28rem 0.7rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          cursor: busy || ticked.size === 0 ? 'default' : 'pointer',
+                          opacity: busy || ticked.size === 0 ? 0.5 : 1,
+                        }}
+                      >
+                        {busy ? 'Adding…' : addGcsButtonLabel(ticked.size)}
+                      </button>
+                    </span>
                   </div>
                 </div>
               ) : null}
@@ -233,6 +287,12 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, g
       ) : (
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Save the bid first, then add the other GCs it went to.</span>
       )}
+      {bidId && canEdit ? (
+        <p style={{ margin: '0.45rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: '60ch' }}>
+          GCs added here get the <strong style={{ fontWeight: 600, color: 'var(--text-700)' }}>same letter</strong> as {bidGcName}. To price one separately, use{' '}
+          <strong style={{ fontWeight: 600, color: 'var(--text-700)' }}>＋ Add GC</strong> on the bid&rsquo;s pages — or <strong style={{ fontWeight: 600, color: 'var(--text-700)' }}>track separately</strong> next to their name on the Send to strip.
+        </p>
+      ) : null}
     </div>
   )
 }
