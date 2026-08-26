@@ -48,4 +48,13 @@ describe('titleCaseAddress', () => {
     expect(titleCaseAddress('')).toBe('')
     expect(titleCaseAddress('12925 FM 20, Kingsbury, TX 78638')).toBe('12925 FM 20, Kingsbury, TX 78638')
   })
+
+  it('pattern rules survive adjacent punctuation (the sweep dry-run regression)', () => {
+    expect(titleCaseAddress('11704 FM1117, Seguin, TX 78155')).toBe('11704 FM1117, Seguin, TX 78155')
+    expect(titleCaseAddress('150 E Sonterra Blvd 200B, San Antonio, TX 78258')).toBe(
+      '150 E Sonterra Blvd 200B, San Antonio, TX 78258',
+    )
+    expect(titleCaseAddress('11704 fm1117, seguin')).toBe('11704 FM1117, Seguin')
+    expect(titleCaseAddress('(lockbox 4460)')).toBe('(Lockbox 4460)')
+  })
 })

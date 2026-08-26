@@ -52,21 +52,29 @@ function capFirst(word: string): string {
   return out
 }
 
-function casePart(part: string, isFirstToken: boolean): string {
-  if (!/[A-Za-z]/.test(part)) return part
+function casePart(outer: string, isFirstToken: boolean): string {
+  if (!/[A-Za-z]/.test(outer)) return outer
+  // Peel surrounding punctuation ("200B," / "(lockbox") so the pattern rules
+  // see the bare word — then put the punctuation back untouched.
+  const m = /^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/.exec(outer)
+  const lead = m?.[1] ?? ''
+  const part = m?.[2] ?? outer
+  const trail = m?.[3] ?? ''
+  const rewrap = (core: string) => `${lead}${core}${trail}`
+  if (!/[A-Za-z]/.test(part)) return outer
   const bare = part.replace(/[.,]/g, '')
-  if (KEEP_UPPER.has(bare.toUpperCase())) return part.toUpperCase()
+  if (KEEP_UPPER.has(bare.toUpperCase())) return rewrap(part.toUpperCase())
   const ord = ORDINAL_RE.exec(part)
-  if (ord) return `${ord[1]}${(ord[2] ?? '').toLowerCase()}`
+  if (ord) return rewrap(`${ord[1]}${(ord[2] ?? '').toLowerCase()}`)
   const glued = GLUED_ROAD_RE.exec(part)
-  if (glued) return `${(glued[1] ?? '').toUpperCase()}${(glued[2] ?? '').toUpperCase()}`
+  if (glued) return rewrap(`${(glued[1] ?? '').toUpperCase()}${(glued[2] ?? '').toUpperCase()}`)
   const suite = DIGITS_LETTER_TAIL_RE.exec(part)
-  if (suite) return `${suite[1]}${(suite[2] ?? '').toUpperCase()}`
-  if (!isFirstToken && KEEP_LOWER.has(part.toLowerCase())) return part.toLowerCase()
+  if (suite) return rewrap(`${suite[1]}${(suite[2] ?? '').toUpperCase()}`)
+  if (!isFirstToken && KEEP_LOWER.has(part.toLowerCase())) return rewrap(part.toLowerCase())
   const isAllLower = part === part.toLowerCase()
   const isAllUpper = part === part.toUpperCase()
-  if (!isAllLower && !isAllUpper && hasInternalUpper(part)) return part // deliberate mixed case
-  return capFirst(part)
+  if (!isAllLower && !isAllUpper && hasInternalUpper(part)) return outer // deliberate mixed case
+  return rewrap(capFirst(part))
 }
 
 export function titleCaseAddress(address: string): string {
