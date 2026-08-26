@@ -33,6 +33,8 @@ Above the table, {{button:blue|Fill N matching from book}} assigns every unassig
 
 **A price you type is saved the moment you press Enter or leave the field** — a quick green *saved ✓* confirms it, and there's nothing to Apply. Same as the Old view, same as every other grid.
 
+**Typing is overwrite, not surgery.** Clicking (or tabbing) into a **Sale price/unit** box selects the number that's there, so what you type replaces it — decimals and all. Esc puts the old number back; tabbing through without typing changes nothing.
+
 **Solver results preview first.** A solve re-prices many rows at once, so those land as amber **preview** values — the card outlines amber and {{button:blue|Apply 12}} / **Discard** appear at the line's end, with a count of what's previewed beneath. Nothing is saved until you hit Apply — the button counts what it will write — and Discard throws the preview away. Typing your own price into a previewed row saves your number immediately and takes that row out of the preview.
 
 **Solver previews wait on this device.** Visit any page, reload, close the tab, come back tomorrow — the preview is sitting where you left it, and one from an earlier sitting says when it's from (*solve from Tue 4:12 PM — restored*). Each price option keeps its own preview, so viewing another price just sets yours aside; it's restored when you view that price again. Previews stay on the computer they were made on — they don't follow you to another machine. A GC can never see a preview — Cover Letter, Share, Print, and CSV always use saved prices only. The **(i)** beside the bid name keeps a short version of this story.

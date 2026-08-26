@@ -3656,6 +3656,12 @@ export function BidsPricingTab({
                                     }
                                     placeholder="—"
                                     onClick={(e) => e.stopPropagation()}
+                                    onFocus={(e) => {
+                                      // Typing overwrites: select the current price after the click's own
+                                      // caret placement lands (v2.2372).
+                                      const el = e.currentTarget
+                                      window.setTimeout(() => el.select(), 0)
+                                    }}
                                     onChange={(e) => {
                                       // Draft while typing (live totals recompute); the save happens on Enter/blur (v2.2373).
                                       const raw = e.target.value
