@@ -27,6 +27,12 @@ type ChecklistInstanceCardProps = {
   /** Right-side extras (mute, FWD) — parent keeps their behavior. */
   actions?: ReactNode
   /**
+   * v2.2336: 'card' is the mobile-first sunlight-pass layout (default, unchanged);
+   * 'row' is the desktop ledger — one compact line per item, statuses as chips,
+   * quiet actions that brighten on hover. Same state, handlers, and thread.
+   */
+  variant?: 'card' | 'row'
+  /**
    * v2.2017: when set, tapping the title toggles the thread, and the open
    * thread renders the task's FULL history (the shared ChecklistItemActivity
    * spine, all occurrences) instead of just this instance's events. New notes
@@ -61,6 +67,7 @@ export function ChecklistInstanceCard({
   onToggleComplete,
   onPostComment,
   actions,
+  variant = 'card',
   fullHistory,
 }: ChecklistInstanceCardProps) {
   const [threadOpen, setThreadOpen] = useState(false)
@@ -175,16 +182,156 @@ export function ChecklistInstanceCard({
       </div>
     ) : null
 
+  const rowChipBase = {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    padding: '2px 9px',
+    borderRadius: 999,
+    whiteSpace: 'nowrap' as const,
+    flexShrink: 0,
+  }
+
+  /** Desktop ledger row (v2.2336): one line — checkbox, title, status chips, quiet actions. */
+  const rowBody = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', minHeight: 36 }}>
+      <button
+        type="button"
+        onClick={onToggleComplete}
+        aria-pressed={isCompleted}
+        aria-label={isCompleted ? 'Mark not done' : 'Mark done'}
+        style={{
+          width: 22,
+          height: 22,
+          flexShrink: 0,
+          borderRadius: 6,
+          border: isCompleted ? 'none' : '2px solid var(--text-600)',
+          background: isCompleted ? '#16a34a' : 'var(--surface)',
+          color: 'white',
+          fontSize: '0.8rem',
+          lineHeight: 1,
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {isCompleted ? '✓' : ''}
+      </button>
+      <div
+        {...(fullHistory
+          ? {
+              role: 'button' as const,
+              tabIndex: 0,
+              'aria-expanded': threadOpen,
+              'aria-label': `${threadOpen ? 'Hide' : 'Show'} activity for ${fullHistory.item.title}`,
+              onClick: (e: MouseEvent<HTMLDivElement>) => {
+                if ((e.target as HTMLElement).closest('a')) return
+                setThreadOpen((o) => !o)
+              },
+              onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setThreadOpen((o) => !o)
+                }
+              },
+            }
+          : {})}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontWeight: 500,
+          fontSize: '0.9375rem',
+          lineHeight: 1.35,
+          ...(fullHistory ? { cursor: 'pointer' } : {}),
+          ...(isCompleted ? { color: 'var(--text-muted)', textDecoration: 'line-through' } : {}),
+        }}
+      >
+        {title}
+      </div>
+      {status.kind === 'waiting_review' ? (
+        <span style={{ ...rowChipBase, background: '#2563eb', color: 'white' }} title={`Done ${stripStamp(status.at)}`}>
+          Waiting on review
+        </span>
+      ) : null}
+      {status.kind === 'signed_off' ? (
+        <span style={{ ...rowChipBase, background: '#16a34a', color: 'white' }} title={`by ${name(status.byUserId)} ${stripStamp(status.at)}`}>
+          Signed off
+        </span>
+      ) : null}
+      {status.kind === 'reopened' ? (
+        <span
+          style={{
+            ...rowChipBase,
+            background: 'var(--bg-amber-tint)',
+            color: 'var(--text-amber-800)',
+            border: '1px solid var(--border-amber)',
+          }}
+          title={status.reason ? `Reopened by ${name(status.byUserId)}: “${status.reason}”` : `Reopened by ${name(status.byUserId)}`}
+        >
+          Reopened · {stripStamp(status.at)}
+        </span>
+      ) : null}
+      {comments > 0 ? (
+        <button
+          type="button"
+          onClick={() => setThreadOpen((o) => !o)}
+          aria-expanded={threadOpen}
+          style={{
+            ...rowChipBase,
+            background: 'var(--bg-blue-tint)',
+            color: 'var(--text-blue-700)',
+            border: threadOpen ? '1px solid #2563eb' : '1px solid transparent',
+            cursor: 'pointer',
+          }}
+        >
+          {comments} note{comments === 1 ? '' : 's'}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="myInboxRowActions"
+          onClick={() => {
+            if (threadOpen) {
+              setThreadOpen(false)
+              return
+            }
+            setThreadOpen(true)
+            setFocusComposerPending(true)
+          }}
+          aria-expanded={threadOpen}
+          style={{
+            ...rowChipBase,
+            background: 'var(--surface)',
+            color: 'var(--text-600)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
+        >
+          ＋ Note
+        </button>
+      )}
+      {actions ? (
+        <span className="myInboxRowActions" style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexShrink: 0 }}>
+          {actions}
+        </span>
+      ) : null}
+    </div>
+  )
+
   return (
     <li
-      style={{
-        border: '1.5px solid var(--border-strong)',
-        borderRadius: 12,
-        padding: '0.75rem',
-        marginBottom: '0.7rem',
-        listStyle: 'none',
-      }}
+      className={variant === 'row' ? 'myInboxRow' : undefined}
+      style={
+        variant === 'row'
+          ? { borderBottom: '1px solid var(--border-rule)', padding: '0.35rem 0.25rem', listStyle: 'none' }
+          : { border: '1.5px solid var(--border-strong)', borderRadius: 12, padding: '0.75rem', marginBottom: '0.7rem', listStyle: 'none' }
+      }
     >
+      {variant === 'row' ? (
+        rowBody
+      ) : (
+      <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
         <button
           type="button"
@@ -303,6 +450,8 @@ export function ChecklistInstanceCard({
           </button>
         )}
       </div>
+      </>
+      )}
       {threadOpen && fullHistory ? (
         <div style={{ marginTop: '0.65rem' }}>
           <ChecklistItemActivity

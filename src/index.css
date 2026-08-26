@@ -370,6 +370,20 @@ button:focus-visible {
   padding-top: max(var(--app-nav-pad-y), env(safe-area-inset-top, 0px));
 }
 
+/* My Inbox desktop ledger rows (v2.2336): secondary actions sit quiet until the
+   row is hovered or focused; mobile keeps the sunlight-pass cards, no hover. */
+.myInboxRow .myInboxRowActions {
+  opacity: 0.55;
+  transition: opacity 0.12s ease;
+}
+.myInboxRow:hover .myInboxRowActions,
+.myInboxRow:focus-within .myInboxRowActions {
+  opacity: 1;
+}
+.myInboxRow:last-child {
+  border-bottom: none !important;
+}
+
 .appMain {
   padding: var(--app-main-pad);
   /* Tight top: page content (tab bars, toolbars) sits close under the header chrome. */
