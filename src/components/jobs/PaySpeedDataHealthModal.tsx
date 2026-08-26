@@ -516,7 +516,10 @@ export default function PaySpeedDataHealthModal({
                           fontVariantNumeric: 'tabular-nums',
                           fontWeight: 600,
                           color: 'var(--text-700)',
-                          width: editing ? 'auto' : '8.6em',
+                          // The add-date button (and the open editor) outgrow the fixed
+                          // column — size those rows to content so the paid date never
+                          // slides under the amount.
+                          width: editing || canAddDate ? 'auto' : '8.6em',
                           flexShrink: 0,
                           whiteSpace: 'nowrap',
                         }}
