@@ -36,7 +36,7 @@ Solver results (and your own typed prices) land as amber **preview** values — 
 ## Know where you stand
 
 - The **coverage bar** counts what's still unpriced and can filter to just those rows.
-- **Where the profit lives** shows profit by item and warns when most of it rides on one or two rows — the ones a GC's value-engineering pass goes after first.
+- **Where the profit lives** shows profit by item and warns when most of it rides on one or two rows — the ones a GC's value-engineering pass goes after first. **Hover** any slice and it names itself instantly — item, profit dollars, share of job — while the rest of the bar fades so even the thinnest sliver reads. **Click** a slice (or a legend chip) to pin a detail card with the row's full economics — qty, unit cost, sale price, revenue, cost, profit, margin, and its book entry — and **↑ Jump to row in worksheet** scrolls you straight to that line and flashes it. The color legend under the bar tucks away with **Hide legend ▾** and stays how you left it.
 - **This number vs your history** plots your decided bids on a margin scale — green dots are wins, red are price-losses — and calls where your current number sits. When bid tabs have been recorded on past bids (see *follow up with builders*), amber **▽** marks join the strip: each is the margin that would have **matched that tab's low**, and the line below counts the odds — *"At 32%, this number would have matched or beaten the low on 7 of 18 recorded tabs."* Pricing a bid for a GC with two or more recorded tabs, it also quotes that GC's range specifically.
 
 :::example Working to a bid day number
