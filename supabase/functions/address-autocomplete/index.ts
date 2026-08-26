@@ -17,9 +17,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Rough center of the service area; wide enough to cover Blanco to Seguin.
+// Rough center of the service area, covering Blanco to Seguin. 50km is the
+// Places API's maximum circle-bias radius (larger values are a 400).
 const BIAS_CENTER = { latitude: 29.55, longitude: -98.2 }
-const BIAS_RADIUS_METERS = 80_000
+const BIAS_RADIUS_METERS = 50_000
 const MAX_INPUT_LEN = 200
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
