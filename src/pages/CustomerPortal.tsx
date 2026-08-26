@@ -12,7 +12,7 @@ import {
   type PortalBill,
   type PortalPayload,
 } from '../lib/portal/portalPayload'
-import { groupPortalBillsByJob, portalBillBilledAmount, type PortalJobGroup } from '../lib/portal/portalJobGroups'
+import { groupPortalBillsByJob, portalBillBilledAmount, PORTAL_GENERIC_PAYMENT_METHOD, type PortalJobGroup } from '../lib/portal/portalJobGroups'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN } from '../lib/portal/portalTheme'
 
@@ -280,7 +280,9 @@ function PortalJobGroupSection({ group, todayYmd, isLast }: { group: PortalJobGr
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '2px 0', color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
                 <span>
                   Paid {formatPortalDate(pm.date) ?? '—'}
-                  <span style={{ color: FAINT }}> · {pm.method}</span>
+                  {/* The generic label adds nothing after "Paid <date>" (v2.2322);
+                      a real method — a check number — is worth the ink. */}
+                  {pm.method !== PORTAL_GENERIC_PAYMENT_METHOD && <span style={{ color: FAINT }}> · {pm.method}</span>}
                 </span>
                 <span style={{ color: PAPER_GREEN, fontWeight: 600, whiteSpace: 'nowrap' }}>&minus; {formatPortalUsd(pm.amount)}</span>
               </div>

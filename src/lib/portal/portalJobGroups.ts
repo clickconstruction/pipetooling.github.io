@@ -44,13 +44,20 @@ export type PortalJobGroup = {
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
 /**
+ * The catch-all label for a payment with no meaningful method. Rows carrying
+ * it render date-only in the recap (v2.2322) — "Paid Jul 31, 2026" says it
+ * all — while real methods (a check number) keep their suffix.
+ */
+export const PORTAL_GENERIC_PAYMENT_METHOD = 'Payment'
+
+/**
  * Customer-facing method label. The raw payment_type lands here verbatim from
  * the edge function; `other` (HCP's catch-all) reads like a shrug on customer
- * paper, so it becomes "Payment" alongside the blank case.
+ * paper, so it becomes the generic label alongside the blank case.
  */
 export function portalPaymentMethodLabel(method: string): string {
   const m = method.trim()
-  if (!m || m.toLowerCase() === 'other') return 'Payment'
+  if (!m || m.toLowerCase() === 'other') return PORTAL_GENERIC_PAYMENT_METHOD
   return m
 }
 
