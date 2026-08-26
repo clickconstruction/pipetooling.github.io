@@ -38,6 +38,14 @@ describe('JobFormAddressNudge', () => {
     expect(screen.getByText('city is stuck in the street')).toBeTruthy()
   })
 
+  it('previews and applies in Title Case (v2.2328)', () => {
+    const onApply = vi.fn()
+    render(<JobFormAddressNudge address="11704 fm 1117 seguin, tx 78155" onApply={onApply} />)
+    expect(screen.getByText('11704 FM 1117 Seguin')).toBeTruthy()
+    fireEvent.click(screen.getByText('Add comma'))
+    expect(onApply).toHaveBeenCalledWith('11704 FM 1117, Seguin, TX 78155')
+  })
+
   it('no recognizable city: neutral note, no warning', () => {
     render(<JobFormAddressNudge address="TBD — new build off CR 110" onApply={() => {}} />)
     expect(screen.getByText('no city found — shown as-is')).toBeTruthy()

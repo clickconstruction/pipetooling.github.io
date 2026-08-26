@@ -20,6 +20,7 @@ import {
   type JobPayloadCustomerRow,
 } from '../jobLedgerCustomer'
 import { resolveDevelopmentIdForJobPayload, type JobFormDevelopmentRow } from './jobDevelopments'
+import { titleCaseAddress } from '../addressTitleCase'
 import { resolveEditJobMasterUserId } from '../resolveEditJobMasterUserId'
 import { normalizeFixtureDisplayName } from './jobFormRows'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
@@ -189,7 +190,9 @@ export function buildEditJobIdentityUpdatePayload(params: {
     hcp_number: fields.hcpNumber.trim(),
     click_number: fields.clickNumber.trim(),
     job_name: fields.jobName.trim(),
-    job_address: fields.jobAddress.trim(),
+    // Casing policy (v2.2328): addresses store Title Case no matter how they
+    // were typed — same kernel the sweep used on the backlog.
+    job_address: titleCaseAddress(fields.jobAddress.trim()),
     customer_id: resolvedCustomerId,
     gc_customer_id: resolvedGcCustomerId,
     development_id: resolvedDevelopmentId,

@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import JobFormAddressNudge from './JobFormAddressNudge'
+import { titleCaseAddress } from '../../lib/addressTitleCase'
 
 /* height 36 = the SearchableSelect trigger's rendered height — Job Name and
    Job Address sit flush with Service type and the number boxes (v2.1702). */
@@ -224,6 +225,13 @@ export function JobFormIdentityFields({
               type="text"
               value={jobAddress}
               onChange={(e) => setJobAddress(e.target.value)}
+              // Casing policy (v2.2328): the field normalizes to Title Case on
+              // blur — the same shape the save path stores — so what you see
+              // is what the statement prints.
+              onBlur={() => {
+                const cased = titleCaseAddress(jobAddress)
+                if (cased !== jobAddress) setJobAddress(cased)
+              }}
               placeholder="Address"
               style={JOB_FIELD_TEXT_INPUT_IN_WRAPPER_STYLE}
             />
