@@ -1885,6 +1885,48 @@ export type Database = {
           },
         ]
       }
+      checklist_item_due_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          checklist_item_id: string
+          from_due: string | null
+          id: string
+          to_due: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          checklist_item_id: string
+          from_due?: string | null
+          id?: string
+          to_due?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          checklist_item_id?: string
+          from_due?: string | null
+          id?: string
+          to_due?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_item_due_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_item_due_changes_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_items: {
         Row: {
           created_at: string | null

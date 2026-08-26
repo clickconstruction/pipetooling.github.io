@@ -4,6 +4,7 @@ import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { SearchableSelect } from './SearchableSelect'
 import { SearchableMultiSelect } from './SearchableMultiSelect'
 import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistScheduleSummary'
+import { originallyDueLine, summarizeDuePushes, type DueChangeRow } from '../lib/checklistDuePushes'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 import { applyEditRegeneration } from '../lib/checklistEditRegenerate'
 import { REMINDER_PRESETS, dailyFromScope, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
@@ -123,6 +124,8 @@ export function ChecklistItemEditModal({
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  /** Due-change ledger for this item (v2.2371) — powers the "originally due" line. */
+  const [dueChanges, setDueChanges] = useState<DueChangeRow[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [form, setForm] = useState<FormState>(initialForm)
   const [customTimeOpen, setCustomTimeOpen] = useState(false)
@@ -186,6 +189,12 @@ export function ChecklistItemEditModal({
       }
       if (item) {
         setForm(populateForm(item, assigneeIds))
+        void supabase
+          .from('checklist_item_due_changes')
+          .select('changed_at, changed_by, from_due, to_due')
+          .eq('checklist_item_id', item.id)
+          .order('changed_at', { ascending: true })
+          .then(({ data }) => setDueChanges((data ?? []) as DueChangeRow[]))
         const today = new Date().toLocaleDateString('en-CA')
         if (item.repeat_type === 'day_of_week') {
           setWhen('repeat')
@@ -499,6 +508,16 @@ export function ChecklistItemEditModal({
                     </button>
                   ) : null}
                 </div>
+              ) : null}
+              {when !== 'repeat' && form.due_date ? (
+                (() => {
+                  const line = originallyDueLine(summarizeDuePushes(dueChanges, form.due_date))
+                  return line ? (
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid #d97706', borderRadius: 8, padding: '0.45rem 0.7rem' }}>
+                      {line}
+                    </div>
+                  ) : null
+                })()
               ) : null}
               {when !== 'repeat' ? (
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.875rem', cursor: form.due_date ? 'default' : 'pointer' }}>

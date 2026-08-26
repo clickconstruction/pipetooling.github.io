@@ -27,6 +27,10 @@ One task on Robert's list from Mon, Aug 31 — due Fri, Sep 4, stays until compl
 
 Reminders follow the deadline too: **remind the day before** fires the day before the due date, and **escalate after N days** now means N days *late*. Leave Due by empty and everything works exactly as it always has.
 
+### Pushed back — the app remembers the original promise
+
+Move a due date later and the task starts carrying its history: a {{chip:yellow|pushed ×2}} chip on **Manage**, an amber *"Originally due Fri, Aug 29 — pushed ×2, +5 days so far"* line in the edit window, and a named entry in the task's activity — *Robert pushed the due date Fri, Aug 29 → Mon, Sep 1*. Escalation messages carry the same rider, so a deadline can't be quietly managed around. Pulling a date **earlier** never earns a marker, and bringing it back to the original clears it.
+
 :::example The sentence tells you
 One task on Robert's list on Fri, Aug 28 — stays until completed.
 :::
