@@ -26,8 +26,8 @@ Above the table, {{button:blue|Fill N matching from book}} assigns every unassig
 ## Price to a number
 
 1. Your **Revenue, Our cost, Profit, and Margin** stay pinned at the top — they move as you work.
-2. Drag the **margin slider**, type a **margin**, or type a **target bid total** and press Enter — all for the whole bid, so revenue already sitting on no-cost rows counts toward them. The **▾ beside Solve** holds *Price unpriced only* (fills only rows with no sale price; priced rows are held as-is).
-3. **📌 pin** any row to hold its price while the rest re-solve. Fixed-price rows are always held, and rows with no Takeoffs cost are never auto-priced — when they carry revenue anyway, an amber banner totals it and can filter to just those rows.
+2. Drag the **margin slider** or type a **margin** — it prices your costed rows at that margin (overhead included), and prices you set by hand on rows with no Takeoffs cost keep their value and **stack on top** of the bid. A green chip under the solver shows where the whole bid lands — total and blended margin (blended runs above the slider whenever no-cost rows carry revenue, since that revenue has no cost against it). Or type a **target bid total** and press Enter — that number is for the **whole bid**, hand-priced rows included, so the bid lands at what you typed. The **▾ beside Solve** holds *Price unpriced only* (fills only rows with no sale price; priced rows are held as-is).
+3. **📌 pin** any row to hold its price while the rest re-solve. Fixed-price rows are always held, and rows with no Takeoffs cost are never auto-priced — when they carry revenue anyway, a banner totals it and can filter to just those rows.
 
 ## Preview first, then Apply
 

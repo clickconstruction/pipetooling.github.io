@@ -119,17 +119,52 @@ describe('solveWorkbenchPrices', () => {
     expect(s.resultingRevenue).toBeLessThan(15200)
   })
 
-  it('lands the target blended margin when priced uncosted rows exist', () => {
+  it('margin solve: hand-priced uncosted revenue stacks ON TOP instead of shrinking the target', () => {
     const withPricedUncosted: WorkbenchSolverRow[] = [
       ...rows,
       { id: 'u', count: 1, rowCost: 0, unitPrice: 2000, locked: false },
     ]
     const s = solveWorkbenchPrices(withPricedUncosted, 1000, { targetMarginPct: 50 })!
-    // totalCost = 5000 → target revenue 10000 INCLUDING the 2000 uncosted revenue
-    expect(s.resultingRevenue).toBeGreaterThan(9900)
-    expect(s.resultingRevenue).toBeLessThan(10150)
-    expect(s.resultingMargin!).toBeGreaterThan(0.49)
-    expect(s.resultingMargin!).toBeLessThan(0.52)
+    // costed rows priced to 50% on totalCost 5000 → 10000, plus the 2000 rides on top
+    expect(s.resultingRevenue).toBeGreaterThan(11900)
+    expect(s.resultingRevenue).toBeLessThan(12150)
+    // blended margin lands ABOVE the slider (the 2000 is pure margin)
+    expect(s.resultingMargin!).toBeGreaterThan(0.5)
+  })
+
+  it('margin solve never prices a costed row below its cost, even when uncosted revenue dwarfs the bid', () => {
+    // Wendi's bid shape: small costed fixtures + a mountain of hand-priced
+    // no-cost footage. The old whole-bid-blended target subtracted the 26k and
+    // floored every fixture at 20% of basis (MS-1 $590.85 → $120, −392%).
+    const wendi: WorkbenchSolverRow[] = [
+      { id: 'MS-1', count: 1, rowCost: 590.85, unitPrice: null, locked: false },
+      { id: 'EWH', count: 1, rowCost: 2798.12, unitPrice: null, locked: false },
+      { id: 'RP-1', count: 1, rowCost: 889.05, unitPrice: null, locked: false },
+      { id: 'gas', count: 136.56, rowCost: 0, unitPrice: 65, locked: false }, // ~8877 fixed
+      { id: 'sewer', count: 260, rowCost: 0, unitPrice: 25, locked: false }, // 6500 fixed
+      { id: 'copper', count: 147.86, rowCost: 0, unitPrice: 36, locked: false }, // ~5323 fixed
+    ]
+    const s = solveWorkbenchPrices(wendi, 5000, { targetMarginPct: 56, roundTo5: true })!
+    for (const r of wendi) {
+      if (!(r.rowCost > 0)) continue
+      const unit = s.prices.get(r.id)!
+      expect(unit * r.count).toBeGreaterThan(r.rowCost)
+      // each solved row carries at least the slider margin on its own basis
+      expect((unit * r.count - r.rowCost) / (unit * r.count)).toBeGreaterThan(0.56)
+    }
+  })
+
+  it('margin slider is monotonic: more margin never means a cheaper bid', () => {
+    const wendi: WorkbenchSolverRow[] = [
+      { id: 'a', count: 1, rowCost: 1000, unitPrice: null, locked: false },
+      { id: 'u', count: 1, rowCost: 0, unitPrice: 20000, locked: false },
+    ]
+    let prev = 0
+    for (const m of [20, 30, 40, 50, 56, 60, 65]) {
+      const s = solveWorkbenchPrices(wendi, 2000, { targetMarginPct: m, roundTo5: true })!
+      expect(s.resultingRevenue).toBeGreaterThan(prev)
+      prev = s.resultingRevenue
+    }
   })
 
   it('floors at 20% of basis when a target total is absurdly low', () => {

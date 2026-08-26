@@ -302,6 +302,10 @@ export function BidsPricingTab({
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
   /** Last target-total solve: what was asked vs where it landed (cleared on input edit). */
   const [, setWbTargetSolveResult] = useState<{ target: number; landed: number } | null>(null)
+  /** Last margin solve, for the landing chip under the strip: the slider pct and how
+      many rows it priced. Where the bid lands (revenue/blended) reads live from the
+      preview totals; cleared whenever the preview clears or a row is hand-edited. */
+  const [wbSolveLanding, setWbSolveLanding] = useState<{ pct: number; rows: number } | null>(null)
   const [wbShowUnpricedOnly, setWbShowUnpricedOnly] = useState(false)
   const [wbShowNoCostOnly, setWbShowNoCostOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
@@ -1024,6 +1028,7 @@ export function BidsPricingTab({
     // A solver preview belongs to the scenario it was solved on — counts are
     // shared across scenarios, so a stale preview would Apply onto the new one.
     setWbPreview(null)
+    setWbSolveLanding(null)
     setSelectedPricingVersionId(versionId)
     await loadPriceBookEntries(versionId)
     await saveBidSelectedPriceBookVersion(bidId, versionId)
@@ -1351,7 +1356,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-solver',
       title: 'Solve to a number',
-      body: 'Drag the slider, type a margin, or type a whole-bid target total — rows without Takeoffs costs keep their prices, and their revenue counts toward the target. The ▾ beside Solve holds "Price unpriced only". Apply writes the preview; Discard throws it away.',
+      body: 'Drag the slider or type a margin — it prices the costed rows, and hand-set prices on no-cost rows stack on top. Or type a whole-bid target total, which those hand-set prices count toward. The ▾ beside Solve holds "Price unpriced only". Apply writes the preview; Discard throws it away.',
     },
     {
       anchor: 'workbench-rows',
@@ -1375,6 +1380,7 @@ export function BidsPricingTab({
       showToast('Solver preview discarded — previews don’t follow you between scenarios.', 'info')
     }
     setWbPreview(null)
+    setWbSolveLanding(null)
     setSelectedPricingVersionId(versionId)
     void loadPriceBookEntries(versionId)
   }
@@ -1549,12 +1555,18 @@ export function BidsPricingTab({
       return
     }
     setWbPreview((prev) => ({ ...(prev ?? {}), ...Object.fromEntries(sol.prices) }))
+    // Margin solves get the landing chip ("56% on 12 costed rows → …"); a
+    // target-total solve replaces it with the slider sync below.
+    setWbSolveLanding(opts.targetTotal == null ? { pct: wbMarginPct, rows: sol.prices.size } : null)
     if (opts.targetTotal != null) {
       setWbTargetSolveResult({ target: opts.targetTotal, landed: sol.resultingRevenue })
-      // The solver targets the whole-bid blended margin (v2.2011), so the
-      // slider syncs straight to where the solve landed.
-      if (sol.resultingMargin != null) {
-        setWbMarginPct(Math.min(95, Math.max(1, Math.round(sol.resultingMargin * 100))))
+      // The slider means "margin on the costed rows" (hand-set no-cost revenue
+      // stacks on top), so sync it to the costed portion of where this landed —
+      // syncing to blended would jump prices on the next slider nudge.
+      const costedRev = sol.resultingRevenue - sol.uncostedFixedRevenue
+      if (costedRev > 0) {
+        const costedMargin = (costedRev - derived.totalCost) / costedRev
+        setWbMarginPct(Math.min(95, Math.max(1, Math.round(costedMargin * 100))))
       }
     }
   }
@@ -1578,6 +1590,7 @@ export function BidsPricingTab({
       }
       await loadBidPricingAssignments(bidId, versionId)
       setWbPreview(null)
+      setWbSolveLanding(null)
       showToast('Prices applied.', 'success')
     } finally {
       setWbApplying(false)
@@ -3050,8 +3063,8 @@ export function BidsPricingTab({
                                 onMouseUp={() => runWorkbenchSolve({})}
                                 onTouchEnd={() => runWorkbenchSolve({})}
                                 style={{ flex: 1, accentColor: '#3b82f6' }}
-                                aria-label="Blended margin for the whole bid"
-                                title={`Moves the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} to this blended margin. Prices round up to $5.`}
+                                aria-label="Margin for the costed rows"
+                                title={`Prices the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} at this margin — rows without Takeoffs cost keep their prices and stack on top. Prices round up to $5.`}
                               />
                               <input
                                 type="number" min={1} max={95} inputMode="numeric" value={wbMarginPct}
@@ -3066,7 +3079,7 @@ export function BidsPricingTab({
                                     runWorkbenchSolve({})
                                   }
                                 }}
-                                aria-label="Blended margin percent"
+                                aria-label="Margin percent for the costed rows"
                                 style={{ width: '3.4rem', font: 'inherit', fontSize: '0.95rem', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '0.18rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
                               />
                               <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>%</span>
@@ -3135,7 +3148,7 @@ export function BidsPricingTab({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => setWbPreview(null)}
+                                      onClick={() => { setWbPreview(null); setWbSolveLanding(null) }}
                                       disabled={wbApplying}
                                       style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
                                     >
@@ -3149,10 +3162,17 @@ export function BidsPricingTab({
                           </div>
                         )
                       })()}
+                      {wbSolveLanding && wbPreview && previewCount > 0 ? (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', border: '1px solid var(--text-green-700)', borderRadius: 999, padding: '0.18rem 0.7rem', fontVariantNumeric: 'tabular-nums' }}>
+                            {wbSolveLanding.pct}% on {wbSolveLanding.rows} costed row{wbSolveLanding.rows === 1 ? '' : 's'} → bid lands at ${Math.round(effRevenue).toLocaleString('en-US')}{effMargin != null ? ` · ${Math.round(effMargin * 100)}% blended` : ''}
+                          </span>
+                        </div>
+                      ) : null}
                       {uncostedRevenue > 0 ? (
-                        <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 7, padding: '0.4rem 0.7rem' }}>
-                          <span style={{ fontSize: '0.76rem', color: 'var(--text-amber-700)' }}>
-                            <strong>⚠ {eff.length - costed.length} of {eff.length} rows have no Takeoffs cost</strong> — their ${formatCurrency(uncostedRevenue)} counts as pure margin; the solver never re-prices them.
+                        <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 7, padding: '0.4rem 0.7rem' }}>
+                          <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                            <strong style={{ color: 'var(--text-strong)' }}>{eff.length - costed.length} of {eff.length} rows have no Takeoffs cost</strong> — their ${formatCurrency(uncostedRevenue)} keeps the prices you set and stacks on top of the solve.
                           </span>
                           <button
                             type="button"
@@ -3437,6 +3457,8 @@ export function BidsPricingTab({
                                     onChange={(e) => {
                                       const v = parseFloat(e.target.value.replace(/[$,]/g, ''))
                                       setWbPreview((prev) => ({ ...(prev ?? {}), [r.countRow.id]: Number.isFinite(v) && v > 0 ? v : 0 }))
+                                      // A hand edit means the preview is no longer "the 56% solve".
+                                      setWbSolveLanding(null)
                                     }}
                                     style={{ width: '6rem', font: 'inherit', fontSize: '0.85rem', padding: '0.25rem 0.4rem', border: r.isPreview ? '1px solid var(--text-amber-700)' : '1px solid var(--border-strong)', borderRadius: 5, textAlign: 'right', background: r.isPreview ? 'var(--bg-amber-tint)' : 'var(--surface)', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}
                                     aria-label={`Sale price per unit for ${r.countRow.fixture ?? 'row'}`}
