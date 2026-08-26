@@ -31,6 +31,7 @@ import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActi
 import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
+import { dueChipLabel } from '../lib/checklistDueDates'
 import { isScheduledAhead, nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { goalsStageRows, goalsStripRows, lockedStageHint, lockedStagePrerequisiteChain, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
 import { computeStageOrderUpdates, computeTaskOrderUpdates } from '../lib/roadmapStageNumbers'
@@ -77,6 +78,7 @@ type ChecklistInstance = {
     created_at?: string | null
     created_by_user_id?: string | null
     show_until_completed?: boolean | null
+    due_date?: string | null
     repeat_type?: string | null
     roadmap_group_task_id?: string | null
     checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
@@ -102,6 +104,22 @@ type RoadmapTaskEmbed = {
  * Card surfaces render it on its own line below the title; row surfaces keep
  * it inline in their chip cluster.
  */
+/** Due chip under a Today card's title (v2.2351): calm inside the window, amber on the due day, red once late. Null without a due date. */
+function dueCardChip(dueDate: string | null | undefined) {
+  const label = dueChipLabel(dueDate, new Date().toLocaleDateString('en-CA'))
+  if (!label) return null
+  const palette = label === 'due today'
+    ? { background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }
+    : label.includes('late')
+      ? { background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }
+      : { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-700)' }
+  return (
+    <div style={{ marginTop: 4 }}>
+      <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, display: 'inline-block', ...palette }}>{label}</span>
+    </div>
+  )
+}
+
 function roadmapGoalChip(
   item: { roadmap_group_task_id?: string | null; checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null } | null | undefined,
   onOpen?: (roadmapGroupTaskId: string) => void,
@@ -509,7 +527,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     const today = toLocalDateString(new Date())
     const { data: todayData, error: e1 } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .eq('scheduled_date', today)
       .order('created_at', { ascending: true })
@@ -524,7 +542,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
     // client-side so the reopened check can share the same rows.
     const { data: pastData } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, show_until_completed, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, notes, completed_by_user_id, created_at, reviewed_at, reviewed_by, checklist_items(title, links, notify_on_complete_user_id, notify_creator_on_complete, created_at, created_by_user_id, show_until_completed, due_date, repeat_type, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', authUserId)
       .is('completed_at', null)
       .lt('scheduled_date', today)
@@ -864,7 +882,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                 <ChecklistInstanceCard
                   key={inst.id}
                   instance={inst}
-                  title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items)}</div> : null}</>}
+                  title={<><ChecklistTitleWithLinks title={isVehicleTaskTitle(title) ? stripVehicleTaskMarker(title) : title} links={links} />{isVehicleTaskTitle(title) ? <> {vehicleTaskChip(inst.id, setVehicleCtxInstanceId)}</> : null}{inst.checklist_items?.roadmap_group_task_id ? <div style={{ marginTop: 4 }}>{roadmapGoalChip(inst.checklist_items)}</div> : null}{dueCardChip(inst.checklist_items?.due_date)}</>}
                   events={eventsByInstance.get(inst.id) ?? []}
                   nameById={eventActorNameById}
                   currentUserId={authUserId}
@@ -1223,7 +1241,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
     const endStr = toLocalDateString(end)
     const { data, error } = await supabase
       .from('checklist_instances')
-      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, reviewed_at, reviewed_by, checklist_items(title, links, repeat_type, created_at), checklist_instance_assignees!inner(user_id)')
+      .select('id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, notes, created_at, reviewed_at, reviewed_by, checklist_items(title, links, due_date, repeat_type, created_at), checklist_instance_assignees!inner(user_id)')
       .eq('checklist_instance_assignees.user_id', selectedUserId)
       .gte('scheduled_date', startStr)
       .lte('scheduled_date', endStr)
@@ -3799,6 +3817,7 @@ type ChecklistItem = {
   repeat_end_date: string | null
   start_date: string
   show_until_completed: boolean
+  due_date: string | null
   notify_on_complete_user_id: string | null
   notify_creator_on_complete: boolean
   reminder_time: string | null
@@ -3853,7 +3872,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   }
 
   async function loadItems() {
-    const baseSelect = 'id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))'
+    const baseSelect = 'id, title, links, created_by_user_id, repeat_type, repeat_days_of_week, repeat_days_after, repeat_end_date, start_date, due_date, show_until_completed, notify_on_complete_user_id, notify_creator_on_complete, reminder_time, reminder_scope, created_at, updated_at, roadmap_group_task_id, checklist_tech_tree_group_tasks(group_id, checklist_tech_tree_groups(title, roadmap_id, checklist_tech_tree_roadmaps(title)))'
     const { data, error } = filterUserId
       ? await supabase
           .from('checklist_items')
@@ -3969,7 +3988,16 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
     const assignees = (item.checklist_item_assignees ?? [])
       .map((a) => a.users?.name || a.users?.email || '')
       .filter(Boolean)
-    const openAge = showOpenAge ? openAgeLabel(oldestOpenByItem.get(item.id), todayLocalStr) : ''
+    // Due-aware age chip (v2.2351): scheduled-ahead → "starts …"; a due date
+    // inside its window → "due …"; late or legacy → the open/late clock.
+    const oldestOpen = oldestOpenByItem.get(item.id)
+    const openAge = !showOpenAge
+      ? ''
+      : isScheduledAhead(oldestOpen, todayLocalStr) || !item.due_date
+        ? openAgeLabel(oldestOpen, todayLocalStr)
+        : oldestOpen
+          ? dueChipLabel(item.due_date, todayLocalStr)
+          : ''
     const menuOpen = openMenuItemId === item.id
     const expanded = expandedItemId === item.id
     const toggleExpanded = () => setExpandedItemId(expanded ? null : item.id)
@@ -4003,16 +4031,25 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
             </span>
             {roadmapGoalChip(item)}
             {openAge ? (
-              // "starts …" (scheduled ahead) is calm blue; "open …" stays the red clock.
-              openAge.startsWith('starts ') ? (
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-blue-tint)', border: '1px solid #2563eb', color: 'var(--text-blue-800)' }}>
-                  {openAge}
-                </span>
-              ) : (
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>
-                  {openAge}
-                </span>
-              )
+              // Chip palette (v2.2346/v2.2351): "starts …" calm blue; "due <day>"
+              // neutral; "due today" amber; late/open stays the red clock.
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  padding: '0.12rem 0.5rem',
+                  borderRadius: 7,
+                  ...(openAge.startsWith('starts ')
+                    ? { background: 'var(--bg-blue-tint)', border: '1px solid #2563eb', color: 'var(--text-blue-800)' }
+                    : openAge === 'due today'
+                      ? { background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }
+                      : openAge.startsWith('due ')
+                        ? { background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', color: 'var(--text-700)' }
+                        : { background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }),
+                }}
+              >
+                {openAge}
+              </span>
             ) : null}
             {isRepeating(item) && nextOccurrenceLabel(nextOpenByItem.get(item.id), todayLocalStr) ? (
               <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }}>

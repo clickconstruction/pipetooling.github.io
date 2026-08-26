@@ -125,9 +125,18 @@ describe('outstanding (v2.1864)', () => {
     expect(overdueAgeLabel('garbage', '2026-08-19')).toBe('due garbage')
   })
 
-  it('sortOutstanding is most-recently-due first', () => {
+  it('sortOutstanding is most-overdue first, keyed on the effective due date (v2.2351)', () => {
     const rows = sortOutstanding([{ scheduled_date: '2026-03-19' }, { scheduled_date: '2026-07-30' }])
-    expect(rows.map((r) => r.scheduled_date)).toEqual(['2026-07-30', '2026-03-19'])
+    expect(rows.map((r) => r.scheduled_date)).toEqual(['2026-03-19', '2026-07-30'])
+  })
+
+  it('sortOutstanding: a due date overrides the scheduled date as the key', () => {
+    const rows = sortOutstanding([
+      { scheduled_date: '2026-08-20', checklist_items: { due_date: '2026-09-04' } }, // in-window → sinks
+      { scheduled_date: '2026-08-24' }, // late since the 24th
+      { scheduled_date: '2026-08-25', checklist_items: { due_date: '2026-08-22' } }, // most late by due
+    ])
+    expect(rows.map((r) => r.checklist_items?.due_date || r.scheduled_date)).toEqual(['2026-08-22', '2026-08-24', '2026-09-04'])
   })
 
   it('completedDayGroups drops incomplete rows and empty days', () => {

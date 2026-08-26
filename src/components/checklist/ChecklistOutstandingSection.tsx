@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { type ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { dueChipLabel } from '../../lib/checklistDueDates'
 import { overdueAgeLabel, type LedgerInstance } from '../../lib/checklistHistoryLedger'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
 
@@ -106,12 +107,25 @@ export function ChecklistOutstandingSection({
                   }}
                 >
                   <span style={{ display: 'block', fontSize: '0.9375rem' }}>{titleFor(inst)}</span>
-                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-red-700)', marginTop: 2 }}>
-                    {overdueAgeLabel(inst.scheduled_date, todayStr)}
-                    {notes > 0 ? (
-                      <span style={{ color: 'var(--text-muted)' }}> · 💬 {notes} {notes === 1 ? 'note' : 'notes'}</span>
-                    ) : null}
-                  </span>
+                  {(() => {
+                    // Due-aware line (v2.2351): red means LATE — a task inside
+                    // its start→due window is calm, amber on the due day.
+                    const due = inst.checklist_items?.due_date ?? null
+                    const label = due ? dueChipLabel(due, todayStr) : overdueAgeLabel(inst.scheduled_date, todayStr)
+                    const color = !due || label.includes('late')
+                      ? 'var(--text-red-700)'
+                      : label === 'due today'
+                        ? 'var(--text-amber-800)'
+                        : 'var(--text-muted)'
+                    return (
+                      <span style={{ display: 'block', fontSize: '0.78rem', color, marginTop: 2 }}>
+                        {label}
+                        {notes > 0 ? (
+                          <span style={{ color: 'var(--text-muted)' }}> · 💬 {notes} {notes === 1 ? 'note' : 'notes'}</span>
+                        ) : null}
+                      </span>
+                    )
+                  })()}
                 </button>
                 <span aria-hidden="true" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                   {expanded ? '▾' : '▸'}

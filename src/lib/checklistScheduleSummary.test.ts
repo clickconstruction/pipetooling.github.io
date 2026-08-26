@@ -29,6 +29,16 @@ describe('checklistScheduleSummary', () => {
     expect(s).toContain('gone after that day')
   })
 
+  it('a due date folds into the sentence as from-start → due (v2.2351)', () => {
+    const s = checklistScheduleSummary({ ...base, when: 'date', startDate: '2026-08-31', dueDate: '2026-09-04' })
+    expect(s).toBe("One task on Robert's list from Mon, Aug 31 — due Fri, Sep 4, stays until completed.")
+  })
+
+  it('a due date equal to the start day reads as a plain one-off', () => {
+    const s = checklistScheduleSummary({ ...base, when: 'date', startDate: '2026-08-31', dueDate: '2026-08-31' })
+    expect(s).toContain('on Mon, Aug 31 — stays until completed')
+  })
+
   it('weekly with days, start, end, and carry-over rule', () => {
     const s = checklistScheduleSummary({
       ...base,

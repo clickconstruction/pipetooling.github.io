@@ -97,6 +97,7 @@ export default function ChecklistAddModal({
     repeat_days_after: 1,
     repeat_end_date: '',
     start_date: toLocalDateString(new Date()),
+    due_date: '',
     show_until_completed: true,
     notify_on_complete_user_id: '',
     notify_creator_on_complete: true,
@@ -250,6 +251,7 @@ export default function ChecklistAddModal({
         repeat_days_after: 1,
         repeat_end_date: '',
         start_date: toLocalDateString(new Date()),
+        due_date: '',
         show_until_completed: true,
         notify_on_complete_user_id: '',
         notify_creator_on_complete: true,
@@ -350,9 +352,15 @@ export default function ChecklistAddModal({
     const effRepeatType: 'once' | 'day_of_week' | 'days_after_completion' =
       when === 'repeat' ? (repeatMode === 'weekly' ? 'day_of_week' : 'days_after_completion') : 'once'
     const effStartDate = when === 'today' ? toLocalDateString(new Date()) : form.start_date
-    const effShowUntil = when === 'repeat' ? false : form.show_until_completed
+    // A due date implies staying on the list — a deadline is meaningless for a task that vanishes first (v2.2351).
+    const effDueDate = when !== 'repeat' && form.due_date ? form.due_date : null
+    const effShowUntil = when === 'repeat' ? false : effDueDate ? true : form.show_until_completed
     if (when === 'date' && !form.start_date) {
       setFormError('Pick a date.')
+      return
+    }
+    if (effDueDate && effDueDate < effStartDate) {
+      setFormError('The due date can’t be before the task starts.')
       return
     }
     if (effRepeatType === 'day_of_week' && form.repeat_days_of_week.length === 0) {
@@ -378,6 +386,7 @@ export default function ChecklistAddModal({
           repeat_days_after: effRepeatType === 'days_after_completion' ? form.repeat_days_after : null,
           repeat_end_date: effRepeatType === 'day_of_week' ? form.repeat_end_date || null : null,
           start_date: effStartDate,
+          due_date: effDueDate,
           show_until_completed: effShowUntil,
           notify_on_complete_user_id: form.notify_on_complete_user_id || null,
           notify_creator_on_complete: form.notify_creator_on_complete,
@@ -772,13 +781,38 @@ export default function ChecklistAddModal({
                 </label>
               ) : null}
               {when !== 'repeat' ? (
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                // Due by (v2.2351): optional deadline — on the list from Do on, late after this.
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span>Due by</span>
+                    <input
+                      type="date"
+                      value={form.due_date}
+                      min={when === 'today' ? toLocalDateString(new Date()) : form.start_date || undefined}
+                      onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
+                      style={{ padding: '0.4rem' }}
+                    />
+                  </label>
+                  {form.due_date ? (
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, due_date: '' }))}
+                      style={{ border: 'none', background: 'none', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', padding: 0 }}
+                    >
+                      clear — no due date
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+              {when !== 'repeat' ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.875rem', cursor: form.due_date ? 'default' : 'pointer' }}>
                   <input
                     type="checkbox"
-                    checked={form.show_until_completed}
+                    checked={form.due_date ? true : form.show_until_completed}
+                    disabled={Boolean(form.due_date)}
                     onChange={(e) => setForm((f) => ({ ...f, show_until_completed: e.target.checked }))}
                   />
-                  <span>Stays on the list until done</span>
+                  <span>Stays on the list until done{form.due_date ? ' (a due date keeps it on the list)' : ''}</span>
                 </label>
               ) : null}
               {when === 'repeat' ? (
@@ -907,7 +941,8 @@ export default function ChecklistAddModal({
                   daysOfWeek: form.repeat_days_of_week,
                   daysAfter: form.repeat_days_after,
                   endDate: form.repeat_end_date || null,
-                  staysUntilDone: form.show_until_completed,
+                  staysUntilDone: form.due_date ? true : form.show_until_completed,
+                  dueDate: when !== 'repeat' ? form.due_date || null : null,
                   assigneeNames: form.assigned_to_user_ids.map(
                     (id) => users.find((u) => u.id === id)?.name?.trim() || users.find((u) => u.id === id)?.email || '\u2026',
                   ),

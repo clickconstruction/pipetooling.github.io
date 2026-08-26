@@ -16,6 +16,8 @@ export type ScheduleSummaryInput = {
   endDate: string | null
   staysUntilDone: boolean
   assigneeNames: string[]
+  /** Optional deadline (v2.2351, one-offs only) — folds "due Fri, Sep 4" into the sentence. */
+  dueDate?: string | null
 }
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -46,6 +48,11 @@ export function checklistScheduleSummary(input: ScheduleSummaryInput): string {
   if (input.when === 'today' || input.when === 'date') {
     const dateStr = input.when === 'today' ? input.todayStr : input.startDate
     const on = dayLabel(dateStr, input.todayStr)
+    const due = input.dueDate && input.dueDate !== dateStr ? dayLabel(input.dueDate, input.todayStr) : ''
+    if (due) {
+      const fromPhrase = on === 'today' ? 'from today' : `from ${on}`
+      return `One task on ${list} ${fromPhrase} — due ${due}, stays until completed.`
+    }
     const onPhrase = on === 'today' ? 'today' : `on ${on}`
     return input.staysUntilDone
       ? `One task on ${list} ${onPhrase} — stays until completed.`
