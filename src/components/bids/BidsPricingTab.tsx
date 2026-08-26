@@ -71,6 +71,15 @@ import type {
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
 
+/** "Tue 4:12 PM" for a restored solve from this week; adds the date once it's older (v2.2373). */
+function formatRestoredStamp(at: number): string {
+  const d = new Date(at)
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const ageDays = (Date.now() - at) / (24 * 60 * 60 * 1000)
+  if (ageDays < 6) return `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`
+  return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`
+}
+
 type BidsPricingTabProps = {
   bids: BidWithBuilder[]
   selectedBidForPricing: BidWithBuilder | null
@@ -299,10 +308,13 @@ export function BidsPricingTab({
   // Workbench (New view) state: solver PREVIEW prices (never written until Apply),
   // session-local locks, and the solver controls.
   const [wbPreview, setWbPreview] = useState<Record<string, number> | null>(null)
-  /** sessionStorage, unless the browser says no (private mode, disabled storage). */
+  // When the on-screen preview came back from the stash rather than a fresh Solve,
+  // this holds the stash's written-at time so the strip can say how old it is (v2.2373).
+  const [wbPreviewRestoredAt, setWbPreviewRestoredAt] = useState<number | null>(null)
+  /** localStorage, unless the browser says no (private mode, disabled storage). Per-device on purpose — previews must outlive the tab (v2.2373). */
   const wbStash = (): Storage | null => {
     try {
-      return window.sessionStorage
+      return window.localStorage
     } catch {
       return null
     }
@@ -312,7 +324,7 @@ export function BidsPricingTab({
     setWbPreview(preview)
     if (!versionId) return
     const storage = wbStash()
-    if (storage) writePreviewStash(storage, versionId, preview)
+    if (storage) writePreviewStash(storage, versionId, preview, Date.now())
   }
   // A preview belongs to the price option it was made on — whenever an option takes
   // the screen (first load, tab switches, reloads, scenario moves), its own stashed
@@ -320,10 +332,13 @@ export function BidsPricingTab({
   useEffect(() => {
     if (!selectedPricingVersionId) {
       setWbPreview(null)
+      setWbPreviewRestoredAt(null)
       return
     }
     const storage = wbStash()
-    setWbPreview(storage ? readPreviewStash(storage, selectedPricingVersionId) : null)
+    const stash = storage ? readPreviewStash(storage, selectedPricingVersionId) : null
+    setWbPreview(stash?.prices ?? null)
+    setWbPreviewRestoredAt(stash ? stash.at : null)
   }, [selectedPricingVersionId])
   const [wbLocks, setWbLocks] = useState<Set<string>>(() => new Set())
   const [wbMarginPct, setWbMarginPct] = useState(45)
@@ -333,6 +348,12 @@ export function BidsPricingTab({
   const [wbShowUnpricedOnly, setWbShowUnpricedOnly] = useState(false)
   const [wbShowNoCostOnly, setWbShowNoCostOnly] = useState(false)
   const [wbApplying, setWbApplying] = useState(false)
+  // Typed prices save themselves (v2.2373, Wendi): the raw string lives here only
+  // while the field is being edited — commit on Enter/blur writes it straight to
+  // the bid (the same write Apply uses), no preview gate for hand-typed prices.
+  const [wbPriceDrafts, setWbPriceDrafts] = useState<Record<string, string>>({})
+  // Rows that just saved show a brief green "saved ✓" tag, then it fades.
+  const [wbJustSaved, setWbJustSaved] = useState<Record<string, true>>({})
   // "Where the profit lives" bar (v2.2353): hovered slice + tooltip position,
   // click-pinned detail card (keyed by count-row id so re-solves keep it), the
   // collapsible legend, and the jump-to-row flash.
@@ -1408,8 +1429,8 @@ export function BidsPricingTab({
     },
     {
       anchor: 'workbench-rows',
-      title: 'Preview, then Apply',
-      body: 'Solver results and prices you type land as amber previews in the Sale price column — nothing saves until "Apply" up in the strip. Previews wait on this device, each price option keeping its own, so it’s safe to visit other pages. 📌 pins a row so the solver holds its price.',
+      title: 'Type to price, Solve to preview',
+      body: 'A price you type saves the moment you press Enter or leave the field — no Apply needed. Solver results land as amber previews instead, saved only when you "Apply" up in the strip; a preview waits on this device (reloads, closed tabs, tomorrow) until you Apply or Discard. 📌 pins a row so the solver holds its price.',
     },
   ]
 
@@ -1601,6 +1622,8 @@ export function BidsPricingTab({
       return
     }
     setAndStashWbPreview(selectedPricingVersionId, { ...(wbPreview ?? {}), ...Object.fromEntries(sol.prices) })
+    // A fresh solve is her current work, not a restoration — the age chip stands down.
+    setWbPreviewRestoredAt(null)
     if (opts.targetTotal != null) {
       setWbTargetSolveResult({ target: opts.targetTotal, landed: sol.resultingRevenue })
       // The solver targets the whole-bid blended margin (v2.2011), so the
@@ -1636,6 +1659,61 @@ export function BidsPricingTab({
     } finally {
       setWbApplying(false)
     }
+  }
+
+  /** Workbench: a hand-typed price saves itself on Enter/blur (v2.2373, Wendi) —
+      the same write Apply uses, no preview gate. The preview gate stays solver-only. */
+  async function commitWorkbenchTypedPrice(countRowId: string) {
+    const raw = wbPriceDrafts[countRowId]
+    if (raw == null) return
+    const clearDraft = () =>
+      setWbPriceDrafts((prev) => {
+        const next = { ...prev }
+        delete next[countRowId]
+        return next
+      })
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    const derived = derivePricingWorkbench()
+    if (!bidId || !versionId || !derived) {
+      clearDraft()
+      return
+    }
+    const row = derived.rows.find((r) => r.countRow.id === countRowId)
+    const v = parseFloat(raw.replace(/[$,]/g, ''))
+    // What the field showed before she typed: the solver's preview if one covers
+    // this row, otherwise the saved price. Blur without a real change writes nothing.
+    const before = wbPreview?.[countRowId] ?? row?.unitPrice ?? null
+    if (!Number.isFinite(v) || v <= 0 || v === before) {
+      clearDraft()
+      return
+    }
+    setSavingUnitPriceOverride(countRowId)
+    const err = await writeUnitPriceOverrideRow(countRowId, v)
+    if (err) {
+      setError(err.message)
+      setSavingUnitPriceOverride(null)
+      clearDraft()
+      return
+    }
+    // Her typed price is now the saved price — drop the row from any solver
+    // preview so Apply can't later overwrite what she just saved.
+    if (wbPreview && countRowId in wbPreview) {
+      const nextPreview = { ...wbPreview }
+      delete nextPreview[countRowId]
+      setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null)
+    }
+    await loadBidPricingAssignments(bidId, versionId)
+    setSavingUnitPriceOverride(null)
+    clearDraft()
+    setWbJustSaved((prev) => ({ ...prev, [countRowId]: true }))
+    window.setTimeout(() => {
+      setWbJustSaved((prev) => {
+        const next = { ...prev }
+        delete next[countRowId]
+        return next
+      })
+    }, 2500)
   }
 
   /** Shared derive for BOTH pricing views (Old grid + New Workbench): totals,
@@ -2707,7 +2785,13 @@ export function BidsPricingTab({
                 const { rows, totalCost, uncostedRevenue, openRowBreakdown } = derived
                 const eff = rows.map((r) => {
                   const pv = wbPreview?.[r.countRow.id]
-                  const unit = pv ?? r.unitPrice
+                  // A price mid-typing drives the live totals too (v2.2373) — but
+                  // only the solver's preview map makes a row "preview": typed
+                  // prices save on Enter/blur instead of waiting on Apply.
+                  const draftRaw = wbPriceDrafts[r.countRow.id]
+                  const draftNum = draftRaw != null ? parseFloat(draftRaw.replace(/[$,]/g, '')) : NaN
+                  const draft = Number.isFinite(draftNum) && draftNum > 0 ? draftNum : null
+                  const unit = draft ?? pv ?? r.unitPrice
                   const revenue = unit != null ? unit * r.count : 0
                   const rowMargin = unit != null && revenue > 0 && r.cost > 0 ? (revenue - r.cost) / revenue : null
                   return { ...r, effUnit: unit, effRevenue: revenue, effMargin: rowMargin, isPreview: pv != null && pv !== r.unitPrice }
@@ -2896,12 +2980,12 @@ export function BidsPricingTab({
                                 <div style={{ padding: '0.5rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
                                   <div style={labelStyle}>Previews &amp; saving</div>
                                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                    Prices you type and solver results land as amber previews{' '}
+                                    <b style={{ color: 'var(--text-strong)' }}>Prices you type save themselves</b> — press Enter or leave the field and the row is written, no Apply needed. Solver results land as amber previews{' '}
                                     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.25rem', verticalAlign: '-0.15em' }}>
                                       <span style={{ border: '1px solid var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.3rem', fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>150</span>
                                       <span style={{ fontSize: '0.62rem', color: 'var(--text-amber-700)', fontWeight: 700 }}>preview</span>
                                     </span>{' '}
-                                    — <b style={{ color: 'var(--text-strong)' }}>saved only when you press Apply</b> in the strip. Previews wait on this device: leave the page and come back, they’re still here, and each price option keeps its own. {gcShort} can never see a preview — letters and prints use saved prices only.
+                                    — <b style={{ color: 'var(--text-strong)' }}>saved only when you press Apply</b> in the strip. A solver preview waits on this device — reloads, closed tabs, tomorrow morning — each price option keeping its own, until you Apply or Discard it. {gcShort} can never see a preview — letters and prints use saved prices only.
                                   </div>
                                 </div>
                                 <div style={{ padding: '0.5rem 0.9rem' }}>
@@ -3204,6 +3288,13 @@ export function BidsPricingTab({
                               {/* Apply/Discard ride the right end of this line and wrap right-pinned on narrow pages (artifact 370f8f3c). */}
                               {wbPreview && previewCount > 0 ? (
                                 <span style={{ marginLeft: 'auto', display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem', flex: '0 0 auto' }}>
+                                  {/* A preview restored from an earlier sitting says how old it is, so a
+                                      stale solve never masquerades as fresh work (v2.2373). */}
+                                  {wbPreviewRestoredAt != null && Date.now() - wbPreviewRestoredAt > 60 * 60 * 1000 ? (
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.1rem 0.55rem', background: 'var(--bg-subtle)' }}>
+                                      solve from {formatRestoredStamp(wbPreviewRestoredAt)} — restored
+                                    </span>
+                                  ) : null}
                                   <span style={{ display: 'inline-flex', gap: '0.5rem' }}>
                                     <button
                                       type="button"
@@ -3225,8 +3316,8 @@ export function BidsPricingTab({
                                   </span>
                                   <span style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
                                     {previewCount === 1
-                                      ? '1 previewed price — saved only when you Apply · it’ll wait here if you leave'
-                                      : `${previewCount} previewed prices — saved only when you Apply · they’ll wait here if you leave`}
+                                      ? '1 solver price previewed — saved only when you Apply · waits on this device'
+                                      : `${previewCount} solver prices previewed — saved only when you Apply · waits on this device`}
                                   </span>
                                 </span>
                               ) : null}
@@ -3521,17 +3612,39 @@ export function BidsPricingTab({
                                   <input
                                     type="text"
                                     inputMode="decimal"
-                                    value={wbPreview?.[r.countRow.id] != null ? String(wbPreview[r.countRow.id]) : r.effUnit != null ? String(Math.round(r.effUnit * 100) / 100) : ''}
+                                    value={
+                                      wbPriceDrafts[r.countRow.id] ??
+                                      (wbPreview?.[r.countRow.id] != null ? String(wbPreview[r.countRow.id]) : r.effUnit != null ? String(Math.round(r.effUnit * 100) / 100) : '')
+                                    }
                                     placeholder="—"
                                     onClick={(e) => e.stopPropagation()}
                                     onChange={(e) => {
-                                      const v = parseFloat(e.target.value.replace(/[$,]/g, ''))
-                                      setAndStashWbPreview(selectedPricingVersionId, { ...(wbPreview ?? {}), [r.countRow.id]: Number.isFinite(v) && v > 0 ? v : 0 })
+                                      // Draft while typing (live totals recompute); the save happens on Enter/blur (v2.2373).
+                                      const raw = e.target.value
+                                      setWbPriceDrafts((prev) => ({ ...prev, [r.countRow.id]: raw }))
                                     }}
+                                    onBlur={() => void commitWorkbenchTypedPrice(r.countRow.id)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') e.currentTarget.blur()
+                                      else if (e.key === 'Escape') {
+                                        setWbPriceDrafts((prev) => {
+                                          const next = { ...prev }
+                                          delete next[r.countRow.id]
+                                          return next
+                                        })
+                                      }
+                                    }}
+                                    disabled={savingUnitPriceOverride === r.countRow.id}
                                     style={{ width: '6rem', font: 'inherit', fontSize: '0.85rem', padding: '0.25rem 0.4rem', border: r.isPreview ? '1px solid var(--text-amber-700)' : '1px solid var(--border-strong)', borderRadius: 5, textAlign: 'right', background: r.isPreview ? 'var(--bg-amber-tint)' : 'var(--surface)', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}
                                     aria-label={`Sale price per unit for ${r.countRow.fixture ?? 'row'}`}
                                   />
-                                  {r.isPreview ? <span title="Not saved yet — Apply, in the strip above, writes it to this price." style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-amber-700)', fontWeight: 700, cursor: 'help' }}>preview</span> : null}
+                                  {r.isPreview ? (
+                                    <span title="Solver result — not saved yet. Apply, in the strip above, writes it to this price." style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-amber-700)', fontWeight: 700, cursor: 'help' }}>preview</span>
+                                  ) : savingUnitPriceOverride === r.countRow.id ? (
+                                    <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>saving…</span>
+                                  ) : wbJustSaved[r.countRow.id] ? (
+                                    <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-green-700)', fontWeight: 700 }}>saved ✓</span>
+                                  ) : null}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.effUnit != null ? `$${formatCurrency(r.effRevenue)}` : '—'}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.effUnit != null && r.cost > 0 ? `$${formatCurrency(r.effRevenue - r.cost)}` : '—'}</td>
