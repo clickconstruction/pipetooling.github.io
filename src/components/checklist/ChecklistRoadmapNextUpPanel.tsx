@@ -15,8 +15,8 @@ type Props = {
 
 /**
  * "Next up" (v2.2129): the pick-don't-sort shortlist at the top of the Plan
- * view. Two lanes — tasks someone can start today, and tasks that only need a
- * name — at most five each, every row wearing the reasons it was picked.
+ * view. Two lanes — tasks someone can start today, and tasks that still need a
+ * person — at most five each, every row wearing the reasons it was picked.
  * Nothing below it is re-ordered; stage numbers never move.
  */
 export function ChecklistRoadmapNextUpPanel({ lanes, tasksById, taskNumbers, nameById, onOpenTask }: Props) {
@@ -142,7 +142,7 @@ export function ChecklistRoadmapNextUpPanel({ lanes, tasksById, taskNumbers, nam
         ) : null}
         {lanes.needsName.length > 0 ? (
           <>
-            {laneTitle('Needs a name', `${lanes.openNeedsName} open`)}
+            {laneTitle('Needs a person', `${lanes.openNeedsName} open`)}
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>{lanes.needsName.map((p, i) => row(p, i, 'needsName'))}</ul>
           </>
         ) : null}

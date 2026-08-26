@@ -7,8 +7,8 @@ import { buildRoadmapNudges, type RoadmapNudge } from '../lib/dashboardRoadmapNu
 import type { UserRole } from '../hooks/useAuth'
 
 /**
- * Dashboard nudge into the roadmap's "Needs a name" lane (v2.2138, Next-up
- * phase 2): "Farm 1 · 84 roadmap tasks need a name — next: 13.1 …". Self-gating:
+ * Dashboard nudge into the roadmap's "Needs a person" lane (v2.2138, Next-up
+ * phase 2): "Farm 1 · 84 roadmap tasks need a person — next: 13.1 …". Self-gating:
  * renders nothing unless the viewer can see the Roadmap tab (same gate as the
  * tab itself) and a roadmap clears ROADMAP_NUDGE_MIN_COUNT. One card lists up
  * to three roadmaps; tapping a row opens that roadmap's Plan view.
@@ -71,7 +71,7 @@ export default function DashboardRoadmapNeedsNameBanner({ authUserId, role }: { 
   return (
     <div
       role="group"
-      aria-label="Roadmap tasks that need a name"
+      aria-label="Roadmap tasks that need a person"
       style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -95,8 +95,8 @@ export default function DashboardRoadmapNeedsNameBanner({ authUserId, role }: { 
       <div style={{ flex: '1 1 220px', minWidth: 0, display: 'grid', gap: 6 }}>
         <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-amber-800)' }}>
           {shown.length === 1
-            ? `${shown[0]!.title} · ${shown[0]!.needsName} roadmap task${shown[0]!.needsName === 1 ? '' : 's'} need${shown[0]!.needsName === 1 ? 's' : ''} a name`
-            : `${total} roadmap tasks need a name`}
+            ? `${shown[0]!.title} · ${shown[0]!.needsName} roadmap task${shown[0]!.needsName === 1 ? '' : 's'} need${shown[0]!.needsName === 1 ? 's' : ''} a person`
+            : `${total} roadmap tasks need a person`}
         </div>
         {shown.map((n) => (
           <button

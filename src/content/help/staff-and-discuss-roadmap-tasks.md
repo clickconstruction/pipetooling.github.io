@@ -7,7 +7,7 @@ order: 43
 ---
 Tapping a task on the Roadmap — a row in **Plan** or a task inside a Map cluster — opens its **task card**. On a phone it slides up as a bottom sheet; on a computer it's a centered card. Everything on it saves as you go: there is no Save button.
 
-Each stage card on **Plan** also carries a small bar of **one slot per task**, in order: green slots are done, the amber-ringed one is next up, outlined ones remain. Hover a slot for the task's name, or tap it — that opens the task card too. The **⚡ Next up** panel above the lists is the fastest door to staffing: its *Needs a name* lane is the handful of unowned tasks worth doing first (see *see what to do next on a roadmap*).
+Each stage card on **Plan** also carries a small bar of **one slot per task**, in order: green slots are done, the amber-ringed one is next up, outlined ones remain. Hover a slot for the task's name, or tap it — that opens the task card too. The **⚡ Next up** panel above the lists is the fastest door to staffing: its *Needs a person* lane is the handful of unowned tasks worth doing first (see *see what to do next on a roadmap*).
 
 ## Put names on the task
 

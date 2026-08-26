@@ -1,7 +1,7 @@
 /**
- * Dashboard "roadmap tasks need a name" nudge (v2.2138, Next-up phase 2): per
+ * Dashboard "roadmap tasks need a person" nudge (v2.2138, Next-up phase 2): per
  * roadmap, how many open tasks in unlocked stages have nobody on them — the
- * same count as the Plan view's "Needs a name" lane — plus the top pick so the
+ * same count as the Plan view's "Needs a person" lane — plus the top pick so the
  * card can say what to do first. Threshold-gated like the lost-bids nudge so
  * a two-task roadmap doesn't nag forever.
  */
@@ -19,7 +19,7 @@ export type RoadmapNudge = {
   needsName: number
   /** Open, staffed tasks in unlocked stages. */
   ready: number
-  /** First "needs a name" pick — "13.1 buy multiple stainless steel prep tables". */
+  /** First "needs a person" pick — "13.1 buy multiple stainless steel prep tables". */
   next: { taskId: string; label: string } | null
 }
 

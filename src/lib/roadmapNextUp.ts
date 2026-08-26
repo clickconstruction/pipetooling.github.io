@@ -15,7 +15,7 @@
  *            → unlocks the most (open tasks, then stages, behind the stage's
  *              arrows)
  *            → your stage order → task order
- *   lanes    = "ready to go" (has an assignee) / "needs a name" (none)
+ *   lanes    = "ready to go" (has an assignee) / "needs a person" (none)
  *   cap      = at most `perStageCap` picks per stage per lane, so five picks
  *              never all come from one ten-task stage
  *
