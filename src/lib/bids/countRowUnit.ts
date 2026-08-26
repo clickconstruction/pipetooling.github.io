@@ -50,6 +50,20 @@ export function classifyCountRowUnit(fixture: string | null | undefined): CountU
 }
 
 /**
+ * The fixture name minus its `[Group]` and unit prefixes — the "thing" itself
+ * (`ft of 2" Demo Water Line` → `2" Demo Water Line`). Names without a unit
+ * prefix pass through unchanged (trimmed). Trailing "per ft" stays: it is part
+ * of how those rows are named by hand.
+ */
+export function stripCountRowUnitPrefix(fixture: string | null | undefined): string {
+  const name = (fixture ?? '').trim().replace(GROUP_PREFIX_RE, '')
+  for (const re of [PX_RE, SQFT_RE, FT_RE]) {
+    if (re.test(name)) return name.replace(re, '').trim()
+  }
+  return name
+}
+
+/**
  * The unit a row is counted in: an explicit `unit` wins; a missing/unknown one
  * falls back to the name convention. Every surface that totals count rows
  * reads through this — never `row.unit` directly.

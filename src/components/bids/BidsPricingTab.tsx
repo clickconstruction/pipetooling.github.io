@@ -5,6 +5,7 @@ import { formatCurrency } from '../../lib/format'
 import { marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
+import { filterPriceBookEntries, seedPricingAssignmentSearch } from '../../lib/bids/priceBookAssignSearch'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
@@ -2041,9 +2042,7 @@ export function BidsPricingTab({
                               )}
                               {pricingAssignmentDropdownOpen === row.countRow.id && (() => {
                                 const searchTerm = pricingAssignmentSearches[row.countRow.id] || ''
-                                const filtered = priceBookEntries.filter((e) => 
-                                  (e.fixture_types?.name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
-                                )
+                                const filtered = filterPriceBookEntries(priceBookEntries, (e) => e.fixture_types?.name ?? '', searchTerm, Infinity)
                                 return (
                                   <div style={{
                                     position: 'absolute',
@@ -3382,7 +3381,7 @@ export function BidsPricingTab({
                                         <button
                                           type="button"
                                           onClick={() => {
-                                            setPricingAssignmentSearches((prev) => ({ ...prev, [r.countRow.id]: r.countRow.fixture ?? '' }))
+                                            setPricingAssignmentSearches((prev) => ({ ...prev, [r.countRow.id]: seedPricingAssignmentSearch(r.countRow.fixture) }))
                                             setPricingAssignmentDropdownOpen(r.countRow.id)
                                           }}
                                           title="Assign a price-book entry — the book's price fills the row"
@@ -3392,10 +3391,8 @@ export function BidsPricingTab({
                                         </button>
                                       )}
                                       {pricingAssignmentDropdownOpen === r.countRow.id ? (() => {
-                                        const term = (pricingAssignmentSearches[r.countRow.id] ?? '').toLowerCase()
-                                        const options = priceBookEntries
-                                          .filter((e) => (e.fixture_types?.name ?? '').toLowerCase().includes(term))
-                                          .slice(0, 12)
+                                        const term = pricingAssignmentSearches[r.countRow.id] ?? ''
+                                        const options = filterPriceBookEntries(priceBookEntries, (e) => e.fixture_types?.name ?? '', term)
                                         return (
                                           <div style={{ position: 'absolute', top: '100%', left: 0, minWidth: '13rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, marginTop: '0.2rem', maxHeight: 220, overflowY: 'auto', zIndex: 30, boxShadow: '0 8px 20px rgba(0,0,0,0.18)' }}>
                                             {options.length > 0 ? (
