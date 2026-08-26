@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
  * Render smokes for the Data health drill-down (v2.2290/v2.2309): rows show
- * sent → paid once a sent date exists, and expanding a row lazy-loads the
- * line items behind the payment (bill lines when linked, job lines as
- * context when not).
+ * sent → paid once a sent date exists, and every row's line items render
+ * always-expanded from the bulk lookup (bill lines when linked, job lines
+ * as context when not; v2.2315).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -57,14 +57,14 @@ beforeEach(() => {
   rpc.mockReset()
   rpc.mockImplementation(async (fn: unknown, args: unknown) => {
     if (fn === 'get_pay_speed_transactions') return { data: TXNS }
-    if (fn === 'get_payment_line_items') {
-      const id = (args as { p_payment_id: string }).p_payment_id
-      return {
-        data:
-          id === 'p1'
-            ? { linked: true, billAmount: 9440, items: [{ name: 'Water heater 50-gal', count: 1, unitPrice: 2150, description: null, amount: 2150 }] }
-            : { linked: false, billAmount: null, items: [{ name: 'Water softener', count: 1, unitPrice: 1290, description: null, amount: 1290 }] },
-      }
+    if (fn === 'get_payment_line_items_bulk') {
+      const ids = (args as { p_payment_ids: string[] }).p_payment_ids
+      const out: Record<string, unknown> = {}
+      if (ids.includes('p1'))
+        out.p1 = { linked: true, billAmount: 9440, items: [{ name: 'Water heater 50-gal', count: 1, unitPrice: 2150, description: null, amount: 2150 }] }
+      if (ids.includes('p2'))
+        out.p2 = { linked: false, billAmount: null, items: [{ name: 'Water softener', count: 1, unitPrice: 1290, description: null, amount: 1290 }] }
+      return { data: out }
     }
     return { data: null }
   })
@@ -79,18 +79,16 @@ describe('PaySpeedDataHealthModal', () => {
     expect(screen.getByTitle(/Received 08\/11 — no sent date recorded/)).toBeTruthy()
   })
 
-  it('expanding a linked row shows its bill lines + total; an unlinked row shows the job-context caption', async () => {
+  it('line items render always-expanded — bill lines + total on linked rows, job-context caption on unlinked (v2.2315)', async () => {
     render(<PaySpeedDataHealthModal onClose={vi.fn()} canExclude={false} />)
-    const allRows = await screen.findAllByTitle('Show the line items behind this payment')
-    fireEvent.click(allRows[0]!)
+    // No clicks: both panels arrive with the bulk lookup.
     await waitFor(() => expect(screen.getByText('What this bill charged')).toBeTruthy())
     expect(screen.getByText('Water heater 50-gal')).toBeTruthy()
     expect(screen.getByText('bill total')).toBeTruthy()
-    // Second row: unlinked context caption.
-    const rows = screen.getAllByTitle('Show the line items behind this payment')
-    fireEvent.click(rows[rows.length - 1]!)
-    await waitFor(() => expect(screen.getByText(/the job's line items, for context/)).toBeTruthy())
+    expect(screen.getByText(/the job's line items, for context/)).toBeTruthy()
     expect(screen.getByText('Water softener')).toBeTruthy()
+    // The old expand affordance is gone.
+    expect(screen.queryByTitle('Show the line items behind this payment')).toBeNull()
   })
   it('Open job stacks above the drill-down and its onSaved refreshes the list (v2.2311)', async () => {
     const openStacked = vi.fn()

@@ -179,3 +179,14 @@ export function parsePaymentLineItems(raw: unknown): PaymentLineItems | null {
     items,
   }
 }
+
+/** Defensive parse of get_payment_line_items_bulk: paymentId → PaymentLineItems. */
+export function parsePaymentLineItemsBulk(raw: unknown): Record<string, PaymentLineItems> {
+  const out: Record<string, PaymentLineItems> = {}
+  if (raw == null || typeof raw !== 'object') return out
+  for (const [id, v] of Object.entries(raw as Record<string, unknown>)) {
+    const parsed = parsePaymentLineItems(v)
+    if (parsed != null) out[id] = parsed
+  }
+  return out
+}
