@@ -123,10 +123,15 @@ type BidsPricingTabProps = {
   loadTemplatePriceBookVersions: () => Promise<void>
   /** Record `templateId` as this user's last-selected price book (their per-service-type default). */
   rememberLastPriceBookTemplate: (templateId: string) => void
-  loadBidPricings: (bidId: string) => Promise<PriceBookVersion[]>
+  loadBidPricings: (bidId: string) => Promise<PriceBookVersion[] | null>
   loadPriceBookEntries: (versionId: string | null) => Promise<void>
   loadBidPricingAssignments: (bidId: string, versionId: string | null, signal?: AbortSignal) => Promise<void>
   reloadPricingForBid: (bidId: string, signal?: AbortSignal) => Promise<void>
+  /** Per-bid pricing resolve (v2.2367): 'skeleton' while this bid's versions/prices load,
+      'error' when the load failed — the Workbench must not show its empty state for either. */
+  resolvePanel: 'skeleton' | 'error' | 'content'
+  /** Re-run a failed resolve (the error panel's Retry). */
+  onRetryResolve: () => void
   saveBidSelectedPriceBookVersion: (bidId: string, versionId: string | null) => Promise<void>
   openMaterialsModelSwitch: (next: MaterialsModel, sourceTab: 'takeoffs' | 'labor' | 'pricing') => void
   // Shared pricing-rows calc (from useBidPricingRows)
@@ -229,6 +234,8 @@ export function BidsPricingTab({
   loadPriceBookEntries,
   loadBidPricingAssignments,
   reloadPricingForBid,
+  resolvePanel,
+  onRetryResolve,
   saveBidSelectedPriceBookVersion,
   pricingRowsForGrid,
   pricingPackageSource,
@@ -956,7 +963,7 @@ export function BidsPricingTab({
     }
     if (selectedPricingVersionId === pricingVersionToDelete.id) {
       // Re-activate another of the bid's Pricings (if any), else clear.
-      const remaining = selectedBidForPricing ? await loadBidPricings(selectedBidForPricing.id) : []
+      const remaining = (selectedBidForPricing ? await loadBidPricings(selectedBidForPricing.id) : []) ?? []
       const nextId = pickActivePricing({ savedVersionId: null, bidPricings: remaining })
       setSelectedPricingVersionId(nextId)
       if (!nextId) setPriceBookEntries([])
@@ -2677,6 +2684,40 @@ export function BidsPricingTab({
             </>
             ) : (
               (() => {
+                // v2.2367: while this bid's versions/prices are still resolving (or the resolve
+                // failed), say so — the "needs Counts…" empty state below reads as deleted work.
+                if (resolvePanel === 'skeleton') {
+                  return (
+                    <div role="status" aria-label="Loading this bid's packets and prices" style={{ padding: '0.95rem 1.1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 500 }}>
+                        <span className="bid-resolve-spinner" aria-hidden />
+                        Loading this bid's packets and prices…
+                      </div>
+                      {[['34%', '14%'], ['46%', '20%'], ['40%', '11%']].map(([w1, w2]) => (
+                        <div key={w1} aria-hidden style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <span className="bid-resolve-shimmer" style={{ width: w1, height: 12, borderRadius: 4 }} />
+                          <span className="bid-resolve-shimmer" style={{ width: w2, height: 12, borderRadius: 4 }} />
+                        </div>
+                      ))}
+                    </div>
+                  )
+                }
+                if (resolvePanel === 'error') {
+                  return (
+                    <div style={{ padding: '0.9rem 1.1rem', border: '1px solid var(--border-red)', borderRadius: 8, background: 'var(--bg-red-tint)', display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+                      <span style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem', fontWeight: 500 }}>
+                        Couldn't load this bid's packets and prices — the connection dropped or the server didn't answer. Your versions are safe.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={onRetryResolve}
+                        style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.3rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )
+                }
                 const derived = derivePricingWorkbench()
                 if (!derived) {
                   // G1: a GC with no prices yet can start from another GC's base price.

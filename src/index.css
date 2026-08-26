@@ -1600,6 +1600,36 @@ body.my-time-boundary-dragging {
   animation: dashboard-skeleton-pulse 1.2s ease-in-out infinite;
 }
 
+/* Bids · Pricing: per-bid resolve skeleton + spinner (v2.2367) */
+.bid-resolve-shimmer {
+  background: var(--bg-muted);
+  animation: dashboard-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.bid-resolve-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border: 2px solid var(--border-strong);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: bid-resolve-spin 0.8s linear infinite;
+}
+
+@keyframes bid-resolve-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bid-resolve-shimmer,
+  .bid-resolve-spinner {
+    animation: none;
+  }
+}
+
 /* Jobs · Job Summary · Person summary table: clickable cell affordance */
 .jobSummaryBreakdownInteractive {
   cursor: pointer;

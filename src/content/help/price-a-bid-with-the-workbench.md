@@ -46,3 +46,7 @@ Each price card's ✎ opens the **Price** modal — rename it or delete it (the 
 :::example Working to a bid day number
 You want this bid out the door at $42,000. Type 42000 in target total, Enter — every unpriced row fills, pinned rows hold, and the margin tile tells you what that number really earns.
 :::
+
+## "My version is gone!" — it isn't
+
+Landing on Pricing (say, from the board's price-tag jump) first **loads** the bid's packets and prices — you'll see a brief shimmer over the Send-to strip and the Workbench while that happens. Your versions, prices, and previews are exactly where you left them; the page just hasn't finished fetching yet. If the connection drops mid-load, Pricing says *"Couldn't load this bid's packets and prices"* and offers {{button:gray|Retry}} — nothing was deleted.

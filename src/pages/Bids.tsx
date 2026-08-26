@@ -74,6 +74,7 @@ import {
   getCustomerDisplay,
 } from '../lib/bids/bidFormatting'
 import { tabStyle, bidsTabStyle } from '../lib/bids/bidStyles'
+import { pricingResolvePanel } from '../lib/bids/pricingResolve'
 import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
@@ -635,6 +636,7 @@ export default function Bids() {
     bidCountRowCustomPrices,
     bidCountRowSubmissionHides,
     bidVersions, selectedBidVersionId, switchActiveVersion,
+    pricingResolve, retryPricingResolve,
     selectedPricingVersionId, setSelectedPricingVersionId,
     pricingCountRows,
     pricingCostEstimate,
@@ -3322,6 +3324,7 @@ export default function Bids() {
             pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
             bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
             bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
+            resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing.id)}
           />
           </div>
           {/* v2.2203: the Old/New pills portal up here from BidsPricingTab, top-right beside the strip. */}
@@ -3332,6 +3335,8 @@ export default function Bids() {
           bids={bidsTyped}
           bidVersions={bidVersions}
           selectedBidForPricing={selectedBidForPricing}
+          resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing?.id ?? null)}
+          onRetryResolve={retryPricingResolve}
           narrowViewport640={narrowViewport640}
           bidPreview={bidPreview}
           error={error}
@@ -3413,6 +3418,7 @@ export default function Bids() {
             pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
             bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
             bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
+            resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing.id)}
           />
         )}
         <BidsCoverLetterTab
