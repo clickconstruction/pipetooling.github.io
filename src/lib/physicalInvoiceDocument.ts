@@ -293,7 +293,11 @@ function paymentHistoryHtml(doc: PhysicalInvoiceDocument): string {
           t.balanceDueFormatted,
         )}</td></tr>`
     : ''
-  return `<p style="font-family:system-ui,sans-serif;font-size:14px;font-weight:600;color:#374151;margin:16px 0 8px">Payment history</p><table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;font-size:13px;border:1px solid #e5e7eb;border-radius:8px">${billedRow}${rows}${totalsRows}</table>`
+  // Right-aligned card (v2.2335), matching the PDF's and preview's boxes —
+  // heading inside the border. The two-cell wrapper table is the email-safe
+  // way to right-align (CSS float/margin:auto die in desktop Outlook).
+  const headingRow = `<tr><td colspan="2" style="padding:8px 8px 6px;font-size:14px;font-weight:600;color:#374151">Payment history</td></tr>`
+  return `<table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;margin:16px 0 0"><tr><td></td><td style="width:340px;vertical-align:top"><table style="border-collapse:collapse;width:100%;font-size:13px;border:1.5px solid #111827;border-radius:8px">${headingRow}${billedRow}${rows}${totalsRows}</table></td></tr></table>`
 }
 
 /** Plain-text twin of paymentHistoryHtml — same ledger, shared by both layouts. */
