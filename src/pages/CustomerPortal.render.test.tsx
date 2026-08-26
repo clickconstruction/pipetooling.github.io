@@ -46,11 +46,66 @@ describe('CustomerPortal render smoke', () => {
     expect(screen.getByText('San Antonio, TX 78258')).toBeTruthy()
     // No-address bill falls back to its bare name; no trade tag renders for it.
     expect(screen.getByText('Service call')).toBeTruthy()
-    const pay = screen.getByText('PAY ONLINE') as HTMLAnchorElement
+    // getAllByText: the ledger header carries a hidden pay-button twin for column sizing.
+    const pay = screen.getAllByText('PAY ONLINE').find((el) => el.tagName === 'A') as HTMLAnchorElement
     expect(pay.href).toBe('https://invoice.stripe.com/x')
     expect(screen.getByText('check · ref 655')).toBeTruthy()
     expect(screen.getByText('Total due')).toBeTruthy()
     expect(screen.getAllByText('$1,700.00').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('groups a job’s bills under one band with payments and the boxed recap (v2.2318)', async () => {
+    const grouped = {
+      ...payload,
+      bills: [
+        { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 1450, billedOn: '2026-08-04', payUrl: 'https://invoice.stripe.com/x', checkRef: '612', totalPaid: 550, payments: [{ date: '2026-07-20', method: 'other', amount: 550 }] },
+        { jobLabel: 'Water heater replacement · Job 612', jobNumber: '612', jobName: 'Water heater replacement', serviceTag: 'plum', jobAddress: '3827 Sage Ridge Dr, San Antonio, TX 78258', amount: 300, billedOn: '2026-07-01', payUrl: null, checkRef: '612' },
+      ],
+      totalDue: 1750,
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(grouped), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    // One band for the job, not one line per bill.
+    expect(screen.getAllByText('612')).toHaveLength(1)
+    expect(screen.getByText('3827 Sage Ridge Dr')).toBeTruthy()
+    // Payments merged under the job, "other" softened to "Payment", shown as a credit.
+    expect(screen.getByText('Payments received')).toBeTruthy()
+    expect(screen.getByText('Payment')).toBeTruthy()
+    expect(screen.queryByText('other')).toBeNull()
+    // Bill row shows what was originally billed when money has landed.
+    expect(screen.getByText('$2,000.00')).toBeTruthy()
+    // The recap box: billed − paid = balance.
+    expect(screen.getByText('Billed to date')).toBeTruthy()
+    expect(screen.getByText('$2,300.00')).toBeTruthy()
+    expect(screen.getByText('Paid to date')).toBeTruthy()
+    expect(screen.getByText('Balance on this job')).toBeTruthy()
+    // Balance figure appears in the recap and again as the grand total.
+    expect(screen.getAllByText('$1,750.00').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('multi-bill unpaid job gets a recap without a zero Paid to date row', async () => {
+    const grouped = {
+      ...payload,
+      bills: [
+        { jobLabel: 'Repipe · Job 898', jobNumber: '898', jobName: 'Repipe', serviceTag: 'plum', jobAddress: '9 Elm St, Austin, TX 78701', amount: 1200, billedOn: '2026-07-31', payUrl: null, checkRef: '898' },
+        { jobLabel: 'Repipe · Job 898', jobNumber: '898', jobName: 'Repipe', serviceTag: 'plum', jobAddress: '9 Elm St, Austin, TX 78701', amount: 3600, billedOn: '2026-07-06', payUrl: null, checkRef: '898' },
+      ],
+      totalDue: 4800,
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(grouped), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Balance on this job')).toBeTruthy())
+    expect(screen.getByText('Billed to date')).toBeTruthy()
+    expect(screen.queryByText('Paid to date')).toBeNull()
+  })
+
+  it('single unpaid bill renders no recap box', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    expect(screen.queryByText('Balance on this job')).toBeNull()
+    expect(screen.queryByText('Payments received')).toBeNull()
   })
 
   it('all-paid state', async () => {

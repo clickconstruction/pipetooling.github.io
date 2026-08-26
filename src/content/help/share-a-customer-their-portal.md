@@ -38,6 +38,12 @@ Visit and bid requests appear in the **dispatch inbox** like any dispatch item, 
 
 Treat the link like a mailed invoice: it exposes that customer's balances only, and Rotate is always one click away. Requests are rate-limited per link, so a leaked link can't flood the inbox.
 
-## Payments show on their statement
+## The statement reads job by job
 
-Each open bill on the portal lists the **payments already received** on it — date, method, amount, and a **Total paid** line — so a customer can confirm their check landed without calling the office. The same payment history box prints on the invoice itself (preview, PDF, and the invoice email) with the balance due. Internal payment notes never appear; customers see the payment method only.
+The statement groups everything **by job**: each job opens with its own header band (trade, job number, address), with all of that job's bills and **payments already received** together underneath — a job with several progress bills stays in one place instead of scattering down the page.
+
+:::example What a job section shows
+Bills newest first (each with its billed date and its own {{button:blue|Pay online}} or check reference), then the payments received on the job — date, method, amount — and, on the right, a boxed recap: **Billed to date**, **Paid to date**, and **Balance on this job**.
+:::
+
+The recap box is the same payment-totals box that prints on the invoice itself (preview, PDF, and the invoice email), so customers see one consistent story everywhere. A customer can confirm their check landed without calling the office. Internal payment notes never appear; customers see the payment method only — and a payment recorded with the catch-all type "other" simply reads "Payment".
