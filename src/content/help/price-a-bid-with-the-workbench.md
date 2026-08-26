@@ -31,7 +31,11 @@ Above the table, {{button:blue|Fill N matching from book}} assigns every unassig
 
 ## Preview first, then Apply
 
-Solver results (and your own typed prices) land as amber **preview** values — the card outlines amber and {{button:blue|Apply}} / **Discard** appear at the line's end with *nothing saved yet* beneath. Nothing is saved until you hit Apply; Discard throws the preview away, and so does switching to another price. Each price card's ✎ opens the **Price** modal — rename it or delete it (the ★ can't be deleted while the letter is built on it).
+Solver results (and your own typed prices) land as amber **preview** values — the card outlines amber and {{button:blue|Apply 12}} / **Discard** appear at the line's end, with a count of what's previewed beneath. Nothing is saved until you hit Apply — the button counts what it will write — and Discard throws the previews away.
+
+**Previews wait for you.** It's safe to visit Labor, Counts, or any other page mid-thought: previews are kept on your device (until you close the browser) and are sitting right where you left them when you come back — reloading the page included. Each price option keeps its own preview, so viewing another price just sets yours aside; it's restored when you view that price again. A GC can never see a preview — Cover Letter, Share, Print, and CSV always use saved prices only. The **(i)** beside the bid name keeps a short version of this story.
+
+Each price card's ✎ opens the **Price** modal — rename it or delete it (the ★ can't be deleted while the letter is built on it).
 
 ## Know where you stand
 
