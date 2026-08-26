@@ -40,7 +40,7 @@ On **Pricing** (New), the Workbench shows the packet you're on: **This GC — Bu
 
 ## "Also sent to" — the same letter, no packet
 
-Open **Edit Bid** and look under the GC/Builder picker: the **Also sent to** row lists every other GC this bid went out to. GCs with their own packet land here automatically; use {{button:outline|+ Add GC}} for a builder who got the **same letter** as the bid's GC without a packet of their own. Such a GC shows on the Send to strip, the board and Followup as *same letter as Southern Post Construction* — its answer is tracked with the bid. To track it separately, press **track separately** on the strip (it opens ＋ Add GC with that builder filled in).
+Open **Edit Bid** and look under the GC/Builder picker: the **Also sent to** row lists every other GC this bid went out to. GCs with their own packet land here automatically; use {{button:outline|+ Add GCs}} for builders who got the **same letter** as the bid's GC without a packet of their own. The picker stays open while you tick — tick as many builders as you like, searching in between, then one press of {{button:blue|Add 3 GCs}} adds them all (Cancel or Esc backs out). Such a GC shows on the Send to strip, the board and Followup as *same letter as Southern Post Construction* — its answer is tracked with the bid. To track it separately, press **track separately** on the strip (it opens ＋ Add GC with that builder filled in) — the note under the row points there too.
 
 ## Tips
 
