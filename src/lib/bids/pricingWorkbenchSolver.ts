@@ -1,11 +1,20 @@
 /**
  * Pricing Workbench solver (the "New" Pricing view): given the bid's rows and
- * overhead, produce unit prices that hit a target blended margin or a target
- * total price — spreading revenue across rows in proportion to their cost
+ * overhead, produce unit prices that hit a target margin or a target total
+ * price — spreading revenue across rows in proportion to their cost
  * (overhead allocated pro-rata), holding locked rows, and never pricing
  * uncosted rows (mirrors `applyMarginPricing`'s rule: no cost basis → skip).
- * Held rows AND already-priced uncosted rows keep their revenue, and the
- * solver targets around both — the target is always the whole-bid total.
+ *
+ * The two targets scope differently, and the difference is load-bearing:
+ * - A TARGET TOTAL is the whole-bid number the estimator typed, so held rows
+ *   AND already-priced uncosted rows count toward it — the bid lands AT the
+ *   typed number, not that much above it.
+ * - A TARGET MARGIN applies to the rows the solver actually prices (costed
+ *   rows, overhead loaded in). Revenue hand-set on uncosted rows stacks ON
+ *   TOP of the solve instead of being subtracted from its target — otherwise
+ *   a bid whose hand-set revenue exceeds the blended target crushes every
+ *   costed row to the safety floor: prices below cost and a slider that does
+ *   nothing across most of its range (Wendi's 23-no-cost-row bid).
  *
  * Blended margin matches the grid's Total margin: (revenue − totalCost) ÷
  * revenue, where totalCost includes overhead.
@@ -24,7 +33,12 @@ export type WorkbenchSolverRow = {
 }
 
 export type WorkbenchSolveOptions = {
-  /** Target blended margin as a whole percent (1–95). Ignored when targetTotal set. */
+  /**
+   * Target margin as a whole percent (1–95) for the rows being priced (costed
+   * rows, overhead pro-rata). Hand-set revenue on uncosted rows stacks on top,
+   * so the whole bid's blended margin lands at or above this. Ignored when
+   * targetTotal set.
+   */
   targetMarginPct?: number
   /**
    * Target total revenue in dollars for the WHOLE bid; wins over targetMarginPct.
@@ -94,9 +108,13 @@ export function solveWorkbenchPrices(
   // still carries its share of the bid's overhead.
   const basisOf = (r: WorkbenchSolverRow) => r.rowCost * (1 + (fixtureCost > 0 ? Math.max(overhead, 0) / fixtureCost : 0))
   const freeBasis = free.reduce((s, r) => s + basisOf(r), 0)
+  // Margin solves leave the uncosted revenue out of the subtraction — it
+  // stacks on top of the solve (see header). Only a typed target total is a
+  // whole-bid number that the hand-set revenue must count toward.
+  const fixedTowardTarget = opts.targetTotal != null ? uncostedFixedRevenue : 0
   // Never solve below 20% of the free rows' basis — a floor against absurd
   // targets (e.g. target total less than held revenue).
-  const needed = Math.max(targetRevenue - heldRevenue - uncostedFixedRevenue, freeBasis * 0.2)
+  const needed = Math.max(targetRevenue - heldRevenue - fixedTowardTarget, freeBasis * 0.2)
   const k = needed / freeBasis
 
   const prices = new Map<string, number>()
