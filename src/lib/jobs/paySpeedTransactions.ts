@@ -141,14 +141,22 @@ export function filterBills(data: PaySpeedTransactions, query: string): UndatedB
   return data.undatedBills.filter((b) => matchesQuery([b.customerName, b.jobName, b.address], query))
 }
 
+/** A recorded bill date sitting AFTER the payment is a fabrication (v2.2337 guard). */
+export function isBilledAfterPaid(t: PaySpeedTxn): boolean {
+  return t.billedYmd != null && t.billedYmd > t.paidYmd
+}
+
 /**
- * Chip label for the old "unlinked" bucket, split into its two real problems
- * (v2.2316): 'no bill' — the payment isn't applied to any bill (fix = link it
- * from the job); 'no bill date' — it's on a bill whose date is missing (fix =
- * type the date in place). Pre-v4 payloads have no invoiceId and fall back to
+ * Chip label for the old "unlinked" bucket, split into its real problems
+ * (v2.2316; third case v2.2337): 'no bill' — the payment isn't applied to any
+ * bill (fix = link it from the job); 'no bill date' — it's on a bill whose
+ * date is missing; 'billed after paid' — the bill's date sits after the
+ * payment, so it's provably wrong (both date cases fix by typing the real
+ * date in place). Pre-v4 payloads have no invoiceId and fall back to
  * 'no bill', which also (correctly) hides the inline date editor.
  */
-export function missingInfoLabel(t: PaySpeedTxn): 'no bill' | 'no bill date' {
+export function missingInfoLabel(t: PaySpeedTxn): 'no bill' | 'no bill date' | 'billed after paid' {
+  if (isBilledAfterPaid(t)) return 'billed after paid'
   return t.invoiceId != null ? 'no bill date' : 'no bill'
 }
 

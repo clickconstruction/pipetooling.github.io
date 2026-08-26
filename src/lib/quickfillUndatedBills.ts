@@ -14,6 +14,8 @@ export type UndatedWorklistBill = {
   amount: number
   status: string | null
   createdYmd: string | null
+  /** Non-null only for billed-after-paid rows (v2.2337): the provably wrong recorded date. */
+  billedYmd: string | null
   customerName: string | null
   jobId: string | null
   jobName: string | null
@@ -59,6 +61,7 @@ function asBill(v: unknown): UndatedWorklistBill | null {
     amount,
     status: str(o.status),
     createdYmd: ymd(o.createdYmd),
+    billedYmd: ymd(o.billedYmd),
     customerName: str(o.customerName),
     jobId: str(o.jobId),
     jobName: str(o.jobName),
@@ -81,12 +84,21 @@ export function parseUndatedBillWorklist(raw: unknown): UndatedBillWorklist | nu
 }
 
 /**
- * The row's date clue: when its money landed ("paid 08/24", "paid 08/19 + 2
- * more") — the payment date is usually days after the true bill date — or,
- * for unpaid bills, when the bill was created.
+ * The row's date clue: a billed-after-paid row names its provably wrong date
+ * ("billed 08/19 after paid 08/14" — v2.2337 guard); otherwise, when its
+ * money landed ("paid 08/24", "paid 08/19 + 2 more") — the payment date is
+ * usually days after the true bill date — or, for unpaid bills, when the
+ * bill was created.
  */
 export function undatedBillClue(bill: UndatedWorklistBill): string {
   const [first, ...rest] = bill.payments
+  if (bill.billedYmd != null) {
+    // payments are newest-first; name the earliest one the date contradicts
+    const contradicted = [...bill.payments].reverse().find((p) => p.paidYmd < bill.billedYmd!)
+    if (contradicted != null) {
+      return `billed ${formatYmdSlash(bill.billedYmd)} after paid ${formatYmdSlash(contradicted.paidYmd)}`
+    }
+  }
   if (first != null) {
     const more = rest.length > 0 ? ` + ${rest.length} more` : ''
     return `paid ${formatYmdSlash(first.paidYmd)}${more}`

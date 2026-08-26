@@ -80,6 +80,23 @@ const TXNS = {
       gapDays: null,
       status: 'unlinked',
     },
+    {
+      // recorded bill date sits AFTER the payment — the v2.2337 guard buckets
+      // it as missing info with a fixable date
+      paymentId: 'p4',
+      paidYmd: '2026-08-14',
+      sentYmd: null,
+      amount: 5983,
+      paymentType: 'Card (external)',
+      customerName: 'Tyler Moore',
+      jobId: 'j4',
+      jobName: 'Yogo Studio',
+      address: '3556 FM 78 # 103, McQuenny, TX',
+      invoiceId: 'i8',
+      billedYmd: '2026-08-19',
+      gapDays: null,
+      status: 'unlinked',
+    },
   ],
   undatedInvoices: [],
   noCountDate: null,
@@ -102,6 +119,7 @@ beforeEach(() => {
       if (ids.includes('p3'))
         // single item that IS the bill total → label rides the item line
         out.p3 = { linked: true, billAmount: 313, items: [{ name: 'Reset pedestal sink and toilet', count: 1, unitPrice: 313, description: null, amount: 313 }] }
+      if (ids.includes('p4')) out.p4 = { linked: true, billAmount: 5983, items: [] }
       return { data: out }
     }
     return { data: null }
@@ -119,20 +137,25 @@ describe('PaySpeedDataHealthModal', () => {
     expect(screen.getByTitle(/Received 08\/11 — no bill date to measure from/)).toBeTruthy()
   })
 
-  it('splits the old "unlinked" chip: no bill vs no bill date; address gets its own line', async () => {
+  it('splits the old "unlinked" chip: no bill vs no bill date vs billed after paid; address gets its own line', async () => {
     render(<PaySpeedDataHealthModal onClose={vi.fn()} canExclude={false} />)
     expect(await screen.findByText('no bill')).toBeTruthy()
     expect(screen.getByText('no bill date')).toBeTruthy()
-    expect(screen.getByText('Missing info · 2')).toBeTruthy()
+    expect(screen.getByText('billed after paid')).toBeTruthy()
+    expect(screen.getByText('Missing info · 3')).toBeTruthy()
     expect(screen.getByText('180 Go Away Rd, Blanco, TX')).toBeTruthy()
+    // the bad date's hover says why it can't be right
+    expect(screen.getByTitle(/recorded bill date is after the payment/)).toBeTruthy()
     // read-only viewers get no inline editor
     expect(screen.queryByText('＋ add date')).toBeNull()
   })
 
   it('types a bill date inline (MM/DD/YY, auto-slashed) and saves it to the bill', async () => {
     render(<PaySpeedDataHealthModal onClose={vi.fn()} canExclude />)
-    // only p3 (has a bill, missing its date) offers the editor — p2 has no bill
-    const add = await screen.findByText('＋ add date')
+    // p3 (no date) and p4 (billed after paid) both offer the editor — p2 has no bill
+    const adds = await screen.findAllByText('＋ add date')
+    expect(adds).toHaveLength(2)
+    const add = adds[0]!
     fireEvent.click(add)
     const input = screen.getByLabelText('Bill date (MM/DD/YY)') as HTMLInputElement
     fireEvent.change(input, { target: { value: '081326' } })

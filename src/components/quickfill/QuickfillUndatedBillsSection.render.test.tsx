@@ -53,6 +53,20 @@ const WORKLIST = {
       hcpNumber: '918',
       payments: [],
     },
+    {
+      // billed-after-paid (v2.2337 guard): the recorded date contradicts the payment
+      invoiceId: 'i3',
+      amount: 5983,
+      status: 'paid',
+      createdYmd: '2026-08-19',
+      billedYmd: '2026-08-19',
+      customerName: 'Tyler Moore',
+      jobId: 'j3',
+      jobName: 'Yogo Studio',
+      address: '3556 FM 78 # 103, McQuenny, TX',
+      hcpNumber: '955',
+      payments: [{ paidYmd: '2026-08-14', amount: 5983 }],
+    },
   ],
 }
 
@@ -72,8 +86,9 @@ describe('QuickfillUndatedBillsSection', () => {
     expect(screen.getByText('2026-08-01')).toBeTruthy()
     expect(screen.getByText('paid 08/24')).toBeTruthy()
     expect(screen.getByText('billed, unpaid · created 08/12')).toBeTruthy()
+    expect(screen.getByText('billed 08/19 after paid 08/14')).toBeTruthy()
     expect(screen.getByText(/HCP 812/)).toBeTruthy()
-    expect(screen.getAllByText('＋ add date')).toHaveLength(2)
+    expect(screen.getAllByText('＋ add date')).toHaveLength(3)
   })
 
   it('saves a typed date to the bill and re-pulls the worklist', async () => {
