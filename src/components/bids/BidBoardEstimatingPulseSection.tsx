@@ -1,12 +1,19 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { supabase } from '../../lib/supabase'
 import {
   buildPulseBandItems,
+  buildPulsePeopleView,
   buildPulsePersonRows,
   buildPulseStats,
   buildPulseWeeks,
   formatPulseMoney,
+  parsePulseHiddenPeopleState,
   PULSE_SMALL_SAMPLE_DECIDED,
+  withAllPulsePeopleShown,
+  withPulsePersonHidden,
+  type PulseHiddenPeopleState,
+  type PulsePersonDirectoryEntry,
   type PulsePersonRow,
   type PulseRoleStats,
 } from '../../lib/bids/estimatingPulse'
@@ -50,6 +57,16 @@ const statLabelStyle: CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   color: 'var(--text-muted)',
+}
+
+const HIDDEN_PEOPLE_KEY = 'bid_board_pulse_hidden_people_v1'
+
+function readHiddenPeopleState(): PulseHiddenPeopleState {
+  try {
+    return parsePulseHiddenPeopleState(window.localStorage.getItem(HIDDEN_PEOPLE_KEY))
+  } catch {
+    return { hidden: [], shownArchived: [] }
+  }
 }
 
 type ListModalState = {
@@ -208,15 +225,53 @@ function RoleLine({
   )
 }
 
-function PersonCard({ person, onOpenList }: { person: PulsePersonRow; onOpenList: (m: ListModalState) => void }) {
+function PersonCard({
+  person,
+  onOpenList,
+  onHide,
+}: {
+  person: PulsePersonRow
+  onOpenList: (m: ListModalState) => void
+  onHide: () => void
+}) {
   const openRoleList = (roleName: string, stats: PulseRoleStats) => (kind: 'won' | 'lost' | 'wait') => {
     const bidIds = kind === 'won' ? stats.wonBidIds : kind === 'lost' ? stats.lostBidIds : stats.waitingBidIds
     const kindLabel = kind === 'won' ? 'Won' : kind === 'lost' ? 'Lost' : 'Still waiting'
     onOpenList({ heading: person.displayName, context: `${kindLabel} as ${roleName}`, bidIds })
   }
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem 0.85rem 0.7rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+        padding: '0.6rem 0.85rem 0.7rem',
+        position: 'relative',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onHide}
+        title={`Hide ${person.displayName} from this view (they still count in company totals)`}
+        aria-label={`Hide ${person.displayName} from this view`}
+        style={{
+          position: 'absolute',
+          top: '0.4rem',
+          right: '0.45rem',
+          border: 'none',
+          background: 'transparent',
+          color: 'var(--text-muted)',
+          cursor: 'pointer',
+          borderRadius: 6,
+          padding: '0.1rem 0.3rem',
+          fontSize: '0.8rem',
+          lineHeight: 1,
+          opacity: 0.6,
+        }}
+      >
+        ✕
+      </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', paddingRight: '1.2rem' }}>
         <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{person.displayName}</h4>
         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
           {person.touchedCount} bid{person.touchedCount !== 1 ? 's' : ''} touched · {formatPulseMoney(person.touchedDollars)}
@@ -257,7 +312,43 @@ export function BidBoardEstimatingPulseSection({ filteredBids }: { filteredBids:
     () => buildPulsePersonRows(filteredBids, currentWeekStart, windowWeeks),
     [filteredBids, currentWeekStart, windowWeeks],
   )
-  const bandItems = useMemo(() => buildPulseBandItems(people, stats), [people, stats])
+
+  // Names + archived flags for every person id. The users SELECT policy hides
+  // archived accounts from non-dev roles, so the bids join can leave a person
+  // nameless ("—"); this RPC names them and tells us who is archived.
+  const [directory, setDirectory] = useState<ReadonlyMap<string, PulsePersonDirectoryEntry>>(new Map())
+  const personIdsKey = useMemo(() => people.map((p) => p.userId).sort().join(','), [people])
+  useEffect(() => {
+    const ids = personIdsKey ? personIdsKey.split(',') : []
+    if (ids.length === 0) {
+      setDirectory(new Map())
+      return
+    }
+    let cancelled = false
+    void supabase.rpc('list_user_display_names', { p_user_ids: ids }).then(({ data, error }) => {
+      if (cancelled || error || !data) return
+      setDirectory(new Map(data.map((r) => [r.id, { name: r.name, archived: r.archived_at != null }])))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [personIdsKey])
+
+  const [hiddenState, setHiddenState] = useState<PulseHiddenPeopleState>(readHiddenPeopleState)
+  const updateHiddenState = (next: PulseHiddenPeopleState) => {
+    setHiddenState(next)
+    try {
+      window.localStorage.setItem(HIDDEN_PEOPLE_KEY, JSON.stringify(next))
+    } catch {
+      /* device just won't remember */
+    }
+  }
+
+  const { visible: visiblePeople, hiddenChips } = useMemo(
+    () => buildPulsePeopleView(people, directory, hiddenState),
+    [people, directory, hiddenState],
+  )
+  const bandItems = useMemo(() => buildPulseBandItems(visiblePeople, stats), [visiblePeople, stats])
 
   const chartWidth = 20 + weeks.length * (BAR_W + BAR_GAP) + 20
   const maxWeekTotal = Math.max(...weeks.map((w) => w.wonDollars + w.waitDollars + w.lostDollars), 1)
@@ -520,13 +611,101 @@ export function BidBoardEstimatingPulseSection({ filteredBids }: { filteredBids:
           <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.15rem 0' }}>People</h3>
           <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
             One card per person — estimator and account-manager sides together. The header counts each bid once even when
-            they hold both roles. W / L / ⏳ click through to the bids; hover a role line for the full record.
+            they hold both roles. W / L / ⏳ click through to the bids; hover a role line for the full record. Hide
+            someone with the ✕ on their card; bring them back from the Hidden row.
           </p>
+          {hiddenChips.length > 0 ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                flexWrap: 'wrap',
+                margin: '0 0 0.8rem',
+                fontSize: '0.75rem',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <span style={{ fontWeight: 600 }}>Hidden:</span>
+              {hiddenChips.map((c) => (
+                <button
+                  key={c.userId}
+                  type="button"
+                  onClick={() => updateHiddenState(withPulsePersonHidden(hiddenState, c.userId, c.archived, false))}
+                  title={`Show ${c.label} again`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    border: '1px dashed var(--border-strong)',
+                    borderRadius: 999,
+                    padding: '0.14rem 0.6rem',
+                    background: 'var(--bg-subtle)',
+                    color: 'var(--text-700)',
+                    font: 'inherit',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span aria-hidden style={{ color: 'var(--text-blue-800)', fontWeight: 700 }}>
+                    +
+                  </span>
+                  {c.label}
+                  {c.archived ? (
+                    <span
+                      style={{
+                        fontWeight: 500,
+                        color: 'var(--text-amber-800)',
+                        background: 'var(--bg-amber-100)',
+                        borderRadius: 4,
+                        padding: '0 0.3rem',
+                        fontSize: '0.62rem',
+                      }}
+                    >
+                      archived
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+              {hiddenChips.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => updateHiddenState(withAllPulsePeopleShown(hiddenState, hiddenChips))}
+                  style={{
+                    border: '1px dashed var(--border-strong)',
+                    borderRadius: 999,
+                    padding: '0.14rem 0.6rem',
+                    background: 'var(--bg-subtle)',
+                    color: 'var(--text-700)',
+                    font: 'inherit',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Show all
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '0.85rem' }}>
-            {people.map((p) => (
-              <PersonCard key={p.userId} person={p} onOpenList={setListModal} />
+            {visiblePeople.map((p) => (
+              <PersonCard
+                key={p.userId}
+                person={p}
+                onOpenList={setListModal}
+                onHide={() => {
+                  const archived = directory.get(p.userId)?.archived ?? false
+                  updateHiddenState(withPulsePersonHidden(hiddenState, p.userId, archived, true))
+                }}
+              />
             ))}
           </div>
+          <p style={{ margin: '0.7rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            Hidden people still count in the company totals, the weekly chart, and the ALL marker — hiding only clears
+            their card and band marker from your view.
+          </p>
         </div>
       ) : (
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>

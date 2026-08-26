@@ -401,6 +401,94 @@ export function buildPulseBandItems(
   })
 }
 
+/** users lookup entry (RPC list_user_display_names) for a pulse person id. */
+export type PulsePersonDirectoryEntry = { name: string | null; archived: boolean }
+
+/**
+ * Per-viewer hide preferences (localStorage). `hidden` are explicit hides of
+ * active people; `shownArchived` are explicit un-hides of archived people,
+ * who are hidden by default.
+ */
+export type PulseHiddenPeopleState = { hidden: string[]; shownArchived: string[] }
+
+export type PulseHiddenChip = { userId: string; label: string; archived: boolean }
+
+export function emptyPulseHiddenPeopleState(): PulseHiddenPeopleState {
+  return { hidden: [], shownArchived: [] }
+}
+
+/** Safe parse of the persisted state; anything malformed → empty state. */
+export function parsePulseHiddenPeopleState(raw: string | null): PulseHiddenPeopleState {
+  if (!raw) return emptyPulseHiddenPeopleState()
+  try {
+    const o = JSON.parse(raw) as { hidden?: unknown; shownArchived?: unknown }
+    const strings = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+    return { hidden: strings(o?.hidden), shownArchived: strings(o?.shownArchived) }
+  } catch {
+    return emptyPulseHiddenPeopleState()
+  }
+}
+
+/**
+ * Split people into shown rows and hidden chips. Resolves "—" display names
+ * through the directory (the users RLS policy hides archived accounts from
+ * non-dev roles, so the bids join can't name them); archived people are
+ * hidden by default until explicitly shown.
+ */
+export function buildPulsePeopleView(
+  people: PulsePersonRow[],
+  directory: ReadonlyMap<string, PulsePersonDirectoryEntry>,
+  state: PulseHiddenPeopleState,
+): { visible: PulsePersonRow[]; hiddenChips: PulseHiddenChip[] } {
+  const hidden = new Set(state.hidden)
+  const shownArchived = new Set(state.shownArchived)
+  const visible: PulsePersonRow[] = []
+  const hiddenChips: PulseHiddenChip[] = []
+  for (const p of people) {
+    const entry = directory.get(p.userId)
+    const name = p.displayName !== '—' ? p.displayName : entry?.name?.trim() || '—'
+    const archived = entry?.archived ?? false
+    const isShown = archived ? shownArchived.has(p.userId) : !hidden.has(p.userId)
+    if (isShown) visible.push(name === p.displayName ? p : { ...p, displayName: name })
+    else hiddenChips.push({ userId: p.userId, label: name, archived })
+  }
+  return { visible, hiddenChips }
+}
+
+/** New state with one person hidden or shown (deduped, order preserved). */
+export function withPulsePersonHidden(
+  state: PulseHiddenPeopleState,
+  userId: string,
+  archived: boolean,
+  hide: boolean,
+): PulseHiddenPeopleState {
+  const without = (list: string[]) => list.filter((id) => id !== userId)
+  if (archived) {
+    return {
+      hidden: without(state.hidden),
+      shownArchived: hide ? without(state.shownArchived) : [...without(state.shownArchived), userId],
+    }
+  }
+  return {
+    hidden: hide ? [...without(state.hidden), userId] : without(state.hidden),
+    shownArchived: state.shownArchived,
+  }
+}
+
+/** New state showing every currently hidden chip (archived ones included). */
+export function withAllPulsePeopleShown(
+  state: PulseHiddenPeopleState,
+  hiddenChips: PulseHiddenChip[],
+): PulseHiddenPeopleState {
+  const newlyShown = hiddenChips.filter((c) => c.archived).map((c) => c.userId)
+  const already = new Set(state.shownArchived)
+  return {
+    hidden: [],
+    shownArchived: [...state.shownArchived, ...newlyShown.filter((id) => !already.has(id))],
+  }
+}
+
 /** `$4.2M` / `$287K` / `$950` — chart + card money labels. */
 export function formatPulseMoney(v: number): string {
   const abs = Math.abs(v)
