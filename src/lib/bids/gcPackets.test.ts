@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupVersionsByGc, rollUpOutcome } from './gcPackets'
+import { defaultCopySourceId, groupVersionsByGc, rollUpOutcome } from './gcPackets'
 
 const v = (id: string, customer_id: string | null, sort_order: number, extra: Record<string, unknown> = {}) => ({ id, name: id, customer_id, sort_order, ...extra })
 
@@ -31,6 +31,30 @@ describe('groupVersionsByGc', () => {
       ['Burd', 1, '2026-07-31', false],
       ['Knight', 0, '2026-07-31', true],
     ])
+  })
+})
+
+describe('defaultCopySourceId', () => {
+  const vs = [
+    v('spc', null, 0),
+    v('burd', 'c-burd', 1, { starred_price_book_version_id: 'p1' }),
+    v('burd-ve', 'c-burd', 2),
+    v('knight-b', 'c-k', 4, { starred_price_book_version_id: 'p2' }),
+    v('knight-a', 'c-k', 3),
+  ]
+  it('keeps the selected version when it is already in the destination packet', () => {
+    expect(defaultCopySourceId(vs, 'c-burd', 'burd-ve')).toBe('burd-ve')
+  })
+  it('prefers the destination packet over a selection in another GC — the ★ version first', () => {
+    expect(defaultCopySourceId(vs, 'c-k', 'burd')).toBe('knight-b')
+  })
+  it('falls back to the packet first by sort order when nothing is starred', () => {
+    expect(defaultCopySourceId([v('spc', null, 0), v('b1', 'c-b', 2), v('b2', 'c-b', 1)], 'c-b', 'spc')).toBe('b2')
+  })
+  it('a packet with no versions falls back to the selection, then the first version overall', () => {
+    expect(defaultCopySourceId(vs, 'c-new', 'burd')).toBe('burd')
+    expect(defaultCopySourceId(vs, 'c-new', null)).toBe('spc')
+    expect(defaultCopySourceId([], null, null)).toBeNull()
   })
 })
 

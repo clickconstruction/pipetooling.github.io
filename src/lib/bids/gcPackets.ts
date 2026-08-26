@@ -38,6 +38,25 @@ export type GcPacket<V extends GcVersionLike = GcVersionLike> = {
   sharedLetter?: boolean
 }
 
+/**
+ * Default "Start from" source when adding a version to a GC's packet (v2.2365): the packet's own
+ * versions come first — the selected one if it's in the packet, else the packet's ★'d version, else
+ * its first by sort order. Only a packet with no versions falls back to the bid-wide selection, so
+ * "+ version" never silently clones another GC's packet.
+ */
+export function defaultCopySourceId<V extends GcVersionLike>(
+  versions: ReadonlyArray<V>,
+  gcId: string | null,
+  selectedId: string | null,
+): string | null {
+  const packet = [...versions].filter((v) => (v.customer_id ?? null) === gcId).sort((a, b) => a.sort_order - b.sort_order)
+  if (selectedId && packet.some((v) => v.id === selectedId)) return selectedId
+  const starred = packet.find((v) => v.starred_price_book_version_id)
+  if (starred) return starred.id
+  if (packet[0]) return packet[0].id
+  return selectedId ?? versions[0]?.id ?? null
+}
+
 export function groupVersionsByGc<V extends GcVersionLike>(
   versions: ReadonlyArray<V>,
   opts: {

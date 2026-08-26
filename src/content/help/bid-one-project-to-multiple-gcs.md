@@ -11,7 +11,11 @@ The one sentence: **versions draft this bid for different GCs; price options sen
 
 1. On the bid's **Counts / Takeoffs / Pricing / Cover Letter** pages, the strip at the top reads **Send to** — one group per GC, each showing whether it was sent and its ★ price. The bid's own GC comes first.
 2. Press {{button:blue|＋ Add GC}}: pick the GC, choose which packet to **start from** (its counts, takeoff and prices are copied), and optionally name it — it defaults to the GC's name. The new GC joins the bid's *Also sent to* list on its own.
-3. Inside a GC group, **+ version** adds a same-GC variant with its own takeoff (a VE, say). The ✎ on any version still renames it or points it at a different GC.
+3. Inside a GC group, **+ version** adds another version to that packet. Its **Start from** picker lists every version on the bid — it opens on this packet's own version, but pick one from **another GC** to copy that version (counts, takeoff and prices) into this packet. The name pre-fills from the source; keep it or type your own. The ✎ on any version still renames it or points it at a different GC.
+
+:::example Copy a version between GCs
+Burd & Assoc. has an *Alternate 1* that Southern Post should get too? Press **+ version** on **Southern Post's** group, set *Start from* to **Burd & Assoc. · Alternate 1**, and create — Southern Post's packet gets its own copy, priced and editable on its own.
+:::
 
 :::example Not split yet?
 A bid that has never been split shows one group — its GC — with *one packet*. The first **＋ Add GC** names the existing setup after the bid's GC and starts the new packet as a copy of it.

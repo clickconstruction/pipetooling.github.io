@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidVersion } from '../../lib/bids/bidPricingEngineTypes'
 import { formatSendBadge, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
-import { groupVersionsByGc } from '../../lib/bids/gcPackets'
+import { defaultCopySourceId, groupVersionsByGc } from '../../lib/bids/gcPackets'
 
 type BidVersionPickerProps = {
   bidId: string
@@ -66,6 +66,9 @@ export function BidVersionPicker({
   const [modalOpen, setModalOpen] = useState(false)
   const [currentName, setCurrentName] = useState('') // first-split only: name for the existing setup
   const [newName, setNewName] = useState('')
+  // v2.2365: "Start from" — any version on the bid, so a version copies between GC packets on purpose.
+  const [newFromVersionId, setNewFromVersionId] = useState<string | null>(null)
+  const [newNameTouched, setNewNameTouched] = useState(false)
   const [clonePricing, setClonePricing] = useState(true)
   const [busy, setBusy] = useState(false)
 
@@ -160,6 +163,8 @@ export function BidVersionPicker({
   function openNewVersion(forGcId: string | null = null) {
     setCurrentName(isUnsplit ? (bidGcName ?? 'To Plans') : '')
     setNewName(isUnsplit ? 'Value Engineered' : '')
+    setNewNameTouched(false)
+    setNewFromVersionId(isUnsplit ? null : defaultCopySourceId(bidVersions, forGcId, selectedBidVersionId))
     setClonePricing(true)
     setNewForGcId(forGcId)
     setModalOpen(true)
@@ -249,15 +254,18 @@ export function BidVersionPicker({
   }, [isUnsplit, selectedBidVersionId, bidVersions])
 
   const pricingSource = currentPricingId ?? fallbackPricingSourceId ?? null
-  /** Name of the scenario the new version's prices start from (v2.2123: the clone keeps this name). */
-  const pricingSourceName = pricingSourceNames?.[pricingSource ?? ''] ?? null
+  // v2.2365: the "Another version" modal's chosen source and the ★ its prices would clone from
+  // (same derivation as ＋ Add GC: the source's ★, or the active facet when the source is selected).
+  const newFromVersion = isUnsplit ? null : (bidVersions.find((v) => v.id === newFromVersionId) ?? bidVersions.find((v) => v.id === selectedBidVersionId) ?? bidVersions[0] ?? null)
+  const newFromPricing = isUnsplit ? pricingSource : newFromVersion ? (newFromVersion.starred_price_book_version_id ?? (newFromVersion.id === selectedBidVersionId ? pricingSource : null)) : null
+  const newFromPricingName = pricingSourceNames?.[newFromPricing ?? ''] ?? null
 
   async function submitNewVersion() {
     const variantName = newName.trim()
     if (!variantName) return
     if (!isUnsplit && !selectedBidVersionId) return // defensive: a split bid always has an active version
-    const willClonePricing = clonePricing && !!pricingSource
-    if (clonePricing && !pricingSource) {
+    const willClonePricing = clonePricing && !!newFromPricing
+    if (clonePricing && !newFromPricing) {
       showToast('No prices to copy yet — the version starts without prices.', 'info')
     }
     setBusy(true)
@@ -281,12 +289,13 @@ export function BidVersionPicker({
         }
         newId = data as string
       } else {
+        if (!newFromVersion) return
         const { data, error } = await supabase.rpc('create_bid_version', {
           p_bid_id: bidId,
           p_name: variantName,
-          p_source_bid_version_id: selectedBidVersionId as string,
+          p_source_bid_version_id: newFromVersion.id,
           p_clone_pricing: willClonePricing,
-          p_pricing_source_version_id: (willClonePricing ? pricingSource : null) as string,
+          p_pricing_source_version_id: (willClonePricing ? newFromPricing : null) as string,
         })
         if (error) {
           showToast(`Failed to create version: ${error.message}`, 'error')
@@ -472,7 +481,7 @@ export function BidVersionPicker({
               <button
                 type="button"
                 onClick={() => openNewVersion(g.gcId)}
-                title={`Another version for ${g.name} — same GC, its own takeoff and prices (a VE, say). For another price only, use the Pricing page.`}
+                title={`Another version for ${g.name} — its own takeoff and prices, starting from any version on the bid (copy another GC's version in here, or make a VE). For another price only, use the Pricing page.`}
                 style={{ padding: '0.2rem 0.45rem', background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)' }}
               >
                 + version
@@ -501,7 +510,25 @@ export function BidVersionPicker({
       {modalOpen && (
         <Overlay onClose={() => !busy && setModalOpen(false)}>
           <h3 style={{ margin: '0 0 1rem' }}>{isUnsplit ? 'Split into two versions' : newForGcId ? `Another version for ${gcNamesById[newForGcId] ?? 'this GC'}` : 'Another version'}</h3>
-          {!isUnsplit ? <p style={{ margin: '-0.6rem 0 0.8rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Same GC, its own takeoff and prices — a VE, say. For another GC use ＋ Add GC; for another price only, the Pricing page.</p> : null}
+          {!isUnsplit ? <p style={{ margin: '-0.6rem 0 0.8rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Its own takeoff and prices. Start from any version on this bid — pick one from another GC to copy it into this packet.</p> : null}
+          {!isUnsplit && (
+            <label style={{ display: 'block', marginBottom: '0.75rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Start from</span>
+              <select
+                value={newFromVersion?.id ?? ''}
+                onChange={(e) => {
+                  const src = bidVersions.find((v) => v.id === e.target.value)
+                  setNewFromVersionId(e.target.value)
+                  // Copying another GC's version over: pre-fill its name until the user types one.
+                  if (!newNameTouched && src) setNewName((src.customer_id ?? null) !== (newForGcId ?? null) ? src.name : '')
+                }}
+                style={inputStyle}
+              >
+                {bidVersions.map((v) => <option key={v.id} value={v.id}>{(v.customer_id ? gcNamesById[v.customer_id] ?? '…' : bidGcName ?? 'bid GC')} · {v.name}{starNameOf(v) ? ` · ★ ${starNameOf(v)}` : ' · no prices'}</option>)}
+              </select>
+              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>copies its counts, takeoff and prices</span>
+            </label>
+          )}
           {isUnsplit && (
             <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
               Name what you have now, then the new one. Each becomes its own bid — its own counts, takeoff and prices from here — sendable separately or bundled in one cover letter.
@@ -516,12 +543,12 @@ export function BidVersionPicker({
           )}
           <label style={{ display: 'block', marginBottom: '0.75rem' }}>
             <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>{isUnsplit ? 'Name the new bid' : 'Name'}</span>
-            <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Value Engineered" autoFocus
+            <input value={newName} onChange={(e) => { setNewName(e.target.value); setNewNameTouched(true) }} placeholder="e.g. Value Engineered" autoFocus
               style={inputStyle} />
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
             <input type="checkbox" checked={clonePricing} onChange={(e) => setClonePricing(e.target.checked)} />
-            Start its prices from this bid&apos;s ★{pricingSourceName ? <> — <strong>{pricingSourceName}</strong> stays named {pricingSourceName}</> : null}
+            <span>Start its prices from {isUnsplit ? 'this bid’s' : 'the source’s'} ★{newFromPricingName ? <> — <strong>{newFromPricingName}</strong> stays named {newFromPricingName}</> : null}</span>
           </label>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button type="button" onClick={() => setModalOpen(false)} disabled={busy} style={btnGhost}>Cancel</button>
