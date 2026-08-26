@@ -366,8 +366,9 @@ export default function JobSummaryChargesTimelineChart({
   )
 }
 
-/** Presentational chart (shared by Job Summary and the modal Parts-cost sections). Scrolls
- * horizontally once the day-bucket count outgrows the container (~56px per bucket). */
+/** Presentational chart (shared by Job Summary and the modal Parts-cost sections). Always
+ * fits the container width — no horizontal scrolling (owner call, v2.2327); recharts
+ * compresses the day buckets to fit. */
 export function JobChargesTimelineChartView({
   data,
   revenue,
@@ -412,9 +413,8 @@ export function JobChargesTimelineChartView({
           </label>
         </div>
       )}
-      <div style={{ width: '100%', overflowX: 'auto', minWidth: 0 }}>
-        <div style={{ minWidth: Math.max(520, data.chartRows.length * 56), height: 260 }}>
-        <ResponsiveContainer width="100%" height={260}>
+      <div style={{ width: '100%', minWidth: 0, height: 320 }}>
+        <ResponsiveContainer width="100%" height={320}>
           <LineChart data={data.chartRows} margin={{ top: 36, right: 8, left: 8, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
@@ -483,9 +483,8 @@ export function JobChargesTimelineChartView({
             )}
           </LineChart>
         </ResponsiveContainer>
-        </div>
       </div>
-      <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+      <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0', textAlign: 'center' }}>
         <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
         <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit
         {valueShown && (
@@ -514,7 +513,7 @@ export function JobChargesTimelineChartView({
         </button>
       </p>
       {legendHelpOpen && (
-        <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
+        <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0', textAlign: 'center' }}>
           💵 = payment received · 🚩 = field report · Cost sources:{' '}
           {Object.values(JOB_CHARGE_SOURCE_META)
             .map((m) => `${m.icon} ${m.name}`)
