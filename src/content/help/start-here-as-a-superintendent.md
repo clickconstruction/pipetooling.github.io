@@ -7,6 +7,10 @@ order: 6
 ---
 You run the work on the ground: who's on which step, when it's scheduled, and whether it passed. You see project and job detail, but not company financial totals.
 
+## Finding your pages
+
+The top bar carries **Estimates**, **Jobs**, **Schedule**, **Projects**, and **Bids**. **Materials** and **Checklist** sit as icons beside them, and the {{icon:gear}} menu holds **Documents**, **Calendar**, **Help**, and **Settings**.
+
 ## Your day
 
 1. **Check the Projects board.** Rows sort with the ones needing a decision first — a red or amber pill tells you what's stuck. See [project status at a glance](?g=see-project-status-at-a-glance).

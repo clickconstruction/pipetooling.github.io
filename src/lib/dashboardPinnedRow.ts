@@ -5,37 +5,17 @@
  */
 
 import type { PinnedItem } from './pinnedTabs'
+import type { UserRole } from '../hooks/useAuth'
+import { isPathAllowedForRole } from './layoutRouteAccess'
 
-// Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
-const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally'])
-const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
-const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
-
-export function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: boolean): Set<string> | null {
-  if (role === 'subcontractor' || role === 'helpers') return SUBCONTRACTOR_PATHS
-  if (role === 'estimator') {
-    return new Set([
-      '/dashboard',
-      '/materials',
-      '/bids',
-      '/customers',
-      ...(estimatorProspectsAccess ? ['/prospects'] : []),
-      '/calendar',
-      '/checklist',
-      '/people',
-      '/settings',
-      '/tally',
-    ])
-  }
-  if (role === 'primary' || role === null) return PRIMARY_PATHS
-  if (role === 'superintendent') return SUPERINTENDENT_PATHS
-  return null // dev, master_technician, assistant: no filter (all paths allowed)
-}
-
+/**
+ * Role-filters the pin chips through the same allowlists Layout's redirect guard uses
+ * (v2.2325 — this file previously kept its own narrower path sets, which hid legitimate
+ * pins). When role is null (auth still loading), treat as primary to prevent flash.
+ */
 export function filterPinnedByRole(pins: PinnedItem[], role: string | null, estimatorProspectsAccess?: boolean): PinnedItem[] {
-  const allowed = getAllowedPathsForRole(role, estimatorProspectsAccess)
-  if (!allowed) return pins
-  return pins.filter((p) => allowed.has(p.path))
+  const effectiveRole = (role ?? 'primary') as UserRole
+  return pins.filter((p) => isPathAllowedForRole(effectiveRole, p.path, estimatorProspectsAccess ?? false))
 }
 
 /** Pins actually shown as chips: Dashboard/self links and the External Team pin are excluded. */
