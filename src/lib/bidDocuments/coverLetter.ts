@@ -60,6 +60,32 @@ function closingLinesFrom(closingParagraph: string | null): string[] {
   return src.split(/\n/).map((l) => l.trim()).filter(Boolean)
 }
 
+/**
+ * Same-page alternates (v2.2370): listed under the proposed amount instead of one full letter per
+ * alternate. Amounts arrive pre-formatted; only the base proposal spells its amount in words.
+ * `editKey` (preview only) wraps the customer-editable label + note in `data-cl-edit` spans the
+ * studio turns into click-to-edit — never set on HTML headed to the clipboard/print.
+ */
+export type CoverLetterAlternateItem = {
+  label: string
+  /** e.g. "$62,024.11" */
+  amountFormatted: string
+  /** e.g. "reduced $5,287" / "added $4,100"; null hides the parenthetical. */
+  deltaFormatted: string | null
+  note: string | null
+  editKey?: string
+}
+
+export type CoverLetterAlternatesBlock = {
+  heading: string
+  items: CoverLetterAlternateItem[]
+  headingEditKey?: string
+}
+
+function editWrap(innerHtml: string, editKey: string | undefined): string {
+  return editKey ? `<span data-cl-edit="${escapeHtml(editKey)}">${innerHtml}</span>` : innerHtml
+}
+
 /** Service-type word for cover letter (plumbing/electrical/HVAC). "Click Plumbing and Electrical" is never changed. */
 export function serviceTypeWordForCoverLetter(serviceTypeName: string): string {
   const name = (serviceTypeName ?? 'Plumbing').toLowerCase()
@@ -84,7 +110,8 @@ export function buildCoverLetterHtml(
   includeSignature = true,
   includeFixturesPerPlan = true,
   paymentSchedule: CoverLetterPaymentSchedule | null = null,
-  closingParagraph: string | null = null
+  closingParagraph: string | null = null,
+  alternatesBlock: CoverLetterAlternatesBlock | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -112,6 +139,13 @@ export function buildCoverLetterHtml(
   const termsContent = terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY
 
   let html = customerBlock + br2 + projectBlock
+  if (alternatesBlock && alternatesBlock.items.length > 0) {
+    html += br2 + '<strong>' + editWrap(escapeHtml(alternatesBlock.heading), alternatesBlock.headingEditKey) + '</strong>'
+    for (const item of alternatesBlock.items) {
+      html += br + inclusionIndent + '• <strong>' + editWrap(escapeHtml(item.label), item.editKey) + '</strong>: <strong>' + escapeHtml(item.amountFormatted) + '</strong>' + (item.deltaFormatted ? ' (' + escapeHtml(item.deltaFormatted) + ')' : '')
+      if (item.note?.trim()) html += br + inclusionIndent + '  ' + editWrap(escapeHtml(item.note.trim()), item.editKey)
+    }
+  }
   if (designDrawingPlanDateFormatted) {
     html += br2 + '<strong>Design Drawings Plan Date: ' + escapeHtml(designDrawingPlanDateFormatted) + '</strong>'
   }
@@ -161,7 +195,8 @@ export function buildCoverLetterText(
   includeSignature = true,
   includeFixturesPerPlan = true,
   paymentSchedule: CoverLetterPaymentSchedule | null = null,
-  closingParagraph: string | null = null
+  closingParagraph: string | null = null,
+  alternatesBlock: CoverLetterAlternatesBlock | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -175,6 +210,17 @@ export function buildCoverLetterText(
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
   const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
+  const alternatesLines =
+    alternatesBlock && alternatesBlock.items.length > 0
+      ? [
+          alternatesBlock.heading,
+          ...alternatesBlock.items.flatMap((item) => [
+            inclusionIndent + '• ' + item.label + ': ' + item.amountFormatted + (item.deltaFormatted ? ' (' + item.deltaFormatted + ')' : ''),
+            ...(item.note?.trim() ? [inclusionIndent + '  ' + item.note.trim()] : []),
+          ]),
+          '',
+        ]
+      : []
   const lines: string[] = [
     customerName,
     ...addressLines(customerAddress),
@@ -184,6 +230,7 @@ export function buildCoverLetterText(
     '',
     `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords} (${revenueNumber})`,
     '',
+    ...alternatesLines,
     ...(designDrawingPlanDateFormatted ? ['Design Drawings Plan Date: ' + designDrawingPlanDateFormatted, ''] : []),
     'Inclusions:',
     inclusionsBlock || '(none)',

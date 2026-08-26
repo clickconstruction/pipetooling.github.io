@@ -294,3 +294,55 @@ describe('Schedule of Values section', () => {
     expect(out).toContain('&lt;script&gt;')
   })
 })
+
+describe('alternates block (same-page alternates, v2.2370)', () => {
+  const BLOCK = {
+    heading: 'Alternates:',
+    items: [
+      { label: 'Alternate 1 — PEX in lieu of copper', amountFormatted: '$62,024.11', deltaFormatted: 'reduced $5,287', note: 'Same scope as below.' },
+      { label: 'Alternate 2', amountFormatted: '$71,411.11', deltaFormatted: null, note: null },
+    ],
+  }
+  function htmlWithBlock(block: typeof BLOCK | null) {
+    return buildCoverLetterHtml('John Doe', '123 Main St', 'Acme Tower', '456 Job Rd', 'One Hundred 00/100 Dollars', '$100.00', FIXTURES, '', '', '', '7-7-26', 'Plumbing', true, true, null, null, block)
+  }
+  function textWithBlock(block: typeof BLOCK | null) {
+    return buildCoverLetterText('John Doe', '123 Main St', 'Acme Tower', '456 Job Rd', 'One Hundred 00/100 Dollars', '$100.00', FIXTURES, '', '', '', '7-7-26', 'Plumbing', true, true, null, null, block)
+  }
+
+  it('renders between the proposed amount and the plan date, in the letter voice', () => {
+    const out = htmlWithBlock(BLOCK)
+    expect(out).toContain('<strong>Alternates:</strong>')
+    expect(out).toContain('     • <strong>Alternate 1 — PEX in lieu of copper</strong>: <strong>$62,024.11</strong> (reduced $5,287)')
+    expect(out).toContain('       Same scope as below.')
+    expect(out).toContain('     • <strong>Alternate 2</strong>: <strong>$71,411.11</strong><br/>')
+    expect(out.indexOf('($100.00)')).toBeLessThan(out.indexOf('Alternates:'))
+    expect(out.indexOf('Alternates:')).toBeLessThan(out.indexOf('Design Drawings Plan Date'))
+  })
+
+  it('plain-text twin mirrors the same lines', () => {
+    const out = textWithBlock(BLOCK)
+    expect(out).toContain('Alternates:\n     • Alternate 1 — PEX in lieu of copper: $62,024.11 (reduced $5,287)\n       Same scope as below.\n     • Alternate 2: $71,411.11\n\nDesign Drawings Plan Date')
+  })
+
+  it('no block (or an empty one) leaves the letter byte-identical to today', () => {
+    expect(htmlWithBlock(null)).toBe(buildCoverLetterHtml('John Doe', '123 Main St', 'Acme Tower', '456 Job Rd', 'One Hundred 00/100 Dollars', '$100.00', FIXTURES, '', '', '', '7-7-26', 'Plumbing'))
+    expect(htmlWithBlock({ heading: 'Alternates:', items: [] })).toBe(htmlWithBlock(null))
+    expect(textWithBlock(null)).toBe(buildCoverLetterText('John Doe', '123 Main St', 'Acme Tower', '456 Job Rd', 'One Hundred 00/100 Dollars', '$100.00', FIXTURES, '', '', '', '7-7-26', 'Plumbing'))
+  })
+
+  it('escapes wording but keeps edit-key spans only when asked (preview vs shipped)', () => {
+    const editable = buildCoverLetterHtml('J', 'a', 'P', 'b', 'W', '$1.00', [], '', '', '', null, 'Plumbing', true, true, null, null, {
+      heading: 'Alternates:',
+      headingEditKey: 'heading',
+      items: [{ label: 'A <&> B', amountFormatted: '$2.00', deltaFormatted: null, note: null, editKey: 'v1:p2' }],
+    })
+    expect(editable).toContain('<span data-cl-edit="heading">Alternates:</span>')
+    expect(editable).toContain('<span data-cl-edit="v1:p2">A &lt;&amp;&gt; B</span>')
+    const shipped = buildCoverLetterHtml('J', 'a', 'P', 'b', 'W', '$1.00', [], '', '', '', null, 'Plumbing', true, true, null, null, {
+      heading: 'Alternates:',
+      items: [{ label: 'A <&> B', amountFormatted: '$2.00', deltaFormatted: null, note: null }],
+    })
+    expect(shipped).not.toContain('data-cl-edit')
+  })
+})

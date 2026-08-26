@@ -2,7 +2,7 @@
 title: use the cover letter studio
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: cover letter, studio, layout, preview, proposal, letter, send, google docs, old, new, versions, base, alternate, letter total
+keywords: cover letter, studio, layout, preview, proposal, letter, send, google docs, old, new, versions, base, alternate, letter total, alternates, same page, separate pages, reduced, wording, rename
 order: 93
 ---
 The **Bids → Cover Letter** tab is a two-pane studio: your controls sit in numbered steps on the left, and the letter itself stays on screen at the right the whole time — repainting live as you type.
@@ -23,6 +23,20 @@ Next to the bid's name are {{chip:gray|Old}} / {{chip:gray|New}} pills, like the
 New shows a single line — *One bid — the letter shows ★ WENDI* — and the letter is exactly what it was. To offer that GC a second price, add it on the Pricing tab with {{button:outline|＋ Add price}} and offer it from the card's bottom bar.
 :::
 - {{chip:blue|2 Letter content}} — what's included (Plan date, Fixtures per plan, Signature, Payment schedule as on/off pills), the Schedule of Values, and the inclusions / exclusions / terms text.
+
+## Alternates on one page
+
+With **New** selected, a letter that has alternates puts them **on the same page** as the base bid: one address block, one proposal amount, and an **Alternates:** list right under it — each alternate on one line with its price and the difference in plain words.
+
+:::example What the GC reads
+Alternates:
+• **Alternate 1 — PEX water distribution in lieu of copper**: **$62,024.11** (reduced $5,287)
+:::
+
+- **Change the wording customers see** by clicking the dashed text right on the preview — the alternate's name, its optional note line, or the *Alternates:* heading. Type, press Enter, done. This is letter-only wording: the version and price names your team sees on the Pricing tab don't change, and {{button:outline|Reset to auto}} brings the automatic text back.
+- **The difference is computed** — *(reduced $5,287)* or *(added $4,100)* against the proposed amount — so it can never disagree with the Pricing tab.
+- **No base bid, only alternates?** The ★ price leads the letter and the rest are listed against it — the headline amount is never $0.00.
+- **Want the old document?** Flip **Alternates in the letter** to {{chip:gray|Separate pages}} in step 1 — one full letter per alternate, exactly as before. Your choice is remembered on this device.
 
 ## Sending it
 
