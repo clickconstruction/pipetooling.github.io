@@ -12,6 +12,7 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
+import { titleCaseAddress } from '../../lib/addressTitleCase'
 import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNames'
 import { billsAheadRemedyHint } from '../../lib/jobs/editJobInvoiceSendBack'
 import { useAuth } from '../../hooks/useAuth'
@@ -2862,7 +2863,7 @@ export default function JobFormModal({
           hcp_number: hcpNumber.trim(),
           click_number: clickNumber.trim(),
           job_name: jobName.trim(),
-          job_address: jobAddress.trim(),
+          job_address: titleCaseAddress(jobAddress.trim()),
           customer_id: resolvedCustomerIdNew,
           gc_customer_id: resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers),
           development_id: resolveDevelopmentIdForJobPayload(developmentId, effectiveMasterId, developments),

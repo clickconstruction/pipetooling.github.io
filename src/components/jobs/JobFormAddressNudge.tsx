@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { buildAddressStatementPreview, suggestAddressComma } from '../../lib/addressCommaNudge'
+import { titleCaseAddress } from '../../lib/addressTitleCase'
 
 /**
  * The comma nudge under the Job Address input (v2.2323, approved mockup):
@@ -17,8 +18,12 @@ export default function JobFormAddressNudge({
   onApply: (fixed: string) => void
 }) {
   const [ignoredFor, setIgnoredFor] = useState<string | null>(null)
-  const preview = useMemo(() => buildAddressStatementPreview(address), [address])
-  const suggestion = useMemo(() => suggestAddressComma(address), [address])
+  // The preview and the chip both speak in the saved form: Title Case
+  // (v2.2328) — the save path normalizes casing, so showing anything else
+  // here would lie about the paper.
+  const normalized = useMemo(() => titleCaseAddress(address), [address])
+  const preview = useMemo(() => buildAddressStatementPreview(normalized), [normalized])
+  const suggestion = useMemo(() => suggestAddressComma(normalized), [normalized])
   if (!preview) return null
   const showChip = suggestion != null && ignoredFor !== address
   return (
