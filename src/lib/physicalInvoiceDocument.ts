@@ -288,12 +288,19 @@ function paymentHistoryHtml(doc: PhysicalInvoiceDocument): string {
         )}</td></tr>`,
     )
     .join('')
+  // The closing rule is its own inset row (v2.2338): a bordered div inside a
+  // padded cell, so the line stops short of the card's edges. Cell border-top
+  // would run edge to edge.
+  const ruleRow = t
+    ? `<tr><td colspan="2" style="padding:3px 12px 0"><div style="border-top:1px solid #9ca3af"></div></td></tr>`
+    : ''
   const totalsRows = t
-    ? t.paidInFull
-      ? `<tr><td style="padding:8px 12px 10px;color:#16a34a;font-weight:700;border-top:1px solid #9ca3af" colspan="2">Paid in full</td></tr>`
-      : `<tr><td style="padding:8px 12px 10px;color:#b3261e;font-weight:700;border-top:1px solid #9ca3af">Balance due</td><td style="text-align:right;padding:8px 12px 10px;color:#b3261e;font-weight:700;border-top:1px solid #9ca3af">${escapeHtml(
-          t.balanceDueFormatted,
-        )}</td></tr>`
+    ? ruleRow +
+      (t.paidInFull
+        ? `<tr><td style="padding:5px 12px 10px;color:#16a34a;font-weight:700" colspan="2">Paid in full</td></tr>`
+        : `<tr><td style="padding:5px 12px 10px;color:#b3261e;font-weight:700">Balance due</td><td style="text-align:right;padding:5px 12px 10px;color:#b3261e;font-weight:700">${escapeHtml(
+            t.balanceDueFormatted,
+          )}</td></tr>`)
     : ''
   // Right-aligned card (v2.2335), matching the PDF's and preview's boxes —
   // heading inside the border. The two-cell wrapper table is the email-safe
@@ -301,7 +308,10 @@ function paymentHistoryHtml(doc: PhysicalInvoiceDocument): string {
   // Frame weight (v2.2338, owner-picked): 1px #9ca3af — between the whisper
   // gray and the ink.
   const headingRow = `<tr><td colspan="2" style="padding:10px 12px 7px;font-size:14px;font-weight:600;color:#374151">Payment history</td></tr>`
-  return `<table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;margin:16px 0 0"><tr><td></td><td style="width:340px;vertical-align:top"><table style="border-collapse:collapse;width:100%;font-size:13px;border:1px solid #9ca3af;border-radius:8px">${headingRow}${billedRow}${rows}${totalsRows}</table></td></tr></table>`
+  // border-collapse stays SEPARATE on the card table — collapsed borders
+  // make browsers and mail clients drop the border-radius, squaring the
+  // corners the owner asked for.
+  return `<table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;margin:16px 0 0"><tr><td></td><td style="width:340px;vertical-align:top"><table style="border-collapse:separate;border-spacing:0;width:100%;font-size:13px;border:1px solid #9ca3af;border-radius:8px">${headingRow}${billedRow}${rows}${totalsRows}</table></td></tr></table>`
 }
 
 /** Plain-text twin of paymentHistoryHtml — same ledger, shared by both layouts. */
