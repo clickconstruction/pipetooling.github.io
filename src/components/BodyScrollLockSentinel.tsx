@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { acquireBodyScrollLock } from '../lib/bodyScrollLock'
 import { findBlockingOverlays } from '../lib/blockingOverlay'
+import { createFrameFallbackScheduler } from '../lib/frameFallbackScheduler'
 
 /**
  * App-wide body scroll lock (v2.2186). Mounted once in Layout. Watches the DOM
@@ -14,15 +15,18 @@ import { findBlockingOverlays } from '../lib/blockingOverlay'
  *
  * The recompute reads a handful of candidates' rects — cheap — and the lock's
  * own body-style mutation re-triggers it once and settles (idempotent).
+ *
+ * Scheduling goes through `frameFallbackScheduler` (v2.2357): rAF callbacks
+ * are suspended while the document is hidden, and an rAF-only recompute left
+ * the lock applied forever when a modal unmounted without a frame ever firing
+ * (bid preview → "Open in Bids" quick link in a hidden/embedded tab).
  */
 export default function BodyScrollLockSentinel() {
   useEffect(() => {
     if (typeof MutationObserver === 'undefined') return
     let release: (() => void) | null = null
-    let frame: number | null = null
 
     const recompute = () => {
-      frame = null
       const blocking = findBlockingOverlays(document, window).length > 0
       if (blocking && !release) {
         const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
@@ -32,10 +36,15 @@ export default function BodyScrollLockSentinel() {
         release = null
       }
     }
-    const schedule = () => {
-      if (frame != null) return
-      frame = window.requestAnimationFrame(recompute)
-    }
+    const { schedule, cancel } = createFrameFallbackScheduler(
+      {
+        requestAnimationFrame: (cb) => window.requestAnimationFrame(cb),
+        cancelAnimationFrame: (id) => window.cancelAnimationFrame(id),
+        setTimeout: (cb, ms) => window.setTimeout(cb, ms),
+        clearTimeout: (id) => window.clearTimeout(id),
+      },
+      recompute,
+    )
 
     const observer = new MutationObserver(schedule)
     observer.observe(document.body, {
@@ -50,7 +59,7 @@ export default function BodyScrollLockSentinel() {
     return () => {
       observer.disconnect()
       window.removeEventListener('resize', schedule)
-      if (frame != null) window.cancelAnimationFrame(frame)
+      cancel()
       release?.()
       release = null
     }
