@@ -5,7 +5,7 @@ roles: subcontractor, helpers, superintendent, master_technician
 keywords: tally, transactions, card purchases, mercury, assign jobs, split, sort, supply house
 order: 12
 ---
-Every purchase on your linked company card shows up in **Job Parts Tally → Transactions**, waiting to be sorted to the job (or jobs) the material was for. On your phone, each purchase is a card — store name, amount, and day — and sorting them takes a tap or two.
+Every purchase on your linked company card shows up in **Job Parts Tally → Transactions**, waiting to be sorted to the job (or jobs) the material was for. Open the tally from the {{icon:gear}} **gear menu → Job Parts Tally** (or the blue wrench square on your dashboard). On your phone, each purchase is a card — store name, amount, and day — and sorting them takes a tap or two.
 
 ## Sorting one purchase
 

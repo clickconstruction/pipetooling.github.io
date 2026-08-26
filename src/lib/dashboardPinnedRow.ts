@@ -5,18 +5,10 @@
  */
 
 import type { PinnedItem } from './pinnedTabs'
-import type { UserRole } from '../hooks/useAuth'
-import { isPathAllowedForRole } from './layoutRouteAccess'
 
-/**
- * Role-filters the pin chips through the same allowlists Layout's redirect guard uses
- * (v2.2325 — this file previously kept its own narrower path sets, which hid legitimate
- * pins). When role is null (auth still loading), treat as primary to prevent flash.
- */
-export function filterPinnedByRole(pins: PinnedItem[], role: string | null, estimatorProspectsAccess?: boolean): PinnedItem[] {
-  const effectiveRole = (role ?? 'primary') as UserRole
-  return pins.filter((p) => isPathAllowedForRole(effectiveRole, p.path, estimatorProspectsAccess ?? false))
-}
+// Role-filtering lives with the pin store (backed by the layoutRouteAccess allowlists);
+// re-exported here for the Dashboard callers (v2.2325 kernel unification, v2.2330 dedupe).
+export { filterPinnedByRole } from './pinnedTabs'
 
 /** Pins actually shown as chips: Dashboard/self links and the External Team pin are excluded. */
 export function filterPinsToShow(visiblePins: PinnedItem[]): PinnedItem[] {

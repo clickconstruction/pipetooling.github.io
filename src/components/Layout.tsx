@@ -471,6 +471,18 @@ export default function Layout() {
       <path d="M96 128 L544 128 C579.3 128 608 156.7 608 192 L608 448 C608 483.3 579.3 512 544 512 L96 512 C60.7 512 32 483.3 32 448 L32 192 C32 156.7 60.7 128 96 128 Z M320 224 C267 224 224 267 224 320 C224 373 267 416 320 416 C373 416 416 373 416 320 C416 267 373 224 320 224 Z M128 296 C114.7 296 104 306.7 104 320 C104 333.3 114.7 344 128 344 C141.3 344 152 333.3 152 320 C152 306.7 141.3 296 128 296 Z M512 296 C498.7 296 488 306.7 488 320 C488 333.3 498.7 344 512 344 C525.3 344 536 333.3 536 320 C536 306.7 525.3 296 512 296 Z" />
     </svg>
   )
+  // Wrench glyph — same path the Dashboard's Job Parts Tally square uses.
+  const tallyIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
+    </svg>
+  )
+  // Deposit glyph (arrow down into a tray), same 640-grid style as the other nav icons.
+  const accountsReceivableIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M320 448 L200 320 L272 320 L272 96 L368 96 L368 320 L440 320 Z M96 416 L160 416 L160 512 L480 512 L480 416 L544 416 L544 512 C544 547.3 515.3 576 480 576 L160 576 C124.7 576 96 547.3 96 512 Z" />
+    </svg>
+  )
   // Handshake glyph (Font Awesome handshake-simple), same 640-grid style as the other nav icons.
   const partnershipsIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
@@ -1626,6 +1638,50 @@ export default function Layout() {
                   >
                     {bankingIcon}
                     Banking
+                  </NavLink>
+                )}
+                {(role === 'dev' || isAssistantLike(role) || role === 'master_technician') && !farmModeActive && (
+                  <NavLink
+                    to="/accounts-receivable"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Accounts Receivable"
+                    aria-label="Accounts Receivable"
+                  >
+                    {accountsReceivableIcon}
+                    Accounts Receivable
+                  </NavLink>
+                )}
+                {!farmModeActive && (
+                  <NavLink
+                    to="/tally"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Job Parts Tally"
+                    aria-label="Job Parts Tally"
+                  >
+                    {tallyIcon}
+                    Job Parts Tally
                   </NavLink>
                 )}
                 {!farmModeActive && (

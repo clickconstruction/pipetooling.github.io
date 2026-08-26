@@ -100,6 +100,9 @@ export default function SignIn() {
             <button type="submit" className="auth-public-landing__signin-submit" disabled={loading}>
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
+            {/* Deliberately no "Forgot password?" link (owner decision, 2026-08-26 / v2.2330):
+                account recovery goes through the office. /reset-password exists and works for
+                office-directed use — do not link it from here without a new product decision. */}
             <p className="auth-public-landing__signin-footnote">
               Issue logging in? Contact the office
             </p>
