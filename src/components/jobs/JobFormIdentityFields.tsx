@@ -1,8 +1,11 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import JobFormAddressNudge from './JobFormAddressNudge'
+import JobAddressSuggestions from './JobAddressSuggestions'
 import { titleCaseAddress } from '../../lib/addressTitleCase'
+import { suggestionSavedAddress, type AddressSuggestion } from '../../lib/addressAutocomplete'
+import { prewarmAddressGeocode, useAddressSuggestions } from '../../hooks/useAddressSuggestions'
 
 /* height 36 = the SearchableSelect trigger's rendered height — Job Name and
    Job Address sit flush with Service type and the number boxes (v2.1702). */
@@ -106,6 +109,29 @@ export function JobFormIdentityFields({
 }: JobFormIdentityFieldsProps) {
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Google address suggestions (v2.2338): active only while the field is
+  // focused and the user is typing — a pick or Esc suppresses the dropdown
+  // until the next edit. Fetch is debounced in the hook; errors yield [] so
+  // the field silently degrades to a plain input.
+  const [addressFocused, setAddressFocused] = useState(false)
+  const [suggestionsSuppressed, setSuggestionsSuppressed] = useState(false)
+  const [activeSuggestion, setActiveSuggestion] = useState(0)
+  const { suggestions, clearSuggestions } = useAddressSuggestions(
+    jobAddress,
+    addressFocused && !suggestionsSuppressed,
+  )
+  const suggestionsOpen = addressFocused && !suggestionsSuppressed && suggestions.length > 0
+
+  function takeSuggestion(s: AddressSuggestion) {
+    const saved = titleCaseAddress(suggestionSavedAddress(s))
+    setJobAddress(saved)
+    setSuggestionsSuppressed(true)
+    clearSuggestions()
+    // Pre-warm the geocode cache so the Map / travel hints already know this
+    // address (fire-and-forget; role-gate refusals are fine).
+    prewarmAddressGeocode(saved)
+  }
 
   return (
     <>
@@ -224,17 +250,53 @@ export function JobFormIdentityFields({
               ref={jobAddressInputRef}
               type="text"
               value={jobAddress}
-              onChange={(e) => setJobAddress(e.target.value)}
+              role="combobox"
+              aria-expanded={suggestionsOpen}
+              aria-autocomplete="list"
+              aria-controls={suggestionsOpen ? 'job-address-suggestions' : undefined}
+              onChange={(e) => {
+                setJobAddress(e.target.value)
+                setSuggestionsSuppressed(false)
+                setActiveSuggestion(0)
+              }}
+              onFocus={() => setAddressFocused(true)}
               // Casing policy (v2.2328): the field normalizes to Title Case on
               // blur — the same shape the save path stores — so what you see
               // is what the statement prints.
               onBlur={() => {
+                setAddressFocused(false)
                 const cased = titleCaseAddress(jobAddress)
                 if (cased !== jobAddress) setJobAddress(cased)
+              }}
+              onKeyDown={(e) => {
+                if (!suggestionsOpen) return
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  setActiveSuggestion((i) => (i + 1) % suggestions.length)
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setActiveSuggestion((i) => (i - 1 + suggestions.length) % suggestions.length)
+                } else if (e.key === 'Enter') {
+                  e.preventDefault()
+                  const s = suggestions[activeSuggestion]
+                  if (s) takeSuggestion(s)
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  setSuggestionsSuppressed(true)
+                  clearSuggestions()
+                }
               }}
               placeholder="Address"
               style={JOB_FIELD_TEXT_INPUT_IN_WRAPPER_STYLE}
             />
+            {suggestionsOpen && (
+              <JobAddressSuggestions
+                suggestions={suggestions}
+                activeIndex={activeSuggestion}
+                onPick={takeSuggestion}
+                onHover={setActiveSuggestion}
+              />
+            )}
             <button
               type="button"
               onClick={() => void pasteTextToField(jobAddressInputRef, setJobAddress)}

@@ -87,6 +87,7 @@ when_to_read:
    - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
    - [dev-login](#dev-login)
+   - [address-autocomplete](#address-autocomplete)
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
    - [customer-portal](#customer-portal)
@@ -737,6 +738,18 @@ const response = await supabase.functions.invoke('dev-login', {
 #### Supabase Auth Config
 
 The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned `action_link` — it parses the link's `token` and verifies it directly via `supabase.auth.verifyOtp({ type: 'magiclink', token_hash })`, establishing the session on the current origin. This makes dev-login **port-agnostic**: any localhost port works, so parallel dev servers (5174, 5177, …) no longer get bounced to production when their port is missing from the auth redirect allow-list. `additional_redirect_urls` (`http://localhost:5175/**`, `http://localhost:5173/**`, production `https://pipetooling.com/**`) still matters for any flow that follows a magic link directly, but dev-login itself no longer depends on it.
+
+---
+
+### address-autocomplete
+
+**Purpose**: Google Places Autocomplete proxy for the Job Address field (v2.2345) — the browser never sees the Google key. `POST { input }` (min 3 chars server-side; the client waits for 5 + a 300ms debounce) → `{ suggestions: [{ main, mainMatchEnd, secondary, full }] }`, capped at 5. Requests are biased to a circle over the service area (center ~29.55, −98.2; radius 50km — the Places circle-bias maximum) and restricted to US addresses.
+
+**Auth**: `verify_jwt = false` in `config.toml`; the function validates the JWT in-body via `getUser` (gateway verification has caused 401s for browser sessions). Any authenticated user.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`GOOGLE_MAPS_API_KEY`** (the existing key — the **Places API (New)** must be enabled on it). Key unset → **503** and the client silently degrades to a plain input; upstream errors → **502**, same client behavior.
+
+**Client**: `src/hooks/useAddressSuggestions.ts` (debounce + stale-guard + the `prewarmAddressGeocode` fire-and-forget that follows a pick with a `geocode-address-batch` call), kernel `src/lib/addressAutocomplete.ts`, dropdown `src/components/jobs/JobAddressSuggestions.tsx` (carries the required "powered by Google" attribution).
 
 ---
 
