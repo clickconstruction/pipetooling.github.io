@@ -448,7 +448,7 @@ export default function PaySpeedsBreakdownModal({
               measurable ({quality.payments12mo > 0 ? Math.round((quality.measurable / quality.payments12mo) * 100) : 0}%)
             </span>
             <span
-              title="Payments not applied to any bill — they can’t feed pay speeds or pay a bill down. Link them from each job’s payments table."
+              title="Payments missing info — not applied to any bill, or on a bill with no date — so they can’t feed pay speeds. Fix them in the drill-down or from each job’s Bill tab."
               style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
             >
               <span
@@ -463,7 +463,7 @@ export default function PaySpeedsBreakdownModal({
               >
                 {quality.unlinked}
               </span>
-              unlinked payments
+              payments missing info
             </span>
             <span
               title="Billed/paid bills with no bill date at all — their payments can’t be measured. Date them from the job, or via Settings → HCP reconcile for HCP-era bills."

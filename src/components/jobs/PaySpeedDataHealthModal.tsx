@@ -4,9 +4,17 @@ import { useAuth } from '../../hooks/useAuth'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdSlash } from '../../lib/jobs/paySpeedsBreakdown'
 import {
+  BILL_DATE_PLACEHOLDER,
+  billDateInputWidthCh,
+  billedAtIsoFromYmd,
+  formatBillDateInput,
+  parseBillDateInput,
+} from '../../lib/jobs/billDateEntry'
+import {
   filterBills,
   filterTxns,
   lensCounts,
+  missingInfoLabel,
   parsePaymentLineItemsBulk,
   parsePaySpeedTransactions,
   type DataHealthLens,
@@ -16,17 +24,20 @@ import {
 } from '../../lib/jobs/paySpeedTransactions'
 
 /**
- * The Data health drill-down (owner-approved mockup, v2.2290): opened by
- * clicking the strip in Pay speeds. Lists every 12-month payment behind the
- * strip's counts — filter pills per bucket + the undated-bills backlog,
- * search across customer / job / address — with two actions per row:
- * exclude it from the pay-speed math (auditable toggle; "Include again" is
- * the undo) or open its job to actually fix dates and links.
+ * The Data health drill-down (owner-approved mockup, v2.2290; declutter round
+ * v2.2316): opened by clicking the strip in Pay speeds. Lists every 12-month
+ * payment behind the strip's counts — filter pills per bucket + the
+ * undated-bills backlog, search across customer / job / address. Rows show the
+ * billed → paid pair the medians measure (column-labeled once, sent date on
+ * hover), run two lines so the address is never truncated, and a missing bill
+ * date is typed right into the row (MM/DD/YY, field hugs the text). Actions:
+ * exclude from the pay-speed math (auditable; "Include again" undoes) or open
+ * the job.
  */
 
 const STATUS_CHIP: Record<PaySpeedTxn['status'], { bg: string; fg: string; label: (t: PaySpeedTxn) => string }> = {
   measurable: { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-800)', label: (t) => (t.gapDays != null ? `+${t.gapDays}d` : 'measurable') },
-  unlinked: { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', label: () => 'unlinked' },
+  unlinked: { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', label: (t) => missingInfoLabel(t) },
   quarantined: { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-600)', label: () => 'quarantined' },
   excluded: { bg: 'var(--bg-muted)', fg: 'var(--text-muted)', label: () => 'excluded' },
 }
@@ -34,7 +45,7 @@ const STATUS_CHIP: Record<PaySpeedTxn['status'], { bg: string; fg: string; label
 const LENSES: { key: DataHealthLens; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'measurable', label: 'Measurable' },
-  { key: 'unlinked', label: 'Unlinked' },
+  { key: 'unlinked', label: 'Missing info' },
   { key: 'quarantined', label: 'Quarantined' },
   { key: 'excluded', label: 'Excluded' },
   { key: 'undated', label: 'Undated bills' },
@@ -57,11 +68,11 @@ export default function PaySpeedDataHealthModal({
    * refreshes the list + medians after any save inside the job.
    */
   onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
-  /** Devs + master techs can exclude/include; everyone else just reads. */
+  /** Devs + master techs can exclude/include and type missing bill dates; everyone else just reads. */
   canExclude: boolean
   /** Devs only: the ⚙ No Count Date setting (v2.2303). */
   isDev?: boolean
-  /** Fired after an exclude/include lands so the medians refresh live. */
+  /** Fired after an exclude/include or bill-date save lands so the medians refresh live. */
   onChanged?: () => void
 }) {
   const { user: authUser, profileName } = useAuth()
@@ -77,6 +88,11 @@ export default function PaySpeedDataHealthModal({
   const [lineItemsLoaded, setLineItemsLoaded] = useState(false)
   const [noCountDraft, setNoCountDraft] = useState('')
   const [savingNoCount, setSavingNoCount] = useState(false)
+  // Inline bill-date editor (v2.2316), keyed by invoice id (works on payment
+  // rows and undated-bill rows alike).
+  const [dateEditId, setDateEditId] = useState<string | null>(null)
+  const [dateDraft, setDateDraft] = useState('')
+  const [savingDate, setSavingDate] = useState(false)
 
   async function load() {
     try {
@@ -158,6 +174,28 @@ export default function PaySpeedDataHealthModal({
     setBusyId(null)
   }
 
+  function openDateEditor(invoiceId: string) {
+    setDateEditId(invoiceId)
+    setDateDraft('')
+  }
+
+  async function saveBillDate(invoiceId: string) {
+    const ymd = parseBillDateInput(dateDraft)
+    if (ymd == null || savingDate) return
+    setSavingDate(true)
+    const { error } = await supabase
+      .from('jobs_ledger_invoices')
+      .update({ billed_at: billedAtIsoFromYmd(ymd) })
+      .eq('id', invoiceId)
+    if (!error) {
+      setDateEditId(null)
+      setDateDraft('')
+      await load()
+      onChanged?.()
+    }
+    setSavingDate(false)
+  }
+
   const pillStyle = (active: boolean): CSSProperties => ({
     border: `1px solid ${active ? 'var(--text-link)' : 'var(--border-strong)'}`,
     background: active ? 'var(--text-link)' : 'var(--surface)',
@@ -178,20 +216,128 @@ export default function PaySpeedDataHealthModal({
     fontWeight: 600,
     whiteSpace: 'nowrap',
     flexShrink: 0,
+    marginTop: '0.1rem',
   }
+  const chipStyle = (bg: string, fg: string): CSSProperties => ({
+    fontSize: '0.64rem',
+    fontWeight: 700,
+    borderRadius: 9999,
+    padding: '0 6px',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+    marginTop: '0.15rem',
+    background: bg,
+    color: fg,
+  })
 
   function jobCell(customerName: string | null, jobName: string | null, address: string | null) {
     return (
-      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {customerName ? <span style={{ fontWeight: 650 }}>{customerName}</span> : <span style={{ color: 'var(--text-muted)' }}>no customer</span>}
-        {(jobName || address) && (
-          <span style={{ color: 'var(--text-muted)' }}>
-            {' · '}
-            {[jobName, address].filter(Boolean).join(' · ')}
-          </span>
-        )}
+      <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.05rem' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {customerName ? <span style={{ fontWeight: 650 }}>{customerName}</span> : <span style={{ color: 'var(--text-muted)' }}>no customer</span>}
+          {jobName && <span style={{ color: 'var(--text-muted)' }}>{' · '}{jobName}</span>}
+        </span>
+        {address && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{address}</span>}
       </span>
     )
+  }
+
+  /** The inline MM/DD/YY editor (v2.2316) — the field hugs exactly what's typed. */
+  function dateEditor(invoiceId: string) {
+    const valid = parseBillDateInput(dateDraft) != null
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+        <input
+          type="text"
+          inputMode="numeric"
+          autoFocus
+          value={dateDraft}
+          placeholder={BILL_DATE_PLACEHOLDER}
+          aria-label="Bill date (MM/DD/YY)"
+          onChange={(e) => setDateDraft(formatBillDateInput(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && valid) void saveBillDate(invoiceId)
+            if (e.key === 'Escape') setDateEditId(null)
+          }}
+          style={{
+            font: 'inherit',
+            fontSize: '0.9rem',
+            fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
+            letterSpacing: '0.03em',
+            padding: '0.22rem 0.4rem',
+            border: '1px solid var(--text-link)',
+            borderRadius: 6,
+            background: 'var(--surface)',
+            color: 'var(--text-700)',
+            width: `calc(${billDateInputWidthCh(dateDraft)}ch + 1.1em)`,
+          }}
+        />
+        <button
+          type="button"
+          disabled={!valid || savingDate}
+          onClick={() => void saveBillDate(invoiceId)}
+          style={{
+            font: 'inherit',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            padding: '0.22rem 0.55rem',
+            borderRadius: 6,
+            border: 'none',
+            background: 'var(--text-link)',
+            color: '#fff',
+            cursor: 'pointer',
+            opacity: !valid || savingDate ? 0.5 : 1,
+          }}
+        >
+          {savingDate ? '…' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setDateEditId(null)}
+          aria-label="Cancel bill date"
+          style={{ border: 'none', background: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', padding: '0.1rem' }}
+        >
+          ✕
+        </button>
+      </span>
+    )
+  }
+
+  function addDateButton(invoiceId: string) {
+    return (
+      <button
+        type="button"
+        onClick={() => openDateEditor(invoiceId)}
+        title="Type the bill date right here — the row becomes measurable on save"
+        style={{
+          font: 'inherit',
+          fontSize: '0.66rem',
+          fontWeight: 600,
+          color: 'var(--text-link)',
+          border: '1px dashed var(--border-strong)',
+          borderRadius: 6,
+          background: 'none',
+          padding: '0.05rem 0.4rem',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        ＋ add date
+      </button>
+    )
+  }
+
+  const colHeadStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '0.55rem',
+    padding: '0 0.45rem 0.25rem',
+    fontSize: '0.62rem',
+    fontWeight: 700,
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
+    color: 'var(--text-muted)',
   }
 
   return (
@@ -242,7 +388,7 @@ export default function PaySpeedDataHealthModal({
         </div>
         <p style={{ margin: '0.3rem 0 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
           Every recorded payment from the last 12 months. Excluding one drops it from the medians and the counts;
-          opening the job is where dates and invoice links get fixed.
+          opening the job is where dates and bill links get fixed.
         </p>
 
         {gearOpen && isDev && (
@@ -337,15 +483,25 @@ export default function PaySpeedDataHealthModal({
               txns.length === 0 ? (
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Nothing matches.</p>
               ) : (
-                txns.map((t, i) => {
+                <>
+                <div style={colHeadStyle}>
+                  <span style={{ width: '8.6em', flexShrink: 0 }}>billed → paid</span>
+                  <span style={{ width: '4.6em', textAlign: 'right', flexShrink: 0 }}>amount</span>
+                </div>
+                {txns.map((t, i) => {
                   const chip = STATUS_CHIP[t.status]
                   const li = lineItemsById[t.paymentId]
+                  const editing = t.invoiceId != null && dateEditId === t.invoiceId
+                  const canAddDate = canExclude && t.invoiceId != null && t.billedYmd == null
+                  const hoverDates = t.billedYmd
+                    ? `Billed ${formatYmdSlash(t.billedYmd)} → paid ${formatYmdSlash(t.paidYmd)}${t.sentYmd ? ` · sent ${formatYmdSlash(t.sentYmd)}` : ''}`
+                    : `Received ${formatYmdSlash(t.paidYmd)}${t.sentYmd ? ` · sent ${formatYmdSlash(t.sentYmd)}` : ''} — no bill date to measure from`
                   return (
                     <div key={t.paymentId}>
                     <div
                       style={{
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: 'flex-start',
                         gap: '0.55rem',
                         padding: '0.4rem 0.45rem',
                         borderRadius: '6px 6px 0 0',
@@ -355,28 +511,37 @@ export default function PaySpeedDataHealthModal({
                       }}
                     >
                       <span
-                        title={t.sentYmd ? `Sent ${formatYmdSlash(t.sentYmd)} → received ${formatYmdSlash(t.paidYmd)}` : `Received ${formatYmdSlash(t.paidYmd)} — no sent date recorded`}
-                        style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-700)', width: t.sentYmd ? '8.2em' : '3.4em', flexShrink: 0, whiteSpace: 'nowrap' }}
+                        title={hoverDates}
+                        style={{
+                          fontVariantNumeric: 'tabular-nums',
+                          fontWeight: 600,
+                          color: 'var(--text-700)',
+                          width: editing ? 'auto' : '8.6em',
+                          flexShrink: 0,
+                          whiteSpace: 'nowrap',
+                        }}
                       >
-                        {t.sentYmd ? (
+                        {editing ? (
+                          <>{dateEditor(t.invoiceId!)}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> → {formatYmdSlash(t.paidYmd)}</span></>
+                        ) : t.billedYmd ? (
                           <>
-                            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{formatYmdSlash(t.sentYmd)} → </span>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{formatYmdSlash(t.billedYmd)} → </span>
                             {formatYmdSlash(t.paidYmd)}
                           </>
+                        ) : canAddDate ? (
+                          <>{addDateButton(t.invoiceId!)}<span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> → {formatYmdSlash(t.paidYmd)}</span></>
                         ) : (
-                          formatYmdSlash(t.paidYmd)
+                          <>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>— → </span>
+                            {formatYmdSlash(t.paidYmd)}
+                          </>
                         )}
                       </span>
                       <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, width: '4.6em', textAlign: 'right', flexShrink: 0 }}>
                         {formatUsdNoCents(t.amount)}
                       </span>
                       {jobCell(t.customerName, t.jobName, t.address)}
-                      <span
-                        title={t.billedYmd ? `Billed ${formatYmdSlash(t.billedYmd)} → paid ${formatYmdSlash(t.paidYmd)}` : undefined}
-                        style={{ fontSize: '0.64rem', fontWeight: 700, borderRadius: 9999, padding: '0 6px', flexShrink: 0, background: chip.bg, color: chip.fg }}
-                      >
-                        {chip.label(t)}
-                      </span>
+                      <span style={chipStyle(chip.bg, chip.fg)}>{chip.label(t)}</span>
                       {canExclude && (
                         <button
                           type="button"
@@ -404,31 +569,38 @@ export default function PaySpeedDataHealthModal({
                         </button>
                       )}
                     </div>
-                    {(
-                      <div
-                        style={{
-                          border: '1px solid var(--border)',
-                          borderTop: 'none',
-                          borderRadius: '0 0 8px 8px',
-                          padding: '0.35rem 0.7rem 0.45rem 2rem',
-                          fontSize: '0.74rem',
-                          marginBottom: '0.35rem',
-                          color: 'var(--text-700)',
-                        }}
-                      >
-                        {li === undefined ? (
-                          <span style={{ color: 'var(--text-muted)' }}>
-                            {lineItemsLoaded ? 'Line items aren’t available for this payment.' : 'Loading line items…'}
-                          </span>
-                        ) : (
-                          <>
-                            <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
-                              {li.linked ? 'What this bill charged' : "Not applied to a bill — the job's line items, for context"}
+                    <div
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderTop: 'none',
+                        borderRadius: '0 0 8px 8px',
+                        padding: '0.35rem 0.7rem 0.45rem 2rem',
+                        fontSize: '0.74rem',
+                        marginBottom: '0.35rem',
+                        color: 'var(--text-700)',
+                      }}
+                    >
+                      {li === undefined ? (
+                        <div style={{ color: 'var(--text-muted)', textAlign: 'right' }}>
+                          {lineItemsLoaded ? 'Line items aren’t available for this payment.' : 'Loading line items…'}
+                        </div>
+                      ) : (
+                        <>
+                          {!li.linked && li.items.length > 0 && (
+                            <div style={{ fontSize: '0.62rem', fontStyle: 'italic', color: 'var(--text-muted)', textAlign: 'right' }}>
+                              job’s items — payment isn’t on a bill
                             </div>
-                            {li.items.length === 0 ? (
-                              <span style={{ color: 'var(--text-muted)' }}>No line items recorded{li.linked ? ' on this bill' : ' on this job'}.</span>
-                            ) : (
-                              li.items.map((it, j) => (
+                          )}
+                          {li.items.length === 0 ? (
+                            <div style={{ color: 'var(--text-muted)', textAlign: 'right' }}>No line items recorded.</div>
+                          ) : (
+                            li.items.map((it, j) => {
+                              // With a single item whose amount IS the bill total, the
+                              // label rides the item's own line (v2.2316); mismatched or
+                              // multi-item bills keep a separate total line below.
+                              const inlineTotal =
+                                li.linked && li.billAmount != null && li.items.length === 1 && it.amount === li.billAmount
+                              return (
                                 <div key={j} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', padding: '0.1rem 0' }}>
                                   <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {it.name}
@@ -436,24 +608,41 @@ export default function PaySpeedDataHealthModal({
                                     {it.description ? <span style={{ color: 'var(--text-muted)' }}> — {it.description}</span> : null}
                                   </span>
                                   <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, flexShrink: 0 }}>
+                                    {inlineTotal && <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginRight: '0.35rem' }}>bill total</span>}
                                     {it.amount != null ? formatUsdNoCents(it.amount) : '—'}
                                   </span>
                                 </div>
-                              ))
-                            )}
-                            {li.linked && li.billAmount != null && (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', borderTop: '1px solid var(--border)', marginTop: '0.25rem', paddingTop: '0.2rem', color: 'var(--text-muted)' }}>
+                              )
+                            })
+                          )}
+                          {li.linked &&
+                            li.billAmount != null &&
+                            (li.items.length >= 2 || (li.items.length === 1 && li.items[0]!.amount !== li.billAmount)) && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'flex-end',
+                                  alignItems: 'baseline',
+                                  gap: '0.45rem',
+                                  borderTop: '1px solid var(--border)',
+                                  marginTop: '0.25rem',
+                                  paddingTop: '0.2rem',
+                                  color: 'var(--text-muted)',
+                                }}
+                              >
                                 <span>bill total</span>
-                                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text-700)' }}>{formatUsdNoCents(li.billAmount)}</span>
+                                <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--text-700)' }}>
+                                  {formatUsdNoCents(li.billAmount)}
+                                </span>
                               </div>
                             )}
-                          </>
-                        )}
-                      </div>
-                    )}
+                        </>
+                      )}
+                    </div>
                     </div>
                   )
-                })
+                })}
+                </>
               )
             ) : bills.length === 0 ? (
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Nothing matches.</p>
@@ -463,7 +652,7 @@ export default function PaySpeedDataHealthModal({
                   key={b.invoiceId}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     gap: '0.55rem',
                     padding: '0.4rem 0.45rem',
                     borderRadius: 6,
@@ -471,13 +660,16 @@ export default function PaySpeedDataHealthModal({
                     background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
                   }}
                 >
+                  {canExclude && (
+                    <span style={{ flexShrink: 0 }}>
+                      {dateEditId === b.invoiceId ? dateEditor(b.invoiceId) : addDateButton(b.invoiceId)}
+                    </span>
+                  )}
                   <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, width: '4.6em', textAlign: 'right', flexShrink: 0 }}>
                     {formatUsdNoCents(b.amount)}
                   </span>
                   {jobCell(b.customerName, b.jobName, b.address)}
-                  <span style={{ fontSize: '0.64rem', fontWeight: 700, borderRadius: 9999, padding: '0 6px', flexShrink: 0, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
-                    no bill date
-                  </span>
+                  <span style={chipStyle('var(--bg-amber-tint)', 'var(--text-amber-800)')}>no bill date</span>
                   {b.jobId && (onOpenJobStacked || onOpenJobDetail) && (
                     <button type="button" onClick={() => openJob(b.jobId!)} style={{ ...actStyle, color: 'var(--text-link)' }}>
                       Open job ›
@@ -497,9 +689,11 @@ export default function PaySpeedDataHealthModal({
                 paddingTop: '0.5rem',
               }}
             >
-              Excluded payments are remembered (who and when) and can always be included again. Quarantined rows are
-              import-era same-day pairs, out of the math until a verified date replaces them. Undated bills are the
-              all-time backlog of billed/paid invoices with no bill date.
+              Missing info means a payment can’t feed the medians yet — it’s not on a bill, or its bill has no date
+              (type the date right in the row to fix that one). Excluded payments are remembered (who and when) and can
+              always be included again. Quarantined rows are import-era same-day pairs, out of the math until a
+              verified date replaces them. Undated bills are the all-time backlog of billed/paid bills with no bill
+              date.
             </p>
           </>
         )}
