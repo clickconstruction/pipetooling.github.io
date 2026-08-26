@@ -19,7 +19,7 @@ Clicking a price card just **views** it; the ★ only moves when you press **☆
 
 ## Price from the book
 
-The Workbench reads your price book directly. A **Book entry** column on every row shows the assigned entry (name · book price) — the book's price flows straight into the sale column — or an **assign…** search: type, pick, priced. Typing over a book price still works and becomes an override, exactly like the Old view.
+The Workbench reads your price book directly. A **Book entry** column on every row shows the assigned entry (name · book price) — the book's price flows straight into the sale column — or an **assign…** search: it opens pre-filled with the row's name minus any "ft of"-style prefix, and matches **word by word** — entries containing the most of your words rank first, so a row like *ft of 2" water line* surfaces *feet of water line* without retyping. Pick one, priced. Typing over a book price still works and becomes an override, exactly like the Old view.
 
 Above the table, {{button:blue|Fill N matching from book}} assigns every unassigned row whose name **exactly** matches a book entry, in one click — the button counts the matches before you press it, so "Fill 0 matching" means the remaining rows need the per-row search. The line beside it names the book you're drawing from.
 
