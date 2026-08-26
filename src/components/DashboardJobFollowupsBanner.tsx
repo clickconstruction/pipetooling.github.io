@@ -29,7 +29,12 @@ const STAGE_PHRASES: Record<JobFollowupStage, (n: number) => string> = {
 /** Breakdown order: money first. */
 const PHRASE_ORDER: JobFollowupStage[] = ['billed', 'working', 'waiting', 'ready_to_bill', 'collections']
 
-export default function DashboardJobFollowupsBanner() {
+export default function DashboardJobFollowupsBanner({
+  onCount,
+}: {
+  /** Quickfill metric seam (v2.2347): reports the queue size, 0 on error. */
+  onCount?: (n: number | null) => void
+} = {}) {
   const navigate = useNavigate()
   const [count, setCount] = useState<number | null>(null)
   const [counts, setCounts] = useState<Record<JobFollowupStage, number> | null>(null)
@@ -48,8 +53,12 @@ export default function DashboardJobFollowupsBanner() {
         const queue = computeJobFollowupQueue(cands, revs, sets, todayYmd)
         setCount(queue.length)
         setCounts(jobFollowupStageCounts(queue))
+        onCount?.(queue.length)
       } catch {
-        if (!cancelled) setCount(0)
+        if (!cancelled) {
+          setCount(0)
+          onCount?.(0)
+        }
       }
     })()
     return () => {

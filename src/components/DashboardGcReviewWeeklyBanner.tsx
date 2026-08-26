@@ -16,7 +16,12 @@ import { fetchGcReviewWeekStatus, type GcReviewWeekStatus } from '../lib/gcRevie
  * Office-role gating happens at the mount site. Click-through deep-links to
  * Jobs → Pipeline with GC Review already open (?gcReview=1).
  */
-export default function DashboardGcReviewWeeklyBanner() {
+export default function DashboardGcReviewWeeklyBanner({
+  onCount,
+}: {
+  /** Quickfill metric seam (v2.2347): GCs still to certify this week (0 when done or off-window). */
+  onCount?: (n: number | null) => void
+} = {}) {
   const navigate = useNavigate()
   const [status, setStatus] = useState<GcReviewWeekStatus | null>(null)
 
@@ -24,9 +29,14 @@ export default function DashboardGcReviewWeeklyBanner() {
     let cancelled = false
     void fetchGcReviewWeekStatus(gcReviewWeekStartYmd()).then(
       (s) => {
-        if (!cancelled) setStatus(s)
+        if (cancelled) return
+        setStatus(s)
+        const n = s != null && gcReviewNudgeState(s) === 'due' ? Math.max(0, s.gcs_outstanding - s.gcs_certified) : 0
+        onCount?.(n)
       },
-      () => {},
+      () => {
+        if (!cancelled) onCount?.(0)
+      },
     )
     return () => {
       cancelled = true
