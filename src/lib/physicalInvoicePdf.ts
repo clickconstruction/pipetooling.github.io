@@ -200,6 +200,13 @@ function drawLineItemsTable(
   return y + 4
 }
 
+/** Payment-history card geometry (v2.2332, owner-approved Option A). */
+const PAYMENT_BOX_W_MM = 88
+const PAYMENT_BOX_PAD_X_MM = 4
+const PAYMENT_BOX_PAD_TOP_MM = 5.5
+const PAYMENT_BOX_PAD_BOTTOM_MM = 2.5
+const PAYMENT_BOX_HEAD_GAP_MM = 6
+
 function drawPaymentHistory(
   doc: import('jspdf').jsPDF,
   y: number,
@@ -208,57 +215,68 @@ function drawPaymentHistory(
 ): number {
   const rows = docModel.paymentHistory
   if (!rows.length) return y
-  if (y > PAGE_CONTENT_MAX_Y - 24) {
+  const t = docModel.paymentTotals
+  // Right-aligned black-bordered card (v2.2332) — the same frame customers
+  // see on the on-screen preview and in the email. Drawn atomically: if the
+  // whole card can't fit on this page, start a new one.
+  const rowCount = rows.length + (t ? 2 : 0)
+  const boxHeight =
+    PAYMENT_BOX_PAD_TOP_MM +
+    PAYMENT_BOX_HEAD_GAP_MM +
+    rowCount * bodyLineHeight +
+    PAYMENT_BOX_PAD_BOTTOM_MM
+  if (y + boxHeight > PAGE_CONTENT_MAX_Y) {
     doc.addPage()
     y = PAGE_MARGIN + 10
   }
+  const rightX = doc.internal.pageSize.getWidth() - PAGE_MARGIN
+  const boxLeft = rightX - PAYMENT_BOX_W_MM
+  const labelX = boxLeft + PAYMENT_BOX_PAD_X_MM
+  const amountX = rightX - PAYMENT_BOX_PAD_X_MM
+  const boxTop = y
+  let cy = boxTop + PAYMENT_BOX_PAD_TOP_MM
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
-  doc.text('Payment history', PAGE_MARGIN, y)
-  y += LINE_HEIGHT * 0.85
+  doc.text('Payment history', labelX, cy)
+  cy += PAYMENT_BOX_HEAD_GAP_MM
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  const t = docModel.paymentTotals
-  const rightX = doc.internal.pageSize.getWidth() - PAGE_MARGIN
   // Ledger shape (v2.2324, matching the portal recap and the email box):
   // Billed opens, each payment subtracts as a green credit, balance closes.
   if (t) {
-    doc.text('Billed', PAGE_MARGIN, y)
-    doc.text(t.billedFormatted, rightX, y, { align: 'right' })
-    y += bodyLineHeight
+    doc.text('Billed', labelX, cy)
+    doc.text(t.billedFormatted, amountX, cy, { align: 'right' })
+    cy += bodyLineHeight
   }
   for (const p of rows) {
-    if (y > PAGE_CONTENT_MAX_Y) {
-      doc.addPage()
-      y = PAGE_MARGIN + 10
-    }
-    doc.text(p.label, PAGE_MARGIN, y)
+    doc.text(p.label, labelX, cy)
     doc.setTextColor(31, 122, 58)
-    doc.text(`- ${p.amountFormatted}`, rightX, y, { align: 'right' })
+    doc.text(`- ${p.amountFormatted}`, amountX, cy, { align: 'right' })
     doc.setTextColor(0, 0, 0)
-    y += bodyLineHeight
+    cy += bodyLineHeight
   }
   if (t) {
-    if (y > PAGE_CONTENT_MAX_Y - bodyLineHeight * 2) {
-      doc.addPage()
-      y = PAGE_MARGIN + 10
-    }
     doc.setDrawColor(180)
-    doc.line(PAGE_MARGIN, y - bodyLineHeight * 0.55, rightX, y - bodyLineHeight * 0.55)
+    doc.line(labelX, cy - bodyLineHeight * 0.55, amountX, cy - bodyLineHeight * 0.55)
     doc.setFont('helvetica', 'bold')
     if (t.paidInFull) {
       doc.setTextColor(22, 163, 74)
-      doc.text('Paid in full', PAGE_MARGIN, y)
+      doc.text('Paid in full', labelX, cy)
     } else {
       doc.setTextColor(179, 38, 30)
-      doc.text('Balance due', PAGE_MARGIN, y)
-      doc.text(t.balanceDueFormatted, rightX, y, { align: 'right' })
+      doc.text('Balance due', labelX, cy)
+      doc.text(t.balanceDueFormatted, amountX, cy, { align: 'right' })
     }
     doc.setTextColor(0, 0, 0)
     doc.setFont('helvetica', 'normal')
-    y += bodyLineHeight
+    cy += bodyLineHeight
   }
-  return y + 6
+  const boxBottom = cy - bodyLineHeight + PAYMENT_BOX_PAD_BOTTOM_MM
+  doc.setDrawColor(0)
+  doc.setLineWidth(0.4)
+  doc.rect(boxLeft, boxTop, PAYMENT_BOX_W_MM, boxBottom - boxTop)
+  doc.setLineWidth(0.200025) // jsPDF default
+  return boxBottom + 6
 }
 
 function drawPageFooters(doc: import('jspdf').jsPDF): void {
