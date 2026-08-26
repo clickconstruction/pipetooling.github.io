@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
+import { commitPriceDraft, formatPriceDraft, parsePriceDraft } from '../../lib/bids/salePriceDraft'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
@@ -297,6 +298,8 @@ export function BidsPricingTab({
   // Workbench (New view) state: solver PREVIEW prices (never written until Apply),
   // session-local locks, and the solver controls.
   const [wbPreview, setWbPreview] = useState<Record<string, number> | null>(null)
+  /** The one row price being typed right now — the field shows this raw text until blur/Enter commits it (v2.2368). */
+  const [wbPriceDraft, setWbPriceDraft] = useState<{ rowId: string; text: string } | null>(null)
   const [wbLocks, setWbLocks] = useState<Set<string>>(() => new Set())
   const [wbMarginPct, setWbMarginPct] = useState(45)
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
@@ -1024,6 +1027,7 @@ export function BidsPricingTab({
     // A solver preview belongs to the scenario it was solved on — counts are
     // shared across scenarios, so a stale preview would Apply onto the new one.
     setWbPreview(null)
+    setWbPriceDraft(null)
     setSelectedPricingVersionId(versionId)
     await loadPriceBookEntries(versionId)
     await saveBidSelectedPriceBookVersion(bidId, versionId)
@@ -1375,6 +1379,7 @@ export function BidsPricingTab({
       showToast('Solver preview discarded — previews don’t follow you between scenarios.', 'info')
     }
     setWbPreview(null)
+    setWbPriceDraft(null)
     setSelectedPricingVersionId(versionId)
     void loadPriceBookEntries(versionId)
   }
@@ -1578,6 +1583,7 @@ export function BidsPricingTab({
       }
       await loadBidPricingAssignments(bidId, versionId)
       setWbPreview(null)
+      setWbPriceDraft(null)
       showToast('Prices applied.', 'success')
     } finally {
       setWbApplying(false)
@@ -3135,7 +3141,7 @@ export function BidsPricingTab({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => setWbPreview(null)}
+                                      onClick={() => { setWbPreview(null); setWbPriceDraft(null) }}
                                       disabled={wbApplying}
                                       style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
                                     >
@@ -3322,6 +3328,19 @@ export function BidsPricingTab({
                         <tbody>
                           {visibleEff.map((r) => {
                             const locked = r.isFixedPrice || wbLocks.has(r.countRow.id)
+                            /** Blur/Enter both land here: the draft resolves to a previewed price, a cleared preview, or a revert. */
+                            const commitWbPriceDraft = () => {
+                              if (wbPriceDraft?.rowId !== r.countRow.id) return
+                              const c = commitPriceDraft(wbPriceDraft.text)
+                              if (c.kind === 'set') setWbPreview((prev) => ({ ...(prev ?? {}), [r.countRow.id]: c.value }))
+                              else if (c.kind === 'clear')
+                                setWbPreview((prev) => {
+                                  if (!prev) return prev
+                                  const { [r.countRow.id]: _dropped, ...rest } = prev
+                                  return rest
+                                })
+                              setWbPriceDraft(null)
+                            }
                             return (
                               <tr
                                 key={r.countRow.id}
@@ -3431,12 +3450,24 @@ export function BidsPricingTab({
                                   <input
                                     type="text"
                                     inputMode="decimal"
-                                    value={wbPreview?.[r.countRow.id] != null ? String(wbPreview[r.countRow.id]) : r.effUnit != null ? String(Math.round(r.effUnit * 100) / 100) : ''}
+                                    value={
+                                      wbPriceDraft?.rowId === r.countRow.id
+                                        ? wbPriceDraft.text
+                                        : r.effUnit != null
+                                          ? formatPriceDraft(r.effUnit)
+                                          : ''
+                                    }
                                     placeholder="—"
                                     onClick={(e) => e.stopPropagation()}
                                     onChange={(e) => {
-                                      const v = parseFloat(e.target.value.replace(/[$,]/g, ''))
-                                      setWbPreview((prev) => ({ ...(prev ?? {}), [r.countRow.id]: Number.isFinite(v) && v > 0 ? v : 0 }))
+                                      const text = e.target.value
+                                      setWbPriceDraft({ rowId: r.countRow.id, text })
+                                      const v = parsePriceDraft(text)
+                                      if (v != null) setWbPreview((prev) => ({ ...(prev ?? {}), [r.countRow.id]: v }))
+                                    }}
+                                    onBlur={commitWbPriceDraft}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') commitWbPriceDraft()
                                     }}
                                     style={{ width: '6rem', font: 'inherit', fontSize: '0.85rem', padding: '0.25rem 0.4rem', border: r.isPreview ? '1px solid var(--text-amber-700)' : '1px solid var(--border-strong)', borderRadius: 5, textAlign: 'right', background: r.isPreview ? 'var(--bg-amber-tint)' : 'var(--surface)', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}
                                     aria-label={`Sale price per unit for ${r.countRow.fixture ?? 'row'}`}
