@@ -47,6 +47,7 @@ import { BidsPricingTab } from '../components/bids/BidsPricingTab'
 import { BidsCoverLetterTab } from '../components/bids/BidsCoverLetterTab'
 import { BidsTakeoffTab } from '../components/bids/BidsTakeoffTab'
 import { BidVersionPicker } from '../components/bids/BidVersionPicker'
+import { BidsPricingCalculator } from '../components/bids/BidsPricingCalculator'
 import { downloadApprovalPdf as downloadApprovalPdfDoc } from '../lib/bidDocuments/approvalPdf'
 import { WorkingBoardArchiveConfirmDialog } from '../components/bids/WorkingBoardArchiveConfirmDialog'
 import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
@@ -3389,6 +3390,8 @@ export default function Bids() {
           onNavigateToLabor={() => setActiveTab('labor')}
           onNavigateBidToTab={(bid, tab) => selectBidAndSyncUrl(bid, tab)}
         />
+        {/* v2.2359: the Pricing Tape — floating tape calculator, desktop only */}
+        <BidsPricingCalculator />
         </>
       )}
 
