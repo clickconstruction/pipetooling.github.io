@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
+import { useAuth } from '../../hooks/useAuth'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
 
@@ -135,6 +137,7 @@ export function DispatchModeFooter({
   const navigate = useNavigate()
   const location = useLocation()
   const keyboardOpen = useOnScreenKeyboardOpen()
+  const { user: authUser, role } = useAuth()
   const active = activeTabForPath(location.pathname, variant)
   const TABS =
     variant === 'job'
@@ -175,7 +178,10 @@ export function DispatchModeFooter({
             type="button"
             aria-label={tab.label}
             aria-current={isActive ? 'page' : undefined}
-            onClick={() => navigate(tab.to)}
+            onClick={() => {
+              recordNavClick(authUser?.id, role, 'bottom-tab', tab.to)
+              navigate(tab.to)
+            }}
             style={{
               ...tabBtnBase,
               color: isActive ? 'var(--text-link)' : 'var(--text-muted)',

@@ -17,9 +17,12 @@ const DOCK_COLLAPSED_STORAGE_KEY = 'pipetooling_section_dock_collapsed_v1'
 export function SectionDock({
   sections,
   ariaLabel = 'Page sections',
+  onChipClick,
 }: {
   sections: SectionDockSection[]
   ariaLabel?: string
+  /** Telemetry seam (v2.2334): called with the section id on every chip click. */
+  onChipClick?: (id: string) => void
 }) {
   const narrow = useNarrowViewport640()
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -134,6 +137,7 @@ export function SectionDock({
                 data-dock-chip={s.id}
                 aria-current={active ? 'true' : undefined}
                 onClick={() => {
+                  onChipClick?.(s.id)
                   setActiveId(s.id)
                   document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }}
