@@ -67,3 +67,6 @@ Reminds Michael A & Bryan every day at 7:00 AM until it's done — and you after
 ## Peek at the checklist without losing your draft
 
 The small checklist icon in the top-right corner of the Add-task window brings up the Checklist page **behind** the window — the window stays open and everything you've typed stays put. Use it to check whether the task already exists, then keep typing; and if you hit it by accident, nothing is lost.
+### See dated tasks on a calendar
+
+**Manage → {{chip:blue|📅 Timeline}}** lays every one-off with a due date on a real calendar: the solid bar runs from **Do on** to **Due by** (green once done, kept for two weeks as recent history), the red line is today, and weekends are shaded. Where a task was pushed, a hollow amber ○ marks the **original promise** — it never moves — with a hatched trail stretching to the current due date and a *→ pushed ×2 · +5d* badge. Tap a row to open the task.

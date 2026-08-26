@@ -33,6 +33,7 @@ import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/c
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { dueChipLabel } from '../lib/checklistDueDates'
 import { pushedChipLabel, summarizeDuePushes, type DueChangeRow } from '../lib/checklistDuePushes'
+import { ChecklistManageTimeline } from '../components/checklist/ChecklistManageTimeline'
 import { isScheduledAhead, nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { goalsStageRows, goalsStripRows, lockedStageHint, lockedStagePrerequisiteChain, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
 import { computeStageOrderUpdates, computeTaskOrderUpdates } from '../lib/roadmapStageNumbers'
@@ -3852,7 +3853,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null)
   /** View pills (v2.2066): Repeating gets a front door instead of living below 28 one-offs.
    *  Default is One-offs (v2.2118) — the open list is what people come here for; All is one tap away. */
-  const [manageView, setManageView] = useState<'all' | 'one_offs' | 'repeating' | 'completed'>('one_offs')
+  const [manageView, setManageView] = useState<'all' | 'one_offs' | 'repeating' | 'completed' | 'timeline'>('one_offs')
   /** Next upcoming open occurrence per item — the green "next Mon, Aug 24" chip. */
   const [nextOpenByItem, setNextOpenByItem] = useState<Map<string, string>>(new Map())
 
@@ -4260,6 +4261,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
             ['all', 'All', null],
             ['repeating', '↻ Repeating', repeatingItems.length],
             ['completed', '✓ Completed', completeItems.length],
+            ['timeline', '📅 Timeline', incompleteItems.filter((i) => i.due_date != null).length],
           ] as const
         ).map(([key, label, count]) => (
           <button
@@ -4304,6 +4306,19 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
           {librarySection(`ONE-OFFS · ${openOneOffs.length} open`, openOneOffs, true)}
           {scheduledOneOffs.length > 0 ? librarySection(`SCHEDULED · ${scheduledOneOffs.length}`, scheduledOneOffs, true) : null}
         </>
+      ) : null}
+      {manageView === 'timeline' ? (
+        <ChecklistManageTimeline
+          items={[...incompleteItems, ...completeItems].map((i) => ({
+            id: i.id,
+            title: i.title,
+            start_date: i.start_date,
+            due_date: i.due_date,
+            complete: !isRepeating(i) && isItemComplete(i),
+          }))}
+          pushesByItem={duePushesByItem}
+          onOpenItem={(id) => setEditItemId(id)}
+        />
       ) : null}
       {filteredItems.length > 0 && manageView === 'repeating'
         ? librarySection(`REPEATING · ${repeatingItems.length}`, repeatingItems, false)
