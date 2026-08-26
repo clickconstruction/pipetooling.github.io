@@ -67,6 +67,7 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   }
   // System
   if (r === 'dev') {
+    groups.push({ id: 'settings-usage', label: 'Usage', zone: 'system', pagesHint: 'How the company actually uses the app — pages, clicks, and customer opens.' })
     groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports, and Recently deleted.' })
     groups.push({ id: 'settings-templates', label: 'Email templates & testing', zone: 'system', pagesHint: 'The emails the app sends, test tools, and easter eggs.' })
   }

@@ -35,6 +35,7 @@ import SettingsAccountTab from '../components/settings/SettingsAccountTab'
 import SettingsAccountSchedulingTab from '../components/settings/SettingsAccountSchedulingTab'
 import SettingsMyEmailScheduleSection from '../components/settings/SettingsMyEmailScheduleSection'
 import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStreamsSection'
+import { SettingsUsageTab } from '../components/settings/SettingsUsageTab'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
@@ -1412,6 +1413,10 @@ export default function Settings() {
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
 
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-usage" hidden={activeSettingsTab !== 'settings-usage'} title={settingsGroupTitle('settings-usage', 'Usage')} description={settingsGroupHint('settings-usage')}>
+        {activeSettingsTab === 'settings-usage' && myRole === 'dev' && <SettingsUsageTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>
