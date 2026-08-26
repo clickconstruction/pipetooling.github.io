@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPulseBandItems,
+  buildPulsePeopleView,
   buildPulsePersonRows,
   buildPulseStats,
   buildPulseWeeks,
   classifyPulseOutcome,
+  emptyPulseHiddenPeopleState,
   formatPulseMoney,
+  parsePulseHiddenPeopleState,
   pulseWeekStarts,
+  withAllPulsePeopleShown,
+  withPulsePersonHidden,
 } from './estimatingPulse'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
@@ -173,5 +178,89 @@ describe('formatPulseMoney', () => {
     expect(formatPulseMoney(950)).toBe('$950')
     expect(formatPulseMoney(287000)).toBe('$287K')
     expect(formatPulseMoney(4230000)).toBe('$4.2M')
+  })
+})
+
+describe('hidden-people view (buildPulsePeopleView + state helpers)', () => {
+  const rows = (over?: { estName?: string }) =>
+    buildPulsePersonRows(
+      [
+        bid({ id: 'a', value: 100, outcome: 'won', estId: 'u1', estName: 'Wendi' }),
+        bid({ id: 'b', value: 200, outcome: 'won', estId: 'u2', estName: over?.estName ?? 'Bill' }),
+      ],
+      WEEK,
+      2,
+    )
+
+  it('resolves a nameless ("—") person through the directory and default-hides archived people', () => {
+    // u2's users join is RLS-hidden (archived): the bids row carries no name.
+    const people = buildPulsePersonRows(
+      [
+        bid({ id: 'a', value: 100, outcome: 'won', estId: 'u1', estName: 'Wendi' }),
+        { ...bid({ id: 'b', value: 200, outcome: 'won', estId: 'u2' }), estimator: null } as never,
+      ],
+      WEEK,
+      2,
+    )
+    expect(people.find((p) => p.userId === 'u2')!.displayName).toBe('—')
+    const directory = new Map([
+      ['u1', { name: 'Wendi', archived: false }],
+      ['u2', { name: 'Juan', archived: true }],
+    ])
+    const view = buildPulsePeopleView(people, directory, emptyPulseHiddenPeopleState())
+    expect(view.visible.map((p) => p.displayName)).toEqual(['Wendi'])
+    expect(view.hiddenChips).toEqual([{ userId: 'u2', label: 'Juan', archived: true }])
+  })
+
+  it('leaves people visible when the directory has not loaded yet', () => {
+    const view = buildPulsePeopleView(rows(), new Map(), emptyPulseHiddenPeopleState())
+    expect(view.visible.map((p) => p.displayName)).toEqual(['Bill', 'Wendi'])
+    expect(view.hiddenChips).toEqual([])
+  })
+
+  it('hides explicit ids, shows archived only when explicitly shown, and round-trips the toggles', () => {
+    const directory = new Map([
+      ['u1', { name: 'Wendi', archived: false }],
+      ['u2', { name: 'Juan', archived: true }],
+    ])
+    let state = emptyPulseHiddenPeopleState()
+    state = withPulsePersonHidden(state, 'u1', false, true)
+    let view = buildPulsePeopleView(rows(), directory, state)
+    // u1 explicitly hidden; u2 default-hidden as archived (its bid-join name "Bill" wins for the label)
+    expect(view.visible).toEqual([])
+    expect(view.hiddenChips.map((c) => c.userId).sort()).toEqual(['u1', 'u2'])
+    // un-hide u1, show archived u2
+    state = withPulsePersonHidden(state, 'u1', false, false)
+    state = withPulsePersonHidden(state, 'u2', true, false)
+    view = buildPulsePeopleView(rows(), directory, state)
+    expect(view.visible.map((p) => p.userId).sort()).toEqual(['u1', 'u2'])
+    expect(view.hiddenChips).toEqual([])
+    // re-hide the archived person: falls back to default-hidden, not the hidden list
+    state = withPulsePersonHidden(state, 'u2', true, true)
+    expect(state.hidden).toEqual([])
+    expect(state.shownArchived).toEqual([])
+  })
+
+  it('withAllPulsePeopleShown clears hides and pins every archived chip visible', () => {
+    const chips = [
+      { userId: 'u1', label: 'Wendi', archived: false },
+      { userId: 'u2', label: 'Juan', archived: true },
+    ]
+    const next = withAllPulsePeopleShown({ hidden: ['u1'], shownArchived: [] }, chips)
+    expect(next).toEqual({ hidden: [], shownArchived: ['u2'] })
+    // idempotent for already-shown archived ids
+    expect(withAllPulsePeopleShown(next, chips)).toEqual(next)
+  })
+
+  it('parsePulseHiddenPeopleState survives junk and round-trips real state', () => {
+    expect(parsePulseHiddenPeopleState(null)).toEqual({ hidden: [], shownArchived: [] })
+    expect(parsePulseHiddenPeopleState('not json')).toEqual({ hidden: [], shownArchived: [] })
+    expect(parsePulseHiddenPeopleState('{"hidden": "u1"}')).toEqual({ hidden: [], shownArchived: [] })
+    expect(parsePulseHiddenPeopleState('{"hidden": ["u1", 3], "shownArchived": ["u2"]}')).toEqual({
+      hidden: ['u1'],
+      shownArchived: ['u2'],
+    })
+    const state = withPulsePersonHidden(emptyPulseHiddenPeopleState(), 'u9', false, true)
+    expect(parsePulseHiddenPeopleState(JSON.stringify(state))).toEqual(state)
   })
 })
