@@ -26,3 +26,7 @@ Open any task's card (tap it on the Plan, Map, or Timeline) and find **Estimate*
 - **Nothing is scheduled.** The columns are still your dependency arrows and the dates are still derived from your observed pace — estimates are a task's *size*, never its calendar.
 
 The what-if dial keeps working — it just asks "what if we finished N days of work per week" instead of N tasks.
+
+## Drag to resize (desktop)
+
+On the Timeline, expand a stage and hover any open task's bar — a blue handle appears on its right edge. **Drag it** to size the task: the bar widens with a live *2d → 4.5d* readout, snaps to half-days, and the 🎯 flag re-derives as you pull. Release to save; press **Esc** to cancel. Nothing gets scheduled — you're sizing the work, and the drag writes the same estimate the card's stepper does. On phones, use the stepper.

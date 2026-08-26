@@ -1883,6 +1883,19 @@ export function ChecklistTechTreeTab({
             completeIds={completeGroupIds}
             users={users}
             onOpenTask={openEditTask}
+            canEdit={canEditStructure}
+            onEstimateChange={async (taskId, days) => {
+              const { error: e } = await supabase
+                .from('checklist_tech_tree_group_tasks')
+                .update({ estimated_days: days })
+                .eq('id', taskId)
+              if (e) {
+                setError(e.message)
+                return false
+              }
+              await load()
+              return true
+            }}
           />
         </div>
       ) : null}
