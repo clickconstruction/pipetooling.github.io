@@ -352,40 +352,43 @@ export function PhysicalInvoicePreview({
             }}
           >
             <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Payment history</div>
+            {/* Ledger shape (v2.2324, matching the portal recap): Billed opens,
+                each payment subtracts as a green credit, Balance due closes. */}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
               <tbody>
+                {d.paymentTotals ? (
+                  <tr>
+                    <td style={{ padding: '0.22rem 0.6rem 0.22rem 0', color: 'var(--text-700)' }}>Billed</td>
+                    <td style={{ padding: '0.22rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {d.paymentTotals.billedFormatted}
+                    </td>
+                  </tr>
+                ) : null}
                 {d.paymentHistory.map((p, i) => (
                   <tr key={i}>
-                    <td style={{ padding: '0.22rem 0.6rem 0.22rem 0', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>{p.dateDisplay}</td>
-                    <td style={{ padding: '0.22rem 0.6rem 0.22rem 0', color: 'var(--text-700)' }}>{p.method}</td>
-                    <td style={{ padding: '0.22rem 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                      {p.amountFormatted}
+                    <td style={{ padding: '0.22rem 0.6rem 0.22rem 0', color: 'var(--text-700)' }}>{p.label}</td>
+                    <td style={{ padding: '0.22rem 0', textAlign: 'right', color: '#16a34a', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      &minus; {p.amountFormatted}
                     </td>
                   </tr>
                 ))}
                 {d.paymentTotals ? (
-                  <>
+                  d.paymentTotals.paidInFull ? (
                     <tr>
-                      <td colSpan={2} style={{ padding: '0.35rem 0 0.1rem', borderTop: '1px solid var(--border-strong)', fontWeight: 700 }}>
-                        Total paid
-                      </td>
-                      <td style={{ padding: '0.35rem 0 0.1rem', borderTop: '1px solid var(--border-strong)', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                        {d.paymentTotals.totalPaidFormatted}
+                      <td colSpan={2} style={{ padding: '0.35rem 0 0.3rem', borderTop: '1px solid var(--border-strong)', color: '#16a34a', fontWeight: 700 }}>
+                        Paid in full
                       </td>
                     </tr>
-                    {d.paymentTotals.paidInFull ? (
-                      <tr>
-                        <td colSpan={3} style={{ padding: '0.1rem 0 0.3rem', color: '#16a34a', fontWeight: 700 }}>Paid in full</td>
-                      </tr>
-                    ) : (
-                      <tr>
-                        <td colSpan={2} style={{ padding: '0.1rem 0 0.3rem', color: '#b3261e', fontWeight: 700 }}>Balance due</td>
-                        <td style={{ padding: '0.1rem 0 0.3rem', textAlign: 'right', color: '#b3261e', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                          {d.paymentTotals.balanceDueFormatted}
-                        </td>
-                      </tr>
-                    )}
-                  </>
+                  ) : (
+                    <tr>
+                      <td style={{ padding: '0.35rem 0 0.3rem', borderTop: '1px solid var(--border-strong)', color: '#b3261e', fontWeight: 700 }}>
+                        Balance due
+                      </td>
+                      <td style={{ padding: '0.35rem 0 0.3rem', borderTop: '1px solid var(--border-strong)', textAlign: 'right', color: '#b3261e', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                        {d.paymentTotals.balanceDueFormatted}
+                      </td>
+                    </tr>
+                  )
                 ) : null}
               </tbody>
             </table>

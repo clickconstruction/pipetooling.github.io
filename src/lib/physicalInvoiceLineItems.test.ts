@@ -139,23 +139,31 @@ describe('payment history customer rows (v2.2313)', () => {
     ...over,
   })
 
-  it('never prints the internal note in the customer-facing method', async () => {
+  it('never prints the internal note in the customer-facing label', async () => {
     const { formatPaymentHistoryRows } = await import('./physicalInvoiceLineItems')
     const rows = formatPaymentHistoryRows([pay({ note: 'hcp-paydate-corrected-2026-08-24' })], usd)
-    expect(rows[0]!.method).toBe('Check')
+    expect(rows[0]!.label).toBe('Paid Dec 17, 2025 · Check')
     expect(JSON.stringify(rows)).not.toContain('hcp-paydate')
   })
 
-  it('shows date with weekday, no time-of-day', async () => {
+  it('ledger label (v2.2324): Paid + date, no weekday; generic methods drop their suffix', async () => {
     const { formatPaymentHistoryRows } = await import('./physicalInvoiceLineItems')
-    const rows = formatPaymentHistoryRows([pay({})], usd)
-    expect(rows[0]!.dateDisplay).toBe('Dec 17, 2025 · Wed')
+    expect(formatPaymentHistoryRows([pay({ payment_type: 'other' })], usd)[0]!.label).toBe('Paid Dec 17, 2025')
+    expect(formatPaymentHistoryRows([pay({ payment_type: null })], usd)[0]!.label).toBe('Paid Dec 17, 2025')
+    expect(formatPaymentHistoryRows([pay({ payment_type: 'check · 1042' })], usd)[0]!.label).toBe(
+      'Paid Dec 17, 2025 · check · 1042',
+    )
   })
 
-  it('totals: balance due when partially paid', async () => {
+  it('totals: balance due when partially paid, billed line included (v2.2324)', async () => {
     const { buildPaymentHistoryTotals } = await import('./physicalInvoiceLineItems')
     const t = buildPaymentHistoryTotals([pay({ amount: 8880 }), pay({ amount: 20 }), pay({ amount: 8000 })], 17800, usd)
-    expect(t).toEqual({ totalPaidFormatted: '$16900.00', balanceDueFormatted: '$900.00', paidInFull: false })
+    expect(t).toEqual({
+      billedFormatted: '$17800.00',
+      totalPaidFormatted: '$16900.00',
+      balanceDueFormatted: '$900.00',
+      paidInFull: false,
+    })
   })
 
   it('totals: paid in full at (or above) the invoice amount', async () => {

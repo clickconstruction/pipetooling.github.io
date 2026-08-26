@@ -268,30 +268,46 @@ function linesTableText(title: string, rows: PhysicalInvoiceServiceLine[] | Phys
 /** Boxed payment-history table for email bodies (both layouts), totals included (v2.2313). */
 function paymentHistoryHtml(doc: PhysicalInvoiceDocument): string {
   if (doc.paymentHistory.length === 0) return ''
+  // The ledger shape (v2.2324, matching the portal recap): Billed opens,
+  // each payment subtracts as a green credit, Balance due closes in red.
+  const t = doc.paymentTotals
+  const billedRow = t
+    ? `<tr><td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#5f6368">Billed</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f3f4f6">${escapeHtml(
+        t.billedFormatted,
+      )}</td></tr>`
+    : ''
   const rows = doc.paymentHistory
     .map(
       (p) =>
-        `<tr><td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#5f6368;white-space:nowrap">${escapeHtml(
-          p.dateDisplay,
-        )}</td><td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#5f6368">${escapeHtml(
-          p.method,
-        )}</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f3f4f6">${escapeHtml(
+        `<tr><td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#5f6368">${escapeHtml(
+          p.label,
+        )}</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#1f7a3a;font-weight:600;white-space:nowrap">&minus; ${escapeHtml(
           p.amountFormatted,
         )}</td></tr>`,
     )
     .join('')
-  const t = doc.paymentTotals
   const totalsRows = t
-    ? `<tr><td style="padding:7px 8px 4px;font-weight:700;border-top:1px solid #dadce0" colspan="2">Total paid</td><td style="text-align:right;padding:7px 8px 4px;font-weight:700;border-top:1px solid #dadce0">${escapeHtml(
-        t.totalPaidFormatted,
-      )}</td></tr>` +
-      (t.paidInFull
-        ? `<tr><td style="padding:2px 8px 6px;color:#16a34a;font-weight:700" colspan="3">Paid in full</td></tr>`
-        : `<tr><td style="padding:2px 8px 6px;color:#b3261e;font-weight:700" colspan="2">Balance due</td><td style="text-align:right;padding:2px 8px 6px;color:#b3261e;font-weight:700">${escapeHtml(
-            t.balanceDueFormatted,
-          )}</td></tr>`)
+    ? t.paidInFull
+      ? `<tr><td style="padding:7px 8px 6px;color:#16a34a;font-weight:700;border-top:1px solid #dadce0" colspan="2">Paid in full</td></tr>`
+      : `<tr><td style="padding:7px 8px 6px;color:#b3261e;font-weight:700;border-top:1px solid #dadce0">Balance due</td><td style="text-align:right;padding:7px 8px 6px;color:#b3261e;font-weight:700;border-top:1px solid #dadce0">${escapeHtml(
+          t.balanceDueFormatted,
+        )}</td></tr>`
     : ''
-  return `<p style="font-family:system-ui,sans-serif;font-size:14px;font-weight:600;color:#374151;margin:16px 0 8px">Payment history</p><table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;font-size:13px;border:1px solid #e5e7eb;border-radius:8px">${rows}${totalsRows}</table>`
+  return `<p style="font-family:system-ui,sans-serif;font-size:14px;font-weight:600;color:#374151;margin:16px 0 8px">Payment history</p><table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;font-size:13px;border:1px solid #e5e7eb;border-radius:8px">${billedRow}${rows}${totalsRows}</table>`
+}
+
+/** Plain-text twin of paymentHistoryHtml — same ledger, shared by both layouts. */
+function paymentHistoryTextLines(doc: PhysicalInvoiceDocument): string[] {
+  if (!doc.paymentHistory.length) return []
+  const out = ['', 'Payment history:']
+  if (doc.paymentTotals) out.push(` Billed: ${doc.paymentTotals.billedFormatted}`)
+  for (const p of doc.paymentHistory) {
+    out.push(` ${p.label}: - ${p.amountFormatted}`)
+  }
+  if (doc.paymentTotals) {
+    out.push(doc.paymentTotals.paidInFull ? ' Paid in full' : ` Balance due: ${doc.paymentTotals.balanceDueFormatted}`)
+  }
+  return out
 }
 
 export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument): { text: string; html: string } {
@@ -329,18 +345,7 @@ export function buildPhysicalInvoiceEmailBodies(doc: PhysicalInvoiceDocument): {
     if (doc.memo) {
       textLines.push('', 'Memo:', doc.memo)
     }
-    if (doc.paymentHistory.length) {
-      textLines.push('', 'Payment history:')
-      for (const p of doc.paymentHistory) {
-        textLines.push(` ${p.dateDisplay}  ${p.method}  ${p.amountFormatted}`)
-      }
-      if (doc.paymentTotals) {
-        textLines.push(` Total paid: ${doc.paymentTotals.totalPaidFormatted}`)
-        textLines.push(
-          doc.paymentTotals.paidInFull ? ' Paid in full' : ` Balance due: ${doc.paymentTotals.balanceDueFormatted}`,
-        )
-      }
-    }
+    textLines.push(...paymentHistoryTextLines(doc))
     if (doc.footer) {
       textLines.push('', '----------------------------------------', doc.footer)
     }
@@ -429,18 +434,7 @@ ${scopeHtml}${lineRowsHtml('Services', doc.serviceLines)}${lineRowsHtml('Materia
   if (doc.memo) {
     textLines.push('', 'Memo:', doc.memo)
   }
-  if (doc.paymentHistory.length) {
-    textLines.push('', 'Payment history:')
-    for (const p of doc.paymentHistory) {
-      textLines.push(` ${p.dateDisplay}  ${p.method}  ${p.amountFormatted}`)
-    }
-    if (doc.paymentTotals) {
-      textLines.push(` Total paid: ${doc.paymentTotals.totalPaidFormatted}`)
-      textLines.push(
-        doc.paymentTotals.paidInFull ? ' Paid in full' : ` Balance due: ${doc.paymentTotals.balanceDueFormatted}`,
-      )
-    }
-  }
+  textLines.push(...paymentHistoryTextLines(doc))
   if (doc.footer) {
     textLines.push('', '----------------------------------------', doc.footer)
   }

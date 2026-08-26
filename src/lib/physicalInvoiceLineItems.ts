@@ -1,5 +1,6 @@
 import type { Database } from '../types/database'
 import { buildScaledFixtureLineDrafts } from './physicalInvoiceFixtureScaling'
+import { PORTAL_GENERIC_PAYMENT_METHOD, portalPaymentMethodLabel } from './portal/portalJobGroups'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 
 export type PhysicalInvoiceFixtureInput = Pick<
@@ -32,8 +33,9 @@ export type PhysicalInvoiceMaterialLine = {
 }
 
 export type PhysicalInvoicePaymentHistoryRow = {
-  dateDisplay: string
-  method: string
+  /** "Paid Jul 17, 2026" — plus " · <method>" when the method says something (v2.2324). */
+  label: string
+  /** Positive figure ("$871.25"); renderers prefix their own credit minus. */
   amountFormatted: string
 }
 
@@ -251,16 +253,14 @@ function formatPaymentDateYmd(ymd: string | null | undefined): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t)
   if (!m) return t
   const ref = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0)
-  const date = new Intl.DateTimeFormat('en-US', {
+  // "Dec 17, 2025" — no weekday (v2.2324: matches the portal ledger), no
+  // time-of-day we don't honestly have (paid_on is date-only).
+  return new Intl.DateTimeFormat('en-US', {
     timeZone: APP_CALENDAR_TZ,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   }).format(ref)
-  // "Dec 17, 2025 · Wed" — the weekday HCP shows, minus the time-of-day we
-  // don't honestly have (paid_on is date-only; created_at is entry time).
-  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short' }).format(ref)
-  return `${date} · ${weekday}`
 }
 
 export function formatPaymentHistoryRows(
@@ -271,17 +271,21 @@ export function formatPaymentHistoryRows(
     const amt = Number(p.amount)
     // Customer-facing method is the payment type ONLY (v2.2313): `note` is an
     // internal field and now carries hygiene tags (hcp-paydate-corrected-…)
-    // that must never print on customer paper.
-    const method = (p.payment_type ?? '').trim() || 'Payment'
+    // that must never print on customer paper. The generic label is dropped
+    // entirely — "Paid Jul 17, 2026" says it all (v2.2322/v2.2324); a real
+    // method (a check number) keeps a suffix.
+    const method = portalPaymentMethodLabel(p.payment_type ?? '')
+    const suffix = method === PORTAL_GENERIC_PAYMENT_METHOD ? '' : ` · ${method}`
     return {
-      dateDisplay: formatPaymentDateYmd(p.paid_on),
-      method,
+      label: `Paid ${formatPaymentDateYmd(p.paid_on)}${suffix}`,
       amountFormatted: formatUsd(Number.isFinite(amt) ? amt : 0),
     }
   })
 }
 
 export type PhysicalInvoicePaymentTotals = {
+  /** The document's own billed amount — the ledger's opening line (v2.2324). */
+  billedFormatted: string
   totalPaidFormatted: string
   /** Meaningful only when paidInFull is false. */
   balanceDueFormatted: string
@@ -305,6 +309,7 @@ export function buildPaymentHistoryTotals(
   }, 0)
   const balance = invoiceAmountDollars - totalPaid
   return {
+    billedFormatted: formatUsd(invoiceAmountDollars),
     totalPaidFormatted: formatUsd(totalPaid),
     balanceDueFormatted: formatUsd(Math.max(balance, 0)),
     paidInFull: balance <= 0.005,
