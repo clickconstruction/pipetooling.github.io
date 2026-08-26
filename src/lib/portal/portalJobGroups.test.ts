@@ -72,6 +72,7 @@ describe('groupPortalBillsByJob', () => {
     ])
     const g = groups[0]
     expect(g?.totalPaid).toBe(11433.2)
+    expect(g?.paymentRowsTotal).toBe(11433.2)
     expect(g?.billedToDate).toBe(22135)
     expect(g?.payments.map((p) => [p.date, p.method])).toEqual([
       ['2026-07-15', 'check · 1042'],
@@ -104,6 +105,7 @@ describe('groupPortalBillsByJob', () => {
   it('recap still carries an aggregate-only total (no payment rows)', () => {
     const groups = groupPortalBillsByJob([bill({ jobNumber: '9', amount: 400, totalPaid: 150 })])
     expect(groups[0]?.payments).toEqual([])
+    expect(groups[0]?.paymentRowsTotal).toBe(0)
     expect(groups[0]?.totalPaid).toBe(150)
     expect(groups[0]?.billedToDate).toBe(550)
     expect(groups[0]?.showRecap).toBe(true)

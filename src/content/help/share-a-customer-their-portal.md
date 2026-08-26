@@ -43,7 +43,7 @@ Treat the link like a mailed invoice: it exposes that customer's balances only, 
 The statement groups everything **by job**: each job opens with its own header band (trade, job number, address), with all of that job's bills and **payments already received** together underneath — a job with several progress bills stays in one place instead of scattering down the page.
 
 :::example What a job section shows
-Bills newest first (each with its billed date and its own {{button:blue|Pay online}} or check reference), then the payments received on the job — date, method, amount — and, on the right, a boxed recap: **Billed to date**, **Paid to date**, and **Balance on this job**.
+Bills newest first (each with its billed date and its own {{button:blue|Pay online}} or check reference), and on the right a boxed recap that reads like a little ledger: **Billed to date**, then **each payment by the date it was received** with its amount, then **Balance on this job**.
 :::
 
 The recap box is the same payment-totals box that prints on the invoice itself (preview, PDF, and the invoice email), so customers see one consistent story everywhere. A customer can confirm their check landed without calling the office. Internal payment notes never appear; customers see the payment method only — and a payment recorded with the catch-all type "other" simply reads "Payment".

@@ -22,6 +22,13 @@ export type PortalJobGroup = {
   ownerName: string | null
   /** Every payment across the job's bills, oldest first, customer-safe labels. */
   payments: PortalJobPayment[]
+  /**
+   * Sum of the listed payment rows. When this matches totalPaid the recap can
+   * itemize per-payment; when it falls short (job-remainder bills carry only
+   * the cached aggregate), the recap falls back to one Paid-to-date line so
+   * the arithmetic on the page never lies (v2.2320).
+   */
+  paymentRowsTotal: number
   totalPaid: number
   /** balance + totalPaid — what the job has been billed so far. */
   billedToDate: number
@@ -84,6 +91,7 @@ export function groupPortalBillsByJob(bills: PortalBill[]): PortalJobGroup[] {
       .flatMap((b) => b.payments)
       .map((p) => ({ ...p, method: portalPaymentMethodLabel(p.method) }))
       .sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999'))
+    const paymentRowsTotal = round2(payments.reduce((s, p) => s + p.amount, 0))
     const totalPaid = Math.max(0, round2(sorted.reduce((s, b) => s + b.totalPaid, 0)))
     const balance = round2(sorted.reduce((s, b) => s + b.amount, 0))
     out.push({
@@ -96,6 +104,7 @@ export function groupPortalBillsByJob(bills: PortalBill[]): PortalJobGroup[] {
       asGc: sorted.some((b) => b.asGc),
       ownerName: sorted.map((b) => b.ownerName).find((n) => n != null) ?? null,
       payments,
+      paymentRowsTotal,
       totalPaid,
       billedToDate: round2(balance + totalPaid),
       balance,
