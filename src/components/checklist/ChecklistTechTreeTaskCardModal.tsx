@@ -48,6 +48,12 @@ type Props = {
   onToggleDone?: () => Promise<boolean>
   /** Editors only: deletes the task (and its unfinished list item). */
   onDeleteTask?: () => Promise<boolean>
+  /** ⏱ effort estimate in days (v2.2358) — the Timeline's slot weight; null = roadmap average. */
+  estimatedDays?: number | null
+  /** Roadmap-average estimate, for the "≈ 2d (average)" placeholder. */
+  averageDays?: number
+  /** Editors only: persists a new estimate (null clears back to average); resolves true on success. */
+  onSaveEstimate?: (days: number | null) => Promise<boolean>
   /** Jump to the Today tab (the live checklist card). */
   onOpenTodayTab?: () => void
   onClose: () => void
@@ -86,12 +92,16 @@ export function ChecklistTechTreeTaskCardModal({
   waitingAfterLabel = null,
   onToggleDone,
   onDeleteTask,
+  estimatedDays = null,
+  averageDays = 1,
+  onSaveEstimate,
   onOpenTodayTab,
   onClose,
   portalContainer,
 }: Props) {
   const [events, setEvents] = useState<ChecklistCardEvent[]>([])
   const [pinSaving, setPinSaving] = useState(false)
+  const [estimateSaving, setEstimateSaving] = useState(false)
   const [doneSaving, setDoneSaving] = useState(false)
   const [eventsLoading, setEventsLoading] = useState(false)
   const [draft, setDraft] = useState('')
@@ -575,6 +585,74 @@ export function ChecklistTechTreeTaskCardModal({
               ) : null}
             </>
           )}
+        </div>
+
+        {/* ⏱ estimate (v2.2358): the Timeline's slot weight — sizing, never scheduling. */}
+        <div style={{ padding: '2px 16px 10px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ ...sectionLabelStyle, marginBottom: 6 }}>Estimate</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {onSaveEstimate && canEditStructure ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 10, overflow: 'hidden' }}>
+                <button
+                  type="button"
+                  aria-label="Decrease estimate by half a day"
+                  disabled={estimateSaving || estimatedDays == null}
+                  onClick={() => {
+                    if (estimatedDays == null) return
+                    const next = Math.round((estimatedDays - 0.5) * 2) / 2
+                    setEstimateSaving(true)
+                    void onSaveEstimate(next >= 0.5 ? next : null).finally(() => setEstimateSaving(false))
+                  }}
+                  style={{ width: 44, height: 40, border: 'none', background: 'var(--bg-muted)', fontSize: 18, color: 'var(--text-700)', cursor: 'pointer' }}
+                >
+                  −
+                </button>
+                <span style={{ minWidth: 84, textAlign: 'center', fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: estimatedDays == null ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                  {estimatedDays == null
+                    ? `≈ ${Math.round(averageDays * 10) / 10}d`
+                    : `${Math.round(estimatedDays * 10) / 10} day${estimatedDays === 1 ? '' : 's'}`}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Increase estimate by half a day"
+                  disabled={estimateSaving}
+                  onClick={() => {
+                    const next = Math.round(((estimatedDays ?? Math.max(Math.round(averageDays * 2) / 2, 0.5)) + (estimatedDays == null ? 0 : 0.5)) * 2) / 2
+                    setEstimateSaving(true)
+                    void onSaveEstimate(next).finally(() => setEstimateSaving(false))
+                  }}
+                  style={{ width: 44, height: 40, border: 'none', background: 'var(--bg-muted)', fontSize: 18, color: 'var(--text-700)', cursor: 'pointer' }}
+                >
+                  ＋
+                </button>
+              </span>
+            ) : (
+              <span style={{ fontSize: 13, color: estimatedDays == null ? 'var(--text-muted)' : 'var(--text-strong)', fontWeight: estimatedDays == null ? 400 : 600 }}>
+                {estimatedDays == null ? `≈ ${Math.round(averageDays * 10) / 10}d (roadmap average)` : `${Math.round(estimatedDays * 10) / 10} day${estimatedDays === 1 ? '' : 's'}`}
+              </span>
+            )}
+            {onSaveEstimate && canEditStructure ? (
+              <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                {estimatedDays == null ? 'no estimate — counts as an average task' : 'half-day steps'}
+                {estimatedDays != null ? (
+                  <>
+                    {' · '}
+                    <button
+                      type="button"
+                      disabled={estimateSaving}
+                      onClick={() => {
+                        setEstimateSaving(true)
+                        void onSaveEstimate(null).finally(() => setEstimateSaving(false))
+                      }}
+                      style={{ border: 'none', background: 'none', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer', fontSize: 11.5, padding: 0 }}
+                    >
+                      clear
+                    </button>
+                  </>
+                ) : null}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {/* activity */}

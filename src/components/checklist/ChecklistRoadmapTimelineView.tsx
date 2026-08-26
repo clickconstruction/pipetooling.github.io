@@ -1,7 +1,8 @@
 import { RoadmapParallelBadge } from './RoadmapParallelBadge'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import { approxDateLabel, paceProjection, taskSlotRects, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
-import { bandFraction, calendarBand, monthLabelStride, observedPace, paceLabel } from '../../lib/roadmapCalendar'
+import { approxDateLabel, paceProjection, taskSlotRectsWeighted, timelineRows, type TimelineRow } from '../../lib/roadmapTimeline'
+import { averageEstimatedDays, effortDaysLabel, effortSumLabel, observedEffortPace, taskWeightDays } from '../../lib/roadmapEffort'
+import { bandFraction, calendarBand, monthLabelStride, paceLabel } from '../../lib/roadmapCalendar'
 import { stageNumbersByGroupId, taskNumbersByTaskId } from '../../lib/roadmapStageNumbers'
 import { RoadmapStageNumberBadge, RoadmapTaskNumber } from './RoadmapStageNumberBadge'
 import type { PlanTask } from '../../lib/roadmapPlanView'
@@ -78,15 +79,20 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
   const taskNumbers = useMemo(() => taskNumbersByTaskId(stageNumbers, tasksByGroup), [stageNumbers, tasksByGroup])
   const nameById = useMemo(() => new Map(users.map((u) => [u.id, u.name || u.email])), [users])
 
+  // Effort weighting (v2.2358): estimated_days is a task's WEIGHT — never its
+  // dates. avg fills unestimated tasks; with no estimates anywhere every
+  // weight is 1 and all math below reduces to the old tasks/week behavior.
+  const avg = useMemo(() => averageEstimatedDays(tasks), [tasks])
+  const hasEstimates = useMemo(() => tasks.some((t) => t.estimated_days != null), [tasks])
   const rows = useMemo(
-    () => timelineRows({ groups, tasksByGroup, edges, unlockedIds, completeIds }),
-    [groups, tasksByGroup, edges, unlockedIds, completeIds],
+    () => timelineRows({ groups, tasksByGroup, edges, unlockedIds, completeIds, avgDays: avg }),
+    [groups, tasksByGroup, edges, unlockedIds, completeIds, avg],
   )
   const now = useMemo(() => new Date(), [])
   // Observed pace (last 4 weeks; all-time fallback; null before any completion)
   // — the projection's only input. There is no dial: dates come from the real rate.
-  const pace = useMemo(() => observedPace(tasks, now), [tasks, now])
-  const projection = useMemo(() => paceProjection(rows, pace?.tasksPerWeek ?? 1, now), [rows, pace, now])
+  const pace = useMemo(() => observedEffortPace(tasks, now), [tasks, now])
+  const projection = useMemo(() => paceProjection(rows, pace?.daysPerWeek ?? 1, now), [rows, pace, now])
   const whatIfProjection = useMemo(() => (whatIf == null ? null : paceProjection(rows, whatIf, now)), [rows, whatIf, now])
   // Band months follow the real pace; with no real pace yet, the what-if dial alone stretches them.
   const band = useMemo(
@@ -94,6 +100,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     [pace, projection, whatIfProjection, now],
   )
   const remainingTotal = useMemo(() => rows.reduce((a, r) => a + r.remainingTasks, 0), [rows])
+  const remainingDaysTotal = useMemo(() => rows.reduce((a, r) => a + r.remainingDays, 0), [rows])
   /** Dashed ghost flag for the what-if pace (only next to a real solid flag). */
   const ghost = useMemo(() => {
     if (!pace || whatIfProjection == null || whatIfProjection.length === 0) return null
@@ -101,13 +108,15 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     return { left: Math.min(bandFraction(band, finish), 0.985), label: approxDateLabel(finish, now) }
   }, [pace, whatIfProjection, band, now])
   const ghostOnly = !pace && whatIfProjection != null
-  const whatIfDefault = pace ? Math.min(Math.max(Math.round(pace.tasksPerWeek), 1), 20) : 5
+  const whatIfDefault = pace ? Math.min(Math.max(Math.round(pace.daysPerWeek), 1), 20) : 5
+  // Unit label: estimates make the pace days-of-work; without any, days == tasks.
+  const paceUnit = hasEstimates ? 'days/week' : 'tasks/week'
 
   // wave geometry: width share ∝ remaining tasks, with a floor so empty/done
   // waves stay visible; all fractions of the lane width
   const geometry = useMemo(() => {
     const waves = projection.map((p) => p.wave)
-    const raw = projection.map((p) => Math.max(p.remainingTasks, 1))
+    const raw = projection.map((p) => Math.max(p.remainingDays, 1))
     const total = raw.reduce((a, b) => a + b, 0) || 1
     const minShare = 0.1
     let shares = raw.map((r) => Math.max(r / total, minShare))
@@ -124,7 +133,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     // largest remaining stage per wave (bar width scale)
     const maxStage = new Map<number, number>()
     for (const r of rows) {
-      maxStage.set(r.wave, Math.max(maxStage.get(r.wave) ?? 1, r.remainingTasks))
+      maxStage.set(r.wave, Math.max(maxStage.get(r.wave) ?? 1, r.remainingDays))
     }
     return { starts, widths, maxStage }
   }, [projection, rows])
@@ -143,7 +152,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
   /** Pace that would land the goal inside the visible horizon (clamped goals only). */
   const neededPaceLabel =
     band.goal?.clamped && remainingTotal > 0
-      ? paceLabel(remainingTotal / Math.max((band.horizonEnd.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000), 1))
+      ? paceLabel(remainingDaysTotal / Math.max((band.horizonEnd.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000), 1))
       : null
   const horizonLabel = band.months[band.months.length - 1]?.label ?? ''
 
@@ -162,7 +171,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     const waveStart = geometry.starts.get(r.wave) ?? 0
     const waveWidth = geometry.widths.get(r.wave) ?? 0.1
     const maxStage = geometry.maxStage.get(r.wave) ?? 1
-    const share = r.done ? 0.14 : Math.max(r.remainingTasks / maxStage, 0.2)
+    const share = r.done ? 0.14 : Math.max(r.remainingDays / maxStage, 0.2)
     const width = Math.max(waveWidth * share - 0.008, 0.05)
     return { left: waveStart + 0.004, width }
   }
@@ -234,7 +243,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
     }
     // Segmented (v2.2042): one successive slot per task, in task order — done
     // green in true position, the next task amber-ringed, the rest outlined.
-    const slots = taskSlotRects(rect.left, rect.width, stageTasks.length)
+    const slots = taskSlotRectsWeighted(rect.left, rect.width, stageTasks.map((t) => taskWeightDays(t, avg)))
     const nextUp = nextUpIndexFor(r, stageTasks)
     return (
       <>
@@ -243,10 +252,11 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
           if (!slot) return null
           const done = t.completed_at != null
           const state = done ? 'done' : i === nextUp ? 'next up' : r.locked ? 'locked' : 'remaining'
+          const est = t.estimated_days != null ? `${effortDaysLabel(t.estimated_days)} est` : `≈${effortDaysLabel(avg)} avg`
           return (
             <span
               key={t.id}
-              title={`${taskNumbers.get(t.id) ?? ''} ${t.title} — ${state}`}
+              title={`${taskNumbers.get(t.id) ?? ''} ${t.title} — ${state} — ${est}`}
               style={{
                 position: 'absolute',
                 top: 6,
@@ -382,7 +392,11 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 // Caption order (v2.2136): when the honest date is clamped past the
                 // 12-month horizon, lead with what's actionable — tasks left and
                 // the pace that lands inside the year — and demote the far date.
-                const leftNode = (
+                const leftNode = hasEstimates ? (
+                  <span>
+                    <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{effortSumLabel(remainingDaysTotal).replace('≈ ', '≈')}</b> of work left ({remainingTotal} task{remainingTotal === 1 ? '' : 's'})
+                  </span>
+                ) : (
                   <span>
                     <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{remainingTotal}</b> task{remainingTotal === 1 ? '' : 's'} left
                   </span>
@@ -390,7 +404,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 const paceNode = (
                   <span>
                     at your {pace.basis === 'recent' ? 'recent' : 'all-time'} pace —{' '}
-                    <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{paceLabel(pace.tasksPerWeek)} tasks/week</b>
+                    <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{paceLabel(pace.daysPerWeek)} {hasEstimates ? 'days/week done' : 'tasks/week'}</b>
                     {pace.basis === 'recent' ? ' over the last 4 weeks' : ''}
                   </span>
                 )
@@ -402,7 +416,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 const neededNode =
                   neededPaceLabel != null ? (
                     <span>
-                      <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{neededPaceLabel}</b>/week would finish by {horizonLabel}
+                      <b style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{neededPaceLabel}</b> {paceUnit.replace('/week', '')}/week would finish by {horizonLabel}
                     </span>
                   ) : null
                 const parts = neededNode ? [leftNode, neededNode, paceNode, goalNode] : [goalNode, paceNode, leftNode]
@@ -417,14 +431,14 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 <>
                   <span style={{ color: 'var(--border-strong)' }}>·</span>
                   <span style={{ color: 'var(--text-link)' }}>
-                    what-if <b style={{ fontVariantNumeric: 'tabular-nums' }}>{whatIf}/week</b> ≈ {ghost.label.replace('≈ ', '')}
+                    what-if <b style={{ fontVariantNumeric: 'tabular-nums' }}>{whatIf} {paceUnit}</b> ≈ {ghost.label.replace('≈ ', '')}
                   </span>
                 </>
               ) : null}
             </>
           ) : ghostOnly && band.goal && whatIf != null ? (
             <span style={{ color: 'var(--text-link)' }}>
-              what-if <b style={{ fontVariantNumeric: 'tabular-nums' }}>{whatIf}/week</b> ≈ {band.goal.label.replace('≈ ', '')} — no completions yet, so this
+              what-if <b style={{ fontVariantNumeric: 'tabular-nums' }}>{whatIf} {paceUnit}</b> ≈ {band.goal.label.replace('≈ ', '')} — no completions yet, so this
               is only the dial
             </span>
           ) : (
@@ -439,16 +453,16 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 max={20}
                 value={whatIf ?? whatIfDefault}
                 onChange={(e) => setWhatIf(Number(e.target.value))}
-                aria-label="What-if pace, tasks per week"
+                aria-label={`What-if pace, ${paceUnit}`}
                 style={{ width: 130 }}
               />
               {pace ? (
                 <span
-                  title={`your real pace: ${paceLabel(pace.tasksPerWeek)}/week`}
+                  title={`your real pace: ${paceLabel(pace.daysPerWeek)} ${paceUnit}`}
                   style={{
                     position: 'absolute',
                     bottom: -9,
-                    left: `${((Math.min(Math.max(pace.tasksPerWeek, 1), 20) - 1) / 19) * 100}%`,
+                    left: `${((Math.min(Math.max(pace.daysPerWeek, 1), 20) - 1) / 19) * 100}%`,
                     transform: 'translateX(-50%)',
                     fontSize: '0.52rem',
                     fontWeight: 700,
@@ -462,7 +476,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 </span>
               ) : null}
             </span>
-            <b style={{ color: 'var(--text-link)', fontVariantNumeric: 'tabular-nums' }}>{whatIf ?? whatIfDefault}/week</b>
+            <b style={{ color: 'var(--text-link)', fontVariantNumeric: 'tabular-nums' }}>{whatIf ?? whatIfDefault} {paceUnit}</b>
             {whatIf != null ? (
               <button
                 type="button"
@@ -500,6 +514,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 >
                   {waveName(i, projection.length)}
                   {p.remainingTasks > 0 ? ` · ${p.remainingTasks}` : ''}
+                  {hasEstimates && p.remainingDays > 0 ? ` · ${effortSumLabel(p.remainingDays)}` : ''}
                 </div>
               ))}
             </div>
@@ -534,7 +549,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                     {parallelGroupIds?.has(r.groupId) ? <RoadmapParallelBadge compact /> : null}
                     {!r.isMilestone ? (
                       <span className="roadmap-timeline-rail-title" style={{ flex: 'none', marginLeft: 'auto', fontSize: '0.64rem', color: r.done ? DONE : 'var(--text-muted)', fontWeight: r.done ? 700 : 400, fontVariantNumeric: 'tabular-nums' }}>
-                        {r.locked ? '🔒 ' : ''}{r.doneTasks}/{r.totalTasks}
+                        {r.locked ? '🔒 ' : ''}{r.doneTasks}/{r.totalTasks}{hasEstimates && !r.done && r.remainingDays > 0 ? ` · ${effortSumLabel(r.remainingDays)}` : ''}
                       </span>
                     ) : null}
                   </div>
@@ -547,7 +562,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                 {expanded && stageTasks.length > 0 ? (
                   (() => {
                     const rect = rectFor(r)
-                    const slots = taskSlotRects(rect.left, rect.width, stageTasks.length)
+                    const slots = taskSlotRectsWeighted(rect.left, rect.width, stageTasks.map((t) => taskWeightDays(t, avg)))
                     const nextUp = nextUpIndexFor(r, stageTasks)
                     return (
                       <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-slate-tint)' }}>
@@ -601,6 +616,11 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
                                       · {t.assigneeIds.map((id) => nameById.get(id) ?? '…').join(', ')}
                                     </span>
                                   ) : null}
+                                  {hasEstimates ? (
+                                    <span style={{ flex: 'none', marginLeft: 6, fontSize: '0.64rem', color: t.estimated_days != null ? 'var(--text-muted)' : 'var(--text-faint)' }}>
+                                      · {t.estimated_days != null ? effortDaysLabel(t.estimated_days) : `≈${effortDaysLabel(avg)}`}
+                                    </span>
+                                  ) : null}
                                 </button>
                                 {slot ? (
                                   <button
@@ -646,7 +666,7 @@ export function ChecklistRoadmapTimelineView({ groups, tasks, edges, unlockedIds
         </div>
       </div>
       <p style={{ margin: 0, padding: '0.45rem 0.8rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-        Columns are dependency waves from the Map's arrows — sequence, not calendar. The calendar up top projects real dates from your observed pace (remaining ÷ tasks/week, wave by wave). Each slot ≈ one task, in stage order — green done, amber ring next up · ◆ = milestone stage · ◇ = not planned yet (no tasks, nothing before it) · the amber line is the work front.
+        Columns are dependency waves from the Map's arrows — sequence, not calendar. The calendar up top projects real dates from your observed pace (remaining days of work ÷ days done per week, wave by wave; a task with no ⏱ estimate counts as an average one). Slot width ≈ estimated effort, in stage order — green done, amber ring next up · ◆ = milestone stage · ◇ = not planned yet (no tasks, nothing before it) · the amber line is the work front.
       </p>
     </div>
   )

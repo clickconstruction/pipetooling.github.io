@@ -2017,6 +2017,7 @@ export type Database = {
           completed_at: string | null
           completed_by_user_id: string | null
           created_at: string
+          estimated_days: number | null
           group_id: string
           id: string
           pinned_at: string | null
@@ -2027,6 +2028,7 @@ export type Database = {
           completed_at?: string | null
           completed_by_user_id?: string | null
           created_at?: string
+          estimated_days?: number | null
           group_id: string
           id?: string
           pinned_at?: string | null
@@ -2037,6 +2039,7 @@ export type Database = {
           completed_at?: string | null
           completed_by_user_id?: string | null
           created_at?: string
+          estimated_days?: number | null
           group_id?: string
           id?: string
           pinned_at?: string | null

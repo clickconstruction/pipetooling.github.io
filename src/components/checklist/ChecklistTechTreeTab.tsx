@@ -83,6 +83,7 @@ import { GripVertical } from 'lucide-react'
 import { ChecklistTechTreeGroupModal } from './ChecklistTechTreeGroupModal'
 import { ChecklistTechTreeMoveTaskModal, type PendingTaskMove } from './ChecklistTechTreeMoveTaskModal'
 import { ChecklistTechTreeAddTaskModal } from './ChecklistTechTreeAddTaskModal'
+import { averageEstimatedDays } from '../../lib/roadmapEffort'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import { ChecklistRoadmapPlanView } from './ChecklistRoadmapPlanView'
 import { nextUpPicks } from '../../lib/roadmapNextUp'
@@ -2341,6 +2342,21 @@ export function ChecklistTechTreeTab({
         onDeleteTask={
           canEditStructure && editTaskId ? async () => deleteTask(editTaskId) : undefined
         }
+        estimatedDays={editTaskForModal?.estimated_days ?? null}
+        averageDays={averageEstimatedDays(tasks)}
+        onSaveEstimate={async (days) => {
+          if (!editTaskId) return false
+          const { error: e } = await supabase
+            .from('checklist_tech_tree_group_tasks')
+            .update({ estimated_days: days })
+            .eq('id', editTaskId)
+          if (e) {
+            setError(e.message)
+            return false
+          }
+          await load()
+          return true
+        }}
         onOpenTodayTab={onOpenTodayTab}
         onClose={() => setEditTaskId(null)}
         portalContainer={roadmapModalPortalHost ?? undefined}

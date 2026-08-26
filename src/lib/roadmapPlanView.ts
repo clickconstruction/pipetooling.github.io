@@ -18,6 +18,8 @@ export type PlanTask = {
   assigneeIds: string[]
   /** ★ pin (v2.2140) — leads the Next up shortlist; shown as ★ on Plan rows. */
   pinned_at?: string | null
+  /** Effort estimate in days (v2.2358) — the Timeline's slot weight; null = roadmap average. */
+  estimated_days?: number | null
 }
 
 export type PlanGroup = { id: string; title: string }
