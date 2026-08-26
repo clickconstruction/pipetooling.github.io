@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.17"
   }
   graphql_public: {
     Tables: {
@@ -2193,6 +2193,39 @@ export type Database = {
           },
           {
             foreignKeyName: "checklist_tech_tree_task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_tech_tree_task_assignees_parked: {
+        Row: {
+          parked_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          parked_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          parked_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tech_tree_task_assignees_parked_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tech_tree_group_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_tech_tree_task_assignees_parked_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -13116,6 +13149,36 @@ export type Database = {
           },
         ]
       }
+      ui_nav_clicks: {
+        Row: {
+          control: string
+          from_path: string | null
+          id: string
+          occurred_at: string
+          role: string | null
+          target: string
+          user_id: string
+        }
+        Insert: {
+          control: string
+          from_path?: string | null
+          id?: string
+          occurred_at?: string
+          role?: string | null
+          target: string
+          user_id: string
+        }
+        Update: {
+          control?: string
+          from_path?: string | null
+          id?: string
+          occurred_at?: string
+          role?: string | null
+          target?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_app_activity_daily: {
         Row: {
           active_seconds: number
@@ -15396,6 +15459,11 @@ export type Database = {
           }
       get_pay_speed_transactions: { Args: never; Returns: Json }
       get_payment_forecast_email_payload: { Args: never; Returns: Json }
+      get_payment_line_items: { Args: { p_payment_id: string }; Returns: Json }
+      get_payment_line_items_bulk: {
+        Args: { p_payment_ids: string[] }
+        Returns: Json
+      }
       get_projects_by_ids: {
         Args: { p_ids: string[] }
         Returns: {
@@ -15429,6 +15497,7 @@ export type Database = {
           total_parts: number
         }[]
       }
+      get_undated_bill_worklist: { Args: never; Returns: Json }
       get_user_display_names: {
         Args: { p_user_ids: string[] }
         Returns: {
