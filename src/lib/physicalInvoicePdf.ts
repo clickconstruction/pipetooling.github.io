@@ -218,19 +218,27 @@ function drawPaymentHistory(
   y += LINE_HEIGHT * 0.85
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
+  const t = docModel.paymentTotals
+  const rightX = doc.internal.pageSize.getWidth() - PAGE_MARGIN
+  // Ledger shape (v2.2324, matching the portal recap and the email box):
+  // Billed opens, each payment subtracts as a green credit, balance closes.
+  if (t) {
+    doc.text('Billed', PAGE_MARGIN, y)
+    doc.text(t.billedFormatted, rightX, y, { align: 'right' })
+    y += bodyLineHeight
+  }
   for (const p of rows) {
     if (y > PAGE_CONTENT_MAX_Y) {
       doc.addPage()
       y = PAGE_MARGIN + 10
     }
-    doc.text(`${p.dateDisplay}  ${p.method}`, PAGE_MARGIN, y)
-    doc.text(p.amountFormatted, doc.internal.pageSize.getWidth() - PAGE_MARGIN, y, { align: 'right' })
+    doc.text(p.label, PAGE_MARGIN, y)
+    doc.setTextColor(31, 122, 58)
+    doc.text(`- ${p.amountFormatted}`, rightX, y, { align: 'right' })
+    doc.setTextColor(0, 0, 0)
     y += bodyLineHeight
   }
-  // Total paid / balance due (v2.2313), matching the preview and email box.
-  const t = docModel.paymentTotals
   if (t) {
-    const rightX = doc.internal.pageSize.getWidth() - PAGE_MARGIN
     if (y > PAGE_CONTENT_MAX_Y - bodyLineHeight * 2) {
       doc.addPage()
       y = PAGE_MARGIN + 10
@@ -238,9 +246,6 @@ function drawPaymentHistory(
     doc.setDrawColor(180)
     doc.line(PAGE_MARGIN, y - bodyLineHeight * 0.55, rightX, y - bodyLineHeight * 0.55)
     doc.setFont('helvetica', 'bold')
-    doc.text('Total paid', PAGE_MARGIN, y)
-    doc.text(t.totalPaidFormatted, rightX, y, { align: 'right' })
-    y += bodyLineHeight
     if (t.paidInFull) {
       doc.setTextColor(22, 163, 74)
       doc.text('Paid in full', PAGE_MARGIN, y)
