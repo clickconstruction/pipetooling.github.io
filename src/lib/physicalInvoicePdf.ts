@@ -200,13 +200,15 @@ function drawLineItemsTable(
   return y + 4
 }
 
-/** Payment-history card geometry (v2.2332, owner-approved Option A). */
+/** Payment-history card geometry (v2.2332; portal-card air since v2.2352). */
 const PAYMENT_BOX_W_MM = 88
-const PAYMENT_BOX_PAD_X_MM = 5
-const PAYMENT_BOX_PAD_TOP_MM = 6
-const PAYMENT_BOX_PAD_BOTTOM_MM = 3.5
-const PAYMENT_BOX_HEAD_GAP_MM = 6.5
+const PAYMENT_BOX_PAD_X_MM = 5.5
+const PAYMENT_BOX_PAD_TOP_MM = 7
+const PAYMENT_BOX_PAD_BOTTOM_MM = 4.5
+const PAYMENT_BOX_HEAD_GAP_MM = 8
 const PAYMENT_BOX_CORNER_MM = 2.5
+/** Extra air (mm) between the last payment row and the closing rule/balance. */
+const PAYMENT_BOX_RULE_GAP_MM = 2
 /** Frame + closing-rule gray (v2.2338, owner-picked): #9ca3af. */
 const PAYMENT_BOX_GRAY: [number, number, number] = [156, 163, 175]
 
@@ -219,14 +221,19 @@ function drawPaymentHistory(
   const rows = docModel.paymentHistory
   if (!rows.length) return y
   const t = docModel.paymentTotals
-  // Right-aligned black-bordered card (v2.2332) — the same frame customers
-  // see on the on-screen preview and in the email. Drawn atomically: if the
-  // whole card can't fit on this page, start a new one.
-  const rowCount = rows.length + (t ? 2 : 0)
+  // Right-aligned card (v2.2332) — the same frame customers see on the
+  // on-screen preview and in the email. Drawn atomically: if the whole card
+  // can't fit on this page, start a new one. Portal-card breathing room
+  // (v2.2352): taller rows, air around the rule. The Billed row is gone on
+  // invoices (owner Option B) — Amount due sits right above this card, so it
+  // was the same number twice; the portal recap keeps its Billed line.
+  const rowH = bodyLineHeight * 1.15
+  const rowCount = rows.length + (t ? 1 : 0)
   const boxHeight =
     PAYMENT_BOX_PAD_TOP_MM +
     PAYMENT_BOX_HEAD_GAP_MM +
-    rowCount * bodyLineHeight +
+    rowCount * rowH +
+    (t ? PAYMENT_BOX_RULE_GAP_MM : 0) +
     PAYMENT_BOX_PAD_BOTTOM_MM
   if (y + boxHeight > PAGE_CONTENT_MAX_Y) {
     doc.addPage()
@@ -244,26 +251,20 @@ function drawPaymentHistory(
   cy += PAYMENT_BOX_HEAD_GAP_MM
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  // Ledger shape (v2.2324, matching the portal recap and the email box):
-  // Billed opens, each payment subtracts as a green credit, balance closes.
-  if (t) {
-    doc.text('Billed', labelX, cy)
-    doc.text(t.billedFormatted, amountX, cy, { align: 'right' })
-    cy += bodyLineHeight
-  }
   for (const p of rows) {
     doc.text(p.label, labelX, cy)
     doc.setTextColor(31, 122, 58)
     doc.text(`- ${p.amountFormatted}`, amountX, cy, { align: 'right' })
     doc.setTextColor(0, 0, 0)
-    cy += bodyLineHeight
+    cy += rowH
   }
   if (t) {
+    cy += PAYMENT_BOX_RULE_GAP_MM
     doc.setDrawColor(...PAYMENT_BOX_GRAY)
     // Same weight as the frame (v2.2348) — at hairline width the rule
     // rendered thinner and paler than the outside line.
     doc.setLineWidth(0.35)
-    doc.line(labelX, cy - bodyLineHeight * 0.55, amountX, cy - bodyLineHeight * 0.55)
+    doc.line(labelX, cy - rowH * 0.55, amountX, cy - rowH * 0.55)
     doc.setLineWidth(0.200025) // jsPDF default
     doc.setFont('helvetica', 'bold')
     if (t.paidInFull) {
@@ -276,9 +277,9 @@ function drawPaymentHistory(
     }
     doc.setTextColor(0, 0, 0)
     doc.setFont('helvetica', 'normal')
-    cy += bodyLineHeight
+    cy += rowH
   }
-  const boxBottom = cy - bodyLineHeight + PAYMENT_BOX_PAD_BOTTOM_MM
+  const boxBottom = cy - rowH + PAYMENT_BOX_PAD_BOTTOM_MM
   // Rounded medium-gray frame (v2.2338) — no lines inside the card.
   doc.setDrawColor(...PAYMENT_BOX_GRAY)
   doc.setLineWidth(0.35)
