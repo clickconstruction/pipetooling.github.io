@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from './checklistManageGroups'
+import { isScheduledAhead, nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from './checklistManageGroups'
 
 describe('repeatChipLabel', () => {
   it('until completed wins', () => {
@@ -25,6 +25,19 @@ describe('openAgeLabel', () => {
     expect(openAgeLabel('2026-08-18', '2026-08-19')).toBe('open 1 day')
     expect(openAgeLabel('2026-08-19', '2026-08-19')).toBe('open today')
     expect(openAgeLabel(undefined, '2026-08-19')).toBe('')
+  })
+  it('future dates say when the task starts, not "open today" (v2.2346)', () => {
+    expect(openAgeLabel('2026-08-31', '2026-08-26')).toBe('starts Mon, Aug 31')
+    expect(openAgeLabel('2026-08-27', '2026-08-26')).toBe('starts Thu, Aug 27')
+  })
+})
+
+describe('isScheduledAhead', () => {
+  it('true only for a strictly future earliest-open date', () => {
+    expect(isScheduledAhead('2026-08-31', '2026-08-26')).toBe(true)
+    expect(isScheduledAhead('2026-08-26', '2026-08-26')).toBe(false)
+    expect(isScheduledAhead('2026-08-20', '2026-08-26')).toBe(false)
+    expect(isScheduledAhead(undefined, '2026-08-26')).toBe(false)
   })
 })
 

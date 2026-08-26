@@ -15,6 +15,8 @@ The default. The task lands on the assignee's **Today** list immediately. Leave 
 
 Pick **Do on** and the task appears on that day instead — until then it waits in Today → **Upcoming**. This is how you schedule something for next week.
 
+On **Manage**, a future-dated task sits in its own **Scheduled** section below the open list, wearing a blue {{chip:blue|starts Mon, Aug 31}} chip instead of the red open clock — "open" only counts tasks someone can act on today.
+
 :::example The sentence tells you
 One task on Robert's list on Fri, Aug 28 — stays until completed.
 :::
