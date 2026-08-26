@@ -31,7 +31,7 @@ import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActi
 import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
-import { nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
+import { isScheduledAhead, nextOccurrenceLabel, openAgeLabel, repeatChipLabel } from '../lib/checklistManageGroups'
 import { goalsStageRows, goalsStripRows, lockedStageHint, lockedStagePrerequisiteChain, type BridgeState, type GoalsStageRow, type GoalsStripRow } from '../lib/roadmapBridge'
 import { computeStageOrderUpdates, computeTaskOrderUpdates } from '../lib/roadmapStageNumbers'
 import { ChecklistTechTreeOrderStagesModal } from '../components/checklist/ChecklistTechTreeOrderStagesModal'
@@ -3954,11 +3954,16 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   // Each section is sorted by created date, newest first.
   const byCreatedDesc = (a: ChecklistItem, b: ChecklistItem) =>
     (b.created_at ? Date.parse(b.created_at) : 0) - (a.created_at ? Date.parse(a.created_at) : 0)
+  const todayLocalStr = new Date().toLocaleDateString('en-CA')
   const incompleteItems = filteredItems.filter((i) => !isRepeating(i) && !isItemComplete(i)).sort(byCreatedDesc)
+  // Scheduled split (v2.2346): "open" means actionable today — future-dated
+  // one-offs park in their own section, soonest start first.
+  const openOneOffs = incompleteItems.filter((i) => !isScheduledAhead(oldestOpenByItem.get(i.id), todayLocalStr))
+  const scheduledOneOffs = incompleteItems
+    .filter((i) => isScheduledAhead(oldestOpenByItem.get(i.id), todayLocalStr))
+    .sort((a, b) => (oldestOpenByItem.get(a.id) ?? '').localeCompare(oldestOpenByItem.get(b.id) ?? ''))
   const repeatingItems = filteredItems.filter((i) => isRepeating(i)).sort(byCreatedDesc)
   const completeItems = filteredItems.filter((i) => !isRepeating(i) && isItemComplete(i)).sort(byCreatedDesc)
-
-  const todayLocalStr = new Date().toLocaleDateString('en-CA')
 
   const renderLibraryRow = (item: ChecklistItem, showOpenAge: boolean) => {
     const assignees = (item.checklist_item_assignees ?? [])
@@ -3998,9 +4003,16 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
             </span>
             {roadmapGoalChip(item)}
             {openAge ? (
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>
-                {openAge}
-              </span>
+              // "starts …" (scheduled ahead) is calm blue; "open …" stays the red clock.
+              openAge.startsWith('starts ') ? (
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-blue-tint)', border: '1px solid #2563eb', color: 'var(--text-blue-800)' }}>
+                  {openAge}
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>
+                  {openAge}
+                </span>
+              )
             ) : null}
             {isRepeating(item) && nextOccurrenceLabel(nextOpenByItem.get(item.id), todayLocalStr) ? (
               <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.5rem', borderRadius: 7, background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }}>
@@ -4227,9 +4239,12 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
           </button>
         ))}
       </div>
-      {filteredItems.length > 0 && manageView === 'one_offs'
-        ? librarySection(`ONE-OFFS · ${incompleteItems.length} open`, incompleteItems, true)
-        : null}
+      {filteredItems.length > 0 && manageView === 'one_offs' ? (
+        <>
+          {librarySection(`ONE-OFFS · ${openOneOffs.length} open`, openOneOffs, true)}
+          {scheduledOneOffs.length > 0 ? librarySection(`SCHEDULED · ${scheduledOneOffs.length}`, scheduledOneOffs, true) : null}
+        </>
+      ) : null}
       {filteredItems.length > 0 && manageView === 'repeating'
         ? librarySection(`REPEATING · ${repeatingItems.length}`, repeatingItems, false)
         : null}
@@ -4238,7 +4253,8 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
         : null}
       {filteredItems.length > 0 && manageView === 'all' ? (
         <>
-          {librarySection(`ONE-OFFS · ${incompleteItems.length} open`, incompleteItems, true)}
+          {librarySection(`ONE-OFFS · ${openOneOffs.length} open`, openOneOffs, true)}
+          {scheduledOneOffs.length > 0 ? librarySection(`SCHEDULED · ${scheduledOneOffs.length}`, scheduledOneOffs, true) : null}
           {librarySection(`REPEATING · ${repeatingItems.length}`, repeatingItems, false)}
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '1rem', overflow: 'hidden' }}>
             <button

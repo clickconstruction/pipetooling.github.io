@@ -29,15 +29,29 @@ export function repeatChipLabel(item: ManageChipItem): string {
   return 'once'
 }
 
-/** "open 150 days" chip for one-offs; '' when nothing is open. */
+/**
+ * "open 150 days" chip for one-offs; "starts Mon, Aug 31" when the task's
+ * date hasn't arrived yet (v2.2346 — before this, every future date collapsed
+ * into "open today" and scheduled work wore the overdue chip); '' when
+ * nothing is open.
+ */
 export function openAgeLabel(oldestIncompleteDate: string | undefined, todayStr: string): string {
   if (!oldestIncompleteDate) return ''
   const t = new Date(todayStr + 'T00:00:00')
   const d = new Date(oldestIncompleteDate + 'T00:00:00')
   if (isNaN(t.getTime()) || isNaN(d.getTime())) return ''
   const days = Math.round((t.getTime() - d.getTime()) / 86_400_000)
-  if (days <= 0) return 'open today'
+  if (days < 0) {
+    const future = new Date(oldestIncompleteDate + 'T12:00:00')
+    return `starts ${future.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}`
+  }
+  if (days === 0) return 'open today'
   return `open ${days === 1 ? '1 day' : `${days} days`}`
+}
+
+/** True when the one-off's earliest open occurrence is still in the future — the Manage "Scheduled" section test (v2.2346). */
+export function isScheduledAhead(oldestIncompleteDate: string | undefined, todayStr: string): boolean {
+  return !!oldestIncompleteDate && oldestIncompleteDate > todayStr
 }
 
 /** "next Mon, Aug 24" chip for repeating rows; "next today" → "due today"; '' when nothing upcoming. */
