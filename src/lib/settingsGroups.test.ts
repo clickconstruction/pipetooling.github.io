@@ -22,6 +22,7 @@ describe('getZonedSettingsGroups', () => {
       'settings-people',
       'settings-emails',
       'settings-company',
+      'settings-usage',
       'settings-data',
       'settings-templates',
       'settings-advanced-tools',
