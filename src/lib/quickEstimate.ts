@@ -18,7 +18,27 @@ import type { EstimateLineItemNormalized } from './estimateLineItemNormalize'
 
 export type QuickEstimateBranch = 'change_order' | 'estimate'
 
-export type QuickEstimateStage = 'job' | 'customer' | 'work' | 'cost' | 'review' | 'done'
+export type QuickEstimateStage = 'kind' | 'job' | 'customer' | 'work' | 'cost' | 'review' | 'done'
+
+/** Flow v2 (v2.2314): where Back lands from each stage (null = no Back shown). */
+export function quickEstimateBackTarget(
+  stage: QuickEstimateStage,
+  branch: QuickEstimateBranch,
+): QuickEstimateStage | null {
+  switch (stage) {
+    case 'job':
+    case 'customer':
+      return 'kind'
+    case 'work':
+      return branch === 'change_order' ? 'job' : 'customer'
+    case 'cost':
+      return 'work'
+    case 'review':
+      return 'cost'
+    default:
+      return null
+  }
+}
 
 export type QuickEstimateSummaryInput = {
   branch: QuickEstimateBranch

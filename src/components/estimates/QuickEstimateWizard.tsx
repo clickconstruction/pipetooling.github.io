@@ -9,6 +9,7 @@ import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
 import { scheduleDateKeyAddDays, scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import {
   parseBallparkDollars,
+  quickEstimateBackTarget,
   quickEstimateBallparkLine,
   quickEstimateCanSend,
   quickEstimateDispatchTitle,
@@ -194,8 +195,12 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
   const { user, role } = useAuth()
   const { showToast } = useToastContext()
 
-  const [stage, setStage] = useState<QuickEstimateStage>('job')
+  const [stage, setStage] = useState<QuickEstimateStage>('kind')
   const [branch, setBranch] = useState<QuickEstimateBranch>('change_order')
+  // CO narrative fields — the same four the estimates CO editor has (v2.2314).
+  const [coReason, setCoReason] = useState('')
+  const [coImpact, setCoImpact] = useState('')
+  const [coResponseBy, setCoResponseBy] = useState('')
   const [scheduleJobs, setScheduleJobs] = useState<WizardJob[]>([])
   const [scheduleLoading, setScheduleLoading] = useState(false)
   const [jobSearch, setJobSearch] = useState('')
@@ -216,8 +221,11 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
   const estimateNumberRef = useRef<number | null>(null)
 
   const resetAll = useCallback(() => {
-    setStage('job')
+    setStage('kind')
     setBranch('change_order')
+    setCoReason('')
+    setCoImpact('')
+    setCoResponseBy('')
     setJobSearch('')
     setJobSearchResults([])
     setPickedJob(null)
@@ -387,11 +395,25 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
     return parts.join('\n\n')
   }, [pickedJob, freeTypedPhone, description])
 
-  /** Creates the draft the first time through; later calls only update. */
+  /**
+   * Creates the draft the first time through; later calls sync the pick —
+   * Back/forward can change the job, customer, or even the doc kind.
+   */
   const ensureDraft = useCallback(
     async (branchArg: QuickEstimateBranch, opts: { job?: WizardJob | null; customer?: WizardCustomer | null }) => {
       if (!user?.id) return null
-      if (estimateIdRef.current) return estimateIdRef.current
+      if (estimateIdRef.current) {
+        await supabase
+          .from('estimates')
+          .update({
+            customer_id: opts.job?.customerId ?? opts.customer?.id ?? null,
+            doc_kind: branchArg,
+            ...(branchArg === 'change_order' ? {} : { change_order_fields: null }),
+          })
+          .eq('id', estimateIdRef.current)
+          .eq('status', 'draft')
+        return estimateIdRef.current
+      }
       const masterUserId = await resolveEstimateMasterUserId(user.id, role)
       if (!masterUserId) {
         showToast('Could not determine account owner for the draft.', 'error')
@@ -422,7 +444,18 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
     [user?.id, role, freeTypedCustomer, showToast],
   )
 
-  /** Autosave the narrative/lines — every stage transition lands here. */
+  /** The full CO fields object — the same shape the estimates CO editor saves. */
+  const buildCoFields = useCallback(
+    () => ({
+      description_of_change: buildChangeDescription(),
+      reason_for_change: coReason.trim(),
+      impact_on_schedule: coImpact.trim(),
+      response_requested_by: coResponseBy,
+    }),
+    [buildChangeDescription, coReason, coImpact, coResponseBy],
+  )
+
+  /** Autosave the narrative/lines — every stage transition (and Back) lands here. */
   const saveProgress = useCallback(async () => {
     const id = estimateIdRef.current
     if (!id) return
@@ -431,10 +464,10 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
       line_items_snapshot: buildLines(),
     }
     if (branch === 'change_order') {
-      patch.change_order_fields = { description_of_change: buildChangeDescription() }
+      patch.change_order_fields = buildCoFields()
     }
     await supabase.from('estimates').update(patch).eq('id', id).eq('status', 'draft')
-  }, [branch, freeTypedCustomer, buildLines, buildChangeDescription])
+  }, [branch, freeTypedCustomer, buildLines, buildCoFields])
 
   /* ---------- photos ---------- */
 
@@ -489,6 +522,31 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
   }, [])
 
   /* ---------- stage transitions ---------- */
+
+  /** Stage 1 pick: sets the doc kind (and re-syncs the draft if one exists after Back). */
+  const chooseKind = useCallback(
+    async (kind: QuickEstimateBranch) => {
+      setBranch(kind)
+      const id = estimateIdRef.current
+      if (id) {
+        await supabase
+          .from('estimates')
+          .update({ doc_kind: kind, ...(kind === 'change_order' ? { change_order_fields: {} } : { change_order_fields: null }) })
+          .eq('id', id)
+          .eq('status', 'draft')
+      }
+      setStage(kind === 'change_order' ? 'job' : 'customer')
+    },
+    [],
+  )
+
+  /** ‹ Back — autosaves, then steps to the previous stage for this branch. */
+  const goBack = useCallback(() => {
+    const target = quickEstimateBackTarget(stage, branch)
+    if (!target) return
+    if (estimateIdRef.current) void saveProgress()
+    setStage(target)
+  }, [stage, branch, saveProgress])
 
   const goWorkFromJob = useCallback(
     async (job: WizardJob | null) => {
@@ -566,7 +624,7 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
         accept_notify_user_ids: [...new Set([...existingNotify, user.id])],
       }
       if (branch === 'change_order') {
-        patch.change_order_fields = { description_of_change: buildChangeDescription() }
+        patch.change_order_fields = buildCoFields()
       }
       const { error: updErr } = await supabase.from('estimates').update(patch).eq('id', id).eq('status', 'draft')
       if (updErr) throw updErr
@@ -600,7 +658,7 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
     } finally {
       setBusy(false)
     }
-  }, [user?.id, busy, buildSummaryInput, branch, freeTypedCustomer, buildLines, buildChangeDescription, pickedJob, showToast])
+  }, [user?.id, busy, buildSummaryInput, branch, freeTypedCustomer, buildLines, buildCoFields, pickedJob, showToast])
 
   if (!open || !user?.id) return null
 
@@ -650,10 +708,47 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
         </div>
 
         <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto' }}>
+          {quickEstimateBackTarget(stage, branch) != null && (
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={busy}
+              style={{
+                alignSelf: 'flex-start',
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-link)',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                cursor: 'pointer',
+                padding: 0,
+                marginBottom: '-0.25rem',
+              }}
+            >
+              ‹ Back
+            </button>
+          )}
+
+          {stage === 'kind' && (
+            <>
+              <h2 style={qStyle}>What are you writing up?</h2>
+              <button type="button" style={bigOptionStyle} disabled={busy} onClick={() => void chooseKind('change_order')}>
+                <span style={{ fontWeight: 700, display: 'block', fontSize: '1rem' }}>🔧 Change order</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Extra work on a job — the job grew while you're out there
+                </span>
+              </button>
+              <button type="button" style={bigOptionStyle} disabled={busy} onClick={() => void chooseKind('estimate')}>
+                <span style={{ fontWeight: 700, display: 'block', fontSize: '1rem' }}>📋 Estimate</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>New work for a customer</span>
+              </button>
+            </>
+          )}
+
           {stage === 'job' && (
             <>
-              <h2 style={qStyle}>Which job are you on?</h2>
-              <p style={subStyle}>The write-up becomes a change order for that job.</p>
+              <h2 style={qStyle}>Which job is it on?</h2>
+              <p style={subStyle}>The change order attaches to that job and its customer.</p>
               {scheduleLoading ? <p style={subStyle}>Loading your schedule…</p> : null}
               {todayJobs.length > 0 && <p style={dayLabelStyle}>Today — from your schedule</p>}
               {todayJobs.map(jobOption)}
@@ -666,22 +761,13 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
                 onChange={(e) => setJobSearch(e.target.value)}
               />
               {jobSearchResults.map(jobOption)}
+              {pickedJob && (
+                <button type="button" style={nextStyle} disabled={busy} onClick={() => void goWorkFromJob(pickedJob)}>
+                  Next — {jobLabel(pickedJob)}
+                </button>
+              )}
               <button type="button" style={skipStyle} disabled={busy} onClick={() => void goWorkFromJob(null)}>
                 Skip — I'll say it in the notes
-              </button>
-              <button
-                type="button"
-                style={{
-                  ...skipStyle,
-                  color: 'var(--text-muted)',
-                  borderTop: '1px dashed var(--border-strong)',
-                }}
-                onClick={() => {
-                  setBranch('estimate')
-                  setStage('customer')
-                }}
-              >
-                Not for a job? <span style={{ color: 'var(--text-link)' }}>New work for someone else →</span>
               </button>
             </>
           )}
@@ -725,9 +811,14 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
           {stage === 'work' && (
             <>
               {badge}
-              <h2 style={qStyle}>{isCO ? "What's the extra work?" : "What's the work?"}</h2>
+              <h2 style={qStyle}>{isCO ? "What's the change?" : "What's the work?"}</h2>
+              {isCO && (
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '-0.5rem' }}>
+                  Description of change
+                </label>
+              )}
               <textarea
-                style={{ ...inputStyle, minHeight: 130, resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ ...inputStyle, minHeight: isCO ? 100 : 130, resize: 'vertical', fontFamily: 'inherit' }}
                 placeholder="Talk or type… e.g. “They added a hose bib on the back wall and want the water heater moved to the attic.”"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -735,6 +826,39 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
               <p style={{ ...subStyle, background: 'var(--bg-subtle)', borderRadius: 10, padding: '0.5rem 0.75rem' }}>
                 🎙️ Tip: tap the mic on your keyboard and just talk.
               </p>
+              {isCO && (
+                <>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '-0.5rem' }}>
+                    Reason for change <span style={{ fontWeight: 400 }}>(optional)</span>
+                  </label>
+                  <textarea
+                    style={{ ...inputStyle, minHeight: 52, resize: 'vertical', fontFamily: 'inherit' }}
+                    placeholder="Owner asked for it, field condition, plan change…"
+                    value={coReason}
+                    onChange={(e) => setCoReason(e.target.value)}
+                  />
+                  <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <label style={{ flex: '1 1 10rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      Schedule impact <span style={{ fontWeight: 400 }}>(optional)</span>
+                      <input
+                        style={{ ...inputStyle, fontSize: '0.9rem' }}
+                        placeholder="“+2 days”, “none”…"
+                        value={coImpact}
+                        onChange={(e) => setCoImpact(e.target.value)}
+                      />
+                    </label>
+                    <label style={{ flex: '1 1 10rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      Answer needed by <span style={{ fontWeight: 400 }}>(optional)</span>
+                      <input
+                        type="date"
+                        style={{ ...inputStyle, fontSize: '0.9rem' }}
+                        value={coResponseBy}
+                        onChange={(e) => setCoResponseBy(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                </>
+              )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 {photos.map((p) => (
                   <span key={p.id} style={{ position: 'relative', display: 'inline-block' }}>
