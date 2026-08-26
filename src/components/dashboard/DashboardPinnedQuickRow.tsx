@@ -10,12 +10,10 @@ import {
   useArBankUnallocatedCount,
 } from '../../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
-import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
-import DashboardArBankUnallocatedBanner from '../DashboardArBankUnallocatedBanner'
+import { recordNavClickFromEvent } from '../../lib/navClickTelemetry'
+import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
+import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import DashboardGcReviewWeeklyBanner from '../DashboardGcReviewWeeklyBanner'
-import DashboardTallyStaleBanner from '../DashboardTallyStaleBanner'
-import DashboardTallyStaleStaffBanner from '../DashboardTallyStaleStaffBanner'
-import DashboardLostBidsMissingReasonBanner from '../DashboardLostBidsMissingReasonBanner'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import DashboardTeamReviewsDueBanner from '../DashboardTeamReviewsDueBanner'
 import DashboardRoadmapNeedsNameBanner from '../DashboardRoadmapNeedsNameBanner'
@@ -300,6 +298,19 @@ export function DashboardPinnedQuickRow({
     authRole: role,
   })
 
+  const needsYouItems = buildNeedsYouItems({
+    role,
+    arBankUnallocatedCount,
+    arBankEnabled: arBankCountEnabled,
+    tallyStaleUnlinkedCount,
+    tallyStaffStalePeopleCount,
+    tallyStaffStaleTxCount,
+    tallyStaffEligible: role === 'dev' || role === 'master_technician' || isAssistantLike(role),
+    tallyMinAgeDays: TALLY_STALE_MIN_AGE_DAYS,
+    lostBidNudge,
+    lostBidNudgeLoading,
+  })
+
   const loadTallyUnlinkedCount = useCallback(async () => {
     if (!authUserId || role == null) return
     try {
@@ -456,35 +467,24 @@ export function DashboardPinnedQuickRow({
     <>
       {!bannersOnly && jobReportFirst && jobReportRow}
       {!bannersOnly && afterJobReportRow}
-      {!hideBanners && arBankCountEnabled && (
-        <DashboardArBankUnallocatedBanner
-          count={arBankUnallocatedCount ?? 0}
-          loading={arBankUnallocatedCount === null}
-          onGoToAr={() => {
-            recordNavClick(authUserId, role, 'banner', '/accounts-receivable')
-            showToast('Opening Accounts Receivable…', 'info', 2800)
-            navigate('/accounts-receivable')
-          }}
-        />
-      )}
-      {!hideBanners && role != null && (
-        <DashboardTallyStaleBanner
-          staleCount={typeof tallyStaleUnlinkedCount === 'number' ? tallyStaleUnlinkedCount : 0}
-          loading={tallyStaleUnlinkedCount === null}
-          minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
-          onGoToTally={() => {
-            recordNavClick(authUserId, role, 'banner', '/tally?tab=transactions')
-            navigate('/tally?tab=transactions')
-          }}
-        />
-      )}
+      {/* Needs You card (v2.2339): the four hook-driven banners as one card with
+          Cards / Walk-the-list views. The self-gating banners below migrate later. */}
       {!hideBanners && (
-        <DashboardLostBidsMissingReasonBanner
-          nudge={lostBidNudge}
-          loading={lostBidNudgeLoading}
-          onStartCallMode={() => {
-            recordNavClick(authUserId, role, 'banner', '/bids?tab=why-we-lost')
-            navigate('/bids?tab=why-we-lost')
+        <DashboardNeedsYouCard
+          userId={authUserId}
+          role={role}
+          items={needsYouItems}
+          onAction={(item) => {
+            if (item.key === 'ar-deposits') {
+              showToast('Opening Accounts Receivable…', 'info', 2800)
+              navigate('/accounts-receivable')
+            } else if (item.key === 'tally-self') {
+              navigate('/tally?tab=transactions')
+            } else if (item.key === 'tally-team') {
+              setTallyStaffFollowUpModalOpen(true)
+            } else if (item.key === 'lost-bids') {
+              navigate('/bids?tab=why-we-lost')
+            }
           }}
         />
       )}
@@ -498,15 +498,6 @@ export function DashboardPinnedQuickRow({
       {/* Wednesday GC certification (v2.1984): office roles; self-gates to nothing off-days or when done. */}
       {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardGcReviewWeeklyBanner />
-      )}
-      {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
-        <DashboardTallyStaleStaffBanner
-          peopleCount={typeof tallyStaffStalePeopleCount === 'number' ? tallyStaffStalePeopleCount : 0}
-          transactionCount={typeof tallyStaffStaleTxCount === 'number' ? tallyStaffStaleTxCount : 0}
-          loading={tallyStaffStalePeopleCount === null || tallyStaffStaleTxCount === null}
-          minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
-          onOpen={() => setTallyStaffFollowUpModalOpen(true)}
-        />
       )}
       {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
       {!hideBanners && <DashboardBulkDeleteAlertBanner />}
