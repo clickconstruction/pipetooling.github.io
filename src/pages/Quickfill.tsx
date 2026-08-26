@@ -7,8 +7,13 @@ import { markStampInitial, markStampTime } from '../lib/quickfillMarkStamp'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
+import { useNavigate } from 'react-router-dom'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
+import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
+import DashboardJobFollowupsBanner from '../components/DashboardJobFollowupsBanner'
+import DashboardGcReviewWeeklyBanner from '../components/DashboardGcReviewWeeklyBanner'
+import { useLostBidNudge } from '../hooks/useLostBidNudge'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { QuickfillMyInboxSection } from '../components/quickfill/QuickfillMyInboxSection'
@@ -77,7 +82,10 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
+  { id: 'quickfill-lost-bid-reasons', sectionId: 'lost-bid-reasons', label: 'Lost bid reasons' },
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' },
+  { id: 'quickfill-gc-weekly-review', sectionId: 'gc-weekly-review', label: 'GC weekly review' },
+  { id: 'quickfill-job-followups', sectionId: 'job-followups', label: 'Job follow-ups' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
   { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
   { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
@@ -408,6 +416,7 @@ function QuickfillDevSectionSortableRow({
 
 function QuickfillPage() {
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  const navigate = useNavigate()
   const { showToast } = useToastContext()
   const {
     dispatchInboxEligible,
@@ -626,6 +635,14 @@ function QuickfillPage() {
     return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   }, [role])
 
+  // Nudge sections (v2.2347): the dashboard's lost-bids / job-followups / GC-weekly
+  // cards as independent Quickfill rituals. Same eligibility posture as warnings —
+  // the wrapper always renders for office roles (the Mark button stamps the ritual
+  // even on a clean day); the inner cards self-hide when there's nothing to nudge.
+  const lostBidNudgeState = useLostBidNudge(warningsSectionEligible)
+  const [jobFollowupsCount, setJobFollowupsCount] = useState<number | null>(null)
+  const [gcReviewRemaining, setGcReviewRemaining] = useState<number | null>(null)
+
   const canAccessProspects = useMemo(
     () =>
       Boolean(
@@ -659,6 +676,9 @@ function QuickfillPage() {
       if (sectionId === 'warnings') return warningsSectionEligible
       if (sectionId === 'unpriced-fixtures') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+      }
+      if (sectionId === 'lost-bid-reasons' || sectionId === 'gc-weekly-review' || sectionId === 'job-followups') {
+        return warningsSectionEligible
       }
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
       if (sectionId === 'undated-bills') {
@@ -1106,6 +1126,79 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' })}
           >
             <BilledAwaitingPaymentSection />
+          </QuickfillSectionWrapper>
+        )
+      case 'lost-bid-reasons':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['lost-bid-reasons']?.marked_at ?? null)}
+            collapsed={isCollapsed('lost-bid-reasons') && !forceExpandedSections.has('lost-bid-reasons')}
+            mark={sectionMarks['lost-bid-reasons']}
+            onMarkUpToDate={() => markSectionUpToDate('lost-bid-reasons')}
+            onOpenNow={() => openSectionNow('lost-bid-reasons')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'lost-bid-reasons', label: 'Lost bid reasons' })}
+          >
+            <QuickfillMetricReporter
+              sectionId="lost-bid-reasons"
+              count={lostBidNudgeState.nudge?.count ?? (lostBidNudgeState.loading ? null : 0)}
+              loading={lostBidNudgeState.loading}
+            />
+            <DashboardLostBidsMissingReasonBanner
+              nudge={lostBidNudgeState.nudge}
+              loading={lostBidNudgeState.loading}
+              onStartCallMode={() => navigate('/bids?tab=why-we-lost')}
+            />
+          </QuickfillSectionWrapper>
+        )
+      case 'gc-weekly-review':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['gc-weekly-review']?.marked_at ?? null)}
+            collapsed={isCollapsed('gc-weekly-review') && !forceExpandedSections.has('gc-weekly-review')}
+            mark={sectionMarks['gc-weekly-review']}
+            onMarkUpToDate={() => markSectionUpToDate('gc-weekly-review')}
+            onOpenNow={() => openSectionNow('gc-weekly-review')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'gc-weekly-review', label: 'GC weekly review' })}
+          >
+            <QuickfillMetricReporter
+              sectionId="gc-weekly-review"
+              count={gcReviewRemaining}
+              loading={gcReviewRemaining === null}
+            />
+            <DashboardGcReviewWeeklyBanner onCount={setGcReviewRemaining} />
+          </QuickfillSectionWrapper>
+        )
+      case 'job-followups':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['job-followups']?.marked_at ?? null)}
+            collapsed={isCollapsed('job-followups') && !forceExpandedSections.has('job-followups')}
+            mark={sectionMarks['job-followups']}
+            onMarkUpToDate={() => markSectionUpToDate('job-followups')}
+            onOpenNow={() => openSectionNow('job-followups')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'job-followups', label: 'Job follow-ups' })}
+          >
+            <QuickfillMetricReporter
+              sectionId="job-followups"
+              count={jobFollowupsCount}
+              loading={jobFollowupsCount === null}
+            />
+            <DashboardJobFollowupsBanner onCount={setJobFollowupsCount} />
           </QuickfillSectionWrapper>
         )
       case 'unpriced-fixtures':

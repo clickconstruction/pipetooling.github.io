@@ -5,7 +5,7 @@ roles: assistant
 keywords: quickfill, daily, mark up to date, office routine, sections
 order: 10
 ---
-Quickfill is the office's daily runway: one page of review sections, each with a button that says "I've looked at this." Working top to bottom keeps the whole operation reviewed on a rhythm without anyone keeping a mental checklist.
+Quickfill is the office's daily runway: one page of review sections, each with a button that says "I've looked at this." Working top to bottom keeps the whole operation reviewed on a rhythm without anyone keeping a mental checklist. The dashboard's chase-work nudges live here too as their own stations — **Lost bid reasons**, **GC weekly review**, and **Job follow-ups** — each with its one-tap card and its own mark button, and on a clean day the card hides but the ritual stays stampable.
 
 On a desktop it's the heart icon in the header; on a phone, open the ☰ menu on the left — **Quickfill** is the first entry.
 
