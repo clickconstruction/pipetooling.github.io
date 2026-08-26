@@ -202,10 +202,13 @@ function drawLineItemsTable(
 
 /** Payment-history card geometry (v2.2332, owner-approved Option A). */
 const PAYMENT_BOX_W_MM = 88
-const PAYMENT_BOX_PAD_X_MM = 4
-const PAYMENT_BOX_PAD_TOP_MM = 5.5
-const PAYMENT_BOX_PAD_BOTTOM_MM = 2.5
-const PAYMENT_BOX_HEAD_GAP_MM = 6
+const PAYMENT_BOX_PAD_X_MM = 5
+const PAYMENT_BOX_PAD_TOP_MM = 6
+const PAYMENT_BOX_PAD_BOTTOM_MM = 3.5
+const PAYMENT_BOX_HEAD_GAP_MM = 6.5
+const PAYMENT_BOX_CORNER_MM = 2.5
+/** Frame + closing-rule gray (v2.2338, owner-picked): #9ca3af. */
+const PAYMENT_BOX_GRAY: [number, number, number] = [156, 163, 175]
 
 function drawPaymentHistory(
   doc: import('jspdf').jsPDF,
@@ -256,7 +259,7 @@ function drawPaymentHistory(
     cy += bodyLineHeight
   }
   if (t) {
-    doc.setDrawColor(180)
+    doc.setDrawColor(...PAYMENT_BOX_GRAY)
     doc.line(labelX, cy - bodyLineHeight * 0.55, amountX, cy - bodyLineHeight * 0.55)
     doc.setFont('helvetica', 'bold')
     if (t.paidInFull) {
@@ -272,9 +275,11 @@ function drawPaymentHistory(
     cy += bodyLineHeight
   }
   const boxBottom = cy - bodyLineHeight + PAYMENT_BOX_PAD_BOTTOM_MM
+  // Rounded medium-gray frame (v2.2338) — no lines inside the card.
+  doc.setDrawColor(...PAYMENT_BOX_GRAY)
+  doc.setLineWidth(0.35)
+  doc.roundedRect(boxLeft, boxTop, PAYMENT_BOX_W_MM, boxBottom - boxTop, PAYMENT_BOX_CORNER_MM, PAYMENT_BOX_CORNER_MM)
   doc.setDrawColor(0)
-  doc.setLineWidth(0.4)
-  doc.rect(boxLeft, boxTop, PAYMENT_BOX_W_MM, boxBottom - boxTop)
   doc.setLineWidth(0.200025) // jsPDF default
   return boxBottom + 6
 }

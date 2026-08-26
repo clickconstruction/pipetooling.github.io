@@ -271,33 +271,37 @@ function paymentHistoryHtml(doc: PhysicalInvoiceDocument): string {
   // The ledger shape (v2.2324, matching the portal recap): Billed opens,
   // each payment subtracts as a green credit, Balance due closes in red.
   const t = doc.paymentTotals
+  // No lines inside the card (v2.2338): rows breathe on whitespace; the only
+  // rules are the outer frame and the one above Balance due.
   const billedRow = t
-    ? `<tr><td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#5f6368">Billed</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f3f4f6">${escapeHtml(
+    ? `<tr><td style="padding:4px 12px;color:#5f6368">Billed</td><td style="text-align:right;padding:4px 12px">${escapeHtml(
         t.billedFormatted,
       )}</td></tr>`
     : ''
   const rows = doc.paymentHistory
     .map(
       (p) =>
-        `<tr><td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#5f6368">${escapeHtml(
+        `<tr><td style="padding:4px 12px;color:#5f6368">${escapeHtml(
           p.label,
-        )}</td><td style="text-align:right;padding:6px 8px;border-bottom:1px solid #f3f4f6;color:#1f7a3a;font-weight:600;white-space:nowrap">&minus; ${escapeHtml(
+        )}</td><td style="text-align:right;padding:4px 12px;color:#1f7a3a;font-weight:600;white-space:nowrap">&minus; ${escapeHtml(
           p.amountFormatted,
         )}</td></tr>`,
     )
     .join('')
   const totalsRows = t
     ? t.paidInFull
-      ? `<tr><td style="padding:7px 8px 6px;color:#16a34a;font-weight:700;border-top:1px solid #dadce0" colspan="2">Paid in full</td></tr>`
-      : `<tr><td style="padding:7px 8px 6px;color:#b3261e;font-weight:700;border-top:1px solid #dadce0">Balance due</td><td style="text-align:right;padding:7px 8px 6px;color:#b3261e;font-weight:700;border-top:1px solid #dadce0">${escapeHtml(
+      ? `<tr><td style="padding:8px 12px 10px;color:#16a34a;font-weight:700;border-top:1px solid #9ca3af" colspan="2">Paid in full</td></tr>`
+      : `<tr><td style="padding:8px 12px 10px;color:#b3261e;font-weight:700;border-top:1px solid #9ca3af">Balance due</td><td style="text-align:right;padding:8px 12px 10px;color:#b3261e;font-weight:700;border-top:1px solid #9ca3af">${escapeHtml(
           t.balanceDueFormatted,
         )}</td></tr>`
     : ''
   // Right-aligned card (v2.2335), matching the PDF's and preview's boxes —
   // heading inside the border. The two-cell wrapper table is the email-safe
   // way to right-align (CSS float/margin:auto die in desktop Outlook).
-  const headingRow = `<tr><td colspan="2" style="padding:8px 8px 6px;font-size:14px;font-weight:600;color:#374151">Payment history</td></tr>`
-  return `<table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;margin:16px 0 0"><tr><td></td><td style="width:340px;vertical-align:top"><table style="border-collapse:collapse;width:100%;font-size:13px;border:1.5px solid #111827;border-radius:8px">${headingRow}${billedRow}${rows}${totalsRows}</table></td></tr></table>`
+  // Frame weight (v2.2338, owner-picked): 1px #9ca3af — between the whisper
+  // gray and the ink.
+  const headingRow = `<tr><td colspan="2" style="padding:10px 12px 7px;font-size:14px;font-weight:600;color:#374151">Payment history</td></tr>`
+  return `<table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;margin:16px 0 0"><tr><td></td><td style="width:340px;vertical-align:top"><table style="border-collapse:collapse;width:100%;font-size:13px;border:1px solid #9ca3af;border-radius:8px">${headingRow}${billedRow}${rows}${totalsRows}</table></td></tr></table>`
 }
 
 /** Plain-text twin of paymentHistoryHtml — same ledger, shared by both layouts. */
