@@ -29,11 +29,13 @@ Above the table, {{button:blue|Fill N matching from book}} assigns every unassig
 2. Drag the **margin slider**, type a **margin**, or type a **target bid total** and press Enter — all for the whole bid, so revenue already sitting on no-cost rows counts toward them. The **▾ beside Solve** holds *Price unpriced only* (fills only rows with no sale price; priced rows are held as-is).
 3. **📌 pin** any row to hold its price while the rest re-solve. Fixed-price rows are always held, and rows with no Takeoffs cost are never auto-priced — when they carry revenue anyway, an amber banner totals it and can filter to just those rows.
 
-## Preview first, then Apply
+## Typed prices save themselves; the solver previews
 
-Solver results (and your own typed prices) land as amber **preview** values — the card outlines amber and {{button:blue|Apply 12}} / **Discard** appear at the line's end, with a count of what's previewed beneath. Nothing is saved until you hit Apply — the button counts what it will write — and Discard throws the previews away.
+**A price you type is saved the moment you press Enter or leave the field** — a quick green *saved ✓* confirms it, and there's nothing to Apply. Same as the Old view, same as every other grid.
 
-**Previews wait for you.** It's safe to visit Labor, Counts, or any other page mid-thought: previews are kept on your device (until you close the browser) and are sitting right where you left them when you come back — reloading the page included. Each price option keeps its own preview, so viewing another price just sets yours aside; it's restored when you view that price again. A GC can never see a preview — Cover Letter, Share, Print, and CSV always use saved prices only. The **(i)** beside the bid name keeps a short version of this story.
+**Solver results preview first.** A solve re-prices many rows at once, so those land as amber **preview** values — the card outlines amber and {{button:blue|Apply 12}} / **Discard** appear at the line's end, with a count of what's previewed beneath. Nothing is saved until you hit Apply — the button counts what it will write — and Discard throws the preview away. Typing your own price into a previewed row saves your number immediately and takes that row out of the preview.
+
+**Solver previews wait on this device.** Visit any page, reload, close the tab, come back tomorrow — the preview is sitting where you left it, and one from an earlier sitting says when it's from (*solve from Tue 4:12 PM — restored*). Each price option keeps its own preview, so viewing another price just sets yours aside; it's restored when you view that price again. Previews stay on the computer they were made on — they don't follow you to another machine. A GC can never see a preview — Cover Letter, Share, Print, and CSV always use saved prices only. The **(i)** beside the bid name keeps a short version of this story.
 
 Each price card's ✎ opens the **Price** modal — rename it or delete it (the ★ can't be deleted while the letter is built on it).
 
