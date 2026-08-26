@@ -121,9 +121,11 @@ export default function CustomerPortal() {
         {state.kind === 'ready' && (
           <>
             <PortalStatement payload={state.payload} today={today} />
-            <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
+            <div data-screen-only>
+              <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
+            </div>
             {state.payload.slug && <PortalShortAddressCard slug={state.payload.slug} />}
-            <div style={{ padding: '2rem 0 0', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <div data-screen-only style={{ padding: '2rem 0 0', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
               <span style={{ fontSize: 12, color: MUTED }}>
                 Thank you for your business — <i>the Click team</i>
               </span>
@@ -142,8 +144,24 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
   // Same local-date basis as the header's date line, for the Billed age sub-lines.
   const d = new Date()
   const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const groups = groupPortalBillsByJob(payload.bills)
   return (
     <>
+      {/* Print all (v2.2331): the statement re-lays for paper — cover, one
+          job per page, closing page. Data attributes drive the @media print
+          rules; [data-screen-only] never prints, [data-print-only] only
+          prints, and each job section breaks to its own sheet. */}
+      <style>{`
+        [data-print-only]{display:none}
+        @media print {
+          html,body{background:${PAPER} !important}
+          [data-screen-only]{display:none !important}
+          [data-print-only]{display:block !important}
+          [data-print-page]{break-before:page;page-break-before:always}
+          [data-portal-ledger-scroll]{overflow:visible !important}
+          [data-portal-ledger]{min-width:0 !important}
+        }
+      `}</style>
       {/* Statement head */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', padding: '1.3rem 0 0.4rem' }}>
         <div>
@@ -164,6 +182,43 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
         </div>
       </div>
 
+      {groups.length > 0 && (
+        <>
+          <div data-screen-only style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 0 0' }}>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              aria-label="Print the statement, one job per page"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                border: `1px solid ${INK}`,
+                background: CARD,
+                color: INK,
+                fontSize: 12,
+                fontWeight: 600,
+                padding: '6px 14px',
+                letterSpacing: '0.02em',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden>
+                <path d="M160 96C160 78.3 174.3 64 192 64L448 64C465.7 64 480 78.3 480 96L480 192L160 192L160 96zM128 224L512 224C547.3 224 576 252.7 576 288L576 416C576 433.7 561.7 448 544 448L480 448L480 544C480 561.7 465.7 576 448 576L192 576C174.3 576 160 561.7 160 544L160 448L96 448C78.3 448 64 433.7 64 416L64 288C64 252.7 92.7 224 128 224zM208 448L208 528L432 528L432 448L208 448z" />
+              </svg>
+              Print all <span style={{ color: FAINT, fontWeight: 400 }}>· one job per page</span>
+            </button>
+          </div>
+          {/* Print cover note: the balance page announces what follows. */}
+          <div data-print-only style={{ padding: '14px 0 0', fontSize: 12.5, color: MUTED }}>
+            {groups.length === 1
+              ? 'Your job follows on its own page, with every bill and every payment received.'
+              : `${groups.length} jobs — each on its own page, with every bill and every payment received.`}
+          </div>
+        </>
+      )}
+
       {/* Ledger */}
       {payload.bills.length === 0 ? (
         <div style={{ margin: '1.2rem 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1.2rem 1.3rem', fontSize: 14.5 }}>
@@ -171,9 +226,9 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
           <span style={{ color: MUTED }}>No open bills on your account — thank you.</span>
         </div>
       ) : (
-        <div style={{ marginTop: 10, overflowX: 'auto' }}>
-          <div style={{ minWidth: 560 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, padding: '0 0 7px', borderBottom: `1.5px solid ${INK}` }}>
+        <div data-portal-ledger-scroll style={{ marginTop: 10, overflowX: 'auto' }}>
+          <div data-portal-ledger style={{ minWidth: 560 }}>
+            <div data-screen-only style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, padding: '0 0 7px', borderBottom: `1.5px solid ${INK}` }}>
               <span>Billed</span>
               <span />
               <span style={{ textAlign: 'right' }}>Amount due</span>
@@ -184,19 +239,25 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
                 PAY ONLINE
               </span>
             </div>
-            {(() => {
-              const groups = groupPortalBillsByJob(payload.bills)
-              return groups.map((g, i) => (
-                <PortalJobGroupSection key={i} group={g} todayYmd={todayYmd} isLast={i === groups.length - 1} />
-              ))
-            })()}
-            <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '11px 0 4px', fontSize: 14 }}>
-              <span />
-              <span style={{ fontWeight: 700, textAlign: 'right' }}>Total due</span>
-              <span style={{ textAlign: 'right', fontWeight: 900, fontVariantNumeric: 'tabular-nums', borderTop: `1px solid ${INK}`, borderBottom: `3px double ${INK}`, padding: '3px 0' }}>
-                {formatPortalUsd(payload.totalDue)}
-              </span>
-              <span />
+            {groups.map((g, i) => (
+              <PortalJobGroupSection
+                key={i}
+                group={g}
+                todayYmd={todayYmd}
+                isLast={i === groups.length - 1}
+                printHeading={`${payload.customerName} · ${today} · Job ${i + 1} of ${groups.length}`}
+              />
+            ))}
+            <div data-print-page>
+              <PortalPrintPageHeader heading={`${payload.customerName} · ${today} · Closing`} />
+              <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '11px 0 4px', fontSize: 14 }}>
+                <span />
+                <span style={{ fontWeight: 700, textAlign: 'right' }}>Total due</span>
+                <span style={{ textAlign: 'right', fontWeight: 900, fontVariantNumeric: 'tabular-nums', borderTop: `1px solid ${INK}`, borderBottom: `3px double ${INK}`, padding: '3px 0' }}>
+                  {formatPortalUsd(payload.totalDue)}
+                </span>
+                <span />
+              </div>
             </div>
           </div>
         </div>
@@ -207,20 +268,51 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
 }
 
 /**
+ * Print-only page header (v2.2331): shuffled kitchen-table pages must
+ * self-identify, so every printed page opens with the wordmark and
+ * "customer · date · Job N of M".
+ */
+function PortalPrintPageHeader({ heading }: { heading: string }) {
+  return (
+    <div data-print-only style={{ paddingTop: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+        <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: '-0.03em' }}>
+          CLICK<span style={{ color: COPPER }}>.</span>
+        </span>
+        <span style={{ fontSize: 10.5, color: MUTED }}>{heading}</span>
+      </div>
+      <div style={{ height: 2, background: INK, margin: '6px 0 10px' }} />
+    </div>
+  )
+}
+
+/**
  * One job's slice of the statement (v2.2318): a quiet note-band header, the
  * job's bills newest-first, and a right-aligned boxed recap that reads like a
  * little ledger (v2.2320) — Billed to date, every payment received by date,
  * Balance — the same totals grammar the invoice preview, PDF, and email box
- * use (v2.2313).
+ * use (v2.2313). In print (v2.2331) each section starts its own page under a
+ * self-identifying header.
  */
-function PortalJobGroupSection({ group, todayYmd, isLast }: { group: PortalJobGroup; todayYmd: string; isLast: boolean }) {
+function PortalJobGroupSection({
+  group,
+  todayYmd,
+  isLast,
+  printHeading,
+}: {
+  group: PortalJobGroup
+  todayYmd: string
+  isLast: boolean
+  printHeading: string
+}) {
   const addr = splitPortalAddress(group.jobAddress)
   const headline = addr?.street ?? group.jobName ?? group.jobLabel
   const quiet = [addr?.rest ?? null, group.asGc && group.ownerName ? `owner: ${group.ownerName}` : null]
     .filter(Boolean)
     .join(' — ')
   return (
-    <div style={{ borderBottom: isLast ? 'none' : `1px solid ${HAIR}`, paddingBottom: 8 }}>
+    <div data-print-page style={{ borderBottom: isLast ? 'none' : `1px solid ${HAIR}`, paddingBottom: 8 }}>
+      <PortalPrintPageHeader heading={printHeading} />
       {/* Trade-first job line (v2.2041), promoted from row to band. */}
       <div style={{ background: NOTE_BAND, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 14, flexWrap: 'wrap', padding: '8px 10px', marginTop: 16, fontSize: 13.5 }}>
         <span style={{ minWidth: 0 }}>
@@ -333,7 +425,10 @@ function PortalBillRow({ bill, todayYmd, isLast }: { bill: PortalBill; todayYmd:
       </span>
       <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(bill.amount)}</span>
       {bill.payUrl ? (
+        // Screen-only: a button is useless on paper; the printed page keeps
+        // the check-ref chips and the closing QR instead (v2.2331).
         <a
+          data-screen-only
           href={bill.payUrl}
           target="_blank"
           rel="noopener noreferrer"

@@ -124,6 +124,21 @@ describe('CustomerPortal render smoke', () => {
     expect(screen.getByText('Paid to date')).toBeTruthy()
   })
 
+  it('Print all (v2.2331): button + per-job print headings + closing page', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    expect(screen.getByLabelText('Print the statement, one job per page')).toBeTruthy()
+    // Two jobs → two self-identifying print page headers + the closing page.
+    expect(screen.getByText(/Job 1 of 2/)).toBeTruthy()
+    expect(screen.getByText(/Job 2 of 2/)).toBeTruthy()
+    expect(screen.getByText(/· Closing/)).toBeTruthy()
+    expect(screen.getByText(/2 jobs — each on its own page/)).toBeTruthy()
+    // PAY ONLINE never prints.
+    const pay = screen.getAllByText('PAY ONLINE').find((el) => el.tagName === 'A')
+    expect(pay?.getAttribute('data-screen-only')).not.toBeNull()
+  })
+
   it('all-paid state', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, bills: [], totalDue: 0 }), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
