@@ -348,26 +348,20 @@ export function PhysicalInvoicePreview({
               maxWidth: 340,
               border: '1px solid var(--border-strong)',
               borderRadius: 8,
-              padding: '0.6rem 0.85rem 0.4rem',
+              padding: '0.85rem 1rem 0.7rem',
             }}
           >
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Payment history</div>
-            {/* Ledger shape (v2.2324, matching the portal recap): Billed opens,
-                each payment subtracts as a green credit, Balance due closes. */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>Payment history</div>
+            {/* Invoice card (v2.2352, owner Option B): only what happened
+                since billing — Amount due sits right above, so no Billed
+                echo. Payments as green credits; Balance due closes. Portal
+                spacing: taller rows, air around the rule. */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
               <tbody>
-                {d.paymentTotals ? (
-                  <tr>
-                    <td style={{ padding: '0.22rem 0.6rem 0.22rem 0', color: 'var(--text-700)' }}>Billed</td>
-                    <td style={{ padding: '0.22rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                      {d.paymentTotals.billedFormatted}
-                    </td>
-                  </tr>
-                ) : null}
                 {d.paymentHistory.map((p, i) => (
                   <tr key={i}>
-                    <td style={{ padding: '0.22rem 0.6rem 0.22rem 0', color: 'var(--text-700)' }}>{p.label}</td>
-                    <td style={{ padding: '0.22rem 0', textAlign: 'right', color: '#16a34a', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '0.32rem 0.6rem 0.32rem 0', color: 'var(--text-700)' }}>{p.label}</td>
+                    <td style={{ padding: '0.32rem 0', textAlign: 'right', color: '#16a34a', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                       &minus; {p.amountFormatted}
                     </td>
                   </tr>
@@ -375,16 +369,16 @@ export function PhysicalInvoicePreview({
                 {d.paymentTotals ? (
                   d.paymentTotals.paidInFull ? (
                     <tr>
-                      <td colSpan={2} style={{ padding: '0.35rem 0 0.3rem', borderTop: '1px solid var(--border-strong)', color: '#16a34a', fontWeight: 700 }}>
+                      <td colSpan={2} style={{ padding: '0.55rem 0 0.4rem', borderTop: '1px solid var(--border-strong)', color: '#16a34a', fontWeight: 700, fontSize: '0.85rem' }}>
                         Paid in full
                       </td>
                     </tr>
                   ) : (
                     <tr>
-                      <td style={{ padding: '0.35rem 0 0.3rem', borderTop: '1px solid var(--border-strong)', color: '#b3261e', fontWeight: 700 }}>
+                      <td style={{ padding: '0.55rem 0 0.4rem', borderTop: '1px solid var(--border-strong)', color: '#b3261e', fontWeight: 700, fontSize: '0.85rem' }}>
                         Balance due
                       </td>
-                      <td style={{ padding: '0.35rem 0 0.3rem', borderTop: '1px solid var(--border-strong)', textAlign: 'right', color: '#b3261e', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                      <td style={{ padding: '0.55rem 0 0.4rem', borderTop: '1px solid var(--border-strong)', textAlign: 'right', color: '#b3261e', fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: '0.85rem' }}>
                         {d.paymentTotals.balanceDueFormatted}
                       </td>
                     </tr>

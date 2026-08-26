@@ -268,22 +268,21 @@ function linesTableText(title: string, rows: PhysicalInvoiceServiceLine[] | Phys
 /** Boxed payment-history table for email bodies (both layouts), totals included (v2.2313). */
 function paymentHistoryHtml(doc: PhysicalInvoiceDocument): string {
   if (doc.paymentHistory.length === 0) return ''
-  // The ledger shape (v2.2324, matching the portal recap): Billed opens,
-  // each payment subtracts as a green credit, Balance due closes in red.
+  // The card on INVOICES tells only what happened since billing (v2.2352,
+  // owner Option B): the invoice's own Amount due sits right above it, so the
+  // old Billed row was the same number twice. Payments subtract as green
+  // credits; Balance due closes in red. The portal recap keeps its Billed
+  // line — there, nothing above the card states the total.
   const t = doc.paymentTotals
   // No lines inside the card (v2.2338): rows breathe on whitespace; the only
-  // rules are the outer frame and the one above Balance due.
-  const billedRow = t
-    ? `<tr><td style="padding:4px 12px;color:#5f6368">Billed</td><td style="text-align:right;padding:4px 12px">${escapeHtml(
-        t.billedFormatted,
-      )}</td></tr>`
-    : ''
+  // rules are the outer frame and the one above Balance due. Portal-card
+  // proportions (v2.2352): taller rows, real padding, air around the rule.
   const rows = doc.paymentHistory
     .map(
       (p) =>
-        `<tr><td style="padding:4px 12px;color:#5f6368">${escapeHtml(
+        `<tr><td style="padding:5.5px 16px;color:#5f6368">${escapeHtml(
           p.label,
-        )}</td><td style="text-align:right;padding:4px 12px;color:#1f7a3a;font-weight:600;white-space:nowrap">&minus; ${escapeHtml(
+        )}</td><td style="text-align:right;padding:5.5px 16px;color:#1f7a3a;font-weight:600;white-space:nowrap">&minus; ${escapeHtml(
           p.amountFormatted,
         )}</td></tr>`,
     )
@@ -292,13 +291,13 @@ function paymentHistoryHtml(doc: PhysicalInvoiceDocument): string {
   // padded cell, so the line stops short of the card's edges. Cell border-top
   // would run edge to edge.
   const ruleRow = t
-    ? `<tr><td colspan="2" style="padding:3px 12px 0"><div style="border-top:1px solid #9ca3af"></div></td></tr>`
+    ? `<tr><td colspan="2" style="padding:9px 16px 0"><div style="border-top:1px solid #9ca3af"></div></td></tr>`
     : ''
   const totalsRows = t
     ? ruleRow +
       (t.paidInFull
-        ? `<tr><td style="padding:5px 12px 10px;color:#16a34a;font-weight:700" colspan="2">Paid in full</td></tr>`
-        : `<tr><td style="padding:5px 12px 10px;color:#b3261e;font-weight:700">Balance due</td><td style="text-align:right;padding:5px 12px 10px;color:#b3261e;font-weight:700">${escapeHtml(
+        ? `<tr><td style="padding:9px 16px 13px;color:#16a34a;font-weight:700;font-size:14px" colspan="2">Paid in full</td></tr>`
+        : `<tr><td style="padding:9px 16px 13px;color:#b3261e;font-weight:700;font-size:14px">Balance due</td><td style="text-align:right;padding:9px 16px 13px;color:#b3261e;font-weight:700;font-size:14px">${escapeHtml(
             t.balanceDueFormatted,
           )}</td></tr>`)
     : ''
@@ -307,11 +306,11 @@ function paymentHistoryHtml(doc: PhysicalInvoiceDocument): string {
   // way to right-align (CSS float/margin:auto die in desktop Outlook).
   // Frame weight (v2.2338, owner-picked): 1px #9ca3af — between the whisper
   // gray and the ink.
-  const headingRow = `<tr><td colspan="2" style="padding:10px 12px 7px;font-size:14px;font-weight:600;color:#374151">Payment history</td></tr>`
+  const headingRow = `<tr><td colspan="2" style="padding:13px 16px 9px;font-size:14px;font-weight:600;color:#374151">Payment history</td></tr>`
   // border-collapse stays SEPARATE on the card table — collapsed borders
   // make browsers and mail clients drop the border-radius, squaring the
   // corners the owner asked for.
-  return `<table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;margin:16px 0 0"><tr><td></td><td style="width:340px;vertical-align:top"><table style="border-collapse:separate;border-spacing:0;width:100%;font-size:13px;border:1px solid #9ca3af;border-radius:8px">${headingRow}${billedRow}${rows}${totalsRows}</table></td></tr></table>`
+  return `<table style="border-collapse:collapse;width:100%;font-family:system-ui,sans-serif;margin:16px 0 0"><tr><td></td><td style="width:340px;vertical-align:top"><table style="border-collapse:separate;border-spacing:0;width:100%;font-size:13px;border:1px solid #9ca3af;border-radius:8px">${headingRow}${rows}${totalsRows}</table></td></tr></table>`
 }
 
 /** Plain-text twin of paymentHistoryHtml — same ledger, shared by both layouts. */
