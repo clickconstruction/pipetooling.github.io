@@ -1,5 +1,6 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
+import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { FileSpreadsheet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -604,43 +605,21 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                     <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                         {onViewBill && bundleInvWithJob != null && row.kind === 'job_with_merged_billed' ? (
-                          <button
-                            type="button"
-                            onClick={() => onViewBill(bundleInvWithJob)}
-                            style={{
-                              padding: '0.35rem 0.75rem',
-                              fontSize: '0.8125rem',
-                              background: 'var(--surface)',
-                              color: 'var(--text-link)',
-                              border: '1px solid #2563eb',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontWeight: 500,
-                            }}
-                          >
-                            View Bill
-                          </button>
+                          <ViewBillWithPdfTail
+                            onViewBill={() => onViewBill(bundleInvWithJob)}
+                            invoice={{ id: bundleInvWithJob.id, job_id: bundleInvWithJob.job_id }}
+                          />
                         ) : null}
                         {onViewBill && !bundleInv && (j.invoices ?? []).filter((i) => i.status === 'billed').length === 1 ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const b = (j.invoices ?? []).filter((i) => i.status === 'billed')
-                              onViewBill({ ...b[0], job: j } as InvoiceWithJob)
-                            }}
-                            style={{
-                              padding: '0.35rem 0.75rem',
-                              fontSize: '0.8125rem',
-                              background: 'var(--surface)',
-                              color: 'var(--text-link)',
-                              border: '1px solid #2563eb',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontWeight: 500,
-                            }}
-                          >
-                            View Bill
-                          </button>
+                          (() => {
+                            const b = (j.invoices ?? []).filter((i) => i.status === 'billed')
+                            return (
+                              <ViewBillWithPdfTail
+                                onViewBill={() => onViewBill({ ...b[0], job: j } as InvoiceWithJob)}
+                                invoice={{ id: b[0]!.id, job_id: b[0]!.job_id }}
+                              />
+                            )
+                          })()
                         ) : null}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                           {actionLabel && bundleInvWithJob != null ? (
@@ -1089,22 +1068,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                     <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                         {onViewBill ? (
-                          <button
-                            type="button"
-                            onClick={() => onViewBill(invWithJob)}
-                            style={{
-                              padding: '0.35rem 0.75rem',
-                              fontSize: '0.8125rem',
-                              background: 'var(--surface)',
-                              color: 'var(--text-link)',
-                              border: '1px solid #2563eb',
-                              borderRadius: 4,
-                              cursor: 'pointer',
-                              fontWeight: 500,
-                            }}
-                          >
-                            View Bill
-                          </button>
+                          <ViewBillWithPdfTail
+                            onViewBill={() => onViewBill(invWithJob)}
+                            invoice={{ id: invWithJob.id, job_id: invWithJob.job_id }}
+                          />
                         ) : null}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                           {actionLabel && (
