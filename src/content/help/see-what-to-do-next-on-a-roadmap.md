@@ -10,7 +10,7 @@ The **Plan** view is where **Checklist → Roadmap** now opens (tap **Map** or *
 ## Two lanes
 
 - **Ready to go** — open tasks that already have a name on them. Someone can start these today.
-- **Needs a name** — open tasks nobody owns yet. Tap one and press {{button:outline|Assign →}} on its card to hand it out; it moves up to the first lane as soon as it has a person.
+- **Needs a person** — open tasks nobody owns yet. Tap one and press {{button:outline|Assign →}} on its card to hand it out; it moves up to the first lane as soon as it has a person.
 
 Each lane shows at most five tasks, and never more than two from the same stage, so one big stage can't crowd everything else out.
 
@@ -37,7 +37,7 @@ Open any task's card and tap the **★** next to its title (editors only). A pin
 ## The same picks, elsewhere
 
 - **On the Map**, tasks on the shortlist wear a small ⚡ after their title, and a stage with picks shows a {{chip:yellow|⚡ 2 next up}} chip in its header — so a collapsed cluster still tells you there's something worth doing inside.
-- **On the Dashboard**, when a roadmap has three or more unowned tasks in open stages, a card says *Farm 1 · 84 roadmap tasks need a name* with the top pick. Tap {{button:outline|Open Plan →}} to land on that roadmap's Plan with the panel at the top. The card only appears for people who can see the Roadmap tab.
+- **On the Dashboard**, when a roadmap has three or more unowned tasks in open stages, a card says *Farm 1 · 84 roadmap tasks need a person* with the top pick. Tap {{button:outline|Open Plan →}} to land on that roadmap's Plan with the panel at the top. The card only appears for people who can see the Roadmap tab.
 
 ## What it doesn't do
 
