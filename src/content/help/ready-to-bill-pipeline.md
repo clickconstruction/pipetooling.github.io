@@ -122,7 +122,7 @@ Press {{button:blue|Bill Customer}}. The modal opens on **Stripe bill** and show
 :::
 
 - **Stripe bill** — creates and sends a hosted Stripe invoice by email. This is the standard path; payment status syncs back automatically.
-- **Physical invoice** — a mailed paper invoice, with a date and optional memo.
+- **Physical invoice** — a mailed paper invoice, with a date and optional memo. Next to the on-screen invoice preview sit two check-before-you-send buttons: {{button:outline|Preview}} opens the PDF in a new tab, and {{button:outline|Preview email}} opens the exact email the customer will receive — subject, body, and the payment-history card — without sending anything.
 - **▾** — reveals **HouseCall Pro**, which records a bill you sent through HCP. It's tucked away on purpose; most billing should go through Stripe.
 
 A job needs a linked customer (with an email, for Stripe) before it can be billed — the modal guides you if something's missing.
