@@ -912,6 +912,7 @@ export type Database = {
           bid_value: number | null
           count_tooling_link: string | null
           count_tooling_plans_link: string | null
+          cover_letter_alt_texts: Json | null
           created_at: string | null
           created_by: string
           customer_id: string | null
@@ -973,6 +974,7 @@ export type Database = {
           bid_value?: number | null
           count_tooling_link?: string | null
           count_tooling_plans_link?: string | null
+          cover_letter_alt_texts?: Json | null
           created_at?: string | null
           created_by: string
           customer_id?: string | null
@@ -1034,6 +1036,7 @@ export type Database = {
           bid_value?: number | null
           count_tooling_link?: string | null
           count_tooling_plans_link?: string | null
+          cover_letter_alt_texts?: Json | null
           created_at?: string | null
           created_by?: string
           customer_id?: string | null
@@ -1881,6 +1884,48 @@ export type Database = {
             columns: ["person_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_item_due_changes: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          checklist_item_id: string
+          from_due: string | null
+          id: string
+          to_due: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          checklist_item_id: string
+          from_due?: string | null
+          id?: string
+          to_due?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          checklist_item_id?: string
+          from_due?: string | null
+          id?: string
+          to_due?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_item_due_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_item_due_changes_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_items"
             referencedColumns: ["id"]
           },
         ]

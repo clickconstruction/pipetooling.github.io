@@ -48,6 +48,7 @@ import type {
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
 import { bundleSummary, letterTotal, planLetterSections, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
+import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, planSamePageLetter, type CoverLetterAltTexts } from '../../lib/bids/coverLetterSamePage'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -61,6 +62,9 @@ const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 type BidVersionLetter = BidVersion
 type BundleSection = { name: string; bidVersionId: string | null; revenueSum: number; fixtureRows: { fixture: string; count: number }[]; isAlternate: boolean; offeredPricingId?: string }
 const COVER_LETTER_VIEW_KEY = 'bids_cover_letter_view_v1'
+// Same-page alternates (v2.2370): alternates as one line each under the proposed amount, vs. the
+// pre-2370 one-full-letter-per-alternate document. Per-device, like the Old/New pills.
+const COVER_LETTER_ALTS_LAYOUT_KEY = 'bids_cover_letter_alts_layout_v1'
 
 type BidsCoverLetterTabProps = {
   bids: BidWithBuilder[]
@@ -186,6 +190,46 @@ export function BidsCoverLetterTab({
     } catch {
       /* device just won't remember */
     }
+  }
+  // Same-page alternates (v2.2370): default same-page; "Separate pages" is the pre-2370 document.
+  const [altsLayout, setAltsLayout] = useState<'same-page' | 'separate'>(() => {
+    try {
+      return window.localStorage.getItem(COVER_LETTER_ALTS_LAYOUT_KEY) === 'separate' ? 'separate' : 'same-page'
+    } catch {
+      return 'same-page'
+    }
+  })
+  const switchAltsLayout = (next: 'same-page' | 'separate') => {
+    setAltsLayout(next)
+    try {
+      window.localStorage.setItem(COVER_LETTER_ALTS_LAYOUT_KEY, next)
+    } catch {
+      /* device just won't remember */
+    }
+  }
+  // Customer-facing wording for the Alternates block (bids.cover_letter_alt_texts): heading +
+  // per-alternate label/note, edited by clicking the dashed text right on the preview.
+  const [altTexts, setAltTexts] = useState<CoverLetterAltTexts>({})
+  const [altTextEditor, setAltTextEditor] = useState<{ editKey: string; label: string; note: string } | null>(null)
+  useEffect(() => {
+    setAltTexts({})
+    setAltTextEditor(null)
+    const bid = selectedBidForPricing
+    if (!bid) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('bids').select('cover_letter_alt_texts').eq('id', bid.id).maybeSingle()
+      if (cancelled) return
+      setAltTexts(parseCoverLetterAltTexts((data as { cover_letter_alt_texts?: unknown } | null)?.cover_letter_alt_texts))
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on bid id; hydrates from the freshly selected bid
+  }, [selectedBidForPricing?.id])
+  async function saveAltTexts(bidId: string, next: CoverLetterAltTexts) {
+    setAltTexts(next)
+    setAltTextEditor(null)
+    const { error } = await supabase.from('bids').update({ cover_letter_alt_texts: next }).eq('id', bidId)
+    if (error) showToast('Could not save the letter wording: ' + error.message, 'error')
   }
 
   // Reset quick-add when the selected bid changes
@@ -696,8 +740,6 @@ export function BidsCoverLetterTab({
         const newLetterTotal = letterTotal(pricedBundle)
         const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
         const latestSends = latestSendByVersion(versionSends)
-        const headlineNumber = `$${formatCurrency(headlineAmount)}`
-        const isBidValueSynced = bid.bid_value != null && bid.bid_value === headlineAmount
         const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
         const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
         const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
@@ -731,8 +773,11 @@ export function BidsCoverLetterTab({
           ? groupSectionsByEffectiveGc(pricedBundle, versionGcById, bidGcPacketCustomer)
           : []
         const baseSectionNames = pricedBundle.filter((sec) => !sec.isAlternate).map((sec) => sec.name)
-        const bundleLabel = (sec: { name: string; isAlternate: boolean }) =>
-          coverLetterView === 'new' ? sectionLabel(sec, baseSectionNames) : `Pricing: ${sec.name}`
+        // Edited wording (v2.2370) follows the section into BOTH layouts: the same-page line and
+        // the separate-pages section heading.
+        const sectionDisplayName = (sec: BundleSection) => altTexts.sections?.[altSectionKey(sec)]?.label?.trim() || sec.name
+        const bundleLabel = (sec: BundleSection) =>
+          coverLetterView === 'new' ? sectionLabel({ name: sectionDisplayName(sec), isAlternate: sec.isAlternate }, baseSectionNames) : `Pricing: ${sec.name}`
         // Default packet follows the ACTIVE Version (v2.1762) — falling back to
         // gcPackets[0] addressed every letter to the first section's GC (the bid
         // default) no matter which Version chip was selected.
@@ -760,16 +805,43 @@ export function BidsCoverLetterTab({
           buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing)
         const packetSectionText = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
           buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing)
+        // Same-page alternates (v2.2370): in the New view, a packet with alternates is ONE letter —
+        // the bases sum to the proposed amount (fixture lists merged), each alternate is one line
+        // under it, and with no base at all the first alternate leads. "Separate pages" keeps the
+        // pre-2370 one-full-letter-per-section document.
+        const samePagePlan = coverLetterView === 'new' && altsLayout === 'same-page' && selectedGcPacket
+          ? planSamePageLetter(selectedGcPacket.sections)
+          : null
+        // The layout toggle follows the packet the LETTER shows (selectedGcPacket), not the studio's
+        // GC tab — they can differ when the active version's GC has nothing priced yet.
+        const showAltsLayoutToggle = coverLetterView === 'new' && selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
+        const samePageHtml = (editable: boolean) =>
+          samePagePlan
+            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable))
+            : null
         const finalCoverLetterHtml = selectedGcPacket
-          ? selectedGcPacket.sections.length > 1
-            ? buildCombinedCoverLetterDocument(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), html: packetSectionHtml(s) })))
-            : packetSectionHtml(selectedGcPacket.sections[0]!)
+          ? samePagePlan
+            ? samePageHtml(false)!
+            : selectedGcPacket.sections.length > 1
+              ? buildCombinedCoverLetterDocument(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), html: packetSectionHtml(s) })))
+              : packetSectionHtml(selectedGcPacket.sections[0]!)
           : combinedHtml
+        // Preview-only twin with data-cl-edit spans (click-to-edit); never copied or printed.
+        const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : finalCoverLetterHtml
         const finalCoverLetterText = selectedGcPacket
-          ? selectedGcPacket.sections.length > 1
-            ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
-            : packetSectionText(selectedGcPacket.sections[0]!)
+          ? samePagePlan
+            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency))
+            : selectedGcPacket.sections.length > 1
+              ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
+              : packetSectionText(selectedGcPacket.sections[0]!)
           : combinedText
+        // All-alternates packet on one page (v2.2370): the ★ alternate leads the letter, so the
+        // studio total shows the letter's amount instead of $0.00. Board value / Mark sent rules
+        // are untouched — this is what the letter says, and what "Apply to Bid Value" writes.
+        const alternateLeadsLetter = samePagePlan != null && samePagePlan.alternateLeads && !(newLetterTotal > 0)
+        const displayHeadlineAmount = alternateLeadsLetter ? samePagePlan!.headlineRevenue : headlineAmount
+        const displayHeadlineNumber = `$${formatCurrency(displayHeadlineAmount)}`
+        const displayBidValueSynced = bid.bid_value != null && bid.bid_value === displayHeadlineAmount
         const now = new Date()
         const yy = now.getFullYear() % 100
         const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -978,6 +1050,15 @@ export function BidsCoverLetterTab({
                                 {multi ? <> <strong style={{ color: 'var(--text-strong)' }}>{gcShort}: base ${formatCurrency(gcBase)}{gcAlts ? ` + ${gcAlts} alternate${gcAlts === 1 ? '' : 's'}` : ''}</strong></> : null}
                                 {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
                               </div>
+                              {showAltsLayoutToggle ? (
+                                <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }}>Alternates in the letter</span>
+                                  <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => switchAltsLayout('same-page')} style={studioSegBtnStyle(altsLayout === 'same-page', true)} title="One letter — alternates listed under the proposed amount">Same page</button>
+                                    <button type="button" onClick={() => switchAltsLayout('separate')} style={studioSegBtnStyle(altsLayout === 'separate', true)} title="One full letter per alternate (the pre-v2.2370 document)">Separate pages</button>
+                                  </span>
+                                </div>
+                              ) : null}
                               <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                 <button
                                   type="button"
@@ -1009,19 +1090,19 @@ export function BidsCoverLetterTab({
                         </div>
                       ) : null}
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', background: 'var(--bg-green-tint)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
-                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{headlineNumber}</span>
+                        <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{displayHeadlineNumber}</span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {useCustomAmount ? 'custom amount' : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
+                          {useCustomAmount ? 'custom amount' : alternateLeadsLetter ? `letter amount · ★ alternate leads · ${bundleSummary(bundlePricings)}` : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
                         </span>
-                        {isBidValueSynced ? (
+                        {displayBidValueSynced ? (
                           <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-green-600)', fontWeight: 600 }}>✓ matches Bid Value</span>
                         ) : (
                           <button
                             type="button"
-                            onClick={() => applyProposedAmountToBidValue(bid.id, headlineAmount)}
-                            disabled={applyingBidValue || headlineAmount === 0}
+                            onClick={() => applyProposedAmountToBidValue(bid.id, displayHeadlineAmount)}
+                            disabled={applyingBidValue || displayHeadlineAmount === 0}
                             title="Apply this amount to Bid Value"
-                            style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: applyingBidValue || headlineAmount === 0 ? 'not-allowed' : 'pointer' }}
+                            style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: applyingBidValue || displayHeadlineAmount === 0 ? 'not-allowed' : 'pointer' }}
                           >
                             {applyingBidValue ? 'Applying…' : 'Apply to Bid Value'}
                           </button>
@@ -1048,7 +1129,7 @@ export function BidsCoverLetterTab({
                             style={{ width: '8rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box' }}
                           />
                         )}
-                        {bid.bid_value != null && bid.bid_value !== headlineAmount && (
+                        {bid.bid_value != null && bid.bid_value !== displayHeadlineAmount && (
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Current Bid Value: ${formatCurrency(bid.bid_value)}</span>
                         )}
                       </div>
@@ -1228,7 +1309,7 @@ export function BidsCoverLetterTab({
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)' }}>
                         {coverLetterView === 'new'
                           ? (pricedBundle.length > 0
-                            ? <>In the letter: {bundleSummary(pricedBundle)} — {pricedBundle.map((p) => (p.isAlternate ? `${p.name} (alternate)` : p.name)).join(', ')} — one section each.{unpricedLeftOff > 0 ? <span style={{ color: 'var(--text-amber-700)' }}> {unpricedLeftOff} unpriced left off.</span> : null}</>
+                            ? <>In the letter: {bundleSummary(pricedBundle)} — {pricedBundle.map((p) => (p.isAlternate ? `${p.name} (alternate)` : p.name)).join(', ')} — {samePagePlan ? 'one page.' : 'one section each.'}{unpricedLeftOff > 0 ? <span style={{ color: 'var(--text-amber-700)' }}> {unpricedLeftOff} unpriced left off.</span> : null}</>
                             : <span style={{ color: 'var(--text-amber-700)' }}>Nothing priced yet — {unpricedLeftOff} bid{unpricedLeftOff === 1 ? '' : 's'} left off the letter until priced; showing the active bid's letter.</span>)
                           : <>Bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')} — one letter each.</>}
                       </div>
@@ -1240,7 +1321,70 @@ export function BidsCoverLetterTab({
                       .cl-preview section { border: 1px solid #c9ced6; border-radius: 8px; margin: 0 0 1.2rem; padding: 0 0.9rem 0.7rem; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.07); overflow: hidden; background: #fff; }
                       .cl-preview section:last-child { margin-bottom: 0; }
                       .cl-preview section > h2:first-child { background: #eef2f7; border-bottom: 1px solid #c9ced6; margin: 0 -0.9rem 0.8rem; padding: 0.45rem 0.9rem; font-size: 0.95rem; }
+                      .cl-preview [data-cl-edit] { border-bottom: 1.5px dashed #93b4e8; cursor: text; }
+                      .cl-preview [data-cl-edit]:hover { background: #eaf1fd; }
                     `}</style>
+                    {altTextEditor && samePagePlan ? (() => {
+                      const isHeading = altTextEditor.editKey === 'heading'
+                      const autoSec = isHeading ? null : samePagePlan.alternates.find((s) => altSectionKey(s) === altTextEditor.editKey)
+                      const commit = () => {
+                        const next: CoverLetterAltTexts = { ...altTexts, sections: { ...(altTexts.sections ?? {}) } }
+                        if (isHeading) {
+                          const h = altTextEditor.label.trim()
+                          if (!h || h === COVER_LETTER_ALTS_HEADING_DEFAULT) delete next.heading
+                          else next.heading = h
+                        } else {
+                          const label = altTextEditor.label.trim()
+                          const note = altTextEditor.note.trim()
+                          const entry: { label?: string; note?: string } = {}
+                          if (label && label !== autoSec?.name) entry.label = label
+                          if (note) entry.note = note
+                          if (entry.label || entry.note) next.sections![altTextEditor.editKey] = entry
+                          else delete next.sections![altTextEditor.editKey]
+                        }
+                        if (next.sections && Object.keys(next.sections).length === 0) delete next.sections
+                        void saveAltTexts(bid.id, next)
+                      }
+                      const resetToAuto = () => {
+                        const next: CoverLetterAltTexts = { ...altTexts, sections: { ...(altTexts.sections ?? {}) } }
+                        if (isHeading) delete next.heading
+                        else delete next.sections![altTextEditor.editKey]
+                        if (next.sections && Object.keys(next.sections).length === 0) delete next.sections
+                        void saveAltTexts(bid.id, next)
+                      }
+                      const inputStyle: React.CSSProperties = { width: '100%', padding: '0.4rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, boxSizing: 'border-box', fontSize: '0.85rem' }
+                      return (
+                        <div style={{ background: 'var(--surface)', border: '1px solid #3b82f6', borderRadius: 10, padding: '0.8rem 0.9rem', display: 'grid', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{isHeading ? 'Alternates heading' : `Letter wording — ${autoSec?.name ?? 'alternate'}`}</span>
+                          <input
+                            type="text"
+                            value={altTextEditor.label}
+                            autoFocus
+                            onChange={(e) => setAltTextEditor((prev) => (prev ? { ...prev, label: e.target.value } : prev))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } else if (e.key === 'Escape') setAltTextEditor(null) }}
+                            aria-label={isHeading ? 'Alternates heading' : 'Alternate name on the letter'}
+                            placeholder={isHeading ? COVER_LETTER_ALTS_HEADING_DEFAULT : autoSec?.name}
+                            style={inputStyle}
+                          />
+                          {!isHeading ? (
+                            <input
+                              type="text"
+                              value={altTextEditor.note}
+                              onChange={(e) => setAltTextEditor((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commit() } else if (e.key === 'Escape') setAltTextEditor(null) }}
+                              aria-label="Optional note under the alternate"
+                              placeholder="Optional note under this alternate (e.g. what the alternate covers)"
+                              style={inputStyle}
+                            />
+                          ) : null}
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button type="button" onClick={commit} style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}>Save</button>
+                            <button type="button" onClick={() => setAltTextEditor(null)} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer' }}>Cancel</button>
+                            <button type="button" onClick={resetToAuto} title="Back to the automatic wording" style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem', fontSize: '0.8rem', background: 'none', color: 'var(--text-muted)', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Reset to auto</button>
+                          </div>
+                        </div>
+                      )
+                    })() : null}
                     <div
                       className="cl-preview"
                       data-theme="light"
@@ -1257,9 +1401,28 @@ export function BidsCoverLetterTab({
                         whiteSpace: 'pre-wrap',
                         overflowX: 'auto',
                       }}
+                      onClick={(e) => {
+                        // Same-page alternates (v2.2370): dashed spans are click-to-edit wording.
+                        const target = (e.target as HTMLElement).closest?.('[data-cl-edit]')
+                        if (!target || !samePagePlan) return
+                        const editKey = target.getAttribute('data-cl-edit')
+                        if (!editKey) return
+                        if (editKey === 'heading') {
+                          setAltTextEditor({ editKey, label: altTexts.heading ?? COVER_LETTER_ALTS_HEADING_DEFAULT, note: '' })
+                        } else {
+                          const sec = samePagePlan.alternates.find((s) => altSectionKey(s) === editKey)
+                          const saved = altTexts.sections?.[editKey]
+                          setAltTextEditor({ editKey, label: saved?.label ?? sec?.name ?? '', note: saved?.note ?? '' })
+                        }
+                      }}
                       // eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested coverLetter builder
-                      dangerouslySetInnerHTML={{ __html: breakAmountOntoOwnLineForPreview(finalCoverLetterHtml) }}
+                      dangerouslySetInnerHTML={{ __html: breakAmountOntoOwnLineForPreview(previewCoverLetterHtml) }}
                     />
+                    {samePagePlan ? (
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Dashed text is the customer wording — click it to edit right here.
+                      </div>
+                    ) : null}
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem' }}>
                       <button
                         type="button"
