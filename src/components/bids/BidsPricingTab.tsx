@@ -3795,7 +3795,7 @@ export function BidsPricingTab({
                         <thead>
                           <tr>
                             {['', 'Fixture or tie-in', 'Count', 'Cost/unit', 'Book entry', 'Sale price/unit', 'Revenue', 'Profit', 'Margin'].map((h, i) => (
-                              <th key={h || 'lock'} style={{ textAlign: i >= 2 && i !== 4 && i !== 5 ? 'right' : 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                              <th key={h || 'lock'} style={{ textAlign: i === 2 || i === 6 || i === 7 ? 'center' : i >= 2 && i !== 4 && i !== 5 ? 'right' : 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -3833,7 +3833,7 @@ export function BidsPricingTab({
                                   </button>
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.countRow.fixture ?? '—'}</td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }}>
                                   {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}
                                 </td>
