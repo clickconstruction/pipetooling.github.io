@@ -211,7 +211,9 @@ export function BidVersionPicker({
           p_bid_id: bidId,
           p_current_name: bidGcName ?? 'To Plans',
           p_new_name: name,
-          p_clone_pricing: !!pricingSource,
+          // v2.2395: a new packet always copies its source's prices — ALL scenarios
+          // (the RPC clones every one; the source id below only steers the ★).
+          p_clone_pricing: true,
           p_pricing_source_version_id: (pricingSource ?? null) as string,
         })
         if (error) { showToast(`Failed: ${error.message}`, 'error'); return }
@@ -224,7 +226,7 @@ export function BidVersionPicker({
           p_bid_id: bidId,
           p_name: name,
           p_source_bid_version_id: src.id,
-          p_clone_pricing: !!srcPricing,
+          p_clone_pricing: true,
           p_pricing_source_version_id: (srcPricing ?? null) as string,
         })
         if (error) { showToast(`Failed: ${error.message}`, 'error'); return }
@@ -271,10 +273,9 @@ export function BidVersionPicker({
     const variantName = newName.trim()
     if (!variantName) return
     if (!isUnsplit && !selectedBidVersionId) return // defensive: a split bid always has an active version
-    const willClonePricing = clonePricing && !!newFromPricing
-    if (clonePricing && !newFromPricing) {
-      showToast('No prices to copy yet — the version starts without prices.', 'info')
-    }
+    // v2.2395: the RPC clones EVERY price scenario the source version owns; the ★/hint
+    // only steers which clone gets the star. No more silent skip when the source has no ★.
+    const willClonePricing = clonePricing
     setBusy(true)
     try {
       let newId: string | null = null
@@ -597,7 +598,7 @@ export function BidVersionPicker({
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
             <input type="checkbox" checked={clonePricing} onChange={(e) => setClonePricing(e.target.checked)} />
-            <span>Start its prices from {isUnsplit ? 'this bid’s' : 'the source’s'} ★{newFromPricingName ? <> — <strong>{newFromPricingName}</strong> stays named {newFromPricingName}</> : null}</span>
+            <span>Copy all {isUnsplit ? 'this bid’s' : 'the source’s'} prices{newFromPricingName ? <> — every price option comes along; ★ stays on <strong>{newFromPricingName}</strong></> : ' — every price option comes along'}</span>
           </label>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button type="button" onClick={() => setModalOpen(false)} disabled={busy} style={btnGhost}>Cancel</button>
