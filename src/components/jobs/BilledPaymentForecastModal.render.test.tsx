@@ -127,8 +127,8 @@ describe('BilledPaymentForecastModal render smoke', () => {
     expect(dialog.textContent).toContain('~35d')
     expect(dialog.textContent).toContain('12 pmts')
     expect(dialog.textContent).toContain('$3,013')
-    // The drift chart replaced the dot/bucket variants — one view, no pills.
-    expect(dialog.textContent).toContain('Above or below their average')
+    // Money waiting replaced the drift dumbbells (v2.2382) — one view, no pills.
+    expect(dialog.textContent).toContain('Money waiting')
     fireEvent.click(screen.getByRole('button', { name: 'Close pay speeds breakdown' }))
     expect(screen.queryByRole('dialog', { name: 'Pay speeds breakdown' })).toBeNull()
   })
