@@ -298,7 +298,7 @@ function PersonCard({
  * outcome chart + shared won-% field band + one card per person.
  * Same outcome semantics as the Scoreboard; every number drills down.
  */
-export function BidBoardEstimatingPulseSection({ filteredBids }: { filteredBids: BidWithBuilder[] }) {
+export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filteredBids: BidWithBuilder[]; openBid?: (bid: BidWithBuilder) => void }) {
   const [listModal, setListModal] = useState<ListModalState | null>(null)
 
   const currentWeekStart = useMemo(() => getDefaultWeekRange().start, [])
@@ -720,6 +720,7 @@ export function BidBoardEstimatingPulseSection({ filteredBids }: { filteredBids:
         estimatorDisplayName={listModal?.heading ?? ''}
         bidIds={listModal?.bidIds ?? []}
         bids={filteredBids}
+        openBid={openBid}
       />
     </div>
   )

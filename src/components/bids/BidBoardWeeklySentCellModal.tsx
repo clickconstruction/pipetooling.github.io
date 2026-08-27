@@ -48,6 +48,8 @@ export type BidBoardWeeklySentCellModalProps = {
   estimatorDisplayName: string
   bidIds: string[]
   bids: BidWithBuilder[]
+  /** Bids-page override (v2.2390): open the tabbed Bid window instead of the standalone preview. */
+  openBid?: (bid: BidWithBuilder) => void
 }
 
 export function BidBoardWeeklySentCellModal({
@@ -57,6 +59,7 @@ export function BidBoardWeeklySentCellModal({
   estimatorDisplayName,
   bidIds,
   bids,
+  openBid,
 }: BidBoardWeeklySentCellModalProps) {
   const titleId = useId()
   const bidPreview = useBidPreview()
@@ -157,7 +160,8 @@ export function BidBoardWeeklySentCellModal({
                   type="button"
                   style={rowBtn}
                   onClick={() => {
-                    if (bidPreview) bidPreview.openBidPreviewFromBid(bid)
+                    if (openBid) openBid(bid)
+                    else if (bidPreview) bidPreview.openBidPreviewFromBid(bid)
                     onClose()
                   }}
                 >

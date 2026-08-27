@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, estimator, superintendent
 keywords: bid window, tabs, bid preview, edit bid, flip, one window, esc to close
 order: 90
 ---
-Editing a bid on the **Bids** page now opens **one window with two tabs** — no more separate Preview and Edit modals bouncing you between each other. One **✕** (or **Escape**) closes the whole thing.
+Editing a bid on the **Bids** page now opens **one window with two tabs** — no more separate Preview and Edit modals bouncing you between each other. One **✕** (or **Escape**) closes the whole thing. Clicking a **bid's name or number** anywhere on the Bids page opens this same window on its **Bid** tab; Edit-bid buttons land on **Edit**.
 
 ## The two tabs
 
