@@ -166,8 +166,6 @@ export function BidsCoverLetterTab({
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
   const [coverLetterBidSubmissionQuickAddBidId, setCoverLetterBidSubmissionQuickAddBidId] = useState<string | null>(null)
   const [coverLetterBidSubmissionQuickAddValue, setCoverLetterBidSubmissionQuickAddValue] = useState('')
-  const [applyingBidValue, setApplyingBidValue] = useState(false)
-  const [bidValueAppliedSuccess, setBidValueAppliedSuccess] = useState(false)
   const [bidSubmissionQuickAddSuccess, setBidSubmissionQuickAddSuccess] = useState<string | null>(null)
   // Old / New pills (v2.2117), like Pricing's: Old = today's letter (bundles checked price
   // scenarios); New = bundles the bid's VERSIONS, each at its ★ scenario, base + alternates.
@@ -586,23 +584,6 @@ export function BidsCoverLetterTab({
     printHtmlInNewWindow(html)
   }
 
-  async function applyProposedAmountToBidValue(bidId: string, amount: number) {
-    setApplyingBidValue(true)
-    const { error } = await supabase
-      .from('bids')
-      .update({ bid_value: amount })
-      .eq('id', bidId)
-    
-    if (error) {
-      showToast('Error updating bid value: ' + error.message, 'error')
-    } else {
-      await loadBids()
-      setBidValueAppliedSuccess(true)
-      setTimeout(() => setBidValueAppliedSuccess(false), 3000)
-    }
-    setApplyingBidValue(false)
-  }
-
   async function handleSaveBidSubmissionQuickAdd(bidId: string, value: string) {
     await onSaveBidSubmissionQuickAdd(bidId, value)
     setBidSubmissionQuickAddSuccess(bidId)
@@ -731,7 +712,7 @@ export function BidsCoverLetterTab({
         const customAmountNum = customAmountStr ? parseFloat(customAmountStr) : NaN
         const effectiveRevenue = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : coverLetterRevenue
         // New view on a split bid: the headline is the LETTER TOTAL (sum of base bids at their ★),
-        // not the active scenario's revenue — that's what "Apply to Bid Value" writes.
+        // not the active scenario's revenue — the number Mark sent stamps as the bid's value.
         const newBundleActive = coverLetterView === 'new' && bidVersions.length > 0 && bundlePricings.length > 0
         // v2.2213 (owner): a $0 section never reaches the letter — unpriced bids are listed in the
         // studio (grayed) and rejoin the letter the moment they're priced.
@@ -837,11 +818,10 @@ export function BidsCoverLetterTab({
           : combinedText
         // All-alternates packet on one page (v2.2370): the ★ alternate leads the letter, so the
         // studio total shows the letter's amount instead of $0.00. Board value / Mark sent rules
-        // are untouched — this is what the letter says, and what "Apply to Bid Value" writes.
+        // are untouched — this is what the letter says, and what Mark sent stamps as the bid's value.
         const alternateLeadsLetter = samePagePlan != null && samePagePlan.alternateLeads && !(newLetterTotal > 0)
         const displayHeadlineAmount = alternateLeadsLetter ? samePagePlan!.headlineRevenue : headlineAmount
         const displayHeadlineNumber = `$${formatCurrency(displayHeadlineAmount)}`
-        const displayBidValueSynced = bid.bid_value != null && bid.bid_value === displayHeadlineAmount
         const now = new Date()
         const yy = now.getFullYear() % 100
         const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -1093,24 +1073,9 @@ export function BidsCoverLetterTab({
                         <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{displayHeadlineNumber}</span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                           {useCustomAmount ? 'custom amount' : alternateLeadsLetter ? `letter amount · ★ alternate leads · ${bundleSummary(bundlePricings)}` : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
+                          {' · Mark sent stamps this as the bid\u2019s value'}
                         </span>
-                        {displayBidValueSynced ? (
-                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-green-600)', fontWeight: 600 }}>✓ matches Bid Value</span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => applyProposedAmountToBidValue(bid.id, displayHeadlineAmount)}
-                            disabled={applyingBidValue || displayHeadlineAmount === 0}
-                            title="Apply this amount to Bid Value"
-                            style={{ marginLeft: 'auto', fontSize: '0.75rem', padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: applyingBidValue || displayHeadlineAmount === 0 ? 'not-allowed' : 'pointer' }}
-                          >
-                            {applyingBidValue ? 'Applying…' : 'Apply to Bid Value'}
-                          </button>
-                        )}
                       </div>
-                      {bidValueAppliedSuccess ? (
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-green-600)', fontWeight: 500, marginTop: '0.3rem' }}>✓ Applied successfully</div>
-                      ) : null}
                       <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem' }}>
                           <input
@@ -1128,9 +1093,6 @@ export function BidsCoverLetterTab({
                             placeholder="e.g. 1359800"
                             style={{ width: '8rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box' }}
                           />
-                        )}
-                        {bid.bid_value != null && bid.bid_value !== displayHeadlineAmount && (
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Current Bid Value: ${formatCurrency(bid.bid_value)}</span>
                         )}
                       </div>
                     </div>

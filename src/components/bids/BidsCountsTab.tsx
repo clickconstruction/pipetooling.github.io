@@ -25,6 +25,20 @@ import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDis
 import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens } from '../../lib/bids/countSheet'
 import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, summarizeRowsByUnit, type CountUnit } from '../../lib/bids/countRowUnit'
 
+/** Old/New pills beside the bid title (v2.2385) — the bordered pill look Cover Letter and Pricing use. */
+function countsViewPillStyle(on: boolean): React.CSSProperties {
+  return {
+    padding: '0.2rem 0.6rem',
+    borderRadius: 999,
+    border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+    background: on ? '#3b82f6' : 'var(--surface)',
+    color: on ? '#fff' : 'var(--text-muted)',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+  }
+}
+
 type BidsCountsTabProps = {
   bids: BidWithBuilder[]
   selectedBidForCounts: BidWithBuilder | null
@@ -38,7 +52,6 @@ type BidsCountsTabProps = {
   activeBidVersionId: string | null
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
-  onEditBid: (bid: BidWithBuilder) => void
   ledgerPrefixMap: LedgerPrefixMap
   onlyMyBids: boolean
   setOnlyMyBids: (next: boolean) => void
@@ -85,7 +98,6 @@ export function BidsCountsTab({
   activeBidVersionId,
   onSelectBid,
   onClose,
-  onEditBid,
   ledgerPrefixMap,
   onlyMyBids,
   setOnlyMyBids,
@@ -590,13 +602,24 @@ export function BidsCountsTab({
           ) : null}
           {narrowViewport640 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', marginBottom: '1rem' }}>
-              <BidWorkflowTabTitleWithPreview
-                bid={selectedBidForCounts}
-                previewEnabled={bidPreview != null}
-                onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
-                h2Style={{ margin: 0 }}
-              />
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
+              {/* v2.2385 (Wendi): Old/New beside the title (Cover Letter's pattern), Import on the right, Edit Bid retired — the bid title link already opens the bid. */}
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <BidWorkflowTabTitleWithPreview
+                  bid={selectedBidForCounts}
+                  previewEnabled={bidPreview != null}
+                  onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
+                  h2Style={{ margin: 0 }}
+                />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <button type="button" role="tab" aria-selected={countsView === 'old'} onClick={() => switchCountsView('old')} style={countsViewPillStyle(countsView === 'old')}>
+                  Old
+                </button>
+                <button type="button" role="tab" aria-selected={countsView === 'new'} onClick={() => switchCountsView('new')} style={countsViewPillStyle(countsView === 'new')}>
+                  New
+                </button>
+              </span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={handleCountsImportClick}
@@ -605,25 +628,28 @@ export function BidsCountsTab({
                 >
                   Import from /Tooling
                 </button>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-                  <button
-                    type="button"
-                    onClick={() => onEditBid(selectedBidForCounts)}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Edit Bid
-                  </button>
-                </div>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', marginBottom: '1rem' }}>
-              <BidWorkflowTabTitleWithPreview
-                bid={selectedBidForCounts}
-                previewEnabled={bidPreview != null}
-                onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
-              />
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+              {/* v2.2385 (Wendi): Old/New beside the title (Cover Letter's pattern), Import on the right, Edit Bid retired — the bid title link already opens the bid. */}
+              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', flex: '0 0 auto' }}>
+                <BidWorkflowTabTitleWithPreview
+                  bid={selectedBidForCounts}
+                  previewEnabled={bidPreview != null}
+                  onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
+                  h2Style={{ margin: 0 }}
+                />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                <button type="button" role="tab" aria-selected={countsView === 'old'} onClick={() => switchCountsView('old')} style={countsViewPillStyle(countsView === 'old')}>
+                  Old
+                </button>
+                <button type="button" role="tab" aria-selected={countsView === 'new'} onClick={() => switchCountsView('new')} style={countsViewPillStyle(countsView === 'new')}>
+                  New
+                </button>
+              </span>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto' }}>
                 <button
                   type="button"
                   onClick={handleCountsImportClick}
@@ -631,15 +657,6 @@ export function BidsCountsTab({
                   title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page"
                 >
                   Import from /Tooling
-                </button>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => onEditBid(selectedBidForCounts)}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Edit Bid
                 </button>
                 <button
                   type="button"
@@ -653,14 +670,6 @@ export function BidsCountsTab({
               </div>
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.9rem' }}>
-            <button type="button" role="tab" aria-selected={countsView === 'old'} onClick={() => switchCountsView('old')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: countsView === 'old' ? '#2563eb' : 'transparent', color: countsView === 'old' ? '#fff' : 'var(--text-muted)' }}>
-              Old
-            </button>
-            <button type="button" role="tab" aria-selected={countsView === 'new'} onClick={() => switchCountsView('new')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: countsView === 'new' ? '#2563eb' : 'transparent', color: countsView === 'new' ? '#fff' : 'var(--text-muted)' }}>
-              New
-            </button>
-          </div>
           {countsView === 'new' ? (() => {
             const summary = countSheetSummary(countRows)
             const groups = buildCountSheetPageGroups(countRows)

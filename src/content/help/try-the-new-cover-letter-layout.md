@@ -13,7 +13,7 @@ Next to the bid's name are {{chip:gray|Old}} / {{chip:gray|New}} pills, like the
 
 ## The two steps
 
-- {{chip:blue|1 Scope & pricing}} — who the letter is to, what's in the letter, and the headline amount with one-click **Apply to Bid Value**.
+- {{chip:blue|1 Scope & pricing}} — who the letter is to, what's in the letter, and the headline amount. **Mark sent** stamps that amount as the bid's value along with the sent date — there's nothing to apply by hand.
   - **A $0 bid never reaches the letter**: a checked bid with no prices yet is listed grayed — *unpriced — left off the letter* — and rejoins the letter (and Mark sent) the moment it's priced.
   - **New:** when the bid goes to more than one GC, tabs above the form pick whose letter you're writing. Under **In {{chip:gray|GC}}'s letter**, check the packets that go in. Each is **Base** (adds to the letter total) or **Alternate** (offered in lieu of the base); the prices you ticked under a packet are offered to that GC as alternates. The headline is the **letter total** — the sum of the base packets at their ★ prices. Change a price on the Pricing tab; the letter follows.
   - **New, sending:** {{button:blue|Mark sent to Burd & Assoc.}} stamps that GC's packets with today's date and their ★ value, and sets the bid's sent date and value. The packet then shows *sent 7/7 · $279,579* here and on the Send to strip; Followup's **Full bid details** lists **Sent to — by GC** with each GC's answer.
