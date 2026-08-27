@@ -1,36 +1,28 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { CustomerSegment, PayReceipt, PaySpeedData, PaySpeedStat } from '../../lib/jobs/billedExpectedPay'
 import { PAY_SPEED_MIN_SAMPLES, formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
   buildPaySpeedsBreakdown,
-  bucketPaySpeeds,
   formatYmdSlash,
   receiptGapTone,
   type PaySpeedCustomerRow,
 } from '../../lib/jobs/paySpeedsBreakdown'
+import { buildPayDrift, type PayDrift, type PayDriftRow } from '../../lib/jobs/paySpeedDrift'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
  * The pay-speeds drill-down (owner-approved mockup, v2.2022): opened from
- * the Payment forecast's pay-speeds strip. Three tiles echo the strip, a
- * distribution chart shows where customers land (two variants behind
- * pills — every-customer-a-dot, or count-by-speed-bucket), and the ranked
- * list puts the slowest payers with their open dollars on top. Thin-history
- * customers (< PAY_SPEED_MIN_SAMPLES payments) sit in their own muted tier
- * because their forecasts run on the company median.
+ * the Payment forecast's pay-speeds strip. Three tiles echo the strip, the
+ * drift dumbbell chart shows who is above or below their own average (and
+ * the company's) right now, and one customer list puts the slowest payers
+ * with their open dollars on top. Thin-history customers
+ * (< PAY_SPEED_MIN_SAMPLES payments) sit muted at the bottom of the same
+ * list with a "—" median, because their forecasts run on the company
+ * median.
  */
-
-const RES_COLOR = '#3b82f6'
-const COMM_COLOR = '#d97706'
-
-function segColor(segment: CustomerSegment | null): string {
-  if (segment === 'residential') return RES_COLOR
-  if (segment === 'commercial') return COMM_COLOR
-  return 'var(--text-muted)'
-}
 
 function segTag(segment: CustomerSegment | null) {
   if (!segment) return null
@@ -193,114 +185,149 @@ function receiptsPanel(
   )
 }
 
-function dotRadius(open: number): number {
-  return open >= 10000 ? 11 : open >= 3000 ? 8 : 5.5
+const DRIFT_RED = '#e05252'
+const DRIFT_GREEN = '#4caf7d'
+/** Days axis cap — rows beyond it keep their dot at the edge with a "→ Nd" label. */
+const DRIFT_AXIS_MAX = 60
+
+function driftPos(days: number): number {
+  return (Math.min(Math.max(days, 0), DRIFT_AXIS_MAX) / DRIFT_AXIS_MAX) * 100
 }
 
-function DotChart({ ranked, companyMedian }: { ranked: PaySpeedCustomerRow[]; companyMedian: number | null }) {
-  const W = 640
-  const H = 150
-  const L = 26
-  const R = 20
-  const axisY = H - 28
-  const maxD = Math.max(48, ...ranked.map((c) => (c.medianDays ?? 0) + 4))
-  const x = (d: number) => L + (d / maxD) * (W - L - R)
-  const lanes = { res: axisY - 26, comm: axisY - 62 }
+function driftRowTitle(r: PayDriftRow): string {
+  const vsCompany = `${r.deltaVsCompanyDays >= 0 ? '+' : '−'}${Math.abs(r.deltaVsCompanyDays)}d vs the company average`
+  if (r.ownMedianDays == null) {
+    return `${r.name} — under ${PAY_SPEED_MIN_SAMPLES} measured payments, so the company average stands in for their own; their oldest open bill has waited ${r.currentDays}d (${vsCompany})`
+  }
+  if (r.source === 'live') {
+    return `${r.name} — usually pays in ~${r.baselineDays}d; their oldest open bill has waited ${r.currentDays}d → ${r.deltaDays}d above their own average (${vsCompany})`
+  }
+  return `${r.name} — their last 3 payments ran ~${r.currentDays}d vs their ~${r.baselineDays}d average (${vsCompany})`
+}
+
+/**
+ * The dumbbell chart (owner-approved mockup): one shared days axis, dashed
+ * company-average line, hollow dot = the customer's own average, filled dot
+ * = where they are now, connector = the drift. Thin-history customers have
+ * no hollow dot (hollow red current instead) and measure vs the company
+ * line. On-pace customers collapse into one line at the bottom.
+ */
+function DriftChart({ drift }: { drift: PayDrift }) {
+  const co = driftPos(drift.companyMedianDays)
   const ticks: number[] = []
-  for (let t = 0; t <= maxD - 4; t += 10) ticks.push(t)
-  const slowest = ranked[0]
+  for (let t = 0; t <= DRIFT_AXIS_MAX; t += 10) ticks.push(t)
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Each customer's median days to pay, as a dot on a days axis">
-      {ticks.map((t) => (
-        <g key={t}>
-          <line x1={x(t)} y1={18} x2={x(t)} y2={axisY} stroke="var(--border)" strokeWidth={1} />
-          <text x={x(t)} y={axisY + 16} textAnchor="middle" fontSize={10} fill="var(--text-muted)">
-            {t}d
-          </text>
-        </g>
-      ))}
-      {companyMedian != null && (
-        <>
-          <line x1={x(companyMedian)} y1={12} x2={x(companyMedian)} y2={axisY} stroke="var(--text-muted)" strokeWidth={1.5} strokeDasharray="4 3" />
-          <text x={x(companyMedian)} y={10} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--text-muted)">
-            company ~{companyMedian}d
-          </text>
-        </>
-      )}
-      {ranked.map((c, i) => {
-        const lane = c.segment === 'residential' ? lanes.res : lanes.comm
-        const cy = lane + (i % 2 === 0 ? 0 : 12)
+    <div>
+      {drift.rows.map((r) => {
+        const good = r.deltaDays < 0
+        const thin = r.ownMedianDays == null
+        const cur = driftPos(r.currentDays)
+        const base = driftPos(r.baselineDays)
+        const overflow = r.currentDays > DRIFT_AXIS_MAX
+        const lo = Math.min(base, cur)
+        const hi = Math.max(base, cur)
         return (
-          <circle key={c.customerId} cx={x(c.medianDays ?? 0)} cy={cy} r={dotRadius(c.open)} fill={segColor(c.segment)} stroke="var(--surface)" strokeWidth={2}>
-            <title>{`${c.name} — pays in ~${c.medianDays}d · ${c.samples} payments · ${formatUsdNoCents(c.open)} open`}</title>
-          </circle>
+          <div
+            key={r.customerId}
+            title={driftRowTitle(r)}
+            style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 170px) 1fr 128px', gap: '0.6rem', alignItems: 'center', padding: '0.28rem 0' }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, fontSize: '0.76rem' }}>
+              {segTag(r.segment)}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+            </span>
+            <span style={{ position: 'relative', height: 18 }}>
+              <span style={{ position: 'absolute', left: 0, right: 0, top: 8, height: 2, background: 'var(--border)', borderRadius: 2 }} />
+              <span style={{ position: 'absolute', top: -3, bottom: -3, left: `${co}%`, width: 0, borderLeft: '2px dashed var(--text-muted)', opacity: 0.6 }} />
+              {hi > lo && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 7,
+                    height: 4,
+                    borderRadius: 2,
+                    left: `${lo}%`,
+                    width: `${hi - lo}%`,
+                    background: good ? DRIFT_GREEN : DRIFT_RED,
+                    opacity: thin ? 0.45 : 0.85,
+                  }}
+                />
+              )}
+              {!thin && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 3,
+                    left: `calc(${base}% - 6px)`,
+                    width: 12,
+                    height: 12,
+                    borderRadius: 9999,
+                    background: 'var(--surface)',
+                    border: '2px solid var(--text-muted)',
+                  }}
+                />
+              )}
+              {overflow ? (
+                <span style={{ position: 'absolute', right: 0, top: 1, color: DRIFT_RED, fontWeight: 800, fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums' }}>
+                  → {r.currentDays}d
+                </span>
+              ) : (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 3,
+                    left: `calc(${cur}% - 6px)`,
+                    width: 12,
+                    height: 12,
+                    borderRadius: 9999,
+                    background: thin ? 'transparent' : good ? DRIFT_GREEN : DRIFT_RED,
+                    border: thin ? `2px solid ${DRIFT_RED}` : 'none',
+                  }}
+                />
+              )}
+            </span>
+            <span style={{ textAlign: 'right', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+              <b style={{ color: good ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>
+                {r.deltaDays >= 0 ? '+' : '−'}
+                {Math.abs(r.deltaDays)}d
+              </b>{' '}
+              <span style={{ color: 'var(--text-muted)' }}>{thin ? 'vs company' : 'vs their avg'}</span>
+              <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                {thin
+                  ? 'no history of their own yet'
+                  : `${r.deltaVsCompanyDays >= 0 ? '+' : '−'}${Math.abs(r.deltaVsCompanyDays)}d vs company`}
+              </span>
+            </span>
+          </div>
         )
       })}
-      {slowest && slowest.medianDays != null && (
-        <text x={x(slowest.medianDays)} y={lanes.comm - 14} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--text-700)">
-          {slowest.name} · {slowest.medianDays}d
-        </text>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, 170px) 1fr 128px', gap: '0.6rem' }}>
+        <span />
+        <span style={{ position: 'relative', height: 14, fontSize: '0.64rem', color: 'var(--text-muted)' }}>
+          {ticks.map((t) => (
+            <span key={t} style={{ position: 'absolute', left: `${driftPos(t)}%`, transform: 'translateX(-50%)' }}>
+              {t}d
+            </span>
+          ))}
+        </span>
+        <span />
+      </div>
+      {drift.onPaceCount > 0 && (
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+          {drift.onPaceCount} more {drift.onPaceCount === 1 ? 'customer is' : 'customers are'} on their usual pace ·{' '}
+          {formatUsdNoCents(drift.onPaceOpen)} open · nothing to chase
+        </div>
       )}
-    </svg>
+    </div>
   )
 }
 
-function BucketChart({ ranked }: { ranked: PaySpeedCustomerRow[] }) {
-  const buckets = bucketPaySpeeds(ranked)
-  const W = 640
-  const H = 170
-  const L = 26
-  const R = 14
-  const axisY = H - 26
-  const top = 22
-  const bw = (W - L - R) / buckets.length
-  const maxN = Math.max(1, ...buckets.map((b) => b.res.length + b.comm.length))
-  const yh = (n: number) => (n / maxN) * (axisY - top)
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Customer count by pay-speed bucket, residential and commercial stacked">
-      {buckets.map((b, i) => {
-        const cx = L + i * bw + bw / 2
-        const barW = Math.min(bw - 18, 46)
-        let yCur = axisY
-        const segments: ReactNode[] = []
-        for (const [seg, arr] of [
-          ['commercial', b.comm],
-          ['residential', b.res],
-        ] as const) {
-          if (!arr.length) continue
-          const h = yh(arr.length)
-          yCur -= h
-          segments.push(
-            <rect key={seg} x={cx - barW / 2} y={yCur + 1} width={barW} height={Math.max(h - 2, 2)} rx={4} fill={seg === 'residential' ? RES_COLOR : COMM_COLOR}>
-              <title>{`${b.label} · ${seg === 'residential' ? 'Residential' : 'Commercial'}: ${arr.map((c) => `${c.name} (~${c.medianDays}d)`).join(', ')}`}</title>
-            </rect>,
-          )
-        }
-        const total = b.res.length + b.comm.length
-        return (
-          <g key={b.label}>
-            {segments}
-            {total > 0 && (
-              <text x={cx} y={yCur - 5} textAnchor="middle" fontSize={10} fontWeight={600} fill="var(--text-700)">
-                {total}
-              </text>
-            )}
-            <text x={cx} y={axisY + 15} textAnchor="middle" fontSize={10} fill="var(--text-muted)">
-              {b.label}
-            </text>
-          </g>
-        )
-      })}
-      <line x1={L} y1={axisY} x2={W - R} y2={axisY} stroke="var(--border-strong)" strokeWidth={1} />
-    </svg>
-  )
-}
-
-const ROW_GRID = 'minmax(130px, 1.4fr) 58px 70px 82px minmax(70px, 1fr)'
+const ROW_GRID = 'minmax(130px, 1.4fr) 70px 80px 100px'
 
 export default function PaySpeedsBreakdownModal({
   rows,
   paySpeeds,
+  todayYmd,
   onClose,
   onOpenCustomerBills,
   onOpenJobDetail,
@@ -311,6 +338,8 @@ export default function PaySpeedsBreakdownModal({
 }: {
   rows: StageRow[]
   paySpeeds: PaySpeedData | null
+  /** Company-timezone today (YYYY-MM-DD) — the drift chart's live-wait clock. */
+  todayYmd: string
   onClose: () => void
   /** Jump the board to a customer's bills (closes both modals upstream). */
   onOpenCustomerBills?: (customerName: string) => void
@@ -326,10 +355,13 @@ export default function PaySpeedsBreakdownModal({
   onSpeedsChanged?: () => void
 }) {
   const breakdown = useMemo(() => buildPaySpeedsBreakdown(rows, paySpeeds), [rows, paySpeeds])
-  // ≤640px: the 5-column grid and full-width SVGs are unreadable — rows restack
-  // into two-line cards and the charts keep their size behind sideways scroll.
+  // One list: real medians slowest-first, then thin-history customers
+  // (muted, "—" median) biggest open $ first.
+  const merged = useMemo(() => [...breakdown.ranked, ...breakdown.thin], [breakdown])
+  const drift = useMemo(() => buildPayDrift(rows, paySpeeds, todayYmd), [rows, paySpeeds, todayYmd])
+  // ≤640px: the 4-column grid and full-width chart are unreadable — rows restack
+  // into two-line cards and the chart keeps its size behind sideways scroll.
   const isMobile = useIsMobile()
-  const [variant, setVariant] = useState<'dots' | 'buckets'>('dots')
   // Per-customer receipts toggle (row click) — the payments behind each median.
   const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({})
   const [dataHealthOpen, setDataHealthOpen] = useState(false)
@@ -337,17 +369,6 @@ export default function PaySpeedsBreakdownModal({
     setOpenReceipts((prev) => ({ ...prev, [customerId]: !prev[customerId] }))
   const companyMedian = paySpeeds?.company?.medianDays ?? null
   const quality = paySpeeds?.quality ?? null
-
-  const pillStyle = (active: boolean): CSSProperties => ({
-    border: `1px solid ${active ? 'var(--text-link)' : 'var(--border-strong)'}`,
-    background: active ? 'var(--text-link)' : 'var(--surface)',
-    color: active ? '#fff' : 'var(--text-muted)',
-    borderRadius: 9999,
-    fontSize: '0.72rem',
-    fontWeight: 600,
-    padding: '0.2rem 0.7rem',
-    cursor: 'pointer',
-  })
 
   return (
     <div
@@ -431,64 +452,59 @@ export default function PaySpeedsBreakdownModal({
               title={`${quality.measurable} of ${quality.payments12mo} payments in the last 12 months carry a verified bill→paid pair the medians can use.`}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap', cursor: 'help' }}
             >
-              <span style={{ width: 72, height: 6, borderRadius: 4, background: 'var(--border)', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
-                <span
-                  style={{
-                    position: 'absolute',
-                    inset: '0 auto 0 0',
-                    width: `${quality.payments12mo > 0 ? Math.round((quality.measurable / quality.payments12mo) * 100) : 0}%`,
-                    background: 'var(--text-green-800)',
-                    borderRadius: 4,
-                  }}
-                />
-              </span>
               <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
                 {quality.measurable} of {quality.payments12mo}
               </b>{' '}
               measurable ({quality.payments12mo > 0 ? Math.round((quality.measurable / quality.payments12mo) * 100) : 0}%)
             </span>
-            <span
-              title="Payments missing info — not applied to any bill, or on a bill with no date — so they can’t feed pay speeds. Fix them in the drill-down or from each job’s Bill tab."
-              style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
-            >
+            {quality.unlinked > 0 && (
               <span
-                style={{
-                  background: quality.unlinked > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
-                  color: quality.unlinked > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)',
-                  borderRadius: 9999,
-                  padding: '0 6px',
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
+                title="Payments missing info — not applied to any bill, or on a bill with no date — so they can’t feed pay speeds. Fix them in the drill-down or from each job’s Bill tab."
+                style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
               >
-                {quality.unlinked}
+                <span
+                  style={{
+                    background: 'var(--bg-amber-tint)',
+                    color: 'var(--text-amber-800)',
+                    borderRadius: 9999,
+                    padding: '0 6px',
+                    fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {quality.unlinked}
+                </span>
+                payments missing info
               </span>
-              payments missing info
-            </span>
-            <span
-              title="Billed/paid bills with no bill date at all — their payments can’t be measured. Date them from the job, or via Settings → HCP reconcile for HCP-era bills."
-              style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
-            >
+            )}
+            {quality.undatedInvoices > 0 && (
               <span
-                style={{
-                  background: quality.undatedInvoices > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
-                  color: quality.undatedInvoices > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)',
-                  borderRadius: 9999,
-                  padding: '0 6px',
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                }}
+                title="Billed/paid bills with no bill date at all — their payments can’t be measured. Date them from the job, or via Settings → HCP reconcile for HCP-era bills."
+                style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
               >
-                {quality.undatedInvoices}
+                <span
+                  style={{
+                    background: 'var(--bg-amber-tint)',
+                    color: 'var(--text-amber-800)',
+                    borderRadius: 9999,
+                    padding: '0 6px',
+                    fontWeight: 700,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {quality.undatedInvoices}
+                </span>
+                undated bills
               </span>
-              undated bills
-            </span>
-            <span
-              title="Import-era same-day pairs excluded from the math because their dates can’t be verified. This only shrinks when a verified date replaces one (Settings → HCP reconcile)."
-              style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
-            >
-              <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{quality.quarantined}</b> quarantined
-            </span>
+            )}
+            {quality.quarantined > 0 && (
+              <span
+                title="Import-era same-day pairs excluded from the math because their dates can’t be verified. This only shrinks when a verified date replaces one (Settings → HCP reconcile)."
+                style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap', cursor: 'help' }}
+              >
+                <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{quality.quarantined}</b> quarantined
+              </span>
+            )}
             {quality.excluded > 0 && (
               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', whiteSpace: 'nowrap' }}>
                 <b style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>{quality.excluded}</b> excluded
@@ -511,52 +527,52 @@ export default function PaySpeedsBreakdownModal({
           />
         )}
 
-        {breakdown.ranked.length > 0 ? (
+        {drift && (drift.rows.length > 0 || drift.onPaceCount > 0) ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.8rem 0.8rem 0.5rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-700)', marginRight: 'auto' }}>
-                Where customers land
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-700)' }}>
+                Above or below their average
               </span>
-              <button type="button" aria-pressed={variant === 'dots'} onClick={() => setVariant('dots')} style={pillStyle(variant === 'dots')}>
-                Every customer a dot
-              </button>
-              <button type="button" aria-pressed={variant === 'buckets'} onClick={() => setVariant('buckets')} style={pillStyle(variant === 'buckets')}>
-                Count by speed bucket
-              </button>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>worst drift first</span>
             </div>
             <div style={isMobile ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch' } : undefined}>
               <div style={isMobile ? { minWidth: 560 } : undefined}>
-                {variant === 'dots' ? (
-                  <DotChart ranked={breakdown.ranked} companyMedian={companyMedian} />
-                ) : (
-                  <BucketChart ranked={breakdown.ranked} />
-                )}
+                <DriftChart drift={drift} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '0.9rem', fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.3rem 0 0.1rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.9rem', fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.5rem 0 0.1rem', flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: 9, height: 9, borderRadius: 9999, background: RES_COLOR, display: 'inline-block' }} /> Residential
+                <span style={{ width: 10, height: 10, borderRadius: 9999, background: 'var(--surface)', border: '2px solid var(--text-muted)', display: 'inline-block' }} />
+                their 12-mo average
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                <span style={{ width: 9, height: 9, borderRadius: 9999, background: COMM_COLOR, display: 'inline-block' }} /> Commercial
+                <span style={{ width: 10, height: 10, borderRadius: 9999, background: DRIFT_RED, display: 'inline-block' }} />
+                where they are now
               </span>
-              <span>
-                {variant === 'dots' ? '│ company median · dot size = open $ on the board' : '│ bar = how many customers pay at that speed'}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span style={{ width: 0, height: 12, borderLeft: '2px dashed var(--text-muted)', display: 'inline-block' }} />
+                company average (~{drift.companyMedianDays}d)
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span style={{ width: 10, height: 10, borderRadius: 9999, border: `2px solid ${DRIFT_RED}`, display: 'inline-block' }} />
+                thin history — measured vs the company line
               </span>
             </div>
           </div>
         ) : (
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
-            No customer with open billed money has enough payment history to chart yet.
+            No open billed money to chart yet.
           </p>
         )}
 
-        {breakdown.ranked.length > 0 && (
+        {merged.length > 0 && (
           <>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', margin: '0 0 0.4rem', flexWrap: 'wrap' }}>
               <h3 style={{ margin: 0, fontSize: '0.85rem' }}>By customer — slowest first</h3>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                the top of this list is your follow-up list · click a row to see the payments behind its median
+                the top of this list is your follow-up list · click a row to see the payments behind its median · — = under{' '}
+                {PAY_SPEED_MIN_SAMPLES} payments, forecast uses the company median
+                {companyMedian != null ? ` (~${companyMedian}d)` : ''}
               </span>
             </div>
             <div
@@ -576,9 +592,9 @@ export default function PaySpeedsBreakdownModal({
               <span style={{ textAlign: 'right' }}>Median</span>
               <span style={{ textAlign: 'right' }}>Payments</span>
               <span style={{ textAlign: 'right' }}>Open now</span>
-              <span />
             </div>
-            {breakdown.ranked.map((c, i) => {
+            {merged.map((c, i) => {
+              const thin = c.medianDays == null
               const expanded = !!openReceipts[c.customerId]
               const caret = (
                 <span
@@ -595,29 +611,9 @@ export default function PaySpeedsBreakdownModal({
                   ▶
                 </span>
               )
-              const bar = (
-                <span
-                  style={{
-                    height: 8,
-                    borderRadius: 4,
-                    background: 'var(--border)',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    ...(isMobile ? { flex: 1 } : {}),
-                  }}
-                >
-                  <span
-                    style={{
-                      position: 'absolute',
-                      inset: '0 auto 0 0',
-                      width: `${breakdown.maxDays > 0 ? ((c.medianDays ?? 0) / breakdown.maxDays) * 100 : 0}%`,
-                      borderRadius: 4,
-                      background: segColor(c.segment),
-                    }}
-                  />
-                </span>
-              )
-              const median = (
+              const median = thin ? (
+                <span style={{ textAlign: 'right', flexShrink: 0, color: 'var(--text-muted)' }}>—</span>
+              ) : (
                 <span
                   style={{
                     fontWeight: 700,
@@ -636,7 +632,15 @@ export default function PaySpeedsBreakdownModal({
                   role="button"
                   tabIndex={0}
                   aria-expanded={expanded}
-                  title={expanded ? 'Hide the payments behind this median' : 'Show the payments behind this median'}
+                  title={
+                    thin
+                      ? expanded
+                        ? 'Hide this customer’s payments'
+                        : 'Show this customer’s payments'
+                      : expanded
+                        ? 'Hide the payments behind this median'
+                        : 'Show the payments behind this median'
+                  }
                   onClick={() => toggleReceipts(c.customerId)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
@@ -651,6 +655,7 @@ export default function PaySpeedsBreakdownModal({
                     padding: isMobile ? '0.5rem 0.5rem' : '0.42rem 0.5rem',
                     borderRadius: expanded ? '6px 6px 0 0' : 6,
                     fontSize: '0.8rem',
+                    color: thin ? 'var(--text-muted)' : undefined,
                     background: i % 2 === 1 ? 'var(--bg-muted)' : 'transparent',
                     cursor: 'pointer',
                   }}
@@ -674,9 +679,8 @@ export default function PaySpeedsBreakdownModal({
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {c.samples} pmts · {formatUsdNoCents(c.open)} open
+                          {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'} · {formatUsdNoCents(c.open)} open
                         </span>
-                        {bar}
                       </div>
                     </>
                   ) : (
@@ -688,12 +692,11 @@ export default function PaySpeedsBreakdownModal({
                       </span>
                       {median}
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {c.samples} pmts
+                        {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'}
                       </span>
                       <span style={{ color: 'var(--text-700)', fontSize: '0.76rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {formatUsdNoCents(c.open)}
                       </span>
-                      {bar}
                     </>
                   )}
                 </div>
@@ -711,98 +714,6 @@ export default function PaySpeedsBreakdownModal({
           </>
         )}
 
-        {breakdown.thin.length > 0 && (
-          <div style={{ marginTop: '0.9rem' }}>
-            <p style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-muted)', margin: '0 0 0.3rem' }}>
-              Thin history — under {PAY_SPEED_MIN_SAMPLES} payments, forecast uses the company median
-              {companyMedian != null ? ` (~${companyMedian}d)` : ''}
-            </p>
-            {breakdown.thin.map((c) => (
-              <div key={c.customerId}>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={!!openReceipts[c.customerId]}
-                  title={openReceipts[c.customerId] ? 'Hide this customer’s payments' : 'Show this customer’s payments'}
-                  onClick={() => toggleReceipts(c.customerId)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      toggleReceipts(c.customerId)
-                    }
-                  }}
-                  style={{
-                    ...(isMobile
-                      ? { display: 'flex', alignItems: 'center', gap: '0.45rem' }
-                      : { display: 'grid', gridTemplateColumns: ROW_GRID, gap: '0.6rem', alignItems: 'center' }),
-                    padding: isMobile ? '0.42rem 0.5rem' : '0.32rem 0.5rem',
-                    fontSize: '0.78rem',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    borderRadius: 6,
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', minWidth: 0, ...(isMobile ? { flex: 1 } : {}) }}>
-                    <span
-                      aria-hidden
-                      style={{
-                        fontSize: '0.6rem',
-                        width: '0.7em',
-                        flexShrink: 0,
-                        display: 'inline-block',
-                        transform: openReceipts[c.customerId] ? 'rotate(90deg)' : 'none',
-                      }}
-                    >
-                      ▶
-                    </span>
-                    {segTag(c.segment)}
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
-                  </span>
-                  {isMobile ? (
-                    <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                      {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'} ·{' '}
-                      <span style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(c.open)}</span>
-                    </span>
-                  ) : (
-                    <>
-                      <span style={{ textAlign: 'right' }}>—</span>
-                      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {c.samples} {c.samples === 1 ? 'pmt' : 'pmts'}
-                      </span>
-                      <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
-                        {formatUsdNoCents(c.open)}
-                      </span>
-                      <span />
-                    </>
-                  )}
-                </div>
-                {openReceipts[c.customerId] &&
-                  receiptsPanel(
-                    c,
-                    companyMedian,
-                    false,
-                    onOpenCustomerBills ? () => onOpenCustomerBills(c.name) : undefined,
-                    onOpenJobDetail,
-                  )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        <p
-          style={{
-            marginTop: '0.9rem',
-            marginBottom: 0,
-            fontSize: '0.7rem',
-            color: 'var(--text-muted)',
-            borderTop: '1px solid var(--border)',
-            paddingTop: '0.6rem',
-          }}
-        >
-          Speeds come from recorded payments (bill date → paid date). "Open now" is what's sitting in Billed Awaiting
-          Payment for that customer today. Expanded receipts read (+16) 05/01–05/17 — billed date to the day money hit;
-          the gap is green at or under the company median, amber above it, red at twice it or more.
-        </p>
       </div>
     </div>
   )

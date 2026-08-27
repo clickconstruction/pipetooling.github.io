@@ -6,9 +6,10 @@
  * Two tiers, split by the expected-pay kernel's own rule
  * (PAY_SPEED_MIN_SAMPLES): customers with a real median of their own rank
  * slowest-first (the top of that list is the follow-up list); customers
- * with thin history sit apart, because their forecasts run on the company
- * median and pretending otherwise would lie. Only customers with open
- * billed money appear — this is a chase surface, not an archive.
+ * with thin history follow at the bottom of the same list with a "—"
+ * median, because their forecasts run on the company median and pretending
+ * otherwise would lie. Only customers with open billed money appear — this
+ * is a chase surface, not an archive.
  */
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledRemainingAmount } from './invoiceBilling'
@@ -32,8 +33,6 @@ export type PaySpeedsBreakdown = {
   ranked: PaySpeedCustomerRow[]
   /** Thin-history customers (company median applies), biggest open $ first. */
   thin: PaySpeedCustomerRow[]
-  /** Largest ranked median, for bar scaling (0 when ranked is empty). */
-  maxDays: number
 }
 
 export function buildPaySpeedsBreakdown(rows: StageRow[], paySpeeds: PaySpeedData | null): PaySpeedsBreakdown {
@@ -66,7 +65,7 @@ export function buildPaySpeedsBreakdown(rows: StageRow[], paySpeeds: PaySpeedDat
     .filter((c) => c.medianDays != null)
     .sort((a, b) => (b.medianDays ?? 0) - (a.medianDays ?? 0) || b.open - a.open)
   const thin = all.filter((c) => c.medianDays == null).sort((a, b) => b.open - a.open)
-  return { ranked, thin, maxDays: ranked.reduce((m, c) => Math.max(m, c.medianDays ?? 0), 0) }
+  return { ranked, thin }
 }
 
 /** "2026-05-01" → "05/01" — the receipt chips' compact date form. */
@@ -90,28 +89,3 @@ export function receiptGapTone(gapDays: number, companyMedianDays: number | null
   return 'fast'
 }
 
-export type PaySpeedBucket = {
-  label: string
-  min: number
-  max: number
-  res: PaySpeedCustomerRow[]
-  comm: PaySpeedCustomerRow[]
-}
-
-/** Histogram buckets for the "count by speed" chart variant; unclassified customers count as commercial-lane-less — they land in `res` only if tagged. */
-export function bucketPaySpeeds(ranked: PaySpeedCustomerRow[]): PaySpeedBucket[] {
-  const defs = [
-    { label: '0–7d', min: 0, max: 7 },
-    { label: '8–14d', min: 8, max: 14 },
-    { label: '15–21d', min: 15, max: 21 },
-    { label: '22–30d', min: 22, max: 30 },
-    { label: '31–45d', min: 31, max: 45 },
-    { label: '45d+', min: 46, max: Number.POSITIVE_INFINITY },
-  ]
-  return defs.map((d) => ({
-    ...d,
-    max: d.max,
-    res: ranked.filter((c) => c.segment === 'residential' && (c.medianDays ?? 0) >= d.min && (c.medianDays ?? 0) <= d.max),
-    comm: ranked.filter((c) => c.segment !== 'residential' && (c.medianDays ?? 0) >= d.min && (c.medianDays ?? 0) <= d.max),
-  }))
-}
