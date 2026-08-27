@@ -142,8 +142,8 @@ type BidsPricingTabProps = {
   teamLaborDataForBids: TeamLaborBidRow[]
   /** Shared master catalog (bid_id IS NULL) shown under the "Templates" toggle / used as clone sources. */
   templatePriceBookVersions: PriceBookVersion[]
-  templatesMode: boolean
-  setTemplatesMode: Dispatch<SetStateAction<boolean>>
+  /** The user's default template for new bids (last pick → "Default" → first) — the drawer's "your default" line. */
+  defaultPriceBookTemplateId: string | null
   loadTemplatePriceBookVersions: () => Promise<void>
   /** Record `templateId` as this user's last-selected price book (their per-service-type default). */
   rememberLastPriceBookTemplate: (templateId: string) => void
@@ -173,18 +173,6 @@ type BidsPricingTabProps = {
   isMyBid: (bid: BidWithBuilder) => boolean
 }
 
-/** Shared style for the "Add pricing" dropdown menu items. */
-const addPricingMenuItemStyle: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  textAlign: 'left',
-  padding: '0.4rem 0.5rem',
-  background: 'none',
-  border: 'none',
-  borderRadius: 4,
-  cursor: 'pointer',
-  fontSize: '0.875rem',
-}
 
 /** Margin flag → text color (replaces the old colored status circles). */
 const MARGIN_FLAG_COLOR: Record<'red' | 'yellow' | 'green', string> = {
@@ -250,8 +238,7 @@ export function BidsPricingTab({
   pricingFixtureMaterialsFromTakeoff,
   teamLaborDataForBids,
   templatePriceBookVersions,
-  templatesMode,
-  setTemplatesMode,
+  defaultPriceBookTemplateId,
   loadTemplatePriceBookVersions,
   rememberLastPriceBookTemplate,
   loadBidPricings,
@@ -277,7 +264,6 @@ export function BidsPricingTab({
   const confirmDialog = useConfirmDialog()
 
   const [pricingSearchQuery, setPricingSearchQuery] = useState('')
-  const [priceBookSectionOpen, setPriceBookSectionOpen] = useState(false)
   const [pricingVersionFormOpen, setPricingVersionFormOpen] = useState(false)
   const [editingPricingVersion, setEditingPricingVersion] = useState<PriceBookVersion | null>(null)
   const [pricingVersionNameInput, setPricingVersionNameInput] = useState('')
@@ -296,6 +282,21 @@ export function BidsPricingTab({
   const [deletePricingVersionNameInput, setDeletePricingVersionNameInput] = useState('')
   const [deletePricingVersionError, setDeletePricingVersionError] = useState<string | null>(null)
   const [priceBookSearchQuery, setPriceBookSearchQuery] = useState('')
+  // The price-book drawer (v2.2384, owner-approved prototype): the strip chip is
+  // the one door to the book. It edits the shared TEMPLATE catalog only — the
+  // old "This version's prices" panel mode was added by mistake and never used.
+  const templatesMode = true
+  const [wbBookDrawerOpen, setWbBookDrawerOpen] = useState(false)
+  const [wbBooksExpanded, setWbBooksExpanded] = useState(false)
+  const [wbPriceDisplayMode, setWbPriceDisplayMode] = useState<'combined' | 'stage'>('combined')
+  useEffect(() => {
+    if (!wbBookDrawerOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setWbBookDrawerOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [wbBookDrawerOpen])
   // --- Bid Pricings vs Templates panel state ---
   // In Templates mode the panel edits the shared master catalog; `editingTemplateId` +
   // `templateEntries` keep that editing fully separate from the bid's active Pricing
@@ -608,14 +609,8 @@ export function BidsPricingTab({
   // `panel*` resolve to whichever the "Templates" toggle is on. Template editing uses its own
   // `editingTemplateId` / `templateEntries` so it never disturbs the bid's active Pricing
   // (`selectedPricingVersionId` / `priceBookEntries`), which still drives the grid + cover letter.
-  const panelVersions = templatesMode ? templatePriceBookVersions : priceBookVersions
   const panelVersionId = templatesMode ? editingTemplateId : selectedPricingVersionId
   const panelEntries = templatesMode ? templateEntries : priceBookEntries
-  // In pricings mode the panel edits the ACTIVE version's pricing. It's editable only when that
-  // pricing is bid-owned (not a shared template surfaced via the legacy fallback, and not absent).
-  const activeBidPricing = priceBookVersions.find((p) => p.id === selectedPricingVersionId) ?? null
-  const isBidOwnedPricing = activeBidPricing != null
-  const canEditPanelEntries = templatesMode ? !!editingTemplateId : isBidOwnedPricing
   // Which shared template the toolbar price-book dropdown shows as "current" for this bid.
   const currentPriceBookTemplateId = resolveCurrentPriceBookTemplateId({
     selectedPricingVersionId,
@@ -681,24 +676,6 @@ export function BidsPricingTab({
     setPricingCloneSourceId(null)
     setPricingVersionNameInput('')
     setError(null)
-    setPricingVersionFormOpen(true)
-  }
-  function openAddBlankPricing() {
-    setEditingPricingVersion(null)
-    setPricingFormMode('pricing-blank')
-    setPricingCloneSourceId(null)
-    setPricingVersionNameInput('')
-    setError(null)
-    setAddPricingMenuOpen(false)
-    setPricingVersionFormOpen(true)
-  }
-  function openClonePricing(sourceId: string, suggestedName: string) {
-    setEditingPricingVersion(null)
-    setPricingFormMode('pricing-clone')
-    setPricingCloneSourceId(sourceId)
-    setPricingVersionNameInput(suggestedName)
-    setError(null)
-    setAddPricingMenuOpen(false)
     setPricingVersionFormOpen(true)
   }
 
@@ -3753,9 +3730,19 @@ export function BidsPricingTab({
                       return (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.55rem', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Price book</span>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>
-                            {activeBookName} · {priceBookEntries.length} entr{priceBookEntries.length === 1 ? 'y' : 'ies'}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWbBookDrawerOpen(true)
+                              setWbBooksExpanded(false)
+                              const t = currentPriceBookTemplateId ?? templatePriceBookVersions[0]?.id ?? null
+                              if (t) selectPanelVersion(t)
+                            }}
+                            title="Open the price book — switch books, edit entries"
+                            style={{ font: 'inherit', fontSize: '0.78rem', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', padding: '0.18rem 0.7rem', cursor: 'pointer' }}
+                          >
+                            {activeBookName} · {priceBookEntries.length} entr{priceBookEntries.length === 1 ? 'y' : 'ies'} <b style={{ color: 'var(--text-link)' }}>{'\u25b8'}</b>
+                          </button>
                           <button
                             type="button"
                             disabled={wbFillingBook || bookMatches.length === 0}
@@ -4520,235 +4507,167 @@ export function BidsPricingTab({
             emptyMessage={pricingSearchQuery.trim() ? 'No bids match your search.' : null}
           />
         )}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
-          <div>
-            <button
-              type="button"
-              onClick={() => setPriceBookSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                marginBottom: priceBookSectionOpen ? '0.75rem' : 0,
-                padding: 0,
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-              }}
+        {wbBookDrawerOpen ? (() => {
+          const drawerName = templatePriceBookVersions.find((t) => t.id === editingTemplateId)?.name ?? 'Price book'
+          const defaultName = templatePriceBookVersions.find((t) => t.id === defaultPriceBookTemplateId)?.name ?? null
+          const bookChipStyle = (on: boolean): CSSProperties => ({
+            font: 'inherit',
+            fontSize: '0.75rem',
+            fontWeight: on ? 700 : 500,
+            padding: '0.2rem 0.6rem',
+            borderRadius: 6,
+            border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+            background: on ? 'var(--bg-blue-tint)' : 'var(--bg-muted)',
+            color: on ? 'var(--text-strong)' : 'var(--text-muted)',
+            cursor: 'pointer',
+          })
+          const visibleEntries = templateEntries.filter((e) =>
+            (e.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase()),
+          )
+          const cell: CSSProperties = { padding: '0.4rem 0.55rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--border)' }
+          return (
+            <div
+              role="dialog"
+              aria-label="Price book"
+              style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(430px, 92vw)', background: 'var(--surface)', borderLeft: '1px solid var(--border-strong)', boxShadow: '-14px 0 30px rgba(0,0,0,0.28)', zIndex: 70, padding: '1rem 1.1rem 1.2rem', overflowY: 'auto' }}
             >
-              <span style={{ fontSize: '0.75rem' }}>{priceBookSectionOpen ? '▼' : '▶'}</span>
-              Price book
-            </button>
-            {priceBookSectionOpen && (
-            <>
-            {/* Toggle: edit this bid's Pricings vs the shared template catalog. */}
-            <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', marginBottom: '0.75rem' }}>
-              {([['pricings', "This version's prices"], ['templates', 'Template library']] as const).map(([key, label]) => {
-                const active = (key === 'templates') === templatesMode
-                return (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.6rem' }}>
+                <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Price book — {drawerName}</h3>
+                <button type="button" onClick={() => setWbBookDrawerOpen(false)} aria-label="Close the price book" style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>✕</button>
+              </div>
+              <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Book</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', marginBottom: '0.25rem' }}>
+                {(wbBooksExpanded ? templatePriceBookVersions : templatePriceBookVersions.filter((t) => t.id === editingTemplateId)).map((t) => {
+                  const on = t.id === editingTemplateId
+                  return (
+                    <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
+                      <button
+                        type="button"
+                        disabled={pricebookSwitchBusy}
+                        title={on ? 'Feeding this bid' : `Switch this bid to ${t.name} — and make it your default for new bids`}
+                        onClick={() => {
+                          if (on) return
+                          void (async () => {
+                            await onSelectPriceBookTemplate(t.id)
+                            selectPanelVersion(t.id)
+                            setWbBooksExpanded(false)
+                          })()
+                        }}
+                        style={bookChipStyle(on)}
+                      >
+                        {on ? '\u2605 ' : ''}{t.name}
+                      </button>
+                      {on && wbBooksExpanded ? (
+                        <button type="button" onClick={() => openEditPricingVersion(t)} title="Rename this book" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-muted)', padding: 0 }}>✎</button>
+                      ) : null}
+                    </span>
+                  )
+                })}
+                <button
+                  type="button"
+                  onClick={() => setWbBooksExpanded((v) => !v)}
+                  title={wbBooksExpanded ? 'Show just your book' : 'Show all price books'}
+                  style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-link)', border: '1px dashed var(--border-strong)', background: 'none', borderRadius: 6, padding: '0.12rem 0.5rem', cursor: 'pointer' }}
+                >
+                  {wbBooksExpanded ? '\u2039' : '\u203a'}
+                </button>
+                {wbBooksExpanded ? (
+                  <button type="button" onClick={openAddTemplate} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.55rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+                    Add book
+                  </button>
+                ) : null}
+              </div>
+              {defaultName ? (
+                <div title="Per person — the book you pick follows you to your next bid" style={{ fontSize: '0.68rem', color: 'var(--text-green-700)', marginBottom: '0.6rem' }}>
+                  Your default for new bids: <strong>{defaultName}</strong> ✓
+                </div>
+              ) : null}
+              <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden', marginBottom: '0.55rem' }}>
+                {(
+                  [
+                    ['combined', 'Combined price'],
+                    ['stage', 'Stage price'],
+                  ] as const
+                ).map(([key, label]) => (
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setTemplatesMode(key === 'templates')}
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      background: active ? '#3b82f6' : 'var(--surface)',
-                      color: active ? 'white' : 'var(--text-700)',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.8125rem',
-                      fontWeight: active ? 600 : 400,
-                    }}
+                    aria-pressed={wbPriceDisplayMode === key}
+                    onClick={() => setWbPriceDisplayMode(key)}
+                    style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.7rem', border: 'none', background: wbPriceDisplayMode === key ? 'var(--bg-blue-tint)' : 'var(--surface)', color: wbPriceDisplayMode === key ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
                   >
                     {label}
                   </button>
-                )
-              })}
-            </div>
-            {templatesMode ? (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                {panelVersions.map((v) => (
-                  <span
-                    key={v.id}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      padding: '0.35rem 0.5rem',
-                      background: panelVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
-                      border: panelVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => selectPanelVersion(v.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: panelVersionId === v.id ? 600 : 400, padding: 0 }}
-                    >
-                      {v.name}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openEditPricingVersion(v)}
-                      style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                      title="Edit template name"
-                    >
-                      ✎
-                    </button>
-                  </span>
                 ))}
-                {panelVersions.length === 0 && (
-                  <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem', alignSelf: 'center' }}>
-                    No templates for this service type yet.
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={openAddTemplate}
-                  style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                >
-                  Add template
-                </button>
               </div>
-            ) : isBidOwnedPricing ? (
-              <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                Editing prices for the active version.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', position: 'relative' }} data-add-pricing-menu>
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No prices yet for this bid.</span>
-                <button
-                  type="button"
-                  onClick={() => setAddPricingMenuOpen((o) => !o)}
-                  style={{ padding: '0.35rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                >
-                  Set up pricing ▾
-                </button>
-                {addPricingMenuOpen && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 30, minWidth: '14rem', padding: '0.25rem', maxHeight: '60vh', overflowY: 'auto' }}>
-                    <button type="button" onClick={openAddBlankPricing} style={addPricingMenuItemStyle}>Blank pricing</button>
-                    {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).length > 0 && (
-                      <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>Copy prices from another option</div>
-                        {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).map((p) => (
-                          <button key={p.id} type="button" onClick={() => openClonePricing(p.id, p.name)} style={addPricingMenuItemStyle}>{p.name}</button>
-                        ))}
-                      </div>
-                    )}
-                    {templatePriceBookVersions.length > 0 && (
-                      <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>From template</div>
-                        {templatePriceBookVersions.map((t) => (
-                          <button key={t.id} type="button" onClick={() => openClonePricing(t.id, t.name)} style={addPricingMenuItemStyle}>{t.name}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            {canEditPanelEntries && panelVersionId && (
-              <>
-                <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries</h4>
-                <input
-                  type="text"
-                  placeholder="Search fixture/tie-in name..."
-                  value={priceBookSearchQuery}
-                  onChange={(e) => setPriceBookSearchQuery(e.target.value)}
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.5rem', 
-                    border: '1px solid var(--border-strong)', 
-                    borderRadius: 4, 
-                    marginBottom: '0.5rem', 
-                    boxSizing: 'border-box' 
-                  }}
-                />
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: 'var(--bg-subtle)' }}>
-                      <tr>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture / Tie-in</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Rough In</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Top Out</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Trim Set</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total</th>
-                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
+              <input
+                type="text"
+                placeholder="Search fixture/tie-in name..."
+                value={priceBookSearchQuery}
+                onChange={(e) => setPriceBookSearchQuery(e.target.value)}
+                style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, marginBottom: '0.5rem', boxSizing: 'border-box', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
+              />
+              <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                  <thead style={{ background: 'var(--bg-subtle)' }}>
+                    <tr>
+                      <th style={{ ...cell, textAlign: 'left', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Fixture / Tie-in</th>
+                      {wbPriceDisplayMode === 'combined' ? (
+                        <th style={{ ...cell, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Price</th>
+                      ) : (
+                        <>
+                          <th style={{ ...cell, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Rough In</th>
+                          <th style={{ ...cell, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Top Out</th>
+                          <th style={{ ...cell, fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Trim Set</th>
+                        </>
+                      )}
+                      <th style={{ ...cell, width: 34 }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleEntries.map((entry) => (
+                      <tr key={entry.id}>
+                        <td style={{ ...cell, textAlign: 'left', fontWeight: 600 }} title={wbPriceDisplayMode === 'stage' ? `Combined: $${formatCurrency(Number(entry.total_price))}` : undefined}>
+                          {entry.fixture_types?.name ?? ''}
+                        </td>
+                        {wbPriceDisplayMode === 'combined' ? (
+                          <td style={cell}>${formatCurrency(Number(entry.total_price))}</td>
+                        ) : (
+                          <>
+                            <td style={{ ...cell, color: Number(entry.rough_in_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.rough_in_price) === 0 ? '—' : `$${formatCurrency(Number(entry.rough_in_price))}`}</td>
+                            <td style={{ ...cell, color: Number(entry.top_out_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.top_out_price) === 0 ? '—' : `$${formatCurrency(Number(entry.top_out_price))}`}</td>
+                            <td style={{ ...cell, color: Number(entry.trim_set_price) === 0 ? 'var(--text-faint)' : undefined }}>{Number(entry.trim_set_price) === 0 ? '—' : `$${formatCurrency(Number(entry.trim_set_price))}`}</td>
+                          </>
+                        )}
+                        <td style={cell}>
+                          <button type="button" onClick={() => openEditPricingEntry(entry)} style={{ padding: '0.1rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {panelEntries
-                        .filter((entry) =>
-                          (entry.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase())
-                        )
-                        .map((entry) => (
-                        <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '0.5rem' }}>{entry.fixture_types?.name ?? ''}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.rough_in_price))}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.top_out_price))}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.trim_set_price))}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.total_price))}</td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <button type="button" onClick={() => openEditPricingEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {priceBookSearchQuery &&
-                 panelEntries.filter((e) =>
-                   (e.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase())
-                 ).length === 0 && (
-                  <div style={{ 
-                    textAlign: 'center', 
-                    padding: '1rem', 
-                    color: 'var(--text-muted)' 
-                  }}>
-                    No entries match "{priceBookSearchQuery}"
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingPricingEntry(null)
-                        setPricingEntryFixtureName(priceBookSearchQuery)
-                        setPricingEntryRoughIn('')
-                        setPricingEntryTopOut('')
-                        setPricingEntryTrimSet('')
-                        setPricingEntryTotal('')
-                        setPricingEntryFormOpen(true)
-                      }}
-                      style={{ 
-                        display: 'block',
-                        margin: '0.5rem auto 0',
-                        padding: '0.5rem 1rem', 
-                        background: '#3b82f6', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: 4, 
-                        cursor: 'pointer',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      Add "{priceBookSearchQuery}" to Price Book
-                    </button>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={openNewPricingEntry}
-                  style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                >
-                  Add entry
-                </button>
-              </>
-            )}
-            </>
-            )}
-          </div>
-        </div>
+                    ))}
+                    {visibleEntries.length === 0 ? (
+                      <tr>
+                        <td colSpan={wbPriceDisplayMode === 'combined' ? 3 : 5} style={{ ...cell, textAlign: 'center', color: 'var(--text-muted)' }}>
+                          {priceBookSearchQuery ? `No entries match “${priceBookSearchQuery}”` : 'No entries yet'}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+              <button
+                type="button"
+                onClick={openNewPricingEntry}
+                disabled={!editingTemplateId}
+                style={{ marginTop: '0.5rem', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+              >
+                Add entry
+              </button>
+              <p style={{ margin: '0.6rem 0 0', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                A price added in Combined lands in <strong>Rough In</strong> — flip to Stage price to split it. Esc or ✕ closes.
+              </p>
+            </div>
+          )
+        })() : null}
         {pricingVersionFormOpen && (
           <div
             style={{
@@ -4972,6 +4891,29 @@ export function BidsPricingTab({
                     <option key={ft.id} value={ft.name} />
                   ))}
                 </datalist>
+                {wbPriceDisplayMode === 'combined' ? (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Price</label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step={0.01}
+                      value={pricingEntryTotal}
+                      onChange={(e) => {
+                        // Combined edits land in Rough In: RI absorbs the change so the total matches.
+                        const v = parseFloat(e.target.value) || 0
+                        const top = parseFloat(pricingEntryTopOut) || 0
+                        const trim = parseFloat(pricingEntryTrimSet) || 0
+                        setPricingEntryRoughIn(String(Math.max(0, Math.round((v - top - trim) * 100) / 100)))
+                      }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+                    />
+                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Lands in Rough In — switch the book to Stage price to split it across stages.
+                    </p>
+                  </div>
+                ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In</label>
@@ -4990,6 +4932,7 @@ export function BidsPricingTab({
                     <input type="number" min={0} step={0.01} value={pricingEntryTotal} readOnly style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--bg-subtle)', cursor: 'not-allowed' }} />
                   </div>
                 </div>
+                )}
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     {editingPricingEntry && (
