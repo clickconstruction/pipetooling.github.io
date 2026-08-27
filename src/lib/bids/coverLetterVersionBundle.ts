@@ -85,6 +85,35 @@ export function planLetterSections(versions: BundleVersion[], pricings: BundlePr
   return [...main, ...offered]
 }
 
+/**
+ * Letter sections for a VERSION-LESS bid (v2.2392): the bid's ★ pricing (its saved
+ * `selected_price_book_version_id` when it's an unsplit copy, else the first unsplit pricing —
+ * mirroring `deriveActivePricingId`'s unsplit rule) as the base section, plus each OFFERED
+ * non-★ unsplit pricing (G1 `include_in_submission`) as an alternate. Empty when nothing is
+ * offered — the plain single letter needs no bundle.
+ */
+export function planUnsplitLetterSections(
+  pricings: BundlePricing[],
+  savedStarId: string | null,
+): Array<{ name: string; pricingId: string; isAlternate: boolean; offeredPricingId?: string }> {
+  const unsplit = pricings.filter((p) => p.bid_version_id == null)
+  const starId = savedStarId && unsplit.some((p) => p.id === savedStarId)
+    ? savedStarId
+    : [...unsplit].sort(
+        (a, b) => a.sort_order - b.sort_order || String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')),
+      )[0]?.id ?? null
+  if (!starId) return []
+  const offered = unsplit
+    .filter((p) => p.include_in_submission && p.id !== starId)
+    .sort((a, b) => a.sort_order - b.sort_order)
+  if (offered.length === 0) return []
+  const starName = unsplit.find((p) => p.id === starId)?.name ?? 'Base'
+  return [
+    { name: starName, pricingId: starId, isAlternate: false },
+    ...offered.map((p) => ({ name: p.name ?? 'price', pricingId: p.id, isAlternate: true, offeredPricingId: p.id })),
+  ]
+}
+
 /** Sum of the base sections' revenue — the number the letter says the job costs. */
 export function letterTotal(sections: Array<{ isAlternate: boolean; revenueSum: number }>): number {
   return sections.filter((s) => !s.isAlternate).reduce((sum, s) => sum + (Number.isFinite(s.revenueSum) ? s.revenueSum : 0), 0)
