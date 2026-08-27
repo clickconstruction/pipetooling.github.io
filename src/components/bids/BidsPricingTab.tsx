@@ -166,7 +166,7 @@ type BidsPricingTabProps = {
   onClose: () => void
   onEditBid: (bid: BidWithBuilder) => void
   onNavigateToLabor: () => void
-  onNavigateBidToTab: (bid: BidWithBuilder, tab: 'takeoffs' | 'labor') => void
+  onNavigateBidToTab: (bid: BidWithBuilder, tab: 'counts' | 'takeoffs' | 'labor') => void
   onNavigateToLaborDirectCosts: (bid: BidWithBuilder) => void
   onlyMyBids: boolean
   setOnlyMyBids: (next: boolean) => void
@@ -1513,7 +1513,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-solver',
       title: 'Solve to a number',
-      body: 'Type a margin, or press the ▾ beside the % box for a 20–95 slider that solves when you let go — it prices the costed rows, and hand-set prices on no-cost rows stack on top. Or type a whole-bid target total, which those hand-set prices count toward. The ▾ beside Solve holds "Price unpriced only". Apply writes the preview; Discard throws it away.',
+      body: 'Type a margin, or press the ▾ beside the % box for a 20–95 slider that re-prices live as you drag — it prices the costed rows, and hand-set prices on no-cost rows stack on top. Or type a whole-bid target total, which those hand-set prices count toward. The ▾ beside Solve holds "Price unpriced only". Apply writes the drafts; Discard throws them away.',
     },
     {
       anchor: 'workbench-rows',
@@ -1688,8 +1688,10 @@ export function BidsPricingTab({
     }
   }
 
-  /** Workbench: build a PREVIEW from the solver (nothing writes until Apply). */
-  function runWorkbenchSolve(opts: { onlyUnpriced?: boolean; targetTotal?: number }) {
+  /** Workbench: build a PREVIEW from the solver (nothing writes until Apply).
+      opts.marginPct overrides the wbMarginPct state for same-tick calls (the
+      slider solves on every drag step, before React has applied the setState). */
+  function runWorkbenchSolve(opts: { onlyUnpriced?: boolean; targetTotal?: number; marginPct?: number }) {
     const derived = derivePricingWorkbench()
     if (!derived) return
     const fixtureCostSum = derived.rows.reduce((s, r) => s + (r.cost > 0 ? r.cost : 0), 0)
@@ -1702,7 +1704,7 @@ export function BidsPricingTab({
       locked: r.isFixedPrice || wbLocks.has(r.countRow.id),
     }))
     const sol = solveWorkbenchPrices(solverRows, overhead, {
-      ...(opts.targetTotal == null ? { targetMarginPct: wbMarginPct } : { targetTotal: opts.targetTotal }),
+      ...(opts.targetTotal == null ? { targetMarginPct: opts.marginPct ?? wbMarginPct } : { targetTotal: opts.targetTotal }),
       onlyUnpriced: opts.onlyUnpriced === true,
       roundTo5: true, // v2.2148: always on (was the default; the checkbox is gone)
     })
@@ -1715,7 +1717,7 @@ export function BidsPricingTab({
     setWbPreviewRestoredAt(null)
     // Margin solves get the landing chip ("56% on 12 costed rows → …"); a
     // target-total solve replaces it with the slider sync below.
-    setWbSolveLanding(opts.targetTotal == null ? { pct: wbMarginPct, rows: sol.prices.size } : null)
+    setWbSolveLanding(opts.targetTotal == null ? { pct: opts.marginPct ?? wbMarginPct, rows: sol.prices.size } : null)
     if (opts.targetTotal != null) {
       setWbTargetSolveResult({ target: opts.targetTotal, landed: sol.resultingRevenue })
       // The slider means "margin on the costed rows" (hand-set no-cost revenue
@@ -3454,25 +3456,50 @@ export function BidsPricingTab({
                                 onClick={() => setWbMarginSliderOpen((o) => !o)}
                                 aria-expanded={wbMarginSliderOpen}
                                 aria-label="Open the margin slider"
-                                title="Slide the margin — solves when you let go"
+                                title="Slide the margin — prices update live as you drag"
                                 style={{ font: 'inherit', fontSize: '0.7rem', padding: '0.28rem 0.4rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: wbMarginSliderOpen ? 'var(--bg-subtle)' : 'var(--surface)', color: wbMarginSliderOpen ? 'var(--text-blue-500)' : 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}
                               >
                                 {wbMarginSliderOpen ? '▴' : '▾'}
                               </button>
                               {wbMarginSliderOpen ? (
-                                <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 0.4rem)', zIndex: 40, display: 'flex', alignItems: 'center', gap: '0.55rem', width: 'min(22rem, calc(100vw - 2rem))', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.65rem 0.85rem' }}>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>20</span>
-                                  <input
-                                    type="range" min={20} max={95} step={1} value={Math.min(95, Math.max(20, wbMarginPct))}
-                                    onChange={(e) => setWbMarginPct(Number(e.target.value))}
-                                    onMouseUp={() => runWorkbenchSolve({})}
-                                    onTouchEnd={() => runWorkbenchSolve({})}
-                                    style={{ flex: 1, accentColor: '#3b82f6' }}
-                                    aria-label="Margin for the costed rows"
-                                    title={`Prices the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} at this margin — rows without Takeoffs cost keep their prices and stack on top. Prices round up to $5.`}
-                                  />
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>95</span>
-                                  <span style={{ fontSize: '0.9rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)', minWidth: '2.6rem', textAlign: 'right' }}>{wbMarginPct}%</span>
+                                <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 0.4rem)', zIndex: 40, display: 'flex', alignItems: 'center', gap: '0.55rem', width: 'min(22rem, calc(100vw - 2rem))', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.65rem 0.85rem 0.35rem' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', paddingBottom: '0.9rem' }}>20</span>
+                                  <span style={{ flex: 1, position: 'relative', display: 'inline-flex', flexDirection: 'column' }}>
+                                    <input
+                                      type="range" min={20} max={95} step={1} value={Math.min(95, Math.max(20, wbMarginPct))}
+                                      onChange={(e) => {
+                                        // Live solve on every step of the drag — totals and ghosts track the thumb.
+                                        const v = Number(e.target.value)
+                                        setWbMarginPct(v)
+                                        runWorkbenchSolve({ marginPct: v })
+                                      }}
+                                      style={{ width: '100%', accentColor: '#3b82f6' }}
+                                      aria-label="Margin for the costed rows"
+                                      title={`Prices the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} at this margin, live as you drag — rows without Takeoffs cost keep their prices and stack on top. Prices round up to $5.`}
+                                    />
+                                    <span aria-hidden style={{ position: 'relative', display: 'block', height: '0.9rem' }}>
+                                      {/* Markup reference ticks: 2× = 50% margin, 3× = 66%, 4× = 75%, 5× = 80%. */}
+                                      {(
+                                        [
+                                          ['2', 50],
+                                          ['3', 66],
+                                          ['4', 75],
+                                          ['5', 80],
+                                        ] as const
+                                      ).map(([mult, pct]) => (
+                                        <span
+                                          key={mult}
+                                          title={`${mult}× markup = ${pct}% margin`}
+                                          style={{ position: 'absolute', left: `${((pct - 20) / 75) * 100}%`, transform: 'translateX(-50%)', display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 1, fontSize: '0.58rem', color: 'var(--text-muted)', cursor: 'help', lineHeight: 1 }}
+                                        >
+                                          <span style={{ display: 'block', width: 1, height: 4, background: 'var(--border-strong)' }} />
+                                          {mult}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  </span>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', paddingBottom: '0.9rem' }}>95</span>
+                                  <span style={{ fontSize: '0.9rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)', minWidth: '2.6rem', textAlign: 'right', paddingBottom: '0.9rem' }}>{wbMarginPct}%</span>
                                 </div>
                               ) : null}
                             </div>
@@ -3559,7 +3586,7 @@ export function BidsPricingTab({
                                     </button>
                                   </span>
                                   <span style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
-                                    {`${previewCount} solver price${previewCount === 1 ? '' : 's'} previewed — saved only when you Apply · waits on this device`}
+                                    {`${previewCount} draft${previewCount === 1 ? '' : 's'} — saved only when you Apply`}
                                     {vetoCount > 0 ? (
                                       <span style={{ color: 'var(--text-red-700)' }}>{` · ${vetoCount} clicked off — ${vetoCount === 1 ? 'its price holds' : 'their prices hold'}`}</span>
                                     ) : null}
@@ -3573,14 +3600,15 @@ export function BidsPricingTab({
                       {wbSolveLanding && wbPreview && previewCount > 0 ? (
                         <div style={{ marginTop: '0.5rem' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', border: '1px solid var(--text-green-700)', borderRadius: 999, padding: '0.18rem 0.7rem', fontVariantNumeric: 'tabular-nums' }}>
-                            {wbSolveLanding.pct}% on {wbSolveLanding.rows} costed row{wbSolveLanding.rows === 1 ? '' : 's'} → bid lands at ${Math.round(effRevenue).toLocaleString('en-US')}{effMargin != null ? ` · ${Math.round(effMargin * 100)}% blended` : ''}
+                            {wbSolveLanding.pct}% on {wbSolveLanding.rows} costed row{wbSolveLanding.rows === 1 ? '' : 's'} → bid is ${Math.round(effRevenue).toLocaleString('en-US')}{effMargin != null ? ` · ${Math.round(effMargin * 100)}%` : ''}
                           </span>
                         </div>
                       ) : null}
-                      {uncostedRevenue > 0 ? (
+                      {/* Only worth saying while a solve is pending — that's when "unaffected" means something. */}
+                      {uncostedRevenue > 0 && wbPreview && previewCount + vetoCount > 0 ? (
                         <div style={{ marginTop: '0.55rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.7rem', flexWrap: 'wrap', border: '1px solid var(--border)', background: 'var(--bg-subtle)', borderRadius: 7, padding: '0.4rem 0.7rem' }}>
                           <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                            <strong style={{ color: 'var(--text-strong)' }}>{eff.length - costed.length} of {eff.length} rows have no Takeoffs cost</strong> — their ${formatCurrency(uncostedRevenue)} keeps the prices you set and stacks on top of the solve.
+                            <strong style={{ color: 'var(--text-strong)' }}>{eff.length - costed.length}/{eff.length} have no cost:</strong> their ${formatCurrency(uncostedRevenue)} is unaffected
                           </span>
                           <button
                             type="button"
@@ -4293,20 +4321,20 @@ export function BidsPricingTab({
                 style={{
                   background: 'var(--surface)',
                   borderRadius: 8,
-                  padding: '1.5rem 2rem',
-                  minWidth: 360,
-                  maxWidth: 460,
+                  padding: '1.1rem 1.4rem',
+                  minWidth: 340,
+                  maxWidth: 440,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.75rem' }}>
-                  <h2 id="pricing-breakdown-title" style={{ margin: 0, fontSize: '1.125rem' }}>
+                  <h2 id="pricing-breakdown-title" style={{ margin: 0, fontSize: '1rem' }}>
                     Margin breakdown: {b.fixture}
                   </h2>
                   <span
                     style={{
-                      fontSize: '0.75rem',
+                      fontSize: '0.72rem',
                       color: 'var(--text-muted)',
                       background: 'var(--bg-subtle)',
                       borderRadius: 999,
@@ -4318,7 +4346,33 @@ export function BidsPricingTab({
                   </span>
                 </div>
 
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                {/* Jump chips: straight to the tabs this row's numbers come from. */}
+                {selectedBidForPricing ? (
+                  <div style={{ display: 'flex', gap: '0.4rem', margin: '0.55rem 0 0.1rem' }}>
+                    {(
+                      [
+                        ['counts', '# Counts'],
+                        ['takeoffs', '📐 Takeoffs'],
+                        ['labor', '🛠 Labor'],
+                      ] as const
+                    ).map(([tab, label]) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => {
+                          setPricingBreakdownRow(null)
+                          onNavigateBidToTab(selectedBidForPricing, tab)
+                        }}
+                        title={`Open this bid's ${label.slice(label.indexOf(' ') + 1)} tab`}
+                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                   {showPerUnit && (
                     <thead>
                       <tr>
@@ -4405,10 +4459,10 @@ export function BidsPricingTab({
                     color: band.text,
                   }}
                 >
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
-                    Margin <span style={{ fontWeight: 400, fontSize: '0.8125rem' }}>(Profit ÷ Revenue)</span>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+                    Margin <span style={{ fontWeight: 400, fontSize: '0.75rem' }}>(Profit ÷ Revenue)</span>
                   </span>
-                  <span style={{ fontSize: '1.375rem', fontWeight: 700 }}>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>
                     {marginPct != null ? `${marginPct.toFixed(1)}%` : '—'}
                   </span>
                 </div>
