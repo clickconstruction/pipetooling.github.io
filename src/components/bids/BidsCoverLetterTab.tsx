@@ -1026,6 +1026,10 @@ export function BidsCoverLetterTab({
                                 const starName = bidPricings.find((p) => p.id === starId)?.name ?? null
                                 const sec = bundlePricings.find((x) => x.bidVersionId === v.id && !x.offeredPricingId)
                                 const isAlt = !!vx.is_alternate
+                                // v2.2391 (Wendi): an alternate is offered IN LIEU of a base — with only one
+                                // version in the letter the toggle changed nothing (the lone alternate led the
+                                // letter anyway), so Alternate waits until a second bid joins.
+                                const loneInLetter = v.include_in_submission && rowsVersions.filter((x) => x.include_in_submission).length === 1
                                 const otherPrices = bidPricings.filter((p) => p.bid_version_id === v.id && p.id !== starId).sort((a, b) => a.sort_order - b.sort_order)
                                 return (
                                   <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', padding: '0.2rem 0', flexWrap: 'wrap' }}>
@@ -1042,7 +1046,7 @@ export function BidsCoverLetterTab({
                                     </span>
                                     <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden' }}>
                                       <button type="button" disabled={!v.include_in_submission} onClick={() => void setVersionAlternate(vx, false)} style={studioSegBtnStyle(!isAlt, v.include_in_submission)} title="Adds to the letter total">Base</button>
-                                      <button type="button" disabled={!v.include_in_submission} onClick={() => void setVersionAlternate(vx, true)} style={studioSegBtnStyle(isAlt, v.include_in_submission)} title="Offered in lieu of the base bids">Alternate</button>
+                                      <button type="button" disabled={!v.include_in_submission || (loneInLetter && !isAlt)} onClick={() => void setVersionAlternate(vx, true)} style={studioSegBtnStyle(isAlt, v.include_in_submission && !(loneInLetter && !isAlt))} title={loneInLetter && !isAlt ? 'An alternate is offered in lieu of a base — add another bid to send first' : 'Offered in lieu of the base bids'}>Alternate</button>
                                     </span>
                                     <button type="button" onClick={() => void reorderVersion(vx, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▲</button>
                                     <button type="button" onClick={() => void reorderVersion(vx, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▼</button>
