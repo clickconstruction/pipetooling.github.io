@@ -47,7 +47,7 @@ import type {
   BidPaymentScheduleRow,
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
-import { bundleSummary, letterTotal, planLetterSections, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
+import { bundleSummary, letterTotal, planLetterSections, planUnsplitLetterSections, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
 import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, planSamePageLetter, type CoverLetterAltTexts } from '../../lib/bids/coverLetterSamePage'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -434,7 +434,10 @@ export function BidsCoverLetterTab({
       coverLetterView === 'new'
         ? (bidVersions.length > 0
             ? planLetterSections(bidVersions as BidVersionLetter[], bidPricings).map((p) => ({ name: p.name, bidVersionId: p.versionId, pricingId: p.pricingId, isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId }))
-            : [])
+            // v2.2392 (Wendi): a version-less bid still honors OFFERED price options (G1) —
+            // ★ base + each offered non-★ pricing as an alternate, exactly what the Pricing
+            // tab's "On their letter · alternate" promises. Empty when nothing is offered.
+            : planUnsplitLetterSections(bidPricings, bid?.selected_price_book_version_id ?? null).map((p) => ({ name: p.name, bidVersionId: null, pricingId: p.pricingId as string | null, isAlternate: p.isAlternate, offeredPricingId: p.offeredPricingId })))
         : (() => {
             const included = bidPricings.filter((p) => p.include_in_submission).sort((a, b) => a.sort_order - b.sort_order)
             return included.length > 1 ? included.map((p) => ({ name: p.name, bidVersionId: p.bid_version_id ?? null, pricingId: p.id as string | null, isAlternate: false })) : []
@@ -998,8 +1001,27 @@ export function BidsCoverLetterTab({
                           {bidVersions.length === 0 ? (
                             <>
                               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                                One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong></> : null}. To offer an alternate, make it a bid to send (＋ Another bid to send… at the top).
+                                One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong></> : null}
+                                {(() => {
+                                  // v2.2392: offered non-★ pricings ride this letter as alternates — say so.
+                                  const offered = bundlePricings.filter((x) => x.offeredPricingId)
+                                  if (offered.length === 0) return <>. To offer an alternate, make it a bid to send (＋ Another bid to send… at the top).</>
+                                  return (
+                                    <>
+                                      , plus <strong style={{ color: 'var(--text-strong)' }}>{offered.map((x) => x.name).join(', ')}</strong> offered as {offered.length === 1 ? 'an alternate' : 'alternates'} — manage offers on the Pricing tab.
+                                    </>
+                                  )
+                                })()}
                               </div>
+                              {showAltsLayoutToggle ? (
+                                <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }}>Alternates in the letter</span>
+                                  <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => switchAltsLayout('same-page')} style={studioSegBtnStyle(altsLayout === 'same-page', true)} title="One letter — alternates listed under the proposed amount">Same page</button>
+                                    <button type="button" onClick={() => switchAltsLayout('separate')} style={studioSegBtnStyle(altsLayout === 'separate', true)} title="One full letter per alternate (the pre-v2.2370 document)">Separate pages</button>
+                                  </span>
+                                </div>
+                              ) : null}
                               {/* v2.2389 (Wendi): the caption promises Mark sent, but the button only lived in the
                                   packets branch — a plain bid had no send button at all. Same stamp, no send rows. */}
                               <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>

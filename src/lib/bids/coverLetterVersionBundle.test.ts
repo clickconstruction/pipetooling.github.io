@@ -6,8 +6,7 @@ import {
   sectionLabel,
   starredPricingIdForVersion,
   type BundlePricing,
-  type BundleVersion,
-} from './coverLetterVersionBundle'
+  type BundleVersion, planUnsplitLetterSections } from './coverLetterVersionBundle'
 
 const v = (over: Partial<BundleVersion> & { id: string }): BundleVersion => ({
   name: over.id,
@@ -87,5 +86,42 @@ describe('letterTotal / sectionLabel / bundleSummary', () => {
     expect(bundleSummary([])).toBe('nothing in the letter yet')
     expect(bundleSummary([{ isAlternate: false }])).toBe('1 base bid')
     expect(bundleSummary([{ isAlternate: false }, { isAlternate: false }, { isAlternate: true }])).toBe('2 base bids · 1 alternate')
+  })
+})
+
+describe('planUnsplitLetterSections (v2.2392)', () => {
+  const pr = (id: string, name: string, sort: number, offered = false, versionId: string | null = null) => ({
+    id,
+    name,
+    sort_order: sort,
+    bid_version_id: versionId,
+    include_in_submission: offered,
+  })
+
+  it('★ base first, offered non-★ pricings as alternates', () => {
+    const plan = planUnsplitLetterSections([pr('wendi', 'WENDI', 1), pr('def', 'Default', 0, true)], 'wendi')
+    expect(plan).toEqual([
+      { name: 'WENDI', pricingId: 'wendi', isAlternate: false },
+      { name: 'Default', pricingId: 'def', isAlternate: true, offeredPricingId: 'def' },
+    ])
+  })
+
+  it('empty when nothing is offered — the plain single letter needs no bundle', () => {
+    expect(planUnsplitLetterSections([pr('wendi', 'WENDI', 1), pr('def', 'Default', 0)], 'wendi')).toEqual([])
+  })
+
+  it('falls back to the first unsplit pricing when the saved ★ is missing or version-owned', () => {
+    const plan = planUnsplitLetterSections([pr('def', 'Default', 0), pr('wendi', 'WENDI', 1, true)], 'gone')
+    expect(plan[0]).toEqual({ name: 'Default', pricingId: 'def', isAlternate: false })
+    expect(plan[1]!.offeredPricingId).toBe('wendi')
+  })
+
+  it('ignores version-owned pricings entirely', () => {
+    expect(planUnsplitLetterSections([pr('v1', 'Split', 0, true, 'ver-1')], null)).toEqual([])
+  })
+
+  it('a ★ that is itself offered never lists twice', () => {
+    const plan = planUnsplitLetterSections([pr('wendi', 'WENDI', 1, true), pr('def', 'Default', 0, true)], 'wendi')
+    expect(plan.map((s) => s.pricingId)).toEqual(['wendi', 'def'])
   })
 })
