@@ -6,7 +6,7 @@ import { marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
 import { buildProfitLegend, clampTooltipLeft, formatProfitShare } from '../../lib/bids/profitBarLegend'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
-import { filterPriceBookEntries, seedPricingAssignmentSearch } from '../../lib/bids/priceBookAssignSearch'
+import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
@@ -308,6 +308,97 @@ export function BidsPricingTab({
   const [pricingCloneSourceId, setPricingCloneSourceId] = useState<string | null>(null)
   const [addPricingMenuOpen, setAddPricingMenuOpen] = useState(false)
   const [pricingAssignmentSearches, setPricingAssignmentSearches] = useState<Record<string, string>>({})
+  // Assign-search matching mode (v2.2397, Wendi: "i want exact matching as an option").
+  // Similar = any word, ranked; Exact = every word must appear. Per device, both dropdowns.
+  const [assignMatchMode, setAssignMatchMode] = useState<AssignMatchMode>(() => {
+    try {
+      return window.localStorage.getItem('bidPricingAssignMatchMode_v1') === 'exact' ? 'exact' : 'similar'
+    } catch {
+      return 'similar'
+    }
+  })
+  const setAssignMatchModePersist = (m: AssignMatchMode) => {
+    setAssignMatchMode(m)
+    try {
+      window.localStorage.setItem('bidPricingAssignMatchMode_v1', m)
+    } catch {
+      /* device just won't remember the mode */
+    }
+  }
+  /** Matched characters in a dropdown row — the reason the row is in the list. */
+  const assignHighlightStyle: React.CSSProperties = { background: 'var(--bg-blue-200)', color: 'var(--text-blue-700)', fontWeight: 700, borderRadius: 3, padding: '0 1px' }
+  function renderAssignHighlightedName(name: string, ranges: ReadonlyArray<readonly [number, number]>) {
+    if (ranges.length === 0) return name
+    const parts: React.ReactNode[] = []
+    let pos = 0
+    ranges.forEach(([s, e], i) => {
+      if (s > pos) parts.push(name.slice(pos, s))
+      parts.push(
+        <span key={i} style={assignHighlightStyle}>
+          {name.slice(s, e)}
+        </span>,
+      )
+      pos = e
+    })
+    if (pos < name.length) parts.push(name.slice(pos))
+    return <>{parts}</>
+  }
+  /** Dropdown header: match count on the left, the Similar|Exact toggle in the corner (v2.2397). */
+  function renderAssignDropdownHeader<T>(res: PriceBookSearchResult<T>, searchTerm: string) {
+    const words = searchTerm.toLowerCase().split(/\s+/).filter(Boolean)
+    const countText =
+      words.length === 0
+        ? `${res.matches.length} entr${res.matches.length === 1 ? 'y' : 'ies'}`
+        : assignMatchMode === 'exact'
+          ? `${res.matches.length} exact match${res.matches.length === 1 ? '' : 'es'} · contains all ${words.length} word${words.length === 1 ? '' : 's'}`
+          : `${res.matches.length} similar · best match first`
+    return (
+      <>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.3rem 0.5rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{countText}</span>
+          <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden' }}>
+            {(['similar', 'exact'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={assignMatchMode === m}
+                onClick={() => setAssignMatchModePersist(m)}
+                title={m === 'similar' ? 'Any typed word can match — ranked best first' : 'Only entries containing every typed word'}
+                style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: assignMatchMode === m ? 700 : 600, padding: '0.14rem 0.6rem', border: 'none', background: assignMatchMode === m ? 'var(--bg-blue-tint)' : 'var(--surface)', color: assignMatchMode === m ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                {m === 'similar' ? 'Similar' : 'Exact'}
+              </button>
+            ))}
+          </span>
+        </div>
+        {assignMatchMode === 'similar' && res.unmatchedWords.length > 0 && res.matches.length > 0 ? (
+          <div style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderBottom: '1px solid var(--border)' }}>
+            {res.unmatchedWords.map((w) => `“${w}”`).join(' / ')} match{res.unmatchedWords.length === 1 ? 'es' : ''} nothing
+            {res.matchedWords.length > 0 ? (
+              <> — showing entries matching {res.matchedWords.map((w) => `“${w}”`).join(' / ')}</>
+            ) : null}
+          </div>
+        ) : null}
+      </>
+    )
+  }
+  /** Exact mode found nothing — always offer the way back to Similar (v2.2397). */
+  function renderAssignExactEmptyEscape<T>(res: PriceBookSearchResult<T>, searchTerm: string) {
+    return (
+      <div style={{ padding: '0.6rem 0.75rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Nothing contains all of “{searchTerm.trim()}”.</div>
+        {res.similarCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => setAssignMatchModePersist('similar')}
+            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, marginTop: '0.45rem', padding: '0.28rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+          >
+            Show {res.similarCount} similar
+          </button>
+        ) : null}
+      </div>
+    )
+  }
   const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
   const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
   const [assignTakeoffRow, setAssignTakeoffRow] = useState<{ countRowId: string; fixture: string } | null>(null)
@@ -2345,7 +2436,7 @@ export function BidsPricingTab({
                               )}
                               {pricingAssignmentDropdownOpen === row.countRow.id && (() => {
                                 const searchTerm = pricingAssignmentSearches[row.countRow.id] || ''
-                                const filtered = filterPriceBookEntries(priceBookEntries, (e) => e.fixture_types?.name ?? '', searchTerm, Infinity)
+                                const res = searchPriceBookEntries(priceBookEntries, (e) => e.fixture_types?.name ?? '', searchTerm, assignMatchMode, Infinity)
                                 return (
                                   <div style={{
                                     position: 'absolute',
@@ -2356,13 +2447,14 @@ export function BidsPricingTab({
                                     border: '1px solid var(--border-strong)',
                                     borderRadius: 4,
                                     marginTop: '0.25rem',
-                                    maxHeight: '200px',
+                                    maxHeight: '240px',
                                     overflowY: 'auto',
                                     zIndex: 10,
                                     boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                                   }}>
-                                    {filtered.length > 0 ? (
-                                      filtered.map((e) => (
+                                    {renderAssignDropdownHeader(res, searchTerm)}
+                                    {res.matches.length > 0 ? (
+                                      res.matches.map(({ entry: e, name, ranges }) => (
                                         <div
                                           key={e.id}
                                           onClick={() => {
@@ -2383,12 +2475,12 @@ export function BidsPricingTab({
                                           onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--bg-subtle)' }}
                                           onMouseLeave={(ev) => { ev.currentTarget.style.background = row.entry?.id === e.id ? '#eff6ff' : 'white' }}
                                         >
-                                          {e.fixture_types?.name ?? ''}
+                                          {renderAssignHighlightedName(name, ranges)}
                                         </div>
                                       ))
                                     ) : searchTerm ? (
                                       <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                        No matches for "{searchTerm}"
+                                        {assignMatchMode === 'exact' ? renderAssignExactEmptyEscape(res, searchTerm) : <>No matches for "{searchTerm}"</>}
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -3922,11 +4014,12 @@ export function BidsPricingTab({
                                       )}
                                       {pricingAssignmentDropdownOpen === r.countRow.id ? (() => {
                                         const term = pricingAssignmentSearches[r.countRow.id] ?? ''
-                                        const options = filterPriceBookEntries(priceBookEntries, (e) => e.fixture_types?.name ?? '', term)
+                                        const res = searchPriceBookEntries(priceBookEntries, (e) => e.fixture_types?.name ?? '', term, assignMatchMode, Infinity)
                                         return (
-                                          <div style={{ position: 'absolute', top: '100%', left: 0, minWidth: '13rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, marginTop: '0.2rem', maxHeight: 220, overflowY: 'auto', zIndex: 30, boxShadow: '0 8px 20px rgba(0,0,0,0.18)' }}>
-                                            {options.length > 0 ? (
-                                              options.map((e) => (
+                                          <div style={{ position: 'absolute', top: '100%', left: 0, minWidth: '20rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, marginTop: '0.2rem', maxHeight: 260, overflowY: 'auto', zIndex: 30, boxShadow: '0 8px 20px rgba(0,0,0,0.18)' }}>
+                                            {renderAssignDropdownHeader(res, term)}
+                                            {res.matches.length > 0 ? (
+                                              res.matches.map(({ entry: e, name, ranges }) => (
                                                 <button
                                                   key={e.id}
                                                   type="button"
@@ -3941,10 +4034,12 @@ export function BidsPricingTab({
                                                   }}
                                                   style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', width: '100%', textAlign: 'left', font: 'inherit', fontSize: '0.78rem', padding: '0.35rem 0.55rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
                                                 >
-                                                  <span>{e.fixture_types?.name ?? ''}</span>
+                                                  <span>{renderAssignHighlightedName(name, ranges)}</span>
                                                   <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(Number(e.total_price) || 0)}</span>
                                                 </button>
                                               ))
+                                            ) : assignMatchMode === 'exact' && term.trim() ? (
+                                              renderAssignExactEmptyEscape(res, term)
                                             ) : (
                                               <div style={{ padding: '0.45rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>No book entries match — add it in the Old view.</div>
                                             )}
