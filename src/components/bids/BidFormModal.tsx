@@ -21,7 +21,7 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type Bid = Database['public']['Tables']['bids']['Row']
-import { BidGcRecipientsRow } from './BidGcRecipientsRow'
+import { BidGcRecipientsRow, GcCard } from './BidGcRecipientsRow'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 
@@ -174,6 +174,14 @@ export function BidFormModal(props: BidFormModalProps) {
   useEffect(() => {
     onServiceTypeSwitchOpenChange?.(serviceTypeSwitchOpen)
   }, [serviceTypeSwitchOpen, onServiceTypeSwitchOpenChange])
+
+  // v2.2383 (owner-approved GC cards): the bid's GC renders as a card; the
+  // search input only shows while swapping it (or before one is chosen).
+  // Lives above the early return — hooks must run on every render.
+  const [changingPrimary, setChangingPrimary] = useState(false)
+  useEffect(() => {
+    setChangingPrimary(false)
+  }, [props.editingBid?.id])
 
   if (!props.open) return null
   const {
@@ -853,8 +861,53 @@ export function BidFormModal(props: BidFormModalProps) {
               </div>
               <div style={FORM_SECTION_STYLE}>
                 <div style={FORM_SECTION_LABEL_STYLE}>People</div>
+                {(() => {
+                  const primaryCustomer = customers.find((c) => c.id === gcCustomerId) ?? null
+                  const legacyBuilderName = !primaryCustomer && editingBid?.gc_builder_id ? editingBid?.bids_gc_builders?.name ?? null : null
+                  const primaryName = primaryCustomer?.name ?? legacyBuilderName
+                  if (!primaryName || changingPrimary) return null
+                  return (
+                    <div style={{ marginBottom: '0.45rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>GCs on this bid</label>
+                      <GcCard
+                        name={primaryName}
+                        address={primaryCustomer?.address ?? null}
+                        phone={getGcBuilderPhone()}
+                        email={getGcBuilderEmail()}
+                        role="primary"
+                        action={
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setChangingPrimary(true)
+                              setGcCustomerDropdownOpen(true)
+                            }}
+                            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            change {'\u25b8'}
+                          </button>
+                        }
+                      />
+                    </div>
+                  )
+                })()}
+                {(changingPrimary || !(gcCustomerId || (editingBid?.gc_builder_id && editingBid?.bids_gc_builders))) ? (
                 <div style={{ marginBottom: '1rem', position: 'relative' }}>
-                <label htmlFor="bid-form-gc-builder" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>GC/Builder (customer)</label>
+                <label htmlFor="bid-form-gc-builder" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                  GC/Builder (customer)
+                  {changingPrimary ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChangingPrimary(false)
+                        setGcCustomerDropdownOpen(false)
+                      }}
+                      style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '0.6rem' }}
+                    >
+                      keep current {'\u21a9'}
+                    </button>
+                  ) : null}
+                </label>
                 <input
                   id="bid-form-gc-builder"
                   type="text"
@@ -901,6 +954,7 @@ export function BidFormModal(props: BidFormModalProps) {
                               if (!c) return
                               setGcCustomerId(c.id)
                               setGcCustomerSearch(getCustomerDisplay(c))
+                              setChangingPrimary(false)
                             },
                           })
                           setGcCustomerDropdownOpen(false)
@@ -937,6 +991,7 @@ export function BidFormModal(props: BidFormModalProps) {
                             setGcCustomerId(c.id)
                             setGcCustomerSearch(getCustomerDisplay(c))
                             setGcCustomerDropdownOpen(false)
+                            setChangingPrimary(false)
                           }}
                           style={{
                             padding: '0.5rem',
@@ -963,37 +1018,24 @@ export function BidFormModal(props: BidFormModalProps) {
                   </div>
                 )}
               </div>
-              {(gcCustomerId || (editingBid?.gc_builder_id && editingBid?.bids_gc_builders)) &&
-                (() => {
-                  // The getters return '\u2014' as their own empty placeholder \u2014 treat it as no value.
-                  const phone = getGcBuilderPhone().trim()
-                  const email = getGcBuilderEmail().trim()
-                  const hasPhone = Boolean(phone) && phone !== '\u2014'
-                  const hasEmail = Boolean(email) && email !== '\u2014'
-                  return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', margin: '-0.5rem 0 1rem' }}>
-                      {hasPhone ? (
-                        <span style={{ fontSize: '0.78rem', padding: '0.25rem 0.55rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)' }}>
-                          {'\u260E'} {phone}
-                        </span>
-                      ) : null}
-                      {hasEmail ? (
-                        <span style={{ fontSize: '0.78rem', padding: '0.25rem 0.55rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)' }}>
-                          {'\u2709'} {email}
-                        </span>
-                      ) : null}
-                      {!hasPhone && !hasEmail ? (
-                        <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No contact on file for this customer.</span>
-                      ) : null}
-                    </div>
-                  )
-                })()}
+                ) : null}
+              
               <BidGcRecipientsRow
                 bidId={editingBid?.id ?? null}
                 bidCustomerId={gcCustomerId || editingBid?.customer_id || null}
                 customers={customers}
                 canEdit={myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator'}
-                getCustomerDisplay={getCustomerDisplay}
+                onCreateNew={
+                  (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator') && openNewCustomerModal
+                    ? (onCreated) =>
+                        openNewCustomerModal({
+                          onCreated: (c) => {
+                            void loadCustomers()
+                            onCreated(c)
+                          },
+                        })
+                    : undefined
+                }
               />
               <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', alignItems: 'start' }}>
                 <div>
