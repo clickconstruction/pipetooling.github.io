@@ -500,6 +500,162 @@ export function BidsPricingTab({
   const [wbCellDraft, setWbCellDraft] = useState<{ rowId: string; field: WorkbenchCellField; raw: string } | null>(null)
   // Rows that just saved show a brief green "saved ✓" tag, then it fades.
   const [wbJustSaved, setWbJustSaved] = useState<Record<string, true>>({})
+  // ---- Margin brush (v2.2401, Wendi): pick up the brush, sweep across rows, each one
+  // prices at the chosen margin the instant the brush crosses it. Sweeps paint into
+  // wbPriceDrafts (live totals for free) and commit in one batch on pointer-up via the
+  // same per-row write typed prices use. Held 📌 / fixed-price / no-cost rows are skipped.
+  const [brushArmed, setBrushArmed] = useState(false)
+  const [brushMarginInput, setBrushMarginInput] = useState('50')
+  const [brushCommitting, setBrushCommitting] = useState(false)
+  const [brushStrokeCount, setBrushStrokeCount] = useState(0)
+  /** Last committed sweep: [rowId, previous saved price (null = was unpriced)] — one-level undo. */
+  const [brushUndo, setBrushUndo] = useState<Array<[string, number | null]> | null>(null)
+  const brushStrokeRef = useRef<Map<string, { prev: number | null; next: number }> | null>(null)
+  const brushPaintingRef = useRef(false)
+  const brushMarginVal = () => normalizeMarginTarget(brushMarginInput)
+  function armBrush() {
+    setBrushMarginInput(String(recentMargins[0] ?? 50))
+    setBrushArmed(true)
+    // One tool at a time: picking up the brush folds the solver ring away.
+    if (wbSolverOpen) setAndRememberWbSolverOpen(false)
+  }
+  function cancelBrushStroke() {
+    const stroke = brushStrokeRef.current
+    brushStrokeRef.current = null
+    brushPaintingRef.current = false
+    setBrushStrokeCount(0)
+    if (stroke && stroke.size > 0) {
+      setWbPriceDrafts((prev) => {
+        const next = { ...prev }
+        for (const rowId of stroke.keys()) delete next[rowId]
+        return next
+      })
+    }
+  }
+  function disarmBrush() {
+    cancelBrushStroke()
+    setBrushArmed(false)
+    setBrushUndo(null)
+  }
+  /** One brush touch on one row — draft the margin price; skips carry no side effects. */
+  function brushPaintAt(
+    clientX: number,
+    clientY: number,
+    rowsForBrush: Array<{ countRow: { id: string }; cost: number; count: number; unitPrice: number | null; isFixedPrice: boolean }>,
+    m: number,
+  ) {
+    const stroke = brushStrokeRef.current
+    if (!stroke) return
+    const el = document.elementFromPoint(clientX, clientY)
+    const tr = el && 'closest' in el ? (el as Element).closest('tr[id^="wb-row-"]') : null
+    if (!tr) return
+    const rowId = tr.id.slice('wb-row-'.length)
+    const row = rowsForBrush.find((r) => r.countRow.id === rowId)
+    if (!row) return
+    if (!(row.cost > 0) || row.isFixedPrice || wbLocks.has(rowId)) return
+    const price = unitPriceForTargetMargin(row.cost, row.count, m)
+    if (price == null) return
+    if (!stroke.has(rowId)) {
+      stroke.set(rowId, { prev: row.unitPrice != null && row.unitPrice > 0 ? row.unitPrice : null, next: price })
+      setBrushStrokeCount([...stroke.values()].filter((v) => v.prev !== v.next).length)
+      setWbPriceDrafts((prev) => (prev[rowId] === String(price) ? prev : { ...prev, [rowId]: String(price) }))
+      setWbSolveLanding(null)
+    }
+  }
+  /** Pointer-up: write every changed row through the typed-price save, then reload once. */
+  async function endBrushStroke() {
+    if (!brushPaintingRef.current) return
+    brushPaintingRef.current = false
+    const stroke = brushStrokeRef.current
+    brushStrokeRef.current = null
+    const clearStrokeDrafts = () => {
+      if (!stroke || stroke.size === 0) return
+      setWbPriceDrafts((prev) => {
+        const next = { ...prev }
+        for (const rowId of stroke.keys()) delete next[rowId]
+        return next
+      })
+    }
+    setBrushStrokeCount(0)
+    if (!stroke || stroke.size === 0) return
+    const changed = [...stroke.entries()].filter(([, v]) => v.prev !== v.next)
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (changed.length === 0 || !bidId || !versionId) {
+      clearStrokeDrafts()
+      return
+    }
+    const m = brushMarginVal()
+    setBrushCommitting(true)
+    try {
+      for (const [rowId, v] of changed) {
+        const err = await writeUnitPriceOverrideRow(rowId, v.next)
+        if (err) {
+          setError(err.message)
+          break
+        }
+      }
+      // Painted prices are saved prices now — drop them from any pending solver preview.
+      if (wbPreview) {
+        const nextPreview = { ...wbPreview }
+        const nextVeto = new Set(wbPreviewVeto)
+        let touched = false
+        for (const [rowId] of changed) {
+          if (rowId in nextPreview) {
+            delete nextPreview[rowId]
+            nextVeto.delete(rowId)
+            touched = true
+          }
+        }
+        if (touched) setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null, nextVeto)
+      }
+      await loadBidPricingAssignments(bidId, versionId)
+      if (m != null) {
+        const nextRec = updateRecentMargins(recentMargins, m)
+        setRecentMargins(nextRec)
+        saveRecentMargins(window.localStorage, nextRec)
+      }
+      setBrushUndo(changed.map(([rowId, v]) => [rowId, v.prev]))
+      showToast(`Swept ${changed.length} row${changed.length === 1 ? '' : 's'} at ${m}% — sweep again, or Esc puts the brush down.`, 'success')
+    } finally {
+      clearStrokeDrafts()
+      setBrushCommitting(false)
+    }
+  }
+  async function undoBrushSweep() {
+    const undo = brushUndo
+    if (!undo || brushCommitting) return
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    setBrushCommitting(true)
+    try {
+      for (const [rowId, prev] of undo) {
+        const err = await writeUnitPriceOverrideRow(rowId, prev)
+        if (err) {
+          setError(err.message)
+          break
+        }
+      }
+      await loadBidPricingAssignments(bidId, versionId)
+      setBrushUndo(null)
+      showToast('Sweep undone.', 'success')
+    } finally {
+      setBrushCommitting(false)
+    }
+  }
+  useEffect(() => {
+    if (!brushArmed) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        cancelBrushStroke()
+        disarmBrush()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brushArmed])
   // "Where the profit lives" bar (v2.2353): hovered slice + tooltip position,
   // click-pinned detail card (keyed by count-row id so re-solves keep it), the
   // collapsible legend, and the jump-to-row flash.
@@ -3552,6 +3708,74 @@ export function BidsPricingTab({
                         const rightCluster = (children: React.ReactNode) => (
                           <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto', minWidth: 0 }}>{children}</span>
                         )
+                        // Margin brush (v2.2401, Wendi): the brush lives LEFT of Solve › — its own
+                        // purple ring when armed, mirroring the solver's blue one.
+                        // Font Awesome Free "brush" (fontawesome.com/license/free, CC BY 4.0) — same glyph as the armed cursor.
+                        const brushGlyph = (
+                          <svg width="13" height="13" viewBox="0 0 640 640" fill="currentColor" aria-hidden="true">
+                            <path d="M64 128C64 92.7 92.7 64 128 64L416 64C451.3 64 480 92.7 480 128L496 128C540.2 128 576 163.8 576 208L576 304C576 348.2 540.2 384 496 384L336 384C327.2 384 320 391.2 320 400L320 418.7C338.6 425.3 352 443.1 352 464L352 560C352 586.5 330.5 608 304 608L272 608C245.5 608 224 586.5 224 560L224 464C224 443.1 237.4 425.3 256 418.7L256 400C256 355.8 291.8 320 336 320L496 320C504.8 320 512 312.8 512 304L512 208C512 199.2 504.8 192 496 192L480 192C480 227.3 451.3 256 416 256L128 256C92.7 256 64 227.3 64 192L64 128z"></path>
+                          </svg>
+                        )
+                        const brushControl = brushArmed ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', border: '1.5px solid #8b5cf6', borderRadius: 9, padding: '0.28rem 0.55rem', background: '#f5f3ff', boxShadow: '0 0 0 3px rgba(139, 92, 246, 0.15)', flex: '0 0 auto' }}>
+                            <input
+                              type="number"
+                              min={1}
+                              max={95}
+                              step={1}
+                              value={brushMarginInput}
+                              onChange={(e) => setBrushMarginInput(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                              aria-label="Margin percent the brush paints"
+                              style={{ width: '3.4rem', font: 'inherit', fontSize: '0.85rem', fontWeight: 700, textAlign: 'right', padding: '0.2rem 0.35rem', border: '1px solid #8b5cf6', borderRadius: 7, color: 'var(--text-violet-700)', background: 'var(--surface)' }}
+                            />
+                            <span style={{ fontWeight: 800, color: 'var(--text-violet-700)', fontSize: '0.85rem' }}>%</span>
+                            {recentMargins.map((rm) => {
+                              const sel = String(rm) === String(Math.round(Number(brushMarginInput)))
+                              return (
+                                <button
+                                  key={rm}
+                                  type="button"
+                                  onClick={() => setBrushMarginInput(String(rm))}
+                                  title={`Load the brush with ${rm}%`}
+                                  style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 700, padding: '0.12rem 0.55rem', borderRadius: 999, border: sel ? '1px solid #8b5cf6' : '1px solid var(--border-strong)', background: sel ? '#8b5cf6' : 'var(--surface)', color: sel ? '#fff' : 'var(--text-700)', cursor: 'pointer' }}
+                                >
+                                  {rm}%
+                                </button>
+                              )
+                            })}
+                            {brushUndo ? (
+                              <button
+                                type="button"
+                                disabled={brushCommitting}
+                                onClick={() => void undoBrushSweep()}
+                                style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.16rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: brushCommitting ? 'wait' : 'pointer' }}
+                              >
+                                ↩ Undo sweep ({brushUndo.length})
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={disarmBrush}
+                              title="Put the brush down (Esc)"
+                              aria-label="Put the brush down"
+                              style={{ font: 'inherit', fontSize: '0.85rem', fontWeight: 800, padding: '0.24rem 0.5rem', border: 'none', borderRadius: 6, background: '#8b5cf6', color: '#fff', cursor: 'pointer', lineHeight: 1 }}
+                            >
+                              ‹
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={armBrush}
+                            aria-pressed={false}
+                            title="Margin brush — pick it up, then sweep across rows to price them"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1, flex: '0 0 auto' }}
+                          >
+                            {brushGlyph}
+                            Margin ›
+                          </button>
+                        )
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
                             {/* Whole dollars only — the strip is a scoreboard, cents live in the rows (owner, v2.2205). */}
@@ -3588,6 +3812,7 @@ export function BidsPricingTab({
                               rightCluster(
                                 <>
                                   {wbSolverEnd.node}
+                                  {brushControl}
                                   <button
                                     type="button"
                                     onClick={() => setAndRememberWbSolverOpen(true)}
@@ -3603,6 +3828,9 @@ export function BidsPricingTab({
                               )
                             ) : (
                               // v2.2385: open — every solver control inside one blue ring, ‹ folds it away.
+                              // The brush's compact button keeps riding left of the ring (v2.2401).
+                              <>
+                              {brushControl}
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.8rem', flexWrap: 'wrap', flex: '1 1 460px', minWidth: 300, border: '1.5px solid #3b82f6', borderRadius: 9, padding: '0.3rem 0.6rem', background: 'var(--bg-blue-tint)', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.15)' }}>
                                 <button
                                   type="button"
@@ -3728,10 +3956,21 @@ export function BidsPricingTab({
                                   </>,
                                 )}
                               </div>
+                              </>
                             )}
                           </div>
                         )
                       })()}
+                      {brushArmed ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.5rem', border: '1px solid #ddd6fe', background: '#f5f3ff', color: 'var(--text-violet-700)', borderRadius: 8, padding: '0.35rem 0.7rem', fontSize: '0.78rem', fontWeight: 600 }}>
+                          <span>Sweep across rows to price them at {brushMarginVal() ?? '—'}% — held 📌, fixed-price and no-cost rows are skipped. Esc puts the brush down.</span>
+                          {brushCommitting ? (
+                            <span style={{ marginLeft: 'auto', fontWeight: 800 }}>Saving…</span>
+                          ) : brushStrokeCount > 0 ? (
+                            <span style={{ marginLeft: 'auto', fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>Painting {brushStrokeCount} row{brushStrokeCount === 1 ? '' : 's'} @ {brushMarginVal() ?? '—'}%</span>
+                          ) : null}
+                        </div>
+                      ) : null}
                       {wbSolveLanding && wbPreview && previewCount > 0 ? (
                         <div style={{ marginTop: '0.5rem' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', border: '1px solid var(--text-green-700)', borderRadius: 999, padding: '0.18rem 0.7rem', fontVariantNumeric: 'tabular-nums' }}>
@@ -3914,7 +4153,53 @@ export function BidsPricingTab({
                       )
                     })()}
 
-                    <div data-tour="workbench-rows" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
+                    <div
+                      data-tour="workbench-rows"
+                      // Margin brush (v2.2401): armed, the grid is a canvas — capture-phase down
+                      // starts a stroke (and keeps clicks/typing from firing), moves paint every
+                      // row the pointer crosses, up commits the batch. The cursor is the brush
+                      // itself (Font Awesome Free glyph, hotspot at the bristle edge).
+                      onPointerDownCapture={(e) => {
+                        if (!brushArmed || brushCommitting) return
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const m = brushMarginVal()
+                        if (m == null) {
+                          showToast('Load the brush first — margin between 1 and 95.', 'error')
+                          return
+                        }
+                        brushPaintingRef.current = true
+                        brushStrokeRef.current = new Map()
+                        setBrushStrokeCount(0)
+                        try {
+                          e.currentTarget.setPointerCapture(e.pointerId)
+                        } catch {
+                          /* pointer capture unsupported — moves still fire while over the grid */
+                        }
+                        brushPaintAt(e.clientX, e.clientY, eff, m)
+                      }}
+                      onPointerMove={(e) => {
+                        if (!brushPaintingRef.current) return
+                        const m = brushMarginVal()
+                        if (m != null) brushPaintAt(e.clientX, e.clientY, eff, m)
+                      }}
+                      onPointerUp={() => void endBrushStroke()}
+                      onPointerCancel={() => void endBrushStroke()}
+                      style={{
+                        background: 'var(--surface)',
+                        border: brushArmed ? '1px solid #8b5cf6' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        overflowX: 'auto',
+                        ...(brushArmed
+                          ? {
+                              touchAction: 'none',
+                              userSelect: 'none',
+                              WebkitUserSelect: 'none',
+                              cursor: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 640 640'%3E%3Cpath fill='%236d28d9' stroke='%23ffffff' stroke-width='34' d='M64 128C64 92.7 92.7 64 128 64L416 64C451.3 64 480 92.7 480 128L496 128C540.2 128 576 163.8 576 208L576 304C576 348.2 540.2 384 496 384L336 384C327.2 384 320 391.2 320 400L320 418.7C338.6 425.3 352 443.1 352 464L352 560C352 586.5 330.5 608 304 608L272 608C245.5 608 224 586.5 224 560L224 464C224 443.1 237.4 425.3 256 418.7L256 400C256 355.8 291.8 320 336 320L496 320C504.8 320 512 312.8 512 304L512 208C512 199.2 504.8 192 496 192L480 192C480 227.3 451.3 256 416 256L128 256C92.7 256 64 227.3 64 192L64 128z'/%3E%3C/svg%3E") 13 1, crosshair`,
+                            }
+                          : {}),
+                      }}
+                    >
                       <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem', minWidth: 900 }}>
                         <thead>
                           <tr>
@@ -3928,7 +4213,6 @@ export function BidsPricingTab({
                               ['Revenue', 'center'],
                               ['Profit', 'center'],
                               ['Margin', 'right'],
-                              ['Apply margin', 'left'],
                               ['', 'left'],
                             ] as const).map(([h, align], i) => (
                               <th key={`${h}-${i}`} style={{ textAlign: align, fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
@@ -3945,7 +4229,15 @@ export function BidsPricingTab({
                                 // No row-level click: the breakdown opens ONLY from the row's ⓘ button
                                 // (v2.NEXT, Wendi — it kept popping up mid-typing when a click missed an input).
                                 style={{
-                                  background: wbFlashRowId === r.countRow.id ? 'var(--bg-blue-tint)' : r.effUnit == null && r.cost > 0 ? 'var(--bg-amber-tint)' : undefined,
+                                  // Brushed rows tint violet while their sweep is in flight (v2.2401).
+                                  background:
+                                    brushArmed && wbPriceDrafts[r.countRow.id] != null
+                                      ? '#f5f3ff'
+                                      : wbFlashRowId === r.countRow.id
+                                        ? 'var(--bg-blue-tint)'
+                                        : r.effUnit == null && r.cost > 0
+                                          ? 'var(--bg-amber-tint)'
+                                          : undefined,
                                   transition: 'background 400ms ease',
                                 }}
                               >
@@ -4165,37 +4457,8 @@ export function BidsPricingTab({
                                     </span>
                                   )}
                                 </td>
-                                {/* Apply margin (v2.NEXT, Wendi): the Old grid's per-row margin chips, same
-                                    recents + "…" picker, writing through the same single-row apply. */}
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                                  {r.cost > 0 ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                      {recentMargins.length > 0 ? (
-                                        <button
-                                          type="button"
-                                          disabled={applyingMargin}
-                                          onClick={() => void applyMarginToSingleRow({ countRowId: r.countRow.id, cost: r.cost, count: r.count }, recentMargins[0]!)}
-                                          title={`Price this row at ${recentMargins[0]}% margin`}
-                                          style={{ padding: '0.1rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
-                                        >
-                                          {recentMargins[0]}%
-                                        </button>
-                                      ) : null}
-                                      <button
-                                        type="button"
-                                        disabled={applyingMargin}
-                                        onClick={() => setMarginPickerRow({ countRowId: r.countRow.id, fixture: r.countRow.fixture ?? '', cost: r.cost, count: r.count })}
-                                        aria-label={`More margin options for ${r.countRow.fixture ?? 'this row'}`}
-                                        title="More margin options"
-                                        style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
-                                      >
-                                        …
-                                      </button>
-                                    </span>
-                                  ) : (
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>no cost</span>
-                                  )}
-                                </td>
+                                {/* v2.2401: the Apply-margin column retired — the margin brush (strip, left
+                                    of Solve ›) is the per-row/per-sweep way to price at a margin here. */}
                                 <td style={{ padding: '0.35rem 0.5rem 0.35rem 0.2rem', borderBottom: '1px solid var(--border)' }}>
                                   <button
                                     type="button"
