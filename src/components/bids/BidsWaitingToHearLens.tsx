@@ -39,6 +39,8 @@ import {
   resolveBidLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
 import { bidTriagePillLabel } from '../../lib/bids/bidFormatting'
+import { buildBidStory, buildSiblingLines, type StorySourceEntry } from '../../lib/bids/followupStorySoFar'
+import { SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR, noteByLineFromEmbed } from '../../lib/noteCreatorDisplay'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 export type BidsWaitingToHearLensProps = {
@@ -133,6 +135,10 @@ export function BidsWaitingToHearLens({
   /** Full per-bidder tabs (v2.2296), fetched lazily for the open bid; keyed by bid id. */
   const [tabEntriesByBid, setTabEntriesByBid] = useState<Record<string, BidTabEntryRow[]>>({})
   const [savingBidId, setSavingBidId] = useState<string | null>(null)
+  // "The story so far" (v2.2406, Wendi): the group's conversation history, keyed by bid id.
+  // null-ish (missing key) = not fetched yet; the fetch is per builder group, fail-soft.
+  const [storyByBid, setStoryByBid] = useState<Record<string, StorySourceEntry[]>>({})
+  const [storyExpanded, setStoryExpanded] = useState(false)
   // Optimistic layers over props so taps feel instant while the reload catches up.
   const [localTouches, setLocalTouches] = useState<Record<string, string>>({})
   const [localResolved, setLocalResolved] = useState<Record<string, 'won' | 'lost'>>({})
@@ -220,7 +226,61 @@ export function BidsWaitingToHearLens({
     setNoteDraft('')
     setLostPickerOpen(false)
     setTabCaptureOpen(false)
+    setStoryExpanded(false)
   }, [selectedBid?.id])
+
+  // The story panels' feed: one fetch per builder group for every bid id not
+  // loaded yet (fail-soft — an error just leaves the panels quiet).
+  useEffect(() => {
+    const ids = [...new Set(selectedBids.map((b) => b.id))].filter((id) => storyByBid[id] == null)
+    if (ids.length === 0) return
+    let cancelled = false
+    void (async () => {
+      let data: unknown
+      try {
+        data = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('bids_submission_entries')
+              .select(SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR)
+              .in('bid_id', ids)
+              .order('occurred_at', { ascending: false })
+              .limit(400),
+          'chase story entries',
+        )
+      } catch {
+        return // fail-soft: the panels just stay quiet
+      }
+      if (cancelled || !Array.isArray(data)) return
+      type Row = {
+        id: string
+        bid_id: string
+        gc_customer_id: string | null
+        contact_method: string | null
+        notes: string | null
+        occurred_at: string
+        created_by_user?: { name: string | null; email: string | null } | { name: string | null; email: string | null }[] | null
+      }
+      setStoryByBid((prev) => {
+        const next = { ...prev }
+        for (const id of ids) next[id] = []
+        for (const r of data as Row[]) {
+          ;(next[r.bid_id] ??= []).push({
+            id: r.id,
+            gcCustomerId: r.gc_customer_id ?? null,
+            method: r.contact_method,
+            text: (r.notes ?? '').trim(),
+            iso: r.occurred_at,
+            byLine: noteByLineFromEmbed(r.created_by_user),
+          })
+        }
+        return next
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBids, storyByBid])
 
   // Lazy full-tab fetch for the open bid (fail-soft: pre-migration reads just
   // leave the ladder off).
@@ -265,11 +325,20 @@ export function BidsWaitingToHearLens({
       const trimmed = noteDraft.trim()
       writes.entry.notes = trimmed ? `${tab.noteLine}. ${trimmed}` : tab.noteLine
     }
-    // Optimistic: resolved bids leave the queue, contact-only taps go fresh.
+    // Optimistic: resolved bids leave the queue, contact-only taps go fresh —
+    // and the tap lands at the top of the story panel right away (v2.2406).
+    const localStoryId = `local-${writes.lastContact}`
     if (writes.outcomeUpdate) {
       setLocalResolved((prev) => ({ ...prev, [b.rowKey]: writes.outcomeUpdate!.outcome }))
     } else {
       setLocalTouches((prev) => ({ ...prev, [b.id]: writes.lastContact }))
+      setStoryByBid((prev) => ({
+        ...prev,
+        [b.id]: [
+          { id: localStoryId, gcCustomerId: null, method: writes.entry.contact_method, text: writes.entry.notes, iso: writes.entry.occurred_at, byLine: null },
+          ...(prev[b.id] ?? []),
+        ],
+      }))
     }
     setChasedThisSession((n) => n + 1)
     setNoteDraft('')
@@ -317,6 +386,12 @@ export function BidsWaitingToHearLens({
           if (res.ok) setTabEntriesByBid((prev) => ({ ...prev, [b.id]: tab.entries!.map((e, i) => ({ ...e, id: `local-${i}` })) }))
           else onError('Tab summary saved, but the full bidder list could not be stored yet.')
         }
+        // The saved entry replaces the optimistic one (real id + by-line) on refetch.
+        setStoryByBid((prev) => {
+          const next = { ...prev }
+          delete next[b.id]
+          return next
+        })
         onReloadBids()
       } catch (err) {
         onError(err instanceof Error ? `Could not log the chase: ${err.message}` : 'Could not log the chase.')
@@ -330,6 +405,7 @@ export function BidsWaitingToHearLens({
           delete next[b.id]
           return next
         })
+        setStoryByBid((prev) => ({ ...prev, [b.id]: (prev[b.id] ?? []).filter((e) => e.id !== localStoryId) }))
         setChasedThisSession((n) => Math.max(0, n - 1))
       } finally {
         setSavingBidId(null)
@@ -584,6 +660,9 @@ export function BidsWaitingToHearLens({
                 })}
               </div>
 
+              {/* v2.2406 (Wendi): the full picture — actions on the left, the conversation on the right (stacked on phones). */}
+              <div style={{ display: 'flex', flexDirection: narrowViewport640 ? 'column' : 'row', gap: '0.8rem', alignItems: narrowViewport640 ? 'stretch' : 'flex-start' }}>
+              <div style={{ flex: '1 1 58%', minWidth: 0 }}>
               <div style={{ ...cardStyle, marginBottom: '0.6rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{selectedBid.label} · {selectedBid.project}</span>
@@ -802,6 +881,99 @@ export function BidsWaitingToHearLens({
                 </button>
                 {' '}for contacts, notes, and the call session.
               </p>
+              </div>
+              <div style={{ flex: narrowViewport640 ? undefined : '0 0 330px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {(() => {
+                  const sources = storyByBid[selectedBid.id]
+                  const { items, total } = buildBidStory({
+                    entries: sources ?? [],
+                    gcId: selectedBid.gc.gcKey,
+                    sentIso: selectedBid.sentIso || null,
+                    sentValue: selectedBid.value,
+                    cap: storyExpanded ? Infinity : 4,
+                  })
+                  return (
+                    <div style={cardStyle} aria-label="The story so far">
+                      <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.45rem' }}>
+                        The story so far · {selectedBid.label}
+                      </div>
+                      {sources == null ? (
+                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading…</p>
+                      ) : items.length === 0 ? (
+                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nothing logged yet — your taps and Bid Board notes build the story here.</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {items.map((it) => (
+                            <div key={it.key} style={{ color: it.kind === 'sent' ? 'var(--text-muted)' : undefined }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                <span>{it.icon} {shortDate(it.iso)}</span>
+                                {it.byLine ? <span>{it.byLine.replace(/^By /, '')}</span> : null}
+                              </div>
+                              <div style={{ fontSize: '0.8125rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{it.text}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {total > items.length ? (
+                        <button
+                          type="button"
+                          onClick={() => setStoryExpanded(true)}
+                          style={{ marginTop: '0.45rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem' }}
+                        >
+                          show all {total} {'→'}
+                        </button>
+                      ) : storyExpanded && total > 4 ? (
+                        <button
+                          type="button"
+                          onClick={() => setStoryExpanded(false)}
+                          style={{ marginTop: '0.45rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem' }}
+                        >
+                          show fewer
+                        </button>
+                      ) : null}
+                    </div>
+                  )
+                })()}
+                {(() => {
+                  const sibs = selectedBids.filter((x) => x.rowKey !== selectedBid.rowKey)
+                  if (sibs.length === 0) return null
+                  const lines = buildSiblingLines(
+                    sibs.map((x) => ({ rowKey: x.rowKey, bidId: x.id, title: bidTriagePillLabel(x), sentIso: x.sentIso })),
+                    storyByBid,
+                  )
+                  return (
+                    <div style={cardStyle} aria-label="This builder's other open bids, latest word each">
+                      <div style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.45rem' }}>
+                        With {selectedGroup.builderName} lately · other open bids
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                        {lines.map((l) => (
+                          <button
+                            key={l.rowKey}
+                            type="button"
+                            onClick={() => setSelectedBidId(l.rowKey)}
+                            title="Open this bid on the card"
+                            style={{ display: 'block', width: '100%', textAlign: 'left', padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit' }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.title}</span>
+                              {l.kind === 'entry' && l.iso ? (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{l.icon} {shortDate(l.iso)}</span>
+                              ) : null}
+                            </div>
+                            {l.kind === 'entry' ? (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.text}</div>
+                            ) : (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>no contact since sent {shortDate(l.sentIso)}</div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+              </div>
             </div>
           ) : null}
         </div>
