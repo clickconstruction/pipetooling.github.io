@@ -175,6 +175,14 @@ export function BidFormModal(props: BidFormModalProps) {
     onServiceTypeSwitchOpenChange?.(serviceTypeSwitchOpen)
   }, [serviceTypeSwitchOpen, onServiceTypeSwitchOpenChange])
 
+  // v2.2383 (owner-approved GC cards): the bid's GC renders as a card; the
+  // search input only shows while swapping it (or before one is chosen).
+  // Lives above the early return — hooks must run on every render.
+  const [changingPrimary, setChangingPrimary] = useState(false)
+  useEffect(() => {
+    setChangingPrimary(false)
+  }, [props.editingBid?.id])
+
   if (!props.open) return null
   const {
     editingBid,
@@ -213,12 +221,6 @@ export function BidFormModal(props: BidFormModalProps) {
     onOpenExistingBidFromServiceTypeSwitch,
     embedded = false,
   } = props
-  // v2.2383 (owner-approved GC cards): the bid's GC renders as a card; the
-  // search input only shows while swapping it (or before one is chosen).
-  const [changingPrimary, setChangingPrimary] = useState(false)
-  useEffect(() => {
-    setChangingPrimary(false)
-  }, [editingBid?.id])
   const {
     driveLink,
     plansLink,
