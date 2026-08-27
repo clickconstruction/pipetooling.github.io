@@ -4614,23 +4614,34 @@ export function BidsPricingTab({
                   Your default for new bids: <strong>{defaultName}</strong> ✓
                 </div>
               ) : null}
-              <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden', marginBottom: '0.55rem' }}>
-                {(
-                  [
-                    ['combined', 'Combined price'],
-                    ['stage', 'Stage price'],
-                  ] as const
-                ).map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={wbPriceDisplayMode === key}
-                    onClick={() => setWbPriceDisplayMode(key)}
-                    style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.7rem', border: 'none', background: wbPriceDisplayMode === key ? 'var(--bg-blue-tint)' : 'var(--surface)', color: wbPriceDisplayMode === key ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
-                  >
-                    {label}
-                  </button>
-                ))}
+              {/* v2.2386 (Wendi): Add entry rides beside the price-mode toggle — always visible, no scroll to the list's foot. */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.55rem' }}>
+                <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden' }}>
+                  {(
+                    [
+                      ['combined', 'Combined price'],
+                      ['stage', 'Stage price'],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={wbPriceDisplayMode === key}
+                      onClick={() => setWbPriceDisplayMode(key)}
+                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 700, padding: '0.2rem 0.7rem', border: 'none', background: wbPriceDisplayMode === key ? 'var(--bg-blue-tint)' : 'var(--surface)', color: wbPriceDisplayMode === key ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={openNewPricingEntry}
+                  disabled={!editingTemplateId}
+                  style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                >
+                  Add entry
+                </button>
               </div>
               <input
                 type="text"
@@ -4686,14 +4697,6 @@ export function BidsPricingTab({
                   </tbody>
                 </table>
               </div>
-              <button
-                type="button"
-                onClick={openNewPricingEntry}
-                disabled={!editingTemplateId}
-                style={{ marginTop: '0.5rem', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
-              >
-                Add entry
-              </button>
               <p style={{ margin: '0.6rem 0 0', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
                 A price added in Combined lands in <strong>Rough In</strong> — flip to Stage price to split it. Esc or ✕ closes.
               </p>
