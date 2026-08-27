@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -517,6 +517,40 @@ export function BidsCountsTab({
     URL.revokeObjectURL(url)
     showToast('Counts exported to CSV.', 'success')
   }
+
+  // Count-row tallies for the picker's left column (v2.2381): one id-only
+  // sweep over bids_count_rows, chunked to keep the URL sane, keyed on the
+  // bid set so search keystrokes don't refetch. Null until loaded — the
+  // column simply waits rather than flashing zeros.
+  const [pickerCounts, setPickerCounts] = useState<Record<string, number> | null>(null)
+  const pickerBidIdsKey = useMemo(() => bids.map((b) => b.id).sort().join(','), [bids])
+  useEffect(() => {
+    if (selectedBidForCounts) return
+    const ids = pickerBidIdsKey.split(',').filter(Boolean)
+    if (ids.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const tally: Record<string, number> = {}
+      try {
+        for (let i = 0; i < ids.length; i += 100) {
+          const rows = await withSupabaseRetry(
+            () => supabase.from('bids_count_rows').select('bid_id').in('bid_id', ids.slice(i, i + 100)),
+            'load count-row tallies for the bid picker',
+          )
+          if (cancelled) return
+          for (const r of rows ?? []) {
+            tally[r.bid_id] = (tally[r.bid_id] ?? 0) + 1
+          }
+        }
+      } catch {
+        return // the column just stays absent — the picker itself is unaffected
+      }
+      if (!cancelled) setPickerCounts(tally)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pickerBidIdsKey, selectedBidForCounts])
 
   const bidsScopedForCounts = onlyMyBids ? bids.filter(isMyBid) : bids
   const filteredBidsForCounts = countsSearchQuery.trim()
@@ -1152,6 +1186,7 @@ export function BidsCountsTab({
           prefixMap={ledgerPrefixMap}
           onSelectBid={onSelectBid}
           emptyMessage={countsSearchQuery.trim() ? 'No bids match your search.' : null}
+          countBadges={pickerCounts}
         />
       )}
     </div>
