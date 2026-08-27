@@ -235,9 +235,26 @@ export function BidVersionPicker({
       }
       if (newId) await stampVersionGc(newId, addGc.gcId)
       await reloadVersions()
-      if (newId) onSwitch(newId)
+      // v2.2405 (Wendi's BP384): adding a GC no longer silently switches you onto the NEW
+      // packet — she kept pricing after an Add GC believing she was still on her primary,
+      // and every price landed on the other GC. Stay where you are; their chip is one click.
+      if (isUnsplit && newId) {
+        // First split only: the current setup just became the BASE version — select it
+        // (that IS where the user was standing; there was no version to stay on before).
+        const { data: vs } = await supabase
+          .from('bid_versions')
+          .select('id')
+          .eq('bid_id', bidId)
+          .neq('id', newId)
+          .order('sort_order', { ascending: true })
+          .limit(1)
+        const baseId = (vs?.[0] as { id: string } | undefined)?.id
+        if (baseId) onSwitch(baseId)
+      }
       setAddGc(null)
-      showToast(`${gcName} added — their packet starts as a copy. Price it, then send from the Cover Letter.`, 'success')
+      const cur = bidVersions.find((v) => v.id === selectedBidVersionId)
+      const stayName = (cur?.customer_id ? gcNamesById[cur.customer_id] : null) ?? bidGcName ?? 'your current'
+      showToast(`${gcName} added — their packet starts as a copy. You're still on ${stayName}'s packet; click ${gcName}'s chip to price theirs.`, 'success')
     } finally {
       setBusy(false)
     }
