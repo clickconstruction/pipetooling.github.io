@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveCurrentPriceBookTemplateId } from './resolveCurrentPriceBookTemplateId'
+import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from './resolveCurrentPriceBookTemplateId'
 
 describe('resolveCurrentPriceBookTemplateId', () => {
   const templateIds = ['tmpl-default', 'tmpl-wendi']
@@ -63,5 +63,87 @@ describe('resolveCurrentPriceBookTemplateId', () => {
         templateIds,
       }),
     ).toBeNull()
+  })
+
+  // v2.2396 (Wendi): scenarios born from "+ Add price" duplicates or bid-version clones
+  // record another SCENARIO as their source — the template sits at the root of the chain.
+  it('walks a scenario→scenario lineage to the template root', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'copy-of-copy',
+        bidPricings: [
+          { id: 'copy-of-copy', source_version_id: 'copy-1' },
+          { id: 'copy-1', source_version_id: 'tmpl-wendi' },
+        ],
+        templateIds,
+      }),
+    ).toBe('tmpl-wendi')
+  })
+
+  it('walks across bid versions (three hops) to the template root', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'v3-price',
+        bidPricings: [
+          { id: 'v3-price', source_version_id: 'v2-price' },
+          { id: 'v2-price', source_version_id: 'v1-price' },
+          { id: 'v1-price', source_version_id: 'tmpl-default' },
+        ],
+        templateIds,
+      }),
+    ).toBe('tmpl-default')
+  })
+
+  it('returns null when the lineage dead-ends before a template', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'copy-of-blank',
+        bidPricings: [
+          { id: 'copy-of-blank', source_version_id: 'copy-blank' },
+          { id: 'copy-blank', source_version_id: null },
+        ],
+        templateIds,
+      }),
+    ).toBeNull()
+  })
+
+  it('survives a cyclic lineage without looping', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'a',
+        bidPricings: [
+          { id: 'a', source_version_id: 'b' },
+          { id: 'b', source_version_id: 'a' },
+        ],
+        templateIds,
+      }),
+    ).toBeNull()
+  })
+
+  it('returns null when the chain hops to a deleted scenario', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'copy-2',
+        bidPricings: [{ id: 'copy-2', source_version_id: 'gone-scenario' }],
+        templateIds,
+      }),
+    ).toBeNull()
+  })
+})
+
+describe('resolvePriceBookTemplateRoot', () => {
+  const templateIds = ['tmpl-wendi']
+
+  it('resolves any pricing id (not just the selected one) — the dedupe direction', () => {
+    const bidPricings = [
+      { id: 'p1', source_version_id: 'tmpl-wendi' },
+      { id: 'p2', source_version_id: 'p1' },
+    ]
+    expect(resolvePriceBookTemplateRoot({ pricingId: 'p2', bidPricings, templateIds })).toBe('tmpl-wendi')
+    expect(resolvePriceBookTemplateRoot({ pricingId: 'p1', bidPricings, templateIds })).toBe('tmpl-wendi')
+  })
+
+  it('a template id resolves to itself', () => {
+    expect(resolvePriceBookTemplateRoot({ pricingId: 'tmpl-wendi', bidPricings: [], templateIds })).toBe('tmpl-wendi')
   })
 })
