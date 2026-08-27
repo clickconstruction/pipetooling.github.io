@@ -180,6 +180,12 @@ export default function Bids() {
   const { showToast } = useToastContext()
   const newCustomerModal = useNewCustomerModal()
   const bidPreview = useBidPreview()
+  // v2.2390 (Wendi): on the Bids page, a bid-name click opens the tabbed Bid
+  // window on its Bid face — not the old standalone preview (which stays for
+  // Dashboard / global search / customer profiles, per the flip guide).
+  const bidPreviewOnBidsPage = bidPreview
+    ? { ...bidPreview, openBidPreviewFromBid: (bid: BidWithBuilder) => openEditBid(bid, { tab: 'bid' }) }
+    : null
   const ledgerPrefixMap = useLedgerPrefixMap()
   const checklistAddModal = useChecklistAddModal()
   const editCustomerModal = useEditCustomerModal()
@@ -270,6 +276,10 @@ export default function Bids() {
 
   // Bid Board
   const [bidFormOpen, setBidFormOpen] = useState(false)
+  // v2.2390 (Wendi): which face the Bid window opens on — Edit for every Edit-bid
+  // button (the default), Bid for bid-name clicks (they used to open the old
+  // standalone preview on this page).
+  const [bidWindowInitialTab, setBidWindowInitialTab] = useState<'bid' | 'edit'>('edit')
   /** Projects for the bid form's linked-project picker; null = not fetched yet (lazy, on first form open). */
   const [projectsForPicker, setProjectsForPicker] = useState<Array<{ id: string; name: string | null; project_number: string | null }> | null>(null)
   const [pendingBidFormFocus, setPendingBidFormFocus] = useState<'projectName' | 'gcBuilder' | 'bidValue' | null>(null)
@@ -1720,7 +1730,8 @@ export default function Bids() {
     setError(null)
   }
 
-  function openEditBid(bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' | 'bidValue' }) {
+  function openEditBid(bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' | 'bidValue'; tab?: 'bid' | 'edit' }) {
+    setBidWindowInitialTab(opts?.tab ?? 'edit')
     clearBidDateSentAttestationFlow()
     setEditingBid(bid)
     let nextGcCustomerId = ''
@@ -2892,7 +2903,7 @@ export default function Bids() {
           authUser={authUser}
           isDev={myRole === 'dev'}
                 ledgerPrefixMap={ledgerPrefixMap}
-          bidPreview={bidPreview}
+          bidPreview={bidPreviewOnBidsPage}
           sectionOpen={bidBoardSectionOpen}
           onSectionOpenChange={setBidBoardSectionOpen}
           deepLinkHighlightId={bidBoardDeepLinkHighlightId}
@@ -3130,7 +3141,7 @@ export default function Bids() {
             onMutatedNotesCustomer={() => { void loadCustomerContacts(); void loadBids() }}
             onOpenPreviewBid={(bidId) => {
               const b = bids.find((x) => x.id === bidId)
-              if (b) bidPreview?.openBidPreviewFromBid(b)
+              if (b) openEditBid(b, { tab: 'bid' })
               else void bidPreview?.openBidPreview(bidId)
             }}
           />
@@ -3154,7 +3165,7 @@ export default function Bids() {
           viewerRole={myRole === 'controller' ? 'assistant' : myRole}
           onOpenBidPreview={(bidId) => {
             const b = bids.find((x) => x.id === bidId)
-            if (b) bidPreview?.openBidPreviewFromBid(b)
+            if (b) openEditBid(b, { tab: 'bid' })
             else void bidPreview?.openBidPreview(bidId)
           }}
         />
@@ -3185,7 +3196,7 @@ export default function Bids() {
           selectedBidForCounts={selectedBidForCounts}
           activeBidVersionId={selectedBidVersionId}
           narrowViewport640={narrowViewport640}
-          bidPreview={bidPreview}
+          bidPreview={bidPreviewOnBidsPage}
           countRows={countRows}
           setCountRows={setCountRows}
           refreshAfterCountsChange={refreshAfterCountsChange}
@@ -3231,7 +3242,7 @@ export default function Bids() {
           selectedBidVersionId={selectedBidVersionId}
           selectedBidForCostEstimate={selectedBidForCostEstimate}
           narrowViewport640={narrowViewport640}
-          bidPreview={bidPreview}
+          bidPreview={bidPreviewOnBidsPage}
           error={error}
           setError={setError}
           selectedServiceTypeId={selectedServiceTypeId}
@@ -3292,7 +3303,7 @@ export default function Bids() {
           selectedBidForCostEstimate={selectedBidForCostEstimate}
           setSelectedBidForCostEstimate={setSelectedBidForCostEstimate}
           narrowViewport640={narrowViewport640}
-          bidPreview={bidPreview}
+          bidPreview={bidPreviewOnBidsPage}
           error={error}
           setError={setError}
           selectedServiceTypeId={selectedServiceTypeId}
@@ -3395,7 +3406,7 @@ export default function Bids() {
           resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing?.id ?? null)}
           onRetryResolve={retryPricingResolve}
           narrowViewport640={narrowViewport640}
-          bidPreview={bidPreview}
+          bidPreview={bidPreviewOnBidsPage}
           error={error}
           setError={setError}
           selectedServiceTypeId={selectedServiceTypeId}
@@ -3482,7 +3493,7 @@ export default function Bids() {
           bids={bidsTyped}
           selectedBidForPricing={selectedBidForPricing}
           narrowViewport640={narrowViewport640}
-          bidPreview={bidPreview}
+          bidPreview={bidPreviewOnBidsPage}
           serviceTypes={serviceTypes}
           pricingCountRows={pricingCountRows}
           coverLetterPricingRows={coverLetterPricingRows}
@@ -3639,7 +3650,9 @@ export default function Bids() {
         if (bidFormOpen && editingBid) {
           return (
             <BidWindowModal
+              key={`${editingBid.id}:${bidWindowInitialTab}`}
               bidId={editingBid.id}
+              initialTab={bidWindowInitialTab}
               onRequestClose={closeBidForm}
               onNavigateToBidsTab={(tab, bidId) => {
                 closeBidForm()

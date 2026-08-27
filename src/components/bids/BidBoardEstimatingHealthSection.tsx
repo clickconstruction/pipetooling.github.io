@@ -9,6 +9,8 @@ type BidBoardEstimatingHealthSectionProps = {
   weeklySentSummaries: ReturnType<typeof buildBidBoardWeeklySentSummaries>
   filteredBids: BidWithBuilder[]
   isDev: boolean
+  /** Bids-page override (v2.2390): open the tabbed Bid window instead of the standalone preview. */
+  openBid?: (bid: BidWithBuilder) => void
 }
 
 /**
@@ -24,10 +26,11 @@ export function BidBoardEstimatingHealthSection({
   weeklySentSummaries,
   filteredBids,
   isDev,
+  openBid,
 }: BidBoardEstimatingHealthSectionProps) {
   return (
     <Fragment>
-      <BidBoardEstimatingPulseSection filteredBids={filteredBids} />
+      <BidBoardEstimatingPulseSection filteredBids={filteredBids} openBid={openBid} />
       {isDev && (
         <Fragment>
           <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} />
