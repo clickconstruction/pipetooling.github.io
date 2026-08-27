@@ -11,6 +11,7 @@ import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../l
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
 import { readPreviewStash, writePreviewStash } from '../../lib/bids/workbenchPreviewStash'
+import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../lib/bids/workbenchCellSolve'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
 import { countTabsMatchedOrBeaten, marginPctToMatchTabLow } from '../../lib/bidTabCapture'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
@@ -341,12 +342,32 @@ export function BidsPricingTab({
       return null
     }
   }
-  /** Every preview change goes through here so the stash always mirrors state (v2.2354). */
-  const setAndStashWbPreview = (versionId: string | null, preview: Record<string, number> | null) => {
+  // Clicked-off proposals (v2.2379): rows whose ghost price was clicked to red ✕ —
+  // Apply holds their saved price. Lives beside the preview, stashes with it,
+  // and survives re-solves (drops persist while the margin is retuned).
+  const [wbPreviewVeto, setWbPreviewVeto] = useState<Set<string>>(() => new Set())
+  /** Every preview change goes through here so the stash always mirrors state (v2.2354); vetoes ride along (v2.2379). */
+  const setAndStashWbPreview = (versionId: string | null, preview: Record<string, number> | null, vetoed: Set<string> = new Set()) => {
     setWbPreview(preview)
+    setWbPreviewVeto(vetoed)
     if (!versionId) return
     const storage = wbStash()
-    if (storage) writePreviewStash(storage, versionId, preview, Date.now())
+    if (storage) writePreviewStash(storage, versionId, preview, Date.now(), [...vetoed])
+  }
+  /** Ghost click: toggle one row out of (or back into) the pending solve.
+      Functional update so rapid clicks on different ghosts can't lose one;
+      the stash mirror inside is idempotent, so a double-invoked updater is harmless. */
+  const toggleWbPreviewVeto = (rowId: string) => {
+    setWbPreviewVeto((prev) => {
+      const next = new Set(prev)
+      if (next.has(rowId)) next.delete(rowId)
+      else next.add(rowId)
+      const storage = wbStash()
+      if (storage && selectedPricingVersionId) {
+        writePreviewStash(storage, selectedPricingVersionId, wbPreview, Date.now(), [...next])
+      }
+      return next
+    })
   }
   // A preview belongs to the price option it was made on — whenever an option takes
   // the screen (first load, tab switches, reloads, scenario moves), its own stashed
@@ -354,12 +375,14 @@ export function BidsPricingTab({
   useEffect(() => {
     if (!selectedPricingVersionId) {
       setWbPreview(null)
+      setWbPreviewVeto(new Set())
       setWbPreviewRestoredAt(null)
       return
     }
     const storage = wbStash()
     const stash = storage ? readPreviewStash(storage, selectedPricingVersionId) : null
     setWbPreview(stash?.prices ?? null)
+    setWbPreviewVeto(new Set(stash?.vetoed ?? []))
     setWbPreviewRestoredAt(stash ? stash.at : null)
   }, [selectedPricingVersionId])
   const [wbLocks, setWbLocks] = useState<Set<string>>(() => new Set())
@@ -378,6 +401,11 @@ export function BidsPricingTab({
   // while the field is being edited — commit on Enter/blur writes it straight to
   // the bid (the same write Apply uses), no preview gate for hand-typed prices.
   const [wbPriceDrafts, setWbPriceDrafts] = useState<Record<string, string>>({})
+  // One Revenue/Profit/Margin cell mid-edit (v2.2379): its raw text. Each
+  // keystroke converts to an implied unit price in wbPriceDrafts, so the
+  // price cell and live totals follow; Enter/blur commits through the same
+  // save commitWorkbenchTypedPrice already runs for typed prices.
+  const [wbCellDraft, setWbCellDraft] = useState<{ rowId: string; field: WorkbenchCellField; raw: string } | null>(null)
   // Rows that just saved show a brief green "saved ✓" tag, then it fades.
   const [wbJustSaved, setWbJustSaved] = useState<Record<string, true>>({})
   // "Where the profit lives" bar (v2.2353): hovered slice + tooltip position,
@@ -1682,7 +1710,7 @@ export function BidsPricingTab({
       showToast('Nothing to solve — check the margin (1–95) and that unlocked rows have costs.', 'error')
       return
     }
-    setAndStashWbPreview(selectedPricingVersionId, { ...(wbPreview ?? {}), ...Object.fromEntries(sol.prices) })
+    setAndStashWbPreview(selectedPricingVersionId, { ...(wbPreview ?? {}), ...Object.fromEntries(sol.prices) }, wbPreviewVeto)
     // A fresh solve is her current work, not a restoration — the age chip stands down.
     setWbPreviewRestoredAt(null)
     // Margin solves get the landing chip ("56% on 12 costed rows → …"); a
@@ -1710,6 +1738,8 @@ export function BidsPricingTab({
     setWbApplying(true)
     try {
       for (const [rowId, price] of Object.entries(wbPreview)) {
+        // Clicked-off proposals hold their saved price (v2.2379).
+        if (wbPreviewVeto.has(rowId)) continue
         // A stashed preview can outlive its count row (row deleted in Counts) —
         // never write an override for a row the grid no longer has.
         const row = derived.rows.find((r) => r.countRow.id === rowId)
@@ -1749,9 +1779,9 @@ export function BidsPricingTab({
     }
     const row = derived.rows.find((r) => r.countRow.id === countRowId)
     const v = parseFloat(raw.replace(/[$,]/g, ''))
-    // What the field showed before she typed: the solver's preview if one covers
-    // this row, otherwise the saved price. Blur without a real change writes nothing.
-    const before = wbPreview?.[countRowId] ?? row?.unitPrice ?? null
+    // What the field showed before she typed: the saved price (the ghost carries
+    // the solver's proposal now — v2.2379). Blur without a real change writes nothing.
+    const before = row?.unitPrice ?? null
     if (!Number.isFinite(v) || v <= 0 || v === before) {
       clearDraft()
       return
@@ -1765,11 +1795,13 @@ export function BidsPricingTab({
       return
     }
     // Her typed price is now the saved price — drop the row from any solver
-    // preview so Apply can't later overwrite what she just saved.
+    // preview (and its veto) so Apply can't later overwrite what she just saved.
     if (wbPreview && countRowId in wbPreview) {
       const nextPreview = { ...wbPreview }
       delete nextPreview[countRowId]
-      setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null)
+      const nextVeto = new Set(wbPreviewVeto)
+      nextVeto.delete(countRowId)
+      setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null, nextVeto)
     }
     await loadBidPricingAssignments(bidId, versionId)
     setSavingUnitPriceOverride(null)
@@ -2953,21 +2985,30 @@ export function BidsPricingTab({
                 const { rows, totalCost, uncostedRevenue, openRowBreakdown } = derived
                 const eff = rows.map((r) => {
                   const pv = wbPreview?.[r.countRow.id]
+                  const isPreview = pv != null && pv !== r.unitPrice
+                  const isVetoed = isPreview && wbPreviewVeto.has(r.countRow.id)
                   // A price mid-typing drives the live totals too (v2.2373) — but
                   // only the solver's preview map makes a row "preview": typed
                   // prices save on Enter/blur instead of waiting on Apply.
                   const draftRaw = wbPriceDrafts[r.countRow.id]
                   const draftNum = draftRaw != null ? parseFloat(draftRaw.replace(/[$,]/g, '')) : NaN
                   const draft = Number.isFinite(draftNum) && draftNum > 0 ? draftNum : null
-                  const unit = draft ?? pv ?? r.unitPrice
+                  // Totals see the pending solve (minus clicked-off rows); the row's
+                  // own cells keep the saved price — the ghost carries the proposal (v2.2379).
+                  const unit = draft ?? (isPreview && !isVetoed ? pv : null) ?? r.unitPrice
                   const revenue = unit != null ? unit * r.count : 0
                   const rowMargin = unit != null && revenue > 0 && r.cost > 0 ? (revenue - r.cost) / revenue : null
-                  return { ...r, effUnit: unit, effRevenue: revenue, effMargin: rowMargin, isPreview: pv != null && pv !== r.unitPrice }
+                  const displayUnit = draft ?? r.unitPrice
+                  const displayRevenue = displayUnit != null ? displayUnit * r.count : 0
+                  const displayMargin =
+                    displayUnit != null && displayRevenue > 0 && r.cost > 0 ? (displayRevenue - r.cost) / displayRevenue : null
+                  return { ...r, effUnit: unit, effRevenue: revenue, effMargin: rowMargin, isPreview, isVetoed, displayUnit, displayRevenue, displayMargin }
                 })
                 const effRevenue = eff.reduce((s, r) => s + r.effRevenue, 0)
                 const effProfit = effRevenue - totalCost
                 const effMargin = effRevenue > 0 ? effProfit / effRevenue : null
-                const previewCount = eff.filter((r) => r.isPreview).length
+                const previewCount = eff.filter((r) => r.isPreview && !r.isVetoed).length
+                const vetoCount = eff.filter((r) => r.isVetoed).length
                 const costed = eff.filter((r) => r.cost > 0)
                 const pricedCount = costed.filter((r) => r.effUnit != null).length
                 const unpricedCost = costed.filter((r) => r.effUnit == null).reduce((s, r) => s + r.cost, 0)
@@ -2976,6 +3017,77 @@ export function BidsPricingTab({
                 )
                 const concColors = ['#3b82f6', '#6366f1', '#8b5cf6', '#0ea5e9', '#14b8a6', '#f59e0b', '#84cc16', '#ec4899', '#64748b', '#eab308']
                 const mColor = (m: number | null) => (m == null ? 'var(--text-muted)' : m >= 0.42 ? 'var(--text-green-600)' : m >= 0.28 ? 'var(--text-amber-700)' : 'var(--text-red-700)')
+                // v2.2379: price, Revenue, Profit, and Margin share one quiet-cell
+                // look — dashed underline until focused, no lone boxed input.
+                const wbCellStyle = (width: string, extra?: React.CSSProperties): React.CSSProperties => ({
+                  width,
+                  font: 'inherit',
+                  fontSize: '0.85rem',
+                  padding: '0.25rem 0.4rem',
+                  border: 'none',
+                  borderBottom: '1px dashed var(--border-strong)',
+                  borderRadius: 0,
+                  textAlign: 'right',
+                  background: 'transparent',
+                  color: 'var(--text-strong)',
+                  fontVariantNumeric: 'tabular-nums',
+                  ...extra,
+                })
+                const wbCellText = (r: (typeof eff)[number], field: WorkbenchCellField): string => {
+                  if (field === 'revenue') return r.displayUnit != null ? `$${formatCurrency(r.displayRevenue)}` : ''
+                  if (field === 'profit') return r.displayUnit != null ? `$${formatCurrency(r.displayRevenue - r.cost)}` : ''
+                  return r.displayMargin == null ? '' : `${Math.round(r.displayMargin * 100)}%`
+                }
+                /** One editable Revenue/Profit/Margin cell — typing solves the sale price/unit live (v2.2379). */
+                const wbCellInput = (r: (typeof eff)[number], field: WorkbenchCellField, width: string, extra?: React.CSSProperties) => {
+                  const id = r.countRow.id
+                  const editingThis = wbCellDraft != null && wbCellDraft.rowId === id && wbCellDraft.field === field
+                  return (
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editingThis ? wbCellDraft.raw : wbCellText(r, field)}
+                      placeholder="—"
+                      onClick={(e) => e.stopPropagation()}
+                      onFocus={(e) => {
+                        const el = e.currentTarget
+                        setWbCellDraft({ rowId: id, field, raw: cellEditSeed(field, r.displayUnit, r.count, r.cost) })
+                        window.setTimeout(() => el.select(), 0)
+                      }}
+                      onChange={(e) => {
+                        const raw = e.target.value
+                        setWbCellDraft({ rowId: id, field, raw })
+                        const unit = impliedUnitPrice(field, raw, r.count, r.cost)
+                        setWbPriceDrafts((prev) => {
+                          const next = { ...prev }
+                          if (unit != null) next[id] = String(unit)
+                          else delete next[id]
+                          return next
+                        })
+                        setWbSolveLanding(null)
+                      }}
+                      onBlur={() => {
+                        setWbCellDraft(null)
+                        void commitWorkbenchTypedPrice(id)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur()
+                        else if (e.key === 'Escape') {
+                          setWbCellDraft(null)
+                          setWbPriceDrafts((prev) => {
+                            const next = { ...prev }
+                            delete next[id]
+                            return next
+                          })
+                        }
+                      }}
+                      disabled={savingUnitPriceOverride === r.countRow.id}
+                      style={wbCellStyle(width, extra)}
+                      aria-label={`${field === 'revenue' ? 'Revenue' : field === 'profit' ? 'Profit' : 'Margin'} for ${r.countRow.fixture ?? 'row'} — solves the sale price per unit`}
+                      title="Type here — the sale price/unit follows as you type"
+                    />
+                  )
+                }
                 const visibleEff = wbShowNoCostOnly
                   ? eff.filter((r) => !(r.cost > 0))
                   : wbShowUnpricedOnly
@@ -3262,7 +3374,7 @@ export function BidsPricingTab({
                       style={{
                         position: 'sticky', top: 0, zIndex: 20,
                         background: 'var(--surface)',
-                        border: wbPreview && previewCount > 0 ? '1px dashed var(--text-amber-700)' : '1px solid var(--border)',
+                        border: wbPreview && previewCount + vetoCount > 0 ? '1px dashed #8b5cf6' : '1px solid var(--border)',
                         borderRadius: 10,
                         boxShadow: '0 4px 14px rgba(0,0,0,0.08)', marginBottom: '0.9rem', padding: '0.5rem 0.9rem',
                       }}
@@ -3414,7 +3526,7 @@ export function BidsPricingTab({
                               </span>
                               {wbSolverEnd.node ? <span style={{ marginLeft: 'auto', flex: '0 0 auto' }}>{wbSolverEnd.node}</span> : null}
                               {/* Apply/Discard ride the right end of this line and wrap right-pinned on narrow pages (artifact 370f8f3c). */}
-                              {wbPreview && previewCount > 0 ? (
+                              {wbPreview && previewCount + vetoCount > 0 ? (
                                 <span style={{ marginLeft: 'auto', display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem', flex: '0 0 auto' }}>
                                   {/* A preview restored from an earlier sitting says how old it is, so a
                                       stale solve never masquerades as fresh work (v2.2373). */}
@@ -3427,9 +3539,13 @@ export function BidsPricingTab({
                                     <button
                                       type="button"
                                       onClick={() => void applyWorkbenchPreview()}
-                                      disabled={wbApplying}
-                                      title={`Write the previewed price${previewCount === 1 ? '' : 's'} to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'this price'}`}
-                                      style={{ padding: '0.35rem 1rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : 'pointer' }}
+                                      disabled={wbApplying || previewCount === 0}
+                                      title={
+                                        previewCount === 0
+                                          ? 'Every proposed price is clicked off — nothing to apply'
+                                          : `Write the previewed price${previewCount === 1 ? '' : 's'} to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'this price'}`
+                                      }
+                                      style={{ padding: '0.35rem 1rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : previewCount === 0 ? 'not-allowed' : 'pointer', opacity: previewCount === 0 ? 0.55 : 1 }}
                                     >
                                       {wbApplying ? 'Applying…' : `Apply ${previewCount}`}
                                     </button>
@@ -3443,9 +3559,10 @@ export function BidsPricingTab({
                                     </button>
                                   </span>
                                   <span style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
-                                    {previewCount === 1
-                                      ? '1 solver price previewed — saved only when you Apply · waits on this device'
-                                      : `${previewCount} solver prices previewed — saved only when you Apply · waits on this device`}
+                                    {`${previewCount} solver price${previewCount === 1 ? '' : 's'} previewed — saved only when you Apply · waits on this device`}
+                                    {vetoCount > 0 ? (
+                                      <span style={{ color: 'var(--text-red-700)' }}>{` · ${vetoCount} clicked off — ${vetoCount === 1 ? 'its price holds' : 'their prices hold'}`}</span>
+                                    ) : null}
                                   </span>
                                 </span>
                               ) : null}
@@ -3744,13 +3861,47 @@ export function BidsPricingTab({
                                     </div>
                                   )}
                                 </td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                                  {r.isPreview ? (
+                                    // The solver's proposal rides LEFT of the untouched saved price
+                                    // (owner-approved prototype, v2.2379). Clicking it toggles this
+                                    // row out of Apply: red + ✕ = clicked off, its price holds.
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        toggleWbPreviewVeto(r.countRow.id)
+                                      }}
+                                      title={
+                                        r.isVetoed
+                                          ? 'Clicked off — Apply keeps this row’s saved price. Click to bring the proposal back.'
+                                          : 'Solver proposal — not saved yet. Click to drop just this row from Apply; its saved price holds.'
+                                      }
+                                      aria-label={`${r.isVetoed ? 'Restore' : 'Drop'} the proposed price for ${r.countRow.fixture ?? 'row'}`}
+                                      aria-pressed={r.isVetoed}
+                                      style={{
+                                        font: 'inherit',
+                                        fontSize: '0.82rem',
+                                        fontWeight: 700,
+                                        fontVariantNumeric: 'tabular-nums',
+                                        border: 'none',
+                                        background: 'none',
+                                        cursor: 'pointer',
+                                        padding: '0.1rem 0.25rem',
+                                        marginRight: '0.15rem',
+                                        color: r.isVetoed ? 'var(--text-red-700)' : '#8b5cf6',
+                                        textDecoration: r.isVetoed ? 'line-through' : 'none',
+                                      }}
+                                    >
+                                      ${formatCurrency(wbPreview?.[r.countRow.id] ?? 0)} {r.isVetoed ? '✕' : '→'}
+                                    </button>
+                                  ) : null}
                                   <input
                                     type="text"
                                     inputMode="decimal"
                                     value={
                                       wbPriceDrafts[r.countRow.id] ??
-                                      (wbPreview?.[r.countRow.id] != null ? String(wbPreview[r.countRow.id]) : r.effUnit != null ? String(Math.round(r.effUnit * 100) / 100) : '')
+                                      (r.unitPrice != null ? String(Math.round(r.unitPrice * 100) / 100) : '')
                                     }
                                     placeholder="—"
                                     onClick={(e) => e.stopPropagation()}
@@ -3779,21 +3930,31 @@ export function BidsPricingTab({
                                       }
                                     }}
                                     disabled={savingUnitPriceOverride === r.countRow.id}
-                                    style={{ width: '6rem', font: 'inherit', fontSize: '0.85rem', padding: '0.25rem 0.4rem', border: r.isPreview ? '1px solid var(--text-amber-700)' : '1px solid var(--border-strong)', borderRadius: 5, textAlign: 'right', background: r.isPreview ? 'var(--bg-amber-tint)' : 'var(--surface)', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}
+                                    style={{
+                                      ...wbCellStyle('6rem'),
+                                      // A struck-through saved price under an active proposal — it changes only on Apply.
+                                      ...(r.isPreview && !r.isVetoed ? { color: 'var(--text-muted)', textDecoration: 'line-through' } : {}),
+                                    }}
                                     aria-label={`Sale price per unit for ${r.countRow.fixture ?? 'row'}`}
                                   />
-                                  {r.isPreview ? (
-                                    <span title="Solver result — not saved yet. Apply, in the strip above, writes it to this price." style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-amber-700)', fontWeight: 700, cursor: 'help' }}>preview</span>
-                                  ) : savingUnitPriceOverride === r.countRow.id ? (
+                                  {savingUnitPriceOverride === r.countRow.id ? (
                                     <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>saving…</span>
                                   ) : wbJustSaved[r.countRow.id] ? (
                                     <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-green-700)', fontWeight: 700 }}>saved ✓</span>
                                   ) : null}
                                 </td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.effUnit != null ? `$${formatCurrency(r.effRevenue)}` : '—'}</td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.effUnit != null && r.cost > 0 ? `$${formatCurrency(r.effRevenue - r.cost)}` : '—'}</td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: mColor(r.effMargin) }}>
-                                  {r.effMargin == null ? (r.effUnit != null && r.cost <= 0 ? 'no cost' : '—') : `${Math.round(r.effMargin * 100)}%`}
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>{wbCellInput(r, 'revenue', '6.5rem')}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
+                                  {r.cost > 0 ? wbCellInput(r, 'profit', '6rem') : <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>—</span>}
+                                </td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
+                                  {r.cost > 0 ? (
+                                    wbCellInput(r, 'margin', '3.8rem', { fontWeight: 700, color: mColor(r.displayMargin) })
+                                  ) : (
+                                    <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>
+                                      {r.displayUnit != null ? 'no cost' : '—'}
+                                    </span>
+                                  )}
                                 </td>
                               </tr>
                             )

@@ -22,6 +22,8 @@ export type PreviewStash = {
   prices: Record<string, number>
   /** Epoch ms of the last change — lets the strip label a restored solve's age. */
   at: number
+  /** Count-row ids whose proposal was clicked off (v2.2379) — Apply holds their saved price. Absent on older stashes. */
+  vetoed: string[]
 }
 
 export function previewStashKey(pricingVersionId: string): string {
@@ -47,7 +49,7 @@ export function readPreviewStash(storage: StorageLike, pricingVersionId: string)
     return null
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
-  const { prices: rawPrices, at: rawAt } = parsed as { prices?: unknown; at?: unknown }
+  const { prices: rawPrices, at: rawAt, vetoed: rawVetoed } = parsed as { prices?: unknown; at?: unknown; vetoed?: unknown }
   if (typeof rawPrices !== 'object' || rawPrices === null || Array.isArray(rawPrices)) return null
   const prices: Record<string, number> = {}
   for (const [rowId, value] of Object.entries(rawPrices)) {
@@ -55,7 +57,9 @@ export function readPreviewStash(storage: StorageLike, pricingVersionId: string)
   }
   if (Object.keys(prices).length === 0) return null
   const at = typeof rawAt === 'number' && Number.isFinite(rawAt) ? rawAt : 0
-  return { prices, at }
+  // Only vetoes that still point at a previewed row count; pre-v2.2379 stashes have none.
+  const vetoed = Array.isArray(rawVetoed) ? rawVetoed.filter((v): v is string => typeof v === 'string' && v in prices) : []
+  return { prices, at, vetoed }
 }
 
 /** Persist (or, for null/empty, clear) one price option's stash. Storage failures are swallowed — the preview still lives in state. */
@@ -63,13 +67,14 @@ export function writePreviewStash(
   storage: StorageLike,
   pricingVersionId: string,
   prices: Record<string, number> | null,
-  at: number
+  at: number,
+  vetoed: string[] = []
 ): void {
   try {
     if (prices == null || Object.keys(prices).length === 0) {
       storage.removeItem(previewStashKey(pricingVersionId))
     } else {
-      const stash: PreviewStash = { prices, at }
+      const stash: PreviewStash = { prices, at, vetoed: vetoed.filter((id) => id in prices) }
       storage.setItem(previewStashKey(pricingVersionId), JSON.stringify(stash))
     }
   } catch {

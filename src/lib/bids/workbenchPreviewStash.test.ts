@@ -16,8 +16,8 @@ describe('workbenchPreviewStash', () => {
     const storage = fakeStorage()
     writePreviewStash(storage, 'pv-1', { 'row-a': 150, 'row-b': 42.5 }, 1000)
     writePreviewStash(storage, 'pv-2', { 'row-a': 999 }, 2000)
-    expect(readPreviewStash(storage, 'pv-1')).toEqual({ prices: { 'row-a': 150, 'row-b': 42.5 }, at: 1000 })
-    expect(readPreviewStash(storage, 'pv-2')).toEqual({ prices: { 'row-a': 999 }, at: 2000 })
+    expect(readPreviewStash(storage, 'pv-1')).toEqual({ prices: { 'row-a': 150, 'row-b': 42.5 }, at: 1000, vetoed: [] })
+    expect(readPreviewStash(storage, 'pv-2')).toEqual({ prices: { 'row-a': 999 }, at: 2000, vetoed: [] })
   })
 
   it('returns null when nothing is stashed', () => {
@@ -47,7 +47,7 @@ describe('workbenchPreviewStash', () => {
   it('drops non-finite and non-number price entries instead of poisoning the stash', () => {
     const key = previewStashKey('pv-1')
     const storage = fakeStorage({ [key]: JSON.stringify({ prices: { good: 150, bad: 'x', worse: null }, at: 1000 }) })
-    expect(readPreviewStash(storage, 'pv-1')).toEqual({ prices: { good: 150 }, at: 1000 })
+    expect(readPreviewStash(storage, 'pv-1')).toEqual({ prices: { good: 150 }, at: 1000, vetoed: [] })
     expect(readPreviewStash(fakeStorage({ [key]: JSON.stringify({ prices: { bad: 'x' }, at: 1000 }) }), 'pv-1')).toBeNull()
   })
 
@@ -56,11 +56,26 @@ describe('workbenchPreviewStash', () => {
     expect(readPreviewStash(fakeStorage({ [key]: JSON.stringify({ prices: { a: 1 } }) }), 'pv-1')).toEqual({
       prices: { a: 1 },
       at: 0,
+      vetoed: [],
     })
     expect(readPreviewStash(fakeStorage({ [key]: JSON.stringify({ prices: { a: 1 }, at: 'noon' }) }), 'pv-1')).toEqual({
       prices: { a: 1 },
       at: 0,
+      vetoed: [],
     })
+  })
+
+  it('round-trips clicked-off rows, dropping vetoes for rows the preview no longer has (v2.2379)', () => {
+    const storage = fakeStorage()
+    writePreviewStash(storage, 'pv-1', { 'row-a': 150, 'row-b': 42.5 }, 1000, ['row-b', 'row-gone'])
+    expect(readPreviewStash(storage, 'pv-1')).toEqual({ prices: { 'row-a': 150, 'row-b': 42.5 }, at: 1000, vetoed: ['row-b'] })
+  })
+
+  it('reads pre-veto stashes and bogus veto shapes as no vetoes', () => {
+    const key = previewStashKey('pv-1')
+    expect(readPreviewStash(fakeStorage({ [key]: JSON.stringify({ prices: { a: 1 }, at: 5 }) }), 'pv-1')?.vetoed).toEqual([])
+    expect(readPreviewStash(fakeStorage({ [key]: JSON.stringify({ prices: { a: 1 }, at: 5, vetoed: 'a' }) }), 'pv-1')?.vetoed).toEqual([])
+    expect(readPreviewStash(fakeStorage({ [key]: JSON.stringify({ prices: { a: 1 }, at: 5, vetoed: [1, 'a', 'zzz'] }) }), 'pv-1')?.vetoed).toEqual(['a'])
   })
 
   it('swallows storage failures on write', () => {
