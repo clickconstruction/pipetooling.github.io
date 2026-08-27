@@ -29,7 +29,7 @@ Above the table, {{button:blue|Fill N matching from book}} assigns every unassig
 
 Click the book chip ({{chip:gray|WENDI · 111 entries ▸}}) and the price book slides in beside the table — the whole book, without leaving the rows it prices. (The old **▶ Price book** section at the page bottom, and its unused "This version's prices" mode, are gone.)
 
-- **Your book, front and center**: the row shows just your book with a **›** — press it to reveal the others, **‹** tucks them back. Picking a different book switches this bid to it *and* makes it **your default for new bids** (the line under the chips says so). **Add book** creates a new one; ✎ renames.
+- **Your book, front and center**: the row shows just your book (★ marks the one feeding this bid) with a **›** — press it to reveal the others, **‹** tucks them back. Clicking another book just **looks inside it** — the bid keeps pricing from its ★ book until you press {{button:blue|Use … on this bid}}, which switches the bid to that book *and* makes it **your default for new bids** (the line under the chips says so). Browsing never changes the bid. **Add book** creates a new one; ✎ renames.
 - **Combined price ⇄ Stage price**: Combined shows one price per entry; Stage shows Rough In / Top Out / Trim Set (a dim — where a stage is zero; hover the name for the combined total).
 - **Editing follows the mode**: ✎ in Stage mode offers all three stages; in Combined mode it offers one **Price** — which lands in **Rough In**, so a quick combined price is never lost, and flipping to Stage shows exactly where it sits.
 - Search filters the entries; **Add entry** sits beside the Combined/Stage toggle and works in either mode; Esc or ✕ closes.

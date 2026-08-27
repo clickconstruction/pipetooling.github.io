@@ -25,7 +25,7 @@ import {
   unitPriceForTargetMargin,
   updateRecentMargins,
 } from '../../lib/bids/applyMarginPricing'
-import { resolveCurrentPriceBookTemplateId } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
+import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
 import {
   computeTravelCost,
   costEstimateDrivingRate,
@@ -1230,10 +1230,14 @@ export function BidsPricingTab({
     setPricebookSwitchBusy(true)
     rememberLastPriceBookTemplate(templateId)
     try {
+      // v2.2396: match by lineage ROOT, not direct source — scenarios born from version
+      // clones / "+ Add price" duplicates point at another scenario, and the old direct
+      // match minted a fresh copy every time Wendi switched back to her own book.
+      const templateIds = templatePriceBookVersions.map((t) => t.id)
       const existing = priceBookVersions.find(
         (p) =>
-          p.source_version_id === templateId &&
-          (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null),
+          (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null) &&
+          resolvePriceBookTemplateRoot({ pricingId: p.id, bidPricings: priceBookVersions, templateIds }) === templateId,
       )
       if (existing) {
         await handlePricingVersionChange(bid.id, existing.id)
@@ -1697,7 +1701,8 @@ export function BidsPricingTab({
       id: r.countRow.id,
       count: r.count,
       rowCost: r.cost,
-      unitPrice: wbPreview?.[r.countRow.id] ?? r.unitPrice,
+      // A saved $0 is not a price (v2.2396) — the solver treats those rows as unpriced.
+      unitPrice: wbPreview?.[r.countRow.id] ?? (r.unitPrice != null && r.unitPrice > 0 ? r.unitPrice : null),
       locked: r.isFixedPrice || wbLocks.has(r.countRow.id),
     }))
     const sol = solveWorkbenchPrices(solverRows, overhead, {
@@ -2992,12 +2997,15 @@ export function BidsPricingTab({
                   const draftRaw = wbPriceDrafts[r.countRow.id]
                   const draftNum = draftRaw != null ? parseFloat(draftRaw.replace(/[$,]/g, '')) : NaN
                   const draft = Number.isFinite(draftNum) && draftNum > 0 ? draftNum : null
+                  // v2.2396 (Wendi): a saved $0 is not a price — it reads as a dash and counts
+                  // as unpriced (the priced meter, "Show unpriced only", the solver's unpriced set).
+                  const savedUnit = r.unitPrice != null && r.unitPrice > 0 ? r.unitPrice : null
                   // Totals see the pending solve (minus clicked-off rows); the row's
                   // own cells keep the saved price — the ghost carries the proposal (v2.2379).
-                  const unit = draft ?? (isPreview && !isVetoed ? pv : null) ?? r.unitPrice
+                  const unit = draft ?? (isPreview && !isVetoed ? pv : null) ?? savedUnit
                   const revenue = unit != null ? unit * r.count : 0
                   const rowMargin = unit != null && revenue > 0 && r.cost > 0 ? (revenue - r.cost) / revenue : null
-                  const displayUnit = draft ?? r.unitPrice
+                  const displayUnit = draft ?? savedUnit
                   const displayRevenue = displayUnit != null ? displayUnit * r.count : 0
                   const displayMargin =
                     displayUnit != null && displayRevenue > 0 && r.cost > 0 ? (displayRevenue - r.cost) / displayRevenue : null
@@ -3984,10 +3992,11 @@ export function BidsPricingTab({
                                   <input
                                     type="text"
                                     inputMode="decimal"
-                                    // Reads as money when idle ($1,130.00); editing shows the raw number (v2.NEXT, Wendi).
+                                    // Reads as money when idle ($1,130.00); editing shows the raw number.
+                                    // A saved $0 shows the — placeholder like any unpriced row (v2.2396).
                                     value={
                                       wbPriceDrafts[r.countRow.id] ??
-                                      (r.unitPrice != null ? `$${formatCurrency(r.unitPrice)}` : '')
+                                      (r.unitPrice != null && r.unitPrice > 0 ? `$${formatCurrency(r.unitPrice)}` : '')
                                     }
                                     placeholder="—"
                                     onClick={(e) => e.stopPropagation()}
@@ -4012,7 +4021,7 @@ export function BidsPricingTab({
                                       setWbPriceDrafts((prev) =>
                                         prev[r.countRow.id] != null
                                           ? prev
-                                          : { ...prev, [r.countRow.id]: r.unitPrice != null ? String(Math.round(r.unitPrice * 100) / 100) : '' },
+                                          : { ...prev, [r.countRow.id]: r.unitPrice != null && r.unitPrice > 0 ? String(Math.round(r.unitPrice * 100) / 100) : '' },
                                       )
                                       window.setTimeout(() => el.select(), 0)
                                     }}
@@ -4671,23 +4680,22 @@ export function BidsPricingTab({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', marginBottom: '0.25rem' }}>
                 {(wbBooksExpanded ? templatePriceBookVersions : templatePriceBookVersions.filter((t) => t.id === editingTemplateId)).map((t) => {
                   const on = t.id === editingTemplateId
+                  const used = t.id === currentPriceBookTemplateId
                   return (
                     <span key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
                       <button
                         type="button"
                         disabled={pricebookSwitchBusy}
-                        title={on ? 'Feeding this bid' : `Switch this bid to ${t.name} — and make it your default for new bids`}
+                        // v2.2396 (Wendi): clicking a book only BROWSES it — switching the bid
+                        // (which clones the book in) moved to the explicit Use button below.
+                        title={used ? 'Feeding this bid' : `Look inside ${t.name} — the bid keeps its book until you press Use`}
                         onClick={() => {
                           if (on) return
-                          void (async () => {
-                            await onSelectPriceBookTemplate(t.id)
-                            selectPanelVersion(t.id)
-                            setWbBooksExpanded(false)
-                          })()
+                          selectPanelVersion(t.id)
                         }}
                         style={bookChipStyle(on)}
                       >
-                        {on ? '\u2605 ' : ''}{t.name}
+                        {used ? '\u2605 ' : ''}{t.name}
                       </button>
                       {on && wbBooksExpanded ? (
                         <button type="button" onClick={() => openEditPricingVersion(t)} title="Rename this book" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-muted)', padding: 0 }}>✎</button>
@@ -4709,6 +4717,27 @@ export function BidsPricingTab({
                   </button>
                 ) : null}
               </div>
+              {/* v2.2396 (Wendi): switching the bid's book is this explicit button, never a side
+                  effect of clicking around — each press used to mint another price version. */}
+              {editingTemplateId && editingTemplateId !== currentPriceBookTemplateId ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.35rem 0 0.55rem' }}>
+                  <button
+                    type="button"
+                    disabled={pricebookSwitchBusy}
+                    onClick={() => {
+                      void (async () => {
+                        await onSelectPriceBookTemplate(editingTemplateId)
+                        setWbBooksExpanded(false)
+                      })()
+                    }}
+                    title={`Price this bid from ${drawerName} — and make it your default for new bids`}
+                    style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, padding: '0.3rem 0.8rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: pricebookSwitchBusy ? 'wait' : 'pointer', opacity: pricebookSwitchBusy ? 0.6 : 1 }}
+                  >
+                    {pricebookSwitchBusy ? 'Switching…' : `Use ${drawerName} on this bid`}
+                  </button>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Browsing only — the bid still prices from its ★ book.</span>
+                </div>
+              ) : null}
               {defaultName ? (
                 <div title="Per person — the book you pick follows you to your next bid" style={{ fontSize: '0.68rem', color: 'var(--text-green-700)', marginBottom: '0.6rem' }}>
                   Your default for new bids: <strong>{defaultName}</strong> ✓
