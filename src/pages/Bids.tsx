@@ -48,6 +48,8 @@ import { BidsCoverLetterTab } from '../components/bids/BidsCoverLetterTab'
 import { BidsTakeoffTab } from '../components/bids/BidsTakeoffTab'
 import { BidVersionPicker } from '../components/bids/BidVersionPicker'
 import { BidsPricingCalculator } from '../components/bids/BidsPricingCalculator'
+import { BidPackageMapModal } from '../components/bids/BidPackageMapModal'
+import { computeSharedBidCost } from '../lib/bids/bidPackageMap'
 import { downloadApprovalPdf as downloadApprovalPdfDoc } from '../lib/bidDocuments/approvalPdf'
 import { WorkingBoardArchiveConfirmDialog } from '../components/bids/WorkingBoardArchiveConfirmDialog'
 import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
@@ -676,6 +678,60 @@ export default function Bids() {
   const [coverLetterUseCustomAmountByBid, setCoverLetterUseCustomAmountByBid] = useState<Record<string, boolean>>({})
   const [coverLetterIncludeSignatureByBid, setCoverLetterIncludeSignatureByBid] = useState<Record<string, boolean>>({})
   const [coverLetterIncludeFixturesPerPlanByBid, setCoverLetterIncludeFixturesPerPlanByBid] = useState<Record<string, boolean>>({})
+
+  // Package map (v2.2374): the 🗺 Map button on the Send to strip opens a read-only
+  // tree of the bid — GC packets → versions → prices. Cost (for margins) rides the
+  // Pricing tab's loaded data; opening the map loads it when it isn't this bid's yet.
+  const [packageMapBid, setPackageMapBid] = useState<{
+    id: string
+    bid_number: string | null
+    project_name: string | null
+    bid_date_sent: string | null
+    selected_price_book_version_id: string | null
+    distance_from_office: string | null
+    gcName: string | null
+  } | null>(null)
+  function openPackageMap(bid: BidWithBuilder, gcName: string | null) {
+    setPackageMapBid({
+      id: bid.id,
+      bid_number: bid.bid_number ?? null,
+      project_name: bid.project_name ?? null,
+      bid_date_sent: bid.bid_date_sent ?? null,
+      selected_price_book_version_id: bid.selected_price_book_version_id ?? null,
+      distance_from_office: bid.distance_from_office ?? null,
+      gcName,
+    })
+    if ((pricingCostEstimate as { bid_id?: string } | null)?.bid_id !== bid.id) void loadPricingDataForBid(bid.id)
+  }
+  const packageMapSharedCost =
+    packageMapBid && (pricingCostEstimate as { bid_id?: string } | null)?.bid_id === packageMapBid.id
+      ? computeSharedBidCost({
+          costEstimate: pricingCostEstimate,
+          laborRows: pricingLaborRows,
+          materialTotalRoughIn: pricingMaterialTotalRoughIn,
+          materialTotalTopOut: pricingMaterialTotalTopOut,
+          materialTotalTrimSet: pricingMaterialTotalTrimSet,
+          laborRate: pricingLaborRate,
+          distanceFromOffice: packageMapBid.distance_from_office,
+          countRowsLen: pricingCountRows.length,
+          equipmentRows: pricingEquipmentRows,
+          permitRows: pricingPermitRows,
+          subcontractorRows: pricingSubcontractorRows,
+          wasteRows: pricingWasteRows,
+          otherRows: pricingOtherRows,
+          teamLaborCost: teamLaborDataForBids.find((r) => r.bidId === packageMapBid.id)?.bidCost ?? 0,
+        })
+      : null
+  /** Map click-through: VIEW the price on the Pricing tab (session-only — never re-stars). */
+  async function openPriceFromPackageMap(versionId: string | null, pricingId: string) {
+    const bidId = packageMapBid?.id
+    setPackageMapBid(null)
+    if (!bidId) return
+    if (versionId && versionId !== selectedBidVersionId) await switchActiveVersion(bidId, versionId)
+    setSelectedPricingVersionId(pricingId)
+    void loadPriceBookEntries(pricingId)
+    if (activeTab !== 'pricing') selectBidsTab('pricing')
+  }
 
   /** Set selected bid for Counts, Takeoffs, Labor, Pricing, Submission, RFI, Change Order, and Lien Release so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
@@ -3121,6 +3177,7 @@ export default function Bids() {
             pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
             bidGcName={selectedBidForCounts.customers?.name ?? selectedBidForCounts.bids_gc_builders?.name ?? null}
             bidDateSent={selectedBidForCounts.bid_date_sent ?? null}
+            onOpenMap={() => openPackageMap(selectedBidForCounts, selectedBidForCounts.customers?.name ?? selectedBidForCounts.bids_gc_builders?.name ?? null)}
           />
         )}
         <BidsCountsTab
@@ -3166,6 +3223,7 @@ export default function Bids() {
             pricingSourceNames={Object.fromEntries([...priceBookVersions, ...templatePriceBookVersions].map((v) => [v.id, v.name]))}
             bidGcName={selectedBidForTakeoff.customers?.name ?? selectedBidForTakeoff.bids_gc_builders?.name ?? null}
             bidDateSent={selectedBidForTakeoff.bid_date_sent ?? null}
+            onOpenMap={() => openPackageMap(selectedBidForTakeoff, selectedBidForTakeoff.customers?.name ?? selectedBidForTakeoff.bids_gc_builders?.name ?? null)}
           />
         )}
         <BidsTakeoffTab
@@ -3325,6 +3383,7 @@ export default function Bids() {
             bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
             bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
             resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing.id)}
+            onOpenMap={() => openPackageMap(selectedBidForPricing, selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null)}
           />
           </div>
           {/* v2.2203: the Old/New pills portal up here from BidsPricingTab, top-right beside the strip. */}
@@ -3419,6 +3478,7 @@ export default function Bids() {
             bidGcName={selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null}
             bidDateSent={selectedBidForPricing.bid_date_sent ?? null}
             resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing.id)}
+            onOpenMap={() => openPackageMap(selectedBidForPricing, selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null)}
           />
         )}
         <BidsCoverLetterTab
@@ -3960,6 +4020,19 @@ We saw some structural issues with your plans and I wanted to get clarity...
             </pre>
           </div>
         </div>
+      )}
+
+      {packageMapBid && (
+        <BidPackageMapModal
+          bid={packageMapBid}
+          bidGcName={packageMapBid.gcName}
+          bidVersions={bidVersions}
+          selectedBidVersionId={selectedBidVersionId}
+          selectedPricingVersionId={selectedPricingVersionId}
+          sharedCost={packageMapSharedCost}
+          onClose={() => setPackageMapBid(null)}
+          onOpenPrice={(versionId, pricingId) => void openPriceFromPackageMap(versionId, pricingId)}
+        />
       )}
 
             </div>
