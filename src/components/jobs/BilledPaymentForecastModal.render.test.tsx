@@ -127,9 +127,8 @@ describe('BilledPaymentForecastModal render smoke', () => {
     expect(dialog.textContent).toContain('~35d')
     expect(dialog.textContent).toContain('12 pmts')
     expect(dialog.textContent).toContain('$3,013')
-    // Chart variant pills flip between the dot view and the bucket view.
-    fireEvent.click(screen.getByRole('button', { name: 'Count by speed bucket' }))
-    expect(screen.getByRole('img', { name: /Customer count by pay-speed bucket/ })).toBeTruthy()
+    // The drift chart replaced the dot/bucket variants — one view, no pills.
+    expect(dialog.textContent).toContain('Above or below their average')
     fireEvent.click(screen.getByRole('button', { name: 'Close pay speeds breakdown' }))
     expect(screen.queryByRole('dialog', { name: 'Pay speeds breakdown' })).toBeNull()
   })

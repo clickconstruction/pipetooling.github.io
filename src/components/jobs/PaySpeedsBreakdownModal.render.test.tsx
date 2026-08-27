@@ -76,7 +76,7 @@ const rows = [invRow('knight', 'Knight Contracting', 75585), invRow('ingram', 'J
 
 describe('PaySpeedsBreakdownModal render smoke', () => {
   it('clicking a ranked row reveals its receipt chips; clicking again hides them', () => {
-    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
     expect(screen.queryByText('05/01–05/17')).toBeNull()
     const row = screen.getByTitle('Show the payments behind this median')
     fireEvent.click(row)
@@ -103,7 +103,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
       },
     }
     const openJob = vi.fn()
-    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={withJob} onClose={vi.fn()} onOpenJobDetail={openJob} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={withJob} onClose={vi.fn()} onOpenJobDetail={openJob} />)
     fireEvent.click(screen.getByTitle('Show the payments behind this median'))
     expect(screen.getByText('Panel swap')).toBeTruthy()
     expect(screen.getByText(/1207 Kingsbury Ln/)).toBeTruthy()
@@ -114,7 +114,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
   })
 
   it('thin-history rows expand too — receipts when they exist, the why-empty note when they do not', () => {
-    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
     const thinRows = screen.getAllByTitle('Show this customer’s payments')
     expect(thinRows).toHaveLength(2) // Ingram (1 pmt) + RMC (0 pmts)
     for (const r of thinRows) fireEvent.click(r)
@@ -124,14 +124,14 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
 
   it('a ranked customer on a pre-receipts payload shows the reload hint instead of chips', () => {
     const v2speeds: PaySpeedData = { ...speeds, receipts: {} }
-    render(<PaySpeedsBreakdownModal rows={[invRow('knight', 'Knight Contracting', 100)]} paySpeeds={v2speeds} onClose={vi.fn()} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={[invRow('knight', 'Knight Contracting', 100)]} paySpeeds={v2speeds} onClose={vi.fn()} />)
     fireEvent.click(screen.getByTitle('Show the payments behind this median'))
     expect(screen.getByText(/Payment dates aren’t available yet/)).toBeTruthy()
   })
 
   it('the expanded panel offers the board jump when onOpenCustomerBills is provided', () => {
     const onOpen = vi.fn()
-    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={speeds} onClose={vi.fn()} onOpenCustomerBills={onOpen} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} onOpenCustomerBills={onOpen} />)
     fireEvent.click(screen.getByTitle('Show the payments behind this median'))
     fireEvent.click(screen.getByRole('button', { name: 'See these bills on the board →' }))
     expect(onOpen).toHaveBeenCalledWith('Knight Contracting')
@@ -142,7 +142,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
       ...speeds,
       quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 58, excluded: 0 },
     }
-    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={withQuality} onClose={vi.fn()} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={withQuality} onClose={vi.fn()} />)
     expect(screen.getByText('see the transactions ›')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'See the transactions behind the data health numbers' }))
     expect(screen.getByRole('dialog', { name: 'Data health transactions' })).toBeTruthy()
@@ -150,10 +150,21 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(await screen.findByText(/isn’t available yet/)).toBeTruthy()
   })
 
+  it('the drift chart shows who is off their average, with the on-pace collapse line', () => {
+    // knight (median 18, 4 samples): last 3 receipts 12/16/20 → recent median 16 → −2d vs their avg.
+    // ingram (1 sample) + rmc (no stat): thin, no dated open bills → on pace.
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    expect(screen.getByText('Above or below their average')).toBeTruthy()
+    expect(screen.getByText('−2d')).toBeTruthy()
+    expect(screen.getByText('vs their avg')).toBeTruthy()
+    expect(screen.getByText(/2 more customers are on their usual pace/)).toBeTruthy()
+    expect(screen.getByTitle(/their last 3 payments ran ~16d vs their ~18d average/)).toBeTruthy()
+  })
+
   it('mobile restack (v2.2252): ranked rows show payments and open dollars on one combined line', () => {
     narrowMatches = true
     try {
-      render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={speeds} onClose={() => {}} />)
+      render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={() => {}} />)
       // Two-line card: facts line fuses the desktop columns.
       expect(screen.getByText(/4 pmts · \$[\d,]+ open/)).toBeTruthy()
       // The desktop column header is display:none on mobile but still in the DOM.
@@ -166,7 +177,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
 
 describe('data-health line (v2.2259)', () => {
   it('renders the measurability meter and counts from the quality block', () => {
-    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
     expect(screen.getByText(/238 of 545/)).toBeTruthy()
     expect(screen.getByText(/measurable \(44%\)/)).toBeTruthy()
     expect(screen.getByText('164')).toBeTruthy()
@@ -176,7 +187,7 @@ describe('data-health line (v2.2259)', () => {
   })
 
   it('hides the line entirely on pre-v6 payloads', () => {
-    render(<PaySpeedsBreakdownModal rows={rows} paySpeeds={{ ...speeds, quality: null }} onClose={vi.fn()} />)
+    render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={{ ...speeds, quality: null }} onClose={vi.fn()} />)
     expect(screen.queryByText(/Data health/)).toBeNull()
   })
 })

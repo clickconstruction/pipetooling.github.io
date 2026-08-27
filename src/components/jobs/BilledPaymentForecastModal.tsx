@@ -299,6 +299,7 @@ export default function BilledPaymentForecastModal({
           <PaySpeedsBreakdownModal
             rows={rows}
             paySpeeds={paySpeeds}
+            todayYmd={todayYmd}
             onClose={() => setPaySpeedsOpen(false)}
             onOpenJobDetail={
               onOpenJobDetail

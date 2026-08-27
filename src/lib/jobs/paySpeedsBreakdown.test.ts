@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPaySpeedsBreakdown, bucketPaySpeeds, formatYmdSlash, receiptGapTone } from './paySpeedsBreakdown'
+import { buildPaySpeedsBreakdown, formatYmdSlash, receiptGapTone } from './paySpeedsBreakdown'
 import type { PaySpeedData } from './billedExpectedPay'
 import type { StageRow } from '../jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -57,7 +57,6 @@ describe('buildPaySpeedsBreakdown', () => {
     expect(b.ranked[1]?.open).toBe(1800) // both Knight bills summed
     expect(b.thin).toHaveLength(1)
     expect(b.thin[0]).toMatchObject({ customerId: 'weiss', medianDays: null, samples: 2, open: 1625 })
-    expect(b.maxDays).toBe(44)
   })
 
   it('attaches each customer’s receipts (empty when the payload has none)', () => {
@@ -113,15 +112,3 @@ describe('receiptGapTone', () => {
   })
 })
 
-describe('bucketPaySpeeds', () => {
-  it('counts ranked customers into speed buckets by segment', () => {
-    const { ranked } = buildPaySpeedsBreakdown(
-      [invRow('knight', 'Knight', 100), invRow('harper', 'Harper', 100), invRow('holub', 'Holub', 100)],
-      speeds,
-    )
-    const buckets = bucketPaySpeeds(ranked)
-    expect(buckets.find((b) => b.label === '0–7d')?.res.map((c) => c.customerId)).toEqual(['holub'])
-    expect(buckets.find((b) => b.label === '22–30d')?.comm.map((c) => c.customerId)).toEqual(['knight'])
-    expect(buckets.find((b) => b.label === '31–45d')?.comm.map((c) => c.customerId)).toEqual(['harper'])
-  })
-})
