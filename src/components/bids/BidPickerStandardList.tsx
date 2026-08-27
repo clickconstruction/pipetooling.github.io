@@ -47,12 +47,17 @@ export function BidPickerStandardList({
   prefixMap,
   onSelectBid,
   emptyMessage,
+  countBadges,
 }: {
   bids: BidWithBuilder[]
   prefixMap: LedgerPrefixMap
   onSelectBid: (bid: BidWithBuilder) => void
   /** Rendered instead of the list when `bids` is empty; omit to render nothing. */
   emptyMessage?: string | null
+  /** Bid id → count-row tally. When provided (the Counts tab), every row leads
+      with its number in a subtle left column — a dim "—" for bids with nothing
+      counted yet, so "which bids still need counting" reads at a glance. */
+  countBadges?: Record<string, number> | null
 }) {
   const sortView = useBidPickerSortView()
   const sortedBids = useMemo(() => sortBidsForPicker(bids, sortView), [bids, sortView])
@@ -88,11 +93,40 @@ export function BidPickerStandardList({
             color: 'var(--text-strong)',
           }}
         >
-          <UnifiedSearchResultRow
-            result={bidWithBuilderToUnified(bid)}
-            prefixMap={prefixMap}
-            bidEvidence={bidWithBuilderEvidence(bid)}
-          />
+          {countBadges != null ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              {(() => {
+                const n = countBadges[bid.id] ?? 0
+                return (
+                  <span
+                    title={n > 0 ? `${n} fixture${n === 1 ? ' or tie-in' : 's & tie-ins'} counted` : 'No counts yet'}
+                    style={{
+                      flex: '0 0 2rem',
+                      textAlign: 'right',
+                      fontSize: '0.78rem',
+                      fontVariantNumeric: 'tabular-nums',
+                      color: n > 0 ? 'var(--text-muted)' : 'var(--text-faint)',
+                    }}
+                  >
+                    {n > 0 ? n : '—'}
+                  </span>
+                )
+              })()}
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <UnifiedSearchResultRow
+                  result={bidWithBuilderToUnified(bid)}
+                  prefixMap={prefixMap}
+                  bidEvidence={bidWithBuilderEvidence(bid)}
+                />
+              </span>
+            </span>
+          ) : (
+            <UnifiedSearchResultRow
+              result={bidWithBuilderToUnified(bid)}
+              prefixMap={prefixMap}
+              bidEvidence={bidWithBuilderEvidence(bid)}
+            />
+          )}
         </button>
       ))}
     </div>

@@ -7,6 +7,8 @@ order: 95
 ---
 The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic table (drag to reorder, edit rows in place); **New is the Count Sheet**, built for checking your count against the drawings.
 
+Before you even pick a bid, the list leads each row with a subtle number — **how many fixtures and tie-ins are counted** on that bid. A dim **—** means nothing's counted yet, so "which bids still need counting" is answered before anyone clicks; hover the number for the long form.
+
 ## Read it like an audit
 
 - The strip up top totals **Items**, then **Counts** (rows counted each — fixtures, tie-ins, fittings) and **Line feet** (rows measured in feet — the takeoff's `ft of …` line types) **separately**, so 12 water closets never get added to 148 ft of copper. The **Plan pages cited** tile shows how many plan pages the count cites and, in red, how many rows have **no plan page** — `1 (4 no pages)` — click it to see just those rows, click again to show all.
