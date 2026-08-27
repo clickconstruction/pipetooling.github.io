@@ -274,6 +274,9 @@ export function BidsPricingTab({
   const [pricingVersionNameInput, setPricingVersionNameInput] = useState('')
   const [savingPricingVersion, setSavingPricingVersion] = useState(false)
   const [pricingEntryFormOpen, setPricingEntryFormOpen] = useState(false)
+  // v2.2398: entry form opened from an assign search targets the bid's ACTIVE pricing
+  // (what the dropdowns search), not the drawer's template catalog.
+  const [entryFormTargetPricing, setEntryFormTargetPricing] = useState(false)
   const [editingPricingEntry, setEditingPricingEntry] = useState<PriceBookEntryWithFixture | null>(null)
   const [pricingEntryFixtureName, setPricingEntryFixtureName] = useState('')
   const [pricingEntryRoughIn, setPricingEntryRoughIn] = useState('')
@@ -1180,6 +1183,26 @@ export function BidsPricingTab({
     setPricingEntryFormOpen(true)
   }
 
+  /**
+   * Add-from-the-assign-search (v2.2398, Wendi: "need ability to add new from dropdown
+   * like on the old page"): opens the entry form pre-filled with the search term and
+   * targets the bid's ACTIVE pricing — the set the assign dropdowns actually search.
+   * (The panel form targets the template catalog since the drawer rework, so an entry
+   * added there never appeared back in the dropdown.)
+   */
+  function openAddEntryFromAssignSearch(term: string) {
+    setEditingPricingEntry(null)
+    setPricingEntryFixtureName(term.trim())
+    setPricingEntryRoughIn('')
+    setPricingEntryTopOut('')
+    setPricingEntryTrimSet('')
+    setPricingEntryTotal('')
+    setEntryFormTargetPricing(true)
+    setError(null)
+    setPricingEntryFormOpen(true)
+    setPricingAssignmentDropdownOpen(null)
+  }
+
   function openEditPricingEntry(entry: PriceBookEntryWithFixture) {
     setEditingPricingEntry(entry)
     setPricingEntryFixtureName(entry.fixture_types?.name ?? '')
@@ -1199,13 +1222,15 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setEntryFormTargetPricing(false)
     setError(null)
   }
 
   async function savePricingEntry(e: React.FormEvent) {
     e.preventDefault()
-    if (!panelVersionId) {
-      setError(templatesMode ? 'No template selected' : 'No pricing selected')
+    const targetVersionId = entryFormTargetPricing ? selectedPricingVersionId : panelVersionId
+    if (!targetVersionId) {
+      setError(entryFormTargetPricing ? 'No pricing selected' : templatesMode ? 'No template selected' : 'No pricing selected')
       return
     }
     const fixtureName = pricingEntryFixtureName.trim()
@@ -1241,13 +1266,15 @@ export function BidsPricingTab({
         closePricingEntryForm()
       }
     } else {
-      const maxSeq = panelEntries.length === 0 ? 0 : Math.max(...panelEntries.map((e) => e.sequence_order))
+      const seqBase = entryFormTargetPricing ? priceBookEntries : panelEntries
+      const maxSeq = seqBase.length === 0 ? 0 : Math.max(...seqBase.map((e) => e.sequence_order))
       const { error: err } = await supabase
         .from('price_book_entries')
-        .insert({ version_id: panelVersionId, fixture_type_id: fixtureTypeId, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total, sequence_order: maxSeq + 1 })
+        .insert({ version_id: targetVersionId, fixture_type_id: fixtureTypeId, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total, sequence_order: maxSeq + 1 })
       if (err) setError(err.message)
       else {
-        await reloadPanelEntries()
+        if (entryFormTargetPricing) await loadPriceBookEntries(selectedPricingVersionId)
+        else await reloadPanelEntries()
         closePricingEntryForm()
       }
     }
@@ -2487,38 +2514,23 @@ export function BidsPricingTab({
                                     ) : searchTerm ? (
                                       <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                                         {assignMatchMode === 'exact' ? renderAssignExactEmptyEscape(res, searchTerm) : <>No matches for "{searchTerm}"</>}
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setEditingPricingEntry(null)
-                                            setPricingEntryFixtureName(searchTerm)
-                                            setPricingEntryRoughIn('')
-                                            setPricingEntryTopOut('')
-                                            setPricingEntryTrimSet('')
-                                            setPricingEntryTotal('')
-                                            setPricingEntryFormOpen(true)
-                                            setPricingAssignmentDropdownOpen(null)
-                                          }}
-                                          style={{
-                                            display: 'block',
-                                            margin: '0.5rem auto 0',
-                                            padding: '0.5rem 1rem',
-                                            background: '#3b82f6',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: 4,
-                                            cursor: 'pointer',
-                                            fontSize: '0.875rem'
-                                          }}
-                                        >
-                                          Add "{searchTerm}" to Price Book
-                                        </button>
                                       </div>
                                     ) : (
                                       <div style={{ padding: '0.5rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                                         Start typing to search...
                                       </div>
                                     )}
+                                    {/* v2.2398: the add door rides the dropdown's foot even when there ARE
+                                        matches — near-misses are exactly when a new entry is needed. */}
+                                    {searchTerm.trim() ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openAddEntryFromAssignSearch(searchTerm)}
+                                        style={{ display: 'block', width: '100%', font: 'inherit', padding: '0.5rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontSize: '0.8125rem', textAlign: 'center' }}
+                                      >
+                                        + Add "{searchTerm.trim()}" to the book
+                                      </button>
+                                    ) : null}
                                   </div>
                                 )
                               })()}
@@ -4047,8 +4059,19 @@ export function BidsPricingTab({
                                             ) : assignMatchMode === 'exact' && term.trim() ? (
                                               renderAssignExactEmptyEscape(res, term)
                                             ) : (
-                                              <div style={{ padding: '0.45rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>No book entries match — add it in the Old view.</div>
+                                              <div style={{ padding: '0.45rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>No book entries match.</div>
                                             )}
+                                            {/* v2.2398 (Wendi): the Old page's add door, here too — and even when
+                                                there ARE matches, since near-misses are when a new entry is needed. */}
+                                            {term.trim() ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => openAddEntryFromAssignSearch(term)}
+                                                style={{ display: 'block', width: '100%', font: 'inherit', padding: '0.45rem 0.55rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontSize: '0.78rem', textAlign: 'center' }}
+                                              >
+                                                + Add "{term.trim()}" to the book
+                                              </button>
+                                            ) : null}
                                           </div>
                                         )
                                       })() : null}
