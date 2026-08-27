@@ -461,6 +461,38 @@ export function BidsPricingTab({
   /** The ▾ beside Solve — holds the rarely-used "Price unpriced only" (batch 2, artifact 11c68afc). */
   const [solveMenuOpen, setSolveMenuOpen] = useState(false)
   const solveMenuRef = useRef<HTMLSpanElement | null>(null)
+  // v2.2378 (Wendi): the margin slider lives behind the ▾ beside the % box —
+  // pressed it drops a long-track 20–95 slider, click-away/Esc puts it back.
+  const [wbMarginSliderOpen, setWbMarginSliderOpen] = useState(false)
+  const wbMarginPopRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!wbMarginSliderOpen) return
+    const onDoc = (e: MouseEvent) => { if (wbMarginPopRef.current && !wbMarginPopRef.current.contains(e.target as Node)) setWbMarginSliderOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setWbMarginSliderOpen(false) } }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey, true)
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey, true) }
+  }, [wbMarginSliderOpen])
+  // v2.2378 (Wendi): the coverage bar collapses to a chip on the solver line —
+  // expansion is a device preference, collapsed by default.
+  const [wbCoverageOpen, setWbCoverageOpen] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('bidPricingCoverageOpen_v1') === '1'
+    } catch {
+      return false
+    }
+  })
+  const toggleWbCoverageOpen = () => {
+    setWbCoverageOpen((open) => {
+      const next = !open
+      try {
+        window.localStorage.setItem('bidPricingCoverageOpen_v1', next ? '1' : '0')
+      } catch {
+        /* device just won't remember */
+      }
+      return next
+    })
+  }
   useEffect(() => {
     if (!solveMenuOpen) return
     const onDoc = (e: MouseEvent) => { if (solveMenuRef.current && !solveMenuRef.current.contains(e.target as Node)) setSolveMenuOpen(false) }
@@ -1453,7 +1485,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-solver',
       title: 'Solve to a number',
-      body: 'Drag the slider or type a margin — it prices the costed rows, and hand-set prices on no-cost rows stack on top. Or type a whole-bid target total, which those hand-set prices count toward. The ▾ beside Solve holds "Price unpriced only". Apply writes the preview; Discard throws it away.',
+      body: 'Type a margin, or press the ▾ beside the % box for a 20–95 slider that solves when you let go — it prices the costed rows, and hand-set prices on no-cost rows stack on top. Or type a whole-bid target total, which those hand-set prices count toward. The ▾ beside Solve holds "Price unpriced only". Apply writes the preview; Discard throws it away.',
     },
     {
       anchor: 'workbench-rows',
@@ -3259,18 +3291,35 @@ export function BidsPricingTab({
                             {stat('Revenue', `$${Math.round(effRevenue).toLocaleString('en-US')}`, 'var(--text-strong)', `$${formatCurrency(effRevenue)} · our cost $${formatCurrency(totalCost)}`)}
                             {stat('Profit', `${effProfit < 0 ? '-' : ''}$${Math.abs(Math.round(effProfit)).toLocaleString('en-US')}`, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `$${formatCurrency(effProfit)} · our cost $${formatCurrency(totalCost)}`)}
                             {stat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
+                            {/* v2.2378 (Wendi): coverage lives here as a chip — green ✓ when everything's
+                                priced, amber while work remains; the caret drops today's bar + filter row. */}
+                            {costed.length > 0 ? (
+                              <button
+                                type="button"
+                                onClick={toggleWbCoverageOpen}
+                                aria-expanded={wbCoverageOpen}
+                                title={
+                                  pricedCount === costed.length
+                                    ? `All ${costed.length} costed rows have a sale price`
+                                    : `${costed.length - pricedCount} costed row${costed.length - pricedCount === 1 ? '' : 's'} still unpriced${unpricedCost > 0 ? ` — $${formatCurrency(unpricedCost)} of cost has no sale price yet` : ''}`
+                                }
+                                style={{
+                                  font: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.16rem 0.55rem', borderRadius: 999,
+                                  fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', cursor: 'pointer', flex: '0 0 auto',
+                                  border: pricedCount === costed.length ? '1px solid var(--border-strong)' : '1px solid var(--text-amber-700)',
+                                  background: pricedCount === costed.length ? 'var(--surface)' : 'var(--bg-amber-tint)',
+                                  color: pricedCount === costed.length ? 'var(--text-green-600)' : 'var(--text-amber-700)',
+                                }}
+                              >
+                                {pricedCount}/{costed.length}{pricedCount === costed.length ? ' ✓' : ''}
+                                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{wbCoverageOpen ? '▾' : '▸'}</span>
+                              </button>
+                            ) : null}
                             <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '1 1 240px', minWidth: 220 }}>
+                            {/* v2.2378 (Wendi): the always-on track is gone — type in the box as ever, or press ▾
+                                for a long-track 20–95 slider that solves on release and leaves on click-away. */}
+                            <div ref={wbMarginPopRef} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '0 0 auto', position: 'relative' }}>
                               <span style={labelStyle}>Margin</span>
-                              <input
-                                type="range" min={20} max={65} step={1} value={Math.min(65, Math.max(20, wbMarginPct))}
-                                onChange={(e) => setWbMarginPct(Number(e.target.value))}
-                                onMouseUp={() => runWorkbenchSolve({})}
-                                onTouchEnd={() => runWorkbenchSolve({})}
-                                style={{ flex: 1, accentColor: '#3b82f6' }}
-                                aria-label="Margin for the costed rows"
-                                title={`Prices the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} at this margin — rows without Takeoffs cost keep their prices and stack on top. Prices round up to $5.`}
-                              />
                               <input
                                 type="number" min={1} max={95} inputMode="numeric" value={wbMarginPct}
                                 onChange={(e) => {
@@ -3288,6 +3337,32 @@ export function BidsPricingTab({
                                 style={{ width: '3.4rem', font: 'inherit', fontSize: '0.95rem', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '0.18rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
                               />
                               <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>%</span>
+                              <button
+                                type="button"
+                                onClick={() => setWbMarginSliderOpen((o) => !o)}
+                                aria-expanded={wbMarginSliderOpen}
+                                aria-label="Open the margin slider"
+                                title="Slide the margin — solves when you let go"
+                                style={{ font: 'inherit', fontSize: '0.7rem', padding: '0.28rem 0.4rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: wbMarginSliderOpen ? 'var(--bg-subtle)' : 'var(--surface)', color: wbMarginSliderOpen ? 'var(--text-blue-500)' : 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}
+                              >
+                                {wbMarginSliderOpen ? '▴' : '▾'}
+                              </button>
+                              {wbMarginSliderOpen ? (
+                                <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 0.4rem)', zIndex: 40, display: 'flex', alignItems: 'center', gap: '0.55rem', width: 'min(22rem, calc(100vw - 2rem))', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.65rem 0.85rem' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>20</span>
+                                  <input
+                                    type="range" min={20} max={95} step={1} value={Math.min(95, Math.max(20, wbMarginPct))}
+                                    onChange={(e) => setWbMarginPct(Number(e.target.value))}
+                                    onMouseUp={() => runWorkbenchSolve({})}
+                                    onTouchEnd={() => runWorkbenchSolve({})}
+                                    style={{ flex: 1, accentColor: '#3b82f6' }}
+                                    aria-label="Margin for the costed rows"
+                                    title={`Prices the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} at this margin — rows without Takeoffs cost keep their prices and stack on top. Prices round up to $5.`}
+                                  />
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>95</span>
+                                  <span style={{ fontSize: '0.9rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)', minWidth: '2.6rem', textAlign: 'right' }}>{wbMarginPct}%</span>
+                                </div>
+                              ) : null}
                             </div>
                             <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '2 1 360px', minWidth: 260, flexWrap: 'wrap' }}>
@@ -3501,7 +3576,9 @@ export function BidsPricingTab({
                         </div>
                       )
                     })()}
-                    {/* Batch 2: short label — "N of M priced" (owner). */}
+                    {/* Batch 2: short label — "N of M priced" (owner). v2.2378: collapsed behind the
+                        solver-line chip by default — this row renders only while the chip is expanded. */}
+                    {(wbCoverageOpen || wbShowUnpricedOnly) && costed.length > 0 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', marginBottom: '0.7rem', flexWrap: 'wrap' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }} title={unpricedCost > 0 ? `$${formatCurrency(unpricedCost)} of cost has no sale price yet` : undefined}>
                         {pricedCount} of {costed.length} priced
@@ -3517,6 +3594,7 @@ export function BidsPricingTab({
                         {wbShowUnpricedOnly ? 'Showing unpriced — show all' : 'Show unpriced only'}
                       </button>
                     </div>
+                    ) : null}
 
                     {(() => {
                       const bookMatches = matchCountRowsToBookEntries(
