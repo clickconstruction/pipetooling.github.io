@@ -42,6 +42,8 @@ import { resolvePartFormSaveTarget } from '../../lib/bids/partFormSaveTarget'
 import { NumericEntryPad } from '../NumericEntryPad'
 import { TakeoffPartEditIcon } from '../icons/TakeoffPartEditIcon'
 import { useToastContext } from '../../contexts/ToastContext'
+import { breakdownJumpDomId, breakdownJumpMissMessage, takeoffRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
+import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { useBidPricingEngine } from '../../hooks/useBidPricingEngine'
 import type { Database } from '../../types/database'
@@ -74,6 +76,9 @@ type BidsTakeoffEngine = ReturnType<typeof useBidPricingEngine>
 interface BidsTakeoffTabProps {
   // Data / UI
   bids: BidWithBuilder[]
+  /** Breakdown jump (v2.2400): a row to land on — scroll + flash the fixture's cluster, then report handled. */
+  rowJump?: BreakdownJumpTarget | null
+  onRowJumpHandled?: () => void
   selectedBidForTakeoff: BidWithBuilder | null
   /** Active bid Version that this takeoff belongs to (null = the unsplit Base). */
   selectedBidVersionId: string | null
@@ -135,6 +140,8 @@ interface BidsTakeoffTabProps {
 
 export function BidsTakeoffTab({
   bids,
+  rowJump,
+  onRowJumpHandled,
   selectedBidForTakeoff,
   selectedBidVersionId,
   selectedBidForCostEstimate,
@@ -189,6 +196,18 @@ export function BidsTakeoffTab({
   isMyBid,
 }: BidsTakeoffTabProps) {
   const { showToast } = useToastContext()
+
+  // Breakdown jump landing (v2.2400): scroll + flash the fixture's takeoff rows.
+  // The parent clears `rowJump` the moment the landing is handled, so remember the
+  // last target — the flash outlives the pending state by ~2s.
+  const lastRowJumpRef = useRef(rowJump ?? null)
+  if (rowJump) lastRowJumpRef.current = rowJump
+  const rowJumpFlashDomId = usePendingRowFlash(rowJump ? breakdownJumpDomId(rowJump) : null, (found) => {
+    if (!found && rowJump) showToast(breakdownJumpMissMessage(rowJump.tab, rowJump.fixture), 'info')
+    onRowJumpHandled?.()
+  })
+  /** While the flash is on, every row of the jumped-to fixture tints (a fixture can own several assembly rows). */
+  const rowJumpFlashCountRowId = rowJumpFlashDomId != null ? (lastRowJumpRef.current?.countRowId ?? null) : null
 
   const roughPartLinesSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -1945,7 +1964,7 @@ export function BidsTakeoffTab({
                           const mappingsForRow = takeoffMappings.filter((m) => m.countRowId === row.id)
                           if (mappingsForRow.length === 0) {
                             return (
-                              <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <tr key={row.id} id={takeoffRowDomId(row.id)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
                                 <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
                                 <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
@@ -1962,7 +1981,7 @@ export function BidsTakeoffTab({
                           const PREVIEW_MAX_PARTS = 5
                           return (
                             <Fragment key={row.id}>
-                              {mappingsForRow.map((mapping) => {
+                              {mappingsForRow.map((mapping, mappingIdx) => {
                                 const preview = mapping.templateId ? takeoffTemplatePreviewCache[mapping.templateId] : undefined
                                 const templateName = mapping.templateId ? materialTemplates.find((t) => t.id === mapping.templateId)?.name ?? null : null
                                 let partsCell: React.ReactNode = '—'
@@ -2027,7 +2046,7 @@ export function BidsTakeoffTab({
                                   }
                                 }
                                 return (
-                                  <tr key={mapping.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <tr key={mapping.id} id={mappingIdx === 0 ? takeoffRowDomId(row.id) : undefined} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
                                     <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
                                     <td style={{ padding: '0.75rem' }}>
                                       <div style={{ position: 'relative' }}>
@@ -2321,7 +2340,7 @@ export function BidsTakeoffTab({
                           return (
                             <Fragment key={row.id}>
                               {linesForRow.length === 0 ? (
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                <tr id={takeoffRowDomId(row.id)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
                                   <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
                                   <td colSpan={5} style={{ padding: '0.75rem' }}>
                                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
@@ -2382,6 +2401,7 @@ export function BidsTakeoffTab({
                                       line={line}
                                       lineIdx={lineIdx}
                                       row={row}
+                                      jumpFlash={rowJumpFlashCountRowId === row.id}
                                       showSaveAsAssembly={linesForRow.some((l) => l.partId?.trim())}
                                       onSaveAsAssembly={() => openSaveAsAssemblyFromRough(row.id, row)}
                                       takeoffAddTemplateParts={takeoffAddTemplateParts}

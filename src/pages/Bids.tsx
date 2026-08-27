@@ -25,6 +25,7 @@ import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { OPEN_BID_EDIT_QUERY, useBidPreview } from '../contexts/BidPreviewModalContext'
 import { submissionFollowupBidShareUrl } from '../lib/submissionFollowupBidShareUrl'
+import type { BreakdownJumpTarget } from '../lib/bids/bidTabRowJump'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { ModalShell } from '../components/bids/ModalShell'
@@ -591,6 +592,10 @@ export default function Bids() {
 
   // Pricing tab
   const [selectedBidForPricing, setSelectedBidForPricing] = useState<BidWithBuilder | null>(null)
+
+  // v2.2400 (Wendi): the Margin breakdown's jump chips hand the destination tab a row to
+  // land on — the tab scrolls to it and flashes it (Jobs → Pipeline idiom), then clears this.
+  const [bidTabRowJump, setBidTabRowJump] = useState<BreakdownJumpTarget | null>(null)
 
   const {
     countRows, setCountRows, skipNextLoadCountRowsRef,
@@ -3194,6 +3199,8 @@ export default function Bids() {
         <BidsCountsTab
           bids={bids}
           selectedBidForCounts={selectedBidForCounts}
+          rowJump={bidTabRowJump?.tab === 'counts' ? bidTabRowJump : null}
+          onRowJumpHandled={() => setBidTabRowJump(null)}
           activeBidVersionId={selectedBidVersionId}
           narrowViewport640={narrowViewport640}
           bidPreview={bidPreviewOnBidsPage}
@@ -3238,6 +3245,8 @@ export default function Bids() {
         )}
         <BidsTakeoffTab
           bids={bidsTyped}
+          rowJump={bidTabRowJump?.tab === 'takeoffs' ? bidTabRowJump : null}
+          onRowJumpHandled={() => setBidTabRowJump(null)}
           selectedBidForTakeoff={selectedBidForTakeoff}
           selectedBidVersionId={selectedBidVersionId}
           selectedBidForCostEstimate={selectedBidForCostEstimate}
@@ -3299,6 +3308,8 @@ export default function Bids() {
       {activeTab === 'labor' && (
         <BidsLaborTab
           bids={bidsTyped}
+          rowJump={bidTabRowJump?.tab === 'labor' ? bidTabRowJump : null}
+          onRowJumpHandled={() => setBidTabRowJump(null)}
           selectedBidVersionId={selectedBidVersionId}
           selectedBidForCostEstimate={selectedBidForCostEstimate}
           setSelectedBidForCostEstimate={setSelectedBidForCostEstimate}
@@ -3464,6 +3475,10 @@ export default function Bids() {
           onEditBid={openEditBid}
           onNavigateToLabor={() => setActiveTab('labor')}
           onNavigateBidToTab={(bid, tab) => selectBidAndSyncUrl(bid, tab)}
+          onNavigateBidToTabRow={(bid, tab, target) => {
+            setBidTabRowJump({ tab, ...target })
+            selectBidAndSyncUrl(bid, tab)
+          }}
         />
         {/* v2.2359: the Pricing Tape — floating tape calculator, desktop only */}
         <BidsPricingCalculator />

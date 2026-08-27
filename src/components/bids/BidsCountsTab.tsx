@@ -24,6 +24,8 @@ import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens } from '../../lib/bids/countSheet'
 import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, summarizeRowsByUnit, type CountUnit } from '../../lib/bids/countRowUnit'
+import { breakdownJumpDomId, breakdownJumpMissMessage, countsRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
+import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 
 /** Old/New pills beside the bid title (v2.2385) — the bordered pill look Cover Letter and Pricing use. */
 function countsViewPillStyle(on: boolean): React.CSSProperties {
@@ -42,6 +44,9 @@ function countsViewPillStyle(on: boolean): React.CSSProperties {
 type BidsCountsTabProps = {
   bids: BidWithBuilder[]
   selectedBidForCounts: BidWithBuilder | null
+  /** Breakdown jump (v2.2400): a row to land on — scroll + flash, then report handled. */
+  rowJump?: BreakdownJumpTarget | null
+  onRowJumpHandled?: () => void
   narrowViewport640: boolean
   bidPreview: ReturnType<typeof useBidPreview>
   countRows: BidCountRow[]
@@ -60,13 +65,14 @@ type BidsCountsTabProps = {
 }
 
 /** Sortable Count Sheet row (List mode): drag-handle cell + the sheet's editable cells. */
-function SheetSortableRow({ id, children }: { id: string; children: React.ReactNode }) {
+function SheetSortableRow({ id, flash, children }: { id: string; flash?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
     <tr
       ref={setNodeRef}
+      id={countsRowDomId(id)}
       className="count-sheet-row"
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : undefined, position: 'relative', zIndex: isDragging ? 2 : undefined }}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : undefined, position: 'relative', zIndex: isDragging ? 2 : undefined, background: flash ? 'var(--bg-green-100)' : undefined }}
     >
       <td style={{ padding: '0.28rem 0 0.28rem 0.4rem', borderBottom: '1px solid var(--border)', width: '1.8rem' }}>
         <span
@@ -89,6 +95,8 @@ function SheetSortableRow({ id, children }: { id: string; children: React.ReactN
 export function BidsCountsTab({
   bids,
   selectedBidForCounts,
+  rowJump,
+  onRowJumpHandled,
   narrowViewport640,
   bidPreview,
   countRows,
@@ -111,6 +119,11 @@ export function BidsCountsTab({
   const [movingCountRow, setMovingCountRow] = useState(false)
   const countRowsSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
   const [lastMovedId, setLastMovedId] = useState<string | null>(null)
+  // Breakdown jump landing (v2.2400): scroll + flash the row the Pricing modal pointed at.
+  const rowJumpFlashDomId = usePendingRowFlash(rowJump ? breakdownJumpDomId(rowJump) : null, (found) => {
+    if (!found && rowJump) showToast(breakdownJumpMissMessage(rowJump.tab, rowJump.fixture), 'info')
+    onRowJumpHandled?.()
+  })
   const [addingCountRow, setAddingCountRow] = useState(false)
   const [countsImportOpen, setCountsImportOpen] = useState(false)
   const [countsImportText, setCountsImportText] = useState('')
@@ -747,7 +760,11 @@ export function BidsCountsTab({
                 </td>
               </>
             )
-            const sheetRow = (r: BidCountRow) => <tr key={r.id} className="count-sheet-row">{sheetRowCells(r)}</tr>
+            const sheetRow = (r: BidCountRow) => (
+              <tr key={r.id} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : undefined}>
+                {sheetRowCells(r)}
+              </tr>
+            )
             return (
               <>
                 <div style={{ display: 'flex', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: '0.9rem', overflow: 'hidden' }}>
@@ -965,7 +982,7 @@ export function BidsCountsTab({
                         ? (
                           <SortableContext items={visibleRows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
                             {visibleRows.map((r) => (
-                              <SheetSortableRow key={r.id} id={r.id}>{sheetRowCells(r)}</SheetSortableRow>
+                              <SheetSortableRow key={r.id} id={r.id} flash={rowJumpFlashDomId === countsRowDomId(r.id)}>{sheetRowCells(r)}</SheetSortableRow>
                             ))}
                           </SortableContext>
                         )
@@ -978,7 +995,7 @@ export function BidsCountsTab({
                                 </td>
                               </tr>,
                               ...g.rows.map((r) => (
-                                <tr key={`${g.label}-${r.id}`} className="count-sheet-row">{sheetRowCells(r)}</tr>
+                                <tr key={`${g.label}-${r.id}`} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : undefined}>{sheetRowCells(r)}</tr>
                               )),
                             ])}
                             {buildCountSheetPageGroups(visibleRows).noPage.length > 0 ? (
@@ -1034,7 +1051,7 @@ export function BidsCountsTab({
                       <SortableCountRow
                         key={row.id}
                         row={row}
-                        highlight={lastMovedId === row.id}
+                        highlight={lastMovedId === row.id || rowJumpFlashDomId === countsRowDomId(row.id)}
                         onUpdate={refreshAfterCountsChange}
                         onDelete={refreshAfterCountsChange}
                       />

@@ -1,6 +1,9 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useToastContext } from '../../contexts/ToastContext'
+import { breakdownJumpDomId, breakdownJumpMissMessage, laborRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
+import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import { formatCurrency } from '../../lib/format'
 import { sumEquipmentRows } from '../../lib/bids/bidCostCalc'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
@@ -38,6 +41,9 @@ import type {
 
 type BidsLaborTabProps = {
   bids: BidWithBuilder[]
+  /** Breakdown jump (v2.2400): an HOURS row to land on — scroll + flash, then report handled. */
+  rowJump?: BreakdownJumpTarget | null
+  onRowJumpHandled?: () => void
   selectedBidForCostEstimate: BidWithBuilder | null
   /** Active bid Version whose takeoff materials the cost-estimate print reflects (null = Base). */
   selectedBidVersionId: string | null
@@ -118,6 +124,8 @@ type BidsLaborTabProps = {
 export function BidsLaborTab({
   selectedBidVersionId,
   bids,
+  rowJump,
+  onRowJumpHandled,
   selectedBidForCostEstimate,
   setSelectedBidForCostEstimate,
   narrowViewport640,
@@ -190,6 +198,12 @@ export function BidsLaborTab({
   isMyBid,
 }: BidsLaborTabProps) {
   const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
+  // Breakdown jump landing (v2.2400): scroll + flash the fixture's HOURS row.
+  const rowJumpFlashDomId = usePendingRowFlash(rowJump ? breakdownJumpDomId(rowJump) : null, (found) => {
+    if (!found && rowJump) showToast(breakdownJumpMissMessage(rowJump.tab, rowJump.fixture), 'info')
+    onRowJumpHandled?.()
+  })
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
   const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   // Collapsible non-row Direct-Cost sections (collapsed by default; show total on the right).
@@ -1163,7 +1177,7 @@ export function BidsLaborTab({
                       {costEstimateLaborRows.map((row) => {
                         const totalHrs = laborRowHours(row)
                         return (
-                          <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <tr key={row.id} id={laborRowDomId(row.fixture)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashDomId != null && rowJumpFlashDomId === laborRowDomId(row.fixture) ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
                             <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                               <span>{row.fixture ?? ''}</span>
                               {missingLaborBookFixtures.has(row.fixture ?? '') && selectedLaborBookVersionId && (

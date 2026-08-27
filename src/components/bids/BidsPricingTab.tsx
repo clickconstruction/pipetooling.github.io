@@ -172,7 +172,7 @@ type BidsPricingTabProps = {
   onEditBid: (bid: BidWithBuilder) => void
   onNavigateToLabor: () => void
   onNavigateBidToTab: (bid: BidWithBuilder, tab: 'counts' | 'takeoffs' | 'labor') => void
-  /** Breakdown jump chips (v2.2398): navigate AND land on that fixture's row (scroll + flash). */
+  /** Breakdown jump chips (v2.2400): navigate AND land on that fixture's row (scroll + flash). */
   onNavigateBidToTabRow?: (bid: BidWithBuilder, tab: 'counts' | 'takeoffs' | 'labor', target: { countRowId: string; fixture: string }) => void
   onNavigateToLaborDirectCosts: (bid: BidWithBuilder) => void
   onlyMyBids: boolean
@@ -190,7 +190,7 @@ const MARGIN_FLAG_COLOR: Record<'red' | 'yellow' | 'green', string> = {
 
 /** Self-contained payload for the per-line breakdown modal (Revenue → Cost → Margin). */
 type PricingBreakdownRow = {
-  /** The count row behind this line — the jump chips' landing key (v2.2398). */
+  /** The count row behind this line — the jump chips' landing key (v2.2400). */
   countRowId: string
   fixture: string
   count: number
@@ -5179,7 +5179,7 @@ export function BidsPricingTab({
                         type="button"
                         onClick={() => {
                           setPricingBreakdownRow(null)
-                          // v2.2398 (Wendi): land on this fixture's row over there — scroll + flash.
+                          // v2.2400 (Wendi): land on this fixture's row over there — scroll + flash.
                           if (onNavigateBidToTabRow) onNavigateBidToTabRow(selectedBidForPricing, tab, { countRowId: b.countRowId, fixture: b.fixture })
                           else onNavigateBidToTab(selectedBidForPricing, tab)
                         }}
