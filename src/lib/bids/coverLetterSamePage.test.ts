@@ -4,6 +4,7 @@ import {
   COVER_LETTER_ALTS_HEADING_DEFAULT,
   altSectionKey,
   buildAlternatesBlock,
+  customerFacingAlternateName,
   formatAlternateDelta,
   parseCoverLetterAltTexts,
   planSamePageLetter,
@@ -126,5 +127,58 @@ describe('buildAlternatesBlock', () => {
     const shipped = buildAlternatesBlock(plan, {}, formatCurrency, false)
     expect(shipped.headingEditKey).toBeUndefined()
     expect(shipped.items[0]!.editKey).toBeUndefined()
+  })
+})
+
+describe('customerFacingAlternateName', () => {
+  const gc = 'MERIT GENERAL CONTRACTORS'
+  const project = 'ALSATIAN'
+
+  it("swaps the GC for the project and collapses the doubled halves (the owner's screenshot)", () => {
+    expect(
+      customerFacingAlternateName(
+        'MERIT GENERAL CONTRACTORS value engineered · MERIT GENERAL CONTRACTORS value engineered',
+        gc,
+        project,
+      ),
+    ).toBe('ALSATIAN value engineered')
+  })
+
+  it('a packet named exactly the GC becomes the project name', () => {
+    expect(customerFacingAlternateName('MERIT GENERAL CONTRACTORS · value engineered', gc, project)).toBe(
+      'ALSATIAN · value engineered',
+    )
+  })
+
+  it('GC match is case-insensitive; names without the GC pass through', () => {
+    expect(customerFacingAlternateName('Merit General Contractors VE', gc, project)).toBe('ALSATIAN VE')
+    expect(customerFacingAlternateName('PEX in lieu of copper', gc, project)).toBe('PEX in lieu of copper')
+  })
+
+  it('no project name: the GC prefix drops; nothing left keeps the original', () => {
+    expect(customerFacingAlternateName('MERIT GENERAL CONTRACTORS value engineered', gc, null)).toBe('value engineered')
+    expect(customerFacingAlternateName('MERIT GENERAL CONTRACTORS', gc, null)).toBe('MERIT GENERAL CONTRACTORS')
+  })
+
+  it('buildAlternatesBlock auto labels read customer-facing; saved labels stay untouched', () => {
+    const plan = {
+      headline: [],
+      alternates: [
+        { name: `${gc} VE · ${gc} VE`, bidVersionId: 'v1', revenueSum: 100, fixtureRows: [], isAlternate: true },
+        { name: `${gc} VE2`, bidVersionId: 'v2', revenueSum: 200, fixtureRows: [], isAlternate: true },
+      ],
+      headlineRevenue: 0,
+      fixtureRows: [],
+      alternateLeads: false,
+    }
+    const block = buildAlternatesBlock(
+      plan,
+      { sections: { v2: { label: 'Alternate 2 — hand-written' } } },
+      (n) => n.toFixed(2),
+      false,
+      { gcName: gc, projectName: project },
+    )
+    expect(block.items[0]!.label).toBe('ALSATIAN VE')
+    expect(block.items[1]!.label).toBe('Alternate 2 — hand-written')
   })
 })

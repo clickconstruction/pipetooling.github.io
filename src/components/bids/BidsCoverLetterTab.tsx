@@ -820,7 +820,7 @@ export function BidsCoverLetterTab({
         const showAltsLayoutToggle = coverLetterView === 'new' && selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
         const samePageHtml = (editable: boolean) =>
           samePagePlan
-            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable))
+            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }))
             : null
         const finalCoverLetterHtml = selectedGcPacket
           ? samePagePlan
@@ -833,7 +833,7 @@ export function BidsCoverLetterTab({
         const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : finalCoverLetterHtml
         const finalCoverLetterText = selectedGcPacket
           ? samePagePlan
-            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency))
+            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }))
             : selectedGcPacket.sections.length > 1
               ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
               : packetSectionText(selectedGcPacket.sections[0]!)

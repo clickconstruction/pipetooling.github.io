@@ -51,6 +51,35 @@ export function altSectionKey(sec: { bidVersionId: string | null; offeredPricing
   return `${sec.bidVersionId ?? 'none'}${sec.offeredPricingId ? `:${sec.offeredPricingId}` : ''}`
 }
 
+/**
+ * The customer-facing form of an alternate section's name (v2.2408, owner ask:
+ * "(project name) value engineered, not (GC) value engineered"). Internal names
+ * lead with the GC because ＋ Add GC names packets after the GC — but on the
+ * letter the GC knows who they are; the project is what identifies the work.
+ * Each ` · ` half that starts with the GC's name swaps it for the project name,
+ * and halves left identical collapse (a version and its clone-named price
+ * scenario otherwise print the same phrase twice).
+ */
+export function customerFacingAlternateName(
+  name: string,
+  gcName: string | null | undefined,
+  projectName: string | null | undefined,
+): string {
+  const gc = (gcName ?? '').trim()
+  const project = (projectName ?? '').trim()
+  const parts = name.split(' · ').map((raw) => {
+    const part = raw.trim()
+    if (gc && part.toLowerCase().startsWith(gc.toLowerCase())) {
+      const rest = part.slice(gc.length).trim()
+      if (project) return rest ? `${project} ${rest}` : project
+      return rest || part
+    }
+    return part
+  })
+  const deduped = parts.filter((p, i) => i === 0 || p.toLowerCase() !== parts[i - 1]!.toLowerCase())
+  return deduped.join(' · ')
+}
+
 export type SamePagePlan = {
   /** Sections whose sum is the letter's proposed amount (bases; or the first alternate when no bases). */
   headline: SamePageSection[]
@@ -116,12 +145,14 @@ export function buildAlternatesBlock(
   texts: CoverLetterAltTexts,
   fmt: (n: number) => string,
   editable = false,
+  /** Auto labels read customer-facing (project, not GC) when the letter's names are passed. */
+  naming?: { gcName?: string | null; projectName?: string | null },
 ): CoverLetterAlternatesBlock {
   const items: CoverLetterAlternateItem[] = plan.alternates.map((sec) => {
     const key = altSectionKey(sec)
     const saved = texts.sections?.[key]
     return {
-      label: saved?.label?.trim() || sec.name,
+      label: saved?.label?.trim() || (naming ? customerFacingAlternateName(sec.name, naming.gcName, naming.projectName) : sec.name),
       amountFormatted: `$${fmt(sec.revenueSum)}`,
       deltaFormatted: formatAlternateDelta(sec.revenueSum, plan.headlineRevenue, fmt),
       note: saved?.note?.trim() || null,

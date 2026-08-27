@@ -33,6 +33,7 @@ Alternates:
 • **Alternate 1 — PEX water distribution in lieu of copper**: **$62,024.11** (reduced $5,287)
 :::
 
+- **The automatic name is customer-facing**: a packet named after its GC prints under the **project's** name instead — *ALSATIAN value engineered*, not *MERIT GENERAL CONTRACTORS value engineered* — and a version and price option sharing the same name print it once, not twice. Your team's names on the Pricing tab don't change.
 - **Change the wording customers see** by clicking the dashed text right on the preview — the alternate's name, its optional note line, or the *Alternates:* heading. Type, press Enter, done. This is letter-only wording: the version and price names your team sees on the Pricing tab don't change, and {{button:outline|Reset to auto}} brings the automatic text back.
 - **The difference is computed** — *(reduced $5,287)* or *(added $4,100)* against the proposed amount — so it can never disagree with the Pricing tab.
 - **No base bid, only alternates?** The ★ price leads the letter and the rest are listed against it — the headline amount is never $0.00.
