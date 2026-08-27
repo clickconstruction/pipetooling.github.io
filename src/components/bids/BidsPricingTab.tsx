@@ -900,7 +900,18 @@ export function BidsPricingTab({
     try {
       const err = await writeUnitPriceOverrideRow(target.countRowId, price)
       if (err) setError(err.message)
-      else await loadBidPricingAssignments(bidId, versionId)
+      else {
+        // The applied price is now the saved price — drop the row from any solver
+        // preview (and its veto) so a later Apply can't overwrite it (New view).
+        if (wbPreview && target.countRowId in wbPreview) {
+          const nextPreview = { ...wbPreview }
+          delete nextPreview[target.countRowId]
+          const nextVeto = new Set(wbPreviewVeto)
+          nextVeto.delete(target.countRowId)
+          setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null, nextVeto)
+        }
+        await loadBidPricingAssignments(bidId, versionId)
+      }
       const next = updateRecentMargins(recentMargins, m)
       setRecentMargins(next)
       saveRecentMargins(window.localStorage, next)
@@ -3037,6 +3048,19 @@ export function BidsPricingTab({
                       value={editingThis ? wbCellDraft.raw : wbCellText(r, field)}
                       placeholder="—"
                       onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => {
+                        const el = e.currentTarget
+                        if (document.activeElement !== el) el.dataset.selectAll = '1'
+                      }}
+                      onMouseUp={(e) => {
+                        // Same slow-click guard as the price cell: keep the select-all when the
+                        // mouseup lands after the deferred select() (v2.NEXT, Wendi).
+                        const el = e.currentTarget
+                        if (el.dataset.selectAll) {
+                          e.preventDefault()
+                          delete el.dataset.selectAll
+                        }
+                      }}
                       onFocus={(e) => {
                         const el = e.currentTarget
                         setWbCellDraft({ rowId: id, field, raw: cellEditSeed(field, r.displayUnit, r.count, r.cost) })
@@ -3794,8 +3818,20 @@ export function BidsPricingTab({
                       <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.85rem', minWidth: 900 }}>
                         <thead>
                           <tr>
-                            {['', 'Fixture or tie-in', 'Count', 'Cost/unit', 'Book entry', 'Sale price/unit', 'Revenue', 'Profit', 'Margin'].map((h, i) => (
-                              <th key={h || 'lock'} style={{ textAlign: i === 2 || i === 6 || i === 7 ? 'center' : i >= 2 && i !== 4 && i !== 5 ? 'right' : 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                            {([
+                              ['', 'left'],
+                              ['Fixture or tie-in', 'left'],
+                              ['Count', 'center'],
+                              ['Cost/unit', 'right'],
+                              ['Book entry', 'left'],
+                              ['Sale price/unit', 'left'],
+                              ['Revenue', 'center'],
+                              ['Profit', 'center'],
+                              ['Margin', 'right'],
+                              ['Apply margin', 'left'],
+                              ['', 'left'],
+                            ] as const).map(([h, align], i) => (
+                              <th key={`${h}-${i}`} style={{ textAlign: align, fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -3806,9 +3842,9 @@ export function BidsPricingTab({
                               <tr
                                 key={r.countRow.id}
                                 id={`wb-row-${r.countRow.id}`}
-                                onClick={() => openRowBreakdown(r)}
+                                // No row-level click: the breakdown opens ONLY from the row's ⓘ button
+                                // (v2.NEXT, Wendi — it kept popping up mid-typing when a click missed an input).
                                 style={{
-                                  cursor: 'pointer',
                                   background: wbFlashRowId === r.countRow.id ? 'var(--bg-blue-tint)' : r.effUnit == null && r.cost > 0 ? 'var(--bg-amber-tint)' : undefined,
                                   transition: 'background 400ms ease',
                                 }}
@@ -3948,16 +3984,36 @@ export function BidsPricingTab({
                                   <input
                                     type="text"
                                     inputMode="decimal"
+                                    // Reads as money when idle ($1,130.00); editing shows the raw number (v2.NEXT, Wendi).
                                     value={
                                       wbPriceDrafts[r.countRow.id] ??
-                                      (r.unitPrice != null ? String(Math.round(r.unitPrice * 100) / 100) : '')
+                                      (r.unitPrice != null ? `$${formatCurrency(r.unitPrice)}` : '')
                                     }
                                     placeholder="—"
                                     onClick={(e) => e.stopPropagation()}
-                                    onFocus={(e) => {
-                                      // Typing overwrites: select the current price after the click's own
-                                      // caret placement lands (v2.2372).
+                                    onMouseDown={(e) => {
                                       const el = e.currentTarget
+                                      if (document.activeElement !== el) el.dataset.selectAll = '1'
+                                    }}
+                                    onMouseUp={(e) => {
+                                      // A slow click's mouseup lands AFTER the deferred select() and drops the
+                                      // caret, un-selecting — so typing appended to the old number instead of
+                                      // replacing it (v2.NEXT, Wendi). Swallow that first mouseup once.
+                                      const el = e.currentTarget
+                                      if (el.dataset.selectAll) {
+                                        e.preventDefault()
+                                        delete el.dataset.selectAll
+                                      }
+                                    }}
+                                    onFocus={(e) => {
+                                      // Typing overwrites: seed the raw editable number, then select it after
+                                      // the click's own caret placement lands (v2.2372).
+                                      const el = e.currentTarget
+                                      setWbPriceDrafts((prev) =>
+                                        prev[r.countRow.id] != null
+                                          ? prev
+                                          : { ...prev, [r.countRow.id]: r.unitPrice != null ? String(Math.round(r.unitPrice * 100) / 100) : '' },
+                                      )
                                       window.setTimeout(() => el.select(), 0)
                                     }}
                                     onChange={(e) => {
@@ -4004,6 +4060,48 @@ export function BidsPricingTab({
                                       {r.displayUnit != null ? 'no cost' : '—'}
                                     </span>
                                   )}
+                                </td>
+                                {/* Apply margin (v2.NEXT, Wendi): the Old grid's per-row margin chips, same
+                                    recents + "…" picker, writing through the same single-row apply. */}
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                                  {r.cost > 0 ? (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      {recentMargins.length > 0 ? (
+                                        <button
+                                          type="button"
+                                          disabled={applyingMargin}
+                                          onClick={() => void applyMarginToSingleRow({ countRowId: r.countRow.id, cost: r.cost, count: r.count }, recentMargins[0]!)}
+                                          title={`Price this row at ${recentMargins[0]}% margin`}
+                                          style={{ padding: '0.1rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+                                        >
+                                          {recentMargins[0]}%
+                                        </button>
+                                      ) : null}
+                                      <button
+                                        type="button"
+                                        disabled={applyingMargin}
+                                        onClick={() => setMarginPickerRow({ countRowId: r.countRow.id, fixture: r.countRow.fixture ?? '', cost: r.cost, count: r.count })}
+                                        aria-label={`More margin options for ${r.countRow.fixture ?? 'this row'}`}
+                                        title="More margin options"
+                                        style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
+                                      >
+                                        …
+                                      </button>
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>no cost</span>
+                                  )}
+                                </td>
+                                <td style={{ padding: '0.35rem 0.5rem 0.35rem 0.2rem', borderBottom: '1px solid var(--border)' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => openRowBreakdown(r)}
+                                    title="Revenue, cost & margin breakdown"
+                                    aria-label={`Margin breakdown for ${r.countRow.fixture ?? 'row'}`}
+                                    style={{ font: 'inherit', fontSize: '0.85rem', border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.05rem 0.3rem', lineHeight: 1 }}
+                                  >
+                                    ⓘ
+                                  </button>
                                 </td>
                               </tr>
                             )
