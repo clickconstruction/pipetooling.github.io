@@ -36,6 +36,8 @@ On **Pricing** (New), the Workbench shows the packet you're on: **This GC — Bu
 2. The preview, {{button:blue|Print}} and the copy buttons follow the selected GC. Each letter holds **only that GC's packets and prices**, headed with their name and address — one builder never sees what another was quoted.
 3. {{button:blue|Mark sent to Burd & Assoc.}} stamps that GC's packets with today's date and their ★ value. A GC whose packet has no prices yet gets a *No prices yet* note, and its Mark sent stays off.
 
+**Every GC keeps its own sent record.** The bid's board date is a roll-up — the *first* send, the day the bid left the building — and it never moves when you mark a later GC. The board *value* stays with the bid's own GC's ★ base, so marking another GC's packet never overwrites it. In **Edit Bid**, the old single "Bid Date Sent" box is now a per-GC list on any bid with versions: each GC shows its sent date with {{button:blue|Mark sent}}, **✎ Date…** to set or correct when that letter actually went out (sent or phoned in), and **Un-send…** if one was recorded by mistake — un-sending the last GC puts the bid back on the Unsent/Working board.
+
 ## Track each GC's answer
 
 - On the **Bid Board**, a bid with more than one packet shows a line per GC under its row — name · *sent 7/31* · ★ value · {{chip:gray|waiting…}} / {{chip:green|won}} / {{chip:red|lost}}. Set the answer there. A win rolls the bid up to **Won**; the bid only rolls to **Lost** once every GC you sent to has said no.

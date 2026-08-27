@@ -22,6 +22,8 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type Bid = Database['public']['Tables']['bids']['Row']
 import { BidGcRecipientsRow, GcCard } from './BidGcRecipientsRow'
+import { BidGcSentPanel } from './BidGcSentPanel'
+import { supabase } from '../../lib/supabase'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 
@@ -54,6 +56,8 @@ export type BidFormModalProps = {
   bidDateSent: string
   handleBidDateSentInputChange: (e: ChangeEvent<HTMLInputElement>) => void
   handleBidDateSentBlur: (e: FocusEvent<HTMLInputElement>) => void
+  /** v2.2407: per-GC panel just rewrote the derived roll-up — parent syncs its date state so Save can't clobber it. */
+  onGcRollupDateChanged: (d: string | null) => void
   pendingAttestationForDate: string | null
   pendingBidDateSentAttestation: BidDateSentAttestationPayload | null
   gcCustomerDropdownOpen: boolean
@@ -179,6 +183,25 @@ export function BidFormModal(props: BidFormModalProps) {
   // search input only shows while swapping it (or before one is chosen).
   // Lives above the early return — hooks must run on every render.
   const [changingPrimary, setChangingPrimary] = useState(false)
+  // v2.2407: a bid WITH versions gets the per-GC sent panel instead of the hand-typed date
+  // (its bid_date_sent is a derived roll-up). Null while the count is loading.
+  const [bidHasVersions, setBidHasVersions] = useState<boolean | null>(null)
+  useEffect(() => {
+    const id = props.editingBid?.id
+    if (!id) {
+      setBidHasVersions(false)
+      return
+    }
+    setBidHasVersions(null)
+    let cancelled = false
+    void (async () => {
+      const { count } = await supabase.from('bid_versions').select('id', { count: 'exact', head: true }).eq('bid_id', id)
+      if (!cancelled) setBidHasVersions((count ?? 0) > 0)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [props.editingBid?.id])
   useEffect(() => {
     setChangingPrimary(false)
   }, [props.editingBid?.id])
@@ -197,6 +220,7 @@ export function BidFormModal(props: BidFormModalProps) {
     bidDateSent,
     handleBidDateSentInputChange,
     handleBidDateSentBlur,
+    onGcRollupDateChanged,
     pendingAttestationForDate,
     pendingBidDateSentAttestation,
     gcCustomerDropdownOpen,
@@ -644,6 +668,17 @@ export function BidFormModal(props: BidFormModalProps) {
                       </div>
                     )}
                   </div>
+                  {editingBid && bidHasVersions ? (
+                    // v2.2407 (Option A): a bid with versions tracks "sent" per GC — the panel
+                    // writes the same send records the Cover Letter does, and the bid-level date
+                    // becomes a derived first-send roll-up (nothing hand-types it here any more).
+                    <BidGcSentPanel
+                      bidId={editingBid.id}
+                      ownGcName={gcCustomerSearch || 'To Plans'}
+                      currentBidDateSent={editingBid.bid_date_sent ?? null}
+                      onRollupDateChanged={onGcRollupDateChanged}
+                    />
+                  ) : (
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Date Sent</label>
                     <input
@@ -680,6 +715,7 @@ export function BidFormModal(props: BidFormModalProps) {
                         )
                       })()}
                   </div>
+                  )}
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Last Contact</label>
                     <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />

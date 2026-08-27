@@ -570,8 +570,11 @@ export function BidsCoverLetterTab({
     }
   }
 
-  /** "Mark sent today" (v2.2124): one send row per bid in the letter (today, its ★ value), and the bid-level roll-up. */
-  async function markSentToday(bidId: string, sections: BundleSection[], boardValue: number | null) {
+  /** "Mark sent today" (v2.2124): one send row per bid in the letter (today, its ★ value), and the bid-level roll-up.
+      v2.2407 (Option A): the roll-up date is the FIRST send (never moved later by a later GC),
+      and the board VALUE stamps only when this is the bid's OWN GC's letter — marking another
+      GC's packet no longer overwrites it (the old last-GC-wins bug). */
+  async function markSentToday(bidId: string, sections: BundleSection[], boardValue: number | null, opts: { isOwnGc: boolean; currentDateSent: string | null }) {
     // $0 rule (v2.2213): unpriced sections aren't on the letter, so they don't get send rows either.
     const inLetter = sections.filter((s) => s.bidVersionId && s.revenueSum > 0)
     if (inLetter.length === 0) return
@@ -586,8 +589,11 @@ export function BidsCoverLetterTab({
         showToast('Could not record the send: ' + error.message, 'error')
         return
       }
-      const patch: { bid_date_sent: string; bid_value?: number } = { bid_date_sent: today }
-      if (boardValue != null && boardValue > 0) patch.bid_value = boardValue
+      // Derived-first roll-up (the sync trigger enforces the same rule server-side).
+      const cur = (opts.currentDateSent ?? '').slice(0, 10) || null
+      const firstSent = cur && cur < today ? cur : today
+      const patch: { bid_date_sent: string; bid_value?: number } = { bid_date_sent: firstSent }
+      if (opts.isOwnGc && boardValue != null && boardValue > 0) patch.bid_value = boardValue
       const { error: bidErr } = await supabase.from('bids').update(patch).eq('id', bidId)
       if (bidErr) showToast('Sends recorded, but the bid did not update: ' + bidErr.message, 'error')
       window.dispatchEvent(new Event('bid-version-sends-changed'))
@@ -1108,12 +1114,17 @@ export function BidsCoverLetterTab({
                                   type="button"
                                   disabled={markingSent || gcSections.filter((s) => s.bidVersionId && !s.offeredPricingId && s.revenueSum > 0).length === 0}
                                   title={gcSections.filter((s) => s.bidVersionId && !s.offeredPricingId && s.revenueSum > 0).length === 0 ? 'Nothing to send until this GC has a ★ base price' : undefined}
-                                  onClick={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null)}
+                                  onClick={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null, { isOwnGc: !multi || selectedKey === 'bid-default', currentDateSent: bid.bid_date_sent ?? null })}
                                   style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: markingSent ? 'wait' : 'pointer', opacity: bundlePricings.filter((s) => s.bidVersionId).length === 0 ? 0.5 : 1 }}
                                 >
                                   {markingSent ? 'Marking…' : multi ? `Mark sent to ${gcShort}` : 'Mark sent today'}
                                 </button>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{multi ? `stamps ${gcShort}'s bids with today + base price` : 'stamps every bid in the letter with today + its ★ value'}, and sets the bid's sent date and value</span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                  {multi
+                                    ? `stamps ${gcShort}'s bids with today + base price` +
+                                      (selectedKey === 'bid-default' ? ", and sets the bid's sent date and value" : " — the bid's first-sent date rolls up; the board value stays with the bid's own GC")
+                                    : "stamps every bid in the letter with today + its ★ value, and sets the bid's sent date and value"}
+                                </span>
                               </div>
                             </>
                           )}
