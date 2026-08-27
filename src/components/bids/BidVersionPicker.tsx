@@ -5,6 +5,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidVersion } from '../../lib/bids/bidPricingEngineTypes'
 import { formatSendBadge, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { defaultCopySourceId, groupVersionsByGc } from '../../lib/bids/gcPackets'
+import { SearchableSelect } from '../SearchableSelect'
 
 type BidVersionPickerProps = {
   bidId: string
@@ -617,10 +618,16 @@ export function BidVersionPicker({
           </p>
           <label style={{ display: 'block', marginBottom: '0.75rem' }}>
             <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>GC / builder</span>
-            <select value={addGc.gcId} onChange={(e) => setAddGc((st) => st && { ...st, gcId: e.target.value })} style={inputStyle} autoFocus>
-              <option value="">{gcCustomers ? 'Pick a GC…' : 'Loading…'}</option>
-              {(gcCustomers ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            {/* v2.2399 (Wendi): the customer list is long — type-to-search instead of a scroll hunt. */}
+            <SearchableSelect
+              value={addGc.gcId}
+              onChange={(v) => setAddGc((st) => st && { ...st, gcId: v })}
+              options={(gcCustomers ?? []).map((c) => ({ value: c.id, label: c.name }))}
+              placeholder={gcCustomers ? 'Pick a GC…' : 'Loading…'}
+              searchable
+              fillViewportHeight
+              listAriaLabel="GC / builder"
+            />
           </label>
           {!isUnsplit ? (
             <label style={{ display: 'block', marginBottom: '0.75rem' }}>
@@ -653,12 +660,16 @@ export function BidVersionPicker({
           </label>
           <label style={{ display: 'block', marginBottom: '0.35rem' }}>
             <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>GC this version goes to</span>
-            <select value={renameGcCustomerId} onChange={(e) => setRenameGcCustomerId(e.target.value)} style={inputStyle}>
-              <option value="">The bid's GC{bidGcName ? ` (${bidGcName})` : ''}</option>
-              {(gcCustomers ?? []).map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            {/* Same long list as Add GC — searchable too (v2.2399). */}
+            <SearchableSelect
+              value={renameGcCustomerId}
+              onChange={setRenameGcCustomerId}
+              options={(gcCustomers ?? []).map((c) => ({ value: c.id, label: c.name }))}
+              emptyOption={{ value: '', label: `The bid's GC${bidGcName ? ` (${bidGcName})` : ''}` }}
+              searchable
+              fillViewportHeight
+              listAriaLabel="GC this version goes to"
+            />
           </label>
           <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Cover letters group versions by GC — each GC gets its own document with only their pricing.
