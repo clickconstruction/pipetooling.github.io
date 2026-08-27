@@ -9,6 +9,7 @@ import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '
 import { formatCurrency } from '../../lib/format'
 import { catalogUnitPricesEffectivelyEqual } from '../../lib/materialPartCatalogPrice'
 import { roughCountMultiplier, takeoffFixtureCountLabel } from '../../lib/bids/bidTakeoffHelpers'
+import { takeoffRowDomId } from '../../lib/bids/bidTabRowJump'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -34,6 +35,7 @@ export function SortableRoughPartLineRow({
   line,
   lineIdx,
   row,
+  jumpFlash,
   showSaveAsAssembly,
   onSaveAsAssembly,
   takeoffAddTemplateParts,
@@ -67,6 +69,8 @@ export function SortableRoughPartLineRow({
   line: TakeoffRoughPartLineRow
   lineIdx: number
   row: BidCountRow
+  /** Breakdown jump (v2.2400): tint this row while its fixture's landing flash is on. */
+  jumpFlash?: boolean
   showSaveAsAssembly: boolean
   onSaveAsAssembly: () => void
   takeoffAddTemplateParts: RoughTakeoffMaterialPart[]
@@ -145,8 +149,12 @@ export function SortableRoughPartLineRow({
     <>
     <tr
       ref={setNodeRef}
+      // Breakdown jump landing (v2.2400): the fixture's first line row carries the
+      // jump id; jumpFlash tints the whole fixture cluster for the flash window.
+      id={lineIdx === 0 ? takeoffRowDomId(row.id) : undefined}
       style={{
         borderBottom: showBundleRows ? 'none' : '1px solid var(--border)',
+        ...(jumpFlash ? { background: 'var(--bg-blue-tint)', transition: 'background 400ms ease' } : {}),
         ...rowTransformStyle,
       }}
     >

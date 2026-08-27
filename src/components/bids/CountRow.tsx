@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidCountRow } from '../../types/bids'
 import { COUNT_UNITS, COUNT_UNIT_LABEL, effectiveCountUnit, type CountUnit } from '../../lib/bids/countRowUnit'
+import { countsRowDomId } from '../../lib/bids/bidTabRowJump'
 
 export function SortableCountRow({ row, highlight, onUpdate, onDelete }: {
   row: BidCountRow
@@ -90,7 +91,7 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
   const mergedStyle = { ...rowStyle, ...trStyle }
   if (editing) {
     return (
-      <tr ref={trRef} style={mergedStyle}>
+      <tr ref={trRef} id={countsRowDomId(row.id)} style={mergedStyle}>
         {dragHandle != null && <td style={{ padding: '0.75rem', width: 32, verticalAlign: 'middle' }}>{dragHandle}</td>}
         <td style={{ padding: '0.75rem', width: 132, textAlign: 'center' }}>
           <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }} />
@@ -115,7 +116,7 @@ export function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef
     )
   }
   return (
-    <tr ref={trRef} style={mergedStyle}>
+    <tr ref={trRef} id={countsRowDomId(row.id)} style={mergedStyle}>
       {dragHandle != null && <td style={{ padding: '0.75rem', width: 32, verticalAlign: 'middle' }}>{dragHandle}</td>}
       <td style={{ padding: '0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
         {row.count}

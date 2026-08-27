@@ -167,6 +167,8 @@ type BidsPricingTabProps = {
   onEditBid: (bid: BidWithBuilder) => void
   onNavigateToLabor: () => void
   onNavigateBidToTab: (bid: BidWithBuilder, tab: 'counts' | 'takeoffs' | 'labor') => void
+  /** Breakdown jump chips (v2.2400): navigate AND land on that fixture's row (scroll + flash). */
+  onNavigateBidToTabRow?: (bid: BidWithBuilder, tab: 'counts' | 'takeoffs' | 'labor', target: { countRowId: string; fixture: string }) => void
   onNavigateToLaborDirectCosts: (bid: BidWithBuilder) => void
   onlyMyBids: boolean
   setOnlyMyBids: (next: boolean) => void
@@ -183,6 +185,8 @@ const MARGIN_FLAG_COLOR: Record<'red' | 'yellow' | 'green', string> = {
 
 /** Self-contained payload for the per-line breakdown modal (Revenue → Cost → Margin). */
 type PricingBreakdownRow = {
+  /** The count row behind this line — the jump chips' landing key (v2.2400). */
+  countRowId: string
   fixture: string
   count: number
   unitPrice: number
@@ -255,6 +259,7 @@ export function BidsPricingTab({
   onEditBid,
   onNavigateToLabor,
   onNavigateBidToTab,
+  onNavigateBidToTabRow,
   onNavigateToLaborDirectCosts,
   onlyMyBids,
   setOnlyMyBids,
@@ -1995,6 +2000,7 @@ export function BidsPricingTab({
                 const uncostedRevenue = uncostedRevenueRows.reduce((s, r) => s + r.revenue, 0)
                 const openRowBreakdown = (r: (typeof rows)[number]) =>
                   setPricingBreakdownRow({
+                    countRowId: r.countRow.id,
                     fixture: r.countRow.fixture ?? '',
                     count: r.count,
                     unitPrice: r.unitPrice,
@@ -4584,9 +4590,11 @@ export function BidsPricingTab({
                         type="button"
                         onClick={() => {
                           setPricingBreakdownRow(null)
-                          onNavigateBidToTab(selectedBidForPricing, tab)
+                          // v2.2400 (Wendi): land on this fixture's row over there — scroll + flash.
+                          if (onNavigateBidToTabRow) onNavigateBidToTabRow(selectedBidForPricing, tab, { countRowId: b.countRowId, fixture: b.fixture })
+                          else onNavigateBidToTab(selectedBidForPricing, tab)
                         }}
-                        title={`Open this bid's ${label.slice(label.indexOf(' ') + 1)} tab`}
+                        title={`Open this bid's ${label.slice(label.indexOf(' ') + 1)} tab and show this fixture's row`}
                         style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
                       >
                         {label}
