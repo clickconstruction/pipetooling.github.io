@@ -39,6 +39,17 @@ export function latestSentOn(rows: ReadonlyArray<VersionSendRow>): string | null
   return best
 }
 
+/**
+ * The bid-level ROLL-UP date under the per-GC model (v2.2407, Option A): the FIRST send —
+ * the day the bid left the building. `bids.bid_date_sent` is derived as this (client-side
+ * on every send write, and by the `bid_version_sends` sync trigger); null when no sends.
+ */
+export function firstSentOn(rows: ReadonlyArray<VersionSendRow>): string | null {
+  let best: string | null = null
+  for (const r of rows) if (!best || r.sent_on < best) best = r.sent_on
+  return best
+}
+
 export type BoardValueRule = 'base_sum' | 'active_star'
 export const BOARD_VALUE_RULES: ReadonlyArray<{ id: BoardValueRule; label: string; help: string }> = [
   { id: 'base_sum', label: 'Sum of the base bids in the letter', help: 'Alternates are listed, not added. What the letter says the job costs.' },

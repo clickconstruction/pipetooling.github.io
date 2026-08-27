@@ -3614,6 +3614,15 @@ export default function Bids() {
             bidDateSent={bidDateSent}
             handleBidDateSentInputChange={handleBidDateSentInputChange}
             handleBidDateSentBlur={handleBidDateSentBlur}
+            onGcRollupDateChanged={(d) => {
+              // v2.2407: the per-GC panel rewrote the derived roll-up in the DB — mirror it into
+              // the form state so Save writes the same value and attestation never trips.
+              const norm = d ?? ''
+              setBidDateSent(norm)
+              savedBidDateSentRef.current = normalizeBidDateInput(norm)
+              clearBidDateSentAttestationFlow()
+              void loadBids()
+            }}
             pendingAttestationForDate={pendingAttestationForDate}
             pendingBidDateSentAttestation={pendingBidDateSentAttestation}
             gcCustomerDropdownOpen={gcCustomerDropdownOpen}

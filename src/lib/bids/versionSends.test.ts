@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { boardValueForRule, formatSendBadge, latestSendByVersion, latestSentOn, parseBoardValueRule } from './versionSends'
+import { boardValueForRule, firstSentOn, formatSendBadge, latestSendByVersion, latestSentOn, parseBoardValueRule } from './versionSends'
+
+describe('firstSentOn', () => {
+  it('returns the earliest send date (the day the bid left the building)', () => {
+    expect(
+      firstSentOn([
+        { bid_version_id: 'a', sent_on: '2026-08-27', value: null },
+        { bid_version_id: 'b', sent_on: '2026-08-20', value: null },
+        { bid_version_id: 'a', sent_on: '2026-08-29', value: null },
+      ]),
+    ).toBe('2026-08-20')
+  })
+  it('null when there are no sends', () => {
+    expect(firstSentOn([])).toBeNull()
+  })
+})
 
 describe('latestSendByVersion / latestSentOn', () => {
   it('keeps the newest send per version (date, then created_at) and coerces values', () => {
