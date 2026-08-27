@@ -488,7 +488,7 @@ export function BidsPricingTab({
   const [wbLocks, setWbLocks] = useState<Set<string>>(() => new Set())
   const [wbMarginPct, setWbMarginPct] = useState(45)
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
-  /** True while the "or total" box has focus — margin solves must not overwrite her typing (v2.NEXT). */
+  /** True while the "or total" box has focus — margin solves must not overwrite her typing (v2.2403). */
   const wbTargetTotalFocusedRef = useRef(false)
   /** Last target-total solve: what was asked vs where it landed (cleared on input edit). */
   const [, setWbTargetSolveResult] = useState<{ target: number; landed: number } | null>(null)
@@ -1845,7 +1845,7 @@ export function BidsPricingTab({
     // Margin solves get the landing chip ("56% on 12 costed rows → …"); a
     // target-total solve replaces it with the slider sync below.
     setWbSolveLanding(opts.targetTotal == null ? { pct: opts.marginPct ?? wbMarginPct, rows: sol.prices.size } : null)
-    // v2.NEXT (Wendi): a margin solve carries the "or total" box with it — the ideal
+    // v2.2403 (Wendi): a margin solve carries the "or total" box with it — the ideal
     // total rises and falls under the slider, so she can see where the bid lands and
     // step over to fine-edit that number. Never while she's typing in the box itself.
     if (opts.targetTotal == null && !wbTargetTotalFocusedRef.current) {
@@ -3704,7 +3704,7 @@ export function BidsPricingTab({
                                     <input
                                       type="text" inputMode="decimal" placeholder="42,000" value={wbTargetTotalInput}
                                       onChange={(e) => { setWbTargetTotalInput(e.target.value); setWbTargetSolveResult(null) }}
-                                      // While she's in the box, slider solves keep their hands off it (v2.NEXT);
+                                      // While she's in the box, slider solves keep their hands off it (v2.2403);
                                       // select-on-focus so stepping over from the slider is type-to-replace.
                                       onFocus={(e) => {
                                         wbTargetTotalFocusedRef.current = true
