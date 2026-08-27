@@ -490,18 +490,25 @@ export function BidsPricingTab({
   /** The ▾ beside Solve — holds the rarely-used "Price unpriced only" (batch 2, artifact 11c68afc). */
   const [solveMenuOpen, setSolveMenuOpen] = useState(false)
   const solveMenuRef = useRef<HTMLSpanElement | null>(null)
-  // v2.2378 (Wendi): the margin slider lives behind the ▾ beside the % box —
-  // pressed it drops a long-track 20–95 slider, click-away/Esc puts it back.
-  const [wbMarginSliderOpen, setWbMarginSliderOpen] = useState(false)
-  const wbMarginPopRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    if (!wbMarginSliderOpen) return
-    const onDoc = (e: MouseEvent) => { if (wbMarginPopRef.current && !wbMarginPopRef.current.contains(e.target as Node)) setWbMarginSliderOpen(false) }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setWbMarginSliderOpen(false) } }
-    document.addEventListener('mousedown', onDoc)
-    document.addEventListener('keydown', onKey, true)
-    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey, true) }
-  }, [wbMarginSliderOpen])
+  // v2.2385 (Wendi): the whole solver folds behind a blue "Solve ›" — open, its
+  // controls (slider back inline, margin box, target total, Solve) sit inside a
+  // blue ring so they read as one unit; ‹ folds them away. Device preference,
+  // folded by default. This replaces v2.2378's slider-behind-▾ popover.
+  const [wbSolverOpen, setWbSolverOpen] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('bidPricingSolverOpen_v1') === '1'
+    } catch {
+      return false
+    }
+  })
+  const setAndRememberWbSolverOpen = (open: boolean) => {
+    setWbSolverOpen(open)
+    try {
+      window.localStorage.setItem('bidPricingSolverOpen_v1', open ? '1' : '0')
+    } catch {
+      /* device just won't remember */
+    }
+  }
   // v2.2378 (Wendi): the coverage bar collapses to a chip on the solver line —
   // expansion is a device preference, collapsed by default.
   const [wbCoverageOpen, setWbCoverageOpen] = useState<boolean>(() => {
@@ -1490,7 +1497,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-solver',
       title: 'Solve to a number',
-      body: 'Type a margin, or press the ▾ beside the % box for a 20–95 slider that re-prices live as you drag — it prices the costed rows, and hand-set prices on no-cost rows stack on top. Or type a whole-bid target total, which those hand-set prices count toward. The ▾ beside Solve holds "Price unpriced only". Apply writes the drafts; Discard throws them away.',
+      body: 'Press the blue Solve › to unfold the solver — its blue ring holds the 20–95 slider (re-prices live as you drag), the typed margin, and the whole-bid target total; ‹ folds it away, and your choice is remembered. Hand-set prices on no-cost rows stack on top. The ▾ beside Solve holds "Price unpriced only". Apply writes the drafts; Discard throws them away.',
     },
     {
       anchor: 'workbench-rows',
@@ -1500,6 +1507,8 @@ export function BidsPricingTab({
   ]
 
   function startWorkbenchTour() {
+    // The tour points at the solver's controls — unfold it first (v2.2385).
+    setAndRememberWbSolverOpen(true)
     const present = spotlightTourStepsPresent(WORKBENCH_TOUR_STEPS)
     if (present.length === 0) {
       showToast('Nothing to tour yet — the Workbench needs Counts, an active Pricing, and a cost estimate.', 'info')
@@ -3376,6 +3385,49 @@ export function BidsPricingTab({
                             <span style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15, color: c }}>{v}</span>
                           </span>
                         )
+                        // v2.2385 (Wendi): preview actions fuse into ONE segmented control — amber
+                        // count chip · Apply · Discard, one shared height, wrapping as a unit and
+                        // right-pinned even when it wraps to its own line. The long caption rides hover.
+                        const previewControl =
+                          wbPreview && previewCount + vetoCount > 0 ? (
+                            <span
+                              title={`${previewCount} draft price${previewCount === 1 ? '' : 's'} — saved only when you Apply · waits on this device${vetoCount > 0 ? ` · ${vetoCount} clicked off — ${vetoCount === 1 ? 'its price holds' : 'their prices hold'}` : ''}`}
+                              style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', flex: '0 0 auto', whiteSpace: 'nowrap' }}
+                            >
+                              <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.3rem 0.7rem', fontSize: '0.74rem', fontWeight: 700, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', fontVariantNumeric: 'tabular-nums' }}>
+                                {previewCount} draft{previewCount === 1 ? '' : 's'}
+                                {vetoCount > 0 ? <span style={{ color: 'var(--text-red-700)', fontWeight: 700 }}>{` · ${vetoCount} off`}</span> : null}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => void applyWorkbenchPreview()}
+                                disabled={wbApplying || previewCount === 0}
+                                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.85rem', border: 'none', borderLeft: '1px solid var(--border-strong)', background: '#3b82f6', color: '#fff', cursor: wbApplying ? 'wait' : previewCount === 0 ? 'not-allowed' : 'pointer', opacity: previewCount === 0 ? 0.55 : 1 }}
+                              >
+                                {wbApplying ? 'Applying…' : 'Apply'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setAndStashWbPreview(selectedPricingVersionId, null); setWbSolveLanding(null) }}
+                                disabled={wbApplying}
+                                style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.3rem 0.7rem', border: 'none', borderLeft: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                              >
+                                Discard
+                              </button>
+                            </span>
+                          ) : null
+                        // A preview restored from an earlier sitting says how old it is (v2.2373).
+                        const restoredChip =
+                          wbPreview && previewCount + vetoCount > 0 && wbPreviewRestoredAt != null && Date.now() - wbPreviewRestoredAt > 60 * 60 * 1000 ? (
+                            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.1rem 0.55rem', background: 'var(--bg-subtle)', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+                              solve from {formatRestoredStamp(wbPreviewRestoredAt)} — restored
+                            </span>
+                          ) : null
+                        // Everything that must stay reachable while folded rides one right-pinned
+                        // cluster that keeps right alignment when it wraps (artifact 370f8f3c).
+                        const rightCluster = (children: React.ReactNode) => (
+                          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto', minWidth: 0 }}>{children}</span>
+                        )
                         return (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
                             {/* Whole dollars only — the strip is a scoreboard, cents live in the rows (owner, v2.2205). */}
@@ -3406,42 +3458,41 @@ export function BidsPricingTab({
                                 <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>{wbCoverageOpen ? '▾' : '▸'}</span>
                               </button>
                             ) : null}
-                            <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
-                            {/* v2.2378 (Wendi): the always-on track is gone — type in the box as ever, or press ▾
-                                for a long-track 20–95 slider that solves on release and leaves on click-away. */}
-                            <div ref={wbMarginPopRef} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '0 0 auto', position: 'relative' }}>
-                              <span style={labelStyle}>Margin</span>
-                              <input
-                                type="number" min={1} max={95} inputMode="numeric" value={wbMarginPct}
-                                onChange={(e) => {
-                                  const v = Math.round(Number(e.target.value))
-                                  if (Number.isFinite(v)) setWbMarginPct(Math.min(95, Math.max(1, v)))
-                                }}
-                                onBlur={() => runWorkbenchSolve({})}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.preventDefault()
-                                    runWorkbenchSolve({})
-                                  }
-                                }}
-                                aria-label="Margin percent for the costed rows"
-                                style={{ width: '3.4rem', font: 'inherit', fontSize: '0.95rem', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '0.18rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
-                              />
-                              <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>%</span>
-                              <button
-                                type="button"
-                                onClick={() => setWbMarginSliderOpen((o) => !o)}
-                                aria-expanded={wbMarginSliderOpen}
-                                aria-label="Open the margin slider"
-                                title="Slide the margin — prices update live as you drag"
-                                style={{ font: 'inherit', fontSize: '0.7rem', padding: '0.28rem 0.4rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: wbMarginSliderOpen ? 'var(--bg-subtle)' : 'var(--surface)', color: wbMarginSliderOpen ? 'var(--text-blue-500)' : 'var(--text-muted)', cursor: 'pointer', lineHeight: 1 }}
-                              >
-                                {wbMarginSliderOpen ? '▴' : '▾'}
-                              </button>
-                              {wbMarginSliderOpen ? (
-                                <div style={{ position: 'absolute', left: 0, top: 'calc(100% + 0.4rem)', zIndex: 40, display: 'flex', alignItems: 'center', gap: '0.55rem', width: 'min(22rem, calc(100vw - 2rem))', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.65rem 0.85rem 0.35rem' }}>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', paddingBottom: '0.9rem' }}>20</span>
-                                  <span style={{ flex: 1, position: 'relative', display: 'inline-flex', flexDirection: 'column' }}>
+                            {!wbSolverOpen ? (
+                              // v2.2385: folded — the strip is a scoreboard with one blue door. A pending
+                              // preview's actions stay on the strip; folding can never hide unsaved work.
+                              rightCluster(
+                                <>
+                                  {wbSolverEnd.node}
+                                  <button
+                                    type="button"
+                                    onClick={() => setAndRememberWbSolverOpen(true)}
+                                    aria-expanded={false}
+                                    title="Open the solver — margin, target total, Solve"
+                                    style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.32rem 0.75rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1 }}
+                                  >
+                                    Solve ›
+                                  </button>
+                                  {restoredChip}
+                                  {previewControl}
+                                </>,
+                              )
+                            ) : (
+                              // v2.2385: open — every solver control inside one blue ring, ‹ folds it away.
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.8rem', flexWrap: 'wrap', flex: '1 1 460px', minWidth: 300, border: '1.5px solid #3b82f6', borderRadius: 9, padding: '0.3rem 0.6rem', background: 'var(--bg-blue-tint)', boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.15)' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setAndRememberWbSolverOpen(false)}
+                                  aria-expanded={true}
+                                  title="Fold the solver away"
+                                  aria-label="Fold the solver away"
+                                  style={{ font: 'inherit', fontSize: '0.85rem', fontWeight: 800, padding: '0.3rem 0.55rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer', lineHeight: 1, flex: '0 0 auto' }}
+                                >
+                                  ‹
+                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '1 1 230px', minWidth: 210 }}>
+                                  <span style={labelStyle}>Margin</span>
+                                  <span style={{ flex: 1, minWidth: 110, position: 'relative', display: 'inline-flex', flexDirection: 'column' }}>
                                     <input
                                       type="range" min={20} max={95} step={1} value={Math.min(95, Math.max(20, wbMarginPct))}
                                       onChange={(e) => {
@@ -3454,7 +3505,7 @@ export function BidsPricingTab({
                                       aria-label="Margin for the costed rows"
                                       title={`Prices the ${costed.length} costed row${costed.length !== 1 ? 's' : ''} at this margin, live as you drag — rows without Takeoffs cost keep their prices and stack on top. Prices round up to $5.`}
                                     />
-                                    <span aria-hidden style={{ position: 'relative', display: 'block', height: '0.9rem' }}>
+                                    <span aria-hidden style={{ position: 'relative', display: 'block', height: '0.8rem' }}>
                                       {/* Markup reference ticks: 2× = 50% margin, 3× = 66%, 4× = 75%, 5× = 80%. */}
                                       {(
                                         [
@@ -3475,102 +3526,83 @@ export function BidsPricingTab({
                                       ))}
                                     </span>
                                   </span>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', paddingBottom: '0.9rem' }}>95</span>
-                                  <span style={{ fontSize: '0.9rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)', minWidth: '2.6rem', textAlign: 'right', paddingBottom: '0.9rem' }}>{wbMarginPct}%</span>
+                                  <input
+                                    type="number" min={1} max={95} inputMode="numeric" value={wbMarginPct}
+                                    onChange={(e) => {
+                                      const v = Math.round(Number(e.target.value))
+                                      if (Number.isFinite(v)) setWbMarginPct(Math.min(95, Math.max(1, v)))
+                                    }}
+                                    onBlur={() => runWorkbenchSolve({})}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault()
+                                        runWorkbenchSolve({})
+                                      }
+                                    }}
+                                    aria-label="Margin percent for the costed rows"
+                                    style={{ width: '3.4rem', font: 'inherit', fontSize: '0.95rem', fontWeight: 700, textAlign: 'right', fontVariantNumeric: 'tabular-nums', padding: '0.18rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
+                                  />
+                                  <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>%</span>
                                 </div>
-                              ) : null}
-                            </div>
-                            <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flex: '2 1 360px', minWidth: 260, flexWrap: 'wrap' }}>
-                              <span style={labelStyle}>or total</span>
-                              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden', flex: '0 0 auto' }}>
-                                <span style={{ padding: '0 0.4rem 0 0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>$</span>
-                                <input
-                                  type="text" inputMode="decimal" placeholder="42,000" value={wbTargetTotalInput}
-                                  onChange={(e) => { setWbTargetTotalInput(e.target.value); setWbTargetSolveResult(null) }}
-                                  onKeyDown={(e) => {
-                                    if (e.key !== 'Enter') return
-                                    e.preventDefault()
-                                    solveToTarget()
-                                  }}
-                                  aria-label="Target bid total"
-                                  style={{ border: 0, width: `${Math.max(wbTargetTotalInput.length, 6) + 1}ch`, padding: '0.33rem 0.45rem 0.33rem 0', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, background: 'transparent', color: 'var(--text-strong)', outline: 'none' }}
-                                />
-                              </div>
-                              <span ref={solveMenuRef} style={{ position: 'relative', display: 'inline-flex' }}>
-                                <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: '6px 0 0 6px', border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
-                                  Solve
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setSolveMenuOpen((o) => !o)}
-                                  aria-haspopup="menu"
-                                  aria-expanded={solveMenuOpen}
-                                  aria-label="More ways to solve"
-                                  title="More ways to solve"
-                                  style={{ font: 'inherit', fontSize: '0.7rem', padding: '0.35rem 0.45rem', borderRadius: '0 6px 6px 0', border: '1px solid #3b82f6', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
-                                >
-                                  ▾
-                                </button>
-                                {solveMenuOpen ? (
-                                  <span role="menu" aria-label="More ways to solve" style={{ position: 'absolute', left: 0, top: 'calc(100% + 0.3rem)', minWidth: '16.5rem', maxWidth: 'calc(100vw - 1rem)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.3rem', zIndex: 40 }}>
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      onClick={() => { setSolveMenuOpen(false); runWorkbenchSolve({ onlyUnpriced: true }) }}
-                                      style={{ display: 'block', width: '100%', padding: '0.45rem 0.55rem', border: 'none', background: 'none', borderRadius: 6, font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'var(--text-strong)' }}
-                                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
-                                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
-                                    >
-                                      Price unpriced only
-                                      <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.74rem' }}>fills only rows with no sale price, at the current margin — priced rows are held as-is</span>
-                                    </button>
-                                  </span>
-                                ) : null}
-                              </span>
-                              {wbSolverEnd.node ? <span style={{ marginLeft: 'auto', flex: '0 0 auto' }}>{wbSolverEnd.node}</span> : null}
-                              {/* Apply/Discard ride the right end of this line and wrap right-pinned on narrow pages (artifact 370f8f3c). */}
-                              {wbPreview && previewCount + vetoCount > 0 ? (
-                                <span style={{ marginLeft: 'auto', display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem', flex: '0 0 auto' }}>
-                                  {/* A preview restored from an earlier sitting says how old it is, so a
-                                      stale solve never masquerades as fresh work (v2.2373). */}
-                                  {wbPreviewRestoredAt != null && Date.now() - wbPreviewRestoredAt > 60 * 60 * 1000 ? (
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.1rem 0.55rem', background: 'var(--bg-subtle)' }}>
-                                      solve from {formatRestoredStamp(wbPreviewRestoredAt)} — restored
+                                <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)', flex: '0 0 1px' }} className="wb-solver-sep" />
+                                {/* Label + control move as ONE unit on wrap — never a label orphaned from its field. */}
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', flex: '0 0 auto', whiteSpace: 'nowrap' }}>
+                                  <span style={labelStyle}>or total</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', overflow: 'hidden', flex: '0 0 auto' }}>
+                                    <span style={{ padding: '0 0.4rem 0 0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>$</span>
+                                    <input
+                                      type="text" inputMode="decimal" placeholder="42,000" value={wbTargetTotalInput}
+                                      onChange={(e) => { setWbTargetTotalInput(e.target.value); setWbTargetSolveResult(null) }}
+                                      onKeyDown={(e) => {
+                                        if (e.key !== 'Enter') return
+                                        e.preventDefault()
+                                        solveToTarget()
+                                      }}
+                                      aria-label="Target bid total"
+                                      style={{ border: 0, width: `${Math.max(wbTargetTotalInput.length, 6) + 1}ch`, padding: '0.33rem 0.45rem 0.33rem 0', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, background: 'transparent', color: 'var(--text-strong)', outline: 'none' }}
+                                    />
+                                  </div>
+                                </span>
+                                <span ref={solveMenuRef} style={{ position: 'relative', display: 'inline-flex', flex: '0 0 auto' }}>
+                                  <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: '6px 0 0 6px', border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
+                                    Solve
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSolveMenuOpen((o) => !o)}
+                                    aria-haspopup="menu"
+                                    aria-expanded={solveMenuOpen}
+                                    aria-label="More ways to solve"
+                                    title="More ways to solve"
+                                    style={{ font: 'inherit', fontSize: '0.7rem', padding: '0.35rem 0.45rem', borderRadius: '0 6px 6px 0', border: '1px solid #3b82f6', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+                                  >
+                                    ▾
+                                  </button>
+                                  {solveMenuOpen ? (
+                                    <span role="menu" aria-label="More ways to solve" style={{ position: 'absolute', left: 0, top: 'calc(100% + 0.3rem)', minWidth: '16.5rem', maxWidth: 'calc(100vw - 1rem)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.3rem', zIndex: 40 }}>
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => { setSolveMenuOpen(false); runWorkbenchSolve({ onlyUnpriced: true }) }}
+                                        style={{ display: 'block', width: '100%', padding: '0.45rem 0.55rem', border: 'none', background: 'none', borderRadius: 6, font: 'inherit', textAlign: 'left', cursor: 'pointer', color: 'var(--text-strong)' }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
+                                      >
+                                        Price unpriced only
+                                        <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.74rem' }}>fills only rows with no sale price, at the current margin — priced rows are held as-is</span>
+                                      </button>
                                     </span>
                                   ) : null}
-                                  <span style={{ display: 'inline-flex', gap: '0.5rem' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => void applyWorkbenchPreview()}
-                                      disabled={wbApplying || previewCount === 0}
-                                      title={
-                                        previewCount === 0
-                                          ? 'Every proposed price is clicked off — nothing to apply'
-                                          : `Write the previewed price${previewCount === 1 ? '' : 's'} to ${priceBookVersions.find((p) => p.id === selectedPricingVersionId)?.name ?? 'this price'}`
-                                      }
-                                      style={{ padding: '0.35rem 1rem', fontSize: '0.82rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: wbApplying ? 'wait' : previewCount === 0 ? 'not-allowed' : 'pointer', opacity: previewCount === 0 ? 0.55 : 1 }}
-                                    >
-                                      {wbApplying ? 'Applying…' : `Apply ${previewCount}`}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => { setAndStashWbPreview(selectedPricingVersionId, null); setWbSolveLanding(null) }}
-                                      disabled={wbApplying}
-                                      style={{ padding: '0.35rem 0.7rem', fontSize: '0.82rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
-                                    >
-                                      Discard
-                                    </button>
-                                  </span>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
-                                    {`${previewCount} draft${previewCount === 1 ? '' : 's'} — saved only when you Apply`}
-                                    {vetoCount > 0 ? (
-                                      <span style={{ color: 'var(--text-red-700)' }}>{` · ${vetoCount} clicked off — ${vetoCount === 1 ? 'its price holds' : 'their prices hold'}`}</span>
-                                    ) : null}
-                                  </span>
                                 </span>
-                              ) : null}
-                            </div>
+                                {rightCluster(
+                                  <>
+                                    {wbSolverEnd.node}
+                                    {restoredChip}
+                                    {previewControl}
+                                  </>,
+                                )}
+                              </div>
+                            )}
                           </div>
                         )
                       })()}

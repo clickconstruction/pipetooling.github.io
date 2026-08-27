@@ -3196,7 +3196,6 @@ export default function Bids() {
           isMyBid={isMyBid}
           ledgerPrefixMap={ledgerPrefixMap}
           onClose={closeSharedBidAndClearUrl}
-          onEditBid={openEditBid}
           onCountSourceLinkSaved={async (bidId) => {
             const rows = await loadBids()
             const fresh = rows.find((b) => b.id === bidId)

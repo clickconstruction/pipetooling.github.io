@@ -32,7 +32,7 @@ export default function BidBoardValueRuleSettingsBlock() {
     <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.8rem 1rem', marginTop: '0.75rem', background: 'var(--surface)' }}>
       <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.35rem' }}>Bid Board value for a package of bids</div>
       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-        When a bid has several versions in its cover letter, this is the number "Mark sent" and "Apply to Bid Value" write to the bid — what the Board, Followup and hit rate see.
+        When a bid has several versions in its cover letter, this is the number "Mark sent" writes to the bid — what the Board, Followup and hit rate see.
       </div>
       {BOARD_VALUE_RULES.map((r) => (
         <label key={r.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.3rem 0', fontSize: '0.85rem', cursor: 'pointer' }}>
