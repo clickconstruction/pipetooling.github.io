@@ -3562,8 +3562,9 @@ export function BidsPricingTab({
                                       style={{ border: 0, width: `${Math.max(wbTargetTotalInput.length, 6) + 1}ch`, padding: '0.33rem 0.45rem 0.33rem 0', font: 'inherit', fontSize: '0.9rem', fontWeight: 600, background: 'transparent', color: 'var(--text-strong)', outline: 'none' }}
                                     />
                                   </div>
-                                </span>
-                                <span ref={solveMenuRef} style={{ position: 'relative', display: 'inline-flex', flex: '0 0 auto' }}>
+                                  {/* Solve belongs to "or total" (v2.2388, Wendi) — inside the unit it sits tight
+                                      to the field and the whole "or total $___ Solve ▾" wraps as one piece. */}
+                                  <span ref={solveMenuRef} style={{ position: 'relative', display: 'inline-flex', flex: '0 0 auto' }}>
                                   <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: '6px 0 0 6px', border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
                                     Solve
                                   </button>
@@ -3593,6 +3594,7 @@ export function BidsPricingTab({
                                       </button>
                                     </span>
                                   ) : null}
+                                  </span>
                                 </span>
                                 {rightCluster(
                                   <>
@@ -3793,7 +3795,7 @@ export function BidsPricingTab({
                         <thead>
                           <tr>
                             {['', 'Fixture or tie-in', 'Count', 'Cost/unit', 'Book entry', 'Sale price/unit', 'Revenue', 'Profit', 'Margin'].map((h, i) => (
-                              <th key={h || 'lock'} style={{ textAlign: i >= 2 && i !== 4 && i !== 5 ? 'right' : 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                              <th key={h || 'lock'} style={{ textAlign: i === 2 || i === 6 || i === 7 ? 'center' : i >= 2 && i !== 4 && i !== 5 ? 'right' : 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.5rem 0.7rem', borderBottom: '1px solid var(--border)' }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
@@ -3831,7 +3833,7 @@ export function BidsPricingTab({
                                   </button>
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.countRow.fixture ?? '—'}</td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }}>
                                   {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}
                                 </td>

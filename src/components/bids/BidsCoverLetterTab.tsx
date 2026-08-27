@@ -548,6 +548,25 @@ export function BidsCoverLetterTab({
     await reloadBidVersions()
   }
 
+  /** Mark sent for a version-less bid (v2.2389): no send rows to write — just today + the letter amount onto the bid. */
+  async function markSentTodaySimple(bidId: string, amount: number) {
+    setMarkingSent(true)
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+      const patch: { bid_date_sent: string; bid_value?: number } = { bid_date_sent: today }
+      if (amount > 0) patch.bid_value = amount
+      const { error } = await supabase.from('bids').update(patch).eq('id', bidId)
+      if (error) {
+        showToast('Could not mark the bid sent: ' + error.message, 'error')
+        return
+      }
+      await loadBids()
+      showToast('Marked sent today.', 'success')
+    } finally {
+      setMarkingSent(false)
+    }
+  }
+
   /** "Mark sent today" (v2.2124): one send row per bid in the letter (today, its ★ value), and the bid-level roll-up. */
   async function markSentToday(bidId: string, sections: BundleSection[], boardValue: number | null) {
     // $0 rule (v2.2213): unpriced sections aren't on the letter, so they don't get send rows either.
@@ -977,9 +996,28 @@ export function BidsCoverLetterTab({
                           ) : null}
                           <span style={studioFieldLabelStyle}>{multi ? `In ${gcShort}'s letter` : 'In this cover letter'}</span>
                           {bidVersions.length === 0 ? (
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                              One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong></> : null}. To offer an alternate, make it a bid to send (＋ Another bid to send… at the top).
-                            </div>
+                            <>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                One bid{activePricingName ? <> — the letter shows ★ <strong style={{ color: 'var(--text-strong)' }}>{activePricingName}</strong></> : null}. To offer an alternate, make it a bid to send (＋ Another bid to send… at the top).
+                              </div>
+                              {/* v2.2389 (Wendi): the caption promises Mark sent, but the button only lived in the
+                                  packets branch — a plain bid had no send button at all. Same stamp, no send rows. */}
+                              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  disabled={markingSent || headlineAmount <= 0}
+                                  title={headlineAmount <= 0 ? 'Nothing to send until this bid has a priced letter amount' : undefined}
+                                  onClick={() => void markSentTodaySimple(bid.id, headlineAmount)}
+                                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: markingSent ? 'wait' : headlineAmount <= 0 ? 'not-allowed' : 'pointer', opacity: headlineAmount <= 0 ? 0.5 : 1 }}
+                                >
+                                  {markingSent ? 'Marking…' : 'Mark sent today'}
+                                </button>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                  stamps the bid with today as its sent date and this letter's amount as its value
+                                  {bid.bid_date_sent ? <> · sent {bid.bid_date_sent.slice(5).replace('-', '/')}</> : null}
+                                </span>
+                              </div>
+                            </>
                           ) : (
                             <>
                               {rowsVersions.map((v, i, arr) => {
