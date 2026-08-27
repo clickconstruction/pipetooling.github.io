@@ -6,6 +6,7 @@ import { marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
 import { buildProfitLegend, clampTooltipLeft, formatProfitShare } from '../../lib/bids/profitBarLegend'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
+import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
@@ -1877,17 +1878,102 @@ export function BidsPricingTab({
     }
   }
 
+  /**
+   * Re-key a just-cloned pricing's count-row children (custom prices, assignments,
+   * submission hides) from the SOURCE version's rows onto the TARGET version's rows,
+   * matched by fixture name (v2.2405). Without this the clone points at rows the
+   * target packet's grid never shows and the copy lands as "No prices yet" (Wendi's
+   * BP384). Children whose row has no unique same-named counterpart are deleted —
+   * a price for a row this packet doesn't carry belongs to nobody.
+   */
+  async function rekeyClonedPricingToVersion(
+    bidId: string,
+    pricingId: string,
+    sourceBidVersionId: string,
+    targetBidVersionId: string,
+  ): Promise<{ matched: number; dropped: number } | null> {
+    const loadRows = async (versionId: string) => {
+      const { data, error: err } = await supabase
+        .from('bids_count_rows')
+        .select('id, fixture')
+        .eq('bid_id', bidId)
+        .eq('bid_version_id', versionId)
+      if (err) {
+        setError(err.message)
+        return null
+      }
+      return (data ?? []) as Array<{ id: string; fixture: string | null }>
+    }
+    const sourceRows = await loadRows(sourceBidVersionId)
+    const targetRows = await loadRows(targetBidVersionId)
+    if (!sourceRows || !targetRows) return null
+    const rowMap = mapCountRowsByFixture(sourceRows, targetRows)
+    let matched = 0
+    let dropped = 0
+    for (const table of ['bid_count_row_custom_prices', 'bid_pricing_assignments', 'bid_count_row_submission_hides'] as const) {
+      const { data, error: err } = await supabase
+        .from(table)
+        .select('count_row_id')
+        .eq('price_book_version_id', pricingId)
+      if (err) {
+        setError(err.message)
+        return null
+      }
+      for (const child of (data ?? []) as Array<{ count_row_id: string }>) {
+        const targetRowId = rowMap.get(child.count_row_id)
+        if (targetRowId) {
+          const { error: upErr } = await supabase
+            .from(table)
+            .update({ count_row_id: targetRowId })
+            .eq('price_book_version_id', pricingId)
+            .eq('count_row_id', child.count_row_id)
+          if (upErr) {
+            setError(upErr.message)
+            return null
+          }
+          if (table === 'bid_count_row_custom_prices') matched++
+        } else {
+          const { error: delErr } = await supabase
+            .from(table)
+            .delete()
+            .eq('price_book_version_id', pricingId)
+            .eq('count_row_id', child.count_row_id)
+          if (delErr) {
+            setError(delErr.message)
+            return null
+          }
+          if (table === 'bid_count_row_custom_prices') dropped++
+        }
+      }
+    }
+    return { matched, dropped }
+  }
+
   /** G1: a GC with no prices yet starts from another GC's base price (clone of that version's ★). */
   async function copyBasePriceFromVersion(sourceVersionId: string) {
     const bid = selectedBidForPricing
     const src = bidVersions.find((v) => v.id === sourceVersionId)
     const starId = src?.starred_price_book_version_id ?? null
     const star = starId ? priceBookVersions.find((p) => p.id === starId) : null
-    if (!bid || !star) return
+    if (!bid || !star || !selectedBidVersionId) return
     setCopyingGcPrice(true)
     try {
       const newId = await cloneTemplateIntoBidAndActivate(star.id, star.name)
-      if (newId) showToast(`Copied ${gcNameForVersion(sourceVersionId)}'s base price into ${gcNameForVersion(selectedBidVersionId)} — now its base.`, 'success')
+      if (!newId) return
+      // Each version owns its OWN count rows (v2.2132) — re-key the clone's prices
+      // onto THIS packet's rows by fixture name or the copy is invisible (v2.2405).
+      const rekey = await rekeyClonedPricingToVersion(bid.id, newId, sourceVersionId, selectedBidVersionId)
+      await Promise.all([loadBidPricingAssignments(bid.id, newId), reloadPricingForBid(bid.id)])
+      const gcFrom = gcNameForVersion(sourceVersionId)
+      const gcTo = gcNameForVersion(selectedBidVersionId)
+      if (rekey && rekey.dropped > 0) {
+        showToast(
+          `Copied ${gcFrom}'s base price into ${gcTo} — ${rekey.matched} price${rekey.matched === 1 ? '' : 's'} matched this packet's counts; ${rekey.dropped} had no matching row here.`,
+          'info',
+        )
+      } else {
+        showToast(`Copied ${gcFrom}'s base price into ${gcTo} — now its base.`, 'success')
+      }
     } finally {
       setCopyingGcPrice(false)
     }
