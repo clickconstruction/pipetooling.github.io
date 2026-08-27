@@ -7,7 +7,7 @@ order: 94
 ---
 The **Bids → Pricing** tab has two layouts, switched by the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic grid; **New is the Workbench**, built for pricing to a target.
 
-New to it? Click the **?** beside the New pill for a guided tour — it spotlights each part of the Workbench in order, right on your bid.
+The pills sit right beside the bid's title, and the **?** next to them is the one help door: a short card that covers the page in four lines — typing prices, the solver, what this GC sees, labor & cost — with **▶ Take the tour** (it spotlights each part of the Workbench in order, right on your bid) and a link back to this guide in its footer.
 
 ## GCs, prices, and the star
 
@@ -39,7 +39,7 @@ Above the table, {{button:blue|Fill N matching from book}} assigns every unassig
 
 **Solver results preview first.** A solve re-prices many rows at once, so those land as amber **preview** values — the card outlines amber and {{button:blue|Apply 12}} / **Discard** appear at the line's end, with a count of what's previewed beneath. Nothing is saved until you hit Apply — the button counts what it will write — and Discard throws the preview away. Typing your own price into a previewed row saves your number immediately and takes that row out of the preview.
 
-**Solver previews wait on this device.** Visit any page, reload, close the tab, come back tomorrow — the preview is sitting where you left it, and one from an earlier sitting says when it's from (*solve from Tue 4:12 PM — restored*). Each price option keeps its own preview, so viewing another price just sets yours aside; it's restored when you view that price again. Previews stay on the computer they were made on — they don't follow you to another machine. A GC can never see a preview — Cover Letter, Share, Print, and CSV always use saved prices only. The **(i)** beside the bid name keeps a short version of this story.
+**Solver previews wait on this device.** Visit any page, reload, close the tab, come back tomorrow — the preview is sitting where you left it, and one from an earlier sitting says when it's from (*solve from Tue 4:12 PM — restored*). Each price option keeps its own preview, so viewing another price just sets yours aside; it's restored when you view that price again. Previews stay on the computer they were made on — they don't follow you to another machine. A GC can never see a preview — Cover Letter, Share, Print, and CSV always use saved prices only. The **?** beside the Old/New pills keeps a short version of this story.
 
 Each price card's ✎ opens the **Price** modal — rename it or delete it (the ★ can't be deleted while the letter is built on it).
 

@@ -3386,8 +3386,7 @@ export default function Bids() {
             onOpenMap={() => openPackageMap(selectedBidForPricing, selectedBidForPricing.customers?.name ?? selectedBidForPricing.bids_gc_builders?.name ?? null)}
           />
           </div>
-          {/* v2.2203: the Old/New pills portal up here from BidsPricingTab, top-right beside the strip. */}
-          <div id="pricing-view-slot" style={{ flex: '0 0 auto', paddingTop: '0.25rem' }} />
+          {/* v2.2376: the Old/New pills moved beside the bid title inside BidsPricingTab (Wendi) — the old portal slot is gone. */}
           </div>
         )}
         <BidsPricingTab

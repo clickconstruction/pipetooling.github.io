@@ -1,4 +1,4 @@
-import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
@@ -79,6 +79,20 @@ function formatRestoredStamp(at: number): string {
   const ageDays = (Date.now() - at) / (24 * 60 * 60 * 1000)
   if (ageDays < 6) return `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`
   return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`
+}
+
+/** Old/New pills beside the bid title (v2.2376) — Cover Letter's bordered pill look, kept in step with its studioPillStyle. */
+function pricingViewPillStyle(on: boolean): React.CSSProperties {
+  return {
+    padding: '0.2rem 0.6rem',
+    borderRadius: 999,
+    border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+    background: on ? '#3b82f6' : 'var(--surface)',
+    color: on ? '#fff' : 'var(--text-muted)',
+    fontSize: '0.78rem',
+    fontWeight: 600,
+    cursor: 'pointer',
+  }
 }
 
 type BidsPricingTabProps = {
@@ -1877,15 +1891,34 @@ export function BidsPricingTab({
               </button>
             ) : null}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <BidWorkflowTabTitleWithPreview
                   bid={selectedBidForPricing}
                   previewEnabled={bidPreview != null}
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
                   h2Style={{ margin: 0, flex: '0 0 auto' }}
                 />
-                {/* v2.2203: the Workbench structure bar folded into this (i) — rendered here by portal from the multi branch. */}
-                <span id="pricing-info-slot" style={{ display: 'inline-flex', alignItems: 'center' }} />
+                {/* v2.2376 (Wendi): Old/New beside the title, Cover Letter's pattern — and one "?" as
+                    the single help door (the old (i) modal, tour, and guide all live behind it). */}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <button type="button" role="tab" aria-selected={pricingView === 'old'} onClick={() => switchPricingView('old')} style={pricingViewPillStyle(pricingView === 'old')}>
+                    Old
+                  </button>
+                  <button type="button" role="tab" aria-selected={pricingView === 'new'} onClick={() => switchPricingView('new')} style={pricingViewPillStyle(pricingView === 'new')}>
+                    New
+                  </button>
+                  {pricingView === 'new' ? (
+                    <button
+                      type="button"
+                      onClick={() => setWbInfoOpen(true)}
+                      title="How this page works"
+                      aria-label="How this page works"
+                      style={{ font: 'inherit', flexShrink: 0, width: 20, height: 20, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, marginLeft: '0.15rem' }}
+                    >
+                      ?
+                    </button>
+                  ) : null}
+                </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
                 {/* v2.2198 (option A, artifact df8daa33): Share keeps one click; Print / CSV / review live in the ▾ menu. */}
@@ -1975,35 +2008,84 @@ export function BidsPricingTab({
                 ) : null}
               </div>
             </div>
-            {(() => {
-              // v2.2203: render the Old/New pills into the top-right slot beside the Send-to strip when it
-              // exists (Pricing tab with a selected bid); fall back to the old in-card spot otherwise.
-              const slot = typeof document !== 'undefined' ? document.getElementById('pricing-view-slot') : null
-              const pills = (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', ...(slot ? {} : { marginBottom: '0.9rem' }) }}>
-              <button type="button" role="tab" aria-selected={pricingView === 'old'} onClick={() => switchPricingView('old')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pricingView === 'old' ? '#2563eb' : 'transparent', color: pricingView === 'old' ? '#fff' : 'var(--text-muted)' }}>
-                Old
-              </button>
-              <button type="button" role="tab" aria-selected={pricingView === 'new'} onClick={() => switchPricingView('new')} style={{ padding: '0.3rem 0.85rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 999, cursor: 'pointer', background: pricingView === 'new' ? '#2563eb' : 'transparent', color: pricingView === 'new' ? '#fff' : 'var(--text-muted)' }}>
-                New
-              </button>
-              {pricingView === 'new' ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={startWorkbenchTour}
-                    title="How the Workbench works — take the tour"
-                    aria-label="How the Workbench works — take the tour"
-                    style={{ font: 'inherit', flexShrink: 0, width: 18, height: 18, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.68rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                  >
-                    ?
-                  </button>
-                </>
-              ) : null}
-            </div>
-              )
-              return slot ? createPortal(pills, slot) : pills
-            })()}
+            {/* v2.2376: the "?" card — the Workbench in four scannable lines; the tour and the
+                full guide ride in its footer, so one icon is the whole help story. */}
+            {wbInfoOpen
+              ? (() => {
+                  const owned = [...priceBookVersions].sort((a, b) => a.sort_order - b.sort_order)
+                  const scenarios: Array<{ id: string; name: string }> =
+                    owned.length > 0 ? owned : selectedPricingVersionId ? [{ id: selectedPricingVersionId, name: 'Standard prices' }] : []
+                  const solo = scenarios.length <= 1 && bidVersions.length <= 1
+                  const gcName = gcNameForVersion(selectedBidVersionId)
+                  const gcShort = shortGc(gcName)
+                  const strong: React.CSSProperties = { color: 'var(--text-strong)' }
+                  const infoRow = (k: string, body: React.ReactNode) => (
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', padding: '0.5rem 0.95rem', borderBottom: '1px solid var(--border)' }}>
+                      <span style={{ flex: '0 0 7.5rem', fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.8rem' }}>{k}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{body}</span>
+                    </div>
+                  )
+                  return (
+                    <div role="presentation" onClick={() => setWbInfoOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4rem 1rem 1rem' }}>
+                      <div role="dialog" aria-label="How this page works" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, maxWidth: '30rem', width: '100%', boxShadow: '0 10px 32px rgba(15, 23, 42, 0.2)', overflow: 'hidden' }}>
+                        <div style={{ padding: '0.55rem 0.95rem', borderBottom: '1px solid var(--border)', fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
+                          How this page works
+                        </div>
+                        {infoRow(
+                          'Type a price',
+                          <>
+                            saves when you leave the field <span style={{ color: 'var(--text-green-700)', fontSize: '0.68rem', fontWeight: 700 }}>saved ✓</span>
+                          </>,
+                        )}
+                        {infoRow(
+                          'Solve',
+                          <>
+                            previews prices in amber{' '}
+                            <span style={{ border: '1px solid var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.3rem', fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>150</span>{' '}
+                            — <b style={strong}>Apply</b> writes them, <b style={strong}>Discard</b> clears them. Previews wait on this device and never reach the GC.
+                          </>,
+                        )}
+                        {solo
+                          ? infoRow(
+                              'This bid',
+                              <>
+                                one packet — {gcShort} sees <b style={strong}>{scenarios[0]?.name ?? 'your price'}</b>. <b style={strong}>＋ Add price</b> starts another price or GC.
+                              </>,
+                            )
+                          : infoRow(
+                              'This GC',
+                              <>
+                                {gcName} — <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> base is what they see on their letter; switch GC or price option at the top.
+                              </>,
+                            )}
+                        {infoRow('Labor & cost', <>shared by the whole package — switching bids changes revenue, not cost.</>)}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.6rem 0.95rem', background: 'var(--bg-subtle)' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWbInfoOpen(false)
+                              startWorkbenchTour()
+                            }}
+                            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.32rem 0.8rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+                          >
+                            ▶ Take the tour
+                          </button>
+                          <Link to="/help?g=price-a-bid-with-the-workbench" onClick={() => setWbInfoOpen(false)} style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)' }}>
+                            Read the guide →
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setWbInfoOpen(false)}
+                            style={{ font: 'inherit', marginLeft: 'auto', padding: '0.3rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', fontSize: '0.78rem' }}
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()
+              : null}
             {wbTourSteps ? (
               <SpotlightTour
                 steps={wbTourSteps}
@@ -2881,7 +2963,6 @@ export function BidsPricingTab({
                           ? [{ id: selectedPricingVersionId, name: 'Standard prices', sort_order: 0 } as (typeof owned)[number]]
                           : []
                       if (scenarios.length === 0) return null
-                      const activeVersionName = bidVersions.find((b) => b.id === selectedBidVersionId)?.name ?? null
                       const revOf = (id: string) => (id === selectedPricingVersionId ? effRevenue : (wbScenarioRevenue[id] ?? null))
                       const starred = scenarios.find((s) => s.id === customerFacingPricingId) ?? null
                       // "Copy prices from …" source for an empty viewed scenario: the ★ if priced, else any priced one.
@@ -2889,7 +2970,6 @@ export function BidsPricingTab({
                         starred && (revOf(starred.id) ?? 0) > 0 && starred.id !== selectedPricingVersionId
                           ? starred
                           : scenarios.find((s) => s.id !== selectedPricingVersionId && (revOf(s.id) ?? 0) > 0) ?? null
-                      const labelStyle: React.CSSProperties = { fontSize: '0.63rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }
                       const cardBtnStyle: React.CSSProperties = { font: 'inherit', fontSize: '0.72rem', padding: '0.18rem 0.5rem', borderRadius: 5, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', cursor: 'pointer' }
                       // v2.2104: one creation door for both variant kinds, and the whole
                       // hierarchy collapses to a single line while it has nothing to say.
@@ -2983,85 +3063,6 @@ export function BidsPricingTab({
                         </div>
                       ) : null
                       const solo = scenarios.length === 1 && bidVersions.length <= 1
-                      // v2.2203: the structure bar lives in a modal behind the (i) beside the bid name —
-                      // most people don't need it in the page flow. v2.2354: the (i) renders on every bid,
-                      // solo ones included — "Previews & saving" is the part everyone needs; solo bids get
-                      // the structure story collapsed to one line.
-                      const infoNode = (() => {
-                        const slot = typeof document !== 'undefined' ? document.getElementById('pricing-info-slot') : null
-                        const gcShort = shortGc(gcNameForVersion(selectedBidVersionId))
-                        const icon = (
-                          <button
-                            type="button"
-                            onClick={() => setWbInfoOpen(true)}
-                            title="How this Workbench is put together — GC, price options, previews & saving, labor & cost"
-                            aria-label="How this Workbench is put together"
-                            style={{ font: 'inherit', width: 20, height: 20, borderRadius: '50%', border: '1.5px solid var(--border-strong)', color: 'var(--text-muted)', background: 'var(--surface)', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0, marginLeft: '0.45rem' }}
-                          >
-                            i
-                          </button>
-                        )
-                        const modal = wbInfoOpen ? (
-                          <div role="presentation" onClick={() => setWbInfoOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4rem 1rem 1rem' }}>
-                            <div role="dialog" aria-label="How this Workbench is put together" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, maxWidth: '34rem', width: '100%', boxShadow: '0 10px 32px rgba(15, 23, 42, 0.2)', overflow: 'hidden' }}>
-                              <div>
-                                {solo ? (
-                                  <div style={{ padding: '0.5rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
-                                    <div style={labelStyle}>One GC · one price</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                      This bid sends one packet — {gcShort} sees <b>{scenarios[0]!.name}</b>. <b>＋ Add price</b> starts another price or GC.
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div style={{ padding: '0.5rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
-                                      <div style={labelStyle}>This GC — {gcNameForVersion(selectedBidVersionId)}</div>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem' }}>
-                                        <span style={{ border: '1px solid #3b82f6', background: 'var(--bg-subtle)', color: 'var(--text-strong)', borderRadius: 5, padding: '0.08rem 0.55rem', fontSize: '0.8rem', fontWeight: 600 }}>
-                                          {activeVersionName ?? 'Current'}
-                                        </span>
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{activeVersionName ? (bidVersions.filter((b) => (b.customer_id ?? null) === (bidVersions.find((x) => x.id === selectedBidVersionId)?.customer_id ?? null)).length > 1 ? 'one of several for this GC · switch at the top' : 'switch GC at the top of the page') : 'this bid has one takeoff'}</span>
-                                      </div>
-                                    </div>
-                                    <div style={{ padding: '0.5rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
-                                      <div style={labelStyle}>Price options — what {gcShort} receives</div>
-                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                        <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> is the base price on their letter — Cover Letter, Share, Print, and the bid value use it. <b>Offer as alternate</b> adds a second price for the same GC, same counts.
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
-                                <div style={{ padding: '0.5rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
-                                  <div style={labelStyle}>Previews &amp; saving</div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                    <b style={{ color: 'var(--text-strong)' }}>Prices you type save themselves</b> — press Enter or leave the field and the row is written, no Apply needed. Solver results land as amber previews{' '}
-                                    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.25rem', verticalAlign: '-0.15em' }}>
-                                      <span style={{ border: '1px solid var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.3rem', fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>150</span>
-                                      <span style={{ fontSize: '0.62rem', color: 'var(--text-amber-700)', fontWeight: 700 }}>preview</span>
-                                    </span>{' '}
-                                    — <b style={{ color: 'var(--text-strong)' }}>saved only when you press Apply</b> in the strip. A solver preview waits on this device — reloads, closed tabs, tomorrow morning — each price option keeping its own, until you Apply or Discard it. {gcShort} can never see a preview — letters and prints use saved prices only.
-                                  </div>
-                                </div>
-                                <div style={{ padding: '0.5rem 0.9rem' }}>
-                                  <div style={labelStyle}>Labor &amp; cost</div>
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                                    Shared by the whole package. Switching bids changes revenue, not cost.
-                                  </div>
-                                </div>
-                              </div>
-                              <div style={{ padding: '0.5rem 0.9rem', textAlign: 'right' }}>
-                                <button type="button" onClick={() => setWbInfoOpen(false)} style={{ font: 'inherit', padding: '0.35rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Close</button>
-                              </div>
-                            </div>
-                          </div>
-                        ) : null
-                        return (
-                          <>
-                            {slot ? createPortal(icon, slot) : icon}
-                            {modal}
-                          </>
-                        )
-                      })()
                       if (solo) {
                         const v = scenarios[0]!
                         const rev = revOf(v.id)
@@ -3072,11 +3073,10 @@ export function BidsPricingTab({
                           // Nothing priced yet: skip the status band entirely — the solver is the next move
                           // and sits first; ＋ Add price rides at the solver line's end (artifact 0a627c7c).
                           wbSolverEnd.node = doorBtn
-                          return <>{infoNode}{doorModal}</>
+                          return <>{doorModal}</>
                         }
                         return (
                           <>
-                            {infoNode}
                             <div
                               data-tour="workbench-scenarios"
                               style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.5rem 0.9rem', marginBottom: '0.9rem' }}
@@ -3115,7 +3115,6 @@ export function BidsPricingTab({
                       }
                       return (
                         <>
-                          {infoNode}
                           {/* v2.2204: the whole set of price options sits in one quiet gray tray. */}
                           <div data-tour="workbench-scenarios" style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch', margin: '0.85rem 0 0.9rem', flexWrap: 'wrap', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.6rem' }}>
                             {scenarios.map((v) => {
