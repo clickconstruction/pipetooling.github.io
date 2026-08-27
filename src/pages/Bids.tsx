@@ -631,7 +631,7 @@ export default function Bids() {
     teamLaborDataForBids,
     bidAssignedCosts,
     priceBookVersions,
-    templatePriceBookVersions, templatesMode, setTemplatesMode,
+    templatePriceBookVersions,
     defaultPriceBookTemplateId, rememberLastPriceBookTemplate,
     priceBookEntries, setPriceBookEntries,
     bidPricingAssignments,
@@ -3427,8 +3427,7 @@ export default function Bids() {
           pricingFixtureMaterialsFromTakeoff={pricingFixtureMaterialsFromTakeoff}
           teamLaborDataForBids={teamLaborDataForBids}
           templatePriceBookVersions={templatePriceBookVersions}
-          templatesMode={templatesMode}
-          setTemplatesMode={setTemplatesMode}
+          defaultPriceBookTemplateId={defaultPriceBookTemplateId}
           loadTemplatePriceBookVersions={loadTemplatePriceBookVersions}
           rememberLastPriceBookTemplate={rememberLastPriceBookTemplate}
           loadBidPricings={loadBidPricings}

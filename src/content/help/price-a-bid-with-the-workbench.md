@@ -23,7 +23,16 @@ Clicking a price card just **views** it; the ★ only moves when you press **☆
 
 The Workbench reads your price book directly. A **Book entry** column on every row shows the assigned entry (name · book price) — the book's price flows straight into the sale column — or an **assign…** search: it opens pre-filled with the row's name minus any "ft of"-style prefix, and matches **word by word** — entries containing the most of your words rank first, so a row like *ft of 2" water line* surfaces *feet of water line* without retyping. Pick one, priced. Typing over a book price still works and becomes an override, exactly like the Old view.
 
-Above the table, {{button:blue|Fill N matching from book}} assigns every unassigned row whose name **exactly** matches a book entry, in one click — the button counts the matches before you press it, so "Fill 0 matching" means the remaining rows need the per-row search. The line beside it names the book you're drawing from.
+Above the table, {{button:blue|Fill N matching from book}} assigns every unassigned row whose name **exactly** matches a book entry, in one click — the button counts the matches before you press it, so "Fill 0 matching" means the remaining rows need the per-row search. The chip beside it names the book you're drawing from — and it's the **one door to the book**.
+
+## The price book drawer
+
+Click the book chip ({{chip:gray|WENDI · 111 entries ▸}}) and the price book slides in beside the table — the whole book, without leaving the rows it prices. (The old **▶ Price book** section at the page bottom, and its unused "This version's prices" mode, are gone.)
+
+- **Your book, front and center**: the row shows just your book with a **›** — press it to reveal the others, **‹** tucks them back. Picking a different book switches this bid to it *and* makes it **your default for new bids** (the line under the chips says so). **Add book** creates a new one; ✎ renames.
+- **Combined price ⇄ Stage price**: Combined shows one price per entry; Stage shows Rough In / Top Out / Trim Set (a dim — where a stage is zero; hover the name for the combined total).
+- **Editing follows the mode**: ✎ in Stage mode offers all three stages; in Combined mode it offers one **Price** — which lands in **Rough In**, so a quick combined price is never lost, and flipping to Stage shows exactly where it sits.
+- Search filters the entries; **Add entry** works in either mode; Esc or ✕ closes.
 
 ## Price to a number
 
