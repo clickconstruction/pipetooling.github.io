@@ -32,7 +32,7 @@ Click the book chip ({{chip:gray|WENDI · 111 entries ▸}}) and the price book 
 - **Your book, front and center**: the row shows just your book with a **›** — press it to reveal the others, **‹** tucks them back. Picking a different book switches this bid to it *and* makes it **your default for new bids** (the line under the chips says so). **Add book** creates a new one; ✎ renames.
 - **Combined price ⇄ Stage price**: Combined shows one price per entry; Stage shows Rough In / Top Out / Trim Set (a dim — where a stage is zero; hover the name for the combined total).
 - **Editing follows the mode**: ✎ in Stage mode offers all three stages; in Combined mode it offers one **Price** — which lands in **Rough In**, so a quick combined price is never lost, and flipping to Stage shows exactly where it sits.
-- Search filters the entries; **Add entry** works in either mode; Esc or ✕ closes.
+- Search filters the entries; **Add entry** sits beside the Combined/Stage toggle and works in either mode; Esc or ✕ closes.
 
 ## Price to a number
 
