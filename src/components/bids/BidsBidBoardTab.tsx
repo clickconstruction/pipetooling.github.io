@@ -1405,6 +1405,7 @@ export function BidsBidBoardTab({
               weeklySentSummaries={bidBoardWeeklySentSummaries}
               filteredBids={filteredBidsForBidBoard}
               isDev={isDev}
+              openBid={bidPreview ? (b) => bidPreview.openBidPreviewFromBid(b) : undefined}
             />
           </div>
         </div>
