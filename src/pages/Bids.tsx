@@ -3402,6 +3402,8 @@ export default function Bids() {
         <BidsPricingTab
           bids={bidsTyped}
           bidVersions={bidVersions}
+          onSwitchBidVersion={(versionId) => { if (selectedBidForPricing) void switchActiveVersion(selectedBidForPricing.id, versionId) }}
+          reloadBidVersions={() => (selectedBidForPricing ? Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {}) : Promise.resolve())}
           selectedBidForPricing={selectedBidForPricing}
           resolvePanel={pricingResolvePanel(pricingResolve, selectedBidForPricing?.id ?? null)}
           onRetryResolve={retryPricingResolve}

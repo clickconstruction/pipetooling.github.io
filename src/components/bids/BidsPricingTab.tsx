@@ -15,7 +15,8 @@ import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../l
 import type { BidPricingHistoryRow } from '../../types/database-functions'
 import { countTabsMatchedOrBeaten, marginPctToMatchTabLow } from '../../lib/bidTabCapture'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
-import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
+import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
+import { alternateCardNumbers, sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
 import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
 import {
@@ -124,6 +125,10 @@ type BidsPricingTabProps = {
   selectedBidVersionId: string | null
   /** All the bid's Versions — the Workbench structure bar names the active one. */
   bidVersions: BidVersion[]
+  /** Open another Version on this Workbench (engine switchActiveVersion) — own-takeoff alternate cards (v2.2404). */
+  onSwitchBidVersion: (versionId: string) => void
+  /** Refresh the versions list after this tab creates one (v2.2404). */
+  reloadBidVersions: () => Promise<void>
   selectedPricingVersionId: string | null
   setSelectedPricingVersionId: Dispatch<SetStateAction<string | null>>
   pricingCountRows: BidCountRow[]
@@ -225,6 +230,8 @@ export function BidsPricingTab({
   bidCountRowSubmissionHides,
   selectedBidVersionId,
   bidVersions,
+  onSwitchBidVersion,
+  reloadBidVersions,
   selectedPricingVersionId,
   setSelectedPricingVersionId,
   pricingCountRows,
@@ -1694,6 +1701,128 @@ export function BidsPricingTab({
     await loadBidPricings(bid.id)
     const gc = shortGc(gcNameForVersion(selectedBidVersionId))
     showToast(offered ? `"${v.name}" offered to ${gc} as an alternate.` : `"${v.name}" no longer offered to ${gc}.`, 'success')
+  }
+
+  /* ---- Own-takeoff alternates (v2.2404, Wendi) ---- */
+  /** Per alternate-version card data: its ★'s revenue on ITS counts, and its own pre-tax
+      takeoff materials ('rough' model only — the exact model's POs are bid-wide). */
+  const [altVersionData, setAltVersionData] = useState<Record<string, { revenue: number | null; materials: number | null }>>({})
+  const [addOwnTakeoffOpen, setAddOwnTakeoffOpen] = useState<{ name: string } | null>(null)
+  const [creatingOwnTakeoffAlt, setCreatingOwnTakeoffAlt] = useState(false)
+  useEffect(() => {
+    const bid = selectedBidForPricing
+    if (!bid || pricingView !== 'new') return
+    const alts = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
+    if (alts.length === 0) {
+      setAltVersionData({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data: bidMeta } = await supabase.from('bids').select('materials_model').eq('id', bid.id).maybeSingle()
+      const mm = normalizeMaterialsModel((bidMeta as { materials_model?: string } | null)?.materials_model)
+      const out: Record<string, { revenue: number | null; materials: number | null }> = {}
+      await Promise.all(
+        alts.map(async (v) => {
+          const [countsRes, roughRes] = await Promise.all([
+            supabase.from('bids_count_rows').select('*').eq('bid_id', bid.id).eq('bid_version_id', v.id).order('sequence_order', { ascending: true }),
+            mm === 'rough'
+              ? supabase.from('bids_takeoff_rough_part_lines').select('count_row_id, quantity, unit_price').eq('bid_id', bid.id).eq('bid_version_id', v.id)
+              : Promise.resolve({ data: null }),
+          ])
+          const counts = (countsRes.data as BidCountRow[] | null) ?? []
+          let materials: number | null = null
+          if (mm === 'rough' && roughRes.data) {
+            const lines = roughRes.data as Array<{ count_row_id: string; quantity: number; unit_price: number }>
+            materials = sumRoughLinesPreTaxWithCount(lines, new Map(counts.map((c) => [c.id, c.count])))
+          }
+          let revenue: number | null = null
+          const starId = v.starred_price_book_version_id ?? null
+          if (starId && counts.length > 0) {
+            // The Map modal's per-version revenue: the pricing kernel on the version's
+            // own counts, prices only (no labor/materials → revenue).
+            const inputs = await loadScenarioInputs(bid.id, starId)
+            const customMap = new Map<string, number>()
+            for (const cp of inputs.customPrices) if (cp.price_book_version_id === starId) customMap.set(cp.count_row_id, Number(cp.unit_price))
+            const result = computeBidPricingRows({
+              countRows: counts,
+              assignments: inputs.assignments
+                .filter((a) => a.price_book_version_id === starId)
+                .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
+              entries: inputs.entries,
+              customUnitPriceByCountRowId: customMap,
+              laborRows: [],
+              totalMaterials: 0,
+              laborRate: 0,
+              taxPercent: 0,
+              materialsFromTakeoffByCountRowId: {},
+              hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(inputs.hides, starId),
+            })
+            revenue = coverLetterTotalsFromPricingRows(result.rows).revenueSum
+          }
+          out[v.id] = { revenue, materials }
+        }),
+      )
+      if (!cancelled) setAltVersionData(out)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBidForPricing?.id, selectedBidVersionId, bidVersions, pricingView])
+  /** The ＋ Add price door's new choice: a same-GC version marked Alternate — its own
+      counts + takeoff + prices, cloned from the active version (clone-all, v2.2395). */
+  async function createOwnTakeoffAlternate(name: string) {
+    const bid = selectedBidForPricing
+    const trimmed = name.trim()
+    if (!bid || !trimmed || creatingOwnTakeoffAlt) return
+    setCreatingOwnTakeoffAlt(true)
+    try {
+      const activeVersion = selectedBidVersionId ? (bidVersions.find((v) => v.id === selectedBidVersionId) ?? null) : null
+      const pricingSourceId = activeVersion?.starred_price_book_version_id ?? selectedPricingVersionId
+      let newId: string | null = null
+      if (!selectedBidVersionId) {
+        // Unsplit bid: one atomic split — the current setup becomes the named base.
+        const { data, error: err } = await supabase.rpc('split_bid_into_versions', {
+          p_bid_id: bid.id,
+          p_current_name: gcNameForVersion(null),
+          p_new_name: trimmed,
+          p_clone_pricing: true,
+          p_pricing_source_version_id: pricingSourceId as string,
+        })
+        if (err) {
+          showToast(`Could not create the alternate: ${err.message}`, 'error')
+          return
+        }
+        newId = (data as string) ?? null
+      } else {
+        const { data, error: err } = await supabase.rpc('create_bid_version', {
+          p_bid_id: bid.id,
+          p_name: trimmed,
+          p_source_bid_version_id: selectedBidVersionId,
+          p_clone_pricing: true,
+          p_pricing_source_version_id: pricingSourceId as string,
+        })
+        if (err) {
+          showToast(`Could not create the alternate: ${err.message}`, 'error')
+          return
+        }
+        newId = (data as string) ?? null
+      }
+      if (!newId) return
+      const { error: stampErr } = await supabase
+        .from('bid_versions')
+        .update({ is_alternate: true, include_in_submission: true, customer_id: activeVersion?.customer_id ?? null })
+        .eq('id', newId)
+      if (stampErr) showToast(`Created, but couldn't mark it as an alternate: ${stampErr.message}`, 'error')
+      await reloadBidVersions()
+      window.dispatchEvent(new Event('bid-version-picker-reload'))
+      setAddOwnTakeoffOpen(null)
+      onSwitchBidVersion(newId)
+      showToast(`"${trimmed}" created with its own takeoff — a copy of this bid's counts, takeoff and prices. Swap materials in Takeoffs; the margin follows.`, 'success')
+    } finally {
+      setCreatingOwnTakeoffAlt(false)
+    }
   }
 
   /** G1: "Another price for this GC" — named clone of a scenario, optionally offered right away. */
@@ -3227,7 +3356,12 @@ export function BidsPricingTab({
                 return (
                   <>
                     {(() => {
-                      const owned = [...priceBookVersions].sort((a, b) => a.sort_order - b.sort_order)
+                      const all = [...priceBookVersions].sort((a, b) => a.sort_order - b.sort_order)
+                      // v2.2404: the row is "what this GC receives" — scope to the ACTIVE version's
+                      // price options (own-takeoff alternates join as version cards below). Falls
+                      // back to the unscoped list when scoping would empty the row (legacy pointers).
+                      const scoped = selectedBidVersionId ? all.filter((p) => p.bid_version_id === selectedBidVersionId) : all.filter((p) => p.bid_version_id == null)
+                      const owned = scoped.length > 0 ? scoped : all
                       // Legacy bids: the active pricing can be a shared (non-bid-owned)
                       // version — still show it as a card so Duplicate can birth the
                       // first real scenario.
@@ -3236,7 +3370,8 @@ export function BidsPricingTab({
                         : selectedPricingVersionId
                           ? [{ id: selectedPricingVersionId, name: 'Standard prices', sort_order: 0 } as (typeof owned)[number]]
                           : []
-                      if (scenarios.length === 0) return null
+                      const altVersions = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
+                      if (scenarios.length === 0 && altVersions.length === 0) return null
                       const revOf = (id: string) => (id === selectedPricingVersionId ? effRevenue : (wbScenarioRevenue[id] ?? null))
                       const starred = scenarios.find((s) => s.id === customerFacingPricingId) ?? null
                       // "Copy prices from …" source for an empty viewed scenario: the ★ if priced, else any priced one.
@@ -3288,7 +3423,25 @@ export function BidsPricingTab({
                               <span>
                                 <b style={{ display: 'block', fontSize: '0.92rem' }}>Another price for {selectedBidVersionId ? shortGc(gcNameForVersion(selectedBidVersionId)) : 'this GC'}</b>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                  Offer it as an alternate on their letter, or keep it to compare. The GC sees the ★ and what you offer — nothing else.
+                                  Offer it as an alternate on their letter, or keep it to compare. The GC sees the ★ and what you offer — nothing else. Same takeoff, different numbers.
+                                </span>
+                              </span>
+                            </button>
+                            {/* v2.2404 (Wendi): an alternate that CHANGES MATERIALS gets its own takeoff —
+                                a same-GC version marked Alternate, so its margin costs against its parts. */}
+                            <button
+                              type="button"
+                              style={{ ...doorOptStyle, border: '1.5px solid #0d9488' }}
+                              onClick={() => {
+                                setWbVariantDoorOpen(false)
+                                setAddOwnTakeoffOpen({ name: '' })
+                              }}
+                            >
+                              <span style={{ fontSize: '1.2rem', lineHeight: 1.2 }}>📐</span>
+                              <span>
+                                <b style={{ display: 'block', fontSize: '0.92rem' }}>Alternate with its own takeoff</b>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                  For "in lieu of" work that changes materials — PEX for copper, cast iron for PVC. Starts as a copy of this bid's counts, takeoff and prices; swap the materials and the margin follows. Lands on their letter as an alternate.
                                 </span>
                               </span>
                             </button>
@@ -3336,6 +3489,57 @@ export function BidsPricingTab({
                           </div>
                         </div>
                       ) : null
+                      // v2.2404: name the own-takeoff alternate — the door's teal choice lands here.
+                      const ownTakeoffModal = addOwnTakeoffOpen ? (
+                        <div
+                          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+                          onClick={() => !creatingOwnTakeoffAlt && setAddOwnTakeoffOpen(null)}
+                        >
+                          <div
+                            role="dialog"
+                            aria-label="Alternate with its own takeoff"
+                            style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 460, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>📐 Alternate with its own takeoff</h3>
+                            <p style={{ margin: '0 0 0.8rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                              Starts as a copy of this bid's counts, takeoff and prices for {shortGc(gcNameForVersion(selectedBidVersionId))}. Swap the materials in Takeoffs and the margin follows. It lands on their letter as an alternate.
+                            </p>
+                            <label style={{ display: 'block', marginBottom: '0.8rem' }}>
+                              <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 600, fontSize: '0.85rem' }}>Name</span>
+                              <input
+                                autoFocus
+                                value={addOwnTakeoffOpen.name}
+                                onChange={(e) => setAddOwnTakeoffOpen({ name: e.target.value })}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') void createOwnTakeoffAlternate(addOwnTakeoffOpen.name)
+                                  else if (e.key === 'Escape') setAddOwnTakeoffOpen(null)
+                                }}
+                                placeholder="e.g. PEX in lieu of copper"
+                                style={{ width: '100%', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, boxSizing: 'border-box', font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }}
+                              />
+                            </label>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => setAddOwnTakeoffOpen(null)}
+                                disabled={creatingOwnTakeoffAlt}
+                                style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.35rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void createOwnTakeoffAlternate(addOwnTakeoffOpen.name)}
+                                disabled={creatingOwnTakeoffAlt || !addOwnTakeoffOpen.name.trim()}
+                                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.9rem', border: 'none', borderRadius: 6, background: '#0d9488', color: '#fff', cursor: creatingOwnTakeoffAlt ? 'wait' : 'pointer', opacity: !addOwnTakeoffOpen.name.trim() ? 0.6 : 1 }}
+                              >
+                                {creatingOwnTakeoffAlt ? 'Creating…' : 'Create the alternate'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null
                       const solo = scenarios.length === 1 && bidVersions.length <= 1
                       if (solo) {
                         const v = scenarios[0]!
@@ -3347,7 +3551,7 @@ export function BidsPricingTab({
                           // Nothing priced yet: skip the status band entirely — the solver is the next move
                           // and sits first; ＋ Add price rides at the solver line's end (artifact 0a627c7c).
                           wbSolverEnd.node = doorBtn
-                          return <>{doorModal}</>
+                          return <>{doorModal}{ownTakeoffModal}</>
                         }
                         return (
                           <>
@@ -3384,6 +3588,7 @@ export function BidsPricingTab({
                               {doorBtn}
                             </div>
                             {doorModal}
+                            {ownTakeoffModal}
                           </>
                         )
                       }
@@ -3493,9 +3698,90 @@ export function BidsPricingTab({
                                 </div>
                               )
                             })}
+                            {/* v2.2404 (Wendi): same-GC alternates with their OWN takeoff ride the row as
+                                version cards — margin costed from THEIR materials, not the base's. */}
+                            {altVersions.map((av) => {
+                              const d = altVersionData[av.id]
+                              const nums = alternateCardNumbers({
+                                revenue: d?.revenue ?? null,
+                                altMaterials: d?.materials ?? null,
+                                baseMaterials: derived.totalMaterials,
+                                baseTotalCost: totalCost,
+                              })
+                              const inLetter = (av as { include_in_submission?: boolean | null }).include_in_submission === true
+                              const unpricedAlt = d != null && (d.revenue == null || d.revenue === 0)
+                              return (
+                                <div
+                                  key={av.id}
+                                  onClick={() => onSwitchBidVersion(av.id)}
+                                  title="Open this alternate — its own counts and takeoff; the Workbench costs against ITS materials"
+                                  style={{
+                                    flex: '1 1 215px', minWidth: 215, maxWidth: 300, textAlign: 'left', font: 'inherit',
+                                    background: 'var(--surface)', border: '1px solid #0d9488',
+                                    borderRadius: 10, padding: '0.5rem 0.75rem 0', cursor: 'pointer', position: 'relative',
+                                    display: 'flex', flexDirection: 'column',
+                                  }}
+                                >
+                                  <span style={{ position: 'absolute', top: '-0.72rem', left: '0.6rem', display: 'inline-flex', gap: '0.3rem' }}>
+                                    <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#0d9488', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>📐 own takeoff</span>
+                                  </span>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, overflowWrap: 'anywhere' }}>{av.name}</span>
+                                    {unpricedAlt ? (
+                                      <span style={{ fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.05rem 0.45rem' }}>No prices yet</span>
+                                    ) : null}
+                                  </div>
+                                  <div style={{ fontSize: '0.92rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: unpricedAlt ? 'var(--text-muted)' : undefined }}>
+                                    {d == null ? '…' : d.revenue != null ? fmtM(d.revenue) : '—'}
+                                  </div>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                    {nums.margin != null ? (
+                                      <>
+                                        <span style={{ fontWeight: 700, color: mColor(nums.margin) }}>{Math.round(nums.margin * 100)}% margin</span>
+                                        {` · profit ${fmtM(nums.profit ?? 0)}`}
+                                      </>
+                                    ) : (
+                                      '—'
+                                    )}
+                                  </div>
+                                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', margin: '0.2rem 0 0.4rem' }}>
+                                    {d == null
+                                      ? ''
+                                      : d.materials != null
+                                        ? (
+                                          <>
+                                            Materials {fmtM(d.materials)}
+                                            {nums.materialsDelta != null && nums.materialsDelta !== 0 ? (
+                                              <span style={{ fontWeight: 600, color: nums.materialsDelta < 0 ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
+                                                {` · ${nums.materialsDelta < 0 ? '−' : '+'}${fmtM(Math.abs(nums.materialsDelta))} vs base`}
+                                              </span>
+                                            ) : null}
+                                            {' · '}
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                onSwitchBidVersion(av.id)
+                                                if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs')
+                                              }}
+                                              style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', cursor: 'pointer', textDecoration: 'underline', color: 'var(--text-link)' }}
+                                            >
+                                              open its takeoff →
+                                            </button>
+                                          </>
+                                        )
+                                        : 'Materials · shared POs (exact model)'}
+                                  </div>
+                                  <div style={{ margin: 'auto -0.75rem 0', padding: '0.26rem 0.7rem', borderTop: '1px solid var(--border)', borderRadius: '0 0 9px 9px', fontSize: '0.66rem', display: 'flex', alignItems: 'center', gap: '0.3rem 0.55rem', flexWrap: 'wrap', ...(inLetter ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontWeight: 600 } : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }) }}>
+                                    {inLetter ? 'On their letter · alternate' : 'Only you see this'}
+                                  </div>
+                                </div>
+                              )
+                            })}
                             <div style={{ flex: '0 0 auto', alignSelf: 'center' }}>{doorBtn}</div>
                           </div>
                           {doorModal}
+                          {ownTakeoffModal}
                         </>
                       )
                     })()}
