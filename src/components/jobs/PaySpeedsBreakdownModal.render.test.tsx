@@ -150,15 +150,40 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(await screen.findByText(/isn’t available yet/)).toBeTruthy()
   })
 
-  it('the drift chart shows who is off their average, with the on-pace collapse line', () => {
-    // knight (median 18, 4 samples): last 3 receipts 12/16/20 → recent median 16 → −2d vs their avg.
-    // ingram (1 sample) + rmc (no stat): thin, no dated open bills → on pace.
+  it('Money waiting (v2.2382): undated bills chase nobody — everyone collapses to the on-pace line', () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
-    expect(screen.getByText('Above or below their average')).toBeTruthy()
-    expect(screen.getByText('−2d')).toBeTruthy()
-    expect(screen.getByText('vs their avg')).toBeTruthy()
+    expect(screen.getByText('Money waiting')).toBeTruthy()
+    expect(screen.getByText(/3 more customers are on their usual pace/)).toBeTruthy()
+  })
+
+  it('Money waiting: a dated bill past the baseline makes a row, and expanding lists each job owed', () => {
+    // knight (median 18): bill billed 2026-06-01 → waited 86d vs baseline 18 → off pace, late tone.
+    const dated: StageRow = (() => {
+      const base = invRow('knight', 'Knight Contracting', 75585)
+      if (base.kind === 'job') throw new Error('fixture')
+      return {
+        ...base,
+        job: { ...base.job, job_name: 'Knight Ph 1', job_address: '900 Broadway' },
+        inv: { ...base.inv, billed_at: '2026-06-01T12:00:00Z' },
+      } as StageRow
+    })()
+    render(
+      <PaySpeedsBreakdownModal
+        todayYmd="2026-08-26"
+        rows={[dated, invRow('ingram', 'Johnny Ingram', 786), invRow('rmc', 'RMC- Dudley Mason', 49171)]}
+        paySpeeds={speeds}
+        onClose={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Money waiting')).toBeTruthy()
+    expect(screen.getByText('86d waiting')).toBeTruthy()
+    expect(screen.getByText(/usually ~18d/)).toBeTruthy()
     expect(screen.getByText(/2 more customers are on their usual pace/)).toBeTruthy()
-    expect(screen.getByTitle(/their last 3 payments ran ~16d vs their ~18d average/)).toBeTruthy()
+    // Expand the row → the per-job bill list.
+    fireEvent.click(screen.getByTitle(/Knight Contracting — oldest open bill has waited 86d/))
+    expect(screen.getByText('Knight Ph 1')).toBeTruthy()
+    expect(screen.getByText(/billed 0?6\/0?1/)).toBeTruthy()
+    expect(screen.getByText('86d')).toBeTruthy()
   })
 
   it('mobile restack (v2.2252): ranked rows show payments and open dollars on one combined line', () => {
