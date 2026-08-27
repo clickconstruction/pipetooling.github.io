@@ -1840,7 +1840,7 @@ export function BidsPricingTab({
     setAndStashWbPreview(selectedPricingVersionId, { ...(wbPreview ?? {}), ...Object.fromEntries(sol.prices) }, wbPreviewVeto)
     // A fresh solve is her current work, not a restoration — the age chip stands down.
     setWbPreviewRestoredAt(null)
-    // Margin solves get the landing chip ("56% on 12 costed rows → …"); a
+    // Margin solves get the landing chip ("56% on 12 costed rows"); a
     // target-total solve replaces it with the slider sync below.
     setWbSolveLanding(opts.targetTotal == null ? { pct: opts.marginPct ?? wbMarginPct, rows: sol.prices.size } : null)
     if (opts.targetTotal != null) {
@@ -3750,10 +3750,12 @@ export function BidsPricingTab({
                           </div>
                         )
                       })()}
+                      {/* v2.NEXT (Wendi): solver blue, no "→ bid is …" restatement (the totals sit
+                          right above), tucked tight under the Revenue/Profit/Margin strip. */}
                       {wbSolveLanding && wbPreview && previewCount > 0 ? (
-                        <div style={{ marginTop: '0.5rem' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', border: '1px solid var(--text-green-700)', borderRadius: 999, padding: '0.18rem 0.7rem', fontVariantNumeric: 'tabular-nums' }}>
-                            {wbSolveLanding.pct}% on {wbSolveLanding.rows} costed row{wbSolveLanding.rows === 1 ? '' : 's'} → bid is ${Math.round(effRevenue).toLocaleString('en-US')}{effMargin != null ? ` · ${Math.round(effMargin * 100)}%` : ''}
+                        <div style={{ marginTop: '0.15rem' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-blue-700)', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 999, padding: '0.18rem 0.7rem', fontVariantNumeric: 'tabular-nums' }}>
+                            {wbSolveLanding.pct}% on {wbSolveLanding.rows} costed row{wbSolveLanding.rows === 1 ? '' : 's'}
                           </span>
                         </div>
                       ) : null}
