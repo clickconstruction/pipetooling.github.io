@@ -19,6 +19,8 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { analyzeCandidates } from '../../lib/prospects/candidateHygiene'
 import {
   UNSORTED_ROLE_KEY,
   groupTeamProspects,
@@ -364,6 +366,9 @@ function SortableCandidateCard({
   onMarkContacted,
   onSetStatus,
   onPullUp,
+  duplicate,
+  alsoInRoles,
+  isCallNext,
 }: {
   candidate: TeamProspect
   rank: number
@@ -372,6 +377,12 @@ function SortableCandidateCard({
   onMarkContacted: () => void
   onSetStatus: (status: 'hired' | 'passed') => void
   onPullUp: () => void
+  /** Set when this card duplicates a higher-ranked card in the same column (v2.2459). */
+  duplicate?: { keeperRank: number; onMerge: () => void } | null
+  /** Names of other role columns holding a matching phone/email candidate. */
+  alsoInRoles?: string[]
+  /** Top-ranked never-contacted candidate in this column. */
+  isCallNext?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: candidate.id })
   return (
@@ -400,6 +411,27 @@ function SortableCandidateCard({
         </button>
         <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>#{rank}</span>
         <span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{candidate.name}</span>
+        {duplicate && (
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-red-100)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
+            duplicate of #{duplicate.keeperRank}
+          </span>
+        )}
+        {!duplicate && alsoInRoles && alsoInRoles.length > 0 && (
+          <span
+            title="A candidate with the same phone or email sits in these role columns too"
+            style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-indigo-100)', color: 'var(--text-indigo-800)', whiteSpace: 'nowrap' }}
+          >
+            also in: {alsoInRoles.join(', ')}
+          </span>
+        )}
+        {!duplicate && isCallNext && (
+          <span
+            title="Top-ranked candidate in this column with no contact yet"
+            style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
+          >
+            call next
+          </span>
+        )}
         {candidate.trade && (
           <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
             {candidate.trade}
@@ -430,6 +462,19 @@ function SortableCandidateCard({
       {candidate.notes && (
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 1.35rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
           <LinkifiedText text={candidate.notes} />
+        </div>
+      )}
+      {duplicate && (
+        <div style={{ fontSize: '0.75rem', margin: '0.25rem 0 0 1.35rem', color: 'var(--text-muted)' }}>
+          same phone or email as #{duplicate.keeperRank} —{' '}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={duplicate.onMerge}
+            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: busy ? 'not-allowed' : 'pointer' }}
+          >
+            Merge (keeps #{duplicate.keeperRank}, combines notes &amp; reviews)
+          </button>
         </div>
       )}
       <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', margin: '0.4rem 0 0 1.35rem' }}>
@@ -466,6 +511,7 @@ function RoleColumn({
   title,
   candidates,
   referencedCount,
+  neverContactedCount,
   busy,
   confirmingDeleteRole,
   onRequestDeleteRole,
@@ -479,6 +525,8 @@ function RoleColumn({
   candidates: TeamProspect[]
   /** Rows of ANY status referencing this role — a real role is deletable only at zero. Null for the virtual Unsorted column. */
   referencedCount: number | null
+  /** Active candidates in this column with no contact yet (v2.2459). */
+  neverContactedCount?: number
   busy: boolean
   confirmingDeleteRole: boolean
   onRequestDeleteRole: () => void
@@ -505,6 +553,14 @@ function RoleColumn({
       <header style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
         <span style={{ fontWeight: 700, fontSize: '0.9375rem', minWidth: 0, overflowWrap: 'anywhere' }}>{title}</span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({candidates.length})</span>
+        {(neverContactedCount ?? 0) > 0 && (
+          <span
+            title="Active candidates in this column who have never been contacted"
+            style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
+          >
+            {neverContactedCount} never contacted
+          </span>
+        )}
         <span style={{ flex: 1 }} />
         {isRealRole && !confirmingDeleteRole && (
           <button
@@ -570,6 +626,7 @@ function RoleColumn({
 /** Prospects → Team: prospective hires on a board — one drag-ranked column per role being hired for. */
 export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }: Props) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [rows, setRows] = useState<TeamProspect[]>([])
   const [roles, setRoles] = useState<TeamProspectRole[]>([])
   const [loading, setLoading] = useState(true)
@@ -683,6 +740,12 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const unsortedActive = activeByRole[UNSORTED_ROLE_KEY] ?? []
   const sourceSummary = summarizeTeamProspectSources(rows)
   const knownSources = distinctTeamProspectSources(rows)
+  // Duplicate / contact hygiene (v2.2459) — Screen candidates only, so
+  // Hired/Passed rows never flag anything.
+  const hygiene = analyzeCandidates(
+    rows.filter((r) => r.status !== 'hired' && r.status !== 'passed' && r.status !== 'calling'),
+  )
+  const rowById = new Map(rows.map((r) => [r.id, r]))
 
   async function persistRankUpdates(updates: TeamProspectRankUpdate[]) {
     const results = await Promise.all(
@@ -838,6 +901,56 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
     }
     setEditTarget(null)
     await load()
+  }
+
+  async function mergeDuplicate(dup: TeamProspect, keeper: TeamProspect) {
+    if (busy) return
+    if (
+      !(await confirmDialog({
+        message: `Merge "${dup.name}" into the higher-ranked card? Notes, links, and reviews move over; the duplicate is deleted.`,
+        confirmLabel: 'Merge',
+      }))
+    )
+      return
+    setBusy(true)
+    try {
+      const keeperLinks = parseCandidateLinks(keeper.links)
+      const mergedLinks = [...keeperLinks]
+      const seenUrls = new Set(keeperLinks.map((l) => l.url))
+      for (const link of parseCandidateLinks(dup.links)) {
+        if (seenUrls.has(link.url)) continue
+        seenUrls.add(link.url)
+        mergedLinks.push(link)
+      }
+      const combinedNotes =
+        dup.notes && dup.notes !== keeper.notes ? (keeper.notes ? `${keeper.notes}\n${dup.notes}` : dup.notes) : keeper.notes
+      if (combinedNotes !== keeper.notes || mergedLinks.length !== keeperLinks.length) {
+        const { error } = await supabase
+          .from('team_prospects')
+          .update({ notes: combinedNotes, links: serializeCandidateLinks(mergedLinks) as unknown as string })
+          .eq('id', keeper.id)
+        if (error) {
+          showToast(`Merge failed: ${error.message}`, 'error')
+          return
+        }
+      }
+      // Re-point the duplicate's reviews before the delete cascades them away;
+      // a reviewer who already reviewed the keeper keeps that review instead.
+      const keeperReviewers = new Set(reviews.filter((r) => r.team_prospect_id === keeper.id).map((r) => r.reviewer_user_id))
+      for (const review of reviews.filter((r) => r.team_prospect_id === dup.id)) {
+        if (keeperReviewers.has(review.reviewer_user_id)) continue
+        await supabase.from('team_prospect_reviews').update({ team_prospect_id: keeper.id }).eq('id', review.id)
+      }
+      const { error: delErr } = await supabase.from('team_prospects').delete().eq('id', dup.id)
+      if (delErr) {
+        showToast(`Merge failed: ${delErr.message}`, 'error')
+        return
+      }
+      showToast(`Merged into ${keeper.name}.`, 'success')
+    } finally {
+      setBusy(false)
+      await load()
+    }
   }
 
   async function setStatus(candidate: TeamProspect, status: 'active' | 'calling' | 'hired' | 'passed') {
@@ -1153,18 +1266,31 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
     </section>
   )
 
-  const renderCard = (c: TeamProspect, rank: number) => (
-    <SortableCandidateCard
-      key={c.id}
-      candidate={c}
-      rank={rank}
-      busy={busy}
-      onEdit={() => openEdit(c)}
-      onMarkContacted={() => markContacted(c)}
-      onSetStatus={(s) => setStatus(c, s)}
-      onPullUp={() => setStatus(c, 'calling')}
-    />
-  )
+  const rankInColumn = (c: TeamProspect): number => {
+    const list = activeByRole[roleKeyOf(c)] ?? []
+    const idx = list.findIndex((x) => x.id === c.id)
+    return idx >= 0 ? idx + 1 : 0
+  }
+
+  const renderCard = (c: TeamProspect, rank: number) => {
+    const keeperId = hygiene.duplicateOf[c.id]
+    const keeper = keeperId ? rowById.get(keeperId) : undefined
+    return (
+      <SortableCandidateCard
+        key={c.id}
+        candidate={c}
+        rank={rank}
+        busy={busy}
+        onEdit={() => openEdit(c)}
+        onMarkContacted={() => markContacted(c)}
+        onSetStatus={(s) => setStatus(c, s)}
+        onPullUp={() => setStatus(c, 'calling')}
+        duplicate={keeper ? { keeperRank: rankInColumn(keeper), onMerge: () => mergeDuplicate(c, keeper) } : null}
+        alsoInRoles={(hygiene.crossRoles[c.id] ?? []).map((rid) => roleNameById.get(rid) ?? 'Unknown').sort()}
+        isCallNext={hygiene.callNextByRole[c.role_id ?? ''] === c.id}
+      />
+    )
+  }
 
   const boardEmpty = roles.length === 0 && rows.length === 0
 
@@ -1276,6 +1402,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                 title={role.name}
                 candidates={activeByRole[role.id] ?? []}
                 referencedCount={referencedCountByRole.get(role.id) ?? 0}
+                neverContactedCount={hygiene.neverContactedByRole[role.id] ?? 0}
                 busy={busy}
                 confirmingDeleteRole={confirmDeleteRoleId === role.id}
                 onRequestDeleteRole={() => setConfirmDeleteRoleId(role.id)}
@@ -1291,6 +1418,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                 title="Unsorted"
                 candidates={unsortedActive}
                 referencedCount={null}
+                neverContactedCount={hygiene.neverContactedByRole[''] ?? 0}
                 busy={busy}
                 confirmingDeleteRole={false}
                 onRequestDeleteRole={() => {}}
