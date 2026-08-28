@@ -147,3 +147,120 @@ describe('resolvePriceBookTemplateRoot', () => {
     expect(resolvePriceBookTemplateRoot({ pricingId: 'tmpl-wendi', bidPricings: [], templateIds })).toBe('tmpl-wendi')
   })
 })
+
+// v2.2444: `source_version_id` is ON DELETE SET NULL, so deleting a scenario orphans every copy
+// taken from it. The name the clone carried over is the surviving evidence of lineage.
+describe('name fallback for a severed lineage', () => {
+  const templates = [
+    { id: 'tmpl-default', name: 'Default' },
+    { id: 'tmpl-wendi', name: 'WENDI' },
+  ]
+  const templateIds = templates.map((t) => t.id)
+
+  it('resolves an orphaned copy by its name (BP384: two WENDI pricings, source deleted)', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'orphan',
+        bidPricings: [{ id: 'orphan', source_version_id: null, name: 'WENDI' }],
+        templateIds,
+        templates,
+      }),
+    ).toBe('tmpl-wendi')
+  })
+
+  it('matches case- and whitespace-insensitively', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'orphan',
+        bidPricings: [{ id: 'orphan', source_version_id: null, name: '  wendi ' }],
+        templateIds,
+        templates,
+      }),
+    ).toBe('tmpl-wendi')
+  })
+
+  it('follows the chain to the orphan at its end, not the pricing asked about', () => {
+    // A scenario duplicated off an orphaned copy: the walk dead-ends at `orphan`, and the name
+    // that decides is the one we started from — duplicates keep the source name too.
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'dupe',
+        bidPricings: [
+          { id: 'dupe', source_version_id: 'orphan', name: 'WENDI' },
+          { id: 'orphan', source_version_id: null, name: 'WENDI' },
+        ],
+        templateIds,
+        templates,
+      }),
+    ).toBe('tmpl-wendi')
+  })
+
+  it('refuses an ambiguous name — two templates share it, so neither is evidence', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'orphan',
+        bidPricings: [{ id: 'orphan', source_version_id: null, name: 'WENDI' }],
+        templateIds: [...templateIds, 'tmpl-wendi-2'],
+        templates: [...templates, { id: 'tmpl-wendi-2', name: 'wendi' }],
+      }),
+    ).toBeNull()
+  })
+
+  it('stays null when the name matches no template', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'orphan',
+        bidPricings: [{ id: 'orphan', source_version_id: null, name: 'Scratch pricing' }],
+        templateIds,
+        templates,
+      }),
+    ).toBeNull()
+  })
+
+  it('stays null for an unnamed orphan', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'orphan',
+        bidPricings: [{ id: 'orphan', source_version_id: null, name: '' }],
+        templateIds,
+        templates,
+      }),
+    ).toBeNull()
+  })
+
+  it('a live lineage still wins over the name', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'copy',
+        // Named WENDI but genuinely cloned from Default — the chain is the better evidence.
+        bidPricings: [{ id: 'copy', source_version_id: 'tmpl-default', name: 'WENDI' }],
+        templateIds,
+        templates,
+      }),
+    ).toBe('tmpl-default')
+  })
+
+  it('without `templates` the dead-end stays null (pre-v2.2444 callers unchanged)', () => {
+    expect(
+      resolveCurrentPriceBookTemplateId({
+        selectedPricingVersionId: 'orphan',
+        bidPricings: [{ id: 'orphan', source_version_id: null, name: 'WENDI' }],
+        templateIds,
+      }),
+    ).toBeNull()
+  })
+
+  it('breaks a cyclic lineage by name rather than looping', () => {
+    expect(
+      resolvePriceBookTemplateRoot({
+        pricingId: 'a',
+        bidPricings: [
+          { id: 'a', source_version_id: 'b', name: 'WENDI' },
+          { id: 'b', source_version_id: 'a', name: 'WENDI' },
+        ],
+        templateIds,
+        templates,
+      }),
+    ).toBe('tmpl-wendi')
+  })
+})
