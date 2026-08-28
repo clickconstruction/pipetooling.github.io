@@ -20,6 +20,7 @@ import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, type MaterialsMo
 import { alternateCardNumbers, sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
 import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
+import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
 import {
   loadRecentMargins,
   normalizeMarginTarget,
@@ -1303,6 +1304,13 @@ export function BidsPricingTab({
     const typed = deletePricingVersionNameInput.trim()
     if (typed !== expected) {
       setDeletePricingVersionError('Name does not match. Type the scenario name exactly to confirm.')
+      return
+    }
+    // Backstop for every door into this modal: a scenario some packet's ★ is built on
+    // never deletes, no matter which packet the session is viewing (BP384, 2026-08-27).
+    const starredBy = versionStarringScenario(bidVersions, pricingVersionToDelete.id)
+    if (starredBy) {
+      setDeletePricingVersionError(`${gcNameForVersion(starredBy.id)}'s letter is built on this price — star another price for that packet first.`)
       return
     }
 
@@ -5667,7 +5675,13 @@ export function BidsPricingTab({
           </div>
         )}
         {pricingEdit && (() => {
-          const isBase = pricingEdit.id === customerFacingPricingId
+          // The card row can show ANOTHER packet's ★ (unscoped legacy-pointer fallback),
+          // so the guard asks whether any packet stars this scenario — not just the viewed one.
+          const starringVersion = versionStarringScenario(bidVersions, pricingEdit.id)
+          const isBase = starringVersion != null || pricingEdit.id === customerFacingPricingId
+          const baseMsg = starringVersion && starringVersion.id !== selectedBidVersionId
+            ? `${gcNameForVersion(starringVersion.id)}'s letter is built on this price — star another price for that packet first.`
+            : "The GC's letter is built on this price — make another price the base first."
           const close = () => setPricingEdit(null)
           return (
             <div role="presentation" onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
@@ -5686,7 +5700,7 @@ export function BidsPricingTab({
                   <button
                     type="button"
                     disabled={isBase}
-                    title={isBase ? "The GC's letter is built on this price — make another price the base first." : 'Delete this price'}
+                    title={isBase ? baseMsg : 'Delete this price'}
                     onClick={() => {
                       const target = priceBookVersions.find((pv) => pv.id === pricingEdit.id)
                       close()
