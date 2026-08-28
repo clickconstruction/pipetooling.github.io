@@ -14,6 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { isRoomDeclineCategory, planRoomOutcome, type OutcomeVersionRow } from '../_shared/bidRoomOutcome.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 const SIGNATURE_BUCKET = 'estimate-acceptor-signatures'
 const MAX_SIGNATURE_BYTES = 524288
@@ -126,7 +127,7 @@ serve(async (req) => {
     const versions: OutcomeVersionRow[] = ((versionRows ?? []) as Array<{ id: string; customer_id: string | null; outcome: string | null }>).map(
       (r) => ({ id: r.id, customer_id: r.customer_id, outcome: r.outcome, sent_on: latestSend.get(r.id) ?? null }),
     )
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
     const ua = req.headers.get('user-agent')
     const ip = clientIp(req)
 
