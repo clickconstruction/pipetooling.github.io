@@ -109,7 +109,7 @@ Amount ($) &nbsp; `500`
 {{button:outline|Cancel}} &nbsp; {{button:green|Create invoice}}
 :::
 
-**Remaining** is what's still unallocated — the job total minus payments already made *and* minus every invoice line that already exists on the job (drafts and billed alike). An amount above it is clamped down automatically. Entering the full remaining amount on a Ready to Bill job simply opens Bill Customer instead. Both paths share the same Remaining math.
+**Remaining** is what's still unallocated — the job total minus payments already made *and* minus every invoice line that already exists on the job (partial drafts and billed alike). The automatic remainder draft a Ready to Bill job carries doesn't count against it — that draft just resizes to whatever you don't break off. An amount above Remaining is clamped down automatically. Entering the full remaining amount on a Ready to Bill job simply opens Bill Customer instead. Both paths share the same Remaining math.
 
 ## Billing a customer
 
