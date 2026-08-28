@@ -63,7 +63,8 @@ who's overdue (Due column), who hasn't been contacted (Last Contact + the (+N) d
 counter), which multi-GC bids show `sent 1/2` (someone still unsent). Guide:
 `read-the-bid-board`, orientation: `start-here-as-an-estimator`.
 
-**B. Chase what's waiting** — `/bids?tab=waiting-to-hear` (stale-first) or
+**B. Chase what's waiting** — `/bids?tab=waiting-to-hear` (newest-first, grouped by
+builder — the header rollup names the oldest untouched: "N never called, oldest Dd") or
 `?tab=call-queue` (by builder). For each: call, then tap the outcome — Left message /
 Still pending / Bid tab received / **Won** / **Lost…** (pick a loss category). The tap
 writes the contact entry AND moves the bid's clock; on multi-GC bids the answer lands on
