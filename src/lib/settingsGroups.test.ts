@@ -25,6 +25,7 @@ describe('getZonedSettingsGroups', () => {
       'settings-usage',
       'settings-data',
       'settings-templates',
+      'settings-digital-twins',
       'settings-advanced-tools',
       'settings-recent-push',
       'settings-guides',
