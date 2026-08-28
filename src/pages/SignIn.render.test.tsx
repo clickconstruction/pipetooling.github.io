@@ -83,3 +83,36 @@ describe('SignIn Enter-to-submit', () => {
     await waitFor(() => expect(signInMock).toHaveBeenCalledTimes(1))
   })
 })
+
+// v2.2450: plaintext credentials must never live in localStorage. The email pre-fill is a
+// convenience and stays; the password is the browser password manager's job
+// (autoComplete="current-password").
+describe('SignIn password storage', () => {
+  it('purges a legacy stored password on mount and does not pre-fill from it', () => {
+    window.localStorage.setItem('signin_password', 'hunter2')
+    window.localStorage.setItem('signin_email', 'wendi@clickplumbing.com')
+    renderSignIn()
+    expect(window.localStorage.getItem('signin_password')).toBeNull()
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('wendi@clickplumbing.com')
+  })
+
+  it('a successful sign-in saves the email but never the password', async () => {
+    // The legacy write lived on the SUCCESS branch, so the success path is the one that
+    // must be proven clean. Stub the post-login hard reload (jsdom cannot navigate).
+    signInMock.mockResolvedValueOnce({ error: null } as never)
+    const reload = vi.fn()
+    const originalLocation = window.location
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...originalLocation, reload } })
+    try {
+      renderSignIn()
+      fillFields()
+      fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter' })
+      await waitFor(() => expect(reload).toHaveBeenCalled())
+      expect(window.localStorage.getItem('signin_email')).toBe('wendi@clickplumbing.com')
+      expect(window.localStorage.getItem('signin_password')).toBeNull()
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+    }
+  })
+})
