@@ -2703,8 +2703,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       setTerms(r.terms_snapshot ?? '')
       const rowIsCO = isChangeOrderDocKind(r.doc_kind)
       const parsedLines = lineItemsFromJson(r.line_items_snapshot, rowIsCO)
-      // TODO(v2.2457 same-PR): drop the cast once gen-types picks up the new column.
-      const parsedOptions = rowIsCO ? [] : normalizeEstimateOptionsFromJson((r as EstimateDetailRow & { options_snapshot?: unknown }).options_snapshot)
+      const parsedOptions = rowIsCO ? [] : normalizeEstimateOptionsFromJson(r.options_snapshot)
       setEstimateOptions(parsedOptions)
       const hydratedViewed = recommendedEstimateOption(parsedOptions)
       setViewedOptionKey(hydratedViewed?.key ?? null)
@@ -3533,8 +3532,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               // without options everything writes exactly as before (options_snapshot clears).
               line_items_snapshot: optionsPersist.line_items_snapshot ?? lines,
               total_cents: optionsPersist.total_cents ?? totalCents,
-              // TODO(v2.2457 same-PR): fold into the object once gen-types knows the column.
-              ...({ options_snapshot: optionsPersist.options_snapshot } as Record<string, unknown>),
+              options_snapshot: optionsPersist.options_snapshot,
               valid_until: validUntil.trim() ? validUntil.trim() : null,
               for_address: forAddress.trim() ? forAddress.trim() : null,
               project_id: linkedProjectId || null,
@@ -6098,7 +6096,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     terms_snapshot: isDraft ? terms : row.terms_snapshot ?? '',
                     total_cents: isDraft ? totalCents : row.total_cents,
                   }}
-                  options={isDraft ? syncedEstimateOptions : normalizeEstimateOptionsFromJson((row as EstimateDetailRow & { options_snapshot?: unknown }).options_snapshot)}
+                  options={isDraft ? syncedEstimateOptions : normalizeEstimateOptionsFromJson(row.options_snapshot)}
                   selectedOptionKey={previewSelectedOptionKey}
                   onSelectOption={setPreviewSelectedOptionKey}
                   experience={staffResolvedExperience}
