@@ -27,6 +27,7 @@ import { GuideBrowser } from '../components/GuideBrowser'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import SettingsTemplatesTab from '../components/settings/SettingsTemplatesTab'
+import DigitalTwinsPanel from '../components/settings/DigitalTwinsPanel'
 import SettingsPeopleTab from '../components/settings/SettingsPeopleTab'
 import SettingsDashboardTab from '../components/settings/SettingsDashboardTab'
 import SettingsCatalogsTab from '../components/settings/SettingsCatalogsTab'
@@ -1681,6 +1682,10 @@ export default function Settings() {
         />
       )}
       {myRole === 'dev' && <EasterEggsSettingsBlock users={users} />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-digital-twins" hidden={activeSettingsTab !== 'settings-digital-twins'} title={settingsGroupTitle('settings-digital-twins', 'Digital twins')} description={settingsGroupHint('settings-digital-twins')}>
+      {myRole === 'dev' && <DigitalTwinsPanel />}
       </SettingsGroup>
 
       {!isSubcontractorLikeRole(myRole) && (
