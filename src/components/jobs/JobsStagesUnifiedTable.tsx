@@ -96,7 +96,7 @@ export type JobsStagesUnifiedTableProps = {
   invoiceStandaloneActionLabel?: string
   /** Deep-link flash: row matching this invoice id gets a brief highlight. */
   flashInvoiceId?: string | null
-  /** When false, hide the Click Tooling (wrench) shortcut (e.g. Billed Awaiting Payment). Default true. */
+  /** When false, hide the Plumbing Tooling (wrench) shortcut (e.g. Billed Awaiting Payment). Default true. */
   showClickTooling?: boolean
   /** Billed Awaiting Payment: open Lien Tooling prefill modal. */
   onOpenLienTooling?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
@@ -728,8 +728,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 <button
                                   type="button"
                                   onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
-                                  title="Open Click Tooling report (pre-fill customer info)"
-                                  aria-label="Open Click Tooling"
+                                  title="Open Plumbing Tooling report (pre-fill customer info)"
+                                  aria-label="Open Plumbing Tooling"
                                   style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
@@ -1112,8 +1112,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             <button
                               type="button"
                               onClick={() => openInExternalBrowser(buildClickToolingUrl(job))}
-                              title="Open Click Tooling report (pre-fill customer info)"
-                              aria-label="Open Click Tooling"
+                              title="Open Plumbing Tooling report (pre-fill customer info)"
+                              aria-label="Open Plumbing Tooling"
                               style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">

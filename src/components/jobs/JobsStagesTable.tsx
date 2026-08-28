@@ -446,8 +446,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                             <button
                               type="button"
                               onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
-                              title="Open Click Tooling report (pre-fill customer info)"
-                              aria-label="Open Click Tooling"
+                              title="Open Plumbing Tooling report (pre-fill customer info)"
+                              aria-label="Open Plumbing Tooling"
                               style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
