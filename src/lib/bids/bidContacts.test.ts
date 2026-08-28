@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveBidLastContact, isContactEntry, lastContactByGc } from './bidContacts'
+import { buildBidEntryRecencyMaps, deriveBidLastContact, isContactEntry, lastContactByGc } from './bidContacts'
 
 const at = (iso: string) => iso
 
@@ -56,6 +56,35 @@ describe('lastContactByGc', () => {
       'gc-own',
     )
     expect(map).toEqual({ '': '2026-08-27T10:00:00Z' })
+  })
+})
+
+describe('buildBidEntryRecencyMaps', () => {
+  it('contacts see only method entries; activity sees every entry', () => {
+    const { lastContactByBid, lastActivityByBid } = buildBidEntryRecencyMaps([
+      { bid_id: 'b1', contact_method: 'call', occurred_at: at('2026-08-20T10:00:00Z') },
+      { bid_id: 'b1', contact_method: null, occurred_at: at('2026-08-27T10:00:00Z') }, // a note
+      { bid_id: 'b2', contact_method: '  ', occurred_at: at('2026-08-25T10:00:00Z') }, // blank method = note
+    ])
+    expect(lastContactByBid).toEqual({ b1: '2026-08-20T10:00:00Z' })
+    expect(lastActivityByBid).toEqual({ b1: '2026-08-27T10:00:00Z', b2: '2026-08-25T10:00:00Z' })
+  })
+  it('a note-only bid has NO last contact — it stays in the never-called bucket (the b13 pilot bug)', () => {
+    const { lastContactByBid } = buildBidEntryRecencyMaps([
+      { bid_id: 'b13', contact_method: null, occurred_at: at('2026-05-01T18:00:00Z') }, // "left vm" note
+    ])
+    expect(lastContactByBid['b13']).toBeUndefined()
+  })
+  it('latest method entry wins within a bid', () => {
+    const { lastContactByBid } = buildBidEntryRecencyMaps([
+      { bid_id: 'b1', contact_method: 'call', occurred_at: at('2026-08-20T10:00:00Z') },
+      { bid_id: 'b1', contact_method: 'email', occurred_at: at('2026-08-26T10:00:00Z') },
+      { bid_id: 'b1', contact_method: 'text', occurred_at: at('2026-08-22T10:00:00Z') },
+    ])
+    expect(lastContactByBid).toEqual({ b1: '2026-08-26T10:00:00Z' })
+  })
+  it('empty input → empty maps', () => {
+    expect(buildBidEntryRecencyMaps([])).toEqual({ lastContactByBid: {}, lastActivityByBid: {} })
   })
 })
 

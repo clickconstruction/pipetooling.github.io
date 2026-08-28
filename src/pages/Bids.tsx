@@ -81,6 +81,7 @@ import { pricingResolvePanel } from '../lib/bids/pricingResolve'
 import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
+import { buildBidEntryRecencyMaps } from '../lib/bids/bidContacts'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
 
@@ -269,6 +270,8 @@ export default function Bids() {
   )
   const [customers, setCustomers] = useState<Customer[]>([])
   const [lastContactFromEntries, setLastContactFromEntries] = useState<Record<string, string>>({})
+  // Method entries only (v2.2413: notes are not contacts) — feeds the chase lenses.
+  const [lastMethodContactFromEntries, setLastMethodContactFromEntries] = useState<Record<string, string>>({})
   const [bidGcRecipientsByBidId, setBidGcRecipientsByBidId] = useState<BidGcRecipientsMap>({})
   // Bids by GC (v2.2162/v2.2164): one packet load for the board, the Followup lenses and By builder.
   const { packetsByBid: gcPacketsByBid, noteCounts: gcNoteCounts } = useBidGcPackets(bids, bidGcRecipientsByBidId)
@@ -1017,16 +1020,14 @@ export default function Bids() {
     setBids(rows)
     const { data: entriesData } = await supabase
       .from('bids_submission_entries')
-      .select('bid_id, occurred_at')
-    const latestByBid: Record<string, string> = {}
-    for (const row of entriesData ?? []) {
-      const bidId = (row as { bid_id: string; occurred_at: string | null }).bid_id
-      const at = (row as { bid_id: string; occurred_at: string | null }).occurred_at
-      if (!at) continue
-      const existing = latestByBid[bidId]
-      if (!existing || new Date(at) > new Date(existing)) latestByBid[bidId] = at
-    }
-    setLastContactFromEntries(latestByBid)
+      .select('bid_id, occurred_at, contact_method')
+    // Two recencies from one pass (v2.2413 rule): only METHOD entries are
+    // contacts (chase lenses); any entry is activity (Followup "Last update").
+    const recency = buildBidEntryRecencyMaps(
+      (entriesData ?? []) as { bid_id: string; occurred_at: string; contact_method: string | null }[],
+    )
+    setLastContactFromEntries(recency.lastActivityByBid)
+    setLastMethodContactFromEntries(recency.lastContactByBid)
     // Multi-GC recipients (empty map until the table deploys) — feeds the
     // Followup lenses and the board's +N chip.
     setBidGcRecipientsByBidId(await fetchBidGcRecipientsMap())
@@ -3066,7 +3067,7 @@ export default function Bids() {
           bids={bids}
           gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
-          lastContactFromEntries={lastContactFromEntries}
+          lastContactFromEntries={lastMethodContactFromEntries}
           narrowViewport640={narrowViewport640}
           authUserId={authUser?.id ?? null}
           onError={setError}
@@ -3091,7 +3092,7 @@ export default function Bids() {
           bids={bids}
           gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
-          lastContactFromEntries={lastContactFromEntries}
+          lastContactFromEntries={lastMethodContactFromEntries}
           recipientsByBidId={bidGcRecipientsByBidId}
           narrowViewport640={narrowViewport640}
           authUserId={authUser?.id ?? null}
