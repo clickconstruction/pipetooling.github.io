@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import type { GcPacket } from '../../lib/bids/gcPackets'
+import { perGcSentSummary, type GcPacket } from '../../lib/bids/gcPackets'
 import { BidBoardGcLines, gcRowsWorthShowing } from './BidBoardGcRows'
 import type { Bid } from '../../types/bids'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -541,6 +541,31 @@ export function BidsBidBoardTab({
 
   /** Weekday+date on top, signed day count below — (+4) days after, (-2) until.
       Sent bids render quiet (gray chip); decided bids also drop the day count. */
+  /** "sent 1/2" pill on multi-GC bids (v2.2411): the per-GC roll-up at a glance —
+      amber while a GC's letter is still out, green ✓ once every packet went. */
+  function renderGcSentBadge(bidId: string) {
+    const s = perGcSentSummary(gcPacketsByBid[bidId])
+    if (!s) return null
+    const remaining = s.total - s.sent
+    return (
+      <span
+        title={s.complete ? "Every GC's letter is out" : `${remaining} of ${s.total} GC letter${s.total === 1 ? '' : 's'} not sent yet`}
+        style={{
+          fontSize: '0.6875rem',
+          fontWeight: 700,
+          padding: '0.05rem 0.4rem',
+          borderRadius: 999,
+          whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
+          background: s.complete ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)',
+          color: s.complete ? 'var(--text-green-700)' : 'var(--text-amber-700)',
+        }}
+      >
+        sent {s.sent}/{s.total}{s.complete ? ' ✓' : ''}
+      </span>
+    )
+  }
+
   function renderBidBoardDueChip(bid: BidWithBuilder, inline = false) {
     const parts = bidBoardDueCellParts(bid.bid_due_date, new Date(), bid.outcome, bid.bid_date_sent)
     if (!parts) return <span style={{ color: 'var(--text-muted)' }}>—</span>
@@ -774,6 +799,7 @@ export function BidsBidBoardTab({
               >
                 {bid.project_name ?? '-'}
               </span>
+              {renderGcSentBadge(bid.id)}
               {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
                 // Bids by GC (in-cell, v2.2183): one line per GC — name · sent · state pill — in place of the GC name.
                 <div style={{ alignSelf: 'stretch', minWidth: 0 }}><BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} dense /></div>
@@ -981,6 +1007,7 @@ export function BidsBidBoardTab({
         >
           {bid.project_name ?? '-'}
         </div>
+        {renderGcSentBadge(bid.id)}
         {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
           <div style={{ margin: '0.1rem 0 0.25rem' }}>
             <BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} />

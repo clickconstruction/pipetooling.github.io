@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { defaultCopySourceId, groupVersionsByGc, rollUpOutcome } from './gcPackets'
+import { defaultCopySourceId, groupVersionsByGc, perGcSentSummary, rollUpOutcome } from './gcPackets'
 
 const v = (id: string, customer_id: string | null, sort_order: number, extra: Record<string, unknown> = {}) => ({ id, name: id, customer_id, sort_order, ...extra })
 
@@ -64,5 +64,22 @@ describe('rollUpOutcome', () => {
     expect(rollUpOutcome([{ outcome: 'lost', sentOn: '2026-07-31' }, { outcome: 'lost', sentOn: '2026-07-31' }])).toBe('lost')
     expect(rollUpOutcome([{ outcome: 'lost', sentOn: '2026-07-31' }, { outcome: null, sentOn: '2026-07-31' }])).toBeNull()
     expect(rollUpOutcome([{ outcome: null, sentOn: null }])).toBeNull()
+  })
+})
+
+describe('perGcSentSummary', () => {
+  it('counts real packets: partial and complete', () => {
+    expect(perGcSentSummary([{ sentOn: '2026-08-27' }, { sentOn: null }])).toEqual({ sent: 1, total: 2, complete: false })
+    expect(perGcSentSummary([{ sentOn: '2026-08-20' }, { sentOn: '2026-08-27' }])).toEqual({ sent: 2, total: 2, complete: true })
+  })
+  it('shared-letter recipients ride the bid — they never count', () => {
+    expect(perGcSentSummary([{ sentOn: '2026-08-27' }, { sentOn: null }, { sentOn: '2026-08-27', sharedLetter: true }])).toEqual({ sent: 1, total: 2, complete: false })
+    expect(perGcSentSummary([{ sentOn: '2026-08-27' }, { sentOn: '2026-08-27', sharedLetter: true }])).toBeNull()
+  })
+  it('null when the badge would be noise: <2 real packets, all-unsent, or no packets', () => {
+    expect(perGcSentSummary([{ sentOn: '2026-08-27' }])).toBeNull()
+    expect(perGcSentSummary([{ sentOn: null }, { sentOn: null }])).toBeNull()
+    expect(perGcSentSummary([])).toBeNull()
+    expect(perGcSentSummary(undefined)).toBeNull()
   })
 })
