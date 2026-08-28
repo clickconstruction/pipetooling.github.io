@@ -41,7 +41,6 @@ export type CallSessionWrites = {
     occurred_at: string
     created_by: string
   }>
-  bidLastContactUpdates: Array<{ bidId: string; last_contact: string }>
   bidOutcomeUpdates: Array<{ bidId: string; outcome: 'won' | 'lost'; loss_reason: string | null; loss_category: string | null }>
   /** Bid-tab column patches for tabs captured on the call (v2.2103). */
   bidTabUpdates: Array<{ bidId: string; patch: BidTabRow }>
@@ -101,7 +100,7 @@ export function buildCallSessionWrites(args: {
         created_by: userId,
       }
     }),
-    bidLastContactUpdates: touched.map((d) => ({ bidId: d.bidId, last_contact: nowIso })),
+    // Per-GC Phase 1: bids.last_contact derives from the entry inserts (sync trigger) — no stamps.
     bidOutcomeUpdates: touched
       .filter((d): d is CallSessionBidDecision & { outcome: 'won' | 'lost' } => d.outcome === 'won' || d.outcome === 'lost')
       .map((d) => ({

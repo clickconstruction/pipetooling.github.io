@@ -138,9 +138,7 @@ export function BuilderCallSessionModal({
       if (writes.bidEntries.length > 0) {
         await withSupabaseRetry(async () => supabase.from('bids_submission_entries').insert(writes.bidEntries), 'call session: entries')
       }
-      for (const u of writes.bidLastContactUpdates) {
-        await withSupabaseRetry(async () => supabase.from('bids').update({ last_contact: u.last_contact }).eq('id', u.bidId), 'call session: stamp bid')
-      }
+      // Per-GC Phase 1: the entry inserts above fire the last_contact sync trigger — no hand-stamps.
       for (const u of writes.bidOutcomeUpdates) {
         await withSupabaseRetry(
           async () => supabase.from('bids').update({ outcome: u.outcome, loss_reason: u.loss_reason, loss_category: u.loss_category }).eq('id', u.bidId),

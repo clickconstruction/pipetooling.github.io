@@ -147,14 +147,8 @@ function BidUnifiedEntryRow({
             .eq('id', entry.id),
         'update bid submission entry'
       )
-      // Per-GC Phase 1: only method entries are contacts; the entries sync trigger owns the
-      // roll-up after the push (an edit can move last_contact DOWN, which only it computes).
-      if (occurredAtIso && entry.bid_id && contactMethod.trim()) {
-        await withSupabaseRetry(
-          async () => supabase.from('bids').update({ last_contact: occurredAtIso }).eq('id', entry.bid_id),
-          'update bid last_contact'
-        )
-      }
+      // Per-GC Phase 1: the entries sync trigger owns the last_contact roll-up (it can also
+      // move it DOWN on an edit, which only it computes).
       setEditing(false)
       onUpdated()
     } catch (e) {
@@ -569,10 +563,6 @@ function UnifiedNewBidRow({
             created_by: authUser.id,
           }),
         'insert bid submission entry'
-      )
-      await withSupabaseRetry(
-        async () => supabase.from('bids').update({ last_contact: occurredAtIso }).eq('id', bidId),
-        'update bid last_contact'
       )
       onSaved()
     } catch (e) {

@@ -212,7 +212,8 @@ export function BidsCallQueueTab({
     void (async () => {
       try {
         await withSupabaseRetry(async () => supabase.from('bids_submission_entries').insert(writes.entry), 'log call note')
-        const patch: Record<string, string | number | null> = { last_contact: writes.lastContact }
+        // Per-GC Phase 1: the entry insert above fires the last_contact sync trigger — no hand-bump.
+        const patch: Record<string, string | number | null> = {}
         if (writes.outcomeUpdate && packetScoped(b)) {
           // Multi-GC bid: the answer is this GC's, not the bid's — write the packet; the bid rolls up.
           const packets = gcPacketsByBid[b.id] ?? []
@@ -234,7 +235,9 @@ export function BidsCallQueueTab({
           patch.loss_category = writes.outcomeUpdate.loss_category
         }
         if (tab && hasAnyBidTabValue(tab)) Object.assign(patch, buildBidTabPatch(tab))
-        await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save call outcome')
+        if (Object.keys(patch).length > 0) {
+          await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save call outcome')
+        }
         onError(null)
         // Paste capture (v2.2296): the full per-bidder tab rides along. Fail-soft.
         if (tabEntries?.length) {

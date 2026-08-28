@@ -107,12 +107,7 @@ function BidNotesEntryRow({
             .eq('id', entry.id),
         'update bid submission entry'
       )
-      if (occurredAtIso && entry.bid_id) {
-        await withSupabaseRetry(
-          async () => supabase.from('bids').update({ last_contact: occurredAtIso }).eq('id', entry.bid_id),
-          'update bid last_contact'
-        )
-      }
+      // Per-GC Phase 1: the entries sync trigger derives bids.last_contact (method entries only).
       setEditing(false)
       onUpdated()
     } catch (e) {
@@ -318,10 +313,6 @@ function BidNotesNewRow({
             created_by: authUser.id,
           }),
         'insert bid submission entry'
-      )
-      await withSupabaseRetry(
-        async () => supabase.from('bids').update({ last_contact: occurredAtIso }).eq('id', bidId),
-        'update bid last_contact'
       )
       onSaved()
     } catch (e) {

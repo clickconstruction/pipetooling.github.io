@@ -189,3 +189,20 @@ phase (roll-up keeps them correct).
 
 - 2026-08-27 — Plan written (after v2.2407 per-GC sent + v2.2411 board badge shipped; owner
   locked the contacts decisions). Nothing below Phase 0 built yet.
+- 2026-08-28 — **Phase 1 SHIPPED** (v2.2413, PR #2118): `sync_last_contact_from_entries`
+  trigger + backfill (migration `20260828040000`, pushed same day), `BidLogContactControl`
+  replaces Edit Bid's raw field, `bidContacts.ts` kernel, per-GC contact lines in the Sent
+  panel, writers stamp `gc_customer_id`.
+- 2026-08-28 — **Phase 2 SHIPPED** (v2.2414, PR #2119): per-GC Won / Lost… / ↩ waiting on
+  the Sent panel's GC rows via `setGcPacketOutcome`; Edit Bid's Won/Lost segment locks on
+  version bids (Open stays as the reset); form syncs on roll-up.
+- 2026-08-28 — **Phase 3 SHIPPED** (v2.2415, PR #2120): `resolveWinningPacket` kernel +
+  `PickWinningGcModal`; bid→job import resolves the winning GC (silent single winner /
+  ask-once with Won write / ambiguous choose-only), seeds `bids.agreed_value`. Job revenue
+  stays fixture-derived (documented deviation).
+- 2026-08-28 — **Phase 4 SHIPPED** (v2.2416, PR #2121): `bid_gcs` table + `recompute_bid_due`
+  triggers (migration `20260828050000`), `BidGcDetailsEditor` under every Edit Bid GC card.
+  Deviation: bid-level Due/Submitted-to/ITB fields kept (derived sync keeps Due honest)
+  rather than converted to own-GC editors — fold into Open Q #2's retirement pass.
+- 2026-08-28 — Phase 1 cleanup PR (v2.2417): all nine client `last_contact` hand-bumps
+  removed; the trigger is the only writer.

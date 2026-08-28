@@ -1,13 +1,14 @@
 /**
  * Quick-log kernel for the Followup builder cards (v2.1386): one call to a
- * builder → one customer_contacts row + a bids_submission_entries row and a
- * bids.last_contact stamp for every bid the caller checked. Pure row-building
- * only; the component performs the writes.
+ * builder → one customer_contacts row + a bids_submission_entries row for
+ * every bid the caller checked (bids.last_contact derives from those entries
+ * via the sync trigger — Per-GC Phase 1). Pure row-building only; the
+ * component performs the writes.
  *
  * v2.2051: `includeBuilderLog: false` builds a bids-only log — the checked
- * bids get their notes and last_contact stamps, but `customerContact` is null
- * so the builder's relationship log (and the Oldest-first call queue) doesn't
- * move. For bid-level facts that aren't a conversation with the builder.
+ * bids get their notes, but `customerContact` is null so the builder's
+ * relationship log (and the Oldest-first call queue) doesn't move. For
+ * bid-level facts that aren't a conversation with the builder.
  */
 
 export type BuilderQuickLogWrites = {
@@ -27,8 +28,6 @@ export type BuilderQuickLogWrites = {
     occurred_at: string
     created_by: string
   }>
-  /** Same instant for every touched bid — bids.last_contact stays in step with the entry. */
-  bidLastContactUpdates: Array<{ bidId: string; last_contact: string }>
 }
 
 export function buildBuilderQuickLogWrites(args: {
@@ -63,7 +62,6 @@ export function buildBuilderQuickLogWrites(args: {
       occurred_at: nowIso,
       created_by: userId,
     })),
-    bidLastContactUpdates: bidIds.map((bidId) => ({ bidId, last_contact: nowIso })),
   }
 }
 

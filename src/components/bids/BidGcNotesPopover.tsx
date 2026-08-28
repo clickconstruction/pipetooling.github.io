@@ -104,12 +104,8 @@ export function BidGcNotesPopover({
           }),
         'save per-GC bid note',
       )
-      // Per-GC Phase 1: only a CONTACT (method picked) moves the chase clock — a plain note
-      // is a note. The bids_submission_entries sync trigger owns this after the push; the
-      // client bump keeps the pre-push window identical.
-      if (method) {
-        await withSupabaseRetry(async () => supabase.from('bids').update({ last_contact: occurredAtIso }).eq('id', bidId), 'bump last contact')
-      }
+      // Per-GC Phase 1: the bids_submission_entries sync trigger derives bids.last_contact
+      // (method entries only) — no client bump.
       setText('')
       setMethod(null)
       setTick((t) => t + 1)
