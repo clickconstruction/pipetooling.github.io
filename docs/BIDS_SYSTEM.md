@@ -1930,6 +1930,29 @@ bid_gc_recipients: -- 20260821230000; v2.1994
 
 Every GC a bid was sent to beyond the bid-level `customer_id` (the primary GC is implied, never duplicated). `manual` rows come from the Edit Bid **Also sent to** row; `version` rows sync from `bid_versions.customer_id` overrides (backfilled at migration time). Feeds the Followup lenses' per-GC queue expansion and the Bid Board **+N GCs** chip (v2.1995). RLS mirrors `bid_payment_schedule_rows`.
 
+### Per-GC bid state (bid_gcs)
+
+```sql
+bid_gcs: -- 20260828050000; v2.2416 (Per-GC Phase 4)
+  id (uuid, PK)
+  bid_id (uuid, FK → bids ON DELETE CASCADE)
+  customer_id (uuid, FK → customers ON DELETE CASCADE, NULL = the bid's own GC)
+  due_date (date) / due_time (time)
+  submitted_to_name / submitted_to_phone / submitted_to_email (text)
+  itb_links (jsonb, default '[]')
+  created_at / updated_at / created_by
+  UNIQUE (bid_id, COALESCE(customer_id, zero-uuid)) -- expression index
+```
+
+Per-GC STATE (not derivable): due date/time, submitted-to, ITB links — a GC with three
+versions has ONE due date. Rows created lazily by `BidGcDetailsEditor` under each GC card in
+Edit Bid. `recompute_bid_due(bid_id)` derives `bids.bid_due_date`/`bid_due_time` = earliest
+due among packets with NO send (fallback: earliest due overall; bids with no per-GC dues stay
+hand-set), fired by triggers on `bid_gcs` AND `bid_version_sends`. Kernel
+[`bidGcDetails.ts`](../src/lib/bids/bidGcDetails.ts). RLS mirrors `bid_version_sends`
+(`can_access_bid_for_pricing`). `bids.submitted_to` / `bids.itb_links` remain as legacy
+bid-level fields (plan Open Q #2 covers their retirement).
+
 ### Team Labor for Bids (people_crew_bids)
 
 ```sql

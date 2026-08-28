@@ -22,6 +22,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type Bid = Database['public']['Tables']['bids']['Row']
 import { BidGcRecipientsRow, GcCard } from './BidGcRecipientsRow'
+import { BidGcDetailsEditor } from './BidGcDetailsEditor'
 import { BidLogContactControl } from './BidLogContactControl'
 import { BidGcSentPanel } from './BidGcSentPanel'
 import { supabase } from '../../lib/supabase'
@@ -326,6 +327,20 @@ export function BidFormModal(props: BidFormModalProps) {
   function openServiceTypeSwitch() {
     setServiceTypeSwitchOpen(true)
     void Promise.resolve(onServiceTypeSwitchModalOpen?.())
+  }
+
+  /** A per-GC due save may have moved the derived bids.bid_due_date/_time (Phase 4 trigger) —
+      re-read and sync the form's Due fields so Save can't clobber (the v2.2407 pattern). */
+  function refreshDerivedDue() {
+    const id = editingBid?.id
+    if (!id) return
+    void (async () => {
+      const { data } = await supabase.from('bids').select('bid_due_date, bid_due_time').eq('id', id).maybeSingle()
+      if (!data) return
+      const d = data as { bid_due_date: string | null; bid_due_time: string | null }
+      setBidDueDate(d.bid_due_date ?? '')
+      setBidDueTime(d.bid_due_time ? d.bid_due_time.slice(0, 5) : '')
+    })()
   }
 
   /** Auto-fill Distance to Office: routed Google miles, straight-line estimate as fallback. */
@@ -942,6 +957,16 @@ export function BidFormModal(props: BidFormModalProps) {
                             change {'\u25b8'}
                           </button>
                         }
+                        details={
+                          editingBid ? (
+                            <BidGcDetailsEditor
+                              bidId={editingBid.id}
+                              gcCustomerId={null}
+                              canEdit={myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator'}
+                              onBidDueMaybeChanged={refreshDerivedDue}
+                            />
+                          ) : undefined
+                        }
                       />
                     </div>
                   )
@@ -1089,6 +1114,18 @@ export function BidFormModal(props: BidFormModalProps) {
                             onCreated(c)
                           },
                         })
+                    : undefined
+                }
+                renderGcDetails={
+                  editingBid
+                    ? (customerId) => (
+                        <BidGcDetailsEditor
+                          bidId={editingBid.id}
+                          gcCustomerId={customerId}
+                          canEdit={myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator'}
+                          onBidDueMaybeChanged={refreshDerivedDue}
+                        />
+                      )
                     : undefined
                 }
               />
