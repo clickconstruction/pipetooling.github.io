@@ -174,3 +174,9 @@ Runbook: mint twin → set read_only per rung → dev-login URL → run → scor
 
 - 2026-08-28 — Plan written (owner locked decisions in-session). Phase 0 directory +
   estimator brief drafted alongside this plan; Phase T not yet built.
+- 2026-08-28 (later, same day) — Phases 0/T/E and the Phase-1 pilot's first mission ALL
+  SHIPPED: twin identity + write fence + per-twin credentials (v2.2426–v2.2429),
+  twin-mcp MCP server (v2.2431), Settings fleet console (v2.2432, redesigned v2.2433),
+  CT↔PT user bridge incl. two-app mint_session (v2.2434–v2.2439), M1 run PASSED.
+  **Current state, operation, and prioritized next steps live in
+  `docs/twins/HANDOFF.md`** — read that, not this log, to pick up the work.
