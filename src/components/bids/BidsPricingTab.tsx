@@ -2114,6 +2114,10 @@ export function BidsPricingTab({
    * Fill the VIEWED (empty) scenario with another scenario's effective prices. Computes the
    * source's per-row prices with the shared calc kernel, then writes them through the same
    * per-row override path as hand-typing each one.
+   *
+   * A source from ANOTHER packet keys its assignments/custom prices to that version's own
+   * count rows (v2.2132), so it must be computed against THOSE rows and re-keyed onto this
+   * packet's rows by fixture name — same repair as copyBasePriceFromVersion (v2.2405).
    */
   async function copyPricesIntoViewedScenario(sourceId: string) {
     const bid = selectedBidForPricing
@@ -2121,6 +2125,21 @@ export function BidsPricingTab({
     if (!bid || !targetId || targetId === sourceId) return
     setWbCopyingPrices(true)
     try {
+      const sourceBidVersionId = priceBookVersions.find((p) => p.id === sourceId)?.bid_version_id ?? null
+      const crossVersion = sourceBidVersionId != null && sourceBidVersionId !== selectedBidVersionId
+      let sourceCountRows: Array<{ id: string; fixture: string | null; count: number | string | null }> = pricingCountRows
+      if (crossVersion) {
+        const { data, error: err } = await supabase
+          .from('bids_count_rows')
+          .select('id, fixture, count')
+          .eq('bid_id', bid.id)
+          .eq('bid_version_id', sourceBidVersionId)
+        if (err) {
+          setError(err.message)
+          return
+        }
+        sourceCountRows = (data ?? []) as Array<{ id: string; fixture: string | null; count: number | string | null }>
+      }
       const [entriesRes, assignRes, customRes] = await Promise.all([
         supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', sourceId),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).eq('price_book_version_id', sourceId),
@@ -2129,7 +2148,7 @@ export function BidsPricingTab({
       const customMap = new Map<string, number>()
       for (const c of (customRes.data as BidCountRowCustomPrice[]) ?? []) customMap.set(c.count_row_id, Number(c.unit_price))
       const result = computeBidPricingRows({
-        countRows: pricingCountRows,
+        countRows: sourceCountRows,
         assignments: ((assignRes.data as BidPricingAssignment[]) ?? []).map((a) => ({
           count_row_id: a.count_row_id,
           price_book_entry_id: a.price_book_entry_id,
@@ -2145,10 +2164,22 @@ export function BidsPricingTab({
         materialsFromTakeoffByCountRowId: {},
         hiddenSubmissionCountRowIds: new Set<string>(),
       })
+      const rowMap = crossVersion
+        ? mapCountRowsByFixture(
+            sourceCountRows.map((r) => ({ id: r.id, fixture: r.fixture })),
+            pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture })),
+          )
+        : null
       let copied = 0
+      let dropped = 0
       for (const row of result.rows) {
         if (!(row.unitPrice > 0)) continue
-        const err = await writeUnitPriceOverrideRow(row.countRow.id, row.unitPrice)
+        const targetRowId = rowMap ? rowMap.get(row.countRow.id) ?? null : row.countRow.id
+        if (!targetRowId) {
+          dropped++
+          continue
+        }
+        const err = await writeUnitPriceOverrideRow(targetRowId, row.unitPrice)
         if (err) {
           setError(err.message)
           return
@@ -2157,7 +2188,15 @@ export function BidsPricingTab({
       }
       await loadBidPricingAssignments(bid.id, targetId)
       const sourceName = priceBookVersions.find((p) => p.id === sourceId)?.name ?? 'the other scenario'
-      showToast(copied > 0 ? `Copied ${copied} price${copied !== 1 ? 's' : ''} from "${sourceName}".` : `"${sourceName}" has no prices to copy.`, copied > 0 ? 'success' : 'error')
+      if (copied > 0 && dropped > 0) {
+        showToast(`Copied ${copied} price${copied !== 1 ? 's' : ''} from "${sourceName}" — ${dropped} had no matching row in this packet's counts.`, 'info')
+      } else if (copied > 0) {
+        showToast(`Copied ${copied} price${copied !== 1 ? 's' : ''} from "${sourceName}".`, 'success')
+      } else if (dropped > 0) {
+        showToast(`"${sourceName}" prices matched none of this packet's count rows — nothing copied.`, 'error')
+      } else {
+        showToast(`"${sourceName}" has no prices to copy.`, 'error')
+      }
     } finally {
       setWbCopyingPrices(false)
     }
