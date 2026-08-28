@@ -88,4 +88,4 @@ Append a dated row per run:
 
 | Date | Mission | Twin | Result | Time | Stumbles / notes |
 |---|---|---|---|---|---|
-| — | — | — | — | — | — |
+| 2026-08-28 | M1 | twin-estimator-1 (Claude) | **PASS** — BP71 "Scherner Garage" / Michael Palmer, 205d since last contact; sane chase next-action; exhaustively enumerated all 33 builder groups (~89 bids) and cross-checked the Bid Board | ~10 min, ~15 interactions | Found a REAL BUG: the Waiting-to-hear lens counts **method-less notes** as contacts (BP13's "left vm" note, `contact_method` null → lens shows "Last contact 5/1" while `bids.last_contact` is correctly NULL per the v2.2413 method-only rule). Under the app's own doctrine the true answer is BP13 at ~339d never-contacted — the twin was misled by the lens, not wrong. Also flagged: brief/directory said the lens is "stale-first" (it's newest-first — fixed same day); board/queue ±1-day date drift; contacts rendering that predate the send; year-less dates on old sends. |

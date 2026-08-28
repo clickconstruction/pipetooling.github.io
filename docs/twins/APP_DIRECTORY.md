@@ -17,7 +17,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 **Bids / estimating**
 - See every open bid, who it went to, what's won/waiting → `/bids` (Bid Board)
-- Chase sent bids for answers; log a call; mark won/lost → `/bids?tab=waiting-to-hear` (recent, stale-first) or `/bids?tab=call-queue` (by builder)
+- Chase sent bids for answers; log a call; mark won/lost → `/bids?tab=waiting-to-hear` (recent sends, newest-first by builder) or `/bids?tab=call-queue` (by builder)
 - Understand why bids are lost → `/bids?tab=why-we-lost`
 - See bids not yet sent, by owner → `/bids?tab=working`
 - Count fixtures from plans for a bid → `/bids?tab=counts` (pick the bid)
@@ -76,7 +76,8 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
 - `?tab=call-queue` — **Followup, By builder**: call-mode queue grouped by builder; log
   calls, outcomes, next-followup promises.
 - `?tab=why-we-lost` — loss reasons lens; call mode for un-categorized losses.
-- `?tab=waiting-to-hear` — recent sent-but-unanswered bids, stale-first; one-tap chase
+- `?tab=waiting-to-hear` — recent sent-but-unanswered bids, newest-first grouped by
+  builder (header rollup: "N never called, oldest Dd"); one-tap chase
   actions (Left message / Still pending / Bid tab received / Won / Lost…).
 - `?tab=working` — **Unsent/Working** kanban by owner: bids still being built.
 - `?tab=bid-costs` — clocked estimating cost per bid. Roles: dev only.
