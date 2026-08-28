@@ -43,6 +43,17 @@ not a greenfield one.
   (own name, own `created_by` attribution). Multiple twin estimators may work real bids
   concurrently; the app's existing per-estimator analytics become per-twin scorecards.
 - **Twins impersonate roles, not people** — no twin-only UI paths beyond the banner.
+- **Estimator-only program first (2026-08-28)**: the fleet is restricted to the estimator
+  role until trust is earned — it is the lowest-blast-radius creative role (nothing leaves
+  the app without a human: letters are copy/print; no money moves; work is inherently
+  reviewable and already has per-estimator analytics). Twin-login mints estimator twins
+  only; other roles come later by explicit owner decision.
+- **Twin work is visible, humans are never fenced**: twin bids sit on the shared board
+  with the twin's name in the Estimator column; real estimators can read AND edit twin
+  work (the review workflow). The write-fence is one-directional — it binds twins only.
+- **Assignment is the grant**: setting a real bid's estimator to a twin admits that bid to
+  the twin's write-fence; un-assigning revokes it. Giving a twin real work is one
+  deliberate, visible, reversible act in the normal UI.
 
 ## Deliverables
 
@@ -88,6 +99,49 @@ explicit per-twin owner decision, reviewed like a junior estimator's output — 
 **Metrics exclusions**: add `AND NOT is_digital_twin` to human-metric surfaces as twins
 actually touch them (precedent: `hide_dev_tally_transactions`'s `role <> 'dev'` predicate).
 Not blanket-applied — twin activity IS the signal on twin scorecards.
+
+## Phase E — Cloud twins & the estimator sandbox (build)
+
+Cloud-hosted twins sign into the DEPLOYED apps, so the mechanism is the magic-link edge
+function, not the dev-only client route: harness POSTs to `twin-login` with a secret
+header → gets an `action_link` → navigates a headless browser to it → signed-in session
+on the production origin. No passwords stored anywhere; sessions are short-lived and
+re-minted on expiry (a normal re-login, not an error). Rotating the secret is the
+fleet-wide kill switch.
+
+**E1 — `twin-login` edge functions (both apps)**, four server-side guards each:
+1. Own secret (`TWIN_LOGIN_SECRET`, distinct from `DEV_LOGIN_SECRET`, rotatable alone).
+2. Email must match the fleet pattern (`twin-<role>-<n>@twins.<app>.local`).
+3. The account must be flagged `is_digital_twin` (PipeTooling now; CountTooling once its
+   flag lands in E2) — a leaked secret can never mint a session as a real person.
+4. Role must be `estimator` (the estimator-only program).
+Every mint is logged (function logs from day one; the `twin_runs` ledger once E2 lands).
+`dev-login` is untouched — local convenience, its secret never leaves the owner's machines.
+
+**E2 — the write-fence + CountTooling identity**:
+- PipeTooling migration: `public.is_digital_twin(uid)` helper + `apply_digital_twin_write_blocks()`
+  — the training-mode applier's sibling. RESTRICTIVE per-table policies of the shape
+  `NOT is_digital_twin(auth.uid()) OR <per-table allowance>`: a no-op for every real user;
+  for twins, writes are allowed only on the bid family where the twin **created the bid or
+  is its assigned estimator** (bids + their child tables via bid_id), plus the `/help`
+  feedback channel (the bug-report inbox). Everything else is read-only for twins.
+  Template/catalog data (price/labor/takeoff books without a bid_id) is never writable.
+- `twin_runs` ledger table (mint + mission log; RLS dev-read, service-role write; BOTH
+  read-only blocks per house rule).
+- CountTooling: `is_digital_twin` flag on its users + the 🤖 banner (its collaboration
+  surfaces — checkout, view links — should always show a twin as a twin).
+
+**E3 — first cloud runs**: mint `twin-estimator-1` in both apps (read-only rung),
+run the Phase 1 pilot missions from a remote harness, verify assignment-as-grant
+end-to-end on a ZZ bid, and wire mission summaries + bug reports (help feedback) into the
+review loop.
+
+**The three safety rungs (DB-enforced, per twin)**:
+1. **Tester** — `read_only = true` (training mode blocks every write today).
+2. **Fenced estimator** — read_only off; the twin write-fence binds writes to own-created
+   bids + assigned bids. ZZ naming stays as etiquette; the fence is what holds.
+3. **Working estimator** — same fence; real bids enter it by assignment. Review = the
+  normal board (twin-named Estimator column, per-twin win/margin analytics for free).
 
 ## Phase 1 — Estimator pilot
 
