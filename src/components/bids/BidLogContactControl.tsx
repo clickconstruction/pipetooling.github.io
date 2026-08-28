@@ -20,12 +20,15 @@ export function BidLogContactControl({
   bidId,
   lastContactLocal,
   onLogged,
+  onOpenChange,
 }: {
   bidId: string
   /** The form's datetime-local string ('' = never contacted). */
   lastContactLocal: string
   /** Sync the form state so Save writes the same value the trigger derives. */
   onLogged: (newLocal: string) => void
+  /** Fires as the inline editor opens/closes — the parent form gates its own Save on it. */
+  onOpenChange?: (open: boolean) => void
 }) {
   const { showToast } = useToastContext()
   const { user: authUser } = useAuth()
@@ -36,6 +39,14 @@ export function BidLogContactControl({
   const [gcOptions, setGcOptions] = useState<GcOption[] | null>(null)
   const [gcId, setGcId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // A form submit while the editor is open would discard the half-entered contact —
+  // keep the parent informed so it can gate its Save, and release it on unmount.
+  useEffect(() => {
+    onOpenChange?.(open)
+    return () => onOpenChange?.(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   // The form seeds from the board row, which can be stale (a contact logged since the last
   // board load) — refresh from the DB on open so Save can never write an old value back.
