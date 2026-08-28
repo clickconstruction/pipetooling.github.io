@@ -5,12 +5,20 @@
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
-/** Sum of ready_to_bill + billed invoice line amounts — the dollars already carved off the job total. */
+/**
+ * Sum of ready_to_bill + billed invoice line amounts — the dollars already
+ * carved off the job total. The never-sent PRIMARY remainder bundle is
+ * excluded (same rule as dollarCoverageForSegments and the ensure RPC since
+ * v2.1134): it is elastic — it exists to equal whatever isn't billed yet — so
+ * counting it made every Ready-to-Bill job read "100% billed / $0 left" and
+ * clamped typed New-Invoice amounts to $0.
+ */
 export function allocatedInvoiceDollars(
-  invoices: Array<{ status: string; amount: unknown }> | null | undefined,
+  invoices: Array<{ status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null }> | null | undefined,
 ): number {
   let alloc = 0
   for (const inv of invoices ?? []) {
+    if (inv.status === 'ready_to_bill' && inv.is_primary_rtb_bundle === true) continue
     if (inv.status === 'ready_to_bill' || inv.status === 'billed') {
       alloc += Number(inv.amount) || 0
     }
@@ -18,11 +26,11 @@ export function allocatedInvoiceDollars(
   return alloc
 }
 
-/** Gross (job total) minus payments minus ready_to_bill and billed invoice line amounts — same basis as Stages unallocated. */
+/** Gross (job total) minus payments minus allocated invoice dollars (primary remainder bundle excluded). */
 export function unallocatedBillableDollars(
   gross: number,
   paidSum: number,
-  invoices: Array<{ status: string; amount: unknown }> | null | undefined,
+  invoices: Array<{ status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null }> | null | undefined,
 ): number {
   return Math.max(0, gross - paidSum - allocatedInvoiceDollars(invoices))
 }

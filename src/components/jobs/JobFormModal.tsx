@@ -93,6 +93,7 @@ import {
   breakOffPrefillAmountStringFromJob,
   unallocatedBillableDollars,
 } from '../../lib/jobs/jobFormBreakOff'
+import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
 import type {
   FixtureRow,
   JobFormServiceType,
@@ -2303,6 +2304,12 @@ export default function JobFormModal({
       // Mirror the links into local state so the next delete+reinsert keeps
       // them (the refetch below re-hydrates editing, not the fixtures state).
       setFixtures((prev) => prev.map((r) => (linkedRowIds.has(r.id) ? { ...r, invoice_id: newInvoiceId } : r)))
+      // The invoice above is already written — a failed remainder re-sync must
+      // not read as a failed create (it did for Taunya on job 978: the RPC's
+      // zero-remainder envelope surfaced as "Nothing left to bill" with a
+      // stale screen while her invoice existed). Refetch either way; report a
+      // real re-sync failure alongside the created invoice, not instead of it.
+      let ensureFailure: string | null = null
       if (editing.status === 'ready_to_bill') {
         const raw = await withSupabaseRetry(
           () =>
@@ -2311,10 +2318,8 @@ export default function JobFormModal({
             }),
           'ensure RTB remainder after segment invoice'
         )
-        const obj = raw as Record<string, unknown> | null
-        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
-          throw new Error(obj.error)
-        }
+        const outcome = ensureRemainderResyncOutcome(raw)
+        if (!outcome.ok) ensureFailure = outcome.error
       }
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) {
@@ -2324,10 +2329,14 @@ export default function JobFormModal({
       }
       setSelectedSegmentIds(new Set())
       onSavedRef.current?.()
-      showToast(
-        `Invoice created for the remaining $${formatCurrency(netDollars)} on ${count} segment${count === 1 ? '' : 's'}${coveredDollars > 0 ? ` ($${formatCurrency(coveredDollars)} already covered was subtracted)` : ''}`,
-        'success',
-      )
+      if (ensureFailure) {
+        setError(`Invoice created, but the remainder draft did not re-sync: ${ensureFailure}`)
+      } else {
+        showToast(
+          `Invoice created for the remaining $${formatCurrency(netDollars)} on ${count} segment${count === 1 ? '' : 's'}${coveredDollars > 0 ? ` ($${formatCurrency(coveredDollars)} already covered was subtracted)` : ''}`,
+          'success',
+        )
+      }
     } catch (e: unknown) {
       const err = e as { message?: string; details?: string; hint?: string }
       const msg = err?.message || 'Failed to create invoice from segments'
@@ -2411,6 +2420,9 @@ export default function JobFormModal({
         .select('id')
         .single()
       if (err) throw err
+      // Invoice already written — a failed remainder re-sync is reported, not
+      // treated as a failed create (fully-allocated envelopes are success).
+      let ensureFailure: string | null = null
       if (editing.status === 'ready_to_bill') {
         const raw = await withSupabaseRetry(
           () =>
@@ -2419,10 +2431,8 @@ export default function JobFormModal({
             }),
           'ensure RTB remainder after partial invoice'
         )
-        const obj = raw as Record<string, unknown> | null
-        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
-          throw new Error(obj.error)
-        }
+        const outcome = ensureRemainderResyncOutcome(raw)
+        if (!outcome.ok) ensureFailure = outcome.error
       }
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) {
@@ -2434,6 +2444,9 @@ export default function JobFormModal({
         setNewInvoiceAmountInputFocused(false)
       }
       onSavedRef.current?.()
+      if (ensureFailure) {
+        setError(`Invoice created, but the remainder draft did not re-sync: ${ensureFailure}`)
+      }
     } catch (e: unknown) {
       const err = e as { message?: string; details?: string; hint?: string }
       const msg = err?.message || 'Failed to create invoice'
@@ -2502,6 +2515,9 @@ export default function JobFormModal({
       if (!linkRes.ok) {
         throw new Error(linkRes.error ?? 'Fee invoice created, but linking the incident to it failed')
       }
+      // Fee invoice + link already written — fully-allocated envelopes are
+      // success; only a real re-sync failure is surfaced (after the refetch).
+      let ensureFailure: string | null = null
       if (editing.status === 'ready_to_bill') {
         const raw = await withSupabaseRetry(
           () =>
@@ -2510,10 +2526,8 @@ export default function JobFormModal({
             }),
           'ensure RTB remainder after fee split'
         )
-        const obj = raw as Record<string, unknown> | null
-        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
-          throw new Error(obj.error)
-        }
+        const outcome = ensureRemainderResyncOutcome(raw)
+        if (!outcome.ok) ensureFailure = outcome.error
       }
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) {
@@ -2523,7 +2537,11 @@ export default function JobFormModal({
       }
       refreshHazmatIncidents()
       onSavedRef.current?.()
-      showToast(`Fee split to its own invoice ($${formatCurrency(fee)}). Now choose who pays it.`, 'success')
+      if (ensureFailure) {
+        setError(`Fee invoice created, but the remainder draft did not re-sync: ${ensureFailure}`)
+      } else {
+        showToast(`Fee split to its own invoice ($${formatCurrency(fee)}). Now choose who pays it.`, 'success')
+      }
       setBillToEditorInvoice({
         id: newInvoiceId,
         amount: fee,

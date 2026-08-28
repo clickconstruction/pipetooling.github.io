@@ -25,6 +25,17 @@ describe('allocatedInvoiceDollars', () => {
     expect(allocatedInvoiceDollars(undefined)).toBe(0)
     expect(allocatedInvoiceDollars([])).toBe(0)
   })
+  it('excludes the elastic primary RTB remainder bundle (it equals whatever is unbilled)', () => {
+    const invoices = [
+      { status: 'ready_to_bill', amount: 1650, is_primary_rtb_bundle: true }, // the auto row
+      { status: 'ready_to_bill', amount: 1980, is_primary_rtb_bundle: false },
+      { status: 'billed', amount: 200, is_primary_rtb_bundle: null },
+    ]
+    expect(allocatedInvoiceDollars(invoices)).toBe(2180)
+  })
+  it('still counts a BILLED row even if it carries a stale primary flag', () => {
+    expect(allocatedInvoiceDollars([{ status: 'billed', amount: 500, is_primary_rtb_bundle: true }])).toBe(500)
+  })
 })
 
 describe('unallocatedBillableDollars', () => {
@@ -39,6 +50,19 @@ describe('unallocatedBillableDollars', () => {
   it('floors at zero and tolerates null invoices', () => {
     expect(unallocatedBillableDollars(100, 250, null)).toBe(0)
     expect(unallocatedBillableDollars(500, 0, undefined)).toBe(500)
+  })
+  it('a Ready-to-Bill job with only the auto bundle has its full total left to bill', () => {
+    // Taunya's job 978 start state: gross 3,630, auto draft 3,630 — the input
+    // stack read "$0 left" and clamped typed amounts to zero.
+    const invoices = [{ status: 'ready_to_bill', amount: 3630, is_primary_rtb_bundle: true }]
+    expect(unallocatedBillableDollars(3630, 0, invoices)).toBe(3630)
+  })
+  it('mid-flow: one segment invoice carved, auto bundle resized — remainder is the second segment', () => {
+    const invoices = [
+      { status: 'ready_to_bill', amount: 1980, is_primary_rtb_bundle: false },
+      { status: 'ready_to_bill', amount: 1650, is_primary_rtb_bundle: true },
+    ]
+    expect(unallocatedBillableDollars(3630, 0, invoices)).toBe(1650)
   })
 })
 

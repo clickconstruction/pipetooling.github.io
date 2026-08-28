@@ -47,6 +47,7 @@ From there it's the normal billing flow — see *bill a customer and get paid*.
 - A billed stage line can't be edited or removed while its invoice exists. Send the invoice back (or delete the draft) and the line unlocks automatically.
 - Change your mind on a draft? Press the red **✕** on its row in the Invoices table and confirm — the draft is deleted and its segments go back to unbilled.
 - Re-ordering is always allowed, billed or not — order is just presentation.
+- The draft tagged **auto** in the Invoices table is the job's remainder keeping itself up to date: it shrinks as you break stages off, it *is* the bill for whatever you never split out, and it disappears on its own once every stage is on its own invoice. You never need to create it, resize it, or delete it.
 - The regular break-off amount box still works for billing an arbitrary dollar amount; stages and dollar break-offs can mix on the same job.
 - Nothing changes for jobs that don't use stages.
 

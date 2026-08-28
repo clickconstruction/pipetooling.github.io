@@ -21,6 +21,7 @@ import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, f
 import { useJobFollowupQueueCount } from '../../hooks/useJobFollowupQueueCount'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
 import SendBackReasonField from './SendBackReasonField'
+import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
 import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
@@ -1870,6 +1871,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         .select('id')
         .single()
       if (err) throw err
+      // Invoice already written — fully-allocated envelopes from the resync
+      // are success; only a real failure is surfaced (after the board reload).
+      let ensureFailure: string | null = null
       if (createPartialInvoiceJob.status === 'ready_to_bill') {
         const raw = await withSupabaseRetry(
           () =>
@@ -1878,14 +1882,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             }),
           'ensure RTB remainder after partial invoice'
         )
-        const obj = raw as Record<string, unknown> | null
-        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
-          throw new Error(obj.error)
-        }
+        const outcome = ensureRemainderResyncOutcome(raw)
+        if (!outcome.ok) ensureFailure = outcome.error
       }
       setCreatePartialInvoiceJob(null)
       setCreatePartialInvoiceAmount('')
-      setError(null)
+      setError(
+        ensureFailure ? `Invoice created, but the remainder draft did not re-sync: ${ensureFailure}` : null,
+      )
       await loadJobs()
     } catch (e: unknown) {
       const err = e as { message?: string; details?: string; hint?: string }
