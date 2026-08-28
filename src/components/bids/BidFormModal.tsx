@@ -776,8 +776,9 @@ export function BidFormModal(props: BidFormModalProps) {
                           title={perGcLocked ? 'Set Won / Lost per GC in the Sent panel above — the bid rolls up' : undefined}
                           onClick={() => setOutcome(seg.value)}
                           style={{
-                            font: 'inherit',
+                            fontFamily: 'inherit',
                             fontSize: '0.82rem',
+                            fontWeight: 400,
                             padding: '0.38rem 0.7rem',
                             border: 'none',
                             borderRight: i < OUTCOME_SEGMENTS.length - 1 ? '1px solid var(--border-strong)' : 'none',
@@ -964,7 +965,7 @@ export function BidFormModal(props: BidFormModalProps) {
                               setChangingPrimary(true)
                               setGcCustomerDropdownOpen(true)
                             }}
-                            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            style={{ fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}
                           >
                             change {'\u25b8'}
                           </button>
@@ -994,7 +995,7 @@ export function BidFormModal(props: BidFormModalProps) {
                         setChangingPrimary(false)
                         setGcCustomerDropdownOpen(false)
                       }}
-                      style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '0.6rem' }}
+                      style={{ fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', cursor: 'pointer', marginLeft: '0.6rem' }}
                     >
                       keep current {'\u21a9'}
                     </button>
