@@ -571,6 +571,10 @@ verify_jwt = false
 [functions.send-scheduled-reminders]
 verify_jwt = false
 
+# CT↔PT weekly roster drift audit (v2.2438): cron-invoked, X-Cron-Secret.
+[functions.ct-roster-audit]
+verify_jwt = false
+
 # Recurring Email Reports — JWT validated in-function (same gateway pattern as test-email).
 [functions.recurring-job-report-preview]
 verify_jwt = false

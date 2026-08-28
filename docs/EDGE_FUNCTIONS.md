@@ -90,6 +90,7 @@ when_to_read:
    - [twin-login](#twin-login)
    - [twin-mcp](#twin-mcp)
    - [ct-bridge](#ct-bridge)
+   - [ct-roster-audit](#ct-roster-audit)
    - [address-autocomplete](#address-autocomplete)
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
@@ -782,6 +783,16 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **Endpoint**: `POST /functions/v1/ct-bridge` · **Auth**: `verify_jwt = false`; JWT validated in-function via `getUser` — **devs only**. Every act is logged to the function log (no audit table in v1).
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`CT_MANAGE_USER_URL`**, **`CT_MANAGE_USER_SECRET`** (readable copy: PT main-checkout `.env.twin.local`; rotating it on both projects severs the bridge).
+
+---
+
+### ct-roster-audit
+
+**Purpose**: The CT↔PT bridge's **weekly drift audit** (v2.2438; Phase 3 — drift is caught, not prevented). Cron-invoked Mondays 13:00 UTC (migration `20260828110000`): pulls the PT roster (service role) and the CT roster (`manage-user roster` via `_shared/ctBridge.ts`), diffs them with the pure `_shared/ctRosterDiff.ts` kernel (unit-tested from `src/lib/ctRosterDiff.test.ts` — one copy, no port), and emails every dev. Sections: only-in-CT, linked-but-gone, active mismatch (the offboarding hole), twin-flag mismatch, email changed under a linked uuid, backfill candidates. **The email always sends** — the all-clear note is the heartbeat; a missing Monday email means the audit broke. Twin fleet domains (`@twins.pipetooling.local` ↔ `@twins.counttooling.local`) are normalized before email comparison.
+
+**Endpoint**: `POST /functions/v1/ct-roster-audit` · **Auth**: `X-Cron-Secret` vs `CRON_SECRET`; `verify_jwt = false`.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `CT_MANAGE_USER_URL`, `CT_MANAGE_USER_SECRET`.
 
 ---
 
