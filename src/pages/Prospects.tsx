@@ -2480,9 +2480,9 @@ export default function Prospects() {
             const isTerminal = (k: ListSectionKey) => k === 'converted' || k === 'cant_reach' || k === 'not_a_fit'
             const chipKeys = LIST_SECTION_ORDER.filter((k) => k !== 'cant_reach' && k !== 'not_a_fit')
             const chipColors: Partial<Record<ListSectionKey, { background: string; color: string }>> = {
-              never_called: { background: '#dcfce7', color: '#15803d' },
-              going_cold: { background: '#fef3c7', color: '#92400e' },
-              converted: { background: '#ede9fe', color: '#6d28d9' },
+              never_called: { background: 'var(--bg-green-100)', color: '#15803d' },
+              going_cold: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
+              converted: { background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' },
             }
             return filtered.length === 0 ? (
               <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No prospects yet.</p>
@@ -2577,7 +2577,7 @@ export default function Prospects() {
                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
                                           {p.company_name || '—'}
                                           {(p.warmth_count ?? 0) > 0 && (
-                                            <span style={{ padding: '0.05rem 0.4rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, background: '#ffedd5', color: '#c2410c', whiteSpace: 'nowrap' }}>
+                                            <span style={{ padding: '0.05rem 0.4rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, background: 'var(--bg-orange-100)', color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}>
                                               🔥 {p.warmth_count}
                                             </span>
                                           )}
