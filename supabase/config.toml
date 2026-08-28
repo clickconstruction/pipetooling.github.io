@@ -562,6 +562,11 @@ verify_jwt = false
 [functions.twin-mcp]
 verify_jwt = false
 
+# CT↔PT user bridge proxy (v2.2435): JWT validated in-function (dev-only), forwards to
+# CountTooling's manage-user with the bridge secret.
+[functions.ct-bridge]
+verify_jwt = false
+
 # Cron / infra: not browser session; auth via X-Cron-Secret / CRON_SECRET in function.
 [functions.send-scheduled-reminders]
 verify_jwt = false

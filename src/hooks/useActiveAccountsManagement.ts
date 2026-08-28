@@ -39,6 +39,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const confirmDialog = useConfirmDialog()
 
   const [users, setUsers] = useState<UserRow[]>([])
+  const [ctSeatByUserId, setCtSeatByUserId] = useState<Record<string, string | null> | null>(null)
+  const [creatingCtSeatId, setCreatingCtSeatId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -115,6 +117,60 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       .order('name')
     if (eList) setError(eList.message)
     else setUsers((list as UserRow[]) ?? [])
+    await loadCtSeats()
+  }
+
+  /** CT bridge join keys (v2.2435), fail-soft: separate cast query so the panel works
+   * before migration 20260828090000 lands — null map hides the CT seat UI entirely. */
+  async function loadCtSeats() {
+    try {
+      const { data, error: eSeats } = await (supabase as never as {
+        from: (t: string) => { select: (c: string) => { is: (k: string, v: null) => Promise<{ data: { id: string; counttooling_user_id: string | null }[] | null; error: unknown }> } }
+      })
+        .from('users')
+        .select('id, counttooling_user_id')
+        .is('archived_at', null)
+      if (eSeats || !data) {
+        setCtSeatByUserId(null)
+        return
+      }
+      const map: Record<string, string | null> = {}
+      for (const row of data) map[row.id] = row.counttooling_user_id
+      setCtSeatByUserId(map)
+    } catch {
+      setCtSeatByUserId(null)
+    }
+  }
+
+  /** Create (or find, idempotently) a CountTooling seat for this person over the bridge
+   * and store the uuid join key. Manual, on demand — CT is an estimator tool, so only
+   * the people who need it get a seat (locked decision). */
+  async function handleCreateCtSeat(u: UserRow) {
+    setCreatingCtSeatId(u.id)
+    try {
+      const { data, error: eFn } = await supabase.functions.invoke('ct-bridge', {
+        body: { verb: 'create', email: u.email, name: u.name ?? undefined },
+      })
+      const ctId = (data as { ct_user_id?: string } | null)?.ct_user_id
+      if (eFn || !ctId) {
+        showToast(`CountTooling seat failed: ${eFn?.message ?? (data as { error?: string } | null)?.error ?? 'no uuid returned'}`, 'error')
+        return
+      }
+      const { error: upErr } = await (supabase as never as {
+        from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => Promise<{ error: { message: string } | null }> } }
+      })
+        .from('users')
+        .update({ counttooling_user_id: ctId })
+        .eq('id', u.id)
+      if (upErr) {
+        showToast(`CT seat created (${ctId}) but the link didn’t save: ${upErr.message}`, 'error')
+        return
+      }
+      showToast(`CountTooling seat ready for ${u.name || u.email}`, 'success')
+      await loadCtSeats()
+    } finally {
+      setCreatingCtSeatId(null)
+    }
   }
 
   /** Active roster people with no login account, kind 'sub' — merge-away candidates for subcontractor survivors. */
@@ -935,6 +991,9 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     currentUserId: authUser?.id ?? null,
     users,
     setUsers,
+    ctSeatByUserId,
+    creatingCtSeatId,
+    handleCreateCtSeat,
     error,
     setError,
     updatingId,

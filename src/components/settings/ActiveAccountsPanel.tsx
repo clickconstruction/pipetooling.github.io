@@ -57,6 +57,9 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     users,
     error,
     updatingId,
+    ctSeatByUserId,
+    creatingCtSeatId,
+    handleCreateCtSeat,
     serviceTypes,
     archivedUsers,
     inviteOpen,
@@ -460,6 +463,26 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         >
                           {sendingSignInEmailId === u.id ? 'Sending…' : 'Send email to sign in'}
                         </button>
+                        {editingUserId === u.id && ctSeatByUserId !== null && (
+                          ctSeatByUserId[u.id] ? (
+                            <span
+                              style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-green-800)' }}
+                              title={`CountTooling seat linked — CT uuid ${ctSeatByUserId[u.id]}. Archiving this account also retires the CT seat.`}
+                            >
+                              CT seat ✓
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => void handleCreateCtSeat(u)}
+                              disabled={creatingCtSeatId === u.id}
+                              className="activeAccountsCard__rowBtn"
+                              title="Create (or find) this person’s CountTooling account over the bridge and link it"
+                            >
+                              {creatingCtSeatId === u.id ? 'Creating…' : 'Create CountTooling seat'}
+                            </button>
+                          )
+                        )}
                         {editingUserId === u.id && (
                           <button
                             type="button"

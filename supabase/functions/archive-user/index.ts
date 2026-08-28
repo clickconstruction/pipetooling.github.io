@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { APP_CALENDAR_TZ } from "../_shared/appTimeZone.ts"
+import { forwardCtSeatState } from '../_shared/ctBridge.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -274,6 +275,10 @@ serve(async (req) => {
       )
     }
 
+    // CT bridge (v2.2435): mirror the retirement to CountTooling when a seat is linked.
+    // Fail-soft — a CT-leg failure never blocks the archive; the audit catches drift.
+    const ctBridge = await forwardCtSeatState(adminClient, userToArchive.id, 'deactivate')
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -281,6 +286,7 @@ serve(async (req) => {
           ? `User ${userToArchive.email || userToArchive.name} archived and ${customerCount} customer${customerCount !== 1 ? 's' : ''} reassigned`
           : `User ${userToArchive.email || userToArchive.name} archived successfully`,
         customersReassigned: reassign_customers_to ? customerCount : 0,
+        ct_bridge: ctBridge,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

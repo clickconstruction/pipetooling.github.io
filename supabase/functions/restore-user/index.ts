@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { forwardCtSeatState } from '../_shared/ctBridge.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -136,10 +137,15 @@ serve(async (req) => {
       )
     }
 
+    // CT bridge (v2.2435): mirror the restore to CountTooling when a seat is linked.
+    // Fail-soft — a CT-leg failure never blocks the restore; the audit catches drift.
+    const ctBridge = await forwardCtSeatState(adminClient, user_id, 'reactivate')
+
     return new Response(
       JSON.stringify({
         success: true,
         message: `User ${targetUser.email || targetUser.name} restored`,
+        ct_bridge: ctBridge,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

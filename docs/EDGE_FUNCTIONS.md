@@ -89,6 +89,7 @@ when_to_read:
    - [dev-login](#dev-login)
    - [twin-login](#twin-login)
    - [twin-mcp](#twin-mcp)
+   - [ct-bridge](#ct-bridge)
    - [address-autocomplete](#address-autocomplete)
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
@@ -769,6 +770,16 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **Bundled docs are GENERATED**: `supabase/functions/twin-mcp/briefs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/*` (missions carry only the verbatim mission text, never the scorer sections) — regenerate + redeploy after editing those docs.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (twin-login's `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
+
+---
+
+### ct-bridge
+
+**Purpose**: The PT-side proxy of the **CT↔PT user bridge** (v2.2435; architecture in `docs/recent-features/v2.2434.md`). PipeTooling is the single system of record for people; this function is the app's only door to CountTooling's `manage-user` edge function. Forwards an allowlisted verb set — `create` (idempotent), `deactivate` / `reactivate` (CT auth ban), `set_twin_flag`, `update_email`, `lookup`, `roster` (drift audit) — with the bridge secret, which never reaches the browser. Call sites: twin mint + CT-seat retry (`DigitalTwinsPanel`), “Create CountTooling seat” + backfill (Active Accounts), the weekly drift audit. `archive-user` / `restore-user` forward deactivate/reactivate **server-side** via `_shared/ctBridge.ts` instead of calling this proxy, and report the outcome in a fail-soft `ct_bridge` response field — a CT-leg failure never blocks the PT action.
+
+**Endpoint**: `POST /functions/v1/ct-bridge` · **Auth**: `verify_jwt = false`; JWT validated in-function via `getUser` — **devs only**. Every act is logged to the function log (no audit table in v1).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`CT_MANAGE_USER_URL`**, **`CT_MANAGE_USER_SECRET`** (readable copy: PT main-checkout `.env.twin.local`; rotating it on both projects severs the bridge).
 
 ---
 
