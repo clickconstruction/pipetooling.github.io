@@ -13,18 +13,42 @@ export type JobFixtureForStripe = {
 }
 
 /**
- * Which fixtures belong on THIS invoice's bill (v2.1133): rows linked via
- * jobs_ledger_fixtures.invoice_id when any exist (segment invoices bill
- * exactly their items), else all rows (dollar break-off invoices keep the
- * historical whole-job proration). Mirrored client-side in
- * src/lib/invoiceScopedFixtures.ts.
+ * Which fixtures belong on THIS invoice's bill (v2.1133; remainder
+ * composition v2.2469): rows linked via jobs_ledger_fixtures.invoice_id when
+ * any exist (segment invoices bill exactly their items). With no links, the
+ * elastic PRIMARY remainder bundle bills the still-unlinked billable rows at
+ * their real prices WHEN they sum exactly to the target cents — it exists to
+ * bill "whatever isn't on another invoice", and the cents-exact equality
+ * guarantees that reading is true (any payment, dollar carve, rider, or
+ * extra_line_item breaks it). Everything else keeps the historical whole-job
+ * proration. Mirrored client-side in src/lib/invoiceScopedFixtures.ts.
  */
-export function scopeFixturesToInvoice<T extends { invoice_id?: string | null }>(
+export function scopeFixturesToInvoice<
+  T extends { invoice_id?: string | null; name?: string | null; count?: number | null; line_unit_price?: number | null },
+>(
   rows: T[],
   invoiceId: string,
+  invoice?: { isPrimaryRtbBundle: boolean; targetAmountCents: number } | null,
 ): T[] {
   const linked = rows.filter((r) => (r.invoice_id ?? null) === invoiceId)
-  return linked.length > 0 ? linked : rows
+  if (linked.length > 0) return linked
+  if (invoice?.isPrimaryRtbBundle === true && Number.isFinite(invoice.targetAmountCents) && invoice.targetAmountCents > 0) {
+    const unlinked = rows.filter((r) => (r.invoice_id ?? null) === null && scopeLineCents(r) > 0)
+    const sumCents = unlinked.reduce((s, r) => s + scopeLineCents(r), 0)
+    if (unlinked.length > 0 && sumCents === invoice.targetAmountCents) return unlinked
+  }
+  return rows
+}
+
+/** Cents for one row in the scoping equality — same math as lineExtendedCents below. */
+function scopeLineCents(row: { name?: string | null; count?: number | null; line_unit_price?: number | null }): number {
+  if (!(row.name ?? '').trim()) return 0
+  const c = Number(row.count)
+  const qty = Number.isFinite(c) && c > 0 ? c : 1
+  const unit = row.line_unit_price != null && Number.isFinite(Number(row.line_unit_price)) ? Number(row.line_unit_price) : 0
+  const dollars = qty * unit
+  if (!Number.isFinite(dollars) || dollars <= 0) return 0
+  return Math.max(1, Math.round(dollars * 100))
 }
 
 /** Client/Edge JSON: maps preview line to DB row or single-line modes (override / fallback). */

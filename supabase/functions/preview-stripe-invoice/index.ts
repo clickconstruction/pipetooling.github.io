@@ -132,7 +132,7 @@ serve(async (req) => {
 
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, amount, status, stripe_invoice_id, bill_to_name, bill_to_email, bill_to_stripe_customer_id')
+      .select('id, job_id, amount, status, stripe_invoice_id, bill_to_name, bill_to_email, bill_to_stripe_customer_id, is_primary_rtb_bundle')
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
 
@@ -209,21 +209,6 @@ serve(async (req) => {
       return jsonResponse({ error: 'Could not load job line items for invoice' }, 500)
     }
 
-    // v2.1133: mirror create-stripe-invoice — a segment invoice previews
-    // exactly its linked line items, never the whole job prorated.
-    const scopedFixtures = scopeFixturesToInvoice(
-      (fixturesRows ?? []) as {
-        id: string
-        name: string
-        count: number
-        line_unit_price: number | null
-        line_description: string | null
-        sequence_order: number
-        invoice_id: string | null
-      }[],
-      jobs_ledger_invoice_id,
-    )
-
     const extrasRaw = Array.isArray(body.extra_line_items) ? body.extra_line_items : []
     const extraItems: { amount: number; description: string }[] = []
     for (const ex of extrasRaw) {
@@ -236,6 +221,28 @@ serve(async (req) => {
     }
     const extrasSumCents = extraItems.reduce((a, b) => a + b.amount, 0)
     const fixtureTargetCents = amountCents - extrasSumCents
+
+    // v2.1133: mirror create-stripe-invoice — a segment invoice previews
+    // exactly its linked line items, never the whole job prorated. v2.2469:
+    // the unlinked PRIMARY remainder bundle previews the still-unlinked
+    // segments when they sum exactly to the target (scoping moved below the
+    // extras math so both functions match against the same target).
+    const scopedFixtures = scopeFixturesToInvoice(
+      (fixturesRows ?? []) as {
+        id: string
+        name: string
+        count: number
+        line_unit_price: number | null
+        line_description: string | null
+        sequence_order: number
+        invoice_id: string | null
+      }[],
+      jobs_ledger_invoice_id,
+      {
+        isPrimaryRtbBundle: invRow.is_primary_rtb_bundle === true,
+        targetAmountCents: fixtureTargetCents,
+      },
+    )
     if (extraItems.length > 0 && fixtureTargetCents < 1) {
       return jsonResponse({ error: 'extra_line_items must total less than the invoice amount' }, 400)
     }
