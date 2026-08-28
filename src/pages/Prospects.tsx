@@ -129,6 +129,7 @@ function formatInteractionType(type: string): string {
     case 'didnt_answer': return "Didn't answer"
     case 'no_longer_fit': return 'No longer a fit'
     case 'user_comment': return 'Comment'
+    case 'converted': return 'Converted'
     default: return type
   }
 }
@@ -138,6 +139,7 @@ function formatTimerButtonName(buttonName: string): string {
     case 'no_longer_fit': return 'No Longer a Fit'
     case 'next_prospect': return 'Next Prospect'
     case 'cant_reach': return "Can't reach"
+    case 'converted': return 'Converted'
     default: return buttonName
   }
 }
@@ -469,7 +471,7 @@ export default function Prospects() {
     }
     const raw = (data ?? []) as Prospect[]
     const prospects = orderFollowUpProspects(
-      raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach'),
+      raw.filter((p) => p.prospect_fit_status !== 'not_a_fit' && p.prospect_fit_status !== 'cant_reach' && p.prospect_fit_status !== 'converted'),
       called,
       callingOrderModeRef.current,
     )
@@ -1267,7 +1269,7 @@ export default function Prospects() {
     setSaving(false)
   }
 
-  async function saveTimerEvent(buttonName: 'no_longer_fit' | 'next_prospect' | 'cant_reach') {
+  async function saveTimerEvent(buttonName: 'no_longer_fit' | 'next_prospect' | 'cant_reach' | 'converted') {
     if (!authUser?.id || !currentProspect) return
     await (supabase as any).from('prospect_timer_events').insert({
       user_id: authUser.id,
@@ -1325,6 +1327,38 @@ export default function Prospects() {
     const updated = { ...currentProspect, prospect_fit_status: 'cant_reach' as const }
     setProspectListProspects((prev) => prev.map((p) => (p.id === currentProspect.id ? updated : p)))
     const nextList = followUpProspects.filter((p) => p.id !== currentProspect.id)
+    setFollowUpProspects(nextList)
+    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+    setCurrentProspectIndex(nextIdx)
+    setFollowUpTimerSeconds(0)
+    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+    setSaving(false)
+  }
+
+  async function handleConverted() {
+    if (!currentProspect || !authUser?.id || saving) return
+    setSaving(true)
+    const prospectId = currentProspect.id
+    const { error } = await supabase
+      .from('prospects')
+      .update({ prospect_fit_status: 'converted' })
+      .eq('id', prospectId)
+    if (error) {
+      setSaving(false)
+      return
+    }
+    await saveTimerEvent('converted')
+    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser.id)
+    loadMyTimeToday()
+    await supabase.from('prospect_comments').insert({
+      prospect_id: prospectId,
+      created_by: authUser.id,
+      comment_text: 'Converted to a customer',
+      interaction_type: 'converted',
+    })
+    const updated = { ...currentProspect, prospect_fit_status: 'converted' as const }
+    setProspectListProspects((prev) => prev.map((p) => (p.id === prospectId ? updated : p)))
+    const nextList = followUpProspects.filter((p) => p.id !== prospectId)
     setFollowUpProspects(nextList)
     const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
     setCurrentProspectIndex(nextIdx)
@@ -1598,6 +1632,27 @@ export default function Prospects() {
         if (bidErr) throw new Error(`Failed to add bid: ${bidErr.message}`)
       }
 
+      // Mark the source prospect converted so it leaves the calling queue.
+      // The customer already exists at this point, so a failure here must not block navigation.
+      if (convertProspectId) {
+        const { error: markErr } = await supabase
+          .from('prospects')
+          .update({ prospect_fit_status: 'converted' })
+          .eq('id', convertProspectId)
+        if (markErr) {
+          console.error('[Prospects] failed to mark prospect converted:', markErr)
+        } else {
+          await supabase.from('prospect_comments').insert({
+            prospect_id: convertProspectId,
+            created_by: authUser.id,
+            comment_text: `Converted to customer ${payload.name.trim() || 'record'}`,
+            interaction_type: 'converted',
+          })
+          setProspectListProspects((prev) => prev.map((p) => (p.id === convertProspectId ? { ...p, prospect_fit_status: 'converted' } : p)))
+          setFollowUpProspects((prev) => prev.filter((p) => p.id !== convertProspectId))
+        }
+      }
+
       navigate(`/customers/${customerId}`)
     } catch (err) {
       setConvertError(err instanceof Error ? err.message : 'Failed to convert')
@@ -1739,6 +1794,7 @@ export default function Prospects() {
                 const btnPrimary = { ...btnBase, background: '#3b82f6', color: 'white', boxShadow: '0 1px 2px rgba(59,130,246,0.3)' }
                 const btnGreen = { ...btnBase, background: '#059669', color: 'white', boxShadow: '0 1px 2px rgba(5,150,105,0.3)' }
                 const btnDestructive = { ...btnBase, background: '#dc2626', color: 'white', boxShadow: '0 1px 2px rgba(220,38,38,0.3)' }
+                const btnConverted = { ...btnBase, background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', border: '1px solid #8b5cf6', boxShadow: '0 1px 2px rgba(139,92,246,0.2)' }
                 const btnDisabled = (s: object) => ({ ...s, opacity: 0.6, cursor: 'not-allowed' as const })
                 return (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
@@ -1806,6 +1862,15 @@ export default function Prospects() {
                         style={saving ? btnDisabled(btnSecondary) : btnSecondary}
                       >
                         Can't reach
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleConverted}
+                        disabled={saving}
+                        style={saving ? btnDisabled(btnConverted) : btnConverted}
+                        title="Mark this prospect as converted to a customer — it leaves the calling queue"
+                      >
+                        Converted ✓
                       </button>
                       <button
                         type="button"
@@ -2387,6 +2452,8 @@ export default function Prospects() {
               {(() => {
             const NO_LONGER_FIT_KEY = -1
             const CANT_REACH_KEY = -2
+            const CONVERTED_KEY = -3
+            const isSentinelKey = (k: number) => k < 0
             const q = prospectListSearchQuery.trim().toLowerCase()
             const filtered = q
               ? prospectListProspects.filter((p) => {
@@ -2401,11 +2468,14 @@ export default function Prospects() {
             const active: Prospect[] = []
             const noLongerFit: Prospect[] = []
             const cantReach: Prospect[] = []
+            const converted: Prospect[] = []
             for (const p of filtered) {
               if (p.prospect_fit_status === 'cant_reach') {
                 cantReach.push(p)
               } else if (p.prospect_fit_status === 'not_a_fit') {
                 noLongerFit.push(p)
+              } else if (p.prospect_fit_status === 'converted') {
+                converted.push(p)
               } else {
                 active.push(p)
               }
@@ -2421,6 +2491,9 @@ export default function Prospects() {
             }
             if (cantReach.length > 0) {
               byWarmth.set(CANT_REACH_KEY, cantReach)
+            }
+            if (converted.length > 0) {
+              byWarmth.set(CONVERTED_KEY, converted)
             }
             const sortProspects = (list: Prospect[]) => {
               list.sort((a, b) => {
@@ -2440,7 +2513,7 @@ export default function Prospects() {
               <div>
                 {warmthKeys.map((warmth) => {
                   const prospects = byWarmth.get(warmth) ?? []
-                  const isOpen = prospectListSectionOpen[warmth] ?? (warmth !== NO_LONGER_FIT_KEY && warmth !== CANT_REACH_KEY)
+                  const isOpen = prospectListSectionOpen[warmth] ?? !isSentinelKey(warmth)
                   return (
                     <div key={warmth}>
                       <button
@@ -2450,7 +2523,7 @@ export default function Prospects() {
                         style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                       >
                         <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
-                        {warmth === NO_LONGER_FIT_KEY ? `No longer a fit (${prospects.length})` : warmth === CANT_REACH_KEY ? `Can't reach (${prospects.length})` : `Warmth ${warmth} (${prospects.length})`}
+                        {warmth === NO_LONGER_FIT_KEY ? `No longer a fit (${prospects.length})` : warmth === CANT_REACH_KEY ? `Can't reach (${prospects.length})` : warmth === CONVERTED_KEY ? `Converted (${prospects.length})` : `Warmth ${warmth} (${prospects.length})`}
                       </button>
                       {isOpen && (
                         <div className="prospectListWrapper">
@@ -2465,7 +2538,7 @@ export default function Prospects() {
                                 <col style={{ width: '10%' }} />
                                 <col style={{ width: '8%' }} />
                                 <col style={{ width: '24%' }} />
-                                {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && <col style={{ width: '6%' }} />}
+                                {isSentinelKey(warmth) && <col style={{ width: '6%' }} />}
                               </colgroup>
                               <thead style={{ background: 'var(--bg-subtle)' }}>
                                 <tr>
@@ -2476,12 +2549,12 @@ export default function Prospects() {
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last Contact</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Time</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Email / Links</th>
-                                  {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>}
+                                  {isSentinelKey(warmth) && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>}
                                 </tr>
                               </thead>
                               <tbody>
                                 {prospects.length === 0 ? (
-                                  <tr><td colSpan={(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) ? 8 : 7} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No prospects in this group</td></tr>
+                                  <tr><td colSpan={isSentinelKey(warmth) ? 8 : 7} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No prospects in this group</td></tr>
                                 ) : (
                                   prospects.map((p) => (
                                     <tr
@@ -2536,7 +2609,7 @@ export default function Prospects() {
                                           </div>
                                         </div>
                                       </td>
-                                      {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && (
+                                      {isSentinelKey(warmth) && (
                                         <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
                                           <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                                             <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
@@ -2563,7 +2636,7 @@ export default function Prospects() {
                                     type="button"
                                     onClick={() => selectProspectForList(p)}
                                     className={`prospectListMobileCard ${selectedProspectForList?.id === p.id ? 'prospectListMobileCardSelected' : ''}`}
-                                    style={(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) ? { paddingBottom: '3rem' } : undefined}
+                                    style={isSentinelKey(warmth) ? { paddingBottom: '3rem' } : undefined}
                                   >
                                     <div className="prospectListMobileCardTitle">{p.company_name || '—'}</div>
                                     <div className="prospectListMobileCardRow">
@@ -2629,7 +2702,7 @@ export default function Prospects() {
                                       <span>Warmth {p.warmth_count ?? 0}</span>
                                     </div>
                                   </button>
-                                  {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && (
+                                  {isSentinelKey(warmth) && (
                                     <div style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
                                       <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
                                       <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
