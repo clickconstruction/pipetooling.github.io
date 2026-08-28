@@ -11,6 +11,17 @@ import {
   readCallingOrderMode,
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
+import {
+  filterProspectsForList,
+  groupProspectsForList,
+  lastTouchLabel,
+  LIST_SECTION_CHIP_LABELS,
+  LIST_SECTION_LABELS,
+  LIST_SECTION_ORDER,
+  LIST_SECTIONS_DEFAULT_OPEN,
+  type ListSectionKey,
+  type ProspectLastCall,
+} from '../lib/prospects/prospectListGrouping'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
@@ -103,15 +114,6 @@ function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   return d.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
-}
-
-function formatDaysSince(iso: string | null): string {
-  if (!iso) return ''
-  const diffMs = Date.now() - new Date(iso).getTime()
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
-  if (diffDays === 0) return ' (today)'
-  if (diffDays === 1) return ' (1 day ago)'
-  return ` (${diffDays} days ago)`
 }
 
 function formatDueBadge(lastContact: string | null): string | null {
@@ -276,7 +278,8 @@ export default function Prospects() {
   const [prospectListProspects, setProspectListProspects] = useState<Prospect[]>([])
   const [prospectListSearchQuery, setProspectListSearchQuery] = useState('')
   const [prospectListLoading, setProspectListLoading] = useState(false)
-  const [prospectListSectionOpen, setProspectListSectionOpen] = useState<Record<number, boolean>>({})
+  const [prospectListSectionOpen, setProspectListSectionOpen] = useState<Partial<Record<ListSectionKey, boolean>>>({})
+  const [prospectLastCallMap, setProspectLastCallMap] = useState<Record<string, ProspectLastCall>>({})
   const [selectedProspectForList, setSelectedProspectForList] = useState<Prospect | null>(null)
   const [followUpNotes, setFollowUpNotes] = useState('')
   const [followUpNotesSaving, setFollowUpNotesSaving] = useState(false)
@@ -583,14 +586,27 @@ export default function Prospects() {
   async function loadProspectListProspects() {
     if (!authUser?.id) return
     setProspectListLoading(true)
-    const { data, error } = await supabase
-      .from('prospects')
-      .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at')
+    const [{ data, error }, { data: callRows }] = await Promise.all([
+      supabase
+        .from('prospects')
+        .select('id, master_user_id, created_by, warmth_count, prospect_fit_status, company_name, contact_name, phone_number, email, address, links_to_website, notes, last_contact, created_at, updated_at'),
+      supabase
+        .from('prospect_comments')
+        .select('prospect_id, interaction_type, created_at')
+        .in('interaction_type', [...CALL_INTERACTION_TYPES])
+        .order('created_at', { ascending: false }),
+    ])
     if (error) {
       setProspectListProspects([])
       setProspectListLoading(false)
       return
     }
+    // Rows arrive newest-first, so the first row per prospect is its latest call.
+    const lastCalls: Record<string, ProspectLastCall> = {}
+    for (const r of (callRows ?? []) as { prospect_id: string; interaction_type: string; created_at: string | null }[]) {
+      if (!(r.prospect_id in lastCalls)) lastCalls[r.prospect_id] = { interaction_type: r.interaction_type, created_at: r.created_at }
+    }
+    setProspectLastCallMap(lastCalls)
     setProspectListProspects((data ?? []) as Prospect[])
     setProspectListLoading(false)
   }
@@ -708,10 +724,10 @@ export default function Prospects() {
     const p = prospectListProspects.find((x) => x.id === prospectId)
     if (p) {
       setSelectedProspectForList(p)
-      if (p.prospect_fit_status === 'cant_reach') {
-        setProspectListSectionOpen((prev) => ({ ...prev, [-2]: true }))
-      } else if (p.prospect_fit_status === 'not_a_fit') {
-        setProspectListSectionOpen((prev) => ({ ...prev, [-1]: true }))
+      const grouped = groupProspectsForList([p], new Set(Object.keys(prospectLastCallMap)), Date.now())
+      const sectionKey = LIST_SECTION_ORDER.find((k) => grouped[k].length > 0)
+      if (sectionKey && !LIST_SECTIONS_DEFAULT_OPEN.has(sectionKey)) {
+        setProspectListSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
       }
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev)
@@ -1530,8 +1546,15 @@ export default function Prospects() {
     updateUrlProspectId(followUpProspects[nextIdx]?.id ?? null)
   }
 
-  function toggleProspectListSection(warmth: number) {
-    setProspectListSectionOpen((prev) => ({ ...prev, [warmth]: !(prev[warmth] ?? true) }))
+  function toggleProspectListSection(key: ListSectionKey) {
+    setProspectListSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? LIST_SECTIONS_DEFAULT_OPEN.has(key)) }))
+  }
+
+  function jumpToProspectListSection(key: ListSectionKey) {
+    setProspectListSectionOpen((prev) => ({ ...prev, [key]: true }))
+    requestAnimationFrame(() => {
+      document.getElementById(`plist-sec-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   function selectProspectForList(p: Prospect) {
@@ -2450,80 +2473,66 @@ export default function Prospects() {
                 />
               </div>
               {(() => {
-            const NO_LONGER_FIT_KEY = -1
-            const CANT_REACH_KEY = -2
-            const CONVERTED_KEY = -3
-            const isSentinelKey = (k: number) => k < 0
-            const q = prospectListSearchQuery.trim().toLowerCase()
-            const filtered = q
-              ? prospectListProspects.filter((p) => {
-                  const company = (p.company_name ?? '').toLowerCase()
-                  const contact = (p.contact_name ?? '').toLowerCase()
-                  const phone = (p.phone_number ?? '').toLowerCase()
-                  const email = (p.email ?? '').toLowerCase()
-                  return company.includes(q) || contact.includes(q) || phone.includes(q) || email.includes(q)
-                })
-              : prospectListProspects
-            const byWarmth = new Map<number, Prospect[]>()
-            const active: Prospect[] = []
-            const noLongerFit: Prospect[] = []
-            const cantReach: Prospect[] = []
-            const converted: Prospect[] = []
-            for (const p of filtered) {
-              if (p.prospect_fit_status === 'cant_reach') {
-                cantReach.push(p)
-              } else if (p.prospect_fit_status === 'not_a_fit') {
-                noLongerFit.push(p)
-              } else if (p.prospect_fit_status === 'converted') {
-                converted.push(p)
-              } else {
-                active.push(p)
-              }
+            const filtered = filterProspectsForList(prospectListProspects, prospectListSearchQuery)
+            const calledIds = new Set(Object.keys(prospectLastCallMap))
+            const nowMs = Date.now()
+            const sections = groupProspectsForList(filtered, calledIds, nowMs)
+            const isTerminal = (k: ListSectionKey) => k === 'converted' || k === 'cant_reach' || k === 'not_a_fit'
+            const chipKeys = LIST_SECTION_ORDER.filter((k) => k !== 'cant_reach' && k !== 'not_a_fit')
+            const chipColors: Partial<Record<ListSectionKey, { background: string; color: string }>> = {
+              never_called: { background: '#dcfce7', color: '#15803d' },
+              going_cold: { background: '#fef3c7', color: '#92400e' },
+              converted: { background: '#ede9fe', color: '#6d28d9' },
             }
-            for (const p of active) {
-              const w = p.warmth_count ?? 0
-              const list = byWarmth.get(w) ?? []
-              list.push(p)
-              byWarmth.set(w, list)
-            }
-            if (noLongerFit.length > 0) {
-              byWarmth.set(NO_LONGER_FIT_KEY, noLongerFit)
-            }
-            if (cantReach.length > 0) {
-              byWarmth.set(CANT_REACH_KEY, cantReach)
-            }
-            if (converted.length > 0) {
-              byWarmth.set(CONVERTED_KEY, converted)
-            }
-            const sortProspects = (list: Prospect[]) => {
-              list.sort((a, b) => {
-                const aLc = a.last_contact ? new Date(a.last_contact).getTime() : 0
-                const bLc = b.last_contact ? new Date(b.last_contact).getTime() : 0
-                if (bLc !== aLc) return bLc - aLc
-                return (a.company_name ?? '').localeCompare(b.company_name ?? '')
-              })
-            }
-            for (const list of byWarmth.values()) {
-              sortProspects(list)
-            }
-            const warmthKeys = Array.from(byWarmth.keys()).sort((a, b) => b - a)
-            return warmthKeys.length === 0 ? (
+            return filtered.length === 0 ? (
               <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No prospects yet.</p>
             ) : (
               <div>
-                {warmthKeys.map((warmth) => {
-                  const prospects = byWarmth.get(warmth) ?? []
-                  const isOpen = prospectListSectionOpen[warmth] ?? !isSentinelKey(warmth)
+                <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap', margin: '0.75rem 0 0.25rem' }}>
+                  {chipKeys.map((key) => {
+                    const n = sections[key].length
+                    const palette = chipColors[key]
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => jumpToProspectListSection(key)}
+                        disabled={n === 0}
+                        style={{
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: 999,
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          border: '1px solid transparent',
+                          cursor: n === 0 ? 'default' : 'pointer',
+                          opacity: n === 0 ? 0.45 : 1,
+                          background: palette?.background ?? 'var(--bg-subtle)',
+                          color: palette?.color ?? 'var(--text-muted)',
+                          borderColor: palette ? 'transparent' : 'var(--border)',
+                        }}
+                      >
+                        {LIST_SECTION_CHIP_LABELS[key]} {n}
+                      </button>
+                    )
+                  })}
+                </div>
+                {LIST_SECTION_ORDER.map((sectionKey) => {
+                  const prospects = sections[sectionKey]
+                  if (prospects.length === 0) return null
+                  const isOpen = prospectListSectionOpen[sectionKey] ?? LIST_SECTIONS_DEFAULT_OPEN.has(sectionKey)
                   return (
-                    <div key={warmth}>
+                    <div key={sectionKey} id={`plist-sec-${sectionKey}`}>
                       <button
                         type="button"
-                        onClick={() => toggleProspectListSection(warmth)}
+                        onClick={() => toggleProspectListSection(sectionKey)}
                         aria-expanded={isOpen}
                         style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                       >
                         <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
-                        {warmth === NO_LONGER_FIT_KEY ? `No longer a fit (${prospects.length})` : warmth === CANT_REACH_KEY ? `Can't reach (${prospects.length})` : warmth === CONVERTED_KEY ? `Converted (${prospects.length})` : `Warmth ${warmth} (${prospects.length})`}
+                        {`${LIST_SECTION_LABELS[sectionKey]} (${prospects.length})`}
+                        {sectionKey === 'never_called' && (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>\u2014 oldest first, matches the calling queue</span>
+                        )}
                       </button>
                       {isOpen && (
                         <div className="prospectListWrapper">
@@ -2531,30 +2540,28 @@ export default function Prospects() {
                           <div className="prospectListDesktop">
                             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                               <colgroup>
-                                <col style={{ width: '14%' }} />
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '14%' }} />
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '17%' }} />
+                                <col style={{ width: '11%' }} />
+                                <col style={{ width: '11%' }} />
                                 <col style={{ width: '8%' }} />
-                                <col style={{ width: '24%' }} />
-                                {isSentinelKey(warmth) && <col style={{ width: '6%' }} />}
+                                <col style={{ width: '14%' }} />
+                                <col style={{ width: '22%' }} />
+                                <col style={{ width: isTerminal(sectionKey) ? '17%' : '10%' }} />
                               </colgroup>
                               <thead style={{ background: 'var(--bg-subtle)' }}>
                                 <tr>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Company Name</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contact Name</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Company</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contact</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Phone</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last Contact</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Time</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Added</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last touch</th>
                                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Email / Links</th>
-                                  {isSentinelKey(warmth) && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>}
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{isTerminal(sectionKey) ? 'Actions' : ''}</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {prospects.length === 0 ? (
-                                  <tr><td colSpan={isSentinelKey(warmth) ? 8 : 7} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No prospects in this group</td></tr>
+                                  <tr><td colSpan={7} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No prospects in this group</td></tr>
                                 ) : (
                                   prospects.map((p) => (
                                     <tr
@@ -2566,9 +2573,17 @@ export default function Prospects() {
                                         background: selectedProspectForList?.id === p.id ? '#eff6ff' : undefined,
                                       }}
                                     >
-                                      <td style={{ padding: '0.75rem' }}>{p.company_name || '—'}</td>
+                                      <td style={{ padding: '0.75rem' }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+                                          {p.company_name || '—'}
+                                          {(p.warmth_count ?? 0) > 0 && (
+                                            <span style={{ padding: '0.05rem 0.4rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 600, background: '#ffedd5', color: '#c2410c', whiteSpace: 'nowrap' }}>
+                                              🔥 {p.warmth_count}
+                                            </span>
+                                          )}
+                                        </span>
+                                      </td>
                                       <td style={{ padding: '0.75rem' }}>{p.contact_name || '—'}</td>
-                                      <td style={{ padding: '0.75rem' }}>{p.address || '—'}</td>
                                       <td style={{ padding: '0.75rem' }}>
                                         {p.phone_number ? (
                                           <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
@@ -2578,9 +2593,14 @@ export default function Prospects() {
                                           '—'
                                         )}
                                       </td>
-                                      <td style={{ padding: '0.75rem' }}>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</td>
-                                      <td style={{ padding: '0.75rem', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
-                                        {(prospectLedgerSecondsMap[p.id] ?? 0) === 0 ? '—' : formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
+                                      <td style={{ padding: '0.75rem' }}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
+                                      <td style={{ padding: '0.75rem' }} title={p.last_contact ? `Last contact ${formatDateTime(p.last_contact)}` : undefined}>
+                                        {lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)}
+                                        {(prospectLedgerSecondsMap[p.id] ?? 0) > 0 && (
+                                          <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
+                                            {' · '}{formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
+                                          </span>
+                                        )}
                                       </td>
                                       <td style={{ padding: '0.75rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -2609,7 +2629,7 @@ export default function Prospects() {
                                           </div>
                                         </div>
                                       </td>
-                                      {isSentinelKey(warmth) && (
+                                      {isTerminal(sectionKey) ? (
                                         <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
                                           <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                                             <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
@@ -2617,6 +2637,12 @@ export default function Prospects() {
                                             <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
                                             <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
                                           </div>
+                                        </td>
+                                      ) : (
+                                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                                          <button type="button" onClick={() => selectProspectForList(p)} style={{ padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                            Call now →
+                                          </button>
                                         </td>
                                       )}
                                     </tr>
@@ -2636,7 +2662,7 @@ export default function Prospects() {
                                     type="button"
                                     onClick={() => selectProspectForList(p)}
                                     className={`prospectListMobileCard ${selectedProspectForList?.id === p.id ? 'prospectListMobileCardSelected' : ''}`}
-                                    style={isSentinelKey(warmth) ? { paddingBottom: '3rem' } : undefined}
+                                    style={isTerminal(sectionKey) ? { paddingBottom: '3rem' } : undefined}
                                   >
                                     <div className="prospectListMobileCardTitle">{p.company_name || '—'}</div>
                                     <div className="prospectListMobileCardRow">
@@ -2660,13 +2686,14 @@ export default function Prospects() {
                                       </span>
                                     </div>
                                     <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Last Contact</span>
-                                      <span>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</span>
-                                    </div>
-                                    <div className="prospectListMobileCardRow">
-                                      <span className="prospectListMobileCardLabel">Time</span>
-                                      <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
-                                        {(prospectLedgerSecondsMap[p.id] ?? 0) === 0 ? '—' : formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
+                                      <span className="prospectListMobileCardLabel">Last touch</span>
+                                      <span>
+                                        {lastTouchLabel(p, prospectLastCallMap[p.id], nowMs)}
+                                        {(prospectLedgerSecondsMap[p.id] ?? 0) > 0 && (
+                                          <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
+                                            {' · '}{formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
+                                          </span>
+                                        )}
                                       </span>
                                     </div>
                                     <div className="prospectListMobileCardRow">
@@ -2702,7 +2729,7 @@ export default function Prospects() {
                                       <span>Warmth {p.warmth_count ?? 0}</span>
                                     </div>
                                   </button>
-                                  {isSentinelKey(warmth) && (
+                                  {isTerminal(sectionKey) && (
                                     <div style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
                                       <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
                                       <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
