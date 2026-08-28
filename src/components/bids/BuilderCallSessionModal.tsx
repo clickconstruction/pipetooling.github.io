@@ -15,6 +15,7 @@ import {
   type CallSessionOutcome,
 } from '../../lib/bids/builderCallSession'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { BID_LOSS_CATEGORIES } from '../../lib/bidLossCategories'
 import { bidTabSummary, bidTabValuesFromRow, hasAnyBidTabValue } from '../../lib/bidTabCapture'
 import { BidTabCapturePanel } from './BidTabCapturePanel'
@@ -140,13 +141,15 @@ export function BuilderCallSessionModal({
       }
       // Per-GC Phase 1: the entry inserts above fire the last_contact sync trigger — no hand-stamps.
       for (const u of writes.bidOutcomeUpdates) {
-        await withSupabaseRetry(
-          async () => supabase.from('bids').update({ outcome: u.outcome, loss_reason: u.loss_reason, loss_category: u.loss_category }).eq('id', u.bidId),
+        const rows = await withSupabaseRetry(
+          async () => supabase.from('bids').update({ outcome: u.outcome, loss_reason: u.loss_reason, loss_category: u.loss_category }).eq('id', u.bidId).select('id'),
           'call session: outcome',
         )
+        if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       }
       for (const u of writes.bidTabUpdates) {
-        await withSupabaseRetry(async () => supabase.from('bids').update(u.patch).eq('id', u.bidId), 'call session: bid tab')
+        const rows = await withSupabaseRetry(async () => supabase.from('bids').update(u.patch).eq('id', u.bidId).select('id'), 'call session: bid tab')
+        if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       }
       await withSupabaseRetry(
         async () =>

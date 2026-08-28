@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
 import {
   PENDING_CHASE_ACTIONS,
@@ -236,7 +237,8 @@ export function BidsCallQueueTab({
         }
         if (tab && hasAnyBidTabValue(tab)) Object.assign(patch, buildBidTabPatch(tab))
         if (Object.keys(patch).length > 0) {
-          await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save call outcome')
+          const rows = await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'), 'save call outcome')
+          if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         }
         onError(null)
         // Paste capture (v2.2296): the full per-bidder tab rides along. Fail-soft.
@@ -268,7 +270,8 @@ export function BidsCallQueueTab({
           if (res.error) throw new Error(res.error)
           window.dispatchEvent(new Event('bid-gc-outcome-changed'))
         } else {
-          await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save loss reason')
+          const rows = await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'), 'save loss reason')
+          if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         }
         onError(null)
         onReloadBids()
@@ -288,7 +291,8 @@ export function BidsCallQueueTab({
     const clearing = !hasAnyBidTabValue(values)
     void (async () => {
       try {
-        await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'save bid tab')
+        const rows = await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'), 'save bid tab')
+        if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         onError(null)
         // Paste capture (v2.2296): full per-bidder tab rides along; clears clear it. Fail-soft.
         if (entries?.length) {

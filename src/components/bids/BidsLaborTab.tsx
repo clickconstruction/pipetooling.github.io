@@ -1,5 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { breakdownJumpDomId, breakdownJumpMissMessage, laborRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
@@ -624,12 +625,15 @@ export function BidsLaborTab({
     setUpdatingBidDistance(true)
     setError(null)
     const val = costEstimateDistanceInput.trim()
-    const { error: err } = await supabase
+    const { data: rows, error: err } = await supabase
       .from('bids')
       .update({ distance_from_office: val || null })
       .eq('id', selectedBidForCostEstimate.id)
+      .select('id')
     if (err) {
       setError(err.message)
+    } else if (!updateApplied(rows)) {
+      setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
     } else {
       const fresh = (await loadBids()).find((b) => b.id === selectedBidForCostEstimate.id)
       if (fresh) {

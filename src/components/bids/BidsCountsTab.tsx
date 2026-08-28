@@ -4,6 +4,7 @@ import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } 
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
@@ -464,10 +465,11 @@ export function BidsCountsTab({
   async function persistCountSourceLink(bidId: string, sourceLink: string | null) {
     if (!sourceLink) return
     try {
-      await withSupabaseRetry(
-        async () => supabase.from('bids').update({ count_tooling_plans_link: sourceLink }).eq('id', bidId),
+      const rows = await withSupabaseRetry(
+        async () => supabase.from('bids').update({ count_tooling_plans_link: sourceLink }).eq('id', bidId).select('id'),
         'save count source link'
       )
+      if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       await onCountSourceLinkSaved?.(bidId)
     } catch (e) {
       showToast(formatErrorMessage(e, 'Imported counts, but failed to save the source link'), 'error')

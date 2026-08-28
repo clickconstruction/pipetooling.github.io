@@ -2,6 +2,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
 import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
@@ -227,8 +228,9 @@ export function BidsCoverLetterTab({
   async function saveAltTexts(bidId: string, next: CoverLetterAltTexts) {
     setAltTexts(next)
     setAltTextEditor(null)
-    const { error } = await supabase.from('bids').update({ cover_letter_alt_texts: next }).eq('id', bidId)
+    const { data: rows, error } = await supabase.from('bids').update({ cover_letter_alt_texts: next }).eq('id', bidId).select('id')
     if (error) showToast('Could not save the letter wording: ' + error.message, 'error')
+    else if (!updateApplied(rows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
   }
 
   // Reset quick-add when the selected bid changes
@@ -321,10 +323,15 @@ export function BidsCoverLetterTab({
   async function togglePaymentScheduleEnabled(bid: BidWithBuilder) {
     const next = !paymentScheduleEnabled
     setPaymentScheduleEnabled(next)
-    const { error } = await supabase.from('bids').update({ include_payment_schedule: next }).eq('id', bid.id)
+    const { data: rows, error } = await supabase.from('bids').update({ include_payment_schedule: next }).eq('id', bid.id).select('id')
     if (error) {
       setPaymentScheduleEnabled(!next)
       showToast('Error updating bid: ' + error.message, 'error')
+      return
+    }
+    if (!updateApplied(rows)) {
+      setPaymentScheduleEnabled(!next)
+      showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
       return
     }
     // Seed the company-standard 30/30/30/10 on first enable
@@ -617,9 +624,13 @@ export function BidsCoverLetterTab({
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
       const patch: { bid_date_sent: string; bid_value?: number } = { bid_date_sent: today }
       if (amount > 0) patch.bid_value = amount
-      const { error } = await supabase.from('bids').update(patch).eq('id', bidId)
+      const { data: rows, error } = await supabase.from('bids').update(patch).eq('id', bidId).select('id')
       if (error) {
         showToast('Could not mark the bid sent: ' + error.message, 'error')
+        return
+      }
+      if (!updateApplied(rows)) {
+        showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
         return
       }
       await loadBids()
@@ -653,8 +664,9 @@ export function BidsCoverLetterTab({
       const firstSent = cur && cur < today ? cur : today
       const patch: { bid_date_sent: string; bid_value?: number } = { bid_date_sent: firstSent }
       if (opts.isOwnGc && boardValue != null && boardValue > 0) patch.bid_value = boardValue
-      const { error: bidErr } = await supabase.from('bids').update(patch).eq('id', bidId)
+      const { data: bidRows, error: bidErr } = await supabase.from('bids').update(patch).eq('id', bidId).select('id')
       if (bidErr) showToast('Sends recorded, but the bid did not update: ' + bidErr.message, 'error')
+      else if (!updateApplied(bidRows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
       window.dispatchEvent(new Event('bid-version-sends-changed'))
       await loadBids()
       showToast(`Marked sent today — ${inLetter.length} bid${inLetter.length === 1 ? '' : 's'} in the letter.`, 'success')
