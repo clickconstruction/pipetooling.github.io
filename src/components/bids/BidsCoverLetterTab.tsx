@@ -1095,11 +1095,13 @@ export function BidsCoverLetterTab({
                                   </div>
                                 )
                               })}
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                {multi ? <>Checked packets go in {gcShort}'s letter at their ★ base price; ticked prices under one are offered to {gcShort} as alternates. </> : <>Checked packets go in the letter, each at its ★ base price; ticked prices under one are offered as alternates. Base packets add up; alternates are offered instead. </>}Change prices on the Pricing tab.
-                                {multi ? <> <strong style={{ color: 'var(--text-strong)' }}>{gcShort}: base ${formatCurrency(gcBase)}{gcAlts ? ` + ${gcAlts} alternate${gcAlts === 1 ? '' : 's'}` : ''}</strong></> : null}
-                                {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
-                              </div>
+                              {(multi || bundlePricings.length === 0) ? (
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                                  {multi ? <>Checked packets go in {gcShort}'s letter at their ★ base price; ticked prices under one are offered to {gcShort} as alternates. Change prices on the Pricing tab.</> : null}
+                                  {multi ? <> <strong style={{ color: 'var(--text-strong)' }}>{gcShort}: base ${formatCurrency(gcBase)}{gcAlts ? ` + ${gcAlts} alternate${gcAlts === 1 ? '' : 's'}` : ''}</strong></> : null}
+                                  {bundlePricings.length === 0 ? <> Nothing checked — showing the active bid's letter.</> : null}
+                                </div>
+                              ) : null}
                               {showAltsLayoutToggle ? (
                                 <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }}>Alternates in the letter</span>
@@ -1148,7 +1150,6 @@ export function BidsCoverLetterTab({
                         <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{displayHeadlineNumber}</span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                           {useCustomAmount ? 'custom amount' : alternateLeadsLetter ? `letter amount · ★ alternate leads · ${bundleSummary(bundlePricings)}` : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
-                          {' · Mark sent stamps this as the bid\u2019s value'}
                         </span>
                       </div>
                       <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
