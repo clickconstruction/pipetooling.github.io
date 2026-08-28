@@ -24,9 +24,11 @@ export default function SignIn() {
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('signin_email')
-    const savedPassword = localStorage.getItem('signin_password')
     if (savedEmail) setEmail(savedEmail)
-    if (savedPassword) setPassword(savedPassword)
+    // v2.2450: the password is no longer stored or pre-filled — plaintext credentials in
+    // localStorage are readable by any script on the origin. Purge what older builds saved;
+    // autoComplete="current-password" hands the job to the browser's password manager.
+    localStorage.removeItem('signin_password')
   }, [])
 
   /**
@@ -58,7 +60,6 @@ export default function SignIn() {
       return
     }
     localStorage.setItem('signin_email', email)
-    localStorage.setItem('signin_password', password)
     // Hard reload to clear cache (avoids stale data, service worker cache)
     const reload = () => { location.reload() }
     if (typeof caches !== 'undefined') {
