@@ -182,3 +182,13 @@ export function bidTriagePillLabel(
   if (street) return trim(street)
   return b.label
 }
+
+/**
+ * The Workbench's MULTIPLE stat (v2.2423, owner-approved mockup): revenue as a multiple of
+ * cost to one decimal — "2.2×". Margin's other dialect (multiple = 1 / (1 − margin)).
+ * Null when there is nothing to divide (no cost, or no revenue) — the stat renders "—".
+ */
+export function formatRevenueMultiple(revenue: number, cost: number): string | null {
+  if (!Number.isFinite(revenue) || !Number.isFinite(cost) || cost <= 0 || revenue <= 0) return null
+  return `${(revenue / cost).toFixed(1)}×`
+}
