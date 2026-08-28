@@ -94,6 +94,7 @@ when_to_read:
    - [address-autocomplete](#address-autocomplete)
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
+   - [log-estimate-option-view](#log-estimate-option-view)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
    - [get-estimate-public-terms](#get-estimate-public-terms)
@@ -953,6 +954,22 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash). Since v2.2460 also includes **`options`** — `estimates.options_snapshot` normalized by [`_shared/estimateOptions.ts`](../supabase/functions/_shared/estimateOptions.ts) (`[]` = single-option estimate); the acceptance page renders the picker from exactly what `accept-estimate` will validate against.
 
 **Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260406034514_record_estimate_public_link_view_rpc.sql) (pre-baseline archive; the live schema comes from the baseline). **Dedupe**: [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/archive/migrations-pre-baseline/20260412184127_dedupe_record_estimate_public_link_view.sql) skips a second **`public_link_view`** for the same estimate, IP, and user-agent within **5 seconds** (Strict Mode double-fetch, etc.).
+
+---
+
+### log-estimate-option-view
+
+**Purpose**: Option-browsing telemetry for the acceptance page (Estimate Options Phase 3, v2.2462) — the staff activity feed's "Viewed option — Tankless upgrade" rows.
+
+**Endpoint**: `POST /functions/v1/log-estimate-option-view`
+
+**Body**: `{ "token": string, "optionKey": string }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
+
+**Behavior**: Validates exactly like `get-estimate-for-customer` — token hash must match a live `sent` estimate, unexpired — and the `optionKey` must exist in that estimate's own `options_snapshot`; then appends an `estimate_customer_events` row (`event_type = option_viewed`, `source = log-estimate-option-view`, `metadata.option_key/option_name`) via [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts). **Always returns 200** — invalid/unknown input is dropped silently (this endpoint must prove nothing to callers, and browsing must never break on it). Requires migration `20260828193012` (CHECK constraints widened).
 
 ---
 

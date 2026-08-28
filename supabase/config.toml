@@ -453,6 +453,10 @@ verify_jwt = false
 [functions.accept-estimate]
 verify_jwt = false
 
+# Public option-browsing telemetry for the acceptance page (v2.2462); token-validated in body.
+[functions.log-estimate-option-view]
+verify_jwt = false
+
 [functions.send-estimate-to-customer]
 verify_jwt = false
 

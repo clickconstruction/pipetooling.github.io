@@ -26,4 +26,4 @@ Open **Customer experience → Page** (or **Preview as customer** for the full-p
 
 ## While it's their move
 
-Until acceptance, the estimate's total on the Pipeline and the Estimates list is the **recommended option's** total — the number you'd forecast. The other options ride along in the record either way.
+Until acceptance, the estimate's total on the Pipeline and the Estimates list is the **recommended option's** total — the number you'd forecast — with a small *· 3 options* mark beside it. The estimate's **Customer activity** shows their deliberation as it happens: *Viewed option — Tankless upgrade*, each time they look. When they decide, the acceptance record says what they chose of what was offered, with the passed-on options listed for the record.

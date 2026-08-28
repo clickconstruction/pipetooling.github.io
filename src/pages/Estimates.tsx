@@ -235,9 +235,14 @@ function EstimateDetailCustomerActivitySection({
               ev.event_type === 'public_accept_submitted' && meta && meta.had_signature === true
                 ? ' (with signature)'
                 : ''
+            const optionName =
+              ev.event_type === 'option_viewed' && meta && typeof meta.option_name === 'string' && meta.option_name.trim()
+                ? ` — ${meta.option_name.trim()}`
+                : ''
             return (
               <li key={ev.id} style={{ marginBottom: '0.35rem' }}>
                 {estimateCustomerEventLabel(ev.event_type)}
+                {optionName}
                 {sig}
                 {ev.client_ip?.trim() ? (
                   <>
@@ -256,12 +261,35 @@ function EstimateDetailCustomerActivitySection({
   )
 }
 
+/**
+ * Cheap options count for list rows (v2.2462): keyed entries only, capped at the product max.
+ * Full normalization is for the detail page; 200 rows × render shouldn't pay for it.
+ */
+function estimateListOptionsCount(raw: unknown): number {
+  if (!Array.isArray(raw)) return 0
+  let n = 0
+  for (const x of raw) {
+    if (x && typeof x === 'object' && typeof (x as { key?: unknown }).key === 'string' && ((x as { key: string }).key.trim())) n++
+    if (n === 4) break
+  }
+  return n
+}
+
+/** "· 3 options" beside the list money — the row-level tell that a choice is out with the customer. */
+function estimateListOptionsSuffix(r: { options_snapshot?: unknown; status: string }): string {
+  if (r.status === 'customer_accepted') return ''
+  const n = estimateListOptionsCount(r.options_snapshot)
+  return n >= 2 ? ` · ${n} options` : ''
+}
+
 function estimateCustomerEventLabel(eventType: string): string {
   switch (eventType) {
     case 'public_link_view':
       return 'Customer opened quote link'
     case 'public_accept_submitted':
       return 'Customer accepted estimate'
+    case 'option_viewed':
+      return 'Viewed option'
     default:
       return eventType
   }
@@ -1301,7 +1329,7 @@ function EstimateListTable({
                   })() : statusLabel(r.status))
                 )}
               </td>
-              <td style={{ padding: '0.5rem' }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : formatMoney(r.total_cents)}</td>
+              <td style={{ padding: '0.5rem' }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <>{formatMoney(r.total_cents)}<span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{estimateListOptionsSuffix(r)}</span></>}</td>
               <td style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
                 {updatedLines ? (
                   <div
@@ -1714,7 +1742,7 @@ function EstimateListCards({
                   {renderCustomerSection(r)}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : formatMoney(r.total_cents)}</div>
+                  <div style={{ fontWeight: 600 }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <>{formatMoney(r.total_cents)}<span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>{estimateListOptionsSuffix(r)}</span></>}</div>
                   {updatedLines ? (
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: 1.25 }}>
                       <span>{updatedLines.short}</span>
@@ -5784,6 +5812,33 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           {row.status === 'customer_accepted' && (
             <>
               <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Customer acceptance</h2>
+              {(() => {
+                // Estimate Options (v2.2462): what they chose, and what they passed on.
+                const offered = normalizeEstimateOptionsFromJson(row.options_snapshot)
+                if (offered.length < 2) return null
+                const chosenKey = row.accepted_option_key ?? null
+                const chosen = offered.find((o) => o.key === chosenKey) ?? null
+                return (
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-700)', margin: '0.25rem 0 0.5rem' }}>
+                    <div>
+                      <strong>
+                        Accepted {chosen ? `“${chosen.name.trim() || 'Option'}”` : 'an option'} ·{' '}
+                        {formatMoney(chosen ? estimateOptionTotalCents(chosen) : row.total_cents)}
+                      </strong>{' '}
+                      <span style={{ color: 'var(--text-muted)' }}>(of {offered.length} offered)</span>
+                    </div>
+                    <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem', color: 'var(--text-muted)' }}>
+                      {offered
+                        .filter((o) => o.key !== chosenKey)
+                        .map((o) => (
+                          <li key={o.key}>
+                            Not chosen: {o.name.trim() || 'Option'} · {formatMoney(estimateOptionTotalCents(o))}
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )
+              })()}
               <ul style={{ fontSize: '0.9rem', color: 'var(--text-700)' }}>
                 <li>Name: {row.acceptor_printed_name || '—'}</li>
                 <li>
