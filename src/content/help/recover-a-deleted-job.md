@@ -33,8 +33,12 @@ The preview actually performs the restore and then rolls it back, so the counts 
 - **It's all-or-nothing.** A restore either brings the whole bundle back or changes nothing at all. You will never end up with half a job.
 - **90 days.** Archived rows are purged after that, so recover sooner rather than later.
 - **Job numbers can collide.** If someone created a replacement job reusing the old number, the restore still succeeds and warns you — you'll have two jobs with that number until you fix one.
-- **If a row was recreated in the meantime**, the restore is refused cleanly and names the conflict. Remove or rename the newer row, then retry.
+- **If a row was recreated in the meantime**, the newer row wins: the stale archived copy is skipped and the preview says so in a warning. The rest of the bundle still comes back.
 - Once restored, the entry disappears from the list.
+
+## Deleted price options
+
+A price option deleted from a bid's Pricing tab shows up as its own **price option** entry (e.g. `Scenario B · Bid 398`). Restoring it brings back the whole set — the price option, its price entries, custom prices, fixture assignments, and hidden rows — even though some of those pieces are listed under the bid's own "Under bid …" entry. Either entry restores the complete set; whichever you use, both clear from the list together.
 
 ## If it isn't in the list
 
