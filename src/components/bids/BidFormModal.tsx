@@ -677,6 +677,8 @@ export function BidFormModal(props: BidFormModalProps) {
                       bidId={editingBid.id}
                       ownGcName={gcCustomerSearch || 'To Plans'}
                       ownGcCustomerId={editingBid.customer_id ?? null}
+                      bidOutcome={outcome || null}
+                      onOutcomeRollupChanged={(next) => setOutcome(next)}
                       currentBidDateSent={editingBid.bid_date_sent ?? null}
                       onRollupDateChanged={onGcRollupDateChanged}
                     />
@@ -733,11 +735,18 @@ export function BidFormModal(props: BidFormModalProps) {
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Win / Loss</label>
                     <div role="group" aria-label="Win or loss" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
-                      {OUTCOME_SEGMENTS.map((seg, i) => (
+                      {OUTCOME_SEGMENTS.map((seg, i) => {
+                        // Per-GC Phase 2: on a bid with versions, Won / Lost live on the GC rows
+                        // above — the bid level derives. Started/Complete stays hand-set, and
+                        // Open stays clickable as the reset escape hatch.
+                        const perGcLocked = bidHasVersions === true && !!editingBid && (seg.value === 'won' || seg.value === 'lost') && outcome !== seg.value
+                        return (
                         <button
                           key={seg.label}
                           type="button"
                           aria-pressed={outcome === seg.value}
+                          disabled={perGcLocked}
+                          title={perGcLocked ? 'Set Won / Lost per GC in the Sent panel above — the bid rolls up' : undefined}
                           onClick={() => setOutcome(seg.value)}
                           style={{
                             font: 'inherit',
@@ -745,7 +754,8 @@ export function BidFormModal(props: BidFormModalProps) {
                             padding: '0.38rem 0.7rem',
                             border: 'none',
                             borderRight: i < OUTCOME_SEGMENTS.length - 1 ? '1px solid var(--border-strong)' : 'none',
-                            cursor: 'pointer',
+                            cursor: perGcLocked ? 'not-allowed' : 'pointer',
+                            opacity: perGcLocked ? 0.55 : 1,
                             ...(outcome === seg.value
                               ? outcomeSegmentSelectedStyle(seg.value)
                               : { background: 'var(--surface)', color: 'var(--text-700)' }),
@@ -753,7 +763,8 @@ export function BidFormModal(props: BidFormModalProps) {
                         >
                           {seg.label}
                         </button>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                   {outcome === 'lost' && (
