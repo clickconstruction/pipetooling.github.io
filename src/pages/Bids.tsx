@@ -82,6 +82,7 @@ import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { buildBidEntryRecencyMaps } from '../lib/bids/bidContacts'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
 
@@ -2145,9 +2146,19 @@ export default function Bids() {
     const followupNoteToSave = pendingBidSentFollowupSubmissionNote
     let bidIdForFollowup: string | null = null
     if (editingBid) {
-      const { error: err } = await supabase.from('bids').update(payloadWithAttest).eq('id', editingBid.id)
+      const { data: updatedRows, error: err } = await supabase
+        .from('bids')
+        .update(payloadWithAttest)
+        .eq('id', editingBid.id)
+        .select('id')
       if (err) {
         setError(err.message)
+        setSavingBid(false)
+        return
+      }
+      // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
+      if (!updateApplied(updatedRows)) {
+        setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
         setSavingBid(false)
         return
       }
@@ -2255,9 +2266,19 @@ export default function Bids() {
     const followupNoteToSaveCounts = pendingBidSentFollowupSubmissionNote
     let bidId: string
     if (editingBid) {
-      const { error: err } = await supabase.from('bids').update(payloadWithAttestCounts).eq('id', editingBid.id)
+      const { data: updatedRows, error: err } = await supabase
+        .from('bids')
+        .update(payloadWithAttestCounts)
+        .eq('id', editingBid.id)
+        .select('id')
       if (err) {
         setError(err.message)
+        setSavingBid(false)
+        return
+      }
+      // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
+      if (!updateApplied(updatedRows)) {
+        setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
         setSavingBid(false)
         return
       }
