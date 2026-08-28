@@ -142,6 +142,8 @@ export type EstimateCustomerDocumentProps = {
   headerBrand?: EstimateAcceptHeaderBrand | null
   /** CO train (v2.1834): set on change orders — renders the narrative block and signs the money. */
   changeOrder?: EstimateChangeOrderFields | null
+  /** Estimate Options (v2.2457): the option picker, slotted between the header block and the line items. */
+  beforeLineItems?: ReactNode
 }
 
 export default function EstimateCustomerDocument({
@@ -159,6 +161,7 @@ export default function EstimateCustomerDocument({
   totalLabel = 'Total',
   headerBrand = null,
   changeOrder = null,
+  beforeLineItems = null,
 }: EstimateCustomerDocumentProps) {
   const displayTitle = changeOrder ? changeOrderDocDisplayTitle(title) : title
   const lines = normalizeEstimateLineItemsFromJson(lineItemsSnapshot, { allowNegative: changeOrder != null })
@@ -256,6 +259,8 @@ export default function EstimateCustomerDocument({
           ) : null}
         </section>
       ) : null}
+
+      {beforeLineItems}
 
       <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1.1rem' }}>
         <h2 style={{ fontSize: '1.1rem' }}>{lineItemsHeading}</h2>

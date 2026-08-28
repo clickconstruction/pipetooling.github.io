@@ -136,6 +136,16 @@ import {
   sumNormalizedLineItems,
   type EstimateLineItemNormalized,
 } from '../lib/estimateLineItemNormalize'
+import {
+  MAX_ESTIMATE_OPTIONS,
+  estimateOptionTotalCents,
+  estimateOptionsDraftPersistFields,
+  newEstimateOptionKey,
+  normalizeEstimateOptionsFromJson,
+  recommendedEstimateOption,
+  setRecommendedEstimateOption,
+  type EstimateOption,
+} from '../lib/estimates/estimateOptions'
 
 const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'dev',
@@ -2332,6 +2342,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [title, setTitle] = useState('')
   const [terms, setTerms] = useState('')
   const [lines, setLines] = useState<LineItem[]>([])
+  // Estimate Options (v2.2457): the row's options; empty = a normal single-option estimate.
+  // `lines` always holds the VIEWED option's lines while options exist — the editor below the
+  // cards keeps operating on `lines` exactly as before, and switches/saves sync it back.
+  const [estimateOptions, setEstimateOptions] = useState<EstimateOption[]>([])
+  const [viewedOptionKey, setViewedOptionKey] = useState<string | null>(null)
+  // The staff Page preview's own selection — rehearses the customer's picker.
+  const [previewSelectedOptionKey, setPreviewSelectedOptionKey] = useState<string | null>(null)
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [customersLoading, setCustomersLoading] = useState(false)
   const [customerId, setCustomerId] = useState<string | null>(null)
@@ -2686,11 +2703,19 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       setTerms(r.terms_snapshot ?? '')
       const rowIsCO = isChangeOrderDocKind(r.doc_kind)
       const parsedLines = lineItemsFromJson(r.line_items_snapshot, rowIsCO)
+      const parsedOptions = rowIsCO ? [] : normalizeEstimateOptionsFromJson(r.options_snapshot)
+      setEstimateOptions(parsedOptions)
+      const hydratedViewed = recommendedEstimateOption(parsedOptions)
+      setViewedOptionKey(hydratedViewed?.key ?? null)
+      setPreviewSelectedOptionKey(hydratedViewed?.key ?? null)
       setLines(
-        // CO drafts stay empty so Impact on cost opens with the guided prompt.
-        r.status === 'draft' && parsedLines.length === 0 && !rowIsCO
-          ? [defaultDraftFirstLine()]
-          : parsedLines,
+        // With options, the editor shows the recommended option's lines; otherwise the legacy
+        // snapshot. CO drafts stay empty so Impact on cost opens with the guided prompt.
+        hydratedViewed
+          ? hydratedViewed.line_items
+          : r.status === 'draft' && parsedLines.length === 0 && !rowIsCO
+            ? [defaultDraftFirstLine()]
+            : parsedLines,
       )
       setCoFields(parseEstimateChangeOrderFields(r.change_order_fields))
       setCustomerId(r.customer_id ?? null)
@@ -3013,6 +3038,71 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   ])
   const customerAttachmentUrlIsCheckable = Boolean(normalizeCustomerAttachmentUrl(customerAttachmentUrl))
   const totalCents = sumLineItems(lines)
+  /** Options with the viewed option's lines kept live — what cards, save, and previews read. */
+  const syncedEstimateOptions = useMemo(
+    () => estimateOptions.map((o) => (o.key === viewedOptionKey ? { ...o, line_items: lines } : o)),
+    [estimateOptions, viewedOptionKey, lines],
+  )
+
+  function switchViewedOption(key: string) {
+    if (key === viewedOptionKey) return
+    const target = estimateOptions.find((o) => o.key === key)
+    if (!target) return
+    // Fold the editor's live lines into the option we're leaving, then load the target's.
+    setEstimateOptions((prev) => prev.map((o) => (o.key === viewedOptionKey ? { ...o, line_items: lines } : o)))
+    setViewedOptionKey(key)
+    setLines(target.line_items.length > 0 ? target.line_items : [defaultDraftFirstLine()])
+  }
+
+  function addEstimateOption() {
+    if (estimateOptions.length >= MAX_ESTIMATE_OPTIONS) return
+    if (estimateOptions.length === 0) {
+      // First press converts the single estimate into two options: the current lines become
+      // Option 1 (recommended), Option 2 starts as a clone to edit from — the Bids move.
+      const a: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 1', description: '', recommended: true, line_items: lines }
+      const b: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 2', description: '', recommended: false, line_items: lines.map((l) => ({ ...l })) }
+      setEstimateOptions([a, b])
+      setViewedOptionKey(b.key)
+      setPreviewSelectedOptionKey(a.key)
+      return
+    }
+    const src = syncedEstimateOptions.find((o) => o.key === viewedOptionKey) ?? syncedEstimateOptions[0]
+    const next: EstimateOption = {
+      key: newEstimateOptionKey(),
+      name: `Option ${estimateOptions.length + 1}`,
+      description: '',
+      recommended: false,
+      line_items: (src?.line_items ?? []).map((l) => ({ ...l })),
+    }
+    setEstimateOptions((prev) => [...prev.map((o) => (o.key === viewedOptionKey ? { ...o, line_items: lines } : o)), next])
+    setViewedOptionKey(next.key)
+    setLines(next.line_items.length > 0 ? next.line_items : [defaultDraftFirstLine()])
+  }
+
+  function removeViewedOption() {
+    const remaining = syncedEstimateOptions.filter((o) => o.key !== viewedOptionKey)
+    if (remaining.length <= 1) {
+      // Down to one option: collapse back to a normal single-option estimate.
+      const only = remaining[0] ?? null
+      setEstimateOptions([])
+      setViewedOptionKey(null)
+      setPreviewSelectedOptionKey(null)
+      if (only) setLines(only.line_items.length > 0 ? only.line_items : [defaultDraftFirstLine()])
+      return
+    }
+    const fixed = remaining.some((o) => o.recommended) ? remaining : remaining.map((o, i) => ({ ...o, recommended: i === 0 }))
+    const nextViewed = recommendedEstimateOption(fixed)
+    setEstimateOptions(fixed)
+    setViewedOptionKey(nextViewed?.key ?? null)
+    setPreviewSelectedOptionKey(nextViewed?.key ?? null)
+    if (nextViewed) setLines(nextViewed.line_items.length > 0 ? nextViewed.line_items : [defaultDraftFirstLine()])
+  }
+
+  function patchViewedOption(patch: Partial<Pick<EstimateOption, 'name' | 'description'>>) {
+    setEstimateOptions((prev) => prev.map((o) => (o.key === viewedOptionKey ? { ...o, ...patch } : o)))
+  }
+
+  const viewedOption = estimateOptions.find((o) => o.key === viewedOptionKey) ?? null
   const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined
 
   const linkedCustomerPrefillForCreateJobModal = useMemo((): LinkedCustomerPrefill | null => {
@@ -3428,6 +3518,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       return false
     }
     setSaving(true)
+    const optionsPersist = estimateOptionsDraftPersistFields(estimateOptions, viewedOptionKey, lines)
     try {
       await withSupabaseRetry(
         async () =>
@@ -3436,8 +3527,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             .update({
               title: title.trim() || (isCO ? 'Change order' : 'Estimate'),
               terms_snapshot: terms,
-              line_items_snapshot: lines,
-              total_cents: totalCents,
+              // Options (v2.2457): with 2+ options the legacy fields mirror the RECOMMENDED
+              // option (owner decision 3 — Pipeline/list show the number you'd forecast);
+              // without options everything writes exactly as before (options_snapshot clears).
+              line_items_snapshot: optionsPersist.line_items_snapshot ?? lines,
+              total_cents: optionsPersist.total_cents ?? totalCents,
+              options_snapshot: optionsPersist.options_snapshot,
               valid_until: validUntil.trim() ? validUntil.trim() : null,
               for_address: forAddress.trim() ? forAddress.trim() : null,
               project_id: linkedProjectId || null,
@@ -3484,6 +3579,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   async function sendToCustomer() {
     if (!row || row.status !== 'draft' || sending || !user) return
+    if (estimateOptions.length >= 2) {
+      // Phase 1 gate: the customer page can't render options yet — lifted by Phase 2.
+      showToast('Options are staff-side for now — sending a multi-option estimate arrives in the next update.', 'error')
+      return
+    }
     if (!customerId) {
       showToast('Choose a customer before sending.', 'error')
       return
@@ -4422,6 +4522,119 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     />
                   </label>
                 </div>
+              </div>
+            ) : null}
+            {!isCO && isDraft ? (
+              <div style={{ marginBottom: estimateOptions.length > 0 ? '0.9rem' : '0.5rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'stretch' }}>
+                  {syncedEstimateOptions.map((o) => {
+                    const on = o.key === viewedOptionKey
+                    const total = o.key === viewedOptionKey ? totalCents : estimateOptionTotalCents(o)
+                    return (
+                      <button
+                        key={o.key}
+                        type="button"
+                        onClick={() => switchViewedOption(o.key)}
+                        aria-pressed={on}
+                        title={on ? 'Editing this option' : 'Edit this option'}
+                        style={{
+                          font: 'inherit',
+                          textAlign: 'left',
+                          minWidth: '10rem',
+                          border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+                          boxShadow: on ? '0 0 0 1px #3b82f6 inset' : 'none',
+                          background: on ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                          color: 'var(--text-strong)',
+                          borderRadius: 9,
+                          padding: '0.5rem 0.75rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span style={{ display: 'block', fontWeight: 700, fontSize: '0.8rem' }}>
+                          {o.recommended ? <span aria-label="Recommended" style={{ color: '#d97706' }}>★ </span> : null}
+                          {o.name.trim() || 'Option'}
+                        </span>
+                        <span style={{ display: 'block', fontWeight: 700, fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(total)}</span>
+                        <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          {(o.key === viewedOptionKey ? lines : o.line_items).length} line item{(o.key === viewedOptionKey ? lines : o.line_items).length === 1 ? '' : 's'}
+                          {on ? ' · editing' : ''}
+                        </span>
+                      </button>
+                    )
+                  })}
+                  {estimateOptions.length < MAX_ESTIMATE_OPTIONS ? (
+                    <button
+                      type="button"
+                      onClick={addEstimateOption}
+                      title={
+                        estimateOptions.length === 0
+                          ? 'Offer the customer a choice — turns this estimate into two options, starting from the current line items'
+                          : 'Add another option (starts as a copy of the one you’re editing)'
+                      }
+                      style={{
+                        font: 'inherit',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        color: 'var(--text-link)',
+                        border: '1px dashed var(--border-strong)',
+                        background: 'none',
+                        borderRadius: 9,
+                        padding: estimateOptions.length === 0 ? '0.4rem 0.8rem' : '0.5rem 0.9rem',
+                        cursor: 'pointer',
+                        alignSelf: 'center',
+                      }}
+                    >
+                      ＋ Option
+                    </button>
+                  ) : null}
+                </div>
+                {viewedOption ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.55rem' }}>
+                    <input
+                      type="text"
+                      value={viewedOption.name}
+                      onChange={(e) => patchViewedOption({ name: e.target.value })}
+                      placeholder="Option name"
+                      aria-label="Option name"
+                      style={{ ...estInputBase, width: '11rem' }}
+                    />
+                    <input
+                      type="text"
+                      value={viewedOption.description}
+                      onChange={(e) => patchViewedOption({ description: e.target.value })}
+                      placeholder="Pitch the customer sees under the name — why this option, what's the warranty…"
+                      aria-label="Option description"
+                      style={{ ...estInputBase, flex: '1 1 16rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setEstimateOptions((prev) => setRecommendedEstimateOption(prev, viewedOption.key))}
+                      aria-pressed={viewedOption.recommended}
+                      title={viewedOption.recommended ? 'This is the recommended option — pre-selected on the customer page' : 'Make this the recommended option'}
+                      style={{
+                        font: 'inherit',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 6,
+                        padding: '0.3rem 0.6rem',
+                        background: viewedOption.recommended ? 'var(--bg-amber-tint)' : 'var(--surface)',
+                        color: viewedOption.recommended ? 'var(--text-amber-700)' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ★ Recommended
+                    </button>
+                    <button
+                      type="button"
+                      onClick={removeViewedOption}
+                      title={estimateOptions.length === 2 ? 'Remove this option — the estimate goes back to a single price' : 'Remove this option'}
+                      style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.3rem 0.6rem', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
+                    >
+                      Remove option
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <div
@@ -5883,6 +6096,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     terms_snapshot: isDraft ? terms : row.terms_snapshot ?? '',
                     total_cents: isDraft ? totalCents : row.total_cents,
                   }}
+                  options={isDraft ? syncedEstimateOptions : normalizeEstimateOptionsFromJson(row.options_snapshot)}
+                  selectedOptionKey={previewSelectedOptionKey}
+                  onSelectOption={setPreviewSelectedOptionKey}
                   experience={staffResolvedExperience}
                   printedName={
                     !isDraft && row.status === 'customer_accepted'

@@ -14,6 +14,8 @@ import type { CustomerAttachmentPayload } from '@/lib/estimateCustomerAttachment
 import EstimateTermsHeaderNotice from './EstimateTermsHeaderNotice'
 import type { EstimateCustomerExperienceClient } from '@/lib/estimateCustomerExperience'
 import type { EstimateAcceptHeaderBrand } from '@/lib/estimateAcceptHeaderBrand'
+import EstimateOptionsPicker from './EstimateOptionsPicker'
+import { estimateOptionTotalCents, type EstimateOption } from '@/lib/estimates/estimateOptions'
 import { EstimateAcceptTypedSignatureLine } from './EstimateAcceptTypedSignatureLine'
 import { isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
 
@@ -89,6 +91,14 @@ export type EstimateAcceptBodyProps = {
   staffAcceptedRecord?: EstimateAcceptStaffAcceptedRecord | null
   /** Frozen supporting document (e.g. Drive PDF); shown after quote body, before accept UI. */
   customerAttachment?: CustomerAttachmentPayload | null
+  /**
+   * Estimate Options (v2.2457): 2+ options render the picker between header and document,
+   * and the document shows the SELECTED option's lines/total instead of the estimate's
+   * legacy fields. Controlled — the accept page / staff preview owns the selection.
+   */
+  options?: EstimateOption[]
+  selectedOptionKey?: string | null
+  onSelectOption?: (key: string) => void
 }
 
 const FOCUSABLE_SELECTOR =
@@ -121,6 +131,9 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     previewBanner,
     staffAcceptedRecord = null,
     customerAttachment = null,
+    options = [],
+    selectedOptionKey = null,
+    onSelectOption,
   } = props
 
   const readOnly = variant === 'staffPreview'
@@ -272,22 +285,41 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     })
   }
 
+  const optionsActive = options.length >= 2
+  const selectedOption = optionsActive
+    ? options.find((o) => o.key === selectedOptionKey) ?? options.find((o) => o.recommended) ?? options[0] ?? null
+    : null
+
   return (
     <>
       <EstimateCustomerDocument
         title={estimate.title}
         forLine={estimate.for_line}
         validUntil={estimate.valid_until}
-        lineItemsSnapshot={estimate.line_items_snapshot}
+        lineItemsSnapshot={selectedOption ? selectedOption.line_items : estimate.line_items_snapshot}
         termsSnapshot={estimate.terms_snapshot}
-        totalCents={estimate.total_cents}
+        totalCents={selectedOption ? estimateOptionTotalCents(selectedOption) : estimate.total_cents}
         previewBanner={previewBanner}
         titleFallback={cx.docTitleFallback}
         validThroughPrefix={cx.docValidThroughPrefix}
-        lineItemsHeading={cx.docLineItemsHeading}
+        lineItemsHeading={
+          selectedOption
+            ? `Your selection — ${selectedOption.name.trim() || 'Option'}`
+            : cx.docLineItemsHeading
+        }
         termsHeading={cx.docTermsHeading}
         totalLabel={cx.docTotalLabel}
         headerBrand={headerBrand}
+        beforeLineItems={
+          optionsActive ? (
+            <EstimateOptionsPicker
+              options={options}
+              selectedKey={selectedOption?.key ?? null}
+              onSelect={(key) => onSelectOption?.(key)}
+              readOnly={readOnly && !onSelectOption}
+            />
+          ) : null
+        }
         changeOrder={
           isChangeOrderDocKind(estimate.doc_kind)
             ? parseEstimateChangeOrderFields(estimate.change_order_fields)

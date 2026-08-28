@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   graphql_public: {
     Tables: {
@@ -402,6 +402,66 @@ export type Database = {
           },
           {
             foreignKeyName: "bid_gc_recipients_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_gcs: {
+        Row: {
+          bid_id: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          due_date: string | null
+          due_time: string | null
+          id: string
+          itb_links: Json
+          submitted_to_email: string | null
+          submitted_to_name: string | null
+          submitted_to_phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          itb_links?: Json
+          submitted_to_email?: string | null
+          submitted_to_name?: string | null
+          submitted_to_phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          due_date?: string | null
+          due_time?: string | null
+          id?: string
+          itb_links?: Json
+          submitted_to_email?: string | null
+          submitted_to_name?: string | null
+          submitted_to_phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_gcs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_gcs_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
@@ -4140,6 +4200,7 @@ export type Database = {
         Row: {
           accept_header_brand: string | null
           accept_notify_user_ids: string[] | null
+          accepted_option_key: string | null
           acceptor_consented_at: string | null
           acceptor_ip: string | null
           acceptor_printed_name: string | null
@@ -4164,6 +4225,7 @@ export type Database = {
           job_ledger_id: string | null
           line_items_snapshot: Json
           master_user_id: string
+          options_snapshot: Json | null
           project_id: string | null
           public_token_expires_at: string | null
           public_token_hash: string | null
@@ -4179,6 +4241,7 @@ export type Database = {
         Insert: {
           accept_header_brand?: string | null
           accept_notify_user_ids?: string[] | null
+          accepted_option_key?: string | null
           acceptor_consented_at?: string | null
           acceptor_ip?: string | null
           acceptor_printed_name?: string | null
@@ -4203,6 +4266,7 @@ export type Database = {
           job_ledger_id?: string | null
           line_items_snapshot?: Json
           master_user_id: string
+          options_snapshot?: Json | null
           project_id?: string | null
           public_token_expires_at?: string | null
           public_token_hash?: string | null
@@ -4218,6 +4282,7 @@ export type Database = {
         Update: {
           accept_header_brand?: string | null
           accept_notify_user_ids?: string[] | null
+          accepted_option_key?: string | null
           acceptor_consented_at?: string | null
           acceptor_ip?: string | null
           acceptor_printed_name?: string | null
@@ -4242,6 +4307,7 @@ export type Database = {
           job_ledger_id?: string | null
           line_items_snapshot?: Json
           master_user_id?: string
+          options_snapshot?: Json | null
           project_id?: string | null
           public_token_expires_at?: string | null
           public_token_hash?: string | null
@@ -13224,6 +13290,89 @@ export type Database = {
           },
         ]
       }
+      twin_credentials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string
+          last_used_at: string | null
+          revoked_at: string | null
+          token_hash: string
+          twin_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          twin_user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          twin_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "twin_credentials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_credentials_twin_user_id_fkey"
+            columns: ["twin_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      twin_runs: {
+        Row: {
+          ended_at: string | null
+          id: string
+          mission: string
+          notes: string | null
+          started_at: string
+          twin_user_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          mission?: string
+          notes?: string | null
+          started_at?: string
+          twin_user_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          mission?: string
+          notes?: string | null
+          started_at?: string
+          twin_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "twin_runs_twin_user_id_fkey"
+            columns: ["twin_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ui_nav_clicks: {
         Row: {
           control: string
@@ -13772,6 +13921,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           bid_board_self_highlight: Json | null
+          counttooling_user_id: string | null
           created_at: string | null
           dispatch_mode_enabled: boolean | null
           email: string
@@ -13779,6 +13929,7 @@ export type Database = {
           estimator_service_type_ids: string[] | null
           helpers_service_type_ids: string[] | null
           id: string
+          is_digital_twin: boolean
           last_sign_in_at: string | null
           name: string
           notes: string | null
@@ -13794,6 +13945,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
+          counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
           email: string
@@ -13801,6 +13953,7 @@ export type Database = {
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
           id: string
+          is_digital_twin?: boolean
           last_sign_in_at?: string | null
           name: string
           notes?: string | null
@@ -13816,6 +13969,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
+          counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
           email?: string
@@ -13823,6 +13977,7 @@ export type Database = {
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
           id?: string
+          is_digital_twin?: boolean
           last_sign_in_at?: string | null
           name?: string
           notes?: string | null
@@ -14855,6 +15010,7 @@ export type Database = {
         Args: { p_bid_id: string; p_job_id: string }
         Returns: Json
       }
+      apply_digital_twin_write_blocks: { Args: never; Returns: number }
       apply_estimate_to_job: {
         Args: {
           p_estimate_id: string
@@ -15639,6 +15795,7 @@ export type Database = {
       is_controller: { Args: never; Returns: boolean }
       is_dev: { Args: never; Returns: boolean }
       is_dev_or_master_or_assistant: { Args: never; Returns: boolean }
+      is_digital_twin: { Args: never; Returns: boolean }
       is_dispatch_group_member: { Args: never; Returns: boolean }
       is_estimator: { Args: never; Returns: boolean }
       is_estimator_group_member: { Args: never; Returns: boolean }
@@ -16576,6 +16733,7 @@ export type Database = {
         Returns: boolean
       }
       primary_can_access_job: { Args: { p_job_id: string }; Returns: boolean }
+      recompute_bid_due: { Args: { p_bid_id: string }; Returns: undefined }
       recompute_jobs_ledger_thread_note_stats: {
         Args: { p_job_id: string }
         Returns: undefined
