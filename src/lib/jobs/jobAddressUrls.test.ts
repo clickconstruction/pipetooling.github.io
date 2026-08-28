@@ -39,12 +39,12 @@ describe('buildClickToolingUrl', () => {
       job_address: '123 Main St',
     } as unknown as JobWithDetails
     expect(buildClickToolingUrl(job)).toBe(
-      'https://clicktooling.com/?name=John+Doe&email=john%40x.com&phone=555-1234&location=123+Main+St',
+      'https://plumbingtooling.com/?name=John+Doe&email=john%40x.com&phone=555-1234&location=123+Main+St',
     )
   })
   it('treats missing fields as empty strings', () => {
     const job = {} as unknown as JobWithDetails
-    expect(buildClickToolingUrl(job)).toBe('https://clicktooling.com/?name=&email=&phone=&location=')
+    expect(buildClickToolingUrl(job)).toBe('https://plumbingtooling.com/?name=&email=&phone=&location=')
   })
 })
 
