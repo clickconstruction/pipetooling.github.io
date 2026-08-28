@@ -553,6 +553,11 @@ verify_jwt = false
 [functions.dev-login]
 verify_jwt = false
 
+# Twin fleet sign-in (docs/DIGITAL_TWINS_PLAN.md Phase E1): secret-header auth like
+# dev-login, but hard-scoped to flagged estimator twin accounts.
+[functions.twin-login]
+verify_jwt = false
+
 # Cron / infra: not browser session; auth via X-Cron-Secret / CRON_SECRET in function.
 [functions.send-scheduled-reminders]
 verify_jwt = false

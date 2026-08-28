@@ -87,6 +87,7 @@ when_to_read:
    - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
    - [dev-login](#dev-login)
+   - [twin-login](#twin-login)
    - [address-autocomplete](#address-autocomplete)
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
@@ -738,6 +739,23 @@ const response = await supabase.functions.invoke('dev-login', {
 #### Supabase Auth Config
 
 The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned `action_link` — it parses the link's `token` and verifies it directly via `supabase.auth.verifyOtp({ type: 'magiclink', token_hash })`, establishing the session on the current origin. This makes dev-login **port-agnostic**: any localhost port works, so parallel dev servers (5174, 5177, …) no longer get bounced to production when their port is missing from the auth redirect allow-list. `additional_redirect_urls` (`http://localhost:5175/**`, `http://localhost:5173/**`, production `https://pipetooling.com/**`) still matters for any flow that follows a magic link directly, but dev-login itself no longer depends on it.
+
+---
+
+### twin-login
+
+**Purpose**: Sign-in mint for **digital twin** accounts (docs/DIGITAL_TWINS_PLAN.md Phase E1) so a cloud-hosted agent harness can establish a session on the **deployed** app: POST → magic-link `action_link` → the harness navigates a headless browser to it. dev-login's sibling with four hard guards — a leaked secret can only ever produce a session as a flagged, estimator-role twin, never a real person:
+
+1. `X-Twin-Login-Secret` must match `TWIN_LOGIN_SECRET` (its **own** secret, rotatable independently — rotating it is the fleet-wide kill switch).
+2. `email` must match the fleet pattern `twin-<role>-<n>@twins.pipetooling.local`.
+3. `public.users` for the account must have `is_digital_twin = true` (v2.2426).
+4. The account's role must be `estimator` (the estimator-only program).
+
+**Endpoint**: `POST /functions/v1/twin-login` · **Auth**: secret header only (`verify_jwt = false`). **Request**: `{ email, redirectTo?, run? }` — `run` is a mission label logged with the mint. **Response**: `{ success, action_link }`. Every mint logs to the function log and (fail-soft until the ledger table exists) inserts a `twin_runs` row.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TWIN_LOGIN_SECRET`.
+
+**Note**: unlike dev-login, cloud harnesses **follow the action_link directly**, so the deployed origin must be in the auth redirect allow-list (production `https://pipetooling.com/**` already is).
 
 ---
 
