@@ -151,6 +151,9 @@ export function BidFormModal(props: BidFormModalProps) {
   const [serviceTypeSwitchOpen, setServiceTypeSwitchOpen] = useState(false)
   const [duplicatingToServiceTypeId, setDuplicatingToServiceTypeId] = useState<string | null>(null)
   const [dueTimeOpen, setDueTimeOpen] = useState(false)
+  // While the Log-contact inline editor is open, a form Save would silently discard
+  // the half-entered contact — gate both Save buttons on it.
+  const [loggingContact, setLoggingContact] = useState(false)
   const [distanceAutoStatus, setDistanceAutoStatus] = useState<
     | null
     | { kind: 'busy' }
@@ -490,7 +493,16 @@ export function BidFormModal(props: BidFormModalProps) {
                 </button>
               )}
             </div>
-            <form onSubmit={saveBid}>
+            <form
+              onSubmit={(e) => {
+                // Enter-key implicit submits bypass the disabled Save button — same gate.
+                if (loggingContact) {
+                  e.preventDefault()
+                  return
+                }
+                saveBid(e)
+              }}
+            >
               <div
                 className="bid-form-hero"
                 style={{
@@ -740,7 +752,7 @@ export function BidFormModal(props: BidFormModalProps) {
                     {editingBid ? (
                       // Per-GC Phase 1: a contact IS a ledger entry — the raw field is for
                       // unsaved bids only (no bid id to attach entries to yet).
-                      <BidLogContactControl bidId={editingBid.id} lastContactLocal={lastContact} onLogged={setLastContact} />
+                      <BidLogContactControl bidId={editingBid.id} lastContactLocal={lastContact} onLogged={setLastContact} onOpenChange={setLoggingContact} />
                     ) : (
                       <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     )}
@@ -1291,13 +1303,13 @@ export function BidFormModal(props: BidFormModalProps) {
                 <button
                   type="button"
                   onClick={saveBidAndOpenCounts}
-                  disabled={!bidFormCanSubmit || savingBid}
-                  title={!bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined}
+                  disabled={!bidFormCanSubmit || savingBid || loggingContact}
+                  title={loggingContact ? 'Finish or cancel the contact you’re logging first' : !bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined}
                   style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Save and Open Counts
                 </button>
-                <button type="submit" disabled={!bidFormCanSubmit || savingBid} title={!bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                <button type="submit" disabled={!bidFormCanSubmit || savingBid || loggingContact} title={loggingContact ? 'Finish or cancel the contact you’re logging first' : !bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                   {savingBid ? 'Saving…' : 'Save'}
                 </button>
               </div>
