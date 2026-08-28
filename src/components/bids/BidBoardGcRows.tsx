@@ -26,13 +26,15 @@ export function fmtSentShort(ymd: string): string {
 
 const PILL_BASE: React.CSSProperties = {
   display: 'inline-block',
-  font: 'inherit',
+  fontFamily: 'inherit',
   fontSize: '0.66rem',
   fontWeight: 600,
   lineHeight: 1.3,
   padding: '0.05rem 0.45rem',
   borderRadius: 999,
-  border: '1px solid var(--border-strong)',
+  borderWidth: 1,
+  borderStyle: 'solid',
+  borderColor: 'var(--border-strong)',
   background: 'var(--surface)',
   color: 'var(--text-muted)',
   cursor: 'pointer',
@@ -130,7 +132,7 @@ export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChange
         setNotesKey(p.key)
       }}
       title={`Notes for ${p.name} on this bid`}
-      style={{ font: 'inherit', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline dotted', textDecorationColor: 'var(--text-faint)', textUnderlineOffset: 3 }}
+      style={{ fontFamily: 'inherit', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: '0 1 auto', minWidth: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', textDecoration: 'underline dotted', textDecorationColor: 'var(--text-faint)', textUnderlineOffset: 3 }}
     >
       {p.name}
     </button>
