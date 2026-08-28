@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import EstimateAcceptBody from '../components/estimates/EstimateAcceptBody'
+import { normalizeEstimateOptionsFromJson, recommendedEstimateOption, type EstimateOption } from '../lib/estimates/estimateOptions'
 import { isEstimateUuidSegment, parseEstimateQuoteNumberSegment } from '../lib/estimateRouteSegment'
 import {
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
@@ -37,6 +38,9 @@ export default function EstimateAcceptStaffPreview() {
   const [totalCents, setTotalCents] = useState(0)
   const [docForLine, setDocForLine] = useState<string | null>(null)
   const [previewHeaderBrand, setPreviewHeaderBrand] = useState<EstimateAcceptHeaderBrand | null>(null)
+  // Estimate Options (v2.2460): the picker rehearses live in this preview too.
+  const [options, setOptions] = useState<EstimateOption[]>([])
+  const [selectedOptionKey, setSelectedOptionKey] = useState<string | null>(null)
   const [customerAttachment, setCustomerAttachment] = useState<CustomerAttachmentPayload | null>(null)
 
   const load = useCallback(async () => {
@@ -93,6 +97,7 @@ export default function EstimateAcceptStaffPreview() {
       let lines = data.line_items_snapshot
       let vu = data.valid_until
       let tc = data.total_cents
+      let optionsRaw: unknown = data.options_snapshot
 
       if (staffSnapshot) {
         title = staffSnapshot.title
@@ -100,7 +105,11 @@ export default function EstimateAcceptStaffPreview() {
         lines = staffSnapshot.line_items
         vu = staffSnapshot.valid_until
         tc = staffSnapshot.total_cents
+        if (staffSnapshot.options !== undefined) optionsRaw = staffSnapshot.options
       }
+      const parsedOptions = normalizeEstimateOptionsFromJson(optionsRaw)
+      setOptions(parsedOptions)
+      setSelectedOptionKey(recommendedEstimateOption(parsedOptions)?.key ?? null)
 
       setDocTitle(title)
       setValidUntil(vu)
@@ -230,6 +239,9 @@ export default function EstimateAcceptStaffPreview() {
         onSubmit={() => undefined}
         headerBrand={previewHeaderBrand}
         customerAttachment={customerAttachment}
+        options={options}
+        selectedOptionKey={selectedOptionKey}
+        onSelectOption={setSelectedOptionKey}
       />
     </div>
   )

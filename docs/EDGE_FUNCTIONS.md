@@ -950,7 +950,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Behavior**: SHA-256 hash of `token`; load row by `public_token_hash` where `status = sent`; enforce `public_token_expires_at` and `valid_until`. Returns estimate fields plus **`customer_experience`**: public UI strings (accept, thank-you, document labels — omits email subject/body). Uses **`customer_experience_sent`** when set, else merges **`app_settings`** + **`customer_experience_overrides`**. If **`status = customer_accepted`**, responds **409** with `code: already_accepted` and **`customer_experience`** for the thank-you page.
 
-**200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash).
+**200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash). Since v2.2460 also includes **`options`** — `estimates.options_snapshot` normalized by [`_shared/estimateOptions.ts`](../supabase/functions/_shared/estimateOptions.ts) (`[]` = single-option estimate); the acceptance page renders the picker from exactly what `accept-estimate` will validate against.
 
 **Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260406034514_record_estimate_public_link_view_rpc.sql) (pre-baseline archive; the live schema comes from the baseline). **Dedupe**: [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/archive/migrations-pre-baseline/20260412184127_dedupe_record_estimate_public_link_view.sql) skips a second **`public_link_view`** for the same estimate, IP, and user-agent within **5 seconds** (Strict Mode double-fetch, etc.).
 
@@ -984,13 +984,13 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Endpoint**: `POST /functions/v1/accept-estimate`
 
-**Body**: `{ "token": string, "printedName": string, "agreedTerms": true }`
+**Body**: `{ "token": string, "printedName": string, "agreedTerms": true, "optionKey"?: string }` — `optionKey` is **required when the estimate offers 2+ options** (400 `option_required` / `option_unknown` otherwise).
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional; staff notify skipped if missing)
 
 **Gateway**: `verify_jwt = false`
 
-**Behavior**: Idempotent if already `customer_accepted` (returns **`200`** + **`alreadyAccepted: true`**). Captures **`acceptor_ip`** from **`x-forwarded-for`** (first hop) and **`user-agent`** on the real **`sent` → `customer_accepted`** update.
+**Behavior**: Idempotent if already `customer_accepted` (returns **`200`** + **`alreadyAccepted: true`**). Captures **`acceptor_ip`** from **`x-forwarded-for`** (first hop) and **`user-agent`** on the real **`sent` → `customer_accepted`** update. **Estimate Options (v2.2460)**: when `options_snapshot` holds 2+ options, the validated choice is **frozen** in the same update — the chosen option's lines into `line_items_snapshot`, its sum into `total_cents`, its key into `accepted_option_key` — which is what keeps every downstream reader (accepted document, `create_job_from_estimate`, Pipeline) unchanged. The staff notify email appends `— chose "<name>" · $<total>`.
 
 **Staff email** (after successful **`sent` → `customer_accepted`**): recipients are the **union** of (a) **`estimates.accept_notify_user_ids`** — this estimate's own picks (nullable before first save; empty array = no per-estimate extras) — and (b) the org-wide **always-notify** list in **`app_settings`** key **`estimate_accepted_notify_recipients_v1`** (v2.991; JSON array of `users.id` in `value_text`, dev-write, edited via the ⚙ **Accepted notifications** on Estimates; a missing/malformed row parses to **`[]`**, so behavior matches pre-v2.991). The union is deduped, then calls **`estimate_accept_notify_filter_eligible_user_ids`** and emails each resolved **`users.email`** via Resend (same From as customer estimate mail). Link uses **`ESTIMATE_PUBLIC_ORIGIN`** (or fallback **https://pipetooling.github.io**) to **`/estimates/{estimate_number}`**. Failures are **`console.error`** only; HTTP **`200`** is still returned if the DB update succeeded.
 
@@ -1018,7 +1018,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Optional**: `ESTIMATE_PUBLIC_ORIGIN` if link base should not come from the client.
 
-**Copy**: Subject and body come from **`resolveEstimateCustomerExperience`** (`supabase/functions/_shared/estimateCustomerExperience.ts`, keep in sync with `src/lib/estimateCustomerExperience.ts`) using **`app_settings`** + row **`customer_experience_overrides`** and template vars **`{{accept_url}}`**, **`{{title}}`**, **`{{estimate_number}}`**. The same resolved object is stored as **`customer_experience_sent`** on **`sent`**. Staff previews use the client module.
+**Copy**: Subject and body come from **`resolveEstimateCustomerExperience`** (`supabase/functions/_shared/estimateCustomerExperience.ts`, keep in sync with `src/lib/estimateCustomerExperience.ts`) using **`app_settings`** + row **`customer_experience_overrides`** and template vars **`{{accept_url}}`**, **`{{title}}`**, **`{{estimate_number}}`**. The same resolved object is stored as **`customer_experience_sent`** on **`sent`**. Staff previews use the client module. **Estimate Options (v2.2460, owner decision)**: with 2+ options the email appends a "Your options — choose on the page" block listing **every option's price** (★ on the recommended one), in both the text and HTML parts.
 
 ---
 

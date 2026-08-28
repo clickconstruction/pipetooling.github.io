@@ -8,6 +8,8 @@ const MAX_SIGNATURE_BYTES = 524288 // 512 KiB (matches bucket file_size_limit)
 
 const PNG_MAGIC = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
 
+import { freezeSharedAcceptedOption, normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
+
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
   const digest = await crypto.subtle.digest('SHA-256', data)
@@ -59,6 +61,7 @@ type EstimateFetchRow = {
   master_user_id: string
   estimate_number: number
   title: string
+  options_snapshot: unknown
 }
 
 function escapeHtmlLite(s: string): string {
@@ -100,6 +103,8 @@ async function notifyStaffEstimateAccepted(params: {
   estimateNumber: number
   title: string
   acceptorPrintedName: string
+  /** Estimate Options (v2.2460): '"Replace 50-gal" · $3,400.00' when an option was chosen. */
+  acceptedOptionLabel?: string | null
 }): Promise<void> {
   // Union: this estimate's own picks first, then the org-wide always-notify
   // list. The eligibility RPC below still filters whatever comes out.
@@ -139,13 +144,15 @@ async function notifyStaffEstimateAccepted(params: {
   const quote = Number(params.estimateNumber)
   const acceptor = params.acceptorPrintedName.trim()
   const titleTrim = params.title.trim()
+  const optLine = params.acceptedOptionLabel ? ` — chose ${params.acceptedOptionLabel}` : ''
   const subject = `Quote #${quote} accepted — ${acceptor}`
   const appLink = `${origin}/estimates/${quote}`
   const textPlain =
-    `${acceptor} accepted estimate #${quote}${titleTrim ? `: ${titleTrim}` : ''}.\n\n` + `Open in PipeTooling: ${appLink}\n`
+    `${acceptor} accepted estimate #${quote}${titleTrim ? `: ${titleTrim}` : ''}${optLine}.\n\n` +
+    `Open in PipeTooling: ${appLink}\n`
   const htmlBody =
     `<p><strong>${escapeHtmlLite(acceptor)}</strong> accepted <strong>Quote #${quote}</strong>` +
-    `${titleTrim ? `: ${escapeHtmlLite(titleTrim)}` : ''}.</p>` +
+    `${titleTrim ? `: ${escapeHtmlLite(titleTrim)}` : ''}${optLine ? escapeHtmlLite(optLine) : ''}.</p>` +
     `<p><a href="${appLink}">Open estimate in PipeTooling</a></p>`
 
   for (const u of userRows ?? []) {
@@ -175,6 +182,8 @@ serve(async (req) => {
       printedName?: string
       signaturePngBase64?: string
       agreedTerms?: boolean
+      /** Estimate Options (v2.2460): required when the estimate offers 2+ options. */
+      optionKey?: string
     }
     const raw = body.token?.trim()
     const printedName = body.printedName?.trim() ?? ''
@@ -217,7 +226,7 @@ serve(async (req) => {
     const { data: rowRaw, error: fetchErr } = await admin
       .from('estimates')
       .select(
-        'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title',
+        'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title, options_snapshot',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -295,6 +304,35 @@ serve(async (req) => {
       }
     }
 
+    // Estimate Options (v2.2460): with 2+ options the customer's choice is required and
+    // validated against the snapshot, and acceptance FREEZES the chosen option's lines into
+    // line_items_snapshot/total_cents — that freeze is what keeps every downstream reader
+    // (accepted document, job creation, Pipeline) working unchanged.
+    const estimateOptions = normalizeSharedEstimateOptions(row.options_snapshot)
+    const optionKeyRaw = typeof body.optionKey === 'string' ? body.optionKey.trim() : ''
+    let optionFreeze: ReturnType<typeof freezeSharedAcceptedOption> = null
+    let acceptedOptionLabel: string | null = null
+    if (estimateOptions.length >= 2) {
+      if (!optionKeyRaw) {
+        return new Response(JSON.stringify({ error: 'Please choose an option first.', code: 'option_required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      optionFreeze = freezeSharedAcceptedOption(estimateOptions, optionKeyRaw)
+      if (!optionFreeze) {
+        return new Response(JSON.stringify({ error: 'That option is no longer offered on this estimate.', code: 'option_unknown' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      const chosen = estimateOptions.find((o) => o.key === optionFreeze!.accepted_option_key)
+      const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+        optionFreeze.total_cents / 100,
+      )
+      acceptedOptionLabel = `"${(chosen?.name ?? '').trim() || 'Option'}" · ${money}`
+    }
+
     const ua = req.headers.get('user-agent') ?? null
     const ipRaw = clientIpFromRequest(req)
     const nowIso = new Date().toISOString()
@@ -304,6 +342,13 @@ serve(async (req) => {
       acceptor_consented_at: nowIso,
       acceptor_ip: ipRaw,
       acceptor_user_agent: ua,
+      ...(optionFreeze
+        ? {
+            line_items_snapshot: optionFreeze.line_items_snapshot,
+            total_cents: optionFreeze.total_cents,
+            accepted_option_key: optionFreeze.accepted_option_key,
+          }
+        : {}),
     }
 
     const updatePayload = hasSig
@@ -373,6 +418,7 @@ serve(async (req) => {
         estimateNumber: row.estimate_number,
         title: row.title ?? '',
         acceptorPrintedName: printedName,
+        acceptedOptionLabel,
       })
     } catch (notifyErr) {
       console.error('accept-estimate: notify staff failed (non-fatal)', notifyErr)

@@ -3249,6 +3249,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           cxOverrideFields,
           acceptHeaderBrand,
           customerAttachment: customerAttachmentPreview,
+          options: syncedEstimateOptions,
         }),
       )
     }
@@ -3579,11 +3580,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
 
   async function sendToCustomer() {
     if (!row || row.status !== 'draft' || sending || !user) return
-    if (estimateOptions.length >= 2) {
-      // Phase 1 gate: the customer page can't render options yet — lifted by Phase 2.
-      showToast('Options are staff-side for now — sending a multi-option estimate arrives in the next update.', 'error')
-      return
-    }
     if (!customerId) {
       showToast('Choose a customer before sending.', 'error')
       return

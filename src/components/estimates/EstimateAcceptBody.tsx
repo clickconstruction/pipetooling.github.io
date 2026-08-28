@@ -16,6 +16,10 @@ import type { EstimateCustomerExperienceClient } from '@/lib/estimateCustomerExp
 import type { EstimateAcceptHeaderBrand } from '@/lib/estimateAcceptHeaderBrand'
 import EstimateOptionsPicker from './EstimateOptionsPicker'
 import { estimateOptionTotalCents, type EstimateOption } from '@/lib/estimates/estimateOptions'
+
+function formatOptionMoney(cents: number): string {
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(cents / 100)
+}
 import { EstimateAcceptTypedSignatureLine } from './EstimateAcceptTypedSignatureLine'
 import { isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
 
@@ -440,7 +444,9 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
             onClick={() => setAcceptModalOpen(true)}
             style={{ ...approveBtnStyle, marginTop: 0 }}
           >
-            Approve
+            {selectedOption
+              ? `Approve "${selectedOption.name.trim() || 'Option'}" — ${formatOptionMoney(estimateOptionTotalCents(selectedOption))}`
+              : 'Approve'}
           </button>
         </div>
       ) : null}
@@ -507,7 +513,11 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
                   minWidth: 0,
                 }}
               >
-                {isChangeOrderDocKind(estimate.doc_kind) ? 'Approve Change Order' : ESTIMATE_ACCEPT_MODAL_TITLE}
+                {isChangeOrderDocKind(estimate.doc_kind)
+                  ? 'Approve Change Order'
+                  : selectedOption
+                    ? `Approve "${selectedOption.name.trim() || 'Option'}" — ${formatOptionMoney(estimateOptionTotalCents(selectedOption))}`
+                    : ESTIMATE_ACCEPT_MODAL_TITLE}
               </h2>
               <button
                 type="button"

@@ -10,9 +10,15 @@ import {
   acceptHeaderBrandImageAlt,
   brandImageAbsoluteUrl,
   buildEstimateEmailHtml,
+  escapeHtmlForEmail,
   parseAcceptHeaderBrandForEmail,
 } from '../_shared/estimateEmailBrandImage.ts'
 import { buildCustomerAttachmentSentPayload } from '../_shared/estimateCustomerAttachment.ts'
+import {
+  normalizeSharedEstimateOptions,
+  sharedEstimateOptionTotalCents,
+  type SharedEstimateOption,
+} from '../_shared/estimateOptions.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -136,7 +142,7 @@ serve(async (req) => {
     const { data: est, error: selErr } = await userClient
       .from('estimates')
       .select(
-        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind',
+        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind, options_snapshot',
       )
       .eq('id', estimate_id)
       .single()
@@ -229,19 +235,47 @@ serve(async (req) => {
     }
 
     const subject = resolved.emailSubject
-    const body = resolved.emailBody
+    // Estimate Options (v2.2460, owner decision 5): the email shows every option's price —
+    // the ladder itself is persuasive; the page still does the choosing.
+    const emailOptions = normalizeSharedEstimateOptions(
+      (est as { options_snapshot?: unknown }).options_snapshot,
+    )
+    const fmtUsd = (cents: number) =>
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100)
+    const optionLineText = (o: SharedEstimateOption) =>
+      `${o.recommended ? '\u2605 ' : ''}${o.name.trim() || 'Option'}${o.recommended ? ' (recommended)' : ''} \u2014 ${fmtUsd(sharedEstimateOptionTotalCents(o))}`
+    const optionsTextBlock =
+      emailOptions.length >= 2
+        ? `\n\nYour options \u2014 choose on the page:\n${emailOptions.map((o) => `  ${optionLineText(o)}`).join('\n')}`
+        : ''
+    const optionsHtmlBlock =
+      emailOptions.length >= 2
+        ? `<div style="margin-top:1rem;border-top:1px solid #e2e7ec;padding-top:0.75rem">` +
+          `<div style="font-weight:600;margin-bottom:0.35rem">Your options &mdash; choose on the page:</div>` +
+          emailOptions
+            .map(
+              (o) =>
+                `<div style="display:flex;justify-content:space-between;max-width:360px;padding:0.15rem 0">` +
+                `<span>${o.recommended ? '&#9733; ' : ''}${escapeHtmlForEmail(o.name.trim() || 'Option')}${o.recommended ? ' (recommended)' : ''}</span>` +
+                `<strong>${fmtUsd(sharedEstimateOptionTotalCents(o))}</strong></div>`,
+            )
+            .join('') +
+          `</div>`
+        : ''
+    const body = resolved.emailBody + optionsTextBlock
     const brand = parseAcceptHeaderBrandForEmail(
       (est as { accept_header_brand?: unknown }).accept_header_brand,
     )
-    const htmlBody = buildEstimateEmailHtml(
-      body,
-      brand
-        ? {
-            imageUrl: brandImageAbsoluteUrl(origin, brand),
-            imageAlt: acceptHeaderBrandImageAlt(brand),
-          }
-        : undefined,
-    )
+    const htmlBody =
+      buildEstimateEmailHtml(
+        resolved.emailBody,
+        brand
+          ? {
+              imageUrl: brandImageAbsoluteUrl(origin, brand),
+              imageAlt: acceptHeaderBrandImageAlt(brand),
+            }
+          : undefined,
+      ) + optionsHtmlBlock
 
     const sent = await sendEmailViaResend(
       customer_email.trim(),
