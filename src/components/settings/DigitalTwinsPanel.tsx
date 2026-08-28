@@ -23,6 +23,11 @@ type RunRow = { twin_user_id: string; mission: string; notes: string | null; sta
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
 const VIOLET = '#8b5cf6'
 
+// CT bridge (v2.2435): a PT twin's CountTooling seat lives at the CT fleet domain.
+const PT_FLEET_DOMAIN = '@twins.pipetooling.local'
+const CT_FLEET_DOMAIN = '@twins.counttooling.local'
+const ctTwinEmail = (ptEmail: string) => ptEmail.replace(PT_FLEET_DOMAIN, CT_FLEET_DOMAIN)
+
 function randomTokenHex(bytes = 32): string {
   const a = new Uint8Array(bytes)
   crypto.getRandomValues(a)
@@ -114,7 +119,44 @@ export default function DigitalTwinsPanel() {
     }
   }
 
+  /** Create (idempotently) the CT seat for a twin and store the uuid join key on PT. */
+  async function linkCtSeat(ptUserId: string, ptEmail: string, name: string | null): Promise<boolean> {
+    const { data, error } = await supabase.functions.invoke('ct-bridge', {
+      body: { verb: 'create', email: ctTwinEmail(ptEmail), name: name ?? undefined, is_digital_twin: true },
+    })
+    const ctId = (data as { ct_user_id?: string } | null)?.ct_user_id
+    if (error || !ctId) {
+      showToast(`CT seat failed — retry with the link button on the twin (${error?.message ?? (data as { error?: string } | null)?.error ?? 'no uuid returned'})`, 'error')
+      return false
+    }
+    const { error: upErr } = await (supabase as never as {
+      from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => Promise<{ error: { message: string } | null }> } }
+    })
+      .from('users')
+      .update({ counttooling_user_id: ctId })
+      .eq('id', ptUserId)
+    if (upErr) {
+      showToast(`CT seat created (${ctId}) but the link didn’t save: ${upErr.message}`, 'error')
+      return false
+    }
+    return true
+  }
+
+  async function retryCtSeat(t: TwinRow) {
+    setBusy(true)
+    try {
+      if (await linkCtSeat(t.id, t.email, t.name)) {
+        showToast(`CT seat linked for ${t.email}`, 'success')
+        await loadAll()
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function setRung(t: TwinRow, readOnly: boolean) {
+    // CT note-and-skip (locked decision): CountTooling has no read-only concept, so the
+    // rung does not forward — the weekly audit doesn't track it and nothing drifts.
     setBusy(true)
     try {
       const { error } = await supabase.from('users').update({ read_only: readOnly }).eq('id', t.id)
@@ -152,6 +194,18 @@ export default function DigitalTwinsPanel() {
         .eq('email', seat.email)
       if (flagErr) throw new Error(`Created but not flagged: ${flagErr.message} — flag ${seat.email} by hand`)
       showToast(`Minted ${seat.email} (estimator, flagged, read-only)`, 'success')
+      // CT bridge: mint the CountTooling seat too. Fail-soft — the PT seat stands either
+      // way, and the CT seat chip's link button is the retry.
+      const { data: newRow } = await (supabase as never as {
+        from: (t: string) => { select: (c: string) => { eq: (k: string, v: string) => { maybeSingle: () => Promise<{ data: { id: string } | null }> } } }
+      })
+        .from('users')
+        .select('id')
+        .eq('email', seat.email)
+        .maybeSingle()
+      if (newRow?.id && (await linkCtSeat(newRow.id, seat.email, body.name))) {
+        showToast('CountTooling seat created and linked', 'success')
+      }
       await loadAll()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
@@ -177,6 +231,46 @@ export default function DigitalTwinsPanel() {
       await loadAll()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** One-shot backfill: link existing CountTooling accounts to PT users by email lookup. */
+  async function backfillCtLinks() {
+    setBusy(true)
+    try {
+      const { data, error } = await (supabase as never as {
+        from: (t: string) => { select: (c: string) => { is: (k: string, v: null) => Promise<{ data: { id: string; email: string; counttooling_user_id: string | null }[] | null; error: { message: string } | null }> } }
+      })
+        .from('users')
+        .select('id, email, counttooling_user_id')
+        .is('archived_at', null)
+      if (error) throw new Error(error.message)
+      const unlinked = (data ?? []).filter((u) => !u.counttooling_user_id && !u.email.endsWith(PT_FLEET_DOMAIN))
+      let linked = 0
+      let notOnCt = 0
+      for (const u of unlinked) {
+        const { data: res, error: eFn } = await supabase.functions.invoke('ct-bridge', { body: { verb: 'lookup', email: u.email } })
+        if (eFn) throw new Error(eFn.message)
+        const r = res as { found?: boolean; ct_user_id?: string } | null
+        if (r?.found && r.ct_user_id) {
+          const { error: upErr } = await (supabase as never as {
+            from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => Promise<{ error: { message: string } | null }> } }
+          })
+            .from('users')
+            .update({ counttooling_user_id: r.ct_user_id })
+            .eq('id', u.id)
+          if (upErr) throw new Error(upErr.message)
+          linked++
+        } else {
+          notOnCt++
+        }
+      }
+      showToast(`Backfill: ${linked} linked, ${notOnCt} not on CountTooling, ${(data ?? []).length - unlinked.length} already linked or twins`, 'success')
+      await loadAll()
+    } catch (e) {
+      showToast(`Backfill stopped: ${e instanceof Error ? e.message : String(e)}`, 'error')
     } finally {
       setBusy(false)
     }
@@ -277,11 +371,14 @@ export default function DigitalTwinsPanel() {
                         CT seat · linked
                       </span>
                     ) : (
-                      <span
-                        style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
-                        title="No CountTooling seat linked for this twin — the bridge retry button arrives with ct-bridge; the weekly audit flags the gap either way"
-                      >
-                        CT seat · missing
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <span
+                          style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
+                          title="No CountTooling seat linked for this twin — link creates (or finds) it over the bridge"
+                        >
+                          CT seat · missing
+                        </span>
+                        <button type="button" style={COPY_CHIP} disabled={busy} onClick={() => void retryCtSeat(t)}>link</button>
                       </span>
                     )
                   ) : null}
@@ -383,6 +480,11 @@ export default function DigitalTwinsPanel() {
           <code style={{ fontSize: '0.7rem' }}>X-Twin-Token: &lt;the twin’s key&gt;</code>
           <span style={{ ...MUTED, fontWeight: 600 }}>Onboarding doc</span>
           <code style={{ fontSize: '0.7rem' }}>docs/twins/TWIN_HARNESS.md</code>
+          <span style={{ ...MUTED, fontWeight: 600 }}>CT backfill</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', ...MUTED }}>
+            link existing CountTooling accounts to their PipeTooling people by email
+            <button type="button" style={COPY_CHIP} disabled={busy || ctSeatById === null} onClick={() => void backfillCtLinks()}>run backfill</button>
+          </span>
           <span style={{ ...MUTED, fontWeight: 600 }}>Kill switch</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', ...MUTED }}>
             rotate the master secret from the CLI — its value never appears in the app
