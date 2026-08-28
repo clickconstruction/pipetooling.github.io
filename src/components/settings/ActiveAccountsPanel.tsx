@@ -16,6 +16,7 @@ import { archiveChoiceBlocker, eligibleReassignTargets } from '../../lib/archive
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { filterActiveAccountUsers } from '../../lib/activeAccountsSearch'
 import { useToastContext } from '../../contexts/ToastContext'
+import { supabase } from '../../lib/supabase'
 import PasswordInput from '../PasswordInput'
 import { useActiveAccountsManagement } from '../../hooks/useActiveAccountsManagement'
 
@@ -182,6 +183,29 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
   } = useActiveAccountsManagement({ enabled: true, onDataChanged })
 
   const [searchQuery, setSearchQuery] = React.useState('')
+  // Digital twins Phase T1: flagged accounts get a 🤖 chip. Separate fail-soft fetch —
+  // users.is_digital_twin may not be deployed yet (empty set = no chips, never an error).
+  const [twinIds, setTwinIds] = React.useState<Set<string>>(new Set())
+  React.useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await (supabase as never as {
+          from: (t: string) => { select: (c: string) => { eq: (k: string, v: boolean) => Promise<{ data: { id: string }[] | null; error: unknown }> } }
+        })
+          .from('users')
+          .select('id')
+          .eq('is_digital_twin', true)
+        if (cancelled || error) return
+        setTwinIds(new Set((data ?? []).map((r) => r.id)))
+      } catch {
+        /* column not deployed yet */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const visibleUsers = filterActiveAccountUsers(users, searchQuery)
   const visibleArchivedUsers = filterActiveAccountUsers(archivedUsers, searchQuery)
 
@@ -294,6 +318,14 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                          {twinIds.has(u.id) ? (
+                            <span
+                              title="Digital twin — agent-operated account (docs/DIGITAL_TWINS_PLAN.md); activity tracked separately from people"
+                              style={{ fontSize: '0.66rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-800)', border: '1px solid var(--border-violet)', whiteSpace: 'nowrap' }}
+                            >
+                              🤖 digital twin
+                            </span>
+                          ) : null}
                           {u.name ? (
                             <button
                               type="button"

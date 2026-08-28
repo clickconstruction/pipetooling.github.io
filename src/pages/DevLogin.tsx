@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { twinAliasEmail } from '../lib/twinLogin'
 
-// Dev login always signs in as this account; ?as= / typed emails no longer pick the user.
+// Dev login signs in as this account; ?as= / typed emails no longer pick the user —
+// EXCEPT the digital-twin alias (Phase T2, docs/DIGITAL_TWINS_PLAN.md):
+// ?as=twin:<role> or ?as=twin:<role>:<n> resolves to that twin instance's account.
 export const DEV_LOGIN_EMAIL = 'robert@douglasmining.com'
 
 /**
@@ -46,7 +49,7 @@ export default function DevLogin() {
 
     supabase.functions
       .invoke('dev-login', {
-        body: { email: DEV_LOGIN_EMAIL, redirectTo: targetRedirect },
+        body: { email: twinAliasEmail(asParam) ?? DEV_LOGIN_EMAIL, redirectTo: targetRedirect },
         headers: { 'X-Dev-Login-Secret': secret },
       })
       .then(({ data, error: err }) => {
@@ -84,7 +87,7 @@ export default function DevLogin() {
   if (autoFiring && loading) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <p>Signing in as {DEV_LOGIN_EMAIL}…</p>
+        <p>Signing in as {twinAliasEmail(asParam) ?? DEV_LOGIN_EMAIL}…</p>
       </div>
     )
   }
@@ -185,7 +188,7 @@ export default function DevLogin() {
         </button>
       </form>
       <p style={{ marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <code>?as=1&to=/path</code> in the URL auto-fires on load (the <code>as</code> value is ignored).
+        <code>?as=1&to=/path</code> in the URL auto-fires on load. <code>?as=twin:estimator</code> (or <code>twin:estimator:2</code>) signs in as that digital-twin account instead.
       </p>
     </div>
   )
