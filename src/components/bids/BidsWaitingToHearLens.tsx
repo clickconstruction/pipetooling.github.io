@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatCurrency } from '../../lib/format'
 import { entryGcIdFromPacketKey } from '../../lib/bids/bidContacts'
+import { bidBoardLastContactParts } from '../../lib/bids/bidBoardDateCells'
 import { bidAddressMapsUrl } from '../../lib/buildBidPricingPackageHtml'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
@@ -49,7 +50,7 @@ export type BidsWaitingToHearLensProps = {
   /** Bids by GC (v2.2164): per-bid GC packets — a bid waits under each GC whose packet is still open. */
   gcPacketsByBid: Record<string, GcPacket[]>
   ledgerPrefixMap: LedgerPrefixMap
-  /** Latest submission-entry instant per bid id (parent's `lastContactFromEntries`). */
+  /** Latest METHOD-entry instant per bid id (contacts only — v2.2413: method-less notes never count as contact). */
   lastContactFromEntries: Record<string, string>
   /** bid_id → other GCs the bid went to; each gets its own queue entry. */
   recipientsByBidId: BidGcRecipientsMap
@@ -103,8 +104,16 @@ function builderPhoneOf(bid: BidWithBuilder): string | null {
   return gcPhone || null
 }
 
-/** 'YYYY-MM-DD' or ISO instant → 'M/D'. */
+/**
+ * 'YYYY-MM-DD' or ISO instant → 'M/D'. Instants render in the browser's local
+ * calendar — the Bid Board's last-contact convention — never the UTC date
+ * (an evening call would otherwise show as the next day). Bare dates pass through.
+ */
 function shortDate(iso: string): string {
+  if (iso.includes('T')) {
+    const d = new Date(iso)
+    if (!Number.isNaN(d.getTime())) return `${d.getMonth() + 1}/${d.getDate()}`
+  }
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso)
   if (!m) return iso
   return `${Number(m[2])}/${Number(m[3])}`
@@ -708,9 +717,14 @@ export function BidsWaitingToHearLens({
                   {selectedBid.estimatorName ? ` · est. ${selectedBid.estimatorName}` : ''}
                 </div>
                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: bidNeedsChase(selectedBid, nowIso) ? 'var(--text-amber-800)' : 'var(--text-emerald-800)' }}>
-                  {selectedBid.lastContactIso
-                    ? `Last contact ${shortDate(selectedBid.lastContactIso)} (${daysAgoLabel(Math.max(0, Math.floor((Date.parse(nowIso) - Date.parse(selectedBid.lastContactIso)) / 86_400_000)))})`
-                    : 'Never contacted since sending'}
+                  {(() => {
+                    // Same kernel as the Bid Board's Last Contact cell, so the two surfaces
+                    // always agree on the day and the count.
+                    const lc = selectedBid.lastContactIso ? bidBoardLastContactParts(selectedBid.lastContactIso, new Date(nowIso)) : null
+                    return lc
+                      ? `Last contact ${shortDate(selectedBid.lastContactIso!)} (${daysAgoLabel(Math.max(0, lc.deltaDays))})`
+                      : 'Never contacted since sending'
+                  })()}
                 </p>
                 {(() => {
                   const tabValues = bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)

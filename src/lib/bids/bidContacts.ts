@@ -51,6 +51,32 @@ export function lastContactByGc(
   return out
 }
 
+export type BidScopedEntryLike = ContactEntryLike & { bid_id: string }
+
+/**
+ * One pass over the whole entries table → two per-bid recency maps:
+ * `lastContactByBid` sees only method entries (the chase lenses' "last contact"
+ * fallback — a method-less note must not silence the never-called bucket), while
+ * `lastActivityByBid` sees every entry (the Followup "Last update" surfaces,
+ * where a note is an update).
+ */
+export function buildBidEntryRecencyMaps(entries: ReadonlyArray<BidScopedEntryLike>): {
+  lastContactByBid: Record<string, string>
+  lastActivityByBid: Record<string, string>
+} {
+  const lastContactByBid: Record<string, string> = {}
+  const lastActivityByBid: Record<string, string> = {}
+  for (const e of entries) {
+    if (!e.occurred_at) continue
+    const prevAny = lastActivityByBid[e.bid_id]
+    if (!prevAny || e.occurred_at > prevAny) lastActivityByBid[e.bid_id] = e.occurred_at
+    if (!isContactEntry(e)) continue
+    const prev = lastContactByBid[e.bid_id]
+    if (!prev || e.occurred_at > prev) lastContactByBid[e.bid_id] = e.occurred_at
+  }
+  return { lastContactByBid, lastActivityByBid }
+}
+
 /**
  * The `gc_customer_id` to stamp on an entry from a packet-scoped surface: '' (own packet)
  * → null; 'shared:<cid>' shared-letter keys → the cid; anything else is the customer id.

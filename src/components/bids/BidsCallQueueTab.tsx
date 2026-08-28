@@ -39,7 +39,7 @@ export type BidsCallQueueTabProps = {
   /** Per-bid GC packets — builder stats and rows count each GC's packet, not the bid. */
   gcPacketsByBid: Record<string, GcPacket[]>
   ledgerPrefixMap: LedgerPrefixMap
-  /** Latest submission-entry instant per bid id (parent's `lastContactFromEntries`). */
+  /** Latest METHOD-entry instant per bid id (contacts only — v2.2413: method-less notes never count as contact). */
   lastContactFromEntries: Record<string, string>
   narrowViewport640: boolean
   authUserId: string | null
