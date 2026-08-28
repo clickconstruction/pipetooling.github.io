@@ -558,6 +558,10 @@ verify_jwt = false
 [functions.twin-login]
 verify_jwt = false
 
+# Twin MCP server (streamable-HTTP JSON-RPC; per-twin token auth in-body — X-Twin-Token).
+[functions.twin-mcp]
+verify_jwt = false
+
 # Cron / infra: not browser session; auth via X-Cron-Secret / CRON_SECRET in function.
 [functions.send-scheduled-reminders]
 verify_jwt = false

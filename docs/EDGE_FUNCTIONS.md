@@ -88,6 +88,7 @@ when_to_read:
    - [login-as-user](#login-as-user)
    - [dev-login](#dev-login)
    - [twin-login](#twin-login)
+   - [twin-mcp](#twin-mcp)
    - [address-autocomplete](#address-autocomplete)
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
@@ -756,6 +757,18 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TWIN_LOGIN_SECRET`.
 
 **Note**: unlike dev-login, cloud harnesses **follow the action_link directly**, so the deployed origin must be in the auth redirect allow-list (production `https://pipetooling.com/**` already is).
+
+---
+
+### twin-mcp
+
+**Purpose**: The digital-twin **MCP server** (Model Context Protocol, streamable-HTTP) — lets any MCP-capable agent (Claude, Grok/xAI, GPT, …) hold a twin seat: `initialize` / `tools/list` / `tools/call` over stateless JSON-RPC POST (GET → 405, no SSE; spec-permitted). Tools: `mint_session` (pass-through to twin-login — guards/rate-limit/ledger stay single-sourced there), `get_brief` / `get_directory` / `get_harness_guide` / `get_mission` (docs bundled at deploy), `submit_report` (→ `twin_runs`, `mission = report:<id>`). The server exposes **no business data** — the work happens in the app via the minted browser session.
+
+**Endpoint**: `POST /functions/v1/twin-mcp` · **Auth**: per-twin token on every `tools/call` (`X-Twin-Token` or `Authorization: Bearer`; `initialize`/`tools/list` are open metadata). `verify_jwt = false`.
+
+**Bundled docs are GENERATED**: `supabase/functions/twin-mcp/briefs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/*` (missions carry only the verbatim mission text, never the scorer sections) — regenerate + redeploy after editing those docs.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (twin-login's `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
 
 ---
 
