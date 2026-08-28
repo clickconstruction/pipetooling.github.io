@@ -171,6 +171,8 @@ export function pendingChaseActionNote(
 export type PendingChaseActionWrites = {
   entry: {
     bid_id: string
+    /** The GC this chase was with (Per-GC Phase 1); null = the bid's own GC. */
+    gc_customer_id: string | null
     contact_method: string
     notes: string
     occurred_at: string
@@ -194,11 +196,14 @@ export function buildPendingChaseActionWrites(args: {
   action: PendingChaseActionKey
   note: string
   lossCategory: BidLossCategoryKey | null
+  /** The GC this chase is with (Per-GC Phase 1); omit/null = the bid's own GC. */
+  gcCustomerId?: string | null
 }): PendingChaseActionWrites {
   const { bidId, userId, nowIso, action, note, lossCategory } = args
   return {
     entry: {
       bid_id: bidId,
+      gc_customer_id: args.gcCustomerId ?? null,
       contact_method: 'Phone',
       notes: pendingChaseActionNote(action, note, lossCategory),
       occurred_at: nowIso,

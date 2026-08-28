@@ -34,6 +34,8 @@ export type CallSessionWrites = {
   }
   bidEntries: Array<{
     bid_id: string
+    /** The builder being called (Per-GC Phase 1) — folds into the own GC for own-GC bids. */
+    gc_customer_id: string | null
     contact_method: string
     notes: string
     occurred_at: string
@@ -92,6 +94,7 @@ export function buildCallSessionWrites(args: {
       const segments = [outcomeLabel, tabLine, note].filter(Boolean)
       return {
         bid_id: d.bidId,
+        gc_customer_id: customerId,
         contact_method: 'Phone',
         notes: segments.join('. '),
         occurred_at: nowIso,

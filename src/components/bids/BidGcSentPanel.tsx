@@ -7,6 +7,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/format'
 import { firstSentOn, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { groupVersionsByGc, type GcPacket, type GcVersionLike } from '../../lib/bids/gcPackets'
+import { lastContactByGc, type ContactEntryLike } from '../../lib/bids/bidContacts'
 
 /**
  * Edit Bid → per-GC sent panel (v2.2407, Option A): on a bid with versions, "sent" lives with
@@ -20,6 +21,8 @@ type PanelProps = {
   bidId: string
   /** The bid's own GC display name ('' → "To Plans"). */
   ownGcName: string
+  /** The bid's own GC customer id — entries stamped with it fold into the own row (Phase 1). */
+  ownGcCustomerId?: string | null
   /** bids.bid_date_sent as loaded — the pre-per-GC fallback for packets with no send rows. */
   currentBidDateSent: string | null
   /** Keeps the parent form's date state in sync so Save never clobbers the derived roll-up. */
@@ -49,11 +52,12 @@ const rowBtnStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-export function BidGcSentPanel({ bidId, ownGcName, currentBidDateSent, onRollupDateChanged }: PanelProps) {
+export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, currentBidDateSent, onRollupDateChanged }: PanelProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [versions, setVersions] = useState<GcVersionLike[]>([])
   const [sends, setSends] = useState<VersionSendRow[]>([])
+  const [contactEntries, setContactEntries] = useState<ContactEntryLike[]>([])
   const [gcNames, setGcNames] = useState<Record<string, string>>({})
   const [recipients, setRecipients] = useState<Array<{ customerId: string; name: string }>>([])
   const [loaded, setLoaded] = useState(false)
@@ -66,14 +70,16 @@ export function BidGcSentPanel({ bidId, ownGcName, currentBidDateSent, onRollupD
   const [dateDraft, setDateDraft] = useState('')
 
   async function loadAll() {
-    const [vRes, sRes, rRes] = await Promise.all([
+    const [vRes, sRes, rRes, cRes] = await Promise.all([
       supabase.from('bid_versions').select('id, name, customer_id, sort_order, created_at, starred_price_book_version_id').eq('bid_id', bidId).order('sort_order'),
       supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', bidId),
       supabase.from('bid_gc_recipients').select('customer_id, customers(name)').eq('bid_id', bidId),
+      supabase.from('bids_submission_entries').select('gc_customer_id, contact_method, occurred_at').eq('bid_id', bidId),
     ])
     const vs = (vRes.data ?? []) as GcVersionLike[]
     setVersions(vs)
     setSends((sRes.data ?? []) as VersionSendRow[])
+    setContactEntries((cRes.data ?? []) as ContactEntryLike[])
     type RecRow = { customer_id: string; customers: { name: string | null } | { name: string | null }[] | null }
     setRecipients(
       ((rRes.data ?? []) as RecRow[]).map((r) => ({ customerId: r.customer_id, name: (Array.isArray(r.customers) ? r.customers[0]?.name : r.customers?.name) ?? '—' })),
@@ -107,6 +113,8 @@ export function BidGcSentPanel({ bidId, ownGcName, currentBidDateSent, onRollupD
   const realPackets = packets.filter((p) => !p.sharedLetter)
   const sentCount = realPackets.filter((p) => p.sentOn != null).length
   const derivedFirst = firstSentOn(sends) ?? (sends.length === 0 ? liveBidDateSent : null)
+  // Phase 1: per-GC latest CONTACT (method entries only; null/own-id entries fold into '').
+  const contactByGc = lastContactByGc(contactEntries, ownGcCustomerId ?? null)
 
   const today = () =>
     new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
@@ -232,6 +240,19 @@ export function BidGcSentPanel({ bidId, ownGcName, currentBidDateSent, onRollupD
               <b style={{ overflowWrap: 'anywhere' }}>{p.name}</b>
               <span style={chipStyle(p.sentOn != null)}>{p.sentOn != null ? `sent ${p.sentOn}` : 'not sent'}</span>
               {p.sentValue != null ? <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(p.sentValue)}</span> : null}
+              {(() => {
+                const lc = contactByGc[p.key === '' ? '' : (p.gcId ?? '')]
+                if (!lc) return null
+                const d = new Date(lc)
+                const label = isNaN(d.getTime())
+                  ? lc.slice(0, 10)
+                  : new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+                return (
+                  <span title={`Last contact with ${p.name}`} style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                    contact {label}
+                  </span>
+                )
+              })()}
               {p.sharedLetter ? (
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>same letter as {ownGcName || 'the GC'} — tracked with the bid</span>
               ) : editing ? (
