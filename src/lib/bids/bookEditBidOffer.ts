@@ -48,14 +48,23 @@ export function planBookEditBidOffer(input: {
   bidEntries: ReadonlyArray<{ id: string; fixture_type_id: string } & BookEntryPrices>
   /** False when no bid/pricing is active — nothing to offer. */
   hasActiveBidPricing: boolean
+  /**
+   * True when the edited book is the one this bid's pricing descends from (or when that lineage
+   * is unknowable). An *update* offer is a same-book sync, so it fires only then — otherwise
+   * editing ANY book with a bid open would offer to pull that book's price onto a bid that
+   * prices from a different one (v2.2445). An *add* is an import and fires from any book:
+   * pulling a missing entry across books is exactly the Default-book case that started this.
+   */
+  editedBookFeedsThisBid: boolean
 }): BookEditBidOffer | null {
-  const { fixtureTypeId, fixtureName, book, bidEntries, hasActiveBidPricing } = input
+  const { fixtureTypeId, fixtureName, book, bidEntries, hasActiveBidPricing, editedBookFeedsThisBid } = input
   if (!hasActiveBidPricing) return null
   const name = fixtureName.trim()
   if (!name) return null
 
   const mine = bidEntries.filter((e) => e.fixture_type_id === fixtureTypeId)
   if (mine.length === 0) return { kind: 'add', fixtureName: name, bookTotal: Number(book.total_price) }
+  if (!editedBookFeedsThisBid) return null
 
   // A copy can hold the same fixture more than once (hand-added duplicates). Offer the first that
   // actually disagrees; if every one already matches, there is nothing to say.
@@ -67,5 +76,26 @@ export function planBookEditBidOffer(input: {
     fixtureName: name,
     bidTotal: Number(stale.total_price),
     bookTotal: Number(book.total_price),
+  }
+}
+
+/**
+ * v2.2445: "Use $13 on this bid" must mean the BID, not the price option on screen. A bid's
+ * other price options (alternates, other GC packets — each with its own frozen copy) usually
+ * inherited the same stale value, and the sent packet's ★ letter is often one of THEM. Carry the
+ * update to every sibling entry still holding the viewed copy's exact stale prices — identical
+ * values are inherited values. A sibling someone re-priced on purpose (a VE'd entry, say) won't
+ * match, and is left alone.
+ */
+export function planSiblingCarry(input: {
+  /** The viewed copy's stale prices — what the offer is replacing. */
+  stale: BookEntryPrices
+  /** Same-fixture entries from the bid's OTHER pricings. */
+  siblingEntries: ReadonlyArray<{ id: string; version_id: string } & BookEntryPrices>
+}): { entryIds: string[]; pricingIds: string[] } {
+  const matching = input.siblingEntries.filter((e) => samePrices(e, input.stale))
+  return {
+    entryIds: matching.map((e) => e.id),
+    pricingIds: [...new Set(matching.map((e) => e.version_id))],
   }
 }
