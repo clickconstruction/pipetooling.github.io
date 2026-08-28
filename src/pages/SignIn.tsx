@@ -29,6 +29,24 @@ export default function SignIn() {
     if (savedPassword) setPassword(savedPassword)
   }, [])
 
+  /**
+   * Explicit Enter-to-submit (v2.2448, Wendi: "can't hit enter to login have to press the
+   * button"). The form is a proper <form onSubmit> with a type="submit" button, so Enter
+   * SHOULD submit implicitly — but implicit submission is browser machinery, and things
+   * outside our code (password-manager overlays and autofill dropdowns that swallow the
+   * keystroke, PWA webview quirks) can eat it. Handling Enter ourselves removes the
+   * dependency: preventDefault stops the implicit path (no double submit), requestSubmit
+   * runs the same validation + submit pipeline it would have used.
+   */
+  function submitOnEnter(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+    e.preventDefault()
+    const form = e.currentTarget.form
+    if (!form) return
+    if (typeof form.requestSubmit === 'function') form.requestSubmit()
+    else form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -74,6 +92,7 @@ export default function SignIn() {
                   setEmail(e.target.value)
                   setError(null)
                 }}
+                onKeyDown={submitOnEnter}
                 placeholder="Email"
                 aria-label="Email"
                 required
@@ -92,6 +111,7 @@ export default function SignIn() {
                   setPassword(e.target.value)
                   setError(null)
                 }}
+                onKeyDown={submitOnEnter}
                 required
                 autoComplete="current-password"
               />

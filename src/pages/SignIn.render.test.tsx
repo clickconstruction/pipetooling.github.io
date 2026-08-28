@@ -1,0 +1,85 @@
+// @vitest-environment jsdom
+/**
+ * Pins the sign-in Enter contract (v2.2448, Wendi: "can't hit enter to login have to
+ * press the button"): pressing Enter in the email or password field submits the form
+ * through our own keydown handler — no reliance on the browser's implicit form
+ * submission, which environments like password-manager overlays and PWA webviews can
+ * swallow. jsdom implements no implicit submission at all, so these tests pass only
+ * through the explicit handler — exactly the environment class being defended against.
+ */
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
+
+import SignIn from './SignIn'
+import { supabase } from '../lib/supabase'
+
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    auth: {
+      // An auth error keeps the component on the page (no cache clear / reload path).
+      signInWithPassword: vi.fn(async () => ({ error: { message: 'Invalid login credentials' } })),
+    },
+  },
+}))
+
+const signInMock = vi.mocked(supabase.auth.signInWithPassword)
+
+function renderSignIn() {
+  return render(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <SignIn />
+    </MemoryRouter>,
+  )
+}
+
+function fillFields() {
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wendi@clickplumbing.com' } })
+  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'hunter2' } })
+}
+
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+  window.localStorage.clear()
+  window.sessionStorage.clear()
+})
+
+describe('SignIn Enter-to-submit', () => {
+  it('Enter in the password field signs in', async () => {
+    renderSignIn()
+    fillFields()
+    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter' })
+    await waitFor(() => expect(signInMock).toHaveBeenCalledWith({ email: 'wendi@clickplumbing.com', password: 'hunter2' }))
+    expect(await screen.findByText('Invalid login credentials')).toBeTruthy()
+  })
+
+  it('Enter in the email field signs in too', async () => {
+    renderSignIn()
+    fillFields()
+    fireEvent.keyDown(screen.getByLabelText('Email'), { key: 'Enter' })
+    await waitFor(() => expect(signInMock).toHaveBeenCalledTimes(1))
+  })
+
+  it('other keys do not submit', () => {
+    renderSignIn()
+    fillFields()
+    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'a' })
+    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Tab' })
+    expect(signInMock).not.toHaveBeenCalled()
+  })
+
+  it('Enter mid-IME-composition does not submit', () => {
+    renderSignIn()
+    fillFields()
+    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter', isComposing: true })
+    expect(signInMock).not.toHaveBeenCalled()
+  })
+
+  it('the Sign in button still submits', async () => {
+    renderSignIn()
+    fillFields()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() => expect(signInMock).toHaveBeenCalledTimes(1))
+  })
+})

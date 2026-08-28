@@ -12,6 +12,8 @@ interface PasswordInputProps {
   label?: string
   /** Accessible name when `label` is not shown (e.g. placeholder-only fields). */
   ariaLabel?: string
+  /** Forwarded to the inner input (e.g. sign-in's explicit Enter-to-submit, v2.2448). */
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
   style?: React.CSSProperties
   /** When set, default input padding is omitted so stylesheets can control the field (e.g. sign-in). */
   inputClassName?: string
@@ -30,6 +32,7 @@ export default function PasswordInput({
   disabled,
   label,
   ariaLabel,
+  onKeyDown,
   style = {},
   inputClassName,
   labelClassName,
@@ -59,6 +62,7 @@ export default function PasswordInput({
           type={show ? 'text' : 'password'}
           value={value}
           onChange={onChange}
+          onKeyDown={onKeyDown}
           placeholder={placeholder}
           autoComplete={autoComplete}
           required={required}
