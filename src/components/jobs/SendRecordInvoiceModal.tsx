@@ -85,6 +85,7 @@ import {
   invoiceBillToFromRow,
   type InvoiceBillTo,
 } from '../../lib/jobs/invoiceBillTo'
+import { isMintedPrimaryDraftStillUntouched } from '../../lib/jobs/mintedPrimaryDraftCleanup'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
 import { buildHazmatNoticeEmailPreviewHtml } from '../../lib/hazmatNoticeEmailPreview'
@@ -430,6 +431,10 @@ export default function SendRecordInvoiceModal({
   const [ensuredInvoice, setEnsuredInvoice] = useState<{ jobId: string; id: string; amount: number } | null>(null)
   const [ensureError, setEnsureError] = useState<string | null>(null)
   const [ensureLoading, setEnsureLoading] = useState(false)
+  /** Set when THIS open's ensure INSERTed the primary draft (`created: true`) — the cancel-leak guard's memory. */
+  const mintedPrimaryDraftRef = useRef<{ jobId: string; invoiceId: string } | null>(null)
+  /** Job id the modal is currently open for (kind:'job'), so a late cleanup never deletes a row a re-open is using. */
+  const openJobIdRef = useRef<string | null>(null)
 
   const [stripeDueDate, setStripeDueDate] = useState(todayIsoDate)
   const [editDueDateOpen, setEditDueDateOpen] = useState(false)
@@ -935,10 +940,76 @@ export default function SendRecordInvoiceModal({
     }
   }, [open, job?.id, kind, invoice?.id])
 
+  // v2.2464 cancel-leak guard: when THIS open's ensure MINTED the primary
+  // draft and the modal closes with the row still exactly as the mint left it
+  // (no Stripe object, never sent/billed, no outside-send record, no bill-to
+  // override, no payment), delete it again. Opening Bill Customer and backing
+  // out must not permanently plant the full-remainder "auto" draft — that is
+  // what seeded job 978's confusion. Best-effort: on any doubt, keep the row
+  // (a kept draft resizes/deletes on the next remainder resync anyway).
+  const cleanupMintedPrimaryDraft = useCallback(async () => {
+    const minted = mintedPrimaryDraftRef.current
+    if (!minted) return
+    // A fast close→reopen of the same job reuses the same primary row (the
+    // reopen's ensure finds it, created:false) — a late cleanup from the
+    // first open must not delete it out from under the live modal.
+    if (openJobIdRef.current === minted.jobId) return
+    mintedPrimaryDraftRef.current = null
+    try {
+      const rowRes = await supabase
+        .from('jobs_ledger_invoices')
+        .select(
+          'status, is_primary_rtb_bundle, stripe_invoice_id, stripe_invoice_status, hosted_invoice_url, sent_to_customer_at, billed_at, external_send_channel, bill_to_name, bill_to_email, bill_to_phone, bill_to_stripe_customer_id',
+        )
+        .eq('id', minted.invoiceId)
+        .maybeSingle()
+      if (rowRes.error) return
+      const payRes = await supabase
+        .from('jobs_ledger_payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('invoice_id', minted.invoiceId)
+      if (payRes.error) return
+      if (!isMintedPrimaryDraftStillUntouched(rowRes.data, payRes.count ?? 0)) return
+      const del = await supabase.rpc('delete_ready_to_bill_invoice', { p_invoice_id: minted.invoiceId })
+      const delOk = (del.data as { ok?: boolean } | null)?.ok === true
+      if (del.error || !delOk) return
+      try {
+        await onAfterEnsureSuccessRef.current?.()
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      /* best-effort — never surface cleanup noise over a routine close */
+    }
+  }, [])
+
+  useEffect(() => {
+    openJobIdRef.current = open && kind === 'job' ? (job?.id ?? null) : null
+    if (!open) void cleanupMintedPrimaryDraft()
+    // Cleared here (declared before the unmount effect below, so this runs
+    // first) so the unmount cleanup isn't blocked by the open-job guard.
+    return () => {
+      openJobIdRef.current = null
+    }
+  }, [open, kind, job?.id, cleanupMintedPrimaryDraft])
+
+  // Provider teardown / route change while open: same guard on unmount.
+  useEffect(
+    () => () => {
+      void cleanupMintedPrimaryDraft()
+    },
+    [cleanupMintedPrimaryDraft],
+  )
+
   // Ensure primary RTB line when opening for a job row (shared for Outside submit).
   useEffect(() => {
     if (!open || !job?.id || kind !== 'job') return
     if (ensuredInvoice?.jobId === job.id) return
+    // Payload swapped to another job while open: settle the previous job's
+    // minted draft before this job can record its own.
+    if (mintedPrimaryDraftRef.current && mintedPrimaryDraftRef.current.jobId !== job.id) {
+      void cleanupMintedPrimaryDraft()
+    }
 
     let cancelled = false
     setEnsureLoading(true)
@@ -953,8 +1024,19 @@ export default function SendRecordInvoiceModal({
             }),
           'ensure RTB invoice for Bill Customer'
         )
-        if (cancelled) return
         const obj = raw as Record<string, unknown> | null
+        // Record a mint BEFORE the cancelled bail-out — the row exists
+        // server-side either way, and the close cleanup must know about it.
+        if (obj?.ok === true && obj.created === true && typeof obj.invoice_id === 'string') {
+          mintedPrimaryDraftRef.current = { jobId: job.id, invoiceId: obj.invoice_id }
+        }
+        if (cancelled) {
+          // Modal closed (or moved on) while the ensure was in flight — the
+          // close-time cleanup ran before the mint was recorded, so settle it
+          // now.
+          void cleanupMintedPrimaryDraft()
+          return
+        }
         if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
           setEnsuredInvoice(null)
           setEnsureError(obj.error)
