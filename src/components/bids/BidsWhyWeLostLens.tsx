@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
 import { bidAddressMapsUrl } from '../../lib/buildBidPricingPackageHtml'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -274,10 +275,11 @@ export function BidsWhyWeLostLens({
     const clearing = !hasAnyBidTabValue(values)
     void (async () => {
       try {
-        await withSupabaseRetry(
-          async () => supabase.from('bids').update(patch).eq('id', b.id),
+        const rows = await withSupabaseRetry(
+          async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'),
           'save bid tab',
         )
+        if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         onError(null)
         // Paste capture (v2.2296): the full per-bidder tab rides along; a
         // summary clear ("Remove bid tab") clears the rungs too. Fail-soft.
@@ -338,10 +340,11 @@ export function BidsWhyWeLostLens({
         } else {
           const patch: { loss_category: string; loss_reason?: string } = { loss_category: key }
           if (note) patch.loss_reason = note
-          await withSupabaseRetry(
-            async () => supabase.from('bids').update(patch).eq('id', b.id),
+          const rows = await withSupabaseRetry(
+            async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'),
             'save bid loss category',
           )
+          if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         }
         onError(null)
         onReloadBids()

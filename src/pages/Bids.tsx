@@ -1045,7 +1045,7 @@ export default function Bids() {
       }
       setArchiveWorkingBoardBusyBidId(bidId)
       try {
-        await withSupabaseRetry(
+        const archivedRows = await withSupabaseRetry(
           async () =>
             supabase
               .from('bids')
@@ -1053,9 +1053,11 @@ export default function Bids() {
                 working_board_archived_at: new Date().toISOString(),
                 working_board_archived_by: authUser.id,
               })
-              .eq('id', bidId),
+              .eq('id', bidId)
+              .select('id'),
           'archive working board bid',
         )
+        if (!updateApplied(archivedRows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         const rows = await loadBids()
         showToast('Archived. Restore from Bid Board → Archived.', 'success')
         setEditingBid((prev) => {
@@ -2351,12 +2353,17 @@ export default function Bids() {
   }
 
   async function saveBidSubmissionQuickAdd(bidId: string, value: string) {
-    const { error: err } = await supabase
+    const { data: updatedRows, error: err } = await supabase
       .from('bids')
       .update({ bid_submission_link: value.trim() || null })
       .eq('id', bidId)
+      .select('id')
     if (err) {
       setError(err.message)
+      return
+    }
+    if (!updateApplied(updatedRows)) {
+      setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
     const rows = await loadBids()
@@ -2389,13 +2396,18 @@ export default function Bids() {
     if (!notesModalBid) return
     setSavingNotes(true)
     setError(null)
-    const { error: err } = await supabase
+    const { data: updatedRows, error: err } = await supabase
       .from('bids')
       .update({ notes: notesModalText.trim() || null })
       .eq('id', notesModalBid.id)
+      .select('id')
     setSavingNotes(false)
     if (err) {
       setError(err.message)
+      return
+    }
+    if (!updateApplied(updatedRows)) {
+      setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
     await loadBids()

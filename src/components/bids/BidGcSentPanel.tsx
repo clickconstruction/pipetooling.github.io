@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/format'
 import { firstSentOn, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
@@ -136,7 +137,11 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
     const rows = (data ?? []) as VersionSendRow[]
     setSends(rows)
     const first = firstSentOn(rows)
-    await withSupabaseRetry(async () => supabase.from('bids').update({ bid_date_sent: first }).eq('id', bidId), 'per-GC sent roll-up')
+    const rollupRows = await withSupabaseRetry(async () => supabase.from('bids').update({ bid_date_sent: first }).eq('id', bidId).select('id'), 'per-GC sent roll-up')
+    if (!updateApplied(rollupRows)) {
+      showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      return
+    }
     setLiveBidDateSent(first)
     onRollupDateChanged(first)
     window.dispatchEvent(new Event('bid-version-sends-changed'))

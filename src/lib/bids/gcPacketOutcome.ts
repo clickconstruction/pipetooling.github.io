@@ -6,6 +6,7 @@
  */
 import { supabase } from '../supabase'
 import { rollUpOutcome } from './gcPackets'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from './updateGuard'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 export type PacketOutcome = 'won' | 'lost' | null
@@ -53,11 +54,15 @@ export async function setGcPacketOutcome(args: {
   // may have set it by hand; a GC win always wins.
   const decided = args.bidOutcome === 'won' || args.bidOutcome === 'lost' || args.bidOutcome === 'started_or_complete'
   if (roll === 'won' && args.bidOutcome !== 'won' && args.bidOutcome !== 'started_or_complete') {
-    await supabase.from('bids').update({ outcome: 'won' }).eq('id', args.bidId)
+    const { data: rows, error: rollErr } = await supabase.from('bids').update({ outcome: 'won' }).eq('id', args.bidId).select('id')
+    if (rollErr) return { error: rollErr.message, bidOutcomeSet: null, autoLost }
+    if (!updateApplied(rows)) return { error: BID_UPDATE_NOT_APPLIED_MESSAGE, bidOutcomeSet: null, autoLost }
     return { error: null, bidOutcomeSet: 'won', autoLost }
   }
   if (roll === 'lost' && !decided) {
-    await supabase.from('bids').update({ outcome: 'lost' }).eq('id', args.bidId)
+    const { data: rows, error: rollErr } = await supabase.from('bids').update({ outcome: 'lost' }).eq('id', args.bidId).select('id')
+    if (rollErr) return { error: rollErr.message, bidOutcomeSet: null, autoLost }
+    if (!updateApplied(rows)) return { error: BID_UPDATE_NOT_APPLIED_MESSAGE, bidOutcomeSet: null, autoLost }
     return { error: null, bidOutcomeSet: 'lost', autoLost }
   }
   return { error: null, bidOutcomeSet: null, autoLost }

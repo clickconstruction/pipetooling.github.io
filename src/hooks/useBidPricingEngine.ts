@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
 import { expandTemplate } from '../lib/materialPOUtils'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
@@ -426,12 +427,17 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   async function saveBidSelectedTakeoffBookVersion(bidId: string, versionId: string | null) {
-    const { error: err } = await supabase
+    const { data: rows, error: err } = await supabase
       .from('bids')
       .update({ selected_takeoff_book_version_id: versionId })
       .eq('id', bidId)
+      .select('id')
     if (err) {
       setError(`Failed to save takeoff book version: ${err.message}`)
+      return
+    }
+    if (!updateApplied(rows)) {
+      setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
     await loadBids()
@@ -736,12 +742,17 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   async function saveBidSelectedLaborBookVersion(bidId: string, versionId: string | null) {
-    const { error: err } = await supabase
+    const { data: rows, error: err } = await supabase
       .from('bids')
       .update({ selected_labor_book_version_id: versionId })
       .eq('id', bidId)
+      .select('id')
     if (err) {
       setError(`Failed to save labor book version: ${err.message}`)
+      return
+    }
+    if (!updateApplied(rows)) {
+      setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
     await loadBids()
@@ -1114,12 +1125,17 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null) {
-    const { error: err } = await supabase
+    const { data: rows, error: err } = await supabase
       .from('bids')
       .update({ selected_price_book_version_id: versionId })
       .eq('id', bidId)
+      .select('id')
     if (err) {
       setError(`Failed to save version: ${err.message}`)
+      return
+    }
+    if (!updateApplied(rows)) {
+      setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
     // v2.2117: the ★ is per version. Stamp the active version's own star so switching
@@ -1134,12 +1150,17 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
 
   /** Persist the bid's active Version (the variant the user is currently on). */
   async function saveBidSelectedBidVersion(bidId: string, versionId: string | null) {
-    const { error: err } = await supabase
+    const { data: rows, error: err } = await supabase
       .from('bids')
       .update({ selected_bid_version_id: versionId })
       .eq('id', bidId)
+      .select('id')
     if (err) {
       setError(`Failed to save version: ${err.message}`)
+      return
+    }
+    if (!updateApplied(rows)) {
+      setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
     await loadBids()
@@ -1234,14 +1255,16 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setMaterialsModelBusy(true)
     setError(null)
     try {
-      await withSupabaseRetry(
+      const updatedRows = await withSupabaseRetry(
         async () =>
           supabase
             .from('bids')
             .update({ materials_model: next })
-            .eq('id', bid.id),
+            .eq('id', bid.id)
+            .select('id'),
         'update bid materials_model'
       )
+      if (!updateApplied(updatedRows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       const rows = await loadBids()
       const fresh = rows.find((b) => b.id === bid.id)
       if (fresh) setSharedBid(fresh)

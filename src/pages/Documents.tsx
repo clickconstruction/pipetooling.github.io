@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
 import { useToastContext } from '../contexts/ToastContext'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
@@ -1051,10 +1052,14 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
           }
           const patch =
             col === 'submission' ? { bid_submission_link: normalizedUrl } : { drive_link: normalizedUrl }
-          await withSupabaseRetry(
-            async () => await supabase.from('bids').update(patch).eq('id', addDriveLinkBid.id),
+          const rows = await withSupabaseRetry(
+            async () => await supabase.from('bids').update(patch).eq('id', addDriveLinkBid.id).select('id'),
             'documents save bid link',
           )
+          if (!updateApplied(rows)) {
+            showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+            return
+          }
           showToast('Link saved', 'success')
           await load()
         }}

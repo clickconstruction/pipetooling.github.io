@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
 import { entryGcIdFromPacketKey } from '../../lib/bids/bidContacts'
 import { bidBoardLastContactParts } from '../../lib/bids/bidBoardDateCells'
@@ -388,10 +389,11 @@ export function BidsWaitingToHearLens({
           bidPatch.loss_category = writes.outcomeUpdate.loss_category
         }
         if (Object.keys(bidPatch).length > 0) {
-          await withSupabaseRetry(
-            async () => supabase.from('bids').update(bidPatch).eq('id', b.id),
+          const rows = await withSupabaseRetry(
+            async () => supabase.from('bids').update(bidPatch).eq('id', b.id).select('id'),
             'save chase outcome',
           )
+          if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         }
         onError(null)
         // Paste capture (v2.2296): the full per-bidder tab rides along. Fail-soft
@@ -435,7 +437,8 @@ export function BidsWaitingToHearLens({
     const patch: Record<string, number | null> = { ...buildBidTabPatch(EMPTY_BID_TAB_VALUES) }
     void (async () => {
       try {
-        await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id), 'remove bid tab')
+        const rows = await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'), 'remove bid tab')
+        if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         await clearBidTabEntries(b.id)
         setTabEntriesByBid((prev) => ({ ...prev, [b.id]: [] }))
         onError(null)
