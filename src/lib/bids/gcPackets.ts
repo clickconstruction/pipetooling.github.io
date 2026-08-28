@@ -105,3 +105,19 @@ export function rollUpOutcome(packets: ReadonlyArray<{ outcome: string | null; s
   if (sent.length > 0 && sent.every((p) => p.outcome === 'lost')) return 'lost'
   return null
 }
+
+/**
+ * The board's "sent 1/2" roll-up badge (v2.2411, per-GC sent follow-through): how many of a
+ * multi-GC bid's REAL packets (shared-letter recipients ride the bid, they don't count) have a
+ * send. Null when the badge would be noise: fewer than two real packets, or nothing sent yet
+ * (an all-unsent bid already sits in Unsent/Working — "sent 0/2" says nothing).
+ */
+export function perGcSentSummary(
+  packets: ReadonlyArray<{ sentOn: string | null; sharedLetter?: boolean }> | undefined,
+): { sent: number; total: number; complete: boolean } | null {
+  const real = (packets ?? []).filter((p) => !p.sharedLetter)
+  if (real.length < 2) return null
+  const sent = real.filter((p) => p.sentOn != null).length
+  if (sent === 0) return null
+  return { sent, total: real.length, complete: sent === real.length }
+}
