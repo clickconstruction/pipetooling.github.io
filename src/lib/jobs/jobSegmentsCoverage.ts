@@ -262,6 +262,41 @@ export function segmentSelectionNetSummary(
 }
 
 /**
+ * v2.2467: a typed New-Invoice dollar amount that exactly equals the remaining
+ * net of EXACTLY ONE still-billable segment is that segment, billed by its
+ * price — link it so the customer's bill lists that line, not the whole job
+ * prorated (Taunya, job 978: typing the change order's $1,980 produced a bill
+ * showing $1,080 + $900 across both line items). Exact single match only:
+ * zero matches (arbitrary partial) and ambiguous matches (two segments share
+ * the value) both return null and keep the historical unlinked carve — a
+ * guessed link would misstate what the customer is paying for. Riders are not
+ * fixtures, so a rider-sized amount never matches.
+ */
+export function exactSingleSegmentMatchForAmount(
+  fixtures: SegmentFixtureLine[],
+  coverage: JobDollarCoverage | null | undefined,
+  amountCents: number,
+): { fixtureId: string; label: string } | null {
+  if (!Number.isFinite(amountCents) || !(amountCents > 0)) return null
+  let match: { fixtureId: string; label: string } | null = null
+  for (const f of fixtures) {
+    if (f.invoice_id != null) continue
+    const d = lineDollars(f)
+    if (!(d > 0)) continue
+    const segCents = Math.round(d * 100)
+    const coveredCents = Math.min(
+      segCents,
+      Math.round((coverage?.bySegmentKey[f.id]?.coveredDollars ?? 0) * 100),
+    )
+    const netCents = segCents - coveredCents
+    if (netCents <= 0 || netCents !== amountCents) continue
+    if (match) return null
+    match = { fixtureId: f.id, label: (f.name ?? '').trim() }
+  }
+  return match
+}
+
+/**
  * Row ids that a "create invoice from selection" will actually link — the
  * same validity rules as segmentSelectionSummary. Used to mirror the DB link
  * write into local fixtures state so the next delete+reinsert keeps it.
