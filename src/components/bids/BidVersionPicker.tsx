@@ -5,6 +5,9 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidVersion } from '../../lib/bids/bidPricingEngineTypes'
 import { formatSendBadge, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { defaultCopySourceId, groupVersionsByGc } from '../../lib/bids/gcPackets'
+import { fetchBidRoomStates } from '../../lib/bids/fetchBidRoomStates'
+import { roomGcKey, type BidRoomStateSummary } from '../../lib/bids/bidRoomState'
+import { BidRoomStateChip } from './BidRoomStateChip'
 import { SearchableSelect } from '../SearchableSelect'
 
 type BidVersionPickerProps = {
@@ -424,6 +427,22 @@ export function BidVersionPicker({
 
   // G2: group versions by the GC they go to (no override = the bid's GC) — shared kernel (v2.2162).
   const groups = groupVersionsByGc(bidVersions, { bidGcName: bidGcName ?? null, gcNames: gcNamesById, latestSends, bidDateSent: bidDateSent ?? null, recipients })
+  // Bid Room read-backs (v2.2471): per-GC chip on the Send-to strip.
+  const [roomStates, setRoomStates] = useState<Record<string, BidRoomStateSummary>>({})
+  useEffect(() => {
+    let cancelled = false
+    const load = () => {
+      void fetchBidRoomStates(bidId).then((m) => {
+        if (!cancelled) setRoomStates(m)
+      })
+    }
+    load()
+    window.addEventListener('bid-room-changed', load)
+    return () => {
+      cancelled = true
+      window.removeEventListener('bid-room-changed', load)
+    }
+  }, [bidId])
   if (!groups.some((g) => g.key === '') && (isUnsplit || groups.length === 0)) groups.unshift({ key: '', gcId: null, name: bidGcName ?? 'the GC', versions: [], sentOn: null, sentValue: null, outcome: null })
   const fmtSent = (ymd: string) => { const [, m, d] = ymd.split('-'); return m && d ? `${Number(m)}/${Number(d)}` : ymd }
   const starNameOf = (v: BidVersion) => (v.starred_price_book_version_id ? pricingSourceNames?.[v.starred_price_book_version_id] ?? null : null)
@@ -520,6 +539,11 @@ export function BidVersionPicker({
                     ) : null
                   })()}
                 </span>
+                {roomStates[roomGcKey(g.gcId)] ? (
+                  <span style={{ display: 'block', marginTop: 2 }}>
+                    <BidRoomStateChip state={roomStates[roomGcKey(g.gcId)]} compact />
+                  </span>
+                ) : null}
               </button>
               {g.versions.map((v) => {
                 const active = selectedBidVersionId === v.id

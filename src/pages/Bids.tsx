@@ -275,7 +275,7 @@ export default function Bids() {
   const [lastMethodContactFromEntries, setLastMethodContactFromEntries] = useState<Record<string, string>>({})
   const [bidGcRecipientsByBidId, setBidGcRecipientsByBidId] = useState<BidGcRecipientsMap>({})
   // Bids by GC (v2.2162/v2.2164): one packet load for the board, the Followup lenses and By builder.
-  const { packetsByBid: gcPacketsByBid, noteCounts: gcNoteCounts } = useBidGcPackets(bids, bidGcRecipientsByBidId)
+  const { packetsByBid: gcPacketsByBid, noteCounts: gcNoteCounts, roomStatesByBid } = useBidGcPackets(bids, bidGcRecipientsByBidId)
   const [customerContacts, setCustomerContacts] = useState<CustomerContact[]>([])
   const [customerContactPersons, setCustomerContactPersons] = useState<CustomerContactPerson[]>([])
 
@@ -2963,6 +2963,7 @@ export default function Bids() {
           workingBoardArchivedBids={workingBoardArchivedBids}
           gcNoteCounts={gcNoteCounts}
           gcPacketsByBid={gcPacketsByBid}
+          roomStatesByBid={roomStatesByBid}
           recipientsByBidId={bidGcRecipientsByBidId}
         />
       )}
@@ -3127,6 +3128,7 @@ export default function Bids() {
         <BidsWaitingToHearLens
           bids={bids}
           gcPacketsByBid={gcPacketsByBid}
+          roomStatesByBid={roomStatesByBid}
           ledgerPrefixMap={ledgerPrefixMap}
           lastContactFromEntries={lastMethodContactFromEntries}
           recipientsByBidId={bidGcRecipientsByBidId}

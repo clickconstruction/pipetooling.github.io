@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { type BidRoomStateSummary } from '../../lib/bids/bidRoomState'
+import { BidRoomStateChip } from './BidRoomStateChip'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -55,6 +57,8 @@ export type BidsWaitingToHearLensProps = {
   lastContactFromEntries: Record<string, string>
   /** bid_id → other GCs the bid went to; each gets its own queue entry. */
   recipientsByBidId: BidGcRecipientsMap
+  /** Bid Room read-backs (v2.2471): bidId → gcKey ('' = own GC) → summary. */
+  roomStatesByBid?: Record<string, Record<string, BidRoomStateSummary>>
   narrowViewport640: boolean
   authUserId: string | null
   onError: (message: string | null) => void
@@ -131,6 +135,7 @@ export function BidsWaitingToHearLens({
   ledgerPrefixMap,
   lastContactFromEntries,
   recipientsByBidId,
+  roomStatesByBid,
   narrowViewport640,
   authUserId,
   onError,
@@ -718,6 +723,17 @@ export function BidsWaitingToHearLens({
                   {` · sent ${shortDate(selectedBid.sentIso)} (${daysAgoLabel(Math.max(0, Math.floor((Date.parse(nowIso) - Date.parse(selectedBid.sentIso)) / 86_400_000)))})`}
                   {selectedBid.dueIso ? ` · was due ${shortDate(selectedBid.dueIso)}` : ''}
                   {selectedBid.estimatorName ? ` · est. ${selectedBid.estimatorName}` : ''}
+                  {(() => {
+                    // Bid Room activity (v2.2471) — the chase call's best intel: are they reading it?
+                    const byGc = roomStatesByBid?.[selectedBid.id]
+                    const st = byGc?.[selectedBid.gc.gcKey] ?? (selectedBid.gc.gcKey === (selectedBid.raw.customer_id ?? selectedBid.raw.gc_builder_id ?? '') ? byGc?.[''] : undefined)
+                    return st ? (
+                      <>
+                        {' · '}
+                        <BidRoomStateChip state={st} />
+                      </>
+                    ) : null
+                  })()}
                 </div>
                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: bidNeedsChase(selectedBid, nowIso) ? 'var(--text-amber-800)' : 'var(--text-emerald-800)' }}>
                   {(() => {

@@ -15,6 +15,10 @@ On **Bids → Cover Letter**, each GC's panel has a **✍ Bid room** row under {
 - The **revision note** is the line the GC sees on the page — *"per addendum 2"*.
 - The **Google Docs letter link** field attaches your full letter to the room; the Docs method isn't replaced, it rides along.
 
+## Where you see it
+
+The room's state follows you: a chip on the **Send to** strip's GC groups, on the Bid Board's per-GC lines, and on **Followup → Waiting to hear** right beside Last contact — {{chip:yellow|rev 2 · opened 3×}} while it's out, {{chip:green|✍ signed — Base bid $249,971}} when they commit, {{chip:red|✍ declined}} when they pass. Once signed, the Cover Letter panel links straight to the signed record; until then it can **Email the link again** or **Close the room** (their link shows a polite withdrawn page).
+
 ## Revising
 
 Change the bid, then press {{button:gray|Publish update only}} (or **Publish update & notify** to email again). The room shows the new revision with your note — nothing is withdrawn, no dead links, and the GC's bookmark keeps working. The chip on the panel tells you where things stand: {{chip:yellow|rev 2 live · opened 3×}}.

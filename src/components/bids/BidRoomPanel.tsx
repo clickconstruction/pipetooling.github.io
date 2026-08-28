@@ -16,6 +16,11 @@ import {
   type RoomSectionInput,
 } from '../../lib/bids/bidRoomPayload'
 import { extractContactFromCustomer } from '../../lib/customerContactDisplay'
+import { roomGcKey, roomStateChipLabel, type BidRoomStateSummary } from '../../lib/bids/bidRoomState'
+import { fetchBidRoomStates } from '../../lib/bids/fetchBidRoomStates'
+import { BidRoomStateChip } from './BidRoomStateChip'
+import { Link } from 'react-router-dom'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { Tables } from '../../types/database'
 
 type RoomRow = Tables<'bid_proposal_rooms'>
@@ -57,10 +62,10 @@ const btn = (kind: 'blue' | 'ghost'): React.CSSProperties => ({
 export function BidRoomPanel(props: BidRoomPanelProps) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [room, setRoom] = useState<RoomRow | null>(null)
   const [latestRev, setLatestRev] = useState<{ rev_number: number; published_at: string } | null>(null)
-  const [viewCount, setViewCount] = useState(0)
-  const [lastViewAt, setLastViewAt] = useState<string | null>(null)
+  const [state, setState] = useState<BidRoomStateSummary | null>(null)
   const [everSent, setEverSent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(false)
@@ -81,8 +86,7 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
     }
     if (!r) {
       setLatestRev(null)
-      setViewCount(0)
-      setLastViewAt(null)
+      setState(null)
       setEverSent(false)
       const em = await crmEmail()
       if (em) setEmail((prev) => prev || em)
@@ -91,22 +95,19 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
     const em = r.recipient_email || (await crmEmail())
     if (em) setEmail((prev) => prev || em)
     setAttachUrl(r.attachment_url ?? '')
-    const [{ data: revs }, { data: events }] = await Promise.all([
+    const [{ data: revs }, states] = await Promise.all([
       supabase
         .from('bid_proposal_room_revisions')
         .select('rev_number, published_at')
         .eq('room_id', r.id)
         .order('rev_number', { ascending: false })
         .limit(1),
-      supabase.from('bid_proposal_room_events').select('event_type, occurred_at').eq('room_id', r.id),
+      fetchBidRoomStates(props.bidId),
     ])
     setLatestRev((revs?.[0] as { rev_number: number; published_at: string } | undefined) ?? null)
-    const evs = (events ?? []) as Array<{ event_type: string; occurred_at: string }>
-    const views = evs.filter((e) => e.event_type === 'room_view')
-    setViewCount(views.length)
-    const sortedViews = views.map((e) => e.occurred_at).sort()
-    setLastViewAt(sortedViews[sortedViews.length - 1] ?? null)
-    setEverSent(evs.some((e) => e.event_type === 'link_sent'))
+    const st = states[roomGcKey(props.gcCustomerId)] ?? null
+    setState(st)
+    setEverSent(st?.everSent ?? false)
   }, [props.bidId, props.gcCustomerId, props.crmCustomerId])
 
   useEffect(() => {
@@ -181,9 +182,43 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
         return null
       }
       setNote('')
+      window.dispatchEvent(new Event('bid-room-changed'))
       await load()
       showToast(`Published rev ${nextRev} to ${props.gcName}'s room.`, 'success')
       return r
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Email the current link again without minting a revision. */
+  async function sendOnly() {
+    const to = email.trim()
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      showToast('Enter the GC contact email to send the link to.', 'error')
+      return
+    }
+    if (!room) return
+    setBusy(true)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-bid-room-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sess.session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+        },
+        body: JSON.stringify({ room_id: room.id, email: to, public_origin: window.location.origin }),
+      })
+      const json = (await res.json()) as { ok?: boolean; error?: string }
+      if (!res.ok || !json.ok) {
+        showToast(json.error || 'Could not send the room link.', 'error')
+        return
+      }
+      window.dispatchEvent(new Event('bid-room-changed'))
+      await load()
+      showToast(`Room link emailed to ${to}.`, 'success')
     } finally {
       setBusy(false)
     }
@@ -234,11 +269,25 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
     }
   }
 
-  const chip = room
-    ? latestRev
-      ? `rev ${latestRev.rev_number} live${viewCount > 0 ? ` · opened ${viewCount}×` : ' · not opened yet'}${lastViewAt ? ` · last ${new Date(lastViewAt).toLocaleDateString()}` : ''}`
-      : 'room created — nothing published'
-    : null
+  async function closeRoom() {
+    if (!room) return
+    if (
+      !(await confirmDialog({
+        message: `Close ${props.gcName}'s room? Their link will show "this proposal has been withdrawn."`,
+        confirmLabel: 'Close room',
+        danger: true,
+      }))
+    )
+      return
+    await supabase.from('bid_proposal_rooms').update({ closed_at: new Date().toISOString() }).eq('id', room.id)
+    window.dispatchEvent(new Event('bid-room-changed'))
+    setRoom(null)
+    await load()
+    showToast('Room closed — the link is dead until you publish a new room.', 'success')
+  }
+
+  const answered = state?.outcome != null
+  const chipLabel = roomStateChipLabel(state)
 
   return (
     <div style={{ marginTop: '0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
@@ -246,10 +295,8 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
         <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           ✍ Bid room
         </span>
-        {chip ? (
-          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 999, padding: '0.1rem 0.55rem' }}>
-            {chip}
-          </span>
+        {chipLabel ? (
+          <BidRoomStateChip state={state} />
         ) : (
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             one durable link for {props.gcName} — the letter, signable, always current
@@ -261,6 +308,23 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
       </div>
       {open ? (
         <div style={{ display: 'grid', gap: '0.45rem', marginTop: '0.55rem' }}>
+          {answered ? (
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>
+              {state?.outcome === 'signed' ? (
+                <>
+                  Signed{state.outcomeMeta.printed_name ? ` by ${state.outcomeMeta.printed_name}` : ''}
+                  {state.outcomeMeta.option_name ? ` — “${state.outcomeMeta.option_name}”` : ''}.{' '}
+                  {typeof state.outcomeMeta.estimate_number === 'number' ? (
+                    <Link to={`/estimates/${state.outcomeMeta.estimate_number}`} style={{ fontWeight: 600 }}>
+                      View the signed record →
+                    </Link>
+                  ) : null}
+                </>
+              ) : (
+                <>Declined — the reason is on the packet (Why we lost). The room stays viewable for the GC.</>
+              )}
+            </div>
+          ) : null}
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <input
               type="email"
@@ -270,17 +334,29 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
               aria-label="GC contact email"
               style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-strong)', width: '15rem' }}
             />
-            <button type="button" disabled={busy} onClick={() => void publishAndSend()} style={btn('blue')}>
-              {busy ? 'Working…' : room && latestRev ? 'Publish update & notify' : '✍ Publish & send room link'}
-            </button>
-            {room && latestRev ? (
+            {!answered ? (
+              <button type="button" disabled={busy} onClick={() => void publishAndSend()} style={btn('blue')}>
+                {busy ? 'Working…' : room && latestRev ? 'Publish update & notify' : '✍ Publish & send room link'}
+              </button>
+            ) : null}
+            {!answered && room && latestRev ? (
               <button type="button" disabled={busy} onClick={() => void publish()} style={btn('ghost')} title="Publish the current letter as a new revision without emailing">
                 Publish update only
+              </button>
+            ) : null}
+            {!answered && room && latestRev && everSent ? (
+              <button type="button" disabled={busy} onClick={() => void sendOnly()} style={btn('ghost')} title="Email the room link again without publishing a new revision">
+                Email link again
               </button>
             ) : null}
             {room ? (
               <button type="button" onClick={() => void copyLink()} style={btn('ghost')}>
                 Copy link
+              </button>
+            ) : null}
+            {room && !answered ? (
+              <button type="button" disabled={busy} onClick={() => void closeRoom()} style={{ ...btn('ghost'), color: 'var(--text-red-700)' }} title="Withdraw — the link shows a polite closed page until a new room is published">
+                Close room
               </button>
             ) : null}
           </div>
