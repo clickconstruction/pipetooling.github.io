@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { bidTriagePillLabel,
   marginFlag,
   formatAmountFromString,
+  formatRevenueMultiple,
   formatCompactCurrency,
   formatBidValueShort,
   formatDateYYMMDD,
@@ -121,5 +122,18 @@ describe('bidTriagePillLabel', () => {
   it('falls back to the street for unnamed bids, then the ledger label', () => {
     expect(bidTriagePillLabel({ project: '—', address: '400 S SAGINAW BLVD, SAGINAW, TX', label: 'BP342' })).toBe('S SAGINAW BLVD')
     expect(bidTriagePillLabel({ project: '', address: null, label: 'BP342' })).toBe('BP342')
+  })
+})
+
+describe('formatRevenueMultiple', () => {
+  it('one decimal with the × suffix', () => {
+    expect(formatRevenueMultiple(56343, 25817)).toBe('2.2×')
+    expect(formatRevenueMultiple(198400, 100000)).toBe('2.0×')
+    expect(formatRevenueMultiple(310000, 100000)).toBe('3.1×')
+  })
+  it('null when there is nothing to divide', () => {
+    expect(formatRevenueMultiple(56343, 0)).toBeNull()
+    expect(formatRevenueMultiple(0, 25817)).toBeNull()
+    expect(formatRevenueMultiple(NaN, 100)).toBeNull()
   })
 })
