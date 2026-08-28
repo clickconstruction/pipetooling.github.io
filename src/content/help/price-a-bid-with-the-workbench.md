@@ -2,7 +2,7 @@
 title: price a bid with the Workbench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: pricing, workbench, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions
+keywords: pricing, workbench, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions, price book, book copy, book entry, price didn't change, price not updating
 order: 94
 ---
 The **Bids → Pricing** tab has two layouts, switched by the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic grid; **New is the Workbench**, built for pricing to a target.
@@ -30,6 +30,8 @@ Above the table, {{button:blue|Fill N matching from book}} assigns every unassig
 Click the book chip ({{chip:gray|WENDI · 111 entries ▸}}) and the price book slides in beside the table — the whole book, without leaving the rows it prices. (The old **▶ Price book** section at the page bottom, and its unused "This version's prices" mode, are gone.)
 
 - **Your book, front and center**: the row shows just your book (★ marks the one feeding this bid) with a **›** — press it to reveal the others, **‹** tucks them back. Clicking another book just **looks inside it** — the bid keeps pricing from its ★ book until you press {{button:blue|Use … on this bid}}, which switches the bid to that book *and* makes it **your default for new bids** (the line under the chips says so). Browsing never changes the bid. **Add book** creates a new one; ✎ renames.
+- **This bid has its own copy of the book.** When a bid starts, it takes a **copy** of the book it's priced from — same name, its own prices — so nobody's edit to the shared book can move the numbers on a bid you've already sent. The line under the book chips names that copy. It also means an edit you make in this drawer changes the *shared* book, not the bid in front of you.
+- **Carrying an edit across to this bid**: change a price here with a bid open and the drawer says so — *"This bid still prices Ft of Water Line at $12"* — with {{button:blue|Use $13.00 on this bid}} beside it. One press writes the new price into this bid's copy, and every row already assigned to that entry re-prices on the spot; **Leave this bid alone** keeps the bid as it is. Add an entry the bid's copy has never seen and the same offer appears as **Add it to this bid too** — take it, and the entry starts turning up in the row {{chip:gray|assign…}} searches. Other bids are never touched either way; each carries its own copy.
 - **Combined price ⇄ Stage price**: Combined shows one price per entry; Stage shows Rough In / Top Out / Trim Set (a dim — where a stage is zero; hover the name for the combined total).
 - **Editing follows the mode**: ✎ in Stage mode offers all three stages; in Combined mode it offers one **Price** — which lands in **Rough In**, so a quick combined price is never lost, and flipping to Stage shows exactly where it sits.
 - Search filters the entries; **Add entry** sits beside the Combined/Stage toggle and works in either mode; Esc or ✕ closes.

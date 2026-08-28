@@ -29,6 +29,7 @@ import {
   updateRecentMargins,
 } from '../../lib/bids/applyMarginPricing'
 import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
+import { planBookEditBidOffer, type BookEditBidOffer, type BookEntryPrices } from '../../lib/bids/bookEditBidOffer'
 import {
   computeTravelCost,
   costEstimateDrivingRate,
@@ -306,8 +307,17 @@ export function BidsPricingTab({
   const [wbBookDrawerOpen, setWbBookDrawerOpen] = useState(false)
   const [wbBooksExpanded, setWbBooksExpanded] = useState(false)
   const [wbPriceDisplayMode, setWbPriceDisplayMode] = useState<'combined' | 'stage'>('combined')
+  // v2.2444 (Wendi: "changed both versions of water to 13 and it isnt coming up"): the drawer
+  // edits the SHARED book, but a bid prices from a frozen copy of it that keeps the same name.
+  // After a book edit, this holds the door back to the open bid — see `bookEditBidOffer.ts`.
+  type PendingBookOffer = { offer: BookEditBidOffer; fixtureTypeId: string; prices: BookEntryPrices }
+  const [pendingBookOffer, setPendingBookOffer] = useState<PendingBookOffer | null>(null)
+  const [applyingBookOffer, setApplyingBookOffer] = useState(false)
   useEffect(() => {
-    if (!wbBookDrawerOpen) return
+    if (!wbBookDrawerOpen) {
+      setPendingBookOffer(null)
+      return
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setWbBookDrawerOpen(false)
     }
@@ -320,6 +330,10 @@ export function BidsPricingTab({
   // (`selectedPricingVersionId` / `priceBookEntries`), which still drives the grid.
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
   const [templateEntries, setTemplateEntries] = useState<PriceBookEntryWithFixture[]>([])
+  // The v2.2444 offer names one entry in one bid pricing — switching either side retires it.
+  useEffect(() => {
+    setPendingBookOffer(null)
+  }, [selectedPricingVersionId, editingTemplateId])
   // What kind of version the version-form modal is creating.
   const [pricingFormMode, setPricingFormMode] = useState<'template' | 'pricing-blank' | 'pricing-clone'>('pricing-blank')
   const [pricingCloneSourceId, setPricingCloneSourceId] = useState<string | null>(null)
@@ -889,6 +903,9 @@ export function BidsPricingTab({
     selectedPricingVersionId,
     bidPricings: priceBookVersions,
     templateIds: templatePriceBookVersions.map((t) => t.id),
+    // v2.2444: `templates` lets a severed lineage (source scenario deleted → ON DELETE SET NULL)
+    // still resolve by name, so the drawer opens the bid's own book instead of the first one.
+    templates: templatePriceBookVersions,
   })
 
   async function loadTemplateEntries(versionId: string | null) {
@@ -1400,6 +1417,72 @@ export function BidsPricingTab({
     setError(null)
   }
 
+  /**
+   * v2.2444: the drawer's ✎ and Add entry write to the SHARED book. A bid prices from a frozen
+   * copy of that book (same name, different rows), so the edit stops there unless someone carries
+   * it across. After each book save, park the offer to do exactly that for the bid on screen.
+   * Silence when no bid is open, or when its copy already agrees.
+   */
+  function noteBookEditForOpenBid(fixtureTypeId: string, fixtureName: string, prices: BookEntryPrices) {
+    if (entryFormTargetPricing) return // that save already landed in the bid's own copy
+    const offer = planBookEditBidOffer({
+      fixtureTypeId,
+      fixtureName,
+      book: prices,
+      bidEntries: priceBookEntries.map((entry) => ({
+        id: entry.id,
+        fixture_type_id: entry.fixture_type_id,
+        rough_in_price: Number(entry.rough_in_price),
+        top_out_price: Number(entry.top_out_price),
+        trim_set_price: Number(entry.trim_set_price),
+        total_price: Number(entry.total_price),
+      })),
+      hasActiveBidPricing: selectedBidForPricing != null && selectedPricingVersionId != null,
+    })
+    setPendingBookOffer(offer ? { offer, fixtureTypeId, prices } : null)
+  }
+
+  /**
+   * Carry the parked book edit into the bid's own copy. Assignments already point at the copy's
+   * entry id, so an updated price re-prices every assigned row with no re-assigning; an added
+   * entry simply starts turning up in the assign dropdowns.
+   */
+  async function applyPendingBookOffer() {
+    const pending = pendingBookOffer
+    const versionId = selectedPricingVersionId
+    if (!pending || !versionId || applyingBookOffer) return
+    setApplyingBookOffer(true)
+    try {
+      const { offer, fixtureTypeId, prices } = pending
+      if (offer.kind === 'update') {
+        const { error: err } = await supabase.from('price_book_entries').update(prices).eq('id', offer.bidEntryId)
+        if (err) {
+          setError(err.message)
+          return
+        }
+      } else {
+        const maxSeq = priceBookEntries.length === 0 ? 0 : Math.max(...priceBookEntries.map((entry) => entry.sequence_order))
+        const { error: err } = await supabase
+          .from('price_book_entries')
+          .insert({ version_id: versionId, fixture_type_id: fixtureTypeId, ...prices, sequence_order: maxSeq + 1 })
+        if (err) {
+          setError(err.message)
+          return
+        }
+      }
+      await loadPriceBookEntries(versionId)
+      setPendingBookOffer(null)
+      showToast(
+        offer.kind === 'update'
+          ? `This bid now prices ${offer.fixtureName} at $${formatCurrency(offer.bookTotal)}.`
+          : `${offer.fixtureName} added to this bid's book — it will come up when you assign.`,
+        'success',
+      )
+    } finally {
+      setApplyingBookOffer(false)
+    }
+  }
+
   async function savePricingEntry(e: React.FormEvent) {
     e.preventDefault()
     const targetVersionId = entryFormTargetPricing ? selectedPricingVersionId : panelVersionId
@@ -1437,6 +1520,7 @@ export function BidsPricingTab({
       if (err) setError(err.message)
       else {
         await reloadPanelEntries()
+        noteBookEditForOpenBid(fixtureTypeId, fixtureName, { rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
         closePricingEntryForm()
       }
     } else {
@@ -1449,6 +1533,7 @@ export function BidsPricingTab({
       else {
         if (entryFormTargetPricing) await loadPriceBookEntries(selectedPricingVersionId)
         else await reloadPanelEntries()
+        noteBookEditForOpenBid(fixtureTypeId, fixtureName, { rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
         closePricingEntryForm()
       }
     }
@@ -1534,7 +1619,8 @@ export function BidsPricingTab({
       const existing = priceBookVersions.find(
         (p) =>
           (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null) &&
-          resolvePriceBookTemplateRoot({ pricingId: p.id, bidPricings: priceBookVersions, templateIds }) === templateId,
+          resolvePriceBookTemplateRoot({ pricingId: p.id, bidPricings: priceBookVersions, templateIds, templates: templatePriceBookVersions }) ===
+            templateId,
       )
       if (existing) {
         await handlePricingVersionChange(bid.id, existing.id)
@@ -5494,6 +5580,9 @@ export function BidsPricingTab({
           const visibleEntries = templateEntries.filter((e) =>
             (e.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase()),
           )
+          // v2.2444: the bid's OWN book — a frozen copy of a template that kept the template's
+          // name. Naming it here is what stops "WENDI" in this drawer reading as "WENDI" on the bid.
+          const bidBookName = priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? null
           const cell: CSSProperties = { padding: '0.4rem 0.55rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--border)' }
           return (
             <div
@@ -5505,6 +5594,48 @@ export function BidsPricingTab({
                 <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Price book — {drawerName}</h3>
                 <button type="button" onClick={() => setWbBookDrawerOpen(false)} aria-label="Close the price book" style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>✕</button>
               </div>
+              {/* v2.2444 (Wendi): the book edit just made does NOT reach the bid on screen — its
+                  copy is frozen. This is the door across, offered once, per edit, never automatic:
+                  a sent bid must not re-price because someone tidied the book. */}
+              {pendingBookOffer ? (
+                <div role="status" style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.55rem 0.65rem', marginBottom: '0.65rem' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', lineHeight: 1.4 }}>
+                    {pendingBookOffer.offer.kind === 'update' ? (
+                      <>
+                        This bid still prices <strong>{pendingBookOffer.offer.fixtureName}</strong> at $
+                        {formatCurrency(pendingBookOffer.offer.bidTotal)} — it holds its own copy of the book, taken when
+                        the bid started.
+                      </>
+                    ) : (
+                      <>
+                        <strong>{pendingBookOffer.offer.fixtureName}</strong> isn&rsquo;t in this bid&rsquo;s copy of the
+                        book, so it won&rsquo;t come up when you assign a row.
+                      </>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.45rem' }}>
+                    <button
+                      type="button"
+                      disabled={applyingBookOffer}
+                      onClick={() => void applyPendingBookOffer()}
+                      style={{ font: 'inherit', fontSize: '0.76rem', fontWeight: 700, padding: '0.26rem 0.7rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: applyingBookOffer ? 'wait' : 'pointer', opacity: applyingBookOffer ? 0.6 : 1 }}
+                    >
+                      {applyingBookOffer
+                        ? 'Working…'
+                        : pendingBookOffer.offer.kind === 'update'
+                          ? `Use $${formatCurrency(pendingBookOffer.offer.bookTotal)} on this bid`
+                          : 'Add it to this bid too'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingBookOffer(null)}
+                      style={{ font: 'inherit', fontSize: '0.76rem', fontWeight: 600, padding: '0.26rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+                    >
+                      Leave this bid alone
+                    </button>
+                  </div>
+                </div>
+              ) : null}
               <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Book</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', marginBottom: '0.25rem' }}>
                 {(wbBooksExpanded ? templatePriceBookVersions : templatePriceBookVersions.filter((t) => t.id === editingTemplateId)).map((t) => {
@@ -5570,6 +5701,16 @@ export function BidsPricingTab({
               {defaultName ? (
                 <div title="Per person — the book you pick follows you to your next bid" style={{ fontSize: '0.68rem', color: 'var(--text-green-700)', marginBottom: '0.6rem' }}>
                   Your default for new bids: <strong>{defaultName}</strong> ✓
+                </div>
+              ) : null}
+              {/* v2.2444 (Wendi): said for EVERY book, not just one you're browsing away to. The
+                  old caption appeared only when the selected book differed from the bid's — so on
+                  the bid's own book, the case where you're most likely to edit and expect it to
+                  take, nothing explained the freeze at all. */}
+              {bidBookName ? (
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.45, marginBottom: '0.6rem' }}>
+                  Edits here change the shared book. This bid prices from <strong>{bidBookName}</strong>, its own copy
+                  taken when the bid started — it keeps its prices until you carry a change across.
                 </div>
               ) : null}
               {/* v2.2386 (Wendi): Add entry rides beside the price-mode toggle — always visible, no scroll to the list's foot. */}
