@@ -97,6 +97,7 @@ when_to_read:
    - [log-estimate-option-view](#log-estimate-option-view)
    - [get-bid-proposal-room](#get-bid-proposal-room)
    - [send-bid-room-link](#send-bid-room-link)
+   - [sign-bid-room](#sign-bid-room)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
    - [get-estimate-public-terms](#get-estimate-public-terms)
@@ -1000,6 +1001,20 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false`; staff JWT validated in-body (`auth.getUser`), and the caller's own RLS must see the room (403 otherwise).
 
 **Behavior**: Requires a published revision (400 otherwise); sends via Resend, stamps `recipient_email` on the room, logs a `link_sent` event with the revision number. The client stamps `bid_version_sends` on the first send (same as Mark sent today).
+
+---
+
+### sign-bid-room
+
+**Purpose**: Record a GC's signature or decline on a bid-room proposal (Signable Bids Phase 2, v2.2470) — the signature-time freeze.
+
+**Endpoint**: `POST /functions/v1/sign-bid-room` — `{ token, revision_id, action: 'sign'|'decline', … }` (sign: `optionKey`, `printedName`, `agreedTerms`, optional `signaturePngBase64`; decline: `category`?, `note`?)
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional staff notify), `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false`; the room token is the credential.
+
+**Behavior**: Only the room's **latest revision** may be answered (409 `stale_revision` — the page refreshes), and only once (409 `already_answered`). **Sign** mints an `estimates` row born `customer_accepted` (`doc_kind='bid_proposal'`, `bid_id`, the room's GC as `customer_id`; chosen option frozen into `line_items_snapshot`/`total_cents`/`accepted_option_key`, all options in `options_snapshot`; acceptor fields + optional PNG in `estimate-acceptor-signatures`), then applies [`_shared/bidRoomOutcome.ts`](../supabase/functions/_shared/bidRoomOutcome.ts): packet Won, other sent unanswered packets auto-Lost, conservative `bids.outcome` roll-up. **Decline** marks the packet Lost with the GC's own loss category/note (Why-we-lost feed). Both log room events and email the room's creator + master.
 
 ---
 

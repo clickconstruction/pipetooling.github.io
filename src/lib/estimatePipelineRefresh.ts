@@ -185,7 +185,12 @@ export function computeLedgerTotals(rows: LedgerRowLike[], nowMs: number): Ledge
   return { acceptedThisMonthCents, outstandingSentCents, acceptedUnlinkedCents }
 }
 
-export type LedgerKindFilter = 'all' | 'estimate' | 'change_order'
+export type LedgerKindFilter = 'all' | 'estimate' | 'change_order' | 'bid_proposal'
+
+/** Signed bid-room proposals (v2.2470) ride the estimates rails born-accepted. */
+export function isBidProposalDocKind(docKind: string | null | undefined): boolean {
+  return docKind === 'bid_proposal'
+}
 
 /** Ledger row filter: kind, closed-row toggle, and an updated-within window. */
 export function ledgerRowPasses(
@@ -195,7 +200,8 @@ export function ledgerRowPasses(
 ): boolean {
   if (!f.includeClosed && (r.status === 'superseded' || r.status === 'declined')) return false
   if (f.kind === 'change_order' && !isChangeOrderDocKind(r.doc_kind)) return false
-  if (f.kind === 'estimate' && isChangeOrderDocKind(r.doc_kind)) return false
+  if (f.kind === 'bid_proposal' && !isBidProposalDocKind(r.doc_kind)) return false
+  if (f.kind === 'estimate' && (isChangeOrderDocKind(r.doc_kind) || isBidProposalDocKind(r.doc_kind))) return false
   if (f.withinDays > 0) {
     const u = r.updated_at ? Date.parse(r.updated_at) : NaN
     if (!Number.isFinite(u) || nowMs - u > f.withinDays * 86_400_000) return false

@@ -464,6 +464,9 @@ verify_jwt = false
 [functions.send-bid-room-link]
 verify_jwt = false
 
+[functions.sign-bid-room]
+verify_jwt = false
+
 [functions.send-estimate-to-customer]
 verify_jwt = false
 
