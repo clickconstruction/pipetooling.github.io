@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJobSegmentsBar,
   dollarCoverageForSegments,
+  exactSingleSegmentMatchForAmount,
   linkableSelectedIds,
   segmentBoundaryMarks,
   segmentSelectionNetSummary,
@@ -337,5 +338,77 @@ describe('dollarCoverageForSegments — elastic primary bundle (v2.1134)', () =>
     expect(mixed.unattributedDollars).toBe(250)
     expect(mixed.remainingDollars).toBe(750)
     expect(mixed.bySegmentKey).toEqual({ a: { coveredDollars: 250, fullyCovered: false } })
+  })
+})
+
+describe('exactSingleSegmentMatchForAmount', () => {
+  const noCoverage: JobDollarCoverage = { unattributedDollars: 0, remainingDollars: 0, bySegmentKey: {} }
+
+  it("matches a typed amount that equals exactly one segment's value (Taunya, job 978)", () => {
+    const fixtures = [
+      line({ id: 'co', name: 'CHANGE ORDER: Deep cleaning of 2 systems', line_unit_price: 1980 }),
+      line({ id: 'hvac', name: 'HVAC to spec', line_unit_price: 1650 }),
+    ]
+    expect(exactSingleSegmentMatchForAmount(fixtures, noCoverage, 198000)).toEqual({
+      fixtureId: 'co',
+      label: 'CHANGE ORDER: Deep cleaning of 2 systems',
+    })
+    expect(exactSingleSegmentMatchForAmount(fixtures, noCoverage, 165000)).toEqual({
+      fixtureId: 'hvac',
+      label: 'HVAC to spec',
+    })
+  })
+
+  it('matches on the remaining NET of a partially covered segment', () => {
+    const fixtures = [line({ id: 'a', name: 'Rough In', line_unit_price: 1000 })]
+    const coverage: JobDollarCoverage = {
+      unattributedDollars: 400,
+      remainingDollars: 600,
+      bySegmentKey: { a: { coveredDollars: 400, fullyCovered: false } },
+    }
+    expect(exactSingleSegmentMatchForAmount(fixtures, coverage, 60000)).toEqual({
+      fixtureId: 'a',
+      label: 'Rough In',
+    })
+    // The gross no longer matches once part of it is covered elsewhere.
+    expect(exactSingleSegmentMatchForAmount(fixtures, coverage, 100000)).toBeNull()
+  })
+
+  it('returns null when two segments share the value (ambiguous — never guess)', () => {
+    const fixtures = [
+      line({ id: 'a', name: 'Rough In', line_unit_price: 500 }),
+      line({ id: 'b', name: 'Top Out', line_unit_price: 500 }),
+    ]
+    expect(exactSingleSegmentMatchForAmount(fixtures, noCoverage, 50000)).toBeNull()
+  })
+
+  it('returns null for arbitrary partial amounts', () => {
+    const fixtures = [line({ id: 'a', name: 'Rough In', line_unit_price: 1980 })]
+    expect(exactSingleSegmentMatchForAmount(fixtures, noCoverage, 100000)).toBeNull()
+  })
+
+  it('skips already-linked, unnamed, zero-dollar, and fully covered rows', () => {
+    const fixtures = [
+      line({ id: 'linked', name: 'Rough In', line_unit_price: 700, invoice_id: 'inv1' }),
+      line({ id: 'unnamed', name: '  ', line_unit_price: 700 }),
+      line({ id: 'zero', name: 'Freebie', line_unit_price: 0 }),
+      line({ id: 'covered', name: 'Top Out', line_unit_price: 700 }),
+    ]
+    const coverage: JobDollarCoverage = {
+      unattributedDollars: 700,
+      remainingDollars: 0,
+      bySegmentKey: { covered: { coveredDollars: 700, fullyCovered: true } },
+    }
+    expect(exactSingleSegmentMatchForAmount(fixtures, coverage, 70000)).toBeNull()
+  })
+
+  it('applies quantity to the line value and rejects non-positive amounts', () => {
+    const fixtures = [line({ id: 'a', name: 'Fixture set', count: 3, line_unit_price: 250 })]
+    expect(exactSingleSegmentMatchForAmount(fixtures, null, 75000)).toEqual({
+      fixtureId: 'a',
+      label: 'Fixture set',
+    })
+    expect(exactSingleSegmentMatchForAmount(fixtures, null, 0)).toBeNull()
+    expect(exactSingleSegmentMatchForAmount(fixtures, null, -75000)).toBeNull()
   })
 })

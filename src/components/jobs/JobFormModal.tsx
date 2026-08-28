@@ -113,6 +113,7 @@ import { moveRowById } from '../../lib/jobs/jobFormReorder'
 import {
   buildJobSegmentsBar,
   dollarCoverageForSegments,
+  exactSingleSegmentMatchForAmount,
   linkableSelectedIds,
   segmentBoundaryMarks,
   segmentSelectionNetSummary,
@@ -2406,8 +2407,14 @@ export default function JobFormModal({
     setCreatingInvoice(true)
     setError(null)
     try {
+      // v2.2467: a typed amount that IS exactly one segment's remaining net is
+      // that segment — link it so the bill lists that line instead of the
+      // whole job prorated. flushBillingAutosave() above makes the DB rows
+      // match this fixtures array, same contract as the segment-select path.
+      const fixturesNow = autosaveFixturesRef.current
+      const segmentMatch = exactSingleSegmentMatchForAmount(fixturesNow, segmentCoverage, amountToUseCents)
       const nextOrder = (editing.invoices ?? []).length
-      const { error: err } = await supabase
+      const { data: created, error: err } = await supabase
         .from('jobs_ledger_invoices')
         .insert({
           job_id: editing.id,
@@ -2420,6 +2427,34 @@ export default function JobFormModal({
         .select('id')
         .single()
       if (err) throw err
+      const newInvoiceId = (created as { id: string }).id
+      if (segmentMatch) {
+        const positions = selectedSegmentSequencePositions(fixturesNow, new Set([segmentMatch.fixtureId]))
+        const { error: linkErr } =
+          positions.length > 0
+            ? await supabase
+                .from('jobs_ledger_fixtures')
+                .update({ invoice_id: newInvoiceId })
+                .eq('job_id', editing.id)
+                .in('sequence_order', positions)
+            : { error: null }
+        if (linkErr) {
+          // The invoice itself is fine — it just bills as an unlinked dollar
+          // carve (whole-job prorated lines), exactly as before this feature.
+          showToast(
+            `Invoice created, but it could not be attached to "${segmentMatch.label}" — the bill will list all line items prorated.`,
+            'error',
+          )
+        } else {
+          setFixtures((prev) =>
+            prev.map((r) => (r.id === segmentMatch.fixtureId ? { ...r, invoice_id: newInvoiceId } : r)),
+          )
+          showToast(
+            `Billed as "${segmentMatch.label}" — the amount matched that stage exactly, so the bill lists just that line.`,
+            'success',
+          )
+        }
+      }
       // Invoice already written — a failed remainder re-sync is reported, not
       // treated as a failed create (fully-allocated envelopes are success).
       let ensureFailure: string | null = null

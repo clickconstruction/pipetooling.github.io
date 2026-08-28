@@ -48,7 +48,7 @@ From there it's the normal billing flow — see *bill a customer and get paid*.
 - Change your mind on a draft? Press the red **✕** on its row in the Invoices table and confirm — the draft is deleted and its segments go back to unbilled.
 - Re-ordering is always allowed, billed or not — order is just presentation.
 - The draft tagged **auto** in the Invoices table is the job's remainder keeping itself up to date: it shrinks as you break stages off, it *is* the bill for whatever you never split out, and it disappears on its own once every stage is on its own invoice. You never need to create it, resize it, or delete it.
-- The regular break-off amount box still works for billing an arbitrary dollar amount; stages and dollar break-offs can mix on the same job.
+- The regular break-off amount box still works for billing an arbitrary dollar amount; stages and dollar break-offs can mix on the same job. If the amount you type exactly matches one stage's remaining value, the invoice attaches to that stage automatically (a toast says *Billed as "…"*) — the customer's bill shows that stage as its own line instead of every line item scaled down.
 - Nothing changes for jobs that don't use stages.
 
 ## Related
