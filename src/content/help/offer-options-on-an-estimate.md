@@ -22,7 +22,7 @@ A 9-year-old water heater fails. Option 1 "Repair" — new gas valve and anode, 
 
 ## What the customer sees
 
-Open **Customer experience → Page** to rehearse it: the customer gets your options as cards — name, pitch, price, and a *What's included* line-item breakdown one tap away. The recommended one is pre-selected and badged. Picking a card swaps the document and total below it, and their signature applies to the option they chose. When they accept, the estimate locks to that option — the accepted document, the job you create from it, and the totals everywhere show exactly what they picked.
+Open **Customer experience → Page** (or **Preview as customer** for the full-page rehearsal) before you send: the customer gets your options as cards — name, pitch, price, and a *What's included* line-item breakdown one tap away. The recommended one is pre-selected and badged. Picking a card swaps the document and total below it, the Approve button names their choice — *Approve "Replace 50-gal" — $3,400.00* — and their signature applies to the option they chose. The estimate email lists every option's price with a star on your recommendation. When they accept, the estimate locks to that option — the accepted document, the job you create from it, and the totals everywhere show exactly what they picked.
 
 ## While it's their move
 

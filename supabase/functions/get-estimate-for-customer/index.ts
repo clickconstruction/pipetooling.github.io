@@ -8,6 +8,7 @@ import {
 } from '../_shared/estimateCustomerExperience.ts'
 import { clientIpFromRequest } from '../_shared/logEstimateCustomerEvent.ts'
 import { parseCustomerAttachmentSent } from '../_shared/estimateCustomerAttachment.ts'
+import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -42,6 +43,7 @@ type EstRow = {
   customer_attachment_sent: unknown
   doc_kind: string | null
   change_order_fields: unknown
+  options_snapshot: unknown
 }
 
 async function resolveEstimateForLine(
@@ -112,7 +114,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('estimates')
       .select(
-        'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent, doc_kind, change_order_fields',
+        'id, title, line_items_snapshot, terms_snapshot, total_cents, valid_until, status, public_token_expires_at, sent_at, estimate_number, customer_experience_sent, customer_experience_overrides, for_address, customer_id, accept_header_brand, customer_attachment_sent, doc_kind, change_order_fields, options_snapshot',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -199,6 +201,9 @@ serve(async (req) => {
         customer_attachment,
         doc_kind: est.doc_kind,
         change_order_fields: est.change_order_fields,
+        // Estimate Options (v2.2460): normalized server-side so the page renders exactly what
+        // acceptance will validate against. Empty array = single-option estimate.
+        options: normalizeSharedEstimateOptions(est.options_snapshot),
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

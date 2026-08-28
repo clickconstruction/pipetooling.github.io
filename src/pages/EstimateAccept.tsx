@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import EstimateAcceptBody, { type EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
+import { normalizeEstimateOptionsFromJson, recommendedEstimateOption, type EstimateOption } from '../lib/estimates/estimateOptions'
 import type { EstimateCustomerExperienceClient } from '../lib/estimateCustomerExperience'
 import {
   fallbackClientCustomerExperience,
@@ -57,6 +58,9 @@ export default function EstimateAccept() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [headerBrand, setHeaderBrand] = useState<EstimateAcceptHeaderBrand | null>(null)
+  // Estimate Options (v2.2460): 2+ options render the picker; the choice rides the accept POST.
+  const [options, setOptions] = useState<EstimateOption[]>([])
+  const [selectedOptionKey, setSelectedOptionKey] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -115,6 +119,9 @@ export default function EstimateAccept() {
                   label: typeof att.label === 'string' ? att.label : null,
                 }
               : null
+          const parsedOptions = normalizeEstimateOptionsFromJson((json as { options?: unknown }).options)
+          setOptions(parsedOptions)
+          setSelectedOptionKey(recommendedEstimateOption(parsedOptions)?.key ?? null)
           setEstimate({
             id: String(json.id),
             title: String(json.title ?? ''),
@@ -148,14 +155,20 @@ export default function EstimateAccept() {
     setSubmitting(true)
     setError(null)
     try {
+      const optionKey = options.length >= 2 ? selectedOptionKey : null
+      if (options.length >= 2 && !optionKey) {
+        setError('Please choose an option first.')
+        return
+      }
       const body =
         payload.mode === 'type'
-          ? { token, printedName: payload.printedName, agreedTerms: true as const }
+          ? { token, printedName: payload.printedName, agreedTerms: true as const, ...(optionKey ? { optionKey } : {}) }
           : {
               token,
               printedName: payload.printedName,
               signaturePngBase64: payload.signaturePngBase64,
               agreedTerms: true as const,
+              ...(optionKey ? { optionKey } : {}),
             }
       const res = await fetch(`${supabaseUrl}/functions/v1/accept-estimate`, {
         method: 'POST',
@@ -230,6 +243,9 @@ export default function EstimateAccept() {
         formError={error}
         submitting={submitting}
         onSubmit={(p) => void submitAccept(p)}
+        options={options}
+        selectedOptionKey={selectedOptionKey}
+        onSelectOption={setSelectedOptionKey}
         headerBrand={headerBrand}
         customerAttachment={estimate.customer_attachment}
       />

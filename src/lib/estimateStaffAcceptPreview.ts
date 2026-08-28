@@ -28,6 +28,8 @@ export type StaffAcceptPreviewSnapshotV1 = {
   overrides: Record<string, string> | null
   /** Acceptance page header logo; optional for snapshots written before this field existed */
   accept_header_brand?: 'elec' | 'plum' | null
+  /** Estimate Options (v2.2460); optional for snapshots written before this field existed */
+  options?: unknown
   /** Supporting document for customer page preview; optional for older snapshots */
   customer_attachment?: CustomerAttachmentPayload | null
 }
@@ -104,6 +106,7 @@ function parseSnapshotV1FromRecord(
     overrides,
     ...(accept_header_brand !== undefined ? { accept_header_brand } : {}),
     ...(customer_attachment !== undefined ? { customer_attachment } : {}),
+    ...(Array.isArray(o.options) && o.options.length > 0 ? { options: o.options } : {}),
   }
 }
 
@@ -195,6 +198,8 @@ export function buildStaffAcceptPreviewSnapshot(input: {
   cxOverrideFields: Partial<Record<EstimateExperienceOverrideKey, string>>
   acceptHeaderBrand?: 'elec' | 'plum' | null
   customerAttachment?: CustomerAttachmentPayload | null
+  /** Estimate Options (v2.2460): rides the snapshot so the new-tab preview shows the picker. */
+  options?: unknown
 }): StaffAcceptPreviewSnapshotV1 {
   const parsed = parseEstimateExperienceOverrides(input.cxOverrideFields)
   const overridesKeys = Object.keys(parsed)
@@ -211,5 +216,6 @@ export function buildStaffAcceptPreviewSnapshot(input: {
     overrides: overridesKeys.length > 0 ? (parsed as Record<string, string>) : null,
     accept_header_brand: input.acceptHeaderBrand ?? null,
     ...(input.customerAttachment != null ? { customer_attachment: input.customerAttachment } : {}),
+    ...(Array.isArray(input.options) && input.options.length > 0 ? { options: input.options } : {}),
   }
 }
