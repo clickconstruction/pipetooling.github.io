@@ -11,6 +11,7 @@ import {
   readCallingOrderMode,
   type CallingOrderMode,
 } from '../lib/prospects/callingOrder'
+import { searchConvertProspects, suggestRecentlyAnswered } from '../lib/prospects/convertProspectSearch'
 import {
   filterProspectsForList,
   groupProspectsForList,
@@ -321,6 +322,7 @@ export default function Prospects() {
 
   // Convert tab state
   const [convertProspectId, setConvertProspectId] = useState<string | null>(null)
+  const [convertSearchQuery, setConvertSearchQuery] = useState('')
   const [convertContactPersons, setConvertContactPersons] = useState<{ name: string; phone: string; email: string; note: string }[]>([{ name: '', phone: '', email: '', note: '' }])
   const [convertBids, setConvertBids] = useState<{ project_name: string; service_type_id: string }[]>([{ project_name: '', service_type_id: '' }])
   const [convertServiceTypes, setConvertServiceTypes] = useState<{ id: string; name: string }[]>([])
@@ -917,6 +919,14 @@ export default function Prospects() {
 
   // Pre-fill first contact person when prospect changes
   const convertProspect = prospectListProspects.find((p) => p.id === convertProspectId) ?? followUpProspects.find((p) => p.id === convertProspectId)
+  const convertPickerPool = [...prospectListProspects, ...followUpProspects.filter((p) => !prospectListProspects.some((lp) => lp.id === p.id))]
+  const convertSearchResults = searchConvertProspects(convertPickerPool, convertSearchQuery)
+  const convertSuggestions = suggestRecentlyAnswered(convertPickerPool, prospectLastCallMap, Date.now())
+
+  function pickConvertProspect(p: Prospect) {
+    setConvertProspectId(p.id)
+    setConvertSearchQuery('')
+  }
   useEffect(() => {
     if (!convertProspect) return
     setConvertContactPersons((prev) => {
@@ -2762,20 +2772,76 @@ export default function Prospects() {
             <>
               {/* Prospect selector */}
               <div className="convertProspectSelector">
-                <label htmlFor="convert-prospect" className="convertLabel">Select prospect to convert</label>
-                <select
+                <label htmlFor="convert-prospect" className="convertLabel">Who are you converting?</label>
+                <input
                   id="convert-prospect"
                   className="convertSelect"
-                  value={convertProspectId ?? ''}
-                  onChange={(e) => setConvertProspectId(e.target.value || null)}
-                >
-                  <option value="">Choose a prospect...</option>
-                  {[...prospectListProspects, ...followUpProspects.filter((p) => !prospectListProspects.some((lp) => lp.id === p.id))].map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.company_name || '—'} {p.contact_name ? `(${p.contact_name})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  type="search"
+                  placeholder={`Search ${convertPickerPool.filter((p) => p.prospect_fit_status !== 'converted').length} prospects by company, contact, phone, or email…`}
+                  value={convertSearchQuery}
+                  onChange={(e) => setConvertSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const first = convertSearchResults[0]
+                      if (first) pickConvertProspect(first)
+                    }
+                  }}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                />
+                {convertSearchQuery.trim() !== '' && (
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', marginTop: '0.375rem', overflow: 'hidden' }}>
+                    {convertSearchResults.length === 0 ? (
+                      <p style={{ margin: 0, padding: '0.625rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No prospects match — converted prospects are not listed.</p>
+                    ) : (
+                      convertSearchResults.map((p, i) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => pickConvertProspect(p)}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '0.5rem 0.75rem',
+                            border: 'none',
+                            borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                            background: 'none',
+                            cursor: 'pointer',
+                            color: 'inherit',
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{p.company_name || '—'}</span>
+                          {p.contact_name && <span style={{ color: 'var(--text-muted)' }}> — {p.contact_name}</span>}
+                          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            {lastTouchLabel(p, prospectLastCallMap[p.id], Date.now())}
+                            {p.phone_number ? ` · ${p.phone_number}` : ''}
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+                {convertSearchQuery.trim() === '' && !convertProspectId && convertSuggestions.length > 0 && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <p style={{ margin: '0 0 0.375rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>Suggested — answered in the last 30 days</p>
+                    <div style={{ display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                      {convertSuggestions.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => pickConvertProspect(p)}
+                          style={{ padding: '0.25rem 0.625rem', borderRadius: 999, fontSize: '0.8125rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+                        >
+                          {p.company_name || '—'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {convertProspect && (
                   <div className="convertProspectSummary">
                     <div className="convertProspectSummaryRow">
