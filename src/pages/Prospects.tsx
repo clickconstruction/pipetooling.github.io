@@ -1212,6 +1212,87 @@ export default function Prospects() {
     void loadFollowUpProspects()
   }
 
+  function renderCallingOrderToggle() {
+    return (
+      <div role="group" aria-label="Calling order" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
+        {(
+          [
+            ['coldest', 'Coldest', 'Longest since any contact first (the original order)'],
+            ['never_called_first', 'Never called', "Prospects with no Didn't Answer / Answered on record lead, oldest entry first; the cold backlog follows"],
+          ] as const
+        ).map(([mode, label, hint]) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => switchCallingOrder(mode)}
+            aria-pressed={callingOrderMode === mode}
+            title={hint}
+            style={{
+              font: 'inherit',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              padding: '0.25rem 0.55rem',
+              border: 'none',
+              background: callingOrderMode === mode ? 'var(--text-link)' : 'var(--surface)',
+              color: callingOrderMode === mode ? 'var(--surface)' : 'var(--text-700)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  function renderQueueRows(limit: number, collapseOnJump: boolean) {
+    const start = Math.max(0, Math.min(currentProspectIndex - 2, followUpProspects.length - limit))
+    const nowMs = Date.now()
+    return followUpProspects.slice(start, start + limit).map((p, i) => {
+      const absIdx = start + i
+      const isCurrent = absIdx === currentProspectIndex
+      return (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => {
+            setCurrentProspectIndex(absIdx)
+            setFollowUpTimerSeconds(0)
+            updateUrlProspectId(p.id)
+            if (collapseOnJump) setShowCallingOrder(false)
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.55rem',
+            width: '100%',
+            padding: '0.45rem 0.7rem',
+            border: 'none',
+            borderBottom: '1px solid var(--border)',
+            background: isCurrent ? 'var(--bg-blue-tint)' : 'var(--surface)',
+            font: 'inherit',
+            fontSize: '0.8125rem',
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
+        >
+          <span style={{ width: '1.8rem', textAlign: 'right', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{absIdx + 1}</span>
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isCurrent ? 600 : 400 }}>
+            {p.company_name?.trim() || p.contact_name?.trim() || '(no name)'}
+          </span>
+          {!calledProspectIds.has(p.id) ? (
+            <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', borderRadius: 999, padding: '0.1rem 0.5rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              never called
+            </span>
+          ) : null}
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', whiteSpace: 'nowrap', flexShrink: 0 }}>{queueAgeLabel(p, calledProspectIds, nowMs)}</span>
+          {isCurrent ? <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', flexShrink: 0 }}>← you</span> : null}
+        </button>
+      )
+    })
+  }
+
   function updateUrlProspectId(id: string | null) {
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
@@ -1553,9 +1634,15 @@ export default function Prospects() {
     })
     if (!error) {
       const now = new Date().toISOString()
-      await supabase.from('prospects').update({ last_contact: now }).eq('id', currentProspect.id)
+      // Auto-warm (v2.2458): a conversation is what warmth measures, so an
+      // Answered bumps it by one — no more manual counter on the workstation.
+      const newWarmth = (currentProspect.warmth_count ?? 0) + 1
+      await supabase.from('prospects').update({ last_contact: now, warmth_count: newWarmth }).eq('id', currentProspect.id)
       setFollowUpProspects((prev) =>
-        prev.map((p) => (p.id === currentProspect.id ? { ...p, last_contact: now } : p))
+        prev.map((p) => (p.id === currentProspect.id ? { ...p, last_contact: now, warmth_count: newWarmth } : p))
+      )
+      setProspectListProspects((prev) =>
+        prev.map((p) => (p.id === currentProspect.id ? { ...p, last_contact: now, warmth_count: newWarmth } : p))
       )
       await loadComments(currentProspect.id)
       setCommentInputValue('')
@@ -1878,8 +1965,9 @@ export default function Prospects() {
               No prospects to follow up. Add prospects in Prospect List.
             </p>
           ) : currentProspect ? (
-            <div>
-              {/* Three button groups */}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* Header card: call target + outcomes + utilities */}
               {(() => {
                 const btnBase = {
                   padding: '0.5rem 1rem',
@@ -1892,76 +1980,80 @@ export default function Prospects() {
                 } as const
                 const btnSecondary = { ...btnBase, background: 'var(--surface)', color: 'var(--text-700)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }
                 const btnPrimary = { ...btnBase, background: '#3b82f6', color: 'white', boxShadow: '0 1px 2px rgba(59,130,246,0.3)' }
-                const btnGreen = { ...btnBase, background: '#059669', color: 'white', boxShadow: '0 1px 2px rgba(5,150,105,0.3)' }
-                const btnDestructive = { ...btnBase, background: '#dc2626', color: 'white', boxShadow: '0 1px 2px rgba(220,38,38,0.3)' }
                 const btnConverted = { ...btnBase, background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', border: '1px solid #8b5cf6', boxShadow: '0 1px 2px rgba(139,92,246,0.2)' }
                 const btnDisabled = (s: object) => ({ ...s, opacity: 0.6, cursor: 'not-allowed' as const })
+                const btnAmber = { ...btnBase, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber-soft)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
+                const btnAnswered = { ...btnBase, background: '#16a34a', color: 'white', boxShadow: '0 1px 2px rgba(22,163,74,0.3)' }
+                const linkBtn = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' } as const
                 return (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface)', padding: '0.25rem', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }}>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0 0.5rem', color: 'var(--text-muted)' }}>Warmth</span>
-                      <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 600, fontSize: '1rem', color: 'var(--text-gray-800)' }}>
-                        {currentProspect.warmth_count ?? 0}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleWarmthDelta(-1)}
-                        disabled={saving}
-                        style={saving ? btnDisabled(btnSecondary) : { ...btnSecondary, padding: '0.5rem 0.75rem' }}
-                      >
-                        −1
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleWarmthReset}
-                        disabled={saving}
-                        style={saving ? btnDisabled(btnSecondary) : { ...btnSecondary, padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}
-                      >
-                        Reset
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleWarmthDelta(1)}
-                        disabled={saving}
-                        style={saving ? btnDisabled(btnSecondary) : { ...btnSecondary, padding: '0.5rem 0.75rem' }}
-                      >
-                        +1
-                      </button>
+                  <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.875rem 1rem', marginBottom: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                    {/* Who you're calling */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)' }}>{currentProspect.company_name || '(no company name)'}</div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.375rem', flexWrap: 'wrap' }}>
+                          {currentProspect.contact_name ? <span>{currentProspect.contact_name}</span> : null}
+                          {currentProspect.email ? (
+                            <>
+                              {currentProspect.contact_name ? <span aria-hidden>·</span> : null}
+                              <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: 'var(--text-link)' }}>{currentProspect.email}</a>
+                            </>
+                          ) : null}
+                          {currentProspect.links_to_website ? (
+                            <>
+                              <span aria-hidden>·</span>
+                              <a href={getWebsiteHref(currentProspect.links_to_website)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
+                                {formatWebsiteDisplay(currentProspect.links_to_website)}
+                              </a>
+                            </>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div style={{ flex: 1 }} />
+                      {formatDueBadge(currentProspect.last_contact) && (
+                        <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
+                          {formatDueBadge(currentProspect.last_contact)}
+                        </span>
+                      )}
+                      {!calledProspectIds.has(currentProspect.id) && (
+                        <span
+                          title="No Didn't Answer / Answered has ever been recorded on this prospect"
+                          style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}
+                        >
+                          never called
+                        </span>
+                      )}
+                      {currentProspect.phone_number ? (
+                        <a
+                          href={`tel:${encodeURIComponent(currentProspect.phone_number)}`}
+                          style={{ ...btnPrimary, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
+                        >
+                          📞 {currentProspect.phone_number}
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>no phone number</span>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        onClick={openEditModal}
-                        disabled={saving}
-                        style={saving ? btnDisabled(btnSecondary) : btnSecondary}
-                      >
-                        Edit
+                    {/* Outcome row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>How did the call end?</span>
+                      <button type="button" onClick={handleDidntAnswer} disabled={saving} style={saving ? btnDisabled(btnAmber) : btnAmber}>
+                        Didn&apos;t Answer
                       </button>
-                      <button
-                        type="button"
-                        onClick={openCallbackModal}
-                        disabled={saving}
-                        style={saving ? btnDisabled(btnGreen) : btnGreen}
-                      >
-                        Set Callback Date & Time
+                      <button type="button" onClick={handleAnswered} disabled={saving} style={saving ? btnDisabled(btnAnswered) : btnAnswered}>
+                        Answered
                       </button>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={handleCantReach} disabled={saving} style={saving ? btnDisabled(btnSecondary) : btnSecondary}>
+                        Can't reach
+                      </button>
                       <button
                         type="button"
                         onClick={handleNoLongerFit}
                         disabled={saving}
-                        style={saving ? btnDisabled(btnDestructive) : btnDestructive}
-                      >
-                        No Longer a Fit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCantReach}
-                        disabled={saving}
                         style={saving ? btnDisabled(btnSecondary) : btnSecondary}
+                        title="Not a plumbing fit — leaves the calling queue (find it under No longer a fit on the Prospect List)"
                       >
-                        Can't reach
+                        Not a fit
                       </button>
                       <button
                         type="button"
@@ -1972,71 +2064,61 @@ export default function Prospects() {
                       >
                         Converted ✓
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleNextProspect()}
-                        disabled={followUpProspects.length <= 1}
-                        style={followUpProspects.length <= 1 ? btnDisabled(btnPrimary) : btnPrimary}
+                    </div>
+                    {/* Utility row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.625rem', fontSize: '0.8125rem' }}>
+                      <button type="button" onClick={openCallbackModal} disabled={saving} style={linkBtn}>Set callback</button>
+                      <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
+                      <button type="button" onClick={openEditModal} disabled={saving} style={linkBtn}>Edit prospect</button>
+                      <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
+                      <span
+                        title="Warmth — goes up by one every Answered. Adjust it in Edit prospect."
+                        style={{ padding: '0.125rem 0.5rem', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, background: 'var(--bg-orange-100)', color: 'var(--text-orange-700)', whiteSpace: 'nowrap' }}
                       >
-                        Next Prospect
-                      </button>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>this time</span>
+                        🔥 {currentProspect.warmth_count ?? 0}
+                      </span>
+                      {scheduledCallback && (
+                        <>
+                          <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
+                          <Link to="/calendar" style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                            Callback {formatDateTime(scheduledCallback.callback_date)}
+                            {scheduledCallback.note && ` (${scheduledCallback.note})`}
+                          </Link>
+                        </>
+                      )}
+                      <span className="followUpQueueMobileStrip" style={{ color: 'var(--text-muted)' }}>
+                        <span aria-hidden style={{ color: 'var(--text-faint)' }}>· </span>
+                        <strong style={{ color: 'var(--text-700)' }}>{currentProspectIndex + 1}</strong> of{' '}
+                        <strong style={{ color: 'var(--text-700)' }}>{followUpProspects.length}</strong>
+                        {' · '}
+                        <button
+                          type="button"
+                          onClick={() => setShowCallingOrder((v) => !v)}
+                          aria-expanded={showCallingOrder}
+                          style={{ ...linkBtn, textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}
+                        >
+                          {showCallingOrder ? 'hide order ▴' : 'show order ▾'}
+                        </button>
+                      </span>
+                      <div style={{ flex: 1 }} />
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>this call</span>
                         <button
                           type="button"
                           onClick={() => {
                             setTimerHistoryModalOpen(true)
                             loadTimerEvents()
                           }}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.5rem 1rem',
-                            fontVariantNumeric: 'tabular-nums',
-                            fontSize: '0.875rem',
-                            color: 'var(--text-muted)',
-                            fontFamily: 'ui-monospace, monospace',
-                            background: 'none',
-                            border: '1px solid transparent',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                          }}
-                          title="Time on Follow Up (resets when you leave and return). Click to view history."
+                          style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem', color: 'var(--text-muted)', fontFamily: 'ui-monospace, monospace', background: 'none', border: '1px solid transparent', borderRadius: 4, cursor: 'pointer', padding: '0.125rem 0.25rem' }}
+                          title="Time on this prospect this session (resets when you leave and return). Click to view history."
                         >
                           {String(Math.floor(followUpTimerSeconds / 60)).padStart(2, '0')}:{String(followUpTimerSeconds % 60).padStart(2, '0')}
                         </button>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>all time</span>
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.5rem 1rem',
-                            fontVariantNumeric: 'tabular-nums',
-                            fontSize: '0.875rem',
-                            color: 'var(--text-green-600)',
-                            fontFamily: 'ui-monospace, monospace',
-                            fontWeight: 500,
-                          }}
-                          title="Total time spent on this prospect (ledger + current session)"
-                        >
-                          {formatTimerSeconds(prospectLedgerSeconds + followUpTimerSeconds)}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>my day</span>
                         <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            padding: '0.5rem 1rem',
-                            fontVariantNumeric: 'tabular-nums',
-                            fontSize: '0.875rem',
-                            color: 'var(--text-green-600)',
-                            fontFamily: 'ui-monospace, monospace',
-                            fontWeight: 500,
-                          }}
+                          style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem', color: 'var(--text-green-600)', fontFamily: 'ui-monospace, monospace', fontWeight: 500, padding: '0.125rem 0.25rem' }}
                           title="My time prospecting today"
                         >
                           {(myTimeTodaySeconds + followUpTimerSeconds) === 0 ? '—' : formatTimerSeconds(myTimeTodaySeconds + followUpTimerSeconds)}
@@ -2047,105 +2129,18 @@ export default function Prospects() {
                 )
               })()}
 
-              {/* Calling order strip (v2.2301): order switch + queue position/peek. */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '-0.75rem 0 1.25rem' }}>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Calling order</span>
-                <div role="group" aria-label="Calling order" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
-                  {(
-                    [
-                      ['coldest', 'Coldest first', 'Longest since any contact first (the original order)'],
-                      ['never_called_first', 'Never called first', "Prospects with no Didn't Answer / Answered on record lead, oldest entry first; the cold backlog follows"],
-                    ] as const
-                  ).map(([mode, label, hint]) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => switchCallingOrder(mode)}
-                      aria-pressed={callingOrderMode === mode}
-                      title={hint}
-                      style={{
-                        font: 'inherit',
-                        fontSize: '0.8125rem',
-                        fontWeight: 600,
-                        padding: '0.35rem 0.7rem',
-                        border: 'none',
-                        background: callingOrderMode === mode ? 'var(--text-link)' : 'var(--surface)',
-                        color: callingOrderMode === mode ? 'var(--surface)' : 'var(--text-700)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                  <strong style={{ color: 'var(--text-700)' }}>{currentProspectIndex + 1}</strong> of{' '}
-                  <strong style={{ color: 'var(--text-700)' }}>{followUpProspects.length}</strong>
-                  {' · '}
-                  <button
-                    type="button"
-                    onClick={() => setShowCallingOrder((v) => !v)}
-                    aria-expanded={showCallingOrder}
-                    style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline dotted', textUnderlineOffset: '2px', cursor: 'pointer' }}
-                  >
-                    {showCallingOrder ? 'hide order ▴' : 'show order ▾'}
-                  </button>
-                </span>
-              </div>
+              {/* Mobile queue peek — the desktop rail is always visible instead. */}
               {showCallingOrder ? (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', margin: '-0.5rem 0 1.25rem', maxWidth: 640 }}>
-                  <div style={{ padding: '0.4rem 0.7rem', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                    {callingOrderMode === 'never_called_first'
-                      ? 'Never called first, then coldest. Tap a row to jump to it.'
-                      : 'Coldest first. Tap a row to jump to it.'}
+                <div className="followUpQueueMobileStrip" style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', margin: '0 0 1.25rem' }}>
+                  <div style={{ padding: '0.4rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {callingOrderMode === 'never_called_first'
+                        ? 'Never called first, then coldest. Tap a row to jump to it.'
+                        : 'Coldest first. Tap a row to jump to it.'}
+                    </span>
+                    {renderCallingOrderToggle()}
                   </div>
-                  {(() => {
-                    const start = Math.max(0, Math.min(currentProspectIndex - 2, followUpProspects.length - 15))
-                    const nowMs = Date.now()
-                    return followUpProspects.slice(start, start + 15).map((p, i) => {
-                      const absIdx = start + i
-                      const isCurrent = absIdx === currentProspectIndex
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => {
-                            setCurrentProspectIndex(absIdx)
-                            setFollowUpTimerSeconds(0)
-                            updateUrlProspectId(p.id)
-                            setShowCallingOrder(false)
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.55rem',
-                            width: '100%',
-                            padding: '0.45rem 0.7rem',
-                            border: 'none',
-                            borderBottom: '1px solid var(--border)',
-                            background: isCurrent ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                            font: 'inherit',
-                            fontSize: '0.8125rem',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <span style={{ width: '1.8rem', textAlign: 'right', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{absIdx + 1}</span>
-                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isCurrent ? 600 : 400 }}>
-                            {p.company_name?.trim() || p.contact_name?.trim() || '(no name)'}
-                          </span>
-                          {!calledProspectIds.has(p.id) ? (
-                            <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-green-700)', background: 'var(--bg-green-tint)', borderRadius: 999, padding: '0.1rem 0.5rem', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              never called
-                            </span>
-                          ) : null}
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', whiteSpace: 'nowrap', flexShrink: 0 }}>{queueAgeLabel(p, calledProspectIds, nowMs)}</span>
-                          {isCurrent ? <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', flexShrink: 0 }}>← you are here</span> : null}
-                        </button>
-                      )
-                    })
-                  })()}
+                  {renderQueueRows(15, true)}
                 </div>
               ) : null}
 
@@ -2153,44 +2148,9 @@ export default function Prospects() {
               <div className="followUpCommentsSection">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0, fontSize: '1rem' }}>Comments</h3>
-                  <button
-                    type="button"
-                    onClick={handleDidntAnswer}
-                    disabled={saving}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      borderRadius: 8,
-                      background: 'var(--bg-amber-100)',
-                      color: 'var(--text-amber-800)',
-                      border: '1px solid var(--border-amber-soft)',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.6 : 1,
-                    }}
-                  >
-                    Didn&apos;t Answer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleAnswered}
-                    disabled={saving}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      borderRadius: 8,
-                      background: '#16a34a',
-                      color: 'white',
-                      border: 'none',
-                      boxShadow: '0 1px 2px rgba(22,163,74,0.3)',
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.6 : 1,
-                    }}
-                  >
-                    Answered
-                  </button>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Didn&apos;t Answer / Answered above log the call with your comment attached
+                  </span>
                 </div>
                 <textarea
                   ref={setCommentInputRef}
@@ -2314,95 +2274,20 @@ export default function Prospects() {
               {/* Info block with notes */}
               <div className="followUpInfoCard">
                 <div className="followUpInfoCardDetails">
-                  <div><strong>Company Name:</strong> {currentProspect.company_name || '—'}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    Last Contact:
-                    <span>{formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact)}</span>
-                    {formatDueBadge(currentProspect.last_contact) && (
-                      <span
-                        style={{
-                          padding: '0.125rem 0.5rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          borderRadius: 4,
-                          background: 'var(--bg-amber-100)',
-                          color: 'var(--text-amber-800)',
-                        }}
-                      >
-                        {formatDueBadge(currentProspect.last_contact)}
-                      </span>
-                    )}
-                    {!calledProspectIds.has(currentProspect.id) && (
-                      <span
-                        title="No Didn't Answer / Answered has ever been recorded on this prospect"
-                        style={{
-                          padding: '0.125rem 0.5rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          borderRadius: 4,
-                          background: 'var(--bg-green-tint)',
-                          color: 'var(--text-green-700)',
-                        }}
-                      >
-                        never called
-                      </span>
-                    )}
-                  </div>
+                  <div><strong>Last Contact:</strong> {formatDateTime(comments[0]?.created_at ?? currentProspect.last_contact) || '—'}</div>
                   {comments[0]?.created_by_user && (
                     <div>
                       Last updated by: {(comments[0].created_by_user.name || comments[0].created_by_user.email || 'Unknown').trim()}
                     </div>
                   )}
                   <div>Last Successful Contact: {formatDateTime(comments.find((c) => c.interaction_type === 'answered')?.created_at ?? null) || '—'}</div>
-                  <div><strong>Contact Name:</strong> {currentProspect.contact_name || '—'}</div>
-                  <div>
-                    <strong>Phone Number:</strong>{' '}
-                    {currentProspect.phone_number ? (
-                      <a href={`tel:${encodeURIComponent(currentProspect.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                        {currentProspect.phone_number}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                  <div>
-                    <strong>Email:</strong>{' '}
-                    {currentProspect.email ? (
-                      <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                        {currentProspect.email}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </div>
-                  <div>
-                    <strong>Links to Website:</strong>{' '}
-                    {currentProspect.links_to_website ? (
-                      <a
-                        href={currentProspect.links_to_website.startsWith('http') ? currentProspect.links_to_website : `https://${currentProspect.links_to_website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
-                      >
-                        {currentProspect.links_to_website}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </div>
                   <div><strong>Address:</strong> {currentProspect.address || '—'}</div>
-                  {scheduledCallback && (
-                    <div>
-                      <strong>Call back scheduled for:</strong>{' '}
-                      <Link
-                        to="/calendar"
-                        style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
-                      >
-                        {formatDateTime(scheduledCallback.callback_date)}
-                        {scheduledCallback.note && ` (${scheduledCallback.note})`}
-                      </Link>
-                    </div>
-                  )}
+                  <div>
+                    <strong>Time on this prospect:</strong>{' '}
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
+                      {formatTimerSeconds(prospectLedgerSeconds + followUpTimerSeconds)}
+                    </span>
+                  </div>
                 </div>
                 <div className="followUpInfoCardNotes">
                   <textarea
@@ -2486,6 +2371,45 @@ export default function Prospects() {
                   </div>
                 </div>
               </div>
+              {/* The advance bar: the last thing you hit after logging the outcome and notes. */}
+              <button
+                type="button"
+                onClick={() => handleNextProspect()}
+                disabled={followUpProspects.length <= 1}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  marginTop: '1rem',
+                  padding: '0.875rem',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: '#3b82f6',
+                  color: 'white',
+                  boxShadow: '0 1px 2px rgba(59,130,246,0.3)',
+                  cursor: followUpProspects.length <= 1 ? 'not-allowed' : 'pointer',
+                  opacity: followUpProspects.length <= 1 ? 0.6 : 1,
+                }}
+              >
+                Next Prospect →
+              </button>
+            </div>
+            {/* Desktop queue rail (v2.2458): the v2.2301 peek, always visible. */}
+            <div className="followUpQueueRail">
+              <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Queue</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                      {currentProspectIndex + 1} of {followUpProspects.length}
+                    </span>
+                  </div>
+                  {renderCallingOrderToggle()}
+                </div>
+                {renderQueueRows(12, false)}
+              </div>
+            </div>
             </div>
           ) : null}
           {canAccessFollowUp && (
@@ -3340,6 +3264,19 @@ export default function Prospects() {
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
+              {(!editingProspect || editingProspect.id === currentProspect?.id) && currentProspect && (
+                <div>
+                  <span style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>
+                    Warmth <span style={{ color: 'var(--text-muted)' }}>— goes up by one every Answered</span>
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>🔥 {currentProspect.warmth_count ?? 0}</span>
+                    <button type="button" onClick={() => handleWarmthDelta(-1)} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', color: 'inherit' }}>−1</button>
+                    <button type="button" onClick={() => handleWarmthDelta(1)} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', color: 'inherit' }}>+1</button>
+                    <button type="button" onClick={handleWarmthReset} disabled={saving} style={{ padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', color: 'inherit' }}>Reset</button>
+                  </div>
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button

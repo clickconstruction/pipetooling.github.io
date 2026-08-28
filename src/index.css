@@ -1204,6 +1204,24 @@ button:focus-visible {
   color: #dc2626 !important;
 }
 
+/* Follow Up workstation (v2.2458): the queue rail is desktop-only; the
+   "show order" peek strip covers narrow screens. */
+.followUpQueueRail {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .followUpQueueRail {
+    display: block;
+    width: 270px;
+    flex-shrink: 0;
+  }
+
+  .followUpQueueMobileStrip {
+    display: none !important;
+  }
+}
+
 /* Prospect List: desktop table, mobile cards */
 .prospectListWrapper {
   border: 1px solid var(--border);
