@@ -2,15 +2,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { FunctionsHttpError } from '@supabase/supabase-js'
+import { describeTwinRun, nextTwinSeat, relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
- * the fleet console — everything an operator needs in one place: endpoints to hand a
- * partner, mint a twin, flip its safety rung, issue/revoke per-twin tokens (plaintext
- * shown ONCE; only the sha256 is stored), and the recent run ledger. The one thing that
+ * the fleet console. v2.2433 redesign — the page tells the operator's story in order:
+ * ① mint a twin → ② issue its key → ③ connect a harness → ④ watch the runs. A pipeline
+ * strip numbers every card, each twin shows the full three-rung safety ladder (not just
+ * its current rung), tokens are key pills with last-used liveness, and the run ledger is
+ * translated to plain English by the twinConsoleDisplay kernel. The one thing that
  * deliberately does NOT live here is the master TWIN_LOGIN_SECRET's value — an in-app
- * copy of a session-minting master key would defeat its purpose; rotation stays a CLI act.
- * Twin tables aren't in generated types yet — cast queries, fail-soft (Banking quirk-#17).
+ * copy of a session-minting master key would defeat it; rotation stays a CLI act.
+ * Twin tables aren't in generated types yet — cast queries, fail-soft.
  */
 
 type TwinRow = { id: string; name: string | null; email: string; role: string; read_only: boolean }
@@ -18,6 +21,7 @@ type CredRow = { id: string; twin_user_id: string; label: string; created_at: st
 type RunRow = { twin_user_id: string; mission: string; notes: string | null; started_at: string }
 
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
+const VIOLET = '#8b5cf6'
 
 function randomTokenHex(bytes = 32): string {
   const a = new Uint8Array(bytes)
@@ -29,11 +33,26 @@ async function sha256Hex(s: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-const CARD: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.8rem 1rem', marginBottom: '0.9rem', background: 'var(--surface)' }
-const H: React.CSSProperties = { margin: '0 0 0.4rem', fontSize: '0.95rem' }
+const CARD: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.85rem 1rem', marginBottom: '0.9rem', background: 'var(--surface)' }
 const MUTED: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)' }
-const BTN: React.CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
-const BTN_PRIMARY: React.CSSProperties = { ...BTN, background: '#3b82f6', color: '#fff', border: 'none' }
+const BTN: React.CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
+const BTN_PRIMARY: React.CSSProperties = { ...BTN, background: VIOLET, color: '#fff', border: 'none' }
+const STEP_REF: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 800, color: VIOLET, letterSpacing: '0.06em', verticalAlign: '2px', marginRight: '0.4rem' }
+const CARD_TITLE: React.CSSProperties = { margin: '0 0 0.55rem', fontSize: '0.92rem', fontWeight: 700 }
+const COPY_CHIP: React.CSSProperties = { font: 'inherit', fontSize: '0.66rem', fontWeight: 700, color: VIOLET, background: 'var(--bg-violet-100)', border: 'none', borderRadius: 5, padding: '0.1rem 0.45rem', cursor: 'pointer' }
+
+const PIPELINE: { step: string; title: string; sub: string }[] = [
+  { step: 'STEP 1', title: 'Mint a twin', sub: 'a seat in the app' },
+  { step: 'STEP 2', title: 'Issue its key', sub: 'shown once, revocable' },
+  { step: 'STEP 3', title: 'Connect a harness', sub: 'any agent, via MCP' },
+  { step: 'STEP 4', title: 'Watch the runs', sub: 'every sign-in & report' },
+]
+
+const RUNGS: { rung: 1 | 2 | 3; title: string; sub: string }[] = [
+  { rung: 1, title: 'Read-only', sub: 'safe to explore' },
+  { rung: 2, title: 'Fenced writes', sub: 'its own bids only' },
+  { rung: 3, title: 'Production', sub: 'earns trust first' },
+]
 
 export default function DigitalTwinsPanel() {
   const { showToast } = useToastContext()
@@ -42,9 +61,10 @@ export default function DigitalTwinsPanel() {
   const [runs, setRuns] = useState<RunRow[]>([])
   const [available, setAvailable] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [mintName, setMintName] = useState('')
-  const [tokenLabelByTwin, setTokenLabelByTwin] = useState<Record<string, string>>({})
+  const [issueForTwin, setIssueForTwin] = useState<string | null>(null)
+  const [tokenLabel, setTokenLabel] = useState('')
   const [freshToken, setFreshToken] = useState<{ twinEmail: string; token: string } | null>(null)
+  const [showKillCmd, setShowKillCmd] = useState(false)
 
   const loadAll = useCallback(async () => {
     try {
@@ -83,12 +103,12 @@ export default function DigitalTwinsPanel() {
     }
   }
 
-  async function toggleRung(t: TwinRow) {
+  async function setRung(t: TwinRow, readOnly: boolean) {
     setBusy(true)
     try {
-      const { error } = await supabase.from('users').update({ read_only: !t.read_only }).eq('id', t.id)
+      const { error } = await supabase.from('users').update({ read_only: readOnly }).eq('id', t.id)
       if (error) throw new Error(error.message)
-      showToast(!t.read_only ? `${t.email} → read-only (tester rung)` : `${t.email} → fenced writes (rung 2 — the twin write-fence binds it)`, 'success')
+      showToast(readOnly ? `${t.email} → read-only (rung 1)` : `${t.email} → fenced writes (rung 2 — the twin write-fence binds it)`, 'success')
       await loadAll()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
@@ -100,10 +120,8 @@ export default function DigitalTwinsPanel() {
   async function mintTwin() {
     setBusy(true)
     try {
-      const ns = twins.map((t) => Number(/^twin-estimator-(\d+)@/.exec(t.email)?.[1] ?? 0))
-      const next = Math.max(0, ...ns) + 1
-      const email = `twin-estimator-${next}@twins.pipetooling.local`
-      const body = { email, password: randomTokenHex(12), role: 'estimator', name: mintName.trim() || `Twin Estimator ${next}` }
+      const seat = nextTwinSeat(twins.map((t) => t.email))
+      const body = { email: seat.email, password: randomTokenHex(12), role: 'estimator', name: `Twin Estimator ${seat.n}` }
       const { error: eFn } = await supabase.functions.invoke('create-user', { body })
       if (eFn) {
         let msg = eFn.message
@@ -120,10 +138,9 @@ export default function DigitalTwinsPanel() {
       })
         .from('users')
         .update({ is_digital_twin: true, read_only: true })
-        .eq('email', email)
-      if (flagErr) throw new Error(`Created but not flagged: ${flagErr.message} — flag ${email} by hand`)
-      setMintName('')
-      showToast(`Minted ${email} (estimator, flagged, read-only)`, 'success')
+        .eq('email', seat.email)
+      if (flagErr) throw new Error(`Created but not flagged: ${flagErr.message} — flag ${seat.email} by hand`)
+      showToast(`Minted ${seat.email} (estimator, flagged, read-only)`, 'success')
       await loadAll()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
@@ -141,10 +158,11 @@ export default function DigitalTwinsPanel() {
         from: (t: string) => { insert: (v: object) => Promise<{ error: { message: string } | null }> }
       })
         .from('twin_credentials')
-        .insert({ twin_user_id: t.id, token_hash, label: (tokenLabelByTwin[t.id] ?? '').trim() || 'unlabeled' })
+        .insert({ twin_user_id: t.id, token_hash, label: tokenLabel.trim() || 'unlabeled' })
       if (error) throw new Error(error.message)
       setFreshToken({ twinEmail: t.email, token })
-      setTokenLabelByTwin((p) => ({ ...p, [t.id]: '' }))
+      setTokenLabel('')
+      setIssueForTwin(null)
       await loadAll()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
@@ -176,110 +194,200 @@ export default function DigitalTwinsPanel() {
     return <p style={MUTED}>Digital-twin tables aren’t deployed yet (migrations 20260828060000/070000/080000) — this console lights up once they land.</p>
   }
 
-  const twinName = (id: string) => twins.find((t) => t.id === id)?.email ?? id.slice(0, 8)
+  const nowMs = Date.now()
+  const credById = new Map(creds.map((c) => [c.id, c]))
+  const twinById = new Map(twins.map((t) => [t.id, t]))
+  const twinDisplayName = (id: string) => {
+    const t = twinById.get(id)
+    return t ? (t.name ?? t.email.split('@')[0]) : id.slice(0, 8)
+  }
+  const seat = nextTwinSeat(twins.map((t) => t.email))
 
   return (
     <div>
+      {/* The four-step pipeline strip — every card below carries its step number. */}
+      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
+        {PIPELINE.map((p) => (
+          <div key={p.step} style={{ flex: '1 1 9.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.4rem 0.65rem' }}>
+            <div style={{ fontSize: '0.6rem', fontWeight: 800, color: VIOLET, letterSpacing: '0.08em' }}>{p.step}</div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{p.title}</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{p.sub}</div>
+          </div>
+        ))}
+      </div>
+
       {freshToken ? (
-        <div style={{ ...CARD, border: '1.5px solid #8b5cf6', background: 'var(--bg-violet-100)' }}>
-          <h4 style={H}>New token for {freshToken.twinEmail} — shown ONCE</h4>
+        <div style={{ ...CARD, border: `1.5px solid ${VIOLET}`, background: 'var(--bg-violet-100)' }}>
+          <h4 style={CARD_TITLE}>New key for {freshToken.twinEmail} — shown ONCE</h4>
           <code style={{ display: 'block', fontSize: '0.75rem', overflowWrap: 'anywhere', padding: '0.4rem 0.5rem', background: 'var(--surface)', borderRadius: 5, border: '1px solid var(--border)' }}>{freshToken.token}</code>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-            <button type="button" style={BTN_PRIMARY} onClick={() => void copy(freshToken.token, 'the token')}>Copy token</button>
+            <button type="button" style={BTN_PRIMARY} onClick={() => void copy(freshToken.token, 'the key')}>Copy key</button>
             <button type="button" style={BTN} onClick={() => setFreshToken(null)}>Done — I saved it</button>
           </div>
           <p style={{ ...MUTED, marginBottom: 0, marginTop: '0.4rem' }}>Only its hash is stored — this value cannot be shown again. Hand it to the partner with docs/twins/TWIN_HARNESS.md.</p>
         </div>
       ) : null}
 
+      {/* Steps 1–2: the fleet — mint twins, issue keys, walk the safety ladder. */}
       <div style={CARD}>
-        <h4 style={H}>Endpoints — hand these to a harness or MCP client</h4>
-        {[
-          { label: 'twin-login (sign-in mint)', url: `${FN_BASE}/twin-login` },
-          { label: 'twin-mcp (MCP server)', url: `${FN_BASE}/twin-mcp` },
-        ].map((e) => (
-          <div key={e.url} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.25rem 0', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 600, minWidth: '11rem' }}>{e.label}</span>
-            <code style={{ fontSize: '0.72rem', overflowWrap: 'anywhere' }}>{e.url}</code>
-            <button type="button" style={BTN} onClick={() => void copy(e.url, e.label)}>Copy</button>
-          </div>
-        ))}
-        <p style={{ ...MUTED, margin: '0.4rem 0 0' }}>
-          Auth: the twin’s token as <code>X-Twin-Token</code> (or <code>Authorization: Bearer</code>). Fleet emails: <code>twin-estimator-&lt;n&gt;@twins.pipetooling.local</code>. Onboarding doc: <code>docs/twins/TWIN_HARNESS.md</code>.
-          The master secret’s value is deliberately not shown here — rotate it (fleet kill switch) with <code>supabase secrets set TWIN_LOGIN_SECRET=…</code>.
-        </p>
-      </div>
-
-      <div style={CARD}>
-        <h4 style={H}>Fleet ({twins.length})</h4>
-        {twins.length === 0 ? <p style={MUTED}>No twins yet — mint one below.</p> : null}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <h4 style={{ ...CARD_TITLE, margin: 0 }}>
+            <span style={STEP_REF}>1–2</span>Fleet · {twins.length} twin{twins.length === 1 ? '' : 's'}
+          </h4>
+          <button
+            type="button"
+            style={BTN_PRIMARY}
+            disabled={busy}
+            title={`Creates ${seat.email} — estimator, flagged, read-only. Password random and unused; twins sign in by mint only.`}
+            onClick={() => void mintTwin()}
+          >
+            ＋ Mint estimator twin
+          </button>
+        </div>
+        {twins.length === 0 ? <p style={MUTED}>No twins yet — mint the first seat above.</p> : null}
         {twins.map((t) => {
           const tCreds = creds.filter((c) => c.twin_user_id === t.id)
+          const liveCreds = tCreds.filter((c) => !c.revoked_at)
+          const currentRung = t.read_only ? 1 : 2
           return (
-            <div key={t.id} style={{ borderTop: '1px solid var(--border)', padding: '0.55rem 0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>🤖 {t.name ?? t.email}</span>
-                <code style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{t.email}</code>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.55rem', background: t.read_only ? 'var(--bg-amber-tint)' : 'var(--bg-green-tint)', color: t.read_only ? 'var(--text-amber-800)' : 'var(--text-green-800)' }}>
-                  {t.read_only ? 'rung 1 · read-only' : 'rung 2 · fenced writes'}
-                </span>
-                <button type="button" style={BTN} disabled={busy} onClick={() => void toggleRung(t)}>
-                  {t.read_only ? 'Graduate to fenced writes' : 'Back to read-only'}
-                </button>
-              </div>
-              <div style={{ marginTop: '0.35rem', paddingLeft: '1.2rem' }}>
-                {tCreds.length === 0 ? <span style={MUTED}>No tokens issued.</span> : null}
-                {tCreds.map((c) => (
-                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.76rem', margin: '0.15rem 0', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600 }}>{c.label}</span>
-                    <span style={MUTED}>issued {c.created_at.slice(0, 10)}{c.last_used_at ? ` · last used ${c.last_used_at.slice(0, 10)}` : ' · never used'}</span>
-                    {c.revoked_at ? (
-                      <span style={{ color: 'var(--text-red-700)', fontWeight: 700 }}>revoked</span>
-                    ) : (
-                      <button type="button" style={{ ...BTN, fontSize: '0.7rem', padding: '0.14rem 0.5rem' }} disabled={busy} onClick={() => void revokeToken(c)}>Revoke</button>
-                    )}
-                  </div>
-                ))}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.25rem' }}>
-                  <input
-                    type="text"
-                    value={tokenLabelByTwin[t.id] ?? ''}
-                    onChange={(e) => setTokenLabelByTwin((p) => ({ ...p, [t.id]: e.target.value }))}
-                    placeholder="Token label (e.g. xAI harness)"
-                    style={{ font: 'inherit', fontSize: '0.76rem', padding: '0.25rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 5, width: '13rem' }}
-                  />
-                  <button type="button" style={BTN} disabled={busy} onClick={() => void issueToken(t)}>Issue token…</button>
+            <div key={t.id} style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.65rem 0.8rem', margin: '0.5rem 0', display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+              <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: 9, background: 'var(--bg-violet-100)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flex: 'none' }}>🤖</div>
+              <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{t.name ?? t.email}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <code style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{t.email}</code>
+                  <button type="button" style={COPY_CHIP} onClick={() => void copy(t.email, 'the seat email')}>copy</button>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
+                  {liveCreds.map((c) => (
+                    <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: '1px solid var(--border)', borderRadius: 999, padding: '0.12rem 0.3rem 0.12rem 0.6rem', fontSize: '0.72rem', background: 'var(--bg-page)' }}>
+                      <span style={{ fontWeight: 600 }}>{c.label}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>
+                        {c.last_used_at ? `· used ${relativeTimeFrom(c.last_used_at, nowMs)}` : '· never used'}
+                      </span>
+                      <button
+                        type="button"
+                        style={{ font: 'inherit', width: '1rem', height: '1rem', borderRadius: '50%', border: 'none', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: '0.6rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title={`Revoke "${c.label}" — cuts off this key immediately`}
+                        disabled={busy}
+                        onClick={() => void revokeToken(c)}
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  {tCreds.length > liveCreds.length ? (
+                    <span style={{ ...MUTED, fontSize: '0.68rem' }}>{tCreds.length - liveCreds.length} revoked</span>
+                  ) : null}
+                  {issueForTwin === t.id ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <input
+                        type="text"
+                        value={tokenLabel}
+                        onChange={(e) => setTokenLabel(e.target.value)}
+                        placeholder="Key label (e.g. xAI harness)"
+                        autoFocus
+                        style={{ font: 'inherit', fontSize: '0.74rem', padding: '0.2rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 999, width: '11rem' }}
+                      />
+                      <button type="button" style={{ ...BTN_PRIMARY, fontSize: '0.72rem', padding: '0.2rem 0.6rem' }} disabled={busy} onClick={() => void issueToken(t)}>Issue</button>
+                      <button type="button" style={{ ...BTN, fontSize: '0.72rem', padding: '0.2rem 0.5rem' }} onClick={() => { setIssueForTwin(null); setTokenLabel('') }}>Cancel</button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: VIOLET, border: `1px dashed ${VIOLET}`, borderRadius: 999, padding: '0.14rem 0.6rem', background: 'transparent', cursor: 'pointer' }}
+                      onClick={() => { setIssueForTwin(t.id); setTokenLabel('') }}
+                    >
+                      ＋ Issue key
+                    </button>
+                  )}
+                </div>
+              </div>
+              {/* The safety ladder — all three rungs visible, current one lit. */}
+              <div style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: '0.15rem', alignItems: 'flex-end' }}>
+                {RUNGS.map((r) => {
+                  const isCurrent = r.rung === currentRung
+                  const dotColor = isCurrent ? (r.rung === 1 ? 'var(--text-amber-800)' : 'var(--text-green-800)') : 'var(--border-strong)'
+                  const action =
+                    r.rung === 2 && currentRung === 1 ? { label: 'Graduate ↑', to: false } :
+                    r.rung === 1 && currentRung === 2 ? { label: 'Back ↓', to: true } : null
+                  return (
+                    <div key={r.rung} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', color: isCurrent ? 'var(--text-700)' : 'var(--text-muted)', fontWeight: isCurrent ? 700 : 400 }}>
+                      {action ? (
+                        <button
+                          type="button"
+                          style={{ font: 'inherit', fontSize: '0.62rem', fontWeight: 700, background: action.to ? 'var(--bg-amber-tint)' : 'var(--bg-green-tint)', color: action.to ? 'var(--text-amber-800)' : 'var(--text-green-800)', border: 'none', borderRadius: 5, padding: '0.06rem 0.45rem', cursor: 'pointer' }}
+                          disabled={busy}
+                          onClick={() => void setRung(t, action.to)}
+                        >
+                          {action.label}
+                        </button>
+                      ) : null}
+                      <span title={r.rung === 3 ? 'Not built yet — a twin earns this rung later (Phase E of the plan)' : undefined}>
+                        {r.title} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>— {r.sub}</span>
+                      </span>
+                      <span style={{ width: '0.55rem', height: '0.55rem', borderRadius: '50%', flex: 'none', background: isCurrent ? dotColor : 'transparent', border: `2px solid ${isCurrent ? 'transparent' : 'var(--border-strong)'}`, boxSizing: 'border-box' }} />
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )
         })}
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.55rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <input
-            type="text"
-            value={mintName}
-            onChange={(e) => setMintName(e.target.value)}
-            placeholder="Display name (optional — e.g. Ada 🤖)"
-            style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, width: '16rem' }}
-          />
-          <button type="button" style={BTN_PRIMARY} disabled={busy} onClick={() => void mintTwin()}>
-            ＋ Mint estimator twin
-          </button>
-          <span style={MUTED}>Next: twin-estimator-{Math.max(0, ...twins.map((t) => Number(/^twin-estimator-(\d+)@/.exec(t.email)?.[1] ?? 0))) + 1}@… (flagged, read-only; password random and unused — twins sign in by mint only)</span>
+      </div>
+
+      {/* Step 3: what a harness or MCP client needs, one fact per row. */}
+      <div style={CARD}>
+        <h4 style={CARD_TITLE}><span style={STEP_REF}>3</span>Connect a harness</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(7rem, 10rem) 1fr', gap: '0.35rem 0.8rem', fontSize: '0.78rem', alignItems: 'baseline' }}>
+          <span style={{ ...MUTED, fontWeight: 600 }}>Sign-in mint</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0 }}>
+            <code style={{ fontSize: '0.7rem', overflowWrap: 'anywhere' }}>{FN_BASE}/twin-login</code>
+            <button type="button" style={COPY_CHIP} onClick={() => void copy(`${FN_BASE}/twin-login`, 'the twin-login URL')}>copy</button>
+          </span>
+          <span style={{ ...MUTED, fontWeight: 600 }}>MCP server</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0 }}>
+            <code style={{ fontSize: '0.7rem', overflowWrap: 'anywhere' }}>{FN_BASE}/twin-mcp</code>
+            <button type="button" style={COPY_CHIP} onClick={() => void copy(`${FN_BASE}/twin-mcp`, 'the twin-mcp URL')}>copy</button>
+            <span style={{ ...MUTED, fontSize: '0.68rem' }}>works with any MCP client — Claude, Grok, …</span>
+          </span>
+          <span style={{ ...MUTED, fontWeight: 600 }}>Auth header</span>
+          <code style={{ fontSize: '0.7rem' }}>X-Twin-Token: &lt;the twin’s key&gt;</code>
+          <span style={{ ...MUTED, fontWeight: 600 }}>Onboarding doc</span>
+          <code style={{ fontSize: '0.7rem' }}>docs/twins/TWIN_HARNESS.md</code>
+          <span style={{ ...MUTED, fontWeight: 600 }}>Kill switch</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', ...MUTED }}>
+            rotate the master secret from the CLI — its value never appears in the app
+            <button type="button" style={COPY_CHIP} onClick={() => setShowKillCmd((v) => !v)}>{showKillCmd ? 'hide command' : 'show command'}</button>
+            {showKillCmd ? <code style={{ fontSize: '0.7rem' }}>supabase secrets set TWIN_LOGIN_SECRET=…</code> : null}
+          </span>
         </div>
       </div>
 
+      {/* Step 4: the run ledger, translated to plain English. */}
       <div style={CARD}>
-        <h4 style={H}>Recent runs</h4>
-        {runs.length === 0 ? <p style={MUTED}>No runs logged yet.</p> : null}
-        {runs.map((r, i) => (
-          <div key={i} style={{ fontSize: '0.76rem', margin: '0.18rem 0', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{r.started_at.slice(0, 16).replace('T', ' ')}</span>
-            <span style={{ fontWeight: 600 }}>{r.mission}</span>
-            <code style={{ color: 'var(--text-muted)' }}>{twinName(r.twin_user_id)}</code>
-            {r.notes ? <span style={{ ...MUTED, overflowWrap: 'anywhere' }}>{r.notes.slice(0, 90)}</span> : null}
-          </div>
-        ))}
+        <h4 style={CARD_TITLE}><span style={STEP_REF}>4</span>Recent runs</h4>
+        {runs.length === 0 ? <p style={MUTED}>No runs logged yet — the first sign-in or mission report lands here.</p> : null}
+        {runs.map((r, i) => {
+          const d = describeTwinRun(r.mission, r.notes, (id) => credById.get(id)?.label)
+          const chip =
+            d.verb === 'sign-in' ? { text: 'SIGN-IN', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' } :
+            d.verb === 'report' ? { text: 'REPORT', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-800)' } :
+            { text: 'RUN', bg: 'var(--bg-violet-100)', fg: 'var(--text-violet-800)' }
+          return (
+            <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', fontSize: '0.76rem', padding: '0.26rem 0', borderBottom: i < runs.length - 1 ? '1px solid var(--border)' : 'none', flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', width: '4.5rem', flex: 'none' }} title={r.started_at.slice(0, 16).replace('T', ' ')}>
+                {relativeTimeFrom(r.started_at, nowMs)}
+              </span>
+              <span style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.08rem 0.45rem', background: chip.bg, color: chip.fg, flex: 'none', width: '3.6rem', textAlign: 'center' }}>{chip.text}</span>
+              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                <span style={{ fontWeight: 600 }}>{twinDisplayName(r.twin_user_id)}</span>
+                {d.verb !== 'sign-in' ? <span style={{ color: 'var(--text-muted)' }}> · {d.mission}</span> : null}
+                {d.detail ? <span style={{ color: 'var(--text-muted)' }}> · {d.detail.slice(0, 140)}</span> : null}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
