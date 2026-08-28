@@ -1794,10 +1794,13 @@ export default function Bids() {
     lossCategory: BidLossCategoryKey | null,
   ) {
     const loss_reason = lossReason.trim() || null
-    await withSupabaseRetry(
-      async () => supabase.from('bids').update({ loss_reason, loss_category: lossCategory }).eq('id', bidId),
+    const updatedRows = await withSupabaseRetry(
+      async () =>
+        supabase.from('bids').update({ loss_reason, loss_category: lossCategory }).eq('id', bidId).select('id'),
       'bid board lost summary loss_reason',
     )
+    // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows (v2.2454).
+    if (!updateApplied(updatedRows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
     await loadBids()
   }
 
