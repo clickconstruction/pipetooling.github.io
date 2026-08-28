@@ -85,6 +85,21 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 
+### Digital twins (account flag, not a role)
+
+Agent-operated accounts flagged `users.is_digital_twin` (v2.2426; estimator role only for
+now — [DIGITAL_TWINS_PLAN.md](./DIGITAL_TWINS_PLAN.md)). Two account-level mechanisms ride
+on top of the normal role permissions:
+
+- **Training mode** (`users.read_only`) — the tester rung: full role visibility, zero writes.
+- **The twin write-fence** (v2.2428, `apply_digital_twin_write_blocks()`): restrictive
+  policies on every RLS-enabled table, `(NOT is_digital_twin()) OR (<allowance>)` — a no-op
+  for every real user. Twins may write only bids they **created or are the assigned
+  estimator on** (+ bid-child tables detected by their `bid_id` column, + bid-scoped
+  `price_book_entries`, + `help_feedback` INSERT for bug reports). Everything else is
+  read-only for twins; humans can always read AND edit twin work (the review workflow).
+  Rerun the applier after CREATE TABLE on bid-family tables (drop+recreate, idempotent).
+
 ### Access Control Mechanisms
 - **Frontend**: Page-level routing restrictions with redirects
 - **Backend**: Row Level Security (RLS) policies on all tables
