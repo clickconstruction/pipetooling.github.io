@@ -3801,6 +3801,57 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     }
   }
 
+  /**
+   * Phase 4 of the Bid Room (v2.2472): publish a bid-linked CO draft into the GC's room —
+   * the CO freezes (status sent, no email, no per-CO token; the room link is the credential)
+   * and the GC signs it on the same page as the proposal.
+   */
+  async function publishCoToBidRoom() {
+    if (!row || !isDraft || !isCO || !row.bid_id || saving || sending) return
+    const { data: roomRows } = await supabase
+      .from('bid_proposal_rooms')
+      .select('id, customer_id, public_token')
+      .eq('bid_id', row.bid_id)
+      .is('closed_at', null)
+    const rooms = (roomRows ?? []) as Array<{ id: string; customer_id: string | null; public_token: string }>
+    if (rooms.length === 0) {
+      showToast('No open bid room for this bid — open one from the bid\u2019s Cover Letter first.', 'error')
+      return
+    }
+    const target = rooms.find((r) => r.customer_id === row.customer_id) ?? (rooms.length === 1 ? rooms[0] : rooms.find((r) => r.customer_id === null))
+    if (!target) {
+      showToast('This bid has several rooms and none matches this CO\u2019s customer — set the CO\u2019s customer to the right GC first.', 'error')
+      return
+    }
+    if (
+      !(await confirmDialog({
+        message: `Publish this change order into the bid room? The GC signs it there — no separate email link.`,
+        confirmLabel: 'Publish to room',
+      }))
+    )
+      return
+    const saved = await saveDraft({ quiet: true })
+    if (!saved) return
+    const { data: upd, error: pubErr } = await supabase
+      .from('estimates')
+      .update({ status: 'sent', sent_at: new Date().toISOString(), bid_room_id: target.id })
+      .eq('id', row.id)
+      .eq('status', 'draft')
+      .select('id')
+    if (pubErr || !upd || upd.length === 0) {
+      showToast(formatErrorMessage(pubErr, 'Could not publish the change order'), 'error')
+      return
+    }
+    await supabase.from('bid_proposal_room_events').insert({
+      room_id: target.id,
+      event_type: 'document_published',
+      metadata: { document_id: row.id, title: title.trim(), total_cents: totalCents },
+    })
+    window.dispatchEvent(new Event('bid-room-changed'))
+    showToast('Change order published to the bid room — the GC signs it there.', 'success')
+    await load()
+  }
+
   async function deleteDraft() {
     if (!row || !isDraft) return
     if (!(await confirmDialog({ message: 'Delete this draft?', confirmLabel: 'Delete', danger: true }))) return
@@ -5717,6 +5768,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             >
               {sending ? 'Sending…' : 'Send to customer'}
             </button>
+            {isCO && row.bid_id ? (
+              <button
+                type="button"
+                onClick={() => void publishCoToBidRoom()}
+                disabled={saving || sending}
+                title="Freeze this change order into the bid's room — the GC signs it on the same page as the proposal"
+                style={estSecondaryButton(saving || sending)}
+              >
+                Publish to bid room
+              </button>
+            ) : null}
             <button type="button" onClick={() => void deleteDraft()} style={estDangerOutlineButton()}>
               Delete draft
             </button>
@@ -5980,9 +6042,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 loading={estimateCustomerEventsLoading}
                 events={estimateCustomerEvents}
               />
+              {row.bid_room_id ? (
+                <p style={{ marginTop: '1rem', color: 'var(--text-amber-800)' }}>
+                  In the bid room — the GC reviews and signs this change order on their room page, alongside the proposal.
+                </p>
+              ) : (
               <p style={{ marginTop: '1rem', color: 'var(--text-amber-800)' }}>
                 Waiting for customer. Contact them with the link from the email we sent (or ask an admin to resend).
               </p>
+              )}
               <EstimateCustomerAcceptLinkButtons
                 customerAcceptUrl={customerAcceptUrl}
                 isDraft={isDraft}

@@ -12,6 +12,8 @@ import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
 import { acceptHeaderBrandImageSrc, acceptHeaderBrandLabel, parseAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
+import { normalizeEstimateLineItemsFromJson } from '../lib/estimateLineItemNormalize'
+import { parseEstimateChangeOrderFields } from '../lib/estimateChangeOrder'
 import {
   parseBidRoomRevisionPayload,
   roomBaseOption,
@@ -22,11 +24,25 @@ import {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
+type RoomDocument = {
+  id: string
+  title: string
+  change_order_fields: unknown
+  line_items_snapshot: unknown
+  terms_snapshot: string | null
+  total_cents: number
+  status: string
+  sent_at: string | null
+  acceptor_printed_name: string | null
+  acceptor_consented_at: string | null
+}
+
 type RoomFetch = {
   revision: { id: string; rev_number: number; note: string; published_at: string }
   payload: BidRoomRevisionPayloadV1
   attachment: { url: string; label: string | null } | null
   outcome: { event_type: string; metadata: unknown; occurred_at: string } | null
+  documents?: RoomDocument[]
 }
 
 function Shell({ children }: { children: ReactNode }) {
@@ -169,6 +185,8 @@ export default function BidRoom() {
     }
   }
 
+  const [docAnswers, setDocAnswers] = useState<Record<string, 'signed' | 'declined'>>({})
+
   async function submitDecline() {
     if (!declineCategory && !declineNote.trim()) {
       setFormError('Pick a reason or tell us in a sentence.')
@@ -297,6 +315,29 @@ export default function BidRoom() {
           <EstimateCustomerAttachmentCard attachment={{ url: room.attachment.url, label: room.attachment.label }} />
         ) : null}
 
+        {(room.documents ?? []).length > 0 ? (
+          <section style={{ marginTop: '1.4rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1rem' }}>
+            <h2 style={{ fontSize: '1.05rem', margin: '0 0 0.5rem' }}>Change orders</h2>
+            {(room.documents ?? []).map((doc) => (
+              <RoomChangeOrderCard
+                key={doc.id}
+                doc={doc}
+                localAnswer={docAnswers[doc.id]}
+                submitting={submitting}
+                onAnswer={async (kind, fields) => {
+                  const ok = await post({
+                    action: kind,
+                    documentId: doc.id,
+                    ...(kind === 'sign' ? { printedName: fields?.printedName ?? '', agreedTerms: true } : { note: fields?.note ?? '' }),
+                  })
+                  if (ok) setDocAnswers((prev) => ({ ...prev, [doc.id]: kind === 'sign' ? 'signed' : 'declined' }))
+                  return ok
+                }}
+              />
+            ))}
+          </section>
+        ) : null}
+
         {!answered ? (
           <section style={{ marginTop: '1.4rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1rem' }}>
             <h2 style={{ fontSize: '1.05rem', margin: '0 0 0.4rem' }}>Approve this proposal</h2>
@@ -381,6 +422,144 @@ export default function BidRoom() {
         ) : null}
       </div>
     </Shell>
+  )
+}
+
+function fmtSignedMoney(cents: number): string {
+  const abs = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(Math.abs(cents) / 100)
+  return cents < 0 ? `−${abs}` : `+${abs}`
+}
+
+function RoomChangeOrderCard({
+  doc,
+  localAnswer,
+  submitting,
+  onAnswer,
+}: {
+  doc: RoomDocument
+  localAnswer?: 'signed' | 'declined'
+  submitting: boolean
+  onAnswer: (kind: 'sign' | 'decline', fields?: { printedName?: string; note?: string }) => Promise<boolean>
+}) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [agree, setAgree] = useState(false)
+  const [note, setNote] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+  const co = parseEstimateChangeOrderFields(doc.change_order_fields)
+  const lines = normalizeEstimateLineItemsFromJson(doc.line_items_snapshot, { allowNegative: true })
+  const status: 'pending' | 'signed' | 'declined' =
+    localAnswer ?? (doc.status === 'customer_accepted' ? 'signed' : doc.status === 'declined' ? 'declined' : 'pending')
+  const pending = status === 'pending'
+  return (
+    <div
+      style={{
+        border: pending ? '1.5px solid #ea580c' : '1.5px solid var(--border-strong)',
+        boxShadow: pending ? '0 0 0 1.5px #ea580c inset' : 'none',
+        background: pending ? '#fff8f3' : 'var(--surface)',
+        borderRadius: 12,
+        padding: '0.75rem 0.85rem',
+        marginBottom: '0.6rem',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{doc.title || 'Change order'}</span>
+        <span style={{ fontWeight: 800, fontSize: '1rem', fontVariantNumeric: 'tabular-nums' }}>{fmtSignedMoney(doc.total_cents)}</span>
+      </div>
+      {co.description_of_change.trim() ? (
+        <p style={{ margin: '0.3rem 0 0', fontSize: '0.85rem', color: 'var(--text-700)', whiteSpace: 'pre-wrap' }}>{co.description_of_change.trim()}</p>
+      ) : null}
+      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+        {co.reason_for_change.trim() ? <>Reason: {co.reason_for_change.trim()} · </> : null}
+        {co.impact_on_schedule.trim() ? <>Schedule: {co.impact_on_schedule.trim()}</> : null}
+      </div>
+      {lines.length > 0 ? (
+        <details style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+          <summary style={{ cursor: 'pointer', color: '#b3541e', fontWeight: 600 }}>Cost detail</summary>
+          <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
+            {lines.map((l, i) => (
+              <li key={i}>
+                {(l.line_item.trim() ? `${l.line_item.trim()} — ` : '') + l.description}
+                {' — '}
+                {fmtSignedMoney(l.amount_cents)}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+      {status === 'signed' ? (
+        <div style={{ marginTop: '0.5rem', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-green-700)' }}>
+          ✍ Signed{doc.acceptor_printed_name ? ` by ${doc.acceptor_printed_name}` : ''}
+          {doc.acceptor_consented_at ? ` · ${new Date(doc.acceptor_consented_at).toLocaleDateString()}` : ''}
+        </div>
+      ) : status === 'declined' ? (
+        <div style={{ marginTop: '0.5rem', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-muted)' }}>Declined — talk to us if anything changes.</div>
+      ) : !open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={{ marginTop: '0.55rem', background: '#ea580c', color: '#fff', fontWeight: 800, fontSize: '0.85rem', border: 'none', borderRadius: 8, padding: '0.45rem 1rem', cursor: 'pointer' }}
+        >
+          Review &amp; sign — {fmtSignedMoney(doc.total_cents)}
+        </button>
+      ) : (
+        <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.5rem', maxWidth: 420 }}>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Type your full name to sign"
+            aria-label="Full name"
+            style={{ font: 'inherit', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}
+          />
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--text-700)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 2 }} />
+            <span>I agree to this change order and its impact on cost and schedule.</span>
+          </label>
+          {err ? <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-red-700)' }}>{err}</p> : null}
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                setErr(null)
+                if (!name.trim()) {
+                  setErr('Please enter your full name.')
+                  return
+                }
+                if (!agree) {
+                  setErr('Please confirm you agree to this change order.')
+                  return
+                }
+                void onAnswer('sign', { printedName: name.trim() })
+              }}
+              style={{ background: '#ea580c', color: '#fff', fontWeight: 800, fontSize: '0.85rem', border: 'none', borderRadius: 8, padding: '0.45rem 1rem', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.6 : 1 }}
+            >
+              {submitting ? 'Recording…' : `Approve — ${fmtSignedMoney(doc.total_cents)}`}
+            </button>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                setErr(null)
+                void onAnswer('decline', { note: note.trim() })
+              }}
+              style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 7, padding: '0.4rem 0.8rem', cursor: 'pointer' }}
+            >
+              Decline
+            </button>
+          </div>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Declining? A sentence on why helps. (Optional)"
+            aria-label="Decline note"
+            style={{ font: 'inherit', fontSize: '0.82rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text-strong)' }}
+          />
+        </div>
+      )}
+    </div>
   )
 }
 

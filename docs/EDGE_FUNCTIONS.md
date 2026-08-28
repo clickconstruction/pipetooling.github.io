@@ -986,7 +986,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false`; the plaintext room token (portal-links precedent) is the credential.
 
-**Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), and the latest signed/declined event (Phase 2); logs a `room_view` event with IP/UA. POST logs `option_viewed` (always 200, invalid input dropped — browsing must never break). Requires migration `20260828215717`.
+**Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` (always 200, invalid input dropped — browsing must never break). Requires migration `20260828215717`.
 
 ---
 
@@ -1014,7 +1014,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false`; the room token is the credential.
 
-**Behavior**: Only the room's **latest revision** may be answered (409 `stale_revision` — the page refreshes), and only once (409 `already_answered`). **Sign** mints an `estimates` row born `customer_accepted` (`doc_kind='bid_proposal'`, `bid_id`, the room's GC as `customer_id`; chosen option frozen into `line_items_snapshot`/`total_cents`/`accepted_option_key`, all options in `options_snapshot`; acceptor fields + optional PNG in `estimate-acceptor-signatures`), then applies [`_shared/bidRoomOutcome.ts`](../supabase/functions/_shared/bidRoomOutcome.ts): packet Won, other sent unanswered packets auto-Lost, conservative `bids.outcome` roll-up. **Decline** marks the packet Lost with the GC's own loss category/note (Why-we-lost feed). Both log room events and email the room's creator + master.
+**Behavior**: Only the room's **latest revision** may be answered (409 `stale_revision` — the page refreshes), and only once (409 `already_answered`). With `documentId` (v2.2472) the answer applies to that **change order** instead: sign sets the CO row `customer_accepted` with acceptor fields + optional signature PNG, decline sets `declined` with the note in the event — neither touches the proposal's outcome or the bid's won/lost. **Sign** mints an `estimates` row born `customer_accepted` (`doc_kind='bid_proposal'`, `bid_id`, the room's GC as `customer_id`; chosen option frozen into `line_items_snapshot`/`total_cents`/`accepted_option_key`, all options in `options_snapshot`; acceptor fields + optional PNG in `estimate-acceptor-signatures`), then applies [`_shared/bidRoomOutcome.ts`](../supabase/functions/_shared/bidRoomOutcome.ts): packet Won, other sent unanswered packets auto-Lost, conservative `bids.outcome` roll-up. **Decline** marks the packet Lost with the GC's own loss category/note (Why-we-lost feed). Both log room events and email the room's creator + master.
 
 ---
 

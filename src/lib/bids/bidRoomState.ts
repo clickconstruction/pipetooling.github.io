@@ -17,6 +17,8 @@ export type RoomEventLike = {
   occurred_at: string
   metadata: unknown
 }
+/** A change order published into a room (estimates row, doc_kind change_order). */
+export type RoomDocumentLike = { bid_room_id: string | null; status: string }
 
 export type BidRoomStateSummary = {
   roomId: string
@@ -35,6 +37,9 @@ export type BidRoomStateSummary = {
     printed_name?: string
     category?: string
   }
+  /** Change orders in the room (Phase 4): awaiting signature / signed. */
+  coPending: number
+  coSigned: number
 }
 
 /** gcKey convention shared with gcPackets: '' = the bid's own GC. */
@@ -46,6 +51,7 @@ export function summarizeBidRooms(
   rooms: ReadonlyArray<RoomRowLike>,
   revisions: ReadonlyArray<RoomRevisionLike>,
   events: ReadonlyArray<RoomEventLike>,
+  documents: ReadonlyArray<RoomDocumentLike> = [],
 ): Record<string, Record<string, BidRoomStateSummary>> {
   const out: Record<string, Record<string, BidRoomStateSummary>> = {}
   for (const room of rooms) {
@@ -54,12 +60,16 @@ export function summarizeBidRooms(
     const views = evs.filter((e) => e.event_type === 'room_view').map((e) => e.occurred_at).sort()
     const outcomeEv = [...evs]
       .filter((e) => e.event_type === 'signed' || e.event_type === 'declined')
+      // Phase 4: change-order answers carry metadata.kind='change_order' — they never decide
+      // the ROOM's (proposal's) outcome.
+      .filter((e) => !(e.metadata && typeof e.metadata === 'object' && (e.metadata as { kind?: string }).kind === 'change_order'))
       .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))
       .pop()
     const meta =
       outcomeEv && outcomeEv.metadata && typeof outcomeEv.metadata === 'object' && !Array.isArray(outcomeEv.metadata)
         ? (outcomeEv.metadata as BidRoomStateSummary['outcomeMeta'])
         : {}
+    const docs = documents.filter((d) => d.bid_room_id === room.id)
     const summary: BidRoomStateSummary = {
       roomId: room.id,
       gcId: room.customer_id,
@@ -71,6 +81,8 @@ export function summarizeBidRooms(
       outcome: outcomeEv ? (outcomeEv.event_type as 'signed' | 'declined') : null,
       outcomeAt: outcomeEv?.occurred_at ?? null,
       outcomeMeta: meta,
+      coPending: docs.filter((d) => d.status === 'sent').length,
+      coSigned: docs.filter((d) => d.status === 'customer_accepted').length,
     }
     const byGc = (out[room.bid_id] ??= {})
     // One OPEN room per GC by schema; a closed room only shows when no open one replaced it.
@@ -91,21 +103,28 @@ function fmtDay(iso: string): string {
 /** The compact chip every surface shows. Null = no room, show nothing. */
 export function roomStateChipLabel(s: BidRoomStateSummary | null | undefined): string | null {
   if (!s) return null
+  const coSuffix =
+    s.coPending > 0
+      ? ` · CO${s.coPending > 1 ? `×${s.coPending}` : ''} awaiting`
+      : s.coSigned > 0
+        ? ` · ${s.coSigned} CO${s.coSigned > 1 ? 's' : ''} signed`
+        : ''
   if (s.outcome === 'signed') {
     const opt = (s.outcomeMeta.option_name ?? '').trim()
     const amt = typeof s.outcomeMeta.total_cents === 'number' ? ` ${fmtUsd(s.outcomeMeta.total_cents)}` : ''
-    return `✍ signed${opt ? ` — ${opt}` : ''}${amt}`
+    return `✍ signed${opt ? ` — ${opt}` : ''}${amt}${coSuffix}`
   }
-  if (s.outcome === 'declined') return '✍ declined'
+  if (s.outcome === 'declined') return `✍ declined${coSuffix}`
   if (s.closed) return 'room closed'
   if (s.revNumber == null) return 'room · nothing published'
   const views = s.viewCount > 0 ? ` · opened ${s.viewCount}×${s.lastViewAt ? ` · ${fmtDay(s.lastViewAt)}` : ''}` : s.everSent ? ' · not opened yet' : ' · not sent'
-  return `rev ${s.revNumber}${views}`
+  return `rev ${s.revNumber}${views}${coSuffix}`
 }
 
 /** Chip tone: green when signed, red-ish when declined, amber while out, muted otherwise. */
 export function roomStateChipTone(s: BidRoomStateSummary | null | undefined): 'signed' | 'declined' | 'live' | 'idle' | null {
   if (!s) return null
+  if (s.coPending > 0) return 'live'
   if (s.outcome === 'signed') return 'signed'
   if (s.outcome === 'declined') return 'declined'
   if (s.closed || s.revNumber == null || !s.everSent) return 'idle'

@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabase'
 import { groupVersionsByGc, type GcPacket, type GcVersionLike } from '../lib/bids/gcPackets'
 import { latestSendByVersion, type VersionSendRow } from '../lib/bids/versionSends'
 import { countGcNotes } from '../lib/bids/bidGcNotes'
-import { summarizeBidRooms, type BidRoomStateSummary, type RoomEventLike, type RoomRevisionLike, type RoomRowLike } from '../lib/bids/bidRoomState'
+import { summarizeBidRooms, type BidRoomStateSummary, type RoomDocumentLike, type RoomEventLike, type RoomRevisionLike, type RoomRowLike } from '../lib/bids/bidRoomState'
 
 type BidLite = { id: string; bid_date_sent: string | null; customers?: { name?: string | null } | null; bids_gc_builders?: { name?: string | null } | null }
 
@@ -44,13 +44,19 @@ export function useBidGcPackets(bids: ReadonlyArray<BidLite>, recipientsByBid?: 
         if (rooms.length === 0) setRoomStatesByBid({})
         else {
           const roomIds = rooms.map((r) => r.id)
-          const [revRes, evRes] = await Promise.all([
+          const [revRes, evRes, docRes] = await Promise.all([
             supabase.from('bid_proposal_room_revisions').select('room_id, rev_number').in('room_id', roomIds),
             supabase.from('bid_proposal_room_events').select('room_id, event_type, occurred_at, metadata').in('room_id', roomIds),
+            supabase.from('estimates').select('bid_room_id, status').in('bid_room_id', roomIds),
           ])
           if (!cancelled) {
             setRoomStatesByBid(
-              summarizeBidRooms(rooms, (revRes.data ?? []) as RoomRevisionLike[], (evRes.data ?? []) as RoomEventLike[]),
+              summarizeBidRooms(
+                rooms,
+                (revRes.data ?? []) as RoomRevisionLike[],
+                (evRes.data ?? []) as RoomEventLike[],
+                (docRes.data ?? []) as RoomDocumentLike[],
+              ),
             )
           }
         }

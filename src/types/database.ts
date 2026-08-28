@@ -4361,6 +4361,7 @@ export type Database = {
           acceptor_signature_storage_path: string | null
           acceptor_user_agent: string | null
           bid_id: string | null
+          bid_room_id: string | null
           change_order_fields: Json | null
           created_at: string
           created_by: string
@@ -4402,6 +4403,7 @@ export type Database = {
           acceptor_signature_storage_path?: string | null
           acceptor_user_agent?: string | null
           bid_id?: string | null
+          bid_room_id?: string | null
           change_order_fields?: Json | null
           created_at?: string
           created_by: string
@@ -4443,6 +4445,7 @@ export type Database = {
           acceptor_signature_storage_path?: string | null
           acceptor_user_agent?: string | null
           bid_id?: string | null
+          bid_room_id?: string | null
           change_order_fields?: Json | null
           created_at?: string
           created_by?: string
@@ -4480,6 +4483,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimates_bid_room_id_fkey"
+            columns: ["bid_room_id"]
+            isOneToOne: false
+            referencedRelation: "bid_proposal_rooms"
             referencedColumns: ["id"]
           },
           {

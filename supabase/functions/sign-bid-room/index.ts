@@ -70,6 +70,8 @@ serve(async (req) => {
       signaturePngBase64?: string
       category?: string
       note?: string
+      /** Phase 4: answer a change order in the room instead of the proposal. */
+      documentId?: string
     }
     const token = body.token?.trim()
     if (!token) return json({ error: 'token is required' }, 400)
@@ -99,14 +101,84 @@ serve(async (req) => {
       return json({ error: 'The proposal was revised since you loaded this page — it has been refreshed.', code: 'stale_revision' }, 409)
     }
 
+    // Phase 4: a documentId answers a change order in the room — its own record, its own
+    // signature; never the proposal's outcome and never the bid's won/lost.
+    const documentId = typeof body.documentId === 'string' ? body.documentId.trim() : ''
+    if (documentId) {
+      const { data: co } = await admin
+        .from('estimates')
+        .select('id, status, doc_kind, bid_room_id, title, total_cents')
+        .eq('id', documentId)
+        .maybeSingle()
+      if (!co || co.bid_room_id !== room.id || co.doc_kind !== 'change_order') return json({ error: 'Not found' }, 404)
+      if (co.status !== 'sent') return json({ error: 'This change order already has a response on file.', code: 'already_answered' }, 409)
+      const ip2 = clientIp(req)
+      const ua2 = req.headers.get('user-agent')
+      if (action === 'decline') {
+        const note = typeof body.note === 'string' ? body.note.trim().slice(0, 2000) : ''
+        await admin.from('estimates').update({ status: 'declined' }).eq('id', co.id).eq('status', 'sent')
+        await admin.from('bid_proposal_room_events').insert({
+          room_id: room.id,
+          event_type: 'declined',
+          metadata: { kind: 'change_order', document_id: co.id, title: co.title, note },
+          client_ip: ip2,
+          user_agent: ua2,
+        })
+        await notifyStaff(admin, room, co.title ?? 'Change order', `declined the change order${note ? `: “${note}”` : ''}`)
+        return json({ ok: true })
+      }
+      const printedName2 = body.printedName?.trim() ?? ''
+      if (!printedName2) return json({ error: 'printedName is required' }, 400)
+      if (body.agreedTerms !== true) return json({ error: 'You must agree to the terms' }, 400)
+      let sigPath: string | null = null
+      const sigRaw2 = typeof body.signaturePngBase64 === 'string' ? body.signaturePngBase64 : ''
+      if (sigRaw2.trim()) {
+        const bytes = decodeBase64PngBytes(sigRaw2)
+        if (!bytes || bytes.length === 0 || bytes.length > MAX_SIGNATURE_BYTES || !isPng(bytes)) {
+          return json({ error: 'Invalid or oversized signature image' }, 400)
+        }
+        sigPath = `${co.id}/${crypto.randomUUID()}.png`
+        const { error: upErr } = await admin.storage.from(SIGNATURE_BUCKET).upload(sigPath, bytes, { contentType: 'image/png', upsert: false })
+        if (upErr) return json({ error: 'Could not store signature' }, 500)
+      }
+      const { data: upd } = await admin
+        .from('estimates')
+        .update({
+          status: 'customer_accepted',
+          acceptor_printed_name: printedName2,
+          acceptor_consented_at: new Date().toISOString(),
+          acceptor_ip: ip2,
+          acceptor_user_agent: ua2,
+          acceptor_signature_storage_path: sigPath,
+        })
+        .eq('id', co.id)
+        .eq('status', 'sent')
+        .select('id')
+      if (!upd || upd.length === 0) {
+        if (sigPath) await admin.storage.from(SIGNATURE_BUCKET).remove([sigPath])
+        return json({ error: 'This change order already has a response on file.', code: 'already_answered' }, 409)
+      }
+      await admin.from('bid_proposal_room_events').insert({
+        room_id: room.id,
+        event_type: 'signed',
+        metadata: { kind: 'change_order', document_id: co.id, title: co.title, total_cents: co.total_cents, printed_name: printedName2 },
+        client_ip: ip2,
+        user_agent: ua2,
+      })
+      await notifyStaff(admin, room, co.title ?? 'Change order', `signed the change order — ${fmtUsd(Number(co.total_cents) || 0)}`)
+      return json({ ok: true })
+    }
+
     // One outcome per room: a second sign/decline is refused politely.
     const { data: prior } = await admin
       .from('bid_proposal_room_events')
-      .select('event_type')
+      .select('event_type, metadata')
       .eq('room_id', room.id)
       .in('event_type', ['signed', 'declined'])
-      .limit(1)
-    if ((prior ?? []).length > 0) return json({ error: 'This proposal already has a response on file.', code: 'already_answered' }, 409)
+    const priorProposal = (prior ?? []).filter(
+      (e) => !(e.metadata && typeof e.metadata === 'object' && (e.metadata as { kind?: string }).kind === 'change_order'),
+    )
+    if (priorProposal.length > 0) return json({ error: 'This proposal already has a response on file.', code: 'already_answered' }, 409)
 
     const { data: bid } = await admin
       .from('bids')
