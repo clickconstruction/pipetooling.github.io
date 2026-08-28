@@ -60,6 +60,12 @@ You bid the shell to Burd & Assoc. and Southern Post. Southern Post calls with t
 
 Open **Edit Bid**: under **GCs on this bid**, every GC renders as the same card — name, address, contact chips — with its role as a small chip: {{chip:yellow|★ Bid's GC}} (the bid runs in their name; **change ▸** on the card swaps them), {{chip:blue|same letter}} (got the bid GC's letter, answer tracked with the bid), or {{chip:green|own packet}} (their own prices and answer — these land here automatically). Use {{button:outline|+ Add GCs}} for builders who got the **same letter** without a packet of their own. The picker stays open while you tick — tick as many builders as you like, searching in between, then one press of {{button:blue|Add 3 GCs}} adds them all (Cancel or Esc backs out). **A builder who isn't in the system yet** doesn't make you leave: the picker's **＋ New GC** row opens the customer form right on top of Edit Bid, and the new GC joins the bid the moment it saves. To give a same-letter GC its own packet, press **track separately** on the Send to strip (it opens ＋ Add GC with that builder filled in).
 
+## Each GC's due date, submitted-to, and ITB links
+
+Every GC card in Edit Bid carries its own **due date & time**, **submitted-to** contact, and **ITB links** — press **＋ due / submitted to / ITB** under a card (or **✎ edit** once something is set). Three builders, three deadlines.
+
+The bid's board due date rolls up on its own: it becomes the **earliest due among the GCs you haven't sent to yet** — once a GC's letter goes out, their deadline stops driving the board. A bid where you never set per-GC dues keeps its hand-set due date exactly as before.
+
 ## Tips
 
 - Labor and cost are shared by the whole bid: switching packets changes revenue, not cost.

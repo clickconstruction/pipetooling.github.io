@@ -53,6 +53,7 @@ export function GcCard({
   action,
   onRemove,
   removeBusy = false,
+  details,
 }: {
   name: string
   address?: string | null
@@ -65,6 +66,8 @@ export function GcCard({
   action?: ReactNode
   onRemove?: () => void
   removeBusy?: boolean
+  /** Full-width slot under the card row (per-GC due / submitted-to / ITB, Phase 4). */
+  details?: ReactNode
 }) {
   const chip = ROLE_CHIP[role]
   const ph = (phone ?? '').trim()
@@ -128,6 +131,7 @@ export function GcCard({
           {'×'}
         </button>
       ) : null}
+      {details ? <div style={{ flexBasis: '100%', minWidth: 0 }}>{details}</div> : null}
     </div>
   )
 }
@@ -142,6 +146,8 @@ export type BidGcRecipientsRowProps = {
   /** When set (v2.2383), the add-GC picker offers "＋ New GC…" — opens the app's
       customer form stacked over Edit Bid and adds the result straight to the bid. */
   onCreateNew?: (onCreated: (customer: Customer | null) => void) => void
+  /** Per-GC due / submitted-to / ITB editor slot (Phase 4) — rendered under each card. */
+  renderGcDetails?: (customerId: string) => ReactNode
 }
 
 /**
@@ -152,7 +158,7 @@ export type BidGcRecipientsRowProps = {
  * every read degrades to an empty list so a client deployed ahead of the
  * migration renders nothing instead of crashing (Banking quirk-#17 pattern).
  */
-export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, onCreateNew }: BidGcRecipientsRowProps) {
+export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, onCreateNew, renderGcDetails }: BidGcRecipientsRowProps) {
   const [rows, setRows] = useState<BidGcRecipientRow[]>([])
   const [available, setAvailable] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -287,6 +293,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, o
                 sameAsName={bidGcName}
                 onRemove={canEdit ? () => void removeRecipient(r.customer_id) : undefined}
                 removeBusy={busy}
+                details={renderGcDetails?.(r.customer_id)}
               />
             )
           })}
