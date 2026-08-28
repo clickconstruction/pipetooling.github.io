@@ -29,7 +29,7 @@ import {
   updateRecentMargins,
 } from '../../lib/bids/applyMarginPricing'
 import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
-import { planBookEditBidOffer, type BookEditBidOffer, type BookEntryPrices } from '../../lib/bids/bookEditBidOffer'
+import { planBookEditBidOffer, planSiblingCarry, type BookEditBidOffer, type BookEntryPrices } from '../../lib/bids/bookEditBidOffer'
 import {
   computeTravelCost,
   costEstimateDrivingRate,
@@ -310,11 +310,17 @@ export function BidsPricingTab({
   // v2.2444 (Wendi: "changed both versions of water to 13 and it isnt coming up"): the drawer
   // edits the SHARED book, but a bid prices from a frozen copy of it that keeps the same name.
   // After a book edit, this holds the door back to the open bid — see `bookEditBidOffer.ts`.
-  type PendingBookOffer = { offer: BookEditBidOffer; fixtureTypeId: string; prices: BookEntryPrices }
+  // For an update, `siblingEntryIds` are same-fixture entries in the bid's OTHER pricings still
+  // holding the identical stale prices (v2.2445) — "on this bid" updates them in the same press.
+  type PendingBookOffer = { offer: BookEditBidOffer; fixtureTypeId: string; prices: BookEntryPrices; siblingEntryIds: string[]; siblingPricingCount: number }
   const [pendingBookOffer, setPendingBookOffer] = useState<PendingBookOffer | null>(null)
   const [applyingBookOffer, setApplyingBookOffer] = useState(false)
+  // Planning an offer awaits a sibling fetch; the token drops a result that lands after the
+  // context it was planned for (pricing switched, drawer closed) is gone.
+  const bookOfferTokenRef = useRef(0)
   useEffect(() => {
     if (!wbBookDrawerOpen) {
+      bookOfferTokenRef.current++
       setPendingBookOffer(null)
       return
     }
@@ -330,8 +336,10 @@ export function BidsPricingTab({
   // (`selectedPricingVersionId` / `priceBookEntries`), which still drives the grid.
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
   const [templateEntries, setTemplateEntries] = useState<PriceBookEntryWithFixture[]>([])
-  // The v2.2444 offer names one entry in one bid pricing — switching either side retires it.
+  // The v2.2444 offer names entries in this bid's pricings — switching either side retires it
+  // (and invalidates any plan still fetching).
   useEffect(() => {
+    bookOfferTokenRef.current++
     setPendingBookOffer(null)
   }, [selectedPricingVersionId, editingTemplateId])
   // What kind of version the version-form modal is creating.
@@ -1423,8 +1431,9 @@ export function BidsPricingTab({
    * it across. After each book save, park the offer to do exactly that for the bid on screen.
    * Silence when no bid is open, or when its copy already agrees.
    */
-  function noteBookEditForOpenBid(fixtureTypeId: string, fixtureName: string, prices: BookEntryPrices) {
+  async function noteBookEditForOpenBid(fixtureTypeId: string, fixtureName: string, prices: BookEntryPrices) {
     if (entryFormTargetPricing) return // that save already landed in the bid's own copy
+    const token = ++bookOfferTokenRef.current
     const offer = planBookEditBidOffer({
       fixtureTypeId,
       fixtureName,
@@ -1438,8 +1447,50 @@ export function BidsPricingTab({
         total_price: Number(entry.total_price),
       })),
       hasActiveBidPricing: selectedBidForPricing != null && selectedPricingVersionId != null,
+      // An update offer is a same-book sync — never offered from a book this bid doesn't price
+      // from. When the lineage is unknowable (no template resolves), any book may offer.
+      editedBookFeedsThisBid: currentPriceBookTemplateId == null || editingTemplateId === currentPriceBookTemplateId,
     })
-    setPendingBookOffer(offer ? { offer, fixtureTypeId, prices } : null)
+    if (!offer) {
+      setPendingBookOffer(null)
+      return
+    }
+    // "On this bid" means the bid: the update also covers sibling pricings (alternates, other GC
+    // packets) whose copy still holds the viewed copy's exact stale prices — identical values are
+    // inherited values; anything re-priced on purpose won't match and is left alone (v2.2445).
+    let siblingEntryIds: string[] = []
+    let siblingPricingCount = 0
+    if (offer.kind === 'update') {
+      const stale = priceBookEntries.find((entry) => entry.id === offer.bidEntryId)
+      const siblingIds = priceBookVersions.map((v) => v.id).filter((id) => id !== selectedPricingVersionId)
+      if (stale && siblingIds.length > 0) {
+        const { data } = await supabase
+          .from('price_book_entries')
+          .select('id, version_id, rough_in_price, top_out_price, trim_set_price, total_price')
+          .eq('fixture_type_id', fixtureTypeId)
+          .in('version_id', siblingIds)
+        // A failed fetch just narrows the offer to the viewed pricing — never blocks it.
+        const carry = planSiblingCarry({
+          stale: {
+            rough_in_price: Number(stale.rough_in_price),
+            top_out_price: Number(stale.top_out_price),
+            trim_set_price: Number(stale.trim_set_price),
+            total_price: Number(stale.total_price),
+          },
+          siblingEntries: ((data as Array<{ id: string; version_id: string } & BookEntryPrices> | null) ?? []).map((e) => ({
+            ...e,
+            rough_in_price: Number(e.rough_in_price),
+            top_out_price: Number(e.top_out_price),
+            trim_set_price: Number(e.trim_set_price),
+            total_price: Number(e.total_price),
+          })),
+        })
+        siblingEntryIds = carry.entryIds
+        siblingPricingCount = carry.pricingIds.length
+      }
+    }
+    if (token !== bookOfferTokenRef.current) return // context moved on while we fetched
+    setPendingBookOffer({ offer, fixtureTypeId, prices, siblingEntryIds, siblingPricingCount })
   }
 
   /**
@@ -1455,7 +1506,10 @@ export function BidsPricingTab({
     try {
       const { offer, fixtureTypeId, prices } = pending
       if (offer.kind === 'update') {
-        const { error: err } = await supabase.from('price_book_entries').update(prices).eq('id', offer.bidEntryId)
+        const { error: err } = await supabase
+          .from('price_book_entries')
+          .update(prices)
+          .in('id', [offer.bidEntryId, ...pending.siblingEntryIds])
         if (err) {
           setError(err.message)
           return
@@ -1474,7 +1528,11 @@ export function BidsPricingTab({
       setPendingBookOffer(null)
       showToast(
         offer.kind === 'update'
-          ? `This bid now prices ${offer.fixtureName} at $${formatCurrency(offer.bookTotal)}.`
+          ? `This bid now prices ${offer.fixtureName} at $${formatCurrency(offer.bookTotal)}${
+              pending.siblingPricingCount > 0
+                ? ` — across ${pending.siblingPricingCount + 1} price option${pending.siblingPricingCount + 1 === 1 ? '' : 's'}`
+                : ''
+            }.`
           : `${offer.fixtureName} added to this bid's book — it will come up when you assign.`,
         'success',
       )
@@ -1520,7 +1578,7 @@ export function BidsPricingTab({
       if (err) setError(err.message)
       else {
         await reloadPanelEntries()
-        noteBookEditForOpenBid(fixtureTypeId, fixtureName, { rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
+        void noteBookEditForOpenBid(fixtureTypeId, fixtureName, { rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
         closePricingEntryForm()
       }
     } else {
@@ -1533,7 +1591,7 @@ export function BidsPricingTab({
       else {
         if (entryFormTargetPricing) await loadPriceBookEntries(selectedPricingVersionId)
         else await reloadPanelEntries()
-        noteBookEditForOpenBid(fixtureTypeId, fixtureName, { rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
+        void noteBookEditForOpenBid(fixtureTypeId, fixtureName, { rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
         closePricingEntryForm()
       }
     }
@@ -5605,6 +5663,15 @@ export function BidsPricingTab({
                         This bid still prices <strong>{pendingBookOffer.offer.fixtureName}</strong> at $
                         {formatCurrency(pendingBookOffer.offer.bidTotal)} — it holds its own copy of the book, taken when
                         the bid started.
+                        {pendingBookOffer.siblingPricingCount > 0 ? (
+                          <>
+                            {' '}
+                            {pendingBookOffer.siblingPricingCount} more price option
+                            {pendingBookOffer.siblingPricingCount === 1 ? '' : 's'} on this bid hold
+                            {pendingBookOffer.siblingPricingCount === 1 ? 's' : ''} the same $
+                            {formatCurrency(pendingBookOffer.offer.bidTotal)} and will update with it.
+                          </>
+                        ) : null}
                       </>
                     ) : (
                       <>
@@ -6000,7 +6067,9 @@ export function BidsPricingTab({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              zIndex: 50,
+              // Above the book drawer (70): its ✎/Add entry open this form, and on narrow
+              // screens a lower z put the form behind the drawer (v2.2445).
+              zIndex: 80,
             }}
             onClick={closePricingEntryForm}
           >
