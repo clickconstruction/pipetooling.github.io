@@ -32,14 +32,46 @@ function jobBillingUnallocCentsJob(job: JobWithDetails): number {
   return Math.max(0, g - alloc)
 }
 
-/** Gross remainder not yet allocated to RTB/billed lines (dollars); same basis as ensure_single_ready_to_bill_invoice_for_job. */
+/**
+ * Gross remainder not covered by ANY invoice line, the primary RTB bundle
+ * included (dollars). This is the board-merge basis — a well-synced primary
+ * makes it 0, and `readyToBillMergedPrimaryInvoiceId` / section exposure sums
+ * read a positive value as "gap the drafts don't cover". NOT the ensure-RPC
+ * basis: for how much can still be carved into a new partial invoice, use
+ * `jobPartialInvoiceRemainingDollars`.
+ */
 export function jobBillingUnallocatedDollars(job: JobWithDetails): number {
   return jobBillingUnallocCentsJob(job) / 100
 }
 
-/** Requested partial-invoice cents clamped to the billing-unallocated remainder (Stages "Create partial invoice"). */
+/**
+ * Cents still carvable into a new partial invoice: like the unallocated sum
+ * above, but the never-sent PRIMARY RTB remainder bundle does not count as
+ * allocated (the rule the ensure RPC has used since v2.1134 and JobFormModal's
+ * `unallocatedBillableDollars` since v2.2446). The bundle is elastic — it
+ * resizes to whatever isn't billed — so counting it read "Remaining $0" on
+ * every Ready-to-Bill job carrying the auto draft.
+ */
+function jobPartialInvoiceRemainingCents(job: JobWithDetails): number {
+  const g = jobGrossRemainingCentsJob(job)
+  let alloc = 0
+  for (const i of job.invoices ?? []) {
+    if (i.status === 'ready_to_bill' && i.is_primary_rtb_bundle === true) continue
+    if (i.status === 'ready_to_bill' || i.status === 'billed') {
+      alloc += Math.round(Number(i.amount ?? 0) * 100)
+    }
+  }
+  return Math.max(0, g - alloc)
+}
+
+/** Dollars still carvable into a new partial invoice (primary bundle excluded) — Stages partial-invoice display/gate. */
+export function jobPartialInvoiceRemainingDollars(job: JobWithDetails): number {
+  return jobPartialInvoiceRemainingCents(job) / 100
+}
+
+/** Requested partial-invoice cents clamped to the carvable remainder (primary bundle excluded; Stages "Create partial invoice"). */
 export function clampPartialInvoiceCentsToUnallocated(job: JobWithDetails, amountDollars: number): number {
-  return Math.min(Math.round(amountDollars * 100), jobBillingUnallocCentsJob(job))
+  return Math.min(Math.round(amountDollars * 100), jobPartialInvoiceRemainingCents(job))
 }
 
 function invoiceAmountCents(inv: Pick<JobsLedgerInvoice, 'amount'>): number {

@@ -20,6 +20,7 @@ import {
   filterJobsByDevelopment,
   STAGES_DEVELOPMENT_FILTER_NONE,
   jobBillingUnallocatedDollars,
+  jobPartialInvoiceRemainingDollars,
   jobInCollections,
   readyToBillRowsExposureTotal,
   stagesMergedBillingInvoiceId,
@@ -989,14 +990,13 @@ describe('collections partition in buildJobsStagesBoardLists', () => {
   })
 })
 
-describe('jobBillingUnallocatedDollars / clampPartialInvoiceCentsToUnallocated (Stages partial-invoice basis)', () => {
+describe('jobBillingUnallocatedDollars (board-merge basis: primary bundle counts as allocated)', () => {
   it('no invoices: remaining is gross (revenue minus payments)', () => {
     const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 100, invoices: [] })
     expect(jobBillingUnallocatedDollars(job)).toBe(500)
-    expect(clampPartialInvoiceCentsToUnallocated(job, 200)).toBe(20000)
   })
 
-  it('RTB-only allocation subtracts from remaining', () => {
+  it('RTB primary allocation subtracts from remaining (board reads the leftover as a real gap)', () => {
     const inv = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 400, is_primary_rtb_bundle: true })
     const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 0, invoices: [inv] })
     expect(jobBillingUnallocatedDollars(job)).toBe(200)
@@ -1008,7 +1008,7 @@ describe('jobBillingUnallocatedDollars / clampPartialInvoiceCentsToUnallocated (
     expect(jobBillingUnallocatedDollars(job)).toBe(400)
   })
 
-  it('mixed RTB + billed (live repro: $600 job, $200 billed, $400 RTB primary → $0, not $600)', () => {
+  it('well-synced primary reads $0 ($600 job, $200 billed, $400 RTB primary → no gap to show)', () => {
     const billed = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 200, status: 'billed' })
     const primary = rtbInvoiceStub({
       id: 'inv-2',
@@ -1027,25 +1027,72 @@ describe('jobBillingUnallocatedDollars / clampPartialInvoiceCentsToUnallocated (
     expect(jobBillingUnallocatedDollars(job)).toBe(300)
   })
 
-  it('over-allocation clamps to the unallocated remainder, not the gross remainder', () => {
-    const primary = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 350, is_primary_rtb_bundle: true })
-    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 100, invoices: [primary] })
-    expect(jobBillingUnallocatedDollars(job)).toBe(150)
+  it('allocations exceeding gross never go negative', () => {
+    const primary = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 900, is_primary_rtb_bundle: true })
+    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 0, invoices: [primary] })
+    expect(jobBillingUnallocatedDollars(job)).toBe(0)
+  })
+})
+
+describe('jobPartialInvoiceRemainingDollars / clampPartialInvoiceCentsToUnallocated (partial-invoice basis: primary bundle excluded, v2.2446 rule)', () => {
+  it('no invoices: remaining is gross (revenue minus payments)', () => {
+    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 100, invoices: [] })
+    expect(jobPartialInvoiceRemainingDollars(job)).toBe(500)
+    expect(clampPartialInvoiceCentsToUnallocated(job, 200)).toBe(20000)
+  })
+
+  it('a Ready-to-Bill job with only the auto bundle has its full total left to carve', () => {
+    // Taunya's job 978 start state: gross 3,630, auto draft 3,630 — the modal
+    // read "Remaining $0" and clamped typed amounts to zero.
+    const primary = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 3630, is_primary_rtb_bundle: true })
+    const job = jobStub({ id: 'job-1', revenue: 3630, payments_made: 0, invoices: [primary] })
+    expect(jobPartialInvoiceRemainingDollars(job)).toBe(3630)
+    expect(clampPartialInvoiceCentsToUnallocated(job, 1980)).toBe(198000)
+    // The board-merge basis still reads 0 — that keeps the merged primary row intact.
+    expect(jobBillingUnallocatedDollars(job)).toBe(0)
+  })
+
+  it('mid-flow: one segment invoice carved, auto bundle resized — remainder is the second segment', () => {
+    const segment = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 1980, is_primary_rtb_bundle: false })
+    const primary = rtbInvoiceStub({
+      id: 'inv-2',
+      job_id: 'job-1',
+      amount: 1650,
+      is_primary_rtb_bundle: true,
+      sequence_order: 1,
+    })
+    const job = jobStub({ id: 'job-1', revenue: 3630, payments_made: 0, invoices: [segment, primary] })
+    expect(jobPartialInvoiceRemainingDollars(job)).toBe(1650)
+    expect(clampPartialInvoiceCentsToUnallocated(job, 3630)).toBe(165000)
+  })
+
+  it('still counts a BILLED row even if it carries a stale primary flag', () => {
+    const billed = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 500, status: 'billed', is_primary_rtb_bundle: true })
+    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 0, invoices: [billed] })
+    expect(jobPartialInvoiceRemainingDollars(job)).toBe(100)
+  })
+
+  it('non-primary RTB + billed lines and payments all subtract from the carvable remainder', () => {
+    const billed = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 200, status: 'billed' })
+    const segment = rtbInvoiceStub({ id: 'inv-2', job_id: 'job-1', amount: 150, is_primary_rtb_bundle: false, sequence_order: 1 })
+    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 100, invoices: [billed, segment] })
+    // 600 − 100 paid − 200 billed − 150 segment
+    expect(jobPartialInvoiceRemainingDollars(job)).toBe(150)
     expect(clampPartialInvoiceCentsToUnallocated(job, 500)).toBe(15000)
     expect(clampPartialInvoiceCentsToUnallocated(job, 149.99)).toBe(14999)
   })
 
   it('zero remaining: clamp returns 0 for any requested amount', () => {
-    const primary = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 500, is_primary_rtb_bundle: true })
-    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 100, invoices: [primary] })
-    expect(jobBillingUnallocatedDollars(job)).toBe(0)
+    const billed = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 500, status: 'billed' })
+    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 100, invoices: [billed] })
+    expect(jobPartialInvoiceRemainingDollars(job)).toBe(0)
     expect(clampPartialInvoiceCentsToUnallocated(job, 100)).toBe(0)
   })
 
   it('allocations exceeding gross never go negative', () => {
-    const primary = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 900, is_primary_rtb_bundle: true })
-    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 0, invoices: [primary] })
-    expect(jobBillingUnallocatedDollars(job)).toBe(0)
+    const billed = rtbInvoiceStub({ id: 'inv-1', job_id: 'job-1', amount: 900, status: 'billed' })
+    const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 0, invoices: [billed] })
+    expect(jobPartialInvoiceRemainingDollars(job)).toBe(0)
     expect(clampPartialInvoiceCentsToUnallocated(job, 50)).toBe(0)
   })
 })

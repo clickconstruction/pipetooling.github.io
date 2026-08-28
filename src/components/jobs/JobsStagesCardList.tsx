@@ -10,7 +10,7 @@ import {
   jobBilledUnpaidDollars,
   jobStagesInvoiceJumpChipTargets,
 } from '../../lib/jobs/invoiceBilling'
-import { jobBillingUnallocatedDollars } from '../../lib/jobsStagesBoard'
+import { jobBillingUnallocatedDollars, jobPartialInvoiceRemainingDollars } from '../../lib/jobsStagesBoard'
 import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import {
@@ -688,7 +688,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         },
       })
     }
-    if (jobBillingUnallocatedDollars(j) > 0) {
+    if (jobPartialInvoiceRemainingDollars(j) > 0) {
       items.push({
         key: 'partial-invoice',
         label: 'Partial invoice',

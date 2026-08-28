@@ -148,7 +148,7 @@ import {
   filterJobsByAccountMan,
   STAGES_ACCOUNT_MAN_FILTER_NONE,
   clampPartialInvoiceCentsToUnallocated,
-  jobBillingUnallocatedDollars,
+  jobPartialInvoiceRemainingDollars,
   locateStagesInvoiceSection,
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
@@ -1819,7 +1819,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setError('Enter a valid amount greater than 0')
       return
     }
-    const remaining = jobBillingUnallocatedDollars(createPartialInvoiceJob)
+    const remaining = jobPartialInvoiceRemainingDollars(createPartialInvoiceJob)
     const amountToUseCents = clampPartialInvoiceCentsToUnallocated(createPartialInvoiceJob, amount)
     const amountToUse = amountToUseCents / 100
     if (!(amountToUse > 0)) {
@@ -4759,7 +4759,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Create partial invoice</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{effectiveJobLedgerNumber(createPartialInvoiceJob.hcp_number, createPartialInvoiceJob.click_number) || '—'} · {createPartialInvoiceJob.job_name ?? '—'}</p>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: ${formatCurrency(jobBillingUnallocatedDollars(createPartialInvoiceJob))}</div>
+              <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: ${formatCurrency(jobPartialInvoiceRemainingDollars(createPartialInvoiceJob))}</div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                 Amount ($)
                 <input
