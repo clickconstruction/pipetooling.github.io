@@ -4297,6 +4297,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   doc_kind: row.doc_kind,
                   change_order_fields: coFields,
                 }}
+                options={syncedEstimateOptions}
+                selectedOptionKey={previewSelectedOptionKey}
+                onSelectOption={setPreviewSelectedOptionKey}
                 experience={staffResolvedExperience}
                 printedName=""
                 agreed={false}
