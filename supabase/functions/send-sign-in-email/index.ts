@@ -14,7 +14,7 @@ interface SendSignInEmailRequest {
   redirectTo?: string
 }
 
-const DEFAULT_REDIRECT = 'https://pipetooling.com/dashboard'
+const DEFAULT_REDIRECT = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '') + '/dashboard' // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
 const ALLOWED_REDIRECT = /^(https:\/\/pipetooling\.com\/|http:\/\/localhost:5(173|175)\/)/
 
 // Fallbacks must match the Settings "sign_in" template defaults (src/pages/Settings.tsx openEditTemplate).

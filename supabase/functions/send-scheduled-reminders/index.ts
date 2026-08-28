@@ -363,7 +363,7 @@ serve(async (req) => {
                 from: 'PipeTooling <team@noreply.pipetooling.com>',
                 to: [email],
                 subject: 'Task reminder',
-                text: `${body}\n\nOpen your checklist: https://pipetooling.com/checklist`,
+                text: `${body}\n\nOpen your checklist: ${(Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '')}/checklist`,
               }),
             })
             if (resp.ok) {

@@ -150,7 +150,9 @@ enabled = true
 site_url = "https://pipetooling.com"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # http://localhost:5175/** enables dev-login magic links to redirect back to localhost
-additional_redirect_urls = ["https://pipetooling.com/**", "http://localhost:5173/**", "http://localhost:5175/**"]
+# clicktooling.com pre-allowlisted for the domain cutover (v2.2440 prep; harmless until
+# DNS moves — see docs/DOMAIN_CUTOVER.md). Applying needs `supabase config push`.
+additional_redirect_urls = ["https://pipetooling.com/**", "https://clicktooling.com/**", "http://localhost:5173/**", "http://localhost:5175/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 # 36000 (10h) matches prod (verified 2026-08-02 via live token exp-iat); useAuth.ts refresh windows assume it.
 jwt_expiry = 36000

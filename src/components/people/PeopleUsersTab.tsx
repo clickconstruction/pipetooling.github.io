@@ -6,6 +6,7 @@ import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
 import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTabTags'
 import { contractSigningIconTitle, type ContractSigningTrafficLight } from '../../lib/contractSigningRollup'
 import { loginAsUser } from '../../lib/loginAsUser'
+import { APP_HOSTNAME, appUrl } from '../../lib/appOrigin'
 import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
 import {
   buildUsersTabKindRoster,
@@ -260,15 +261,15 @@ export function PeopleUsersTab({
             )}
             {isDev && item.source === 'user' && item.email && (
               <>
-                {window.location.hostname === 'pipetooling.com' && (
+                {window.location.hostname === APP_HOSTNAME && (
                   <button
                     type="button"
-                    title="imitate (pipetooling.com)"
+                    title={`imitate (${APP_HOSTNAME})`}
                     onClick={async () => {
                       setLoggingInAsId(item.id)
                       setError(null)
                       try {
-                        await loginAsUser(item, 'https://pipetooling.com/dashboard')
+                        await loginAsUser(item, appUrl('/dashboard'))
                       } catch (e) {
                         setError(e instanceof Error ? e.message : 'Failed to imitate')
                       } finally {

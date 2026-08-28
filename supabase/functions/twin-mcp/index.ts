@@ -183,7 +183,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const res = await fetch(`${supabaseUrl}/functions/v1/twin-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Twin-Token': presentedToken(req)! },
-        body: JSON.stringify({ redirectTo: (args.redirectTo as string) || 'https://pipetooling.com/bids', run: (args.run as string) || 'mcp-mint' }),
+        body: JSON.stringify({ redirectTo: (args.redirectTo as string) || (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '') + '/bids', run: (args.run as string) || 'mcp-mint' }),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) return textContent(`Mint failed (${res.status}): ${body.error ?? 'unknown'}`, true)

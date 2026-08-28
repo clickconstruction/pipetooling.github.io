@@ -20,7 +20,7 @@ interface InviteUserRequest {
 
 const VALID_ROLES = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller']
 
-const DEFAULT_REDIRECT = 'https://pipetooling.com/accept-invite'
+const DEFAULT_REDIRECT = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '') + '/accept-invite' // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
 const ALLOWED_REDIRECT = /^(https:\/\/pipetooling\.com\/|http:\/\/localhost:5(173|175)\/)/
 
 // Fallbacks must match the Settings "invitation" template defaults (src/pages/Settings.tsx openEditTemplate).

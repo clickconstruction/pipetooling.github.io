@@ -23,7 +23,7 @@ import {
 } from '../_shared/paymentForecastCore.ts'
 
 /** Prod app origin for deep links (billed-report-email precedent). */
-export const APP_URL = 'https://pipetooling.com'
+export const APP_URL = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '') // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
 
 function esc(s: unknown): string {
   return String(s ?? '')
