@@ -2041,10 +2041,6 @@ export default function Bids() {
           }),
         'insert bid submission entry from bid sent confirmation'
       )
-      await withSupabaseRetry(
-        async () => supabase.from('bids').update({ last_contact: occurredAt }).eq('id', bidId),
-        'update bid last_contact from bid sent confirmation note'
-      )
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not add bid note from confirmation'), 'error')
     }
@@ -2077,10 +2073,6 @@ export default function Bids() {
             created_by: authUser.id,
           }),
         'insert bid submission entry from win loss change'
-      )
-      await withSupabaseRetry(
-        async () => supabase.from('bids').update({ last_contact: occurredAt }).eq('id', opts.bidId),
-        'update bid last_contact from win loss change note'
       )
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not add Win/Loss change note'), 'error')
@@ -2142,7 +2134,9 @@ export default function Bids() {
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
       distance_from_office: distanceFromOffice.trim() || null,
-      last_contact: fromDatetimeLocal(lastContact),
+      // Per-GC Phase 1 cleanup: last_contact is trigger-derived from method entries on saved
+      // bids (Edit Bid's field is a read-only display + Log contact) — only a NEW bid seeds it.
+      ...(editingBid ? {} : { last_contact: fromDatetimeLocal(lastContact) }),
       notes: notes.trim() || null,
       service_type_id: formServiceTypeId,
     }
@@ -2250,7 +2244,9 @@ export default function Bids() {
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
       distance_from_office: distanceFromOffice.trim() || null,
-      last_contact: fromDatetimeLocal(lastContact),
+      // Per-GC Phase 1 cleanup: last_contact is trigger-derived from method entries on saved
+      // bids (Edit Bid's field is a read-only display + Log contact) — only a NEW bid seeds it.
+      ...(editingBid ? {} : { last_contact: fromDatetimeLocal(lastContact) }),
       notes: notes.trim() || null,
       service_type_id: formServiceTypeId,
     }

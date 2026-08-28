@@ -26,7 +26,6 @@ describe('buildCallSessionWrites', () => {
     expect(w.bidEntries.map((e) => e.bid_id)).toEqual(['b1', 'b3'])
     expect(w.bidEntries[0]?.notes).toBe('Still pending. decision next week')
     expect(w.bidEntries[1]?.notes).toBe('Marked lost on call — price')
-    expect(w.bidLastContactUpdates.map((u) => u.bidId)).toEqual(['b1', 'b3'])
     expect(w.bidOutcomeUpdates).toEqual([{ bidId: 'b3', outcome: 'lost', loss_reason: 'price', loss_category: null }])
   })
 
@@ -147,7 +146,6 @@ describe('bid tabs on the call (v2.2103)', () => {
     expect(w.bidEntries).toHaveLength(1)
     expect(w.bidEntries[0]!.notes).toMatch(/^Bid tab recorded — low \$230,000/)
     expect(w.bidEntries[0]!.notes).toContain('19% over the low')
-    expect(w.bidLastContactUpdates).toHaveLength(1)
     expect(w.bidTabUpdates).toEqual([
       { bidId: 'b1', patch: { bid_tab_low: 230_000, bid_tab_high: 310_000, bid_tab_rank_from_low: 2, bid_tab_bidder_count: 6 } },
     ])

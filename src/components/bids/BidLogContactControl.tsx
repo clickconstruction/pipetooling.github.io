@@ -106,11 +106,13 @@ export function BidLogContactControl({
           }),
         'log bid contact',
       )
-      // Mirror the trigger (max of method entries) for the pre-push window: only move forward.
-      const currentIso = fromDatetimeLocal(lastContactLocal)
-      const derived = currentIso && currentIso > iso ? currentIso : iso
-      await withSupabaseRetry(async () => supabase.from('bids').update({ last_contact: derived }).eq('id', bidId), 'bid last-contact roll-up')
-      onLogged(toDatetimeLocal(derived))
+      // The entry insert fired the sync trigger — read the derived value back for the form.
+      const fresh = await withSupabaseRetry(
+        async () => supabase.from('bids').select('last_contact').eq('id', bidId).maybeSingle(),
+        'bid last-contact re-read',
+      )
+      const derivedIso = (fresh as { last_contact: string | null } | null)?.last_contact ?? iso
+      onLogged(toDatetimeLocal(derivedIso))
       window.dispatchEvent(new Event('bid-gc-notes-changed'))
       showToast('Contact logged.', 'success')
       setOpen(false)

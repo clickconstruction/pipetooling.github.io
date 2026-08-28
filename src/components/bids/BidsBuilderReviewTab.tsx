@@ -344,12 +344,7 @@ export function BidsBuilderReviewTab({
           'quick log: bid entries',
         )
       }
-      for (const u of writes.bidLastContactUpdates) {
-        await withSupabaseRetry(
-          async () => supabase.from('bids').update({ last_contact: u.last_contact }).eq('id', u.bidId),
-          'quick log: stamp bid last_contact',
-        )
-      }
+      // Per-GC Phase 1: the entry inserts above fire the last_contact sync trigger — no hand-stamps.
       setQuickLogNote((prev) => ({ ...prev, [customer.id]: '' }))
       setNotesRefreshNonce((prev) => ({ ...prev, [customer.id]: (prev[customer.id] ?? 0) + 1 }))
       // A logged contact fulfills an OVERDUE promise (the call happened) so the

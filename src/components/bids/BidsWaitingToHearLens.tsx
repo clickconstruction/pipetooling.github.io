@@ -355,7 +355,8 @@ export function BidsWaitingToHearLens({
           async () => supabase.from('bids_submission_entries').insert(writes.entry),
           'log chase note',
         )
-        const bidPatch: Record<string, string | number | null> = { last_contact: writes.lastContact }
+        // Per-GC Phase 1: the entry insert above fires the last_contact sync trigger — no hand-bump.
+        const bidPatch: Record<string, string | number | null> = {}
         if (tab) Object.assign(bidPatch, buildBidTabPatch(tab.values))
         if (writes.outcomeUpdate && gcRowIsPacketScoped(b.gc)) {
           // Multi-GC bid: this GC's answer goes on its packet; the bid rolls up (a win marks the others lost).
@@ -377,10 +378,12 @@ export function BidsWaitingToHearLens({
           bidPatch.loss_reason = writes.outcomeUpdate.loss_reason
           bidPatch.loss_category = writes.outcomeUpdate.loss_category
         }
-        await withSupabaseRetry(
-          async () => supabase.from('bids').update(bidPatch).eq('id', b.id),
-          'save chase outcome',
-        )
+        if (Object.keys(bidPatch).length > 0) {
+          await withSupabaseRetry(
+            async () => supabase.from('bids').update(bidPatch).eq('id', b.id),
+            'save chase outcome',
+          )
+        }
         onError(null)
         // Paste capture (v2.2296): the full per-bidder tab rides along. Fail-soft
         // — the summary above already saved, so a missing table only costs rungs.
