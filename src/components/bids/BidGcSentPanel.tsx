@@ -8,6 +8,9 @@ import { formatCurrency } from '../../lib/format'
 import { firstSentOn, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { groupVersionsByGc, type GcPacket, type GcVersionLike } from '../../lib/bids/gcPackets'
 import { lastContactByGc, type ContactEntryLike } from '../../lib/bids/bidContacts'
+import { setGcPacketOutcome, setGcPacketLossCategory } from '../../lib/bids/gcPacketOutcome'
+import { BidLossCategoryChips } from './BidLossCategoryChips'
+import { bidLossCategoryLabel, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 
 /**
  * Edit Bid → per-GC sent panel (v2.2407, Option A): on a bid with versions, "sent" lives with
@@ -23,6 +26,10 @@ type PanelProps = {
   ownGcName: string
   /** The bid's own GC customer id — entries stamped with it fold into the own row (Phase 1). */
   ownGcCustomerId?: string | null
+  /** The bid's current outcome ('' form value → null) — the roll-up guard needs it (Phase 2). */
+  bidOutcome?: string | null
+  /** The packet write rolled the bid-level outcome — sync the form's Win/Loss segment (Phase 2). */
+  onOutcomeRollupChanged?: (next: 'won' | 'lost') => void
   /** bids.bid_date_sent as loaded — the pre-per-GC fallback for packets with no send rows. */
   currentBidDateSent: string | null
   /** Keeps the parent form's date state in sync so Save never clobbers the derived roll-up. */
@@ -52,7 +59,7 @@ const rowBtnStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, currentBidDateSent, onRollupDateChanged }: PanelProps) {
+export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, onOutcomeRollupChanged, currentBidDateSent, onRollupDateChanged }: PanelProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [versions, setVersions] = useState<GcVersionLike[]>([])
@@ -68,10 +75,14 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, currentBidDa
   /** Which packet's inline date editor is open, and its draft value. */
   const [dateEditKey, setDateEditKey] = useState<string | null>(null)
   const [dateDraft, setDateDraft] = useState('')
+  /** Which packet's inline Lost… editor is open (Phase 2), and its drafts. */
+  const [lostEditKey, setLostEditKey] = useState<string | null>(null)
+  const [lostCategory, setLostCategory] = useState<BidLossCategoryKey | null>(null)
+  const [lostNote, setLostNote] = useState('')
 
   async function loadAll() {
     const [vRes, sRes, rRes, cRes] = await Promise.all([
-      supabase.from('bid_versions').select('id, name, customer_id, sort_order, created_at, starred_price_book_version_id').eq('bid_id', bidId).order('sort_order'),
+      supabase.from('bid_versions').select('id, name, customer_id, sort_order, created_at, starred_price_book_version_id, outcome, outcome_at, loss_category, outcome_note').eq('bid_id', bidId).order('sort_order'),
       supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', bidId),
       supabase.from('bid_gc_recipients').select('customer_id, customers(name)').eq('bid_id', bidId),
       supabase.from('bids_submission_entries').select('gc_customer_id, contact_method, occurred_at').eq('bid_id', bidId),
@@ -215,6 +226,48 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, currentBidDa
     }
   }
 
+  /** Phase 2: mark a packet won / lost / back-to-waiting — the same write the board's GC pills
+      use (a win auto-losses the other sent, unanswered packets; the bid-level outcome rolls up). */
+  async function setPacketOutcome(p: GcPacket, next: 'won' | 'lost' | null, category?: BidLossCategoryKey | null, note?: string) {
+    setBusyKey(p.key)
+    try {
+      const ids = p.versions.map((v) => v.id)
+      const packetsAfter = packets.map((x) => ({
+        key: x.key,
+        name: x.name,
+        outcome: x.key === p.key ? next : x.outcome,
+        sentOn: x.sentOn,
+        versionIds: x.versions.map((v) => v.id),
+        sharedLetter: x.sharedLetter,
+      }))
+      const res = await setGcPacketOutcome({ bidId, bidOutcome: bidOutcome || null, versionIds: ids, outcome: next, packetsAfter })
+      if (res.error) {
+        showToast('Could not record the outcome: ' + res.error, 'error')
+        return
+      }
+      if (next === 'lost' && category) {
+        const cat = await setGcPacketLossCategory({ versionIds: ids, category, note: note?.trim() || null })
+        if (cat.error) showToast('Outcome saved, but the reason did not: ' + cat.error, 'error')
+      }
+      if (res.bidOutcomeSet && onOutcomeRollupChanged) onOutcomeRollupChanged(res.bidOutcomeSet)
+      window.dispatchEvent(new Event('bid-gc-outcome-changed'))
+      await loadAll()
+      showToast(
+        next === 'won'
+          ? `${p.name} marked won${res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost (their GC lost the project)` : ''}.`
+          : next === 'lost'
+            ? `${p.name} marked lost.`
+            : `${p.name} back to waiting.`,
+        'success',
+      )
+    } finally {
+      setBusyKey(null)
+      setLostEditKey(null)
+      setLostCategory(null)
+      setLostNote('')
+    }
+  }
+
   return (
     <div>
       <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -253,6 +306,24 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, currentBidDa
                   </span>
                 )
               })()}
+              {/* Phase 2: the packet's answer — same states as the board's GC pills. */}
+              {!p.sharedLetter && (p.outcome === 'won' || p.outcome === 'lost') ? (
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    borderRadius: 999,
+                    padding: '0.1rem 0.55rem',
+                    whiteSpace: 'nowrap',
+                    background: p.outcome === 'won' ? 'var(--bg-green-tint)' : 'var(--bg-red-tint)',
+                    color: p.outcome === 'won' ? 'var(--text-green-700)' : 'var(--text-red-700)',
+                  }}
+                >
+                  {p.outcome === 'won'
+                    ? 'won'
+                    : `lost${(() => { const c = p.versions.find((v) => v.loss_category)?.loss_category; const l = c ? bidLossCategoryLabel(c) : null; return l ? ` — ${l}` : '' })()}`}
+                </span>
+              ) : null}
               {p.sharedLetter ? (
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>same letter as {ownGcName || 'the GC'} — tracked with the bid</span>
               ) : editing ? (
@@ -263,8 +334,26 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, currentBidDa
                   </button>
                   <button type="button" onClick={() => setDateEditKey(null)} style={rowBtnStyle}>Cancel</button>
                 </span>
+              ) : lostEditKey === p.key ? (
+                <span style={{ flexBasis: '100%', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingTop: '0.2rem' }}>
+                  <BidLossCategoryChips value={lostCategory} onSelect={(key) => setLostCategory((prev) => (prev === key ? null : key))} />
+                  <span style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={lostNote}
+                      onChange={(e) => setLostNote(e.target.value)}
+                      placeholder="What they said (optional)"
+                      aria-label={`Loss note for ${p.name}`}
+                      style={{ flex: 1, font: 'inherit', fontSize: '0.8rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 5 }}
+                    />
+                    <button type="button" disabled={busy} onClick={() => void setPacketOutcome(p, 'lost', lostCategory, lostNote)} style={{ ...rowBtnStyle, background: 'var(--text-red-700)', border: 'none', color: '#fff', fontWeight: 700 }}>
+                      {busy ? 'Saving…' : 'Mark lost'}
+                    </button>
+                    <button type="button" onClick={() => { setLostEditKey(null); setLostCategory(null); setLostNote('') }} style={rowBtnStyle}>Cancel</button>
+                  </span>
+                </span>
               ) : (
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                   {p.sentOn == null ? (
                     <button
                       type="button"
@@ -276,6 +365,21 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, currentBidDa
                       {busy ? 'Marking…' : 'Mark sent'}
                     </button>
                   ) : null}
+                  {/* Phase 2: this GC's answer, right where its send lives. */}
+                  {p.outcome !== 'won' && p.outcome !== 'lost' ? (
+                    <>
+                      <button type="button" disabled={busy} onClick={() => void setPacketOutcome(p, 'won')} title={`${p.name} gave you the job`} style={{ ...rowBtnStyle, color: 'var(--text-green-700)' }}>
+                        Won
+                      </button>
+                      <button type="button" disabled={busy} onClick={() => { setLostEditKey(p.key); setLostCategory(null); setLostNote('') }} title={`${p.name}'s answer was no — pick why`} style={{ ...rowBtnStyle, color: 'var(--text-red-700)' }}>
+                        Lost…
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" disabled={busy} onClick={() => void setPacketOutcome(p, null)} title="Clear this GC's answer — back to waiting" style={rowBtnStyle}>
+                      ↩ waiting
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={busy}
