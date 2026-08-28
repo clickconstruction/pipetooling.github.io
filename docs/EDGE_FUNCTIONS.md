@@ -95,6 +95,8 @@ when_to_read:
    - [send-workflow-notification](#send-workflow-notification)
    - [get-estimate-for-customer](#get-estimate-for-customer)
    - [log-estimate-option-view](#log-estimate-option-view)
+   - [get-bid-proposal-room](#get-bid-proposal-room)
+   - [send-bid-room-link](#send-bid-room-link)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
    - [get-estimate-public-terms](#get-estimate-public-terms)
@@ -970,6 +972,34 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
 **Behavior**: Validates exactly like `get-estimate-for-customer` — token hash must match a live `sent` estimate, unexpired — and the `optionKey` must exist in that estimate's own `options_snapshot`; then appends an `estimate_customer_events` row (`event_type = option_viewed`, `source = log-estimate-option-view`, `metadata.option_key/option_name`) via [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts). **Always returns 200** — invalid/unknown input is dropped silently (this endpoint must prove nothing to callers, and browsing must never break on it). Requires migration `20260828193012` (CHECK constraints widened).
+
+---
+
+### get-bid-proposal-room
+
+**Purpose**: Public fetch for the **Bid Room** (Signable Bids, v2.2468) — the durable per-GC proposal link at `/bid-room?t=…`.
+
+**Endpoint**: `GET /functions/v1/get-bid-proposal-room?t=<token>` · `POST` `{ token, event: 'option_viewed', optionKey }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`; the plaintext room token (portal-links precedent) is the credential.
+
+**Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), and the latest signed/declined event (Phase 2); logs a `room_view` event with IP/UA. POST logs `option_viewed` (always 200, invalid input dropped — browsing must never break). Requires migration `20260828215717`.
+
+---
+
+### send-bid-room-link
+
+**Purpose**: Email a GC their bid-room link with the option ladder (every option's price, ★ on the proposed — owner decision 5's estimate-email precedent).
+
+**Endpoint**: `POST /functions/v1/send-bid-room-link` — `{ room_id, email, public_origin? }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional — returns the link un-emailed when missing), `APP_ORIGIN` fallback for the link base.
+
+**Gateway**: `verify_jwt = false`; staff JWT validated in-body (`auth.getUser`), and the caller's own RLS must see the room (403 otherwise).
+
+**Behavior**: Requires a published revision (400 otherwise); sends via Resend, stamps `recipient_email` on the room, logs a `link_sent` event with the revision number. The client stamps `bid_version_sends` on the first send (same as Mark sent today).
 
 ---
 

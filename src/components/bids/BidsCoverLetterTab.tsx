@@ -18,6 +18,7 @@ import {
 import { boardValueForRule, bundleSectionsForBoard, formatSendBadge, latestSendByVersion, parseBoardValueRule, type BoardValueRule, type VersionSendRow } from '../../lib/bids/versionSends'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { BidRoomPanel } from './BidRoomPanel'
 import {
   breakAmountOntoOwnLineForPreview,
   buildCoverLetterHtml,
@@ -1104,6 +1105,24 @@ export function BidsCoverLetterTab({
                                   {bid.bid_date_sent ? <> · sent {bid.bid_date_sent.slice(5).replace('-', '/')}</> : null}
                                 </span>
                               </div>
+                              <BidRoomPanel
+                                bidId={bid.id}
+                                gcCustomerId={null}
+                                gcName={letterCustomerName}
+                                projectName={projectNameVal}
+                                projectAddress={projectAddressVal}
+                                serviceTypeName={serviceTypeName}
+                                sections={
+                                  bundlePricings.length > 0
+                                    ? bundlePricings.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))
+                                    : [{ name: 'Base bid', isAlternate: false, revenueSum: headlineAmount, fixtureRows }]
+                                }
+                                inclusions={inclusions}
+                                exclusions={exclusions}
+                                terms={terms}
+                                crmCustomerId={bid.customers?.id ?? null}
+                                onFirstLinkSent={() => void markSentTodaySimple(bid.id, headlineAmount)}
+                              />
                             </>
                           ) : (
                             <>
@@ -1219,6 +1238,20 @@ export function BidsCoverLetterTab({
                                     : "stamps every bid in the letter with today + its ★ value, and sets the bid's sent date and value"}
                                 </span>
                               </div>
+                              <BidRoomPanel
+                                bidId={bid.id}
+                                gcCustomerId={selectedKey === 'bid-default' ? null : selectedKey}
+                                gcName={gcName}
+                                projectName={projectNameVal}
+                                projectAddress={projectAddressVal}
+                                serviceTypeName={serviceTypeName}
+                                sections={gcSections.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))}
+                                inclusions={inclusions}
+                                exclusions={exclusions}
+                                terms={terms}
+                                crmCustomerId={selectedKey === 'bid-default' ? bid.customers?.id ?? null : selectedKey}
+                                onFirstLinkSent={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null, { isOwnGc: !multi || selectedKey === 'bid-default', currentDateSent: bid.bid_date_sent ?? null })}
+                              />
                             </>
                           )}
                         </div>
