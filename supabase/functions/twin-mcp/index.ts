@@ -31,11 +31,12 @@ const TOOLS = [
   {
     name: 'mint_session',
     description:
-      "Mint a signed-in session for YOUR twin on the deployed PipeTooling app. Returns an action_link — navigate a browser to it and you are signed in (single-use; sessions expire after hours, re-mint then). Rate limit 6/minute.",
+      "Mint a signed-in session for YOUR twin on the deployed apps: PipeTooling (default) or CountTooling (app: 'counttooling' — the PDF-takeoff tool where estimating starts). Returns an action_link — navigate a browser to it and you are signed in (single-use; sessions expire after hours, re-mint then). One credential covers both apps. Rate limit 6/minute across both.",
     inputSchema: {
       type: 'object',
       properties: {
-        redirectTo: { type: 'string', description: 'Where to land, e.g. https://pipetooling.com/bids' },
+        app: { type: 'string', enum: ['pipetooling', 'counttooling'], description: "Which app to sign into (default 'pipetooling')" },
+        redirectTo: { type: 'string', description: 'Where to land, e.g. https://pipetooling.com/bids (or a counttooling.com URL with app: counttooling)' },
         run: { type: 'string', description: 'Mission id or label for the fleet ledger, e.g. M1' },
       },
     },
@@ -104,7 +105,7 @@ function presentedToken(req: Request): string | null {
   return null
 }
 
-async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: string } | { error: string; status: number }> {
+async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: string; credId: string } | { error: string; status: number }> {
   const token = presentedToken(req)
   if (!token) return { error: 'Missing X-Twin-Token (or Authorization: Bearer) — this MCP server requires your per-twin token.', status: 401 }
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -112,12 +113,12 @@ async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: s
   if (!serviceRoleKey) return { error: 'Server not configured', status: 500 }
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
   const hash = await sha256Hex(token)
-  const { data: cred, error } = await admin.from('twin_credentials').select('twin_user_id, revoked_at').eq('token_hash', hash).maybeSingle()
+  const { data: cred, error } = await admin.from('twin_credentials').select('id, twin_user_id, revoked_at').eq('token_hash', hash).maybeSingle()
   if (error) return { error: `Credential lookup failed: ${error.message}`, status: 500 }
   if (!cred || cred.revoked_at) return { error: 'Unknown or revoked twin token', status: 401 }
   const { data: user } = await admin.from('users').select('email, is_digital_twin, role').eq('id', cred.twin_user_id).maybeSingle()
   if (!user || user.is_digital_twin !== true || user.role !== 'estimator') return { error: 'Twin account not eligible', status: 403 }
-  return { twinUserId: cred.twin_user_id, email: user.email as string }
+  return { twinUserId: cred.twin_user_id, email: user.email as string, credId: cred.id as string }
 }
 
 async function callTool(req: Request, name: string, args: Record<string, unknown>) {
@@ -139,6 +140,46 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     }
     case 'mint_session': {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const app = String(args.app ?? 'pipetooling')
+      if (app === 'counttooling') {
+        // Two-app companion (v2.2439): this server holds CountTooling's twin secret, so
+        // one per-twin credential covers both apps (locked decision — CT per-twin
+        // credential parity stays deferred). PT's twin-login isn't in this path, so its
+        // guards don't run — re-apply the essentials here: the twin was already
+        // resolved+eligibility-checked above, and the 6/min rate limit is enforced
+        // against the shared twin_runs ledger before minting.
+        const ctUrl = Deno.env.get('CT_TWIN_LOGIN_URL')
+        const ctSecret = Deno.env.get('COUNTTOOLING_TWIN_LOGIN_SECRET')
+        if (!ctUrl || !ctSecret) return textContent('CountTooling minting is not configured on this server (CT_TWIN_LOGIN_URL / COUNTTOOLING_TWIN_LOGIN_SECRET)', true)
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+        const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString()
+        const { count } = await admin
+          .from('twin_runs')
+          .select('id', { count: 'exact', head: true })
+          .eq('twin_user_id', twin.twinUserId)
+          .gte('started_at', oneMinuteAgo)
+        if ((count ?? 0) >= 6) return textContent('Rate limited: max 6 mints per minute per twin (across both apps). Wait a minute and retry.', true)
+        const ctEmail = twin.email.replace('@twins.pipetooling.local', '@twins.counttooling.local')
+        const redirectTo = (args.redirectTo as string) || 'https://counttooling.com'
+        const res = await fetch(ctUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Twin-Login-Secret': ctSecret },
+          body: JSON.stringify({ email: ctEmail, redirectTo, run: (args.run as string) || 'mcp-mint' }),
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) return textContent(`CountTooling mint failed (${res.status}): ${body.error ?? 'unknown'}`, true)
+        try {
+          await admin.from('twin_runs').insert({
+            twin_user_id: twin.twinUserId,
+            mission: (args.run as string) || 'mcp-mint',
+            notes: `mint via=token:${twin.credId} app=counttooling redirect=${redirectTo}`,
+          })
+        } catch (_) { /* ledger best-effort */ }
+        return textContent(
+          `Signed-in CountTooling session minted for ${ctEmail}.\naction_link (single-use — navigate a browser to it):\n${body.action_link}`,
+        )
+      }
       const res = await fetch(`${supabaseUrl}/functions/v1/twin-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Twin-Token': presentedToken(req)! },
@@ -182,7 +223,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
         capabilities: { tools: {} },
         serverInfo: { name: 'pipetooling-twin-mcp', version: '1.0.0' },
         instructions:
-          'PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real app — the work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).',
+          "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
     }
     case 'ping':
