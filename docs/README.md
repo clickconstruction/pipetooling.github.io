@@ -59,6 +59,7 @@
 | [`PER_GC_BID_PLAN.md`](./PER_GC_BID_PLAN.md) | Phased plan to finish per-GC bids: contacts-ledger foundation, per-GC Won/Lost in Edit Bid, bid→job winning-GC flow, `bid_gcs` state table (due/submitted-to/ITB). |
 | [`RFI_LOOP_PLAN.md`](./RFI_LOOP_PLAN.md) | Phased plan for the cross-app RFI loop: persisted `bids_rfis` queue, CT canvas `RFI:` flags + clipboard seam, `twin_questions` internal lane, ct-bridge auto-pull, letter assumptions discipline. |
 | [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) | Staged, tested plan for the Stripe-mode, payments_made-invariant, and person-identity-completion workstreams (with status log). |
+| [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md) | Master build plan for the plans-to-proposal estimator-twin pipeline: five waves across PT/CT/twin-mcp/harness, each ending in a live LIVSTE test gate; RFI sub-plan in `RFI_LOOP_PLAN.md`. |
 | [`WEEKLY_MONEY_PLAN.md`](./WEEKLY_MONEY_PLAN.md) | Build plan for the Weekly Money Movement report (per-job money out/in + earned-value lens), the Moneyfill weekly-close queues, and the weekly_money email stream. |
 | [`CREW_PNL_DATA_FLOW.md`](./CREW_PNL_DATA_FLOW.md) | Crew P&L inputs/transforms/outputs + incident log (partial-data failures). |
 | [`SALARY_CLOCK_SESSIONS.md`](./SALARY_CLOCK_SESSIONS.md) | Salaried auto-session sync behavior runbook. |
