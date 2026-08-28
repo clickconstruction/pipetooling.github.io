@@ -54,7 +54,7 @@ function notActivePage(): string {
 <meta name="viewport" content="width=device-width, initial-scale=1"></head>
 <body style="font-family:-apple-system,sans-serif;padding:2rem;color:#1c2635">
 <p>This share link is no longer active.</p>
-<p><a href="https://pipetooling.com">Open PipeTooling</a></p>
+<p><a href="${(Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '')}">Open PipeTooling</a></p>
 </body></html>`
 }
 

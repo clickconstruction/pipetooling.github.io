@@ -41,7 +41,7 @@ import {
  * address when a slug is saved, otherwise its token URL; nothing active → null.
  */
 const PORTAL_SHORT_ORIGIN = 'https://my.clickplumbing.com/'
-const PORTAL_APP_ORIGIN = 'https://pipetooling.com'
+const PORTAL_APP_ORIGIN = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '') // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
 // deno-lint-ignore no-explicit-any
 async function resolveGcPortalUrl(admin: any, customerId: string): Promise<string | null> {
   try {

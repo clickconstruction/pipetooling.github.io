@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { resolveGcPortalLink, type GcPortalLink, type PortalLinkRow, type PortalSlugRow } from '../lib/portal/gcPortalLink'
+import { APP_ORIGIN } from '../lib/appOrigin'
 
 /**
  * Portal links for a set of GC customer ids (GC Review, v2.2151): one read of
@@ -36,7 +37,7 @@ export function useGcPortalLinks(customerIds: readonly string[], enabled = true)
   const links = useMemo(() => {
     const m = new Map<string, GcPortalLink>()
     if (!rows || !key) return m
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://pipetooling.com'
+    const origin = typeof window !== 'undefined' ? window.location.origin : APP_ORIGIN
     for (const id of key.split(',')) {
       const r = resolveGcPortalLink(id, rows.links, rows.slugs, origin)
       if (r) m.set(id, r)

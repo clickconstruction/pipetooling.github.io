@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { APP_ORIGIN } from './appOrigin'
 import type { Database } from '../types/database'
 import type { HazmatIncidentDraft, HazmatTestimonial } from './hazmatFee'
 import type { HazmatNoticeJobInfo } from './jobsDocuments/hazmatFeeNotice'
@@ -81,7 +82,7 @@ export function hazmatNoticeJobInfoFromJob(job: {
 
 /** Public tokenized notice URL (linked from the Stripe invoice footer). */
 export function hazmatNoticePublicUrl(publicToken: string, origin?: string): string {
-  const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://pipetooling.com')
+  const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : APP_ORIGIN)
   return `${base}/hazmat-notice?token=${encodeURIComponent(publicToken)}`
 }
 

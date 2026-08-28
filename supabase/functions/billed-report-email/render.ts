@@ -16,7 +16,7 @@
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 /** Prod app origin for deep links (invite-user precedent; repo CNAME = pipetooling.com). */
-export const APP_URL = 'https://pipetooling.com'
+export const APP_URL = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '') // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
 
 export type BilledReportRow = {
   job_id: string
