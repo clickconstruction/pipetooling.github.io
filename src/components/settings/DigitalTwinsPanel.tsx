@@ -65,6 +65,9 @@ export default function DigitalTwinsPanel() {
   const [tokenLabel, setTokenLabel] = useState('')
   const [freshToken, setFreshToken] = useState<{ twinEmail: string; token: string } | null>(null)
   const [showKillCmd, setShowKillCmd] = useState(false)
+  // CT seat join key (v2.2434): twin id → counttooling_user_id. null = the column isn't
+  // deployed yet (migration 20260828090000) — the indicator hides entirely.
+  const [ctSeatById, setCtSeatById] = useState<Record<string, string | null> | null>(null)
 
   const loadAll = useCallback(async () => {
     try {
@@ -86,6 +89,14 @@ export default function DigitalTwinsPanel() {
       setCreds((c.data as CredRow[] | null) ?? [])
       const r = await sb.from('twin_runs').select('twin_user_id, mission, notes, started_at').order('started_at', { ascending: false }).limit(15)
       setRuns((r.data as RunRow[] | null) ?? [])
+      const seats = await sb.from('users').select('id, counttooling_user_id').eq('is_digital_twin', true).order('email')
+      if (seats.error) {
+        setCtSeatById(null)
+      } else {
+        const map: Record<string, string | null> = {}
+        for (const row of (seats.data ?? []) as never as { id: string; counttooling_user_id: string | null }[]) map[row.id] = row.counttooling_user_id
+        setCtSeatById(map)
+      }
     } catch {
       setAvailable(false)
     }
@@ -257,6 +268,23 @@ export default function DigitalTwinsPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <code style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{t.email}</code>
                   <button type="button" style={COPY_CHIP} onClick={() => void copy(t.email, 'the seat email')}>copy</button>
+                  {ctSeatById !== null ? (
+                    ctSeatById[t.id] ? (
+                      <span
+                        style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }}
+                        title={`CountTooling seat linked — CT uuid ${ctSeatById[t.id]}`}
+                      >
+                        CT seat · linked
+                      </span>
+                    ) : (
+                      <span
+                        style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
+                        title="No CountTooling seat linked for this twin — the bridge retry button arrives with ct-bridge; the weekly audit flags the gap either way"
+                      >
+                        CT seat · missing
+                      </span>
+                    )
+                  ) : null}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
                   {liveCreds.map((c) => (
