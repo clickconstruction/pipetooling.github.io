@@ -20,7 +20,9 @@ export function buildClickToolingUrl(job: JobWithDetails): string {
   params.set('email', (job.customer_email ?? '').trim())
   params.set('phone', (job.customer_phone ?? '').trim())
   params.set('location', (job.job_address ?? '').trim())
-  return `https://clicktooling.com/?${params.toString()}`
+  // The Click Tooling report app moved to plumbingtooling.com on 2026-08-28 —
+  // clicktooling.com is being handed to this app (docs/DOMAIN_CUTOVER.md).
+  return `https://plumbingtooling.com/?${params.toString()}`
 }
 
 const ADDRESS_STREET_SUFFIX_RE =
