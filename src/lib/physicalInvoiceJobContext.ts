@@ -12,8 +12,10 @@ export function buildPhysicalInvoiceDetailFromJob(
   const inv = invoiceId ? details.invoices.find((i) => i.id === invoiceId) : undefined
   return {
     // v2.1133: a segment invoice's document lists exactly its linked line
-    // items; unlinked (dollar) invoices keep the whole-job list.
-    fixtures: fixturesForInvoiceBill(details.fixtures, invoiceId),
+    // items; unlinked (dollar) invoices keep the whole-job list. v2.2469: the
+    // unlinked primary remainder composes from still-unlinked segments when
+    // they sum exactly to its amount.
+    fixtures: fixturesForInvoiceBill(details.fixtures, invoiceId, inv ?? null),
     materials: details.materials,
     payments: details.payments,
     billingKind,

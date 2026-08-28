@@ -197,7 +197,7 @@ serve(async (req) => {
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
       .select(
-        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo, stripe_invoice_footer, bill_to_name, bill_to_email, bill_to_stripe_customer_id',
+        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo, stripe_invoice_footer, bill_to_name, bill_to_email, bill_to_stripe_customer_id, is_primary_rtb_bundle',
       )
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
@@ -446,7 +446,9 @@ serve(async (req) => {
     }
 
     // v2.1133: a segment invoice bills exactly its linked line items — never
-    // prorate the whole job's list across it. Unlinked (dollar) invoices keep
+    // prorate the whole job's list across it. v2.2469: the unlinked PRIMARY
+    // remainder bundle bills the still-unlinked segments at their prices when
+    // they sum exactly to the target; other unlinked (dollar) invoices keep
     // the whole-job proration.
     const scopedFixtures = scopeFixturesToInvoice(
       (fixturesRows ?? []) as {
@@ -459,6 +461,10 @@ serve(async (req) => {
         invoice_id: string | null
       }[],
       jobs_ledger_invoice_id,
+      {
+        isPrimaryRtbBundle: invRow.is_primary_rtb_bundle === true,
+        targetAmountCents: fixtureTargetCents,
+      },
     )
 
     const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({

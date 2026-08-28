@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 61 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-08-26
+last_updated: 2026-08-28
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -2144,6 +2144,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 > **v2.2045 — convert a billed non-Stripe line** (`convert_billed: true`): relaxes the ready_to_bill gate for a row already `billed` with no `stripe_invoice_id` and **zero payments applied** (checked via the caller's RLS client) — the one-button "Make Stripe bill" on Edit Job → Bill. `billed_at` is never written by this function (and the DB trigger COALESCEs), so the original billed date survives conversion by construction. Full flow: `docs/BILLING_FLOWS.md` → "Converting a non-Stripe bill to Stripe". Redeploy required.
 
 > **v2.1133 — segment invoices bill only their own line items**: the fixtures query now selects `invoice_id` and both this function and `preview-stripe-invoice` pass the rows through `scopeFixturesToInvoice` ([`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)): rows linked to the invoice when any exist (an invoice created from selected segments lists exactly those lines at their real amounts), else all rows (dollar break-off invoices keep the historical whole-job proration). Before this, a $454 change-order invoice rendered with every job stage on it, each carrying a prorated sliver. Client mirror: `src/lib/invoiceScopedFixtures.ts` (physical PDFs + previews + line-edit refs). Redeploy both functions.
+>
+> **v2.2469 — the unlinked primary remainder composes from uncovered segments**: the invoice select adds `is_primary_rtb_bundle`, and `scopeFixturesToInvoice` takes `{isPrimaryRtbBundle, targetAmountCents: fixtureTargetCents}` — with no linked rows, a primary bundle bills the still-unlinked billable segments at their real prices when their per-row cents sum EXACTLY to the target (any payment, unlinked dollar carve, rider, or extra breaks the equality → historical proration). Same client mirror. Redeploy both functions.
 
 > **v2.1117 — per-mode customer ids (A4)**: the non-bill-to path reads/clears/persists the **mode-appropriate** `customers` column (`stripe_customer_id` for live, `stripe_customer_id_test` for test; helper `stripeCustomerIdColumnForMode`) — a cross-mode stale id no longer wipes the other mode's link. `preview-stripe-invoice` reads the same per-mode column. Redeploy both.
 
@@ -2664,6 +2666,8 @@ interface Body {
 ### preview-stripe-invoice
 
 > **v2.1133 — segment invoices preview only their own line items**: mirrors `create-stripe-invoice` — the fixtures query selects `invoice_id` and passes rows through `scopeFixturesToInvoice`, so a segment invoice previews exactly its linked lines at their real amounts (dollar invoices keep the whole-job proration). Redeploy with `create-stripe-invoice`.
+>
+> **v2.2469 — primary-remainder composition mirrored**: invoice select adds `is_primary_rtb_bundle`; the scoping call moved BELOW the extras math so it matches against the same `fixtureTargetCents` as `create-stripe-invoice`. Redeploy with `create-stripe-invoice`.
 
 > **v2.1085 — Bill-to override**: mirrors `create-stripe-invoice` — when the invoice row has `bill_to_email`, the preview renders against that recipient (using `bill_to_stripe_customer_id` when it exists for the active Stripe key, else an ephemeral customer with the bill-to identity) and returns the bill-to name/email in the response. No DB writes either way.
 

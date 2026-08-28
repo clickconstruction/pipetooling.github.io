@@ -1677,13 +1677,21 @@ export default function SendRecordInvoiceModal({
 
   // v2.1133: everything the bill renders or edits is scoped to the invoice's
   // linked line items (segment invoices); dollar invoices fall back to all.
+  // v2.2469: the unlinked primary remainder composes from still-unlinked
+  // segments when they sum exactly to its amount (kind:'job' ensures the
+  // primary, so its context is primary by definition).
   const billScopedFixtures = useMemo(
     () =>
       fixturesForInvoiceBill(
         billCustomerJobDetails?.fixtures,
         kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null,
+        kind === 'invoice'
+          ? invoice ?? null
+          : ensuredInvoice
+            ? { is_primary_rtb_bundle: true, amount: ensuredInvoice.amount }
+            : null,
       ),
-    [billCustomerJobDetails?.fixtures, kind, invoice?.id, ensuredInvoice?.id],
+    [billCustomerJobDetails?.fixtures, kind, invoice, ensuredInvoice],
   )
 
   const physicalFixtureEditRefs = useMemo(
