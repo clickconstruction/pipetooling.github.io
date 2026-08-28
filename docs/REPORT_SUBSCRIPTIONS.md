@@ -46,6 +46,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `weekly_money` | scheduled report | `weekly_money_email_requests` (v2.1448; dev/controller only — wage-derived; previous-complete-week semantics; share UI v2.1449) | `weekly-money-email-dispatch` | ✅ recipient-scoped (v2.1449) | — (scheduled report) |
 | `gc_statement` | scheduled report | `gc_statement_email_requests` (v2.1426; free-text `sent_to`; scheduling UI v2.1427) | `gc-statement-email-dispatch` | ✅ requester-scoped (v2.1428) | — (scheduled report, not an event stream) |
 | `payment_forecast` | scheduled report | `payment_forecast_email_requests` (v2.2223; internal `recipient_user_id`; share UI v2.2226) | `payment-forecast-email-dispatch` | ✅ recipient-scoped (v2.2223) | — (scheduled report) |
+| `ct_roster_audit` | fixed weekly audit | none — fixed dev stream, no request table or share UI (v2.2438) | `ct-roster-audit` (weekly cron, Mon 13:00 UTC) | — | — (dev infra audit; always sends, all-clear = heartbeat) |
 
 ## Design rules
 
