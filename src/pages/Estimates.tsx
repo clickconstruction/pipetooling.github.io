@@ -34,6 +34,7 @@ import {
   computeEstimateListReadiness,
   computeSentWait,
   computeLedgerTotals,
+  isBidProposalDocKind,
   ledgerRowPasses,
   type LedgerKindFilter,
   estimateDraftMeaningfulLineCount,
@@ -587,6 +588,28 @@ function EstimateChangeOrderChip({ compact }: { compact?: boolean }) {
   )
 }
 
+/** Violet "Bid ✍" pill (v2.2470): a signed bid-room proposal riding the estimates rails. */
+function EstimateBidProposalChip({ compact }: { compact?: boolean }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        background: 'var(--bg-violet-100)',
+        color: 'var(--text-indigo-800)',
+        border: '1px solid var(--border-strong)',
+        borderRadius: 999,
+        padding: compact ? '0 0.4rem' : '0.05rem 0.5rem',
+        fontSize: compact ? '0.625rem' : '0.6875rem',
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+        verticalAlign: 'middle',
+      }}
+    >
+      Bid ✍
+    </span>
+  )
+}
+
 function estPrimaryButton(disabled: boolean): CSSProperties {
   return {
     padding: '0.5rem 1rem',
@@ -902,6 +925,9 @@ function splitFollowupRows(source: EstimateListRow[]): {
   const sent: EstimateListRow[] = []
   const accepted: EstimateListRow[] = []
   for (const r of source) {
+    // Signed bid-room proposals (v2.2470) are bid-side paperwork — Ledger only, never the
+    // estimates funnel (owner decision 1).
+    if (isBidProposalDocKind(r.doc_kind)) continue
     switch (r.status) {
       case 'draft':
         unsent.push(r)
@@ -1182,7 +1208,7 @@ function EstimateListTable({
                 >
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flexWrap: 'wrap' }}>
                     <Link to={`/estimates/${r.estimate_number}`}>{r.title || '—'}</Link>
-                    {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : null}
+                    {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : isBidProposalDocKind(r.doc_kind) ? <EstimateBidProposalChip compact /> : null}
                   </span>
                   {showCustomerColumn ? null : (
                     <span style={estimateListCustomerCellStyle}>{estimateListCustomerSubline(r)}</span>
@@ -1725,7 +1751,7 @@ function EstimateListCards({
                   >
                     #{r.estimate_number}
                   </Link>
-                  {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : null}
+                  {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : isBidProposalDocKind(r.doc_kind) ? <EstimateBidProposalChip compact /> : null}
                   <div
                     style={{
                       fontWeight: 600,
@@ -2139,6 +2165,7 @@ function EstimateList() {
             <button type="button" onClick={() => setLedgerKind('all')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'all' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'all' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'all' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>All kinds</button>
             <button type="button" onClick={() => setLedgerKind('estimate')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'estimate' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'estimate' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'estimate' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Estimates</button>
             <button type="button" onClick={() => setLedgerKind('change_order')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'change_order' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'change_order' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'change_order' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Change orders</button>
+            <button type="button" onClick={() => setLedgerKind('bid_proposal')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'bid_proposal' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'bid_proposal' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'bid_proposal' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Bid proposals</button>
             <select
               value={ledgerDays}
               onChange={(e) => setLedgerDays(Number(e.target.value))}
@@ -5814,6 +5841,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           )}
           {row.status === 'customer_accepted' && (
             <>
+              {isBidProposalDocKind(row.doc_kind) && row.bid_id ? (
+                <div style={{ marginTop: '1rem', fontSize: '0.85rem', background: 'var(--bg-violet-100)', color: 'var(--text-indigo-800)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.75rem' }}>
+                  Signed bid-room proposal — the record of a GC signature.{' '}
+                  <Link to={`/bids?bidId=${row.bid_id}`} style={{ fontWeight: 600 }}>
+                    Open the bid
+                  </Link>
+                </div>
+              ) : null}
               <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Customer acceptance</h2>
               {(() => {
                 // Estimate Options (v2.2462): what they chose, and what they passed on.
