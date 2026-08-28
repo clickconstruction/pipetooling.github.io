@@ -1,6 +1,7 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatCurrency } from '../../lib/format'
 import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
@@ -551,6 +552,64 @@ export function BidsCoverLetterTab({
     await reloadBidVersions()
   }
 
+  // Inline renaming in the checklist (v2.2422, owner-approved mockup): the letter prints
+  // exactly these names, so fixing one shouldn't mean leaving the panel. `renameKey` is
+  // `v:<versionId>` or `p:<pricingId>`.
+  const [renameKey, setRenameKey] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  const [renameBusy, setRenameBusy] = useState(false)
+  async function commitRenameVersion(v: BidVersionLetter) {
+    const name = renameDraft.trim()
+    if (!name || name === v.name) { setRenameKey(null); return }
+    setRenameBusy(true)
+    try {
+      await withSupabaseRetry(async () => supabase.from('bid_versions').update({ name }).eq('id', v.id), 'rename bid version')
+      setRenameKey(null)
+      await Promise.all([reloadBidVersions(), reloadBidPricings()])
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not rename the bid'), 'error')
+    } finally {
+      setRenameBusy(false)
+    }
+  }
+  /** Renames the price option bid-wide AND stores it as the letter's customer-facing label for
+      that offered price ("— or <name>: …") — one name everywhere, nothing to keep in sync. */
+  async function commitRenameOption(op: PriceBookVersion, bidId: string) {
+    const name = renameDraft.trim()
+    if (!name || name === op.name) { setRenameKey(null); return }
+    setRenameBusy(true)
+    try {
+      await withSupabaseRetry(async () => supabase.from('price_book_versions').update({ name }).eq('id', op.id), 'rename price option')
+      if (op.bid_version_id) {
+        const key = `${op.bid_version_id}:${op.id}`
+        await saveAltTexts(bidId, { ...altTexts, sections: { ...altTexts.sections, [key]: { ...altTexts.sections?.[key], label: name } } })
+      }
+      setRenameKey(null)
+      await reloadBidPricings()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not rename the price option'), 'error')
+    } finally {
+      setRenameBusy(false)
+    }
+  }
+  function renameEditBox(onCommit: () => void) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+        <input
+          type="text"
+          value={renameDraft}
+          onChange={(e) => setRenameDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onCommit() } else if (e.key === 'Escape') setRenameKey(null) }}
+          autoFocus
+          aria-label="New name"
+          style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.15rem 0.4rem', border: '1px solid #3b82f6', borderRadius: 4, width: '13rem' }}
+        />
+        <button type="button" onClick={onCommit} disabled={renameBusy} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.55rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>{renameBusy ? '…' : 'Save'}</button>
+        <button type="button" onClick={() => setRenameKey(null)} disabled={renameBusy} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>Cancel</button>
+      </span>
+    )
+  }
+
   /** Mark sent for a version-less bid (v2.2389): no send rows to write — just today + the letter amount onto the bid. */
   async function markSentTodaySimple(bidId: string, amount: number) {
     setMarkingSent(true)
@@ -1063,7 +1122,22 @@ export function BidsCoverLetterTab({
                                   <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.85rem', padding: '0.2rem 0', flexWrap: 'wrap' }}>
                                     <input type="checkbox" checked={v.include_in_submission} onChange={() => void toggleVersionInclude(vx)} style={{ cursor: 'pointer', margin: 0 }} aria-label={`${v.name} in the letter`} />
                                     <span style={{ flex: 1, minWidth: 0 }}>
-                                      <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{v.name}</span>
+                                      {renameKey === `v:${v.id}` ? (
+                                        renameEditBox(() => void commitRenameVersion(vx))
+                                      ) : (
+                                        <>
+                                          <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{v.name}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => { setRenameKey(`v:${v.id}`); setRenameDraft(v.name) }}
+                                            title="Rename this bid — the letter prints this name"
+                                            aria-label={`Rename ${v.name}`}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: '0.72rem', padding: '0 0.25rem' }}
+                                          >
+                                            ✎
+                                          </button>
+                                        </>
+                                      )}
                                       <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                                         {starName ? <>★ {starName}{sec && sec.revenueSum > 0 ? ` · $${formatCurrency(sec.revenueSum)}` : ''}</> : 'no prices yet'}
                                         {v.include_in_submission && (!sec || sec.revenueSum <= 0) ? (
@@ -1083,11 +1157,26 @@ export function BidsCoverLetterTab({
                                         {otherPrices.map((op) => {
                                           const osec = bundlePricings.find((x) => x.offeredPricingId === op.id)
                                           return (
-                                            <label key={op.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: 'pointer' }}>
-                                              <input type="checkbox" checked={op.include_in_submission} onChange={() => void setScenarioOffered(op, !op.include_in_submission)} style={{ margin: 0 }} aria-label={`Offer ${op.name} as an alternate`} />
-                                              <span style={{ color: 'var(--text-600)' }}>{op.name}</span>
+                                            <div key={op.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', flexWrap: 'wrap' }}>
+                                              <input type="checkbox" checked={op.include_in_submission} onChange={() => void setScenarioOffered(op, !op.include_in_submission)} style={{ margin: 0, cursor: 'pointer' }} aria-label={`Offer ${op.name} as an alternate`} />
+                                              {renameKey === `p:${op.id}` ? (
+                                                renameEditBox(() => void commitRenameOption(op, bid.id))
+                                              ) : (
+                                                <>
+                                                  <span style={{ color: 'var(--text-600)' }}>{op.name}</span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => { setRenameKey(`p:${op.id}`); setRenameDraft(op.name) }}
+                                                    title="Rename this price — an offered price prints this name on the letter"
+                                                    aria-label={`Rename ${op.name}`}
+                                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', fontSize: '0.7rem', padding: '0 0.25rem' }}
+                                                  >
+                                                    ✎
+                                                  </button>
+                                                </>
+                                              )}
                                               <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{op.include_in_submission ? (osec && osec.revenueSum > 0 ? `alternate · $${formatCurrency(osec.revenueSum)}` : 'alternate · unpriced — left off the letter') : 'not offered'}</span>
-                                            </label>
+                                            </div>
                                           )
                                         })}
                                       </div>
@@ -1347,7 +1436,20 @@ export function BidsCoverLetterTab({
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)' }}>
                         {coverLetterView === 'new'
                           ? (pricedBundle.length > 0
-                            ? <>In the letter: {bundleSummary(pricedBundle)} — {pricedBundle.map((p) => (p.isAlternate ? `${p.name} (alternate)` : p.name)).join(', ')} — {samePagePlan ? 'one page.' : 'one section each.'}{unpricedLeftOff > 0 ? <span style={{ color: 'var(--text-amber-700)' }}> {unpricedLeftOff} unpriced left off.</span> : null}</>
+                            ? <>In the letter: {bundleSummary(pricedBundle)} — {(() => {
+                                // v2.2422: offered prices fold into their scope's entry ("(alternate, 2 prices)")
+                                // instead of repeating the version name once per price.
+                                const optCount = new Map<string, number>()
+                                for (const p of pricedBundle) if (p.offeredPricingId && p.bidVersionId) optCount.set(p.bidVersionId, (optCount.get(p.bidVersionId) ?? 0) + 1)
+                                const scopeVersionIds = new Set(pricedBundle.filter((p) => !p.offeredPricingId && p.bidVersionId).map((p) => p.bidVersionId))
+                                const names = pricedBundle.filter((p) => !p.offeredPricingId).map((p) => {
+                                  const n = p.bidVersionId ? (optCount.get(p.bidVersionId) ?? 0) : 0
+                                  if (p.isAlternate) return n > 0 ? `${p.name} (alternate, ${n + 1} prices)` : `${p.name} (alternate)`
+                                  return n > 0 ? `${p.name} (+${n} alternate price${n === 1 ? '' : 's'})` : p.name
+                                })
+                                for (const p of pricedBundle) if (p.offeredPricingId && (!p.bidVersionId || !scopeVersionIds.has(p.bidVersionId))) names.push(`${p.name} (alternate)`)
+                                return names.join(', ')
+                              })()} — {samePagePlan ? 'one page.' : 'one section each.'}{unpricedLeftOff > 0 ? <span style={{ color: 'var(--text-amber-700)' }}> {unpricedLeftOff} unpriced left off.</span> : null}</>
                             : <span style={{ color: 'var(--text-amber-700)' }}>Nothing priced yet — {unpricedLeftOff} bid{unpricedLeftOff === 1 ? '' : 's'} left off the letter until priced; showing the active bid's letter.</span>)
                           : <>Bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')} — one letter each.</>}
                       </div>

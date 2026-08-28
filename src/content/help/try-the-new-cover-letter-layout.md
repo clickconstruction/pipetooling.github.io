@@ -26,16 +26,18 @@ New shows a single line — *One bid — the letter shows ★ WENDI* — and the
 
 ## Alternates on one page
 
-With **New** selected, a letter that has alternates puts them **on the same page** as the base bid: one address block, one proposal amount, and an **Alternates:** list right under it — each alternate on one line with its price and the difference in plain words.
+With **New** selected, a letter that has alternates puts them **on the same page** as the base bid: one address block, one proposal amount, and an **Alternates:** list right under it. Alternates are numbered and lead with **Add / Deduct** — the way builders read them — with the resulting total in parentheses, and a price you offered on an alternate nests under it as an **"— or"** line instead of repeating the scope.
 
 :::example What the GC reads
 Alternates:
-• **Alternate 1 — PEX water distribution in lieu of copper**: **$62,024.11** (reduced $5,287)
+• **Alternate 1 — PEX in lieu of copper**: **no change** ($56,343.00)
+&nbsp;&nbsp;&nbsp;&nbsp;— or **Standard-grade fixtures**: **Deduct $14,643** ($41,700.00)
 :::
 
-- **The automatic name is customer-facing**: a packet named after its GC prints under the **project's** name instead — *ALSATIAN value engineered*, not *MERIT GENERAL CONTRACTORS value engineered* — and a version and price option sharing the same name print it once, not twice. Your team's names on the Pricing tab don't change.
-- **Change the wording customers see** by clicking the dashed text right on the preview — the alternate's name, its optional note line, or the *Alternates:* heading. Type, press Enter, done. This is letter-only wording: the version and price names your team sees on the Pricing tab don't change, and {{button:outline|Reset to auto}} brings the automatic text back.
-- **The difference is computed** — *(reduced $5,287)* or *(added $4,100)* against the proposed amount — so it can never disagree with the Pricing tab.
+- **Rename things right in step 1**: every bid name and price name in the checklist has a ✎ — the letter prints exactly these names, everywhere your team sees them too. An offered price you **never renamed** prints as a bare *"— or: Deduct $…"* line — internal names like *Default* never reach the customer.
+- **The automatic name is customer-facing**: a packet named after its GC prints under the **project's** name instead — *ALSATIAN value engineered*, not *MERIT GENERAL CONTRACTORS value engineered*.
+- **Fine-tune wording** by clicking the dashed text right on the preview — the alternate's name, its optional note line, or the *Alternates:* heading. Type, press Enter, done; {{button:outline|Reset to auto}} brings the automatic text back.
+- **The difference is computed** — *Deduct $5,287* or *Add $4,100* against the proposed amount (*no change* when they match) — so it can never disagree with the Pricing tab.
 - **No base bid, only alternates?** The ★ price leads the letter and the rest are listed against it — the headline amount is never $0.00.
 - **Want the old document?** Flip **Alternates in the letter** to {{chip:gray|Separate pages}} in step 1 — one full letter per alternate, exactly as before. Your choice is remembered on this device.
 
