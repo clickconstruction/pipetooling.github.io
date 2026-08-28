@@ -530,7 +530,7 @@ export function BidVersionPicker({
                       <span style={{ display: 'block', fontSize: '0.625rem', color: v.include_in_submission ? 'var(--text-green-600)' : 'var(--text-muted)', fontWeight: 600 }}>
                         {v.include_in_submission ? `in letter ✓ · ${v.is_alternate ? 'alternate' : 'base'}` : 'not in letter'}
                       </span>
-                      {(() => { const b = formatSendBadge(latestSends[v.id]); return b ? <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)' }}>{b}</span> : null })()}
+                      {(() => { const b = formatSendBadge(latestSends[v.id]); return b ? <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{b}</span> : null })()}
                     </button>
                     <button type="button" onClick={() => { setRenaming(v); setRenameValue(v.name); setRenameGcCustomerId(v.customer_id ?? '') }} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }} title="Rename / delete version">✎</button>
                   </span>

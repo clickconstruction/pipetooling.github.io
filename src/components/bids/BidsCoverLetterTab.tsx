@@ -1139,11 +1139,13 @@ export function BidsCoverLetterTab({
                                         </>
                                       )}
                                       <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                        {starName ? <>★ {starName}{sec && sec.revenueSum > 0 ? ` · $${formatCurrency(sec.revenueSum)}` : ''}</> : 'no prices yet'}
+                                        {/* Each segment is a nowrap unit so a narrow panel breaks BETWEEN the
+                                            " · " separators, never inside "sent 8/27" (owner, 2026-08-28). */}
+                                        {starName ? <><span style={{ whiteSpace: 'nowrap' }}>★ {starName}</span>{sec && sec.revenueSum > 0 ? <>{' · '}<span style={{ whiteSpace: 'nowrap' }}>${formatCurrency(sec.revenueSum)}</span></> : null}</> : 'no prices yet'}
                                         {v.include_in_submission && (!sec || sec.revenueSum <= 0) ? (
                                           <span style={{ marginLeft: '0.35rem', fontSize: '0.64rem', fontWeight: 700, color: 'var(--text-amber-700)', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.03rem 0.4rem', whiteSpace: 'nowrap' }}>unpriced — left off the letter</span>
                                         ) : null}
-                                        {(() => { const b = formatSendBadge(latestSends[v.id], { money: (n) => `$${formatCurrency(n)}` }); return b ? <> · {b}</> : null })()}
+                                        {(() => { const b = formatSendBadge(latestSends[v.id], { money: (n) => `$${formatCurrency(n)}` }); return b ? <>{' · '}<span style={{ whiteSpace: 'nowrap' }}>{b}</span></> : null })()}
                                       </span>
                                     </span>
                                     <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden' }}>
