@@ -147,7 +147,7 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails. Keep aligned with production for config push.
-site_url = "https://pipetooling.com"
+site_url = "https://clicktooling.com"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 # http://localhost:5175/** enables dev-login magic links to redirect back to localhost
 # clicktooling.com pre-allowlisted for the domain cutover (v2.2440 prep; harmless until

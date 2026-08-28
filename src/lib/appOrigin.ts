@@ -14,7 +14,7 @@
  *   - share.pipetooling.com (jobShare.ts) and my.clickplumbing.com (portalShortOrigin) —
  *     Cloudflare-fronted subdomains with their own rules to update at cutover.
  */
-export const APP_ORIGIN = 'https://pipetooling.com'
+export const APP_ORIGIN = 'https://clicktooling.com'
 
 /** The production hostname (for "are we on the real app?" checks). */
 export const APP_HOSTNAME = new URL(APP_ORIGIN).hostname
