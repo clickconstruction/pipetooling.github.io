@@ -80,6 +80,17 @@ serve(async (req) => {
       .eq('room_id', room.id)
       .in('event_type', ['signed', 'declined'])
       .order('occurred_at', { ascending: true })
+    const proposalOutcomes = (outcomeEvents ?? []).filter(
+      (e) => !(e.metadata && typeof e.metadata === 'object' && (e.metadata as { kind?: string }).kind === 'change_order'),
+    )
+
+    // Phase 4: change orders published into the room — the documents thread.
+    const { data: coRows } = await admin
+      .from('estimates')
+      .select('id, title, change_order_fields, line_items_snapshot, terms_snapshot, total_cents, status, sent_at, acceptor_printed_name, acceptor_consented_at')
+      .eq('bid_room_id', room.id)
+      .eq('doc_kind', 'change_order')
+      .order('sent_at', { ascending: true })
 
     await admin.from('bid_proposal_room_events').insert({
       room_id: room.id,
@@ -93,7 +104,8 @@ serve(async (req) => {
       revision: { id: rev.id, rev_number: rev.rev_number, note: rev.note, published_at: rev.published_at },
       payload,
       attachment: room.attachment_url ? { url: room.attachment_url, label: room.attachment_label ?? null } : null,
-      outcome: (outcomeEvents ?? []).length > 0 ? outcomeEvents![outcomeEvents!.length - 1] : null,
+      outcome: proposalOutcomes.length > 0 ? proposalOutcomes[proposalOutcomes.length - 1] : null,
+      documents: coRows ?? [],
     })
   } catch (e) {
     console.error(e)
