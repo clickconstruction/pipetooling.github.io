@@ -112,6 +112,18 @@ export function rollUpOutcome(packets: ReadonlyArray<{ outcome: string | null; s
  * send. Null when the badge would be noise: fewer than two real packets, or nothing sent yet
  * (an all-unsent bid already sits in Unsent/Working — "sent 0/2" says nothing).
  */
+/**
+ * Bid→Job (Per-GC Phase 3): which packet gave us the job. Exactly one won real packet is the
+ * answer; zero means the import must ask; more than one means the OUTCOMES are ambiguous and
+ * the import asks which one the job is for (writing nothing).
+ */
+export function resolveWinningPacket<P extends { outcome: string | null; sharedLetter?: boolean }>(
+  packets: ReadonlyArray<P>,
+): { winner: P | null; multiple: boolean } {
+  const won = packets.filter((p) => !p.sharedLetter && p.outcome === 'won')
+  return { winner: won.length === 1 ? (won[0] ?? null) : null, multiple: won.length > 1 }
+}
+
 export function perGcSentSummary(
   packets: ReadonlyArray<{ sentOn: string | null; sharedLetter?: boolean }> | undefined,
 ): { sent: number; total: number; complete: boolean } | null {
