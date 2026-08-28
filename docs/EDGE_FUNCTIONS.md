@@ -768,7 +768,9 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Bundled docs are GENERATED**: `supabase/functions/twin-mcp/briefs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/*` (missions carry only the verbatim mission text, never the scorer sections) — regenerate + redeploy after editing those docs.
 
-**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (twin-login's `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
+**Two-app companion (v2.2439)**: `mint_session` takes `app: 'pipetooling' | 'counttooling'` — the CT path calls CountTooling's `twin-login` with CT's twin secret held server-side (one per-twin credential covers both apps; CT per-twin-credential parity deliberately deferred). The CT path re-applies the 6/min rate limit against `twin_runs` (PT's twin-login isn't in that path) and logs the mint (`app=counttooling` in the note).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
 
 ---
 

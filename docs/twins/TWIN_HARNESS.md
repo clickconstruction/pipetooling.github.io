@@ -36,7 +36,9 @@ Notes:
   such twin. Tokens are revocable per-partner; the master secret is the fleet kill switch.
 - CountTooling (the takeoff app) has the same function at
   `https://hrqxvfydmvtvwhvefmqc.supabase.co/functions/v1/twin-login` with its own
-  credentials (`twin-estimator-<n>@twins.counttooling.local`).
+  credentials (`twin-estimator-<n>@twins.counttooling.local`). **MCP clients don't need
+  it**: `mint_session` takes `app: 'counttooling'` (v2.2439) — the MCP server holds CT's
+  twin secret, so one per-twin token signs into both apps.
 
 ## What to load into the agent
 
