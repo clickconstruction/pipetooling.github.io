@@ -6,6 +6,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsLedgerInvoiceRow, PaymentRow } from '../../lib/jobs/jobFormTypes'
+import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
@@ -111,10 +112,9 @@ export function JobFormInvoiceList({
             async () => await supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', { p_job_id: editing.id }),
             'ensure RTB remainder after draft delete',
           )
-          const ensureObj = ensureRaw as Record<string, unknown> | null
-          const ensureErr = ensureObj && typeof ensureObj.error === 'string' ? ensureObj.error : ''
-          if (ensureErr && !/nothing left to bill/i.test(ensureErr)) {
-            showToast(`Draft deleted, but the remainder bill did not re-sync: ${ensureErr}`, 'error')
+          const outcome = ensureRemainderResyncOutcome(ensureRaw)
+          if (!outcome.ok) {
+            showToast(`Draft deleted, but the remainder bill did not re-sync: ${outcome.error}`, 'error')
           }
         } catch {
           showToast('Draft deleted, but the remainder bill did not re-sync — reopen Bill Customer to fix it.', 'error')

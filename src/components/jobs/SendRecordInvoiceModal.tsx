@@ -960,6 +960,14 @@ export default function SendRecordInvoiceModal({
           setEnsureError(obj.error)
           return
         }
+        // Post-fix RPC: fully allocated with no primary to bill returns ok
+        // without an invoice — same dead-end as the old "nothing left" error,
+        // said plainly.
+        if (obj?.ok === true && obj.fully_allocated === true) {
+          setEnsuredInvoice(null)
+          setEnsureError('Nothing left to bill for this job — every dollar is already on an invoice.')
+          return
+        }
         if (obj?.ok === true && typeof obj.invoice_id === 'string') {
           const rawAmt = obj.amount
           const amt =
