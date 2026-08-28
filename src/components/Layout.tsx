@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { DEFAULT_BID_LEDGER_PREFIX } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
+import { useIsDigitalTwin } from '../hooks/useIsDigitalTwin'
 import type { UserRole } from '../hooks/useAuth'
 import { EasterEggHost } from './FloatingEasterEgg'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
@@ -115,6 +116,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess, readOnly } = useAuth()
+  const isDigitalTwin = useIsDigitalTwin()
   // Partner nav (v2.2165): the Statement link shows only for accounts with a live partnership.
   const partnerNav = useIsPartner(role, authUser?.id)
   const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
@@ -753,6 +755,21 @@ export default function Layout() {
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
       <AddTaskShortcutBanner role={role} />
+      {isDigitalTwin && (
+        <div
+          role="status"
+          style={{
+            background: 'var(--bg-violet-100)',
+            borderBottom: '1px solid var(--border-violet)',
+            color: 'var(--text-violet-800)',
+            padding: '0.4rem 1rem',
+            fontSize: '0.8125rem',
+            textAlign: 'center',
+          }}
+        >
+          🤖 <strong>DIGITAL TWIN — {(profileName ?? authUser?.email ?? 'unnamed').toString()}.</strong> Agent-operated account; its activity is tracked separately from people.
+        </div>
+      )}
       {readOnly && (
         <div
           role="status"
