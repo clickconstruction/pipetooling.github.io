@@ -58,6 +58,10 @@ import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
+import { groupVersionsByGc, resolveWinningPacket, type GcPacket } from '../../lib/bids/gcPackets'
+import { latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
+import { setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
+import { PickWinningGcModal, type WinningGcOption } from './PickWinningGcModal'
 import {
   resolveDevelopmentIdForJobPayload,
   validateNewDevelopmentName,
@@ -388,6 +392,16 @@ export default function JobFormModal({
   const [formServiceTypeId, setFormServiceTypeId] = useState('')
   const [jobBidLinkChoiceOpen, setJobBidLinkChoiceOpen] = useState(false)
   const [jobImportSourceOpen, setJobImportSourceOpen] = useState(false)
+  // Per-GC Phase 3 (docs/PER_GC_BID_PLAN.md): a multi-GC bid becoming a job asks which GC gave it.
+  const [winningGcPick, setWinningGcPick] = useState<{
+    bidId: string
+    bidName: string
+    options: WinningGcOption[]
+    writesWin: boolean
+    bidOutcome: string | null
+    agreedValue: number | null
+    packets: GcPacket[]
+  } | null>(null)
   /** Auto-picked trade on new-job load; changing away from this counts as “content” for hiding Import. */
   const initialNewJobServiceTypeIdRef = useRef('')
   /** Avoid duplicate applyPrefillFromBid before bidId state updates (e.g. Strict Mode). */
@@ -1502,14 +1516,14 @@ export default function JobFormModal({
   }
 
   const applyPrefillFromBid = useCallback(
-    async (bidRowId: string) => {
+    async (bidRowId: string, forcedGc?: WinningGcOption) => {
       try {
         const row = await withSupabaseRetry(
           async () =>
             await supabase
               .from('bids')
               .select(
-                'id, project_name, bid_number, service_type_id, customer_id, address, drive_link, plans_link, customers(name, address, contact_info, date_met)',
+                'id, project_name, bid_number, service_type_id, customer_id, address, drive_link, plans_link, outcome, bid_date_sent, agreed_value, customers(name, address, contact_info, date_met)',
               )
               .eq('id', bidRowId)
               .maybeSingle(),
@@ -1528,12 +1542,66 @@ export default function JobFormModal({
           address: string | null
           drive_link: string | null
           plans_link: string | null
+          outcome: string | null
+          bid_date_sent: string | null
+          agreed_value: number | string | null
           customers: {
             name: string
             address: string | null
             contact_info: unknown
             date_met: string | null
           } | null
+        }
+        // Per-GC Phase 3: on a multi-GC bid, the job's GC is the WINNING packet's — one recorded
+        // winner imports silently; otherwise ask once (the pick records the Won when undecided).
+        let chosen: WinningGcOption | null = forcedGc ?? null
+        if (!chosen) {
+          const [vRes, sRes, rRes] = await Promise.all([
+            supabase.from('bid_versions').select('id, name, customer_id, sort_order, created_at, outcome').eq('bid_id', b.id).order('sort_order'),
+            supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', b.id),
+            supabase.from('bid_gc_recipients').select('customer_id, customers(name)').eq('bid_id', b.id),
+          ])
+          const versions = (vRes.data ?? []) as Array<{ id: string; name: string; customer_id: string | null; sort_order: number; created_at: string | null; outcome: string | null }>
+          const gcIds = [...new Set(versions.map((v) => v.customer_id).filter((x): x is string => !!x))]
+          let gcNames: Record<string, string> = {}
+          if (gcIds.length > 0) {
+            const { data } = await supabase.from('customers').select('id, name').in('id', gcIds)
+            gcNames = Object.fromEntries(((data ?? []) as Array<{ id: string; name: string }>).map((c) => [c.id, c.name]))
+          }
+          const recipients = ((rRes.data ?? []) as Array<{ customer_id: string; customers: { name: string } | null }>).map((r) => ({ customerId: r.customer_id, name: r.customers?.name ?? '…' }))
+          const packets = groupVersionsByGc(versions, {
+            bidGcName: b.customers?.name ?? null,
+            gcNames,
+            latestSends: latestSendByVersion((sRes.data ?? []) as VersionSendRow[]),
+            bidDateSent: b.bid_date_sent ?? null,
+            recipients,
+          })
+          const options: WinningGcOption[] = packets.map((p) => ({ key: p.key, customerId: p.gcId, name: p.name, sentOn: p.sentOn, value: p.sentValue, outcome: p.outcome, sharedLetter: !!p.sharedLetter }))
+          // A bid with recipients but no versions has no own packet — the bid's GC is still a choice.
+          if (b.customer_id && !packets.some((p) => p.key === '')) {
+            const ownName = (customers.find((c) => c.id === b.customer_id)?.name ?? b.customers?.name ?? '').trim() || 'the GC'
+            options.unshift({ key: '', customerId: null, name: ownName, sentOn: b.bid_date_sent ?? null, value: null, outcome: null, sharedLetter: true })
+          }
+          if (options.length > 1) {
+            const { winner, multiple } = resolveWinningPacket(packets)
+            if (winner) {
+              chosen = { key: winner.key, customerId: winner.gcId, name: winner.name, sentOn: winner.sentOn, value: winner.sentValue, outcome: winner.outcome, sharedLetter: false }
+              if (b.agreed_value == null && winner.sentValue != null) {
+                void supabase.from('bids').update({ agreed_value: winner.sentValue }).eq('id', b.id).is('agreed_value', null).then(() => undefined)
+              }
+            } else {
+              setWinningGcPick({
+                bidId: b.id,
+                bidName: (b.project_name ?? '').trim() || (b.bid_number ?? 'This bid'),
+                options,
+                writesWin: !multiple,
+                bidOutcome: b.outcome ?? null,
+                agreedValue: b.agreed_value == null ? null : Number(b.agreed_value),
+                packets,
+              })
+              return
+            }
+          }
         }
         setBidId(b.id)
         setJobName((b.project_name ?? '').trim())
@@ -1562,44 +1630,40 @@ export default function JobFormModal({
         } else if (b.service_type_id) {
           showToast('Bid trade is not available for your role in this form; choose a service type.', 'info')
         }
+        // Creating a job FROM a bid: the WINNING GC is the job's GC (per-GC Phase 3; the bid's own
+        // GC when there's only one — the v2.1182 rule, now packet-aware).
+        const effGcId = chosen ? (chosen.customerId ?? b.customer_id) : b.customer_id
+        const effIsOwn = effGcId === b.customer_id
         setLinkedBidGc(
-          b.customer_id
+          effGcId
             ? {
-                id: b.customer_id,
+                id: effGcId,
                 name:
-                  (customers.find((c) => c.id === b.customer_id)?.name ?? b.customers?.name ?? '').trim() || '—',
+                  (customers.find((c) => c.id === effGcId)?.name ?? (effIsOwn ? b.customers?.name : chosen?.name) ?? '').trim() || '—',
               }
             : null,
         )
-        // Creating a job FROM a bid: the bid's GC/Builder IS the job's GC (v2.1182).
-        setGcCustomerId(b.customer_id ?? null)
-        if (b.customer_id) {
-          setCustomerId(b.customer_id)
-          const cList = customers.find((c) => c.id === b.customer_id)
-          if (cList) {
-            setCustomerName(cList.name ?? '')
-            setDateMet(cList.date_met ? (cList.date_met.split('T')[0] ?? '') : '')
-            const ci = cList.contact_info as { phone?: string; email?: string } | null
-            if (ci) {
-              setCustomerEmail(ci.email ?? '')
-              setCustomerPhone(ci.phone ?? '')
-            } else {
-              setCustomerEmail('')
-              setCustomerPhone('')
-            }
-          } else if (b.customers) {
-            setCustomerName(b.customers.name ?? '')
-            setDateMet(b.customers.date_met ? (b.customers.date_met.split('T')[0] ?? '') : '')
-            const ci = b.customers.contact_info as { phone?: string; email?: string } | null
-            if (ci) {
-              setCustomerEmail(ci.email ?? '')
-              setCustomerPhone(ci.phone ?? '')
-            } else {
-              setCustomerEmail('')
-              setCustomerPhone('')
-            }
+        setGcCustomerId(effGcId ?? null)
+        if (effGcId) {
+          setCustomerId(effGcId)
+          let src: { name: string | null; contact_info: unknown; date_met: string | null } | null =
+            customers.find((c) => c.id === effGcId) ?? null
+          if (!src && effIsOwn) src = b.customers
+          if (!src) {
+            const fetched = await withSupabaseRetry(
+              async () => await supabase.from('customers').select('name, contact_info, date_met').eq('id', effGcId).maybeSingle(),
+              'job form import bid gc',
+            )
+            src = (fetched as { name: string | null; contact_info: unknown; date_met: string | null } | null) ?? null
+          }
+          if (src) {
+            setCustomerName(src.name ?? '')
+            setDateMet(src.date_met ? (src.date_met.split('T')[0] ?? '') : '')
+            const ci = src.contact_info as { phone?: string; email?: string } | null
+            setCustomerEmail(ci?.email ?? '')
+            setCustomerPhone(ci?.phone ?? '')
           } else {
-            setCustomerName('')
+            setCustomerName((chosen?.name ?? '').trim())
             setCustomerEmail('')
             setCustomerPhone('')
             setDateMet('')
@@ -1619,6 +1683,47 @@ export default function JobFormModal({
       }
     },
     [customers, meServiceTypeColumns, serviceTypes, showToast],
+  )
+
+  const handleWinningGcPick = useCallback(
+    async (opt: WinningGcOption) => {
+      const pick = winningGcPick
+      setWinningGcPick(null)
+      if (!pick) return
+      if (pick.writesWin && !opt.sharedLetter) {
+        const packet = pick.packets.find((p) => p.key === opt.key)
+        const versionIds = (packet?.versions ?? []).map((v) => v.id)
+        if (versionIds.length > 0) {
+          const packetsAfter = pick.packets.map((p) => ({
+            key: p.key,
+            name: p.name,
+            outcome: p.key === opt.key ? 'won' : p.outcome,
+            sentOn: p.sentOn,
+            versionIds: p.versions.map((v) => v.id),
+            sharedLetter: !!p.sharedLetter,
+          }))
+          const res = await setGcPacketOutcome({ bidId: pick.bidId, bidOutcome: pick.bidOutcome, versionIds, outcome: 'won', packetsAfter })
+          if (res.error) {
+            showToast(res.error, 'error')
+          } else {
+            window.dispatchEvent(new CustomEvent('bid-gc-outcome-changed', { detail: { bidId: pick.bidId } }))
+            showToast(
+              res.autoLost.length > 0
+                ? `${opt.name} marked won on the bid — ${res.autoLost.join(', ')} marked lost (GC lost the project).`
+                : `${opt.name} marked won on the bid.`,
+              'success',
+            )
+          }
+          if (pick.agreedValue == null && opt.value != null) {
+            await supabase.from('bids').update({ agreed_value: opt.value }).eq('id', pick.bidId).is('agreed_value', null)
+          }
+        }
+      } else if (opt.sharedLetter && opt.key.startsWith('shared:')) {
+        showToast(`${opt.name} rode the shared letter — nothing recorded on the bid.`, 'info')
+      }
+      void applyPrefillFromBid(pick.bidId, opt)
+    },
+    [winningGcPick, applyPrefillFromBid, showToast],
   )
 
   const applyPrefillFromEstimate = useCallback(
@@ -4240,6 +4345,15 @@ export default function JobFormModal({
           zIndex={JOB_FORM_IMPORT_SOURCE_OVERLAY_Z_INDEX}
           onSelectBid={applyPrefillFromBid}
           onSelectEstimate={applyPrefillFromEstimate}
+        />
+      )}
+      {winningGcPick && (
+        <PickWinningGcModal
+          bidName={winningGcPick.bidName}
+          options={winningGcPick.options}
+          writesWin={winningGcPick.writesWin}
+          onPick={(opt) => void handleWinningGcPick(opt)}
+          onCancel={() => setWinningGcPick(null)}
         />
       )}
       {segmentGeneratorOpen && (

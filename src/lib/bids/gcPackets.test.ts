@@ -67,6 +67,19 @@ describe('rollUpOutcome', () => {
   })
 })
 
+describe('resolveWinningPacket', () => {
+  it('one won real packet is the winner; shared-letter wins never count', async () => {
+    const { resolveWinningPacket } = await import('./gcPackets')
+    expect(resolveWinningPacket([{ outcome: 'won' }, { outcome: null }])).toEqual({ winner: { outcome: 'won' }, multiple: false })
+    expect(resolveWinningPacket([{ outcome: 'won', sharedLetter: true }, { outcome: null }])).toEqual({ winner: null, multiple: false })
+  })
+  it('zero or multiple winners → null (multiple flagged)', async () => {
+    const { resolveWinningPacket } = await import('./gcPackets')
+    expect(resolveWinningPacket([{ outcome: null }, { outcome: 'lost' }])).toEqual({ winner: null, multiple: false })
+    expect(resolveWinningPacket([{ outcome: 'won' }, { outcome: 'won' }])).toEqual({ winner: null, multiple: true })
+  })
+})
+
 describe('perGcSentSummary', () => {
   it('counts real packets: partial and complete', () => {
     expect(perGcSentSummary([{ sentOn: '2026-08-27' }, { sentOn: null }])).toEqual({ sent: 1, total: 2, complete: false })

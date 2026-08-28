@@ -2,7 +2,7 @@
 title: bid one project to multiple GCs
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: bids, versions, GC, builder, cover letter, multiple GCs, packets, pricing, price option, alternate, won, lost, outcome, also sent to
+keywords: bids, versions, GC, builder, cover letter, multiple GCs, packets, pricing, price option, alternate, won, lost, outcome, also sent to, job, import, winning GC
 order: 71
 ---
 The one sentence: **versions draft this bid for different GCs; price options send more than one price to the same GC.** Each GC gets its own **packet** — counts, takeoff, prices, send date and answer — and inside a packet you choose which prices that GC receives.
@@ -43,6 +43,18 @@ On **Pricing** (New), the Workbench shows the packet you're on: **This GC — Bu
 - On the **Bid Board**, a bid with more than one packet shows a line per GC under its row — name · *sent 7/31* · ★ value · {{chip:gray|waiting…}} / {{chip:green|won}} / {{chip:red|lost}}. Set the answer there. A win rolls the bid up to **Won**; the bid only rolls to **Lost** once every GC you sent to has said no.
 - **Followup → Full bid details** shows the same **Sent to — by GC** list with the same select.
 - Each GC also gets its own call in the Followup queues, so a bid sent to three builders is three calls, not one.
+
+## Turning the bid into a job
+
+When you import a multi-GC bid into **New Job**, the job needs to know **which GC gave you the job** — that GC becomes the job's GC/Builder, not automatically the bid's own.
+
+- If one GC is already marked {{chip:green|won}}, the import uses them without asking.
+- Otherwise a picker lists every GC on the bid: **picking one records their Won** (the other sent, unanswered GCs are marked lost — their GC lost the project) and the job imports with that builder's name and contact info.
+- If more than one GC reads won, the picker only chooses which packet this job is for — nothing changes on the bid.
+
+:::example Two builders, one winner
+You bid the shell to Burd & Assoc. and Southern Post. Southern Post calls with the job: start **New Job → Import → the bid**, pick **Southern Post** in the ask, and the bid records their win (Burd reads lost) while the job opens with Southern Post as its GC.
+:::
 
 ## "Also sent to" — the same letter, no packet
 
