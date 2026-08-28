@@ -13,6 +13,15 @@ import {
 } from '../lib/prospects/callingOrder'
 import { searchConvertProspects, suggestRecentlyAnswered } from '../lib/prospects/convertProspectSearch'
 import {
+  buildProspectWeekReport,
+  formatWeekHours,
+  weekRange,
+  type WeekCallRow,
+  type WeekCallbackRow,
+  type WeekReport,
+  type WeekTimerRow,
+} from '../lib/prospects/prospectWeekReport'
+import {
   filterProspectsForList,
   groupProspectsForList,
   lastTouchLabel,
@@ -375,6 +384,9 @@ export default function Prospects() {
   // Activity tab state (dev and assistant) - last 30 days
   const [teamDataByDate, setTeamDataByDate] = useState<Record<string, ProspectTeamRow[]>>({})
   const [teamLoading, setTeamLoading] = useState(false)
+  const [weekOffset, setWeekOffset] = useState(0)
+  const [weekReport, setWeekReport] = useState<WeekReport | null>(null)
+  const [weekLoading, setWeekLoading] = useState(false)
   const canAccessActivityTab = authRole === 'dev' || isAssistantLike(authRole)
 
   useEffect(() => {
@@ -1034,6 +1046,61 @@ export default function Prospects() {
       loadTeamActivity()
     }
   }, [activeTab, canAccessActivityTab, loadTeamActivity])
+
+  const loadWeekReport = useCallback(async (offset: number) => {
+    if (!canAccessActivityTab) return
+    setWeekLoading(true)
+    try {
+      const range = weekRange(Date.now(), offset)
+      const startIso = new Date(range.startMs).toISOString()
+      const endIso = new Date(range.endMs).toISOString()
+      const [usersRes, callsRes, timersRes, callbacksRes] = await Promise.all([
+        supabase
+          .from('users')
+          .select('id, name, email, role')
+          // Same audience as loadProspectTeamActivity: office roles + estimators with Prospects access.
+          .or('role.in.(dev,master_technician,assistant),and(role.eq.estimator,estimator_prospects_access.eq.true)'),
+        supabase
+          .from('prospect_comments')
+          .select('created_by, interaction_type, created_at')
+          .in('interaction_type', ['didnt_answer', 'answered', 'converted'])
+          .gte('created_at', startIso)
+          .lt('created_at', endIso),
+        (supabase as any)
+          .from('prospect_timer_events')
+          .select('user_id, timer_seconds, created_at')
+          .gte('created_at', startIso)
+          .lt('created_at', endIso),
+        supabase
+          .from('prospect_callbacks')
+          .select('user_id, created_at')
+          .gte('created_at', startIso)
+          .lt('created_at', endIso),
+      ])
+      const users = ((usersRes.data ?? []) as { id: string; name: string | null; email: string | null }[]).map((u) => ({
+        id: u.id,
+        name: (u.name || u.email || 'Unknown').trim(),
+      }))
+      setWeekReport(
+        buildProspectWeekReport(
+          (callsRes.data ?? []) as WeekCallRow[],
+          (timersRes.data ?? []) as WeekTimerRow[],
+          (callbacksRes.data ?? []) as WeekCallbackRow[],
+          users,
+        ),
+      )
+    } catch {
+      setWeekReport(null)
+    } finally {
+      setWeekLoading(false)
+    }
+  }, [canAccessActivityTab])
+
+  useEffect(() => {
+    if (activeTab === 'activity' && canAccessActivityTab) {
+      void loadWeekReport(weekOffset)
+    }
+  }, [activeTab, canAccessActivityTab, weekOffset, loadWeekReport])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -3029,6 +3096,90 @@ export default function Prospects() {
 
       {topTab === 'customers' && activeTab === 'activity' && canAccessActivityTab && (
         <div style={{ padding: '1rem 0' }}>
+          <section style={{ marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 700 }}>
+                {weekOffset === 0 ? 'This week' : 'Week of'} — {weekRange(Date.now(), weekOffset).label}
+              </h2>
+              <div style={{ display: 'flex', gap: '0.375rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setWeekOffset((o) => o + 1)}
+                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'inherit' }}
+                >
+                  ‹ previous week
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWeekOffset((o) => Math.max(0, o - 1))}
+                  disabled={weekOffset === 0}
+                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: weekOffset === 0 ? 'default' : 'pointer', opacity: weekOffset === 0 ? 0.5 : 1, color: 'inherit' }}
+                >
+                  next week ›
+                </button>
+              </div>
+            </div>
+            {weekLoading ? (
+              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
+            ) : !weekReport || weekReport.perUser.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>No calling activity recorded this week.</p>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                  {[...weekReport.perUser, ...(weekReport.perUser.length > 1 ? [weekReport.team] : [])].map((s) => (
+                    <div key={s.userId} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 0.875rem', background: 'var(--surface)' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>{s.name}</div>
+                      <div style={{ fontSize: '1.375rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.calls} {s.calls === 1 ? 'call' : 'calls'}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {s.answered} answered{s.answerRate != null ? ` · ${Math.round(s.answerRate * 100)}%` : ''}
+                      </div>
+                      <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-subtle)', overflow: 'hidden', marginTop: '0.375rem' }}>
+                        <div style={{ height: '100%', width: `${Math.round((s.answerRate ?? 0) * 100)}%`, background: '#3b82f6' }} />
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.375rem' }}>
+                        {formatWeekHours(s.timerSeconds)} on calls · {s.callbacks} {s.callbacks === 1 ? 'callback' : 'callbacks'} set ·{' '}
+                        <span style={{ color: s.conversions > 0 ? '#6d28d9' : undefined, fontWeight: s.conversions > 0 ? 700 : undefined }}>
+                          {s.conversions} converted
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>Daily detail</div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Day</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>User</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Calls</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Answered</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Time</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Callbacks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {weekReport.daily.map((d) => (
+                          <tr key={`${d.dateKey}|${d.userId}`} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                              {new Date(d.dateKey + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            </td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>{d.name}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.calls}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.answered}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.timerSeconds > 0 ? formatWeekHours(d.timerSeconds) : '—'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{d.callbacks}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+          <h3 style={{ margin: '0 0 0.75rem', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-muted)' }}>Marked / Updated by day — last 30 days</h3>
           {teamLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
