@@ -245,7 +245,17 @@ export default function EstimateAccept() {
         onSubmit={(p) => void submitAccept(p)}
         options={options}
         selectedOptionKey={selectedOptionKey}
-        onSelectOption={setSelectedOptionKey}
+        onSelectOption={(key) => {
+          setSelectedOptionKey(key)
+          // Phase 3 (v2.2462): tell the office which options the customer weighed — the
+          // activity feed's "Viewed option — Tankless upgrade" rows. Fire-and-forget;
+          // browsing must never depend on it.
+          void fetch(`${supabaseUrl}/functions/v1/log-estimate-option-view`, {
+            method: 'POST',
+            headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, optionKey: key }),
+          }).catch(() => undefined)
+        }}
         headerBrand={headerBrand}
         customerAttachment={estimate.customer_attachment}
       />

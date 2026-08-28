@@ -1,8 +1,8 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-export type EstimateCustomerEventType = 'public_link_view' | 'public_accept_submitted'
+export type EstimateCustomerEventType = 'public_link_view' | 'public_accept_submitted' | 'option_viewed'
 
-export type EstimateCustomerEventSource = 'get-estimate-for-customer' | 'accept-estimate'
+export type EstimateCustomerEventSource = 'get-estimate-for-customer' | 'accept-estimate' | 'log-estimate-option-view'
 
 export function clientIpFromRequest(req: Request): string | null {
   const fwd = req.headers.get('x-forwarded-for')
