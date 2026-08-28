@@ -20,8 +20,9 @@ export function buildClickToolingUrl(job: JobWithDetails): string {
   params.set('email', (job.customer_email ?? '').trim())
   params.set('phone', (job.customer_phone ?? '').trim())
   params.set('location', (job.job_address ?? '').trim())
-  // The Click Tooling report app moved to plumbingtooling.com on 2026-08-28 —
-  // clicktooling.com is being handed to this app (docs/DOMAIN_CUTOVER.md).
+  // The report app lives at plumbingtooling.com as "Plumbing Tooling" (formerly
+  // Click Tooling at clicktooling.com — that domain is this app's now; see
+  // docs/DOMAIN_CUTOVER.md). Internal identifiers keep the old name.
   return `https://plumbingtooling.com/?${params.toString()}`
 }
 

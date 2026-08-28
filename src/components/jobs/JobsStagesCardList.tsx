@@ -635,7 +635,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         label: 'Share job',
         onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
       },
-      { key: 'click-tooling', label: 'Click Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) },
+      { key: 'click-tooling', label: 'Plumbing Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) },
     ]
     if ((j.job_address ?? '').trim()) {
       items.push({ key: 'maps', label: 'Google Maps', onClick: () => openInExternalBrowser(googleMapsSearchUrl(j.job_address)) })
@@ -876,7 +876,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
       items.push({ key: 'view-bill', label: 'View bill', onClick: () => onViewBill(invWithJob) })
     }
     if (props.showClickTooling !== false) {
-      items.push({ key: 'click-tooling', label: 'Click Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) })
+      items.push({ key: 'click-tooling', label: 'Plumbing Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) })
     }
     if ((j.job_address ?? '').trim()) {
       items.push({ key: 'maps', label: 'Google Maps', onClick: () => openInExternalBrowser(googleMapsSearchUrl(j.job_address)) })
