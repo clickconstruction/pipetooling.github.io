@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatCurrency } from '../../lib/format'
+import { entryGcIdFromPacketKey } from '../../lib/bids/bidContacts'
 import { bidAddressMapsUrl } from '../../lib/buildBidPricingPackageHtml'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
@@ -319,6 +320,8 @@ export function BidsWaitingToHearLens({
       action,
       note: noteDraft,
       lossCategory,
+      // Per-GC Phase 1: the chase is with THIS row's GC — stamp the entry.
+      gcCustomerId: entryGcIdFromPacketKey(b.gc.packetKey),
     })
     if (tab) {
       // Tab numbers replace the plain "Bid tab received" label in the history note.
@@ -335,7 +338,7 @@ export function BidsWaitingToHearLens({
       setStoryByBid((prev) => ({
         ...prev,
         [b.id]: [
-          { id: localStoryId, gcCustomerId: null, method: writes.entry.contact_method, text: writes.entry.notes, iso: writes.entry.occurred_at, byLine: null },
+          { id: localStoryId, gcCustomerId: writes.entry.gc_customer_id, method: writes.entry.contact_method, text: writes.entry.notes, iso: writes.entry.occurred_at, byLine: null },
           ...(prev[b.id] ?? []),
         ],
       }))

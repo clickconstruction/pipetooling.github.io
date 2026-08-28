@@ -20,6 +20,8 @@ export type BuilderQuickLogWrites = {
   } | null
   bidEntries: Array<{
     bid_id: string
+    /** The builder being logged (Per-GC Phase 1) — folds into the own GC for own-GC bids. */
+    gc_customer_id: string | null
     contact_method: string
     notes: string
     occurred_at: string
@@ -55,6 +57,7 @@ export function buildBuilderQuickLogWrites(args: {
           },
     bidEntries: bidIds.map((bid_id) => ({
       bid_id,
+      gc_customer_id: customerId,
       contact_method: method,
       notes: details,
       occurred_at: nowIso,

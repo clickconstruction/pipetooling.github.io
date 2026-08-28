@@ -179,6 +179,7 @@ describe('buildPendingChaseActionWrites', () => {
     const w = buildPendingChaseActionWrites({ ...base, action: 'bid_tab', note: '', lossCategory: null })
     expect(w.entry).toEqual({
       bid_id: 'bid-1',
+      gc_customer_id: null,
       contact_method: 'Phone',
       notes: 'Bid tab received',
       occurred_at: NOW,

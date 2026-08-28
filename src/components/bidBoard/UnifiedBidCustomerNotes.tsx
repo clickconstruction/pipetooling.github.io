@@ -147,7 +147,9 @@ function BidUnifiedEntryRow({
             .eq('id', entry.id),
         'update bid submission entry'
       )
-      if (occurredAtIso && entry.bid_id) {
+      // Per-GC Phase 1: only method entries are contacts; the entries sync trigger owns the
+      // roll-up after the push (an edit can move last_contact DOWN, which only it computes).
+      if (occurredAtIso && entry.bid_id && contactMethod.trim()) {
         await withSupabaseRetry(
           async () => supabase.from('bids').update({ last_contact: occurredAtIso }).eq('id', entry.bid_id),
           'update bid last_contact'

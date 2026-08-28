@@ -9,6 +9,7 @@ import {
   type PendingChaseActionKey,
 } from '../../lib/bidPendingChase'
 import { suggestLossCategoryFromNote, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { entryGcIdFromPacketKey } from '../../lib/bids/bidContacts'
 import {
   EMPTY_BID_TAB_VALUES,
   bidTabSummary,
@@ -201,6 +202,8 @@ export function BidsCallQueueTab({
       action,
       note: noteDraft,
       lossCategory,
+      // Per-GC Phase 1: the call is with THIS row's GC — stamp the entry.
+      gcCustomerId: entryGcIdFromPacketKey(b.gc.packetKey),
     })
     setSavingBidId(b.id)
     setNoteDraft('')

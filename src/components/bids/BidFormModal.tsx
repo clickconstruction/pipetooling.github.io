@@ -22,6 +22,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type Bid = Database['public']['Tables']['bids']['Row']
 import { BidGcRecipientsRow, GcCard } from './BidGcRecipientsRow'
+import { BidLogContactControl } from './BidLogContactControl'
 import { BidGcSentPanel } from './BidGcSentPanel'
 import { supabase } from '../../lib/supabase'
 
@@ -675,6 +676,7 @@ export function BidFormModal(props: BidFormModalProps) {
                     <BidGcSentPanel
                       bidId={editingBid.id}
                       ownGcName={gcCustomerSearch || 'To Plans'}
+                      ownGcCustomerId={editingBid.customer_id ?? null}
                       currentBidDateSent={editingBid.bid_date_sent ?? null}
                       onRollupDateChanged={onGcRollupDateChanged}
                     />
@@ -718,7 +720,13 @@ export function BidFormModal(props: BidFormModalProps) {
                   )}
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Last Contact</label>
-                    <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                    {editingBid ? (
+                      // Per-GC Phase 1: a contact IS a ledger entry — the raw field is for
+                      // unsaved bids only (no bid id to attach entries to yet).
+                      <BidLogContactControl bidId={editingBid.id} lastContactLocal={lastContact} onLogged={setLastContact} />
+                    ) : (
+                      <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                    )}
                   </div>
                 </div>
                 <div style={{ marginTop: '0.9rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
