@@ -457,6 +457,13 @@ verify_jwt = false
 [functions.log-estimate-option-view]
 verify_jwt = false
 
+# The Bid Room (v2.2468): public fetch is token-validated; send validates the staff JWT in-body.
+[functions.get-bid-proposal-room]
+verify_jwt = false
+
+[functions.send-bid-room-link]
+verify_jwt = false
+
 [functions.send-estimate-to-customer]
 verify_jwt = false
 

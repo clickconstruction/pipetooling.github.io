@@ -683,6 +683,160 @@ export type Database = {
           },
         ]
       }
+      bid_proposal_room_events: {
+        Row: {
+          client_ip: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          room_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          client_ip?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          room_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          client_ip?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          room_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_proposal_room_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "bid_proposal_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_proposal_room_revisions: {
+        Row: {
+          id: string
+          note: string
+          payload: Json
+          published_at: string
+          published_by: string | null
+          rev_number: number
+          room_id: string
+        }
+        Insert: {
+          id?: string
+          note?: string
+          payload: Json
+          published_at?: string
+          published_by?: string | null
+          rev_number: number
+          room_id: string
+        }
+        Update: {
+          id?: string
+          note?: string
+          payload?: Json
+          published_at?: string
+          published_by?: string | null
+          rev_number?: number
+          room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_proposal_room_revisions_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_proposal_room_revisions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "bid_proposal_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_proposal_rooms: {
+        Row: {
+          attachment_label: string | null
+          attachment_url: string | null
+          bid_id: string
+          closed_at: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          id: string
+          master_user_id: string
+          public_token: string
+          recipient_email: string | null
+        }
+        Insert: {
+          attachment_label?: string | null
+          attachment_url?: string | null
+          bid_id: string
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          master_user_id: string
+          public_token: string
+          recipient_email?: string | null
+        }
+        Update: {
+          attachment_label?: string | null
+          attachment_url?: string | null
+          bid_id?: string
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          id?: string
+          master_user_id?: string
+          public_token?: string
+          recipient_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_proposal_rooms_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_proposal_rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_proposal_rooms_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_proposal_rooms_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_tab_entries: {
         Row: {
           alternate_amount: number | null

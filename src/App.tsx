@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth'
 import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
 import SignIn from './pages/SignIn'
+import BidRoom from './pages/BidRoom'
 import DevLogin from './pages/DevLogin'
 import SignUp from './pages/SignUp'
 import ResetPassword from './pages/ResetPassword'
@@ -205,6 +206,7 @@ function AppContent() {
         <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route path="/task" element={<TaskShortcut />} />
         <Route path="/estimate/accept" element={<EstimateAccept />} />
+        <Route path="/bid-room" element={<BidRoom />} />
         <Route path="/contract/accept" element={<ContractAccept />} />
         <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
         <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />
