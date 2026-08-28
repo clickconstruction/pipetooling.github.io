@@ -5,6 +5,8 @@
  * and in Followup's "Sent to — by GC". Option A from the owner's pick (artifact 8e510a77).
  */
 import { useEffect, useRef, useState } from 'react'
+import { roomGcKey, type BidRoomStateSummary } from '../../lib/bids/bidRoomState'
+import { BidRoomStateChip } from './BidRoomStateChip'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { setGcPacketOutcome, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import { gcNoteCountKey } from '../../lib/bids/bidGcNotes'
@@ -105,7 +107,7 @@ export function GcOutcomePill({ value, gcName, busy, onChange }: { value: Packet
  * The per-GC lines: one per packet — name · sent m/d · state pill (★ value in the tooltip). Shared by the
  * table cell, the phone card and Followup. `nameStyle` lets the caller match the surrounding text.
  */
-export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChanged, dense, gcNoteCounts }: { bidId: string; bidLabel?: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean; gcNoteCounts?: Record<string, number> }) {
+export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChanged, dense, gcNoteCounts, roomStates }: { bidId: string; bidLabel?: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean; gcNoteCounts?: Record<string, number>; roomStates?: Record<string, BidRoomStateSummary> }) {
   const { showToast } = useToastContext()
   const [busyKey, setBusyKey] = useState<string | null>(null)
   /** Per-GC notes popover (v2.2217): the open packet's key, one at a time. */
@@ -168,6 +170,7 @@ export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChange
             <GcOutcomePill value={state} gcName={p.name} busy={busyKey === p.key} onChange={(next) => void change(p, next)} />
             {gcNameButton(p)}
             {noteBadge(p)}
+            {roomStates ? <BidRoomStateChip state={roomStates[roomGcKey(p.gcId)]} compact /> : null}
           </div>
         )
       })}
