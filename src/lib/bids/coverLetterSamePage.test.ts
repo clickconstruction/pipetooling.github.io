@@ -5,7 +5,7 @@ import {
   altSectionKey,
   buildAlternatesBlock,
   customerFacingAlternateName,
-  formatAlternateDelta,
+  formatAlternateDeltaText,
   parseCoverLetterAltTexts,
   planSamePageLetter,
   type SamePageSection,
@@ -64,15 +64,15 @@ describe('planSamePageLetter', () => {
   })
 })
 
-describe('formatAlternateDelta', () => {
-  it('words the difference against the headline, whole dollars unless real cents', () => {
-    expect(formatAlternateDelta(62024.11, 67311.11, formatCurrency)).toBe('reduced $5,287')
-    expect(formatAlternateDelta(71411.11, 67311.11, formatCurrency)).toBe('added $4,100')
-    expect(formatAlternateDelta(62024.61, 67311.11, formatCurrency)).toBe('reduced $5,286.50')
+describe('formatAlternateDeltaText', () => {
+  it('leads with Add/Deduct against the headline, whole dollars unless real cents', () => {
+    expect(formatAlternateDeltaText(62024.11, 67311.11, formatCurrency)).toBe('Deduct $5,287')
+    expect(formatAlternateDeltaText(71411.11, 67311.11, formatCurrency)).toBe('Add $4,100')
+    expect(formatAlternateDeltaText(62024.61, 67311.11, formatCurrency)).toBe('Deduct $5,286.50')
   })
-  it('hides a zero or meaningless difference', () => {
-    expect(formatAlternateDelta(100, 100, formatCurrency)).toBeNull()
-    expect(formatAlternateDelta(100, 0, formatCurrency)).toBeNull()
+  it('a matching price says so; only a missing headline hides the lead', () => {
+    expect(formatAlternateDeltaText(100, 100, formatCurrency)).toBe('no change')
+    expect(formatAlternateDeltaText(100, 0, formatCurrency)).toBeNull()
   })
 })
 
@@ -100,14 +100,14 @@ describe('buildAlternatesBlock', () => {
     sec({ name: 'BURD & ASSOCIATES', revenueSum: 67311.11, isAlternate: true }),
     sec({ name: 'BURD & ASSOCIATES · Alternate 1', revenueSum: 62024.11, isAlternate: true, offeredPricingId: 'p-alt' }),
   ])!
-  it('auto labels from section names; saved wording wins; default heading', () => {
+  it('an offered price on the leading scope prints as a bare numbered alternate (internal names never auto-print); saved wording wins', () => {
     const block = buildAlternatesBlock(plan, {}, formatCurrency)
     expect(block.heading).toBe(COVER_LETTER_ALTS_HEADING_DEFAULT)
     expect(block.items).toEqual([
       {
-        label: 'BURD & ASSOCIATES · Alternate 1',
+        label: 'Alternate 1',
+        deltaText: 'Deduct $5,287',
         amountFormatted: '$62,024.11',
-        deltaFormatted: 'reduced $5,287',
         note: null,
       },
     ])
@@ -120,10 +120,32 @@ describe('buildAlternatesBlock', () => {
     expect(edited.items[0]!.label).toBe('Alternate 1 — PEX in lieu of copper')
     expect(edited.items[0]!.note).toBe('Same scope as below.')
   })
-  it('editable adds preview-only edit keys', () => {
+  it('groups an offered price under its scope alternate as an "— or" option; the option name prints only when saved', () => {
+    const grouped = planSamePageLetter([
+      sec({ name: 'To Plans', bidVersionId: 'v-base', revenueSum: 56343 }),
+      sec({ name: 'PEX in lieu of copper', bidVersionId: 'v-pex', revenueSum: 56343, isAlternate: true }),
+      sec({ name: 'PEX in lieu of copper · Default', bidVersionId: 'v-pex', revenueSum: 41700, isAlternate: true, offeredPricingId: 'p-def' }),
+    ])!
+    const block = buildAlternatesBlock(grouped, {}, formatCurrency)
+    expect(block.items).toHaveLength(1)
+    expect(block.items[0]!.label).toBe('Alternate 1 — PEX in lieu of copper')
+    expect(block.items[0]!.deltaText).toBe('no change')
+    expect(block.items[0]!.options).toEqual([
+      { label: null, deltaText: 'Deduct $14,643', amountFormatted: '$41,700.00', note: null },
+    ])
+    const named = buildAlternatesBlock(grouped, { sections: { 'v-pex:p-def': { label: 'Standard-grade fixtures' } } }, formatCurrency)
+    expect(named.items[0]!.options![0]!.label).toBe('Standard-grade fixtures')
+  })
+  it('editable adds preview-only edit keys, on options too', () => {
     const block = buildAlternatesBlock(plan, {}, formatCurrency, true)
     expect(block.headingEditKey).toBe('heading')
     expect(block.items[0]!.editKey).toBe('BURD & ASSOCIATES · Alternate 1:p-alt')
+    const grouped = planSamePageLetter([
+      sec({ name: 'base', bidVersionId: 'v-base', revenueSum: 100 }),
+      sec({ name: 'alt', bidVersionId: 'v-alt', revenueSum: 90, isAlternate: true }),
+      sec({ name: 'alt · opt', bidVersionId: 'v-alt', revenueSum: 80, isAlternate: true, offeredPricingId: 'p-o' }),
+    ])!
+    expect(buildAlternatesBlock(grouped, {}, formatCurrency, true).items[0]!.options![0]!.editKey).toBe('v-alt:p-o')
     const shipped = buildAlternatesBlock(plan, {}, formatCurrency, false)
     expect(shipped.headingEditKey).toBeUndefined()
     expect(shipped.items[0]!.editKey).toBeUndefined()
@@ -178,7 +200,7 @@ describe('customerFacingAlternateName', () => {
       false,
       { gcName: gc, projectName: project },
     )
-    expect(block.items[0]!.label).toBe('ALSATIAN VE')
+    expect(block.items[0]!.label).toBe('Alternate 1 — ALSATIAN VE')
     expect(block.items[1]!.label).toBe('Alternate 2 — hand-written')
   })
 })

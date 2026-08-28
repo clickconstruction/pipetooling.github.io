@@ -7,7 +7,7 @@
  * alternate leads the letter — no more $0.00 letters — and the rest are listed against it.
  */
 
-import type { CoverLetterAlternateItem, CoverLetterAlternatesBlock } from '../bidDocuments/coverLetter'
+import type { CoverLetterAlternateItem, CoverLetterAlternateOption, CoverLetterAlternatesBlock } from '../bidDocuments/coverLetter'
 
 export type SamePageSection = {
   name: string
@@ -125,20 +125,26 @@ export function planSamePageLetter(sections: SamePageSection[]): SamePagePlan | 
 }
 
 /**
- * "reduced $5,287" / "added $4,100"; null for a zero or meaningless (no headline) difference.
+ * Delta-first lead (v2.2422, owner-approved mockup): "Deduct $5,287" / "Add $4,100" — the
+ * Add/Deduct convention builders read — or "no change" when the alternate matches the
+ * headline. Null only when there is no headline to compare against (amount renders alone).
  * Whole dollars unless the difference has real cents.
  */
-export function formatAlternateDelta(revenueSum: number, headlineRevenue: number, fmt: (n: number) => string): string | null {
+export function formatAlternateDeltaText(revenueSum: number, headlineRevenue: number, fmt: (n: number) => string): string | null {
   if (!(headlineRevenue > 0)) return null
   const delta = revenueSum - headlineRevenue
-  if (Math.abs(delta) < 0.005) return null
+  if (Math.abs(delta) < 0.005) return 'no change'
   const amount = fmt(Math.abs(delta)).replace(/\.00$/, '')
-  return `${delta < 0 ? 'reduced' : 'added'} $${amount}`
+  return `${delta < 0 ? 'Deduct' : 'Add'} $${amount}`
 }
 
 /**
- * The letter's Alternates block: saved wording where the estimator edited it, auto labels
- * (the section's name) everywhere else. `editable` adds the preview-only click-to-edit keys.
+ * The letter's Alternates block (v2.2422 shape): offered prices GROUP under their scope
+ * ("— or <name>: Deduct $X ($Y)"), scope alternates are numbered ("Alternate 1 — …"), and
+ * internal scenario names never print — an option's "— or" line carries a name only when the
+ * estimator wrote one (the panel's ✎ / click-to-edit both store it in cover_letter_alt_texts).
+ * A saved label on a scope alternate prints verbatim (no number is forced onto it).
+ * `editable` adds the preview-only click-to-edit keys.
  */
 export function buildAlternatesBlock(
   plan: SamePagePlan,
@@ -148,17 +154,55 @@ export function buildAlternatesBlock(
   /** Auto labels read customer-facing (project, not GC) when the letter's names are passed. */
   naming?: { gcName?: string | null; projectName?: string | null },
 ): CoverLetterAlternatesBlock {
-  const items: CoverLetterAlternateItem[] = plan.alternates.map((sec) => {
+  const scopeAlts = plan.alternates.filter((s) => !s.offeredPricingId)
+  const optionSecs = plan.alternates.filter((s) => s.offeredPricingId)
+  const scopeByVersion = new Map<string, SamePageSection>()
+  for (const s of scopeAlts) if (s.bidVersionId) scopeByVersion.set(s.bidVersionId, s)
+
+  const optionFor = (sec: SamePageSection): CoverLetterAlternateOption => {
     const key = altSectionKey(sec)
     const saved = texts.sections?.[key]
     return {
-      label: saved?.label?.trim() || (naming ? customerFacingAlternateName(sec.name, naming.gcName, naming.projectName) : sec.name),
+      label: saved?.label?.trim() || null,
+      deltaText: formatAlternateDeltaText(sec.revenueSum, plan.headlineRevenue, fmt),
       amountFormatted: `$${fmt(sec.revenueSum)}`,
-      deltaFormatted: formatAlternateDelta(sec.revenueSum, plan.headlineRevenue, fmt),
       note: saved?.note?.trim() || null,
       ...(editable ? { editKey: key } : {}),
     }
-  })
+  }
+
+  // Options whose scope is itself an alternate nest under it; options on a BASE scope (or an
+  // orphan) stand alone — they are alternate prices for the headline itself.
+  const nested = new Map<string, CoverLetterAlternateOption[]>()
+  const standalone: SamePageSection[] = []
+  for (const sec of optionSecs) {
+    const parent = sec.bidVersionId ? scopeByVersion.get(sec.bidVersionId) : undefined
+    if (parent) nested.set(parent.bidVersionId!, [...(nested.get(parent.bidVersionId!) ?? []), optionFor(sec)])
+    else standalone.push(sec)
+  }
+
+  let n = 0
+  const topLevel = (sec: SamePageSection, options?: CoverLetterAlternateOption[], nameless = false): CoverLetterAlternateItem => {
+    n += 1
+    const key = altSectionKey(sec)
+    const saved = texts.sections?.[key]
+    const autoName = naming ? customerFacingAlternateName(sec.name, naming.gcName, naming.projectName) : sec.name
+    return {
+      // A standalone offered price (on the base scope) has only an internal name — unless the
+      // estimator wrote one, it prints as a bare "Alternate N".
+      label: saved?.label?.trim() || (nameless ? `Alternate ${n}` : `Alternate ${n} — ${autoName}`),
+      deltaText: formatAlternateDeltaText(sec.revenueSum, plan.headlineRevenue, fmt),
+      amountFormatted: `$${fmt(sec.revenueSum)}`,
+      note: saved?.note?.trim() || null,
+      ...(editable ? { editKey: key } : {}),
+      ...(options && options.length > 0 ? { options } : {}),
+    }
+  }
+
+  const items: CoverLetterAlternateItem[] = [
+    ...scopeAlts.map((sec) => topLevel(sec, sec.bidVersionId ? nested.get(sec.bidVersionId) : undefined)),
+    ...standalone.map((sec) => topLevel(sec, undefined, true)),
+  ]
   return {
     heading: texts.heading?.trim() || COVER_LETTER_ALTS_HEADING_DEFAULT,
     items,

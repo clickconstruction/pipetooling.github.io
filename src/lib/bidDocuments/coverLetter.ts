@@ -66,14 +66,28 @@ function closingLinesFrom(closingParagraph: string | null): string[] {
  * `editKey` (preview only) wraps the customer-editable label + note in `data-cl-edit` spans the
  * studio turns into click-to-edit — never set on HTML headed to the clipboard/print.
  */
-export type CoverLetterAlternateItem = {
-  label: string
-  /** e.g. "$62,024.11" */
+/** An offered price nested under its scope alternate (v2.2422): "— or <label>: Deduct $X ($Y)". */
+export type CoverLetterAlternateOption = {
+  /** Customer-facing name; null prints a bare "— or:" (internal scenario names never print). */
+  label: string | null
+  /** "Deduct $14,643" / "Add $4,100" / "no change"; null falls back to the amount alone. */
+  deltaText: string | null
+  /** e.g. "$41,700.00" */
   amountFormatted: string
-  /** e.g. "reduced $5,287" / "added $4,100"; null hides the parenthetical. */
-  deltaFormatted: string | null
   note: string | null
   editKey?: string
+}
+
+export type CoverLetterAlternateItem = {
+  label: string
+  /** Bold lead (v2.2422, delta-first): "Deduct $16,500" / "Add $31,400" / "no change"; null falls back to the amount alone. */
+  deltaText: string | null
+  /** e.g. "$62,024.11" — rides in parens after the delta. */
+  amountFormatted: string
+  note: string | null
+  editKey?: string
+  /** Offered prices on this same scope, one "— or" line each. */
+  options?: CoverLetterAlternateOption[]
 }
 
 export type CoverLetterAlternatesBlock = {
@@ -142,8 +156,14 @@ export function buildCoverLetterHtml(
   if (alternatesBlock && alternatesBlock.items.length > 0) {
     html += br2 + '<strong>' + editWrap(escapeHtml(alternatesBlock.heading), alternatesBlock.headingEditKey) + '</strong>'
     for (const item of alternatesBlock.items) {
-      html += br + inclusionIndent + '• <strong>' + editWrap(escapeHtml(item.label), item.editKey) + '</strong>: <strong>' + escapeHtml(item.amountFormatted) + '</strong>' + (item.deltaFormatted ? ' (' + escapeHtml(item.deltaFormatted) + ')' : '')
+      html += br + inclusionIndent + '• <strong>' + editWrap(escapeHtml(item.label), item.editKey) + '</strong>: ' +
+        (item.deltaText ? '<strong>' + escapeHtml(item.deltaText) + '</strong> (' + escapeHtml(item.amountFormatted) + ')' : '<strong>' + escapeHtml(item.amountFormatted) + '</strong>')
       if (item.note?.trim()) html += br + inclusionIndent + '  ' + editWrap(escapeHtml(item.note.trim()), item.editKey)
+      for (const op of item.options ?? []) {
+        html += br + inclusionIndent + '     — or' + (op.label ? ' <strong>' + editWrap(escapeHtml(op.label), op.editKey) + '</strong>' : '') + ': ' +
+          (op.deltaText ? '<strong>' + escapeHtml(op.deltaText) + '</strong> (' + escapeHtml(op.amountFormatted) + ')' : '<strong>' + escapeHtml(op.amountFormatted) + '</strong>')
+        if (op.note?.trim()) html += br + inclusionIndent + '       ' + editWrap(escapeHtml(op.note.trim()), op.editKey)
+      }
     }
   }
   if (designDrawingPlanDateFormatted) {
@@ -215,8 +235,12 @@ export function buildCoverLetterText(
       ? [
           alternatesBlock.heading,
           ...alternatesBlock.items.flatMap((item) => [
-            inclusionIndent + '• ' + item.label + ': ' + item.amountFormatted + (item.deltaFormatted ? ' (' + item.deltaFormatted + ')' : ''),
+            inclusionIndent + '• ' + item.label + ': ' + (item.deltaText ? item.deltaText + ' (' + item.amountFormatted + ')' : item.amountFormatted),
             ...(item.note?.trim() ? [inclusionIndent + '  ' + item.note.trim()] : []),
+            ...(item.options ?? []).flatMap((op) => [
+              inclusionIndent + '     — or' + (op.label ? ' ' + op.label : '') + ': ' + (op.deltaText ? op.deltaText + ' (' + op.amountFormatted + ')' : op.amountFormatted),
+              ...(op.note?.trim() ? [inclusionIndent + '       ' + op.note.trim()] : []),
+            ]),
           ]),
           '',
         ]
