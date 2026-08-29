@@ -972,7 +972,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
-**Behavior**: Validates exactly like `get-estimate-for-customer` — token hash must match a live `sent` estimate, unexpired — and the `optionKey` must exist in that estimate's own `options_snapshot`; then appends an `estimate_customer_events` row (`event_type = option_viewed`, `source = log-estimate-option-view`, `metadata.option_key/option_name`) via [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts). **Always returns 200** — invalid/unknown input is dropped silently (this endpoint must prove nothing to callers, and browsing must never break on it). Requires migration `20260828193012` (CHECK constraints widened).
+**Behavior**: Validates exactly like `get-estimate-for-customer` — token hash must match a live `sent` estimate, unexpired — and the `optionKey` must exist in that estimate's own `options_snapshot`; then appends an `estimate_customer_events` row (v2.2476 fixed the shared logger's bare-`req` ReferenceError that silently dropped every event) (`event_type = option_viewed`, `source = log-estimate-option-view`, `metadata.option_key/option_name`) via [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts). **Always returns 200** — invalid/unknown input is dropped silently (this endpoint must prove nothing to callers, and browsing must never break on it). Requires migration `20260828193012` (CHECK constraints widened).
 
 ---
 

@@ -3832,21 +3832,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       return
     const saved = await saveDraft({ quiet: true })
     if (!saved) return
-    const { data: upd, error: pubErr } = await supabase
-      .from('estimates')
-      .update({ status: 'sent', sent_at: new Date().toISOString(), bid_room_id: target.id })
-      .eq('id', row.id)
-      .eq('status', 'draft')
-      .select('id')
-    if (pubErr || !upd || upd.length === 0) {
+    // draft→sent is a privileged transition (estimates_update_draft pins status to 'draft'), so
+    // the write goes through the SECURITY DEFINER RPC — found live by the v2.2472 E2E (v2.2476).
+    const { error: pubErr } = await supabase.rpc('publish_co_to_bid_room', {
+      p_estimate_id: row.id,
+      p_room_id: target.id,
+    })
+    if (pubErr) {
       showToast(formatErrorMessage(pubErr, 'Could not publish the change order'), 'error')
       return
     }
-    await supabase.from('bid_proposal_room_events').insert({
-      room_id: target.id,
-      event_type: 'document_published',
-      metadata: { document_id: row.id, title: title.trim(), total_cents: totalCents },
-    })
     window.dispatchEvent(new Event('bid-room-changed'))
     showToast('Change order published to the bid room — the GC signs it there.', 'success')
     await load()

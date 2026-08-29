@@ -28,6 +28,19 @@ describe('roomRollUpOutcome parity', () => {
 })
 
 describe('planRoomOutcome', () => {
+  it('an unsplit bid (no versions) lands the outcome on the bid directly — the common case', () => {
+    expect(planRoomOutcome({ outcome: 'won', roomCustomerId: null, bidOutcome: null, versions: [] })).toEqual({
+      packetVersionIds: [],
+      autoLostVersionIds: [],
+      bidOutcomeSet: 'won',
+    })
+    expect(planRoomOutcome({ outcome: 'lost', roomCustomerId: null, bidOutcome: null, versions: [] }).bidOutcomeSet).toBe('lost')
+    // Decided rules hold: a hand-set loss still flips to won on a signature; never off started.
+    expect(planRoomOutcome({ outcome: 'won', roomCustomerId: null, bidOutcome: 'lost', versions: [] }).bidOutcomeSet).toBe('won')
+    expect(planRoomOutcome({ outcome: 'won', roomCustomerId: null, bidOutcome: 'started_or_complete', versions: [] }).bidOutcomeSet).toBeNull()
+    expect(planRoomOutcome({ outcome: 'lost', roomCustomerId: null, bidOutcome: 'won', versions: [] }).bidOutcomeSet).toBeNull()
+  })
+
   it('a signature wins the packet, auto-loses other sent unanswered packets, sets the bid won', () => {
     const plan = planRoomOutcome({
       outcome: 'won',
