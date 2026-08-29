@@ -1587,6 +1587,78 @@ export type Database = {
           },
         ]
       }
+      bids_rfis: {
+        Row: {
+          answer: string | null
+          answer_ref: string | null
+          answered_at: string | null
+          bid_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          question: string
+          rfi_number: number
+          sent_at: string | null
+          sent_to: Json
+          sent_via: string | null
+          sheet_ref: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          answer?: string | null
+          answer_ref?: string | null
+          answered_at?: string | null
+          bid_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          question: string
+          rfi_number: number
+          sent_at?: string | null
+          sent_to?: Json
+          sent_via?: string | null
+          sheet_ref?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string | null
+          answer_ref?: string | null
+          answered_at?: string | null
+          bid_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          question?: string
+          rfi_number?: number
+          sent_at?: string | null
+          sent_to?: Json
+          sent_via?: string | null
+          sheet_ref?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_rfis_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_rfis_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bids_submission_entries: {
         Row: {
           bid_id: string
