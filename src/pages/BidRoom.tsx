@@ -217,8 +217,10 @@ export default function BidRoom() {
 
   return (
     <Shell>
-      {/* Customer-facing document: pinned light regardless of viewer theme (house rule). */}
-      <div data-theme="light">
+      {/* Customer-facing document: pinned light regardless of viewer theme (house rule).
+          Explicit base color: the auth landing shell sets light-on-photo text, and anything
+          here without its own color token inherited it — the v2.2477 washed-out-text fix. */}
+      <div data-theme="light" style={{ color: 'var(--text-strong)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
           <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
             <h1 style={{ margin: 0 }}>Proposal — {payload.project_name || 'your project'}</h1>
