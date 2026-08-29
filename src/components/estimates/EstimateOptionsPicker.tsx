@@ -89,7 +89,7 @@ export default function EstimateOptionsPicker({
             }}
             style={{ ...cardStyle(selected), cursor: readOnly ? 'default' : 'pointer' }}
           >
-            <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.6rem' }}>
+            <span style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.35rem 0.6rem', flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem', minWidth: 0 }}>
                 <span
                   aria-hidden

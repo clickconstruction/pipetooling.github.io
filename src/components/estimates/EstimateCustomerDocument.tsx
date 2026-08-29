@@ -176,7 +176,15 @@ export default function EstimateCustomerDocument({
   return (
     // Customer-facing document: pinned light so it matches what the customer
     // receives regardless of the viewer's theme (see index.css theme tokens).
-    <div data-theme="light">
+    // The document paints its own white paper (v2.2481). Two mirror bugs otherwise: on the
+    // public accept page the landing shell's light-on-photo text bled into every element
+    // without its own color token (title, option names/prices, headings, total, terms); in
+    // the dark-mode app the pinned-light TOKENS resolved dark-on-dark against the host card.
+    // A customer document is a white sheet wherever it renders — ground and ink together.
+    <div
+      data-theme="light"
+      style={{ background: 'var(--surface)', color: 'var(--text-strong)', padding: '1rem 1.25rem', borderRadius: 8 }}
+    >
       {previewBanner ? (
         <div style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--bg-subtle)', padding: '0.5rem 0.75rem', borderRadius: 6 }}>
           {previewBanner}
