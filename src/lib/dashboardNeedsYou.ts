@@ -7,8 +7,8 @@ import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFol
  * dashboard's unified attention list. v1 consolidated the four hook-driven
  * banners (AR deposits, own stale tally, team stale tally, lost-bid reasons);
  * the self-gating banners fold in item-by-item — job follow-ups joined in
- * v2.2487. Still banners below the card: team reviews, roadmap needs-name,
- * GC weekly, bulk-delete, claim-dev.
+ * v2.2487, team reviews in v2.2488. Still banners below the card: roadmap
+ * needs-name, GC weekly, bulk-delete, claim-dev.
  *
  * Gating mirrors the banners it replaces exactly: an item appears only when its
  * banner would have rendered. Order is the old banner stack order (deposits,
@@ -21,7 +21,7 @@ export type NeedsYouSeverity = 'blue' | 'amber' | 'gray'
 
 export type NeedsYouItem = {
   /** Stable key — also the telemetry target (`#<key>`) and the action-dispatch handle. */
-  key: 'ar-deposits' | 'tally-self' | 'tally-team' | 'lost-bids' | 'job-followups'
+  key: 'ar-deposits' | 'tally-self' | 'tally-team' | 'lost-bids' | 'team-reviews' | 'job-followups'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -44,6 +44,12 @@ export type NeedsYouInputs = {
   tallyMinAgeDays: number
   lostBidNudge: LostBidNudge | null
   lostBidNudgeLoading: boolean
+  /**
+   * Team reviews overdue for the signed-in reviewer (v2.2488). The hook
+   * self-gates (empty without Team access), so no enabled flag here.
+   */
+  teamReviewsOverdue: Array<{ id: string; name: string }>
+  teamReviewCadenceDays: number
   /**
    * Job Follow-Up Mode queue (v2.2487). Quickfill passes enabled=false — its
    * dedicated Job follow-ups station already carries this count.
@@ -116,6 +122,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'work them one GC call at a time on the Why we lost lens.',
       figure: count > 99 ? '99+' : String(count),
       actionLabel: 'Start call mode',
+    })
+  }
+
+  if (inputs.teamReviewsOverdue.length > 0) {
+    const n = inputs.teamReviewsOverdue.length
+    const preview = inputs.teamReviewsOverdue.slice(0, 3).map((u) => u.name).join(', ')
+    const more = n > 3 ? ` +${n - 3} more` : ''
+    items.push({
+      key: 'team-reviews',
+      severity: 'blue',
+      kicker: 'Team reviews',
+      title: 'Team reviews due',
+      detail: `${n === 1 ? `${preview} hasn't` : `${preview}${more} haven't`} had your review in ${inputs.teamReviewCadenceDays}+ days — rate them on Team → Review.`,
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Open Team Review',
     })
   }
 
