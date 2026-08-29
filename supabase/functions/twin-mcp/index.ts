@@ -66,6 +66,35 @@ const TOOLS = [
     },
   },
   {
+    name: 'get_assignments',
+    description:
+      "Bids where YOUR twin is the assigned estimator — your work queue (assignment is the grant: being the estimator is both the permission and the job). Returns bid number, project, GC, due date, status, and which pipeline links are present.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_plan_brief',
+    description:
+      "The plan substrate for one of your assigned bids: the machine-readable read of the plan set (sheet inventory, fixture schedule, note flags, scale calibrations, reconciliation, scope & risk read). Default returns the rollup brief; full=true returns every per-sheet record. Schema: docs/twins/SUBSTRATE.md.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Bid number (e.g. 'b403' or 'BP403') or bid uuid" },
+        full: { type: 'boolean', description: 'true = full per-sheet substrate, not just the rollup (large)' },
+      },
+      required: ['bid'],
+    },
+  },
+  {
+    name: 'get_work_state',
+    description:
+      "One composite read of where a bid stands in the pipeline — your resume after any interruption: bid facts, which links are stamped (Drive/plans/CountTooling), substrate version present, counts rows, and the recent bid-note audit ledger. Reconstruct 'where was I, what's next' from this plus the brief.",
+    inputSchema: {
+      type: 'object',
+      properties: { bid: { type: 'string', description: "Bid number (e.g. 'b403') or bid uuid" } },
+      required: ['bid'],
+    },
+  },
+  {
     name: 'submit_report',
     description: 'File your mission report (answer, evidence, stumbles). Lands in the twin_runs fleet ledger attributed to your twin.',
     inputSchema: {
@@ -190,6 +219,112 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return textContent(
         `Signed-in session minted for ${twin.email}.\naction_link (single-use — navigate a browser to it):\n${body.action_link}`,
       )
+    }
+    case 'get_assignments': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const { data: bids, error } = await admin
+        .from('bids')
+        .select('id, bid_number, project_name, bid_due_date, bid_date_sent, outcome, address, drive_link, plans_link, count_tooling_plans_link, customers(name)')
+        .eq('estimator_id', twin.twinUserId)
+        .order('bid_due_date', { ascending: true, nullsFirst: false })
+        .limit(50)
+      if (error) return textContent(`Lookup failed: ${error.message}`, true)
+      if (!bids?.length) return textContent('No bids are currently assigned to you (estimator = your twin). Ask the operator, or check get_brief for the mission flow.')
+      const rows = bids.map((b: Record<string, unknown>) => ({
+        bid: b.bid_number ? `b${b.bid_number}` : b.id,
+        bid_id: b.id,
+        project: b.project_name,
+        gc: (b.customers as { name?: string } | null)?.name ?? null,
+        due: b.bid_due_date,
+        sent: b.bid_date_sent,
+        outcome: b.outcome ?? 'open',
+        address: b.address,
+        links: { drive: !!b.drive_link, plans: !!b.plans_link, counttooling: !!b.count_tooling_plans_link },
+      }))
+      return textContent(JSON.stringify({ assignments: rows }, null, 2))
+    }
+    case 'get_plan_brief':
+    case 'get_work_state': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      if (!ref) return textContent('Missing bid (bid number like b403, or uuid)', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let q = admin
+        .from('bids')
+        .select('id, bid_number, project_name, bid_due_date, bid_due_time, bid_date_sent, outcome, bid_value, address, drive_link, plans_link, count_tooling_plans_link, itb_links, estimator_id, created_by, last_contact, customers(name)')
+      q = uuidRe.test(ref) ? q.eq('id', ref) : q.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid, error } = await q.maybeSingle()
+      if (error) return textContent(`Bid lookup failed: ${error.message}`, true)
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      // Assignment is the grant: these reads serve only the twin's own bids.
+      if (bid.estimator_id !== twin.twinUserId && bid.created_by !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not assigned to you (estimator) and was not created by you — get_assignments lists your queue.`, true)
+      }
+      const { data: sub } = await admin
+        .from('bids_plan_substrates')
+        .select('version, substrate, created_at')
+        .eq('bid_id', bid.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (name === 'get_plan_brief') {
+        if (!sub) return textContent(`No plan substrate is attached to bid ${ref} yet. The extractor (or operator) attaches one at pipeline stage 2 — see get_brief.`, true)
+        const s = sub.substrate as Record<string, unknown>
+        const payload = args.full === true
+          ? s
+          : {
+              substrate_version: s.substrate_version,
+              generated_at: s.generated_at,
+              supersedes: s.supersedes,
+              source: s.source,
+              bid: s.bid,
+              rollup: s.rollup,
+              note: 'Rollup only — pass full: true for every per-sheet record (schedules, notes, crops).',
+            }
+        return textContent(JSON.stringify(payload, null, 2))
+      }
+      // get_work_state
+      const { count: countRowsCount } = await admin
+        .from('bids_count_rows')
+        .select('id', { count: 'exact', head: true })
+        .eq('bid_id', bid.id)
+      const { data: entries } = await admin
+        .from('bids_submission_entries')
+        .select('occurred_at, contact_method, notes')
+        .eq('bid_id', bid.id)
+        .order('occurred_at', { ascending: false })
+        .limit(10)
+      const state = {
+        bid: {
+          bid: bid.bid_number ? `b${bid.bid_number}` : bid.id,
+          bid_id: bid.id,
+          project: bid.project_name,
+          gc: (bid.customers as { name?: string } | null)?.name ?? null,
+          due: bid.bid_due_date,
+          sent: bid.bid_date_sent,
+          outcome: bid.outcome ?? 'open',
+          bid_value: bid.bid_value,
+          last_contact: bid.last_contact,
+          address: bid.address,
+        },
+        links: {
+          drive: bid.drive_link ?? null,
+          plans: bid.plans_link ?? null,
+          counttooling: bid.count_tooling_plans_link ?? null,
+          itb: bid.itb_links ?? null,
+        },
+        substrate: sub ? { version: (sub.substrate as Record<string, unknown>).substrate_version, attached_at: sub.created_at } : null,
+        counts_rows: countRowsCount ?? 0,
+        audit_ledger_tail: (entries ?? []).map((e: Record<string, unknown>) => ({
+          at: e.occurred_at, method: e.contact_method ?? 'note', note: String(e.notes ?? '').slice(0, 300),
+        })),
+        not_yet_in_v1: ['CT takeoff review status (cross-app; Wave 3)', 'RFIs (Wave 2 bids_rfis)', 'twin_questions (Wave 3)', 'pricing coverage (Wave 4)'],
+      }
+      return textContent(JSON.stringify(state, null, 2))
     }
     case 'submit_report': {
       const mission = String(args.mission ?? '').trim() || 'unlabeled'
