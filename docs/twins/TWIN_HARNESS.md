@@ -78,18 +78,9 @@ long-run scorecard, since twins are excluded from human metrics but not from the
 - **Mint a twin**: Active Accounts → Manually add user (role estimator,
   `twin-<role>-<n>@twins.pipetooling.local`), then flag it:
   `update users set is_digital_twin = true, read_only = true where email = '…'` (dev).
-- **Issue a per-twin token** (dev, in the app console — plaintext shown once, only the
-  sha256 is stored):
-
-  ```js
-  const t = crypto.randomUUID().replaceAll('-','') + crypto.randomUUID().replaceAll('-','')
-  const h = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t))))
-    .map(b => b.toString(16).padStart(2,'0')).join('')
-  const { supabase } = await import('/src/lib/supabase.ts')
-  await supabase.from('twin_credentials').insert({ twin_user_id: '<twin uuid>', token_hash: h, label: '<partner name>' })
-  console.log('TOKEN (save now, shown once):', t)
-  ```
-
+- **Issue a per-twin token**: Settings → System → Digital twins → **Issue key** on the
+  twin's card (dev role). The key is shown once; only its sha256 lands in
+  `twin_credentials`. Label it per partner — revocation is per-key.
 - **Revoke**: set `revoked_at = now()` on the credential row (dev). Master secret rotation
   (`supabase secrets set TWIN_LOGIN_SECRET=…`) kills the whole fleet's ops path.
 - **Graduate a rung**: flip `read_only`, or assign a real bid's estimator to the twin.
