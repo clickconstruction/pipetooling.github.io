@@ -41,6 +41,16 @@ export function planRoomOutcome(args: {
   versions: OutcomeVersionRow[]
   bidOutcome: string | null
 }): RoomOutcomePlan {
+  // Unsplit bid (no bid_versions rows — the common single-GC case): the packet IS the bid, so
+  // the outcome lands on bids.outcome directly, same decided rules as the roll-up. Found by the
+  // live E2E (v2.2476): ZZ Twin Test 1 signatures/declines wrote nothing at all.
+  if (args.versions.length === 0) {
+    const decided = args.bidOutcome === 'won' || args.bidOutcome === 'lost' || args.bidOutcome === 'started_or_complete'
+    let bidOutcomeSet: 'won' | 'lost' | null = null
+    if (args.outcome === 'won' && args.bidOutcome !== 'won' && args.bidOutcome !== 'started_or_complete') bidOutcomeSet = 'won'
+    else if (args.outcome === 'lost' && !decided) bidOutcomeSet = 'lost'
+    return { packetVersionIds: [], autoLostVersionIds: [], bidOutcomeSet }
+  }
   const packetOf = (v: OutcomeVersionRow) => v.customer_id ?? null
   const groups = new Map<string | null, OutcomeVersionRow[]>()
   for (const v of args.versions) {

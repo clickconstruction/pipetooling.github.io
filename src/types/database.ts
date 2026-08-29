@@ -16897,6 +16897,10 @@ export type Database = {
         Returns: boolean
       }
       primary_can_access_job: { Args: { p_job_id: string }; Returns: boolean }
+      publish_co_to_bid_room: {
+        Args: { p_estimate_id: string; p_room_id: string }
+        Returns: undefined
+      }
       recompute_bid_due: { Args: { p_bid_id: string }; Returns: undefined }
       recompute_jobs_ledger_thread_note_stats: {
         Args: { p_job_id: string }

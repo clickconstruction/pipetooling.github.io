@@ -22,8 +22,11 @@ export async function insertEstimateCustomerEvent(
   },
 ): Promise<void> {
   try {
-    const ipRaw = clientIpFromRequest(req)
-    const ua = req.headers.get('user-agent')
+    // v2.2476: was bare `req` (a ReferenceError at runtime) — the outer catch swallowed it, so
+    // every caller's best-effort audit silently no-opped. Found by the live E2E when
+    // option_viewed rows never appeared.
+    const ipRaw = clientIpFromRequest(opts.req)
+    const ua = opts.req.headers.get('user-agent')
     const row = {
       estimate_id: opts.estimateId,
       event_type: opts.eventType,

@@ -214,7 +214,12 @@ serve(async (req) => {
           .update({ outcome: 'lost', outcome_at: today, ...(category ? { loss_category: category } : {}), ...(note ? { outcome_note: note } : {}) })
           .in('id', plan.packetVersionIds)
       }
-      if (plan.bidOutcomeSet === 'lost') await admin.from('bids').update({ outcome: 'lost' }).eq('id', bid.id)
+      if (plan.bidOutcomeSet === 'lost') {
+        await admin
+          .from('bids')
+          .update({ outcome: 'lost', ...(category && versions.length === 0 ? { loss_category: category } : {}) })
+          .eq('id', bid.id)
+      }
       await admin.from('bid_proposal_room_events').insert({
         room_id: room.id,
         event_type: 'declined',
