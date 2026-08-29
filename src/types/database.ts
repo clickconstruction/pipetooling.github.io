@@ -13616,32 +13616,122 @@ export type Database = {
           },
         ]
       }
+      twin_questions: {
+        Row: {
+          about_bid_id: string | null
+          answer: string | null
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          id: string
+          mission: string | null
+          promoted_rfi_id: string | null
+          question: string
+          status: string
+          twin_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          about_bid_id?: string | null
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          mission?: string | null
+          promoted_rfi_id?: string | null
+          question: string
+          status?: string
+          twin_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          about_bid_id?: string | null
+          answer?: string | null
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          id?: string
+          mission?: string | null
+          promoted_rfi_id?: string | null
+          question?: string
+          status?: string
+          twin_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "twin_questions_about_bid_id_fkey"
+            columns: ["about_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_questions_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_questions_promoted_rfi_id_fkey"
+            columns: ["promoted_rfi_id"]
+            isOneToOne: false
+            referencedRelation: "bids_rfis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_questions_twin_user_id_fkey"
+            columns: ["twin_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       twin_runs: {
         Row: {
+          bid_id: string | null
           ended_at: string | null
           id: string
           mission: string
           notes: string | null
+          stage: string | null
           started_at: string
+          state: string | null
           twin_user_id: string
         }
         Insert: {
+          bid_id?: string | null
           ended_at?: string | null
           id?: string
           mission?: string
           notes?: string | null
+          stage?: string | null
           started_at?: string
+          state?: string | null
           twin_user_id: string
         }
         Update: {
+          bid_id?: string | null
           ended_at?: string | null
           id?: string
           mission?: string
           notes?: string | null
+          stage?: string | null
           started_at?: string
+          state?: string | null
           twin_user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "twin_runs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "twin_runs_twin_user_id_fkey"
             columns: ["twin_user_id"]
