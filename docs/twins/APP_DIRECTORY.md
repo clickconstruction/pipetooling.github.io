@@ -23,6 +23,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Count fixtures from plans for a bid → `/bids?tab=counts` (pick the bid)
 - Price a bid / set margins / see revenue-profit-margin-multiple → `/bids?tab=pricing` (New view = Workbench)
 - Write and send the proposal letter; mark sent → `/bids?tab=cover-letter`
+- Ask the GC a plans question (RFI) / see what's unanswered → `/bids?tab=rfi`
 - One bid's full record (sends, answers, notes, links) → `/bids?tab=submission-followup` (pick the bid)
 - Estimator workload/performance pivot → `/bids?tab=estimators`
 - Create a bid → `/bids` → New Bid button
@@ -91,7 +92,10 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   Google Docs, Print, **Mark sent** (stamps send date + value).
 - `?tab=submission-followup` — the selected bid's full submission record: sends by GC,
   notes/contacts ledger, links, RFIs.
-- `?tab=rfi` / `?tab=change-order` / `?tab=lien-release` — bid-scoped paperwork tools.
+- `?tab=rfi` — the selected bid's **RFI queue** (draft → approve with a per-GC pick →
+  mark sent → record answer; "Paste RFI flags" imports CountTooling `RFI:` notes) above
+  the RFI letter composer. Twins: DRAFT ONLY — approving/sending is human.
+- `?tab=change-order` / `?tab=lien-release` — bid-scoped paperwork tools.
 
 ### /jobs — Jobs (the operations hub)
 Tabs via `?tab=`. Roles: dev, master, assistant, controller; primary = Reports+Billing on
