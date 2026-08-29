@@ -88,6 +88,11 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     jobFollowupsEnabled: false,
     jobFollowupCount: null,
     jobFollowupStageCounts: null,
+    // Same for the GC weekly station (v2.2347) — the card stays out of its way.
+    gcReviewEnabled: false,
+    gcReviewStatus: null,
+    gcReviewNudge: null,
+    gcReviewIsWednesday: false,
   })
 
   useEffect(() => {

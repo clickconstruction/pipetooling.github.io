@@ -16,7 +16,9 @@ import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges
 import { recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
-import DashboardGcReviewWeeklyBanner from '../DashboardGcReviewWeeklyBanner'
+import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
+import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
+import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import DashboardBulkDeleteAlertBanner from '../DashboardBulkDeleteAlertBanner'
 import DashboardClaimDevAttemptsBanner from '../DashboardClaimDevAttemptsBanner'
@@ -306,6 +308,8 @@ export function DashboardPinnedQuickRow({
     hideBanners ? undefined : authUserId,
   )
   const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(hideBanners ? undefined : authUserId, role)
+  const { status: gcReviewStatus } = useGcReviewWeekNudge(!hideBanners && officeEligible)
+  const gcReviewNudge = gcReviewStatus != null ? gcReviewNudgeState(gcReviewStatus) : null
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -324,6 +328,10 @@ export function DashboardPinnedQuickRow({
     jobFollowupsEnabled: officeEligible,
     jobFollowupCount,
     jobFollowupStageCounts,
+    gcReviewEnabled: officeEligible,
+    gcReviewStatus,
+    gcReviewNudge,
+    gcReviewIsWednesday: gcReviewWeekdayIndex() === 3,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -513,12 +521,17 @@ export function DashboardPinnedQuickRow({
                   ? `/checklist?tab=roadmap&roadmap=${encodeURIComponent(first.roadmapId)}&view=plan`
                   : '/checklist?tab=roadmap',
               )
+            } else if (item.key === 'gc-review-weekly') {
+              navigate('/jobs?tab=stages&gcReview=1')
             }
           }}
         />
       )}
-      {/* Wednesday GC certification (v2.1984): office roles; self-gates to nothing off-days or when done. */}
-      {!hideBanners && officeEligible && <DashboardGcReviewWeeklyBanner />}
+      {/* Wednesday GC certification (v2.1984): the due state lives in the card
+          (v2.2490); the green rest-of-Wednesday confirmation stays a notice. */}
+      {!hideBanners && officeEligible && gcReviewStatus != null && gcReviewNudge === 'done' && (
+        <GcReviewWeekDoneNotice status={gcReviewStatus} />
+      )}
       {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
       {!hideBanners && <DashboardBulkDeleteAlertBanner />}
       {/* Dev-only and self-gating: renders nothing unless someone was refused the break-glass dev code. */}
