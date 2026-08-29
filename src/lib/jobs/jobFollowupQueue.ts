@@ -216,6 +216,29 @@ export function jobFollowupStageCounts(entries: JobFollowupQueueEntry[]): Record
   return counts
 }
 
+const BREAKDOWN_PHRASES: Record<JobFollowupStage, (n: number) => string> = {
+  billed: (n) => `${n} billed with no nudge`,
+  working: (n) => `${n} working with no recent notes`,
+  waiting: (n) => `${n} waiting with nothing scheduled`,
+  ready_to_bill: (n) => `${n} ready to bill`,
+  collections: (n) => `${n} in collections`,
+}
+/** Breakdown order: money first. */
+const BREAKDOWN_ORDER: JobFollowupStage[] = ['billed', 'working', 'waiting', 'ready_to_bill', 'collections']
+
+/**
+ * "68 billed with no nudge · 4 working with no recent notes · …" — the
+ * one-line stage breakdown the dashboard banner rendered (v2.1720), shared
+ * with the Needs You item (v2.2487). Empty string when nothing is non-zero.
+ */
+export function jobFollowupBreakdownPhrase(counts: Record<JobFollowupStage, number> | null, max = 3): string {
+  if (!counts) return ''
+  return BREAKDOWN_ORDER.filter((s) => counts[s] > 0)
+    .slice(0, max)
+    .map((s) => BREAKDOWN_PHRASES[s](counts[s]))
+    .join(' · ')
+}
+
 /**
  * The follow-up stages a set of loaded board scopes is authoritative for.
  * Mirrors buildJobsListStagesQuery's per-scope status filters: `billed_all`

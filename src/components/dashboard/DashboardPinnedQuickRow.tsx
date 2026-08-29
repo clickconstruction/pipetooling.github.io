@@ -10,6 +10,7 @@ import {
   useArBankUnallocatedCount,
 } from '../../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
+import { useJobFollowupNudge } from '../../hooks/useJobFollowupNudge'
 import { recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
@@ -17,7 +18,6 @@ import DashboardGcReviewWeeklyBanner from '../DashboardGcReviewWeeklyBanner'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import DashboardTeamReviewsDueBanner from '../DashboardTeamReviewsDueBanner'
 import DashboardRoadmapNeedsNameBanner from '../DashboardRoadmapNeedsNameBanner'
-import DashboardJobFollowupsBanner from '../DashboardJobFollowupsBanner'
 import DashboardBulkDeleteAlertBanner from '../DashboardBulkDeleteAlertBanner'
 import DashboardClaimDevAttemptsBanner from '../DashboardClaimDevAttemptsBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
@@ -298,6 +298,11 @@ export function DashboardPinnedQuickRow({
     authRole: role,
   })
 
+  const officeEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  const { count: jobFollowupCount, stageCounts: jobFollowupStageCounts } = useJobFollowupNudge(
+    !hideBanners && officeEligible,
+  )
+
   const needsYouItems = buildNeedsYouItems({
     role,
     arBankUnallocatedCount,
@@ -305,10 +310,13 @@ export function DashboardPinnedQuickRow({
     tallyStaleUnlinkedCount,
     tallyStaffStalePeopleCount,
     tallyStaffStaleTxCount,
-    tallyStaffEligible: role === 'dev' || role === 'master_technician' || isAssistantLike(role),
+    tallyStaffEligible: officeEligible,
     tallyMinAgeDays: TALLY_STALE_MIN_AGE_DAYS,
     lostBidNudge,
     lostBidNudgeLoading,
+    jobFollowupsEnabled: officeEligible,
+    jobFollowupCount,
+    jobFollowupStageCounts,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -467,8 +475,9 @@ export function DashboardPinnedQuickRow({
     <>
       {!bannersOnly && jobReportFirst && jobReportRow}
       {!bannersOnly && afterJobReportRow}
-      {/* Needs You card (v2.2339): the four hook-driven banners as one card with
-          Cards / Walk-the-list views. The self-gating banners below migrate later. */}
+      {/* Needs You card (v2.2339): the hook-driven banners as one card with
+          Cards / Walk-the-list views. The remaining self-gating banners below
+          migrate item-by-item (job follow-ups joined in v2.2487). */}
       {!hideBanners && (
         <DashboardNeedsYouCard
           userId={authUserId}
@@ -484,6 +493,8 @@ export function DashboardPinnedQuickRow({
               setTallyStaffFollowUpModalOpen(true)
             } else if (item.key === 'lost-bids') {
               navigate('/bids?tab=why-we-lost')
+            } else if (item.key === 'job-followups') {
+              navigate('/jobs?tab=stages&followups=1')
             }
           }}
         />
@@ -491,14 +502,8 @@ export function DashboardPinnedQuickRow({
       {!hideBanners && <DashboardTeamReviewsDueBanner authUserId={authUserId} />}
       {/* Roadmap "needs a person" (v2.2138): self-gates to the Roadmap-tab audience and a threshold. */}
       {!hideBanners && <DashboardRoadmapNeedsNameBanner authUserId={authUserId} role={role} />}
-      {/* Job Follow-Up Mode (v2.1720): office roles only; self-gates to nothing when the queue is empty. */}
-      {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
-        <DashboardJobFollowupsBanner />
-      )}
       {/* Wednesday GC certification (v2.1984): office roles; self-gates to nothing off-days or when done. */}
-      {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
-        <DashboardGcReviewWeeklyBanner />
-      )}
+      {!hideBanners && officeEligible && <DashboardGcReviewWeeklyBanner />}
       {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
       {!hideBanners && <DashboardBulkDeleteAlertBanner />}
       {/* Dev-only and self-gating: renders nothing unless someone was refused the break-glass dev code. */}
