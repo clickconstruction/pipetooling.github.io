@@ -2556,7 +2556,19 @@ export default function Bids() {
       <button
         type="button"
         data-tabkey="builder-review"
-        onClick={() => selectBidsTab(activeTab === 'submission-followup' ? 'submission-followup' : 'builder-review')}
+        onClick={() => {
+          // v2.2473: entering the group lands on the NEW Call queue lens by
+          // default (superintendents can't see it — they keep By builder).
+          // Re-clicking while already inside keeps the lens you picked (it
+          // still clears any lingering bidId, per v2.2043).
+          const inGroup =
+            activeTab === 'builder-review' ||
+            activeTab === 'call-queue' ||
+            activeTab === 'submission-followup' ||
+            activeTab === 'why-we-lost' ||
+            activeTab === 'waiting-to-hear'
+          selectBidsTab(inGroup ? activeTab : myRole === 'superintendent' ? 'builder-review' : 'call-queue')
+        }}
         style={tabStyle(activeTab === 'builder-review' || activeTab === 'call-queue' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear')}
         title="Builder Review and Submission & Followup, merged — flip between lenses inside"
       >

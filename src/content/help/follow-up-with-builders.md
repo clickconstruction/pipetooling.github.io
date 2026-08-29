@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, estimator, primary, superintendent
 keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids, low bid, high bid, rank from the bottom
 order: 69
 ---
-The **Followup** tab (Bids → Followup) is where bid follow-up lives.
+The **Followup** tab (Bids → Followup) is where bid follow-up lives. Opening it lands on the **Call queue** — the lens the tab defaults to; the four original lenses are one click away behind the **Old:** divider, and if you flip to one of them, re-clicking Followup keeps you where you are.
 
 ## The Call queue (new)
 
