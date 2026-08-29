@@ -578,6 +578,10 @@ verify_jwt = false
 [functions.twin-mcp]
 verify_jwt = false
 
+# Drive intake (Wave 4.4): twin token or staff JWT validated in-function; SA-key Google auth.
+[functions.drive-intake]
+verify_jwt = false
+
 # CT↔PT user bridge proxy (v2.2435): JWT validated in-function (dev-only), forwards to
 # CountTooling's manage-user with the bridge secret.
 [functions.ct-bridge]
