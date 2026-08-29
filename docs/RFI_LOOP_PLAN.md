@@ -173,3 +173,10 @@ internal lane exists.
   landed method-less; twin probe: Approve refused LOUDLY ("Twins update drafts only on
   bids_rfis"), twin draft succeeded (RFI-3). Remaining: R3 (twin_questions), R4
   (ct-bridge auto-pull), R5 (letter assumptions chip).
+- 2026-08-29 (later) — **R3 SHIPPED + live-tested** (v2.2483, migration `20260829032237`):
+  twin_questions + ask_question/get_answers/heartbeat + the fleet-console inbox with
+  Promote-to-RFI. Full loop verified on prod: twin asked the sprinkler-exclusion question
+  (bid-scoped), heartbeat BLOCKED chip surfaced in the runs feed, operator answered inline,
+  twin pulled the ruling via get_answers. **R5 SHIPPED + live-tested** (v2.2484): the
+  OpenRfiChip read "3 open RFIs — carry as assumptions/exclusions" on b403's letter.
+  Remaining: R4 (ct-bridge auto-pull — later by design).
