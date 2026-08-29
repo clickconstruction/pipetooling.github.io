@@ -13,6 +13,7 @@ import { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { BidRfiQueue } from './BidRfiQueue'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 
 type BidRfiTabProps = {
@@ -134,6 +135,10 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
         }
         const googleDocsCopyUrl = `https://docs.google.com/document/d/${googleDocsTemplateId}/copy?title=` + encodeURIComponent(templateCopyTarget)
         return (
+          <>
+          {/* The persisted RFI queue (Phase R1) sits above the letter composer: drafts in,
+              human approve/send/answer out, every event stamped on the bid's note ledger. */}
+          <BidRfiQueue bid={bid} authUser={authUser} />
           <div
             style={{
               border: '1px solid var(--border)',
@@ -327,6 +332,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
               </div>
             </div>
           </div>
+          </>
         )
       })()}
     </div>
