@@ -52,6 +52,13 @@ run's flight recorder.
 - Bid opens the chain (STG-0); human-opened + twin-assigned is the default path.
 - Two human gates, never delegated: takeoff review; price-and-send.
 - Twin drafts only — no final pricing, no sending; to be made structural (Wave 4).
+  **What "drafting" includes (clarified 2026-08-28):** working the full Takeoffs → Labor →
+  Pricing chain on its own bid — applying takeoff books, mapping assemblies, filling
+  **missing part prices on the bid's frozen book copy** (v2.2444: bid-scoped, so fenced and
+  reviewable), building the labor estimate, and proposing per-section sale prices in the
+  Workbench. The line the gate owns is the *final* number and the send. The **master price
+  book is never twin-writable** — it isn't a bid child; book corrections are suggestions for
+  a human, same doctrine as loss-reason suggestions.
 - RFI loop: per-RFI GC pick (default all bidding GCs); estimator+ approve/send; twins
   draft-only structurally; RFIs non-blocking (open RFIs must surface as assumptions/exclusions
   at the letter). Full detail: `docs/RFI_LOOP_PLAN.md`.
@@ -114,9 +121,13 @@ scores against her own; eval-harness number recorded in the missions results tab
 | 4.3 | **No-send fence** — structural RLS block on twin writes to `bid_date_sent`/send surfaces (replaces mission-text policy) | PT migration | S |
 | 4.4 | **`drive-intake`** — service-account edge fn: create job folder, upload set + substrate, return links; `file_plans` MCP wrapper; links stamp onto the STG-0 bid | PT edge fn | M |
 | 4.5 | **Heartbeat on `twin_runs`** — current bid/stage/working-blocked-done; formalize the per-stage audit-stamp convention in the pipeline brief | PT + docs | S |
+| 4.6 | **Materials → Labor → draft-pricing enablement** — the middle of the bid workflow, which exists today as human tools on bid-child tables (twin-drivable at rung 2 with no schema work): (a) pipeline-brief section documenting the three-tab workflow with **takeoff books as the counts→assemblies→materials lever** (`applyTakeoffBookTemplates` first, gap-fill second), the exact-vs-rough materials-model choice, the frozen-book-copy price rule, and the Labor tab's sections/direct-costs/per-diem shape; (b) `get_work_state` gains materials/labor/pricing coverage (mappings present? unpriced parts? labor rows? Workbench assignment coverage) so a resumed agent knows where the middle stands; (c) APP_DIRECTORY rows for all three tabs | Docs + PT reads | M |
 
-**Test gate 4: Mission M5** — approved takeoff → drafted, unsent bid; owner reviews from the
-scope sheet + coverage report alone. Then the full chain has run once, end to end.
+**Test gate 4: Mission M5** — approved takeoff → counts imported → takeoff book applied and
+materials mapped → labor built → per-section draft prices with a coverage report → letter
+drafted, bid **unsent**; owner reviews from the scope sheet + coverage report alone and
+compares the draft pricing to what they would have priced. Then the full chain has run once,
+end to end.
 
 ## Wave 5 — Fleet polish (as learnings dictate)
 
@@ -149,3 +160,9 @@ placement engine.
 - 2026-08-28 — Plan written. Fleet state: twin-estimator-1 at rung 2, M1–M3 all PASS, write
   fence live-probed, RFI_LOOP_PLAN merged same day. Nothing in this plan built yet; Wave 1
   items 1.1–1.3 are the recommended immediate start.
+- 2026-08-28 (later) — Owner walked the seven-step chain (plans → reference docs → counts →
+  materials+prices → labor → section pricing → letter) and the middle steps were
+  under-planned: added Wave 4 item 4.6 (materials/labor/draft-pricing enablement — takeoff
+  books as the lever, frozen-book-copy price rule, `get_work_state` middle-coverage), widened
+  M5's test gate to score the full middle, and clarified the drafting-vs-final-pricing line
+  in Owner decisions.
