@@ -1,34 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
-import {
-  computeJobFollowupQueue,
-  jobFollowupStageCounts,
-  type JobFollowupStage,
-} from '../lib/jobs/jobFollowupQueue'
-import {
-  fetchJobFollowupCandidates,
-  fetchJobFollowupReviews,
-  fetchJobFollowupSettings,
-} from '../lib/jobs/jobFollowupStore'
+import { useJobFollowupNudge } from '../hooks/useJobFollowupNudge'
+import { jobFollowupBreakdownPhrase } from '../lib/jobs/jobFollowupQueue'
 
 /**
- * Dashboard attention card for Job Follow-Up Mode (v2.1720): counts the jobs
- * quiet too long for their stage (same kernel as the deck) and starts the
- * review. Self-gating — renders nothing while loading, on error, or when the
- * queue is empty. Office-role gating happens at the mount site.
+ * Attention card for Job Follow-Up Mode (v2.1720): counts the jobs quiet too
+ * long for their stage (same kernel as the deck) and starts the review.
+ * Self-gating — renders nothing while loading, on error, or when the queue is
+ * empty. Since v2.2487 the Dashboard shows this as a Needs You item instead;
+ * Quickfill's Job follow-ups station still renders the banner.
  */
-
-const STAGE_PHRASES: Record<JobFollowupStage, (n: number) => string> = {
-  billed: (n) => `${n} billed with no nudge`,
-  working: (n) => `${n} working with no recent notes`,
-  waiting: (n) => `${n} waiting with nothing scheduled`,
-  ready_to_bill: (n) => `${n} ready to bill`,
-  collections: (n) => `${n} in collections`,
-}
-/** Breakdown order: money first. */
-const PHRASE_ORDER: JobFollowupStage[] = ['billed', 'working', 'waiting', 'ready_to_bill', 'collections']
-
 export default function DashboardJobFollowupsBanner({
   onCount,
 }: {
@@ -36,44 +17,15 @@ export default function DashboardJobFollowupsBanner({
   onCount?: (n: number | null) => void
 } = {}) {
   const navigate = useNavigate()
-  const [count, setCount] = useState<number | null>(null)
-  const [counts, setCounts] = useState<Record<JobFollowupStage, number> | null>(null)
-  const todayYmd = useMemo(() => calendarYmdInAppTzFromIso(new Date().toISOString()), [])
+  const { count, stageCounts } = useJobFollowupNudge(true)
 
   useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const [cands, revs, sets] = await Promise.all([
-          fetchJobFollowupCandidates(todayYmd),
-          fetchJobFollowupReviews(),
-          fetchJobFollowupSettings(),
-        ])
-        if (cancelled) return
-        const queue = computeJobFollowupQueue(cands, revs, sets, todayYmd)
-        setCount(queue.length)
-        setCounts(jobFollowupStageCounts(queue))
-        onCount?.(queue.length)
-      } catch {
-        if (!cancelled) {
-          setCount(0)
-          onCount?.(0)
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [todayYmd])
+    if (count != null) onCount?.(count)
+  }, [count, onCount])
 
   if (count == null || count === 0) return null
 
-  const breakdown = counts
-    ? PHRASE_ORDER.filter((s) => counts[s] > 0)
-        .slice(0, 3)
-        .map((s) => STAGE_PHRASES[s](counts[s]))
-        .join(' · ')
-    : ''
+  const breakdown = jobFollowupBreakdownPhrase(stageCounts)
 
   return (
     <button

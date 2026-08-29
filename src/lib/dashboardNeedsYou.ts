@@ -1,25 +1,27 @@
 import type { UserRole } from '../hooks/useAuth'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
+import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFollowupQueue'
 
 /**
  * Needs You card (v2.2339, CX-audit Phase 3): the pure item builder behind the
- * dashboard's unified attention list. v1 consolidates the four hook-driven
- * banners (AR deposits, own stale tally, team stale tally, lost-bid reasons) —
- * the self-gating banners (team reviews, roadmap needs-name, job follow-ups,
- * GC weekly, bulk-delete, claim-dev) still render as banners below the card
- * and migrate item-by-item in follow-ups.
+ * dashboard's unified attention list. v1 consolidated the four hook-driven
+ * banners (AR deposits, own stale tally, team stale tally, lost-bid reasons);
+ * the self-gating banners fold in item-by-item — job follow-ups joined in
+ * v2.2487. Still banners below the card: team reviews, roadmap needs-name,
+ * GC weekly, bulk-delete, claim-dev.
  *
  * Gating mirrors the banners it replaces exactly: an item appears only when its
  * banner would have rendered. Order is the old banner stack order (deposits,
- * own tally, team tally, lost bids) — "worst first" ranking can come once the
- * money-figure items (90+ tail etc.) join the list.
+ * own tally, team tally, lost bids, then the migrated banners in their old
+ * below-the-card order) — "worst first" ranking can come once the money-figure
+ * items (90+ tail etc.) join the list.
  */
 
 export type NeedsYouSeverity = 'blue' | 'amber' | 'gray'
 
 export type NeedsYouItem = {
   /** Stable key — also the telemetry target (`#<key>`) and the action-dispatch handle. */
-  key: 'ar-deposits' | 'tally-self' | 'tally-team' | 'lost-bids'
+  key: 'ar-deposits' | 'tally-self' | 'tally-team' | 'lost-bids' | 'job-followups'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -42,6 +44,13 @@ export type NeedsYouInputs = {
   tallyMinAgeDays: number
   lostBidNudge: LostBidNudge | null
   lostBidNudgeLoading: boolean
+  /**
+   * Job Follow-Up Mode queue (v2.2487). Quickfill passes enabled=false — its
+   * dedicated Job follow-ups station already carries this count.
+   */
+  jobFollowupsEnabled: boolean
+  jobFollowupCount: number | null
+  jobFollowupStageCounts: Record<JobFollowupStage, number> | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -107,6 +116,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'work them one GC call at a time on the Why we lost lens.',
       figure: count > 99 ? '99+' : String(count),
       actionLabel: 'Start call mode',
+    })
+  }
+
+  if (inputs.jobFollowupsEnabled && (inputs.jobFollowupCount ?? 0) > 0) {
+    const n = inputs.jobFollowupCount as number
+    const breakdown = jobFollowupBreakdownPhrase(inputs.jobFollowupStageCounts)
+    items.push({
+      key: 'job-followups',
+      severity: 'amber',
+      kicker: 'Quiet jobs',
+      title: n === 1 ? 'One job is waiting on a follow-up' : `${n} jobs are waiting on a follow-up`,
+      detail: `${breakdown ? `${breakdown} — ` : ''}review them one card at a time.`,
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Start review',
     })
   }
 

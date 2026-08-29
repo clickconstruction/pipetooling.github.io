@@ -76,6 +76,11 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     tallyMinAgeDays: TALLY_STALE_MIN_AGE_DAYS,
     lostBidNudge: lostBids.nudge,
     lostBidNudgeLoading: lostBids.loading,
+    // Quickfill's dedicated Job follow-ups station (v2.2347) already carries
+    // this queue — disabled here so the card doesn't list it twice on one page.
+    jobFollowupsEnabled: false,
+    jobFollowupCount: null,
+    jobFollowupStageCounts: null,
   })
 
   useEffect(() => {

@@ -13,6 +13,9 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     tallyMinAgeDays: 2,
     lostBidNudge: null,
     lostBidNudgeLoading: false,
+    jobFollowupsEnabled: true,
+    jobFollowupCount: 0,
+    jobFollowupStageCounts: null,
     ...overrides,
   }
 }
@@ -24,7 +27,13 @@ describe('buildNeedsYouItems', () => {
 
   it('mirrors the banner gating: loading sources contribute no item', () => {
     const items = buildNeedsYouItems(
-      inputs({ arBankUnallocatedCount: null, tallyStaleUnlinkedCount: null, lostBidNudge: { count: 61, value: 8_700_000 }, lostBidNudgeLoading: true }),
+      inputs({
+        arBankUnallocatedCount: null,
+        tallyStaleUnlinkedCount: null,
+        lostBidNudge: { count: 61, value: 8_700_000 },
+        lostBidNudgeLoading: true,
+        jobFollowupCount: null,
+      }),
     )
     expect(items).toEqual([])
   })
@@ -65,6 +74,30 @@ describe('buildNeedsYouItems', () => {
   it('team tally needs BOTH counts > 0, like the banner it replaces', () => {
     expect(buildNeedsYouItems(inputs({ tallyStaffStalePeopleCount: 3, tallyStaffStaleTxCount: 0 }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ tallyStaffStalePeopleCount: 0, tallyStaffStaleTxCount: 5 }))).toEqual([])
+  })
+
+  it('job follow-ups joins after the original four, with the banner breakdown', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        lostBidNudge: { count: 61, value: 8_700_000 },
+        jobFollowupCount: 68,
+        jobFollowupStageCounts: { billed: 41, working: 15, waiting: 12, ready_to_bill: 0, collections: 0 },
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['lost-bids', 'job-followups'])
+    expect(items[1]?.title).toBe('68 jobs are waiting on a follow-up')
+    expect(items[1]?.detail).toBe(
+      '41 billed with no nudge · 15 working with no recent notes · 12 waiting with nothing scheduled — review them one card at a time.',
+    )
+    expect(items[1]?.figure).toBe('68')
+    expect(items[1]?.actionLabel).toBe('Start review')
+  })
+
+  it('job follow-ups respects the office gate and survives a missing breakdown', () => {
+    expect(buildNeedsYouItems(inputs({ jobFollowupsEnabled: false, jobFollowupCount: 9 }))).toEqual([])
+    const items = buildNeedsYouItems(inputs({ jobFollowupCount: 1 }))
+    expect(items[0]?.title).toBe('One job is waiting on a follow-up')
+    expect(items[0]?.detail).toBe('review them one card at a time.')
   })
 
   it('singular copy reads naturally', () => {
