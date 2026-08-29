@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, estimator
 keywords: pricing, workbench, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions, price book, book copy, book entry, price didn't change, price not updating
 order: 94
 ---
-The **Bids → Pricing** tab has two layouts, switched by the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic grid; **New is the Workbench**, built for pricing to a target.
+The **Bids → Pricing** tab has two layouts, switched by the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic grid; **New is the Workbench**, built for pricing to a target. The tab opens on **New**; flip to Old and your device remembers the choice.
 
 The pills sit right beside the bid's title, and the **?** next to them is the one help door: a short card that covers the page in four lines — typing prices, the solver, what this GC sees, labor & cost — with **▶ Take the tour** (it spotlights each part of the Workbench in order, right on your bid) and a link back to this guide in its footer.
 

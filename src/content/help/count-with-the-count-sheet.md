@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, estimator, superintendent
 keywords: counts, count sheet, plan page, audit, quick add, fixtures, duplicate, merge, totals, line feet, ft, unscaled, px
 order: 95
 ---
-The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic table (drag to reorder, edit rows in place); **New is the Count Sheet**, built for checking your count against the drawings.
+The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic table (drag to reorder, edit rows in place); **New is the Count Sheet**, built for checking your count against the drawings. The tab opens on **New**; flip to Old and your device remembers the choice.
 
 Before you even pick a bid, the list leads each row with a subtle number — **how many fixtures and tie-ins are counted** on that bid. A dim **—** means nothing's counted yet, so "which bids still need counting" is answered before anyone clicks; hover the number for the long form.
 
