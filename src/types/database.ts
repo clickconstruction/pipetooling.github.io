@@ -1545,6 +1545,48 @@ export type Database = {
           },
         ]
       }
+      bids_plan_substrates: {
+        Row: {
+          bid_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          substrate: Json
+          version: string
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          substrate: Json
+          version: string
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          substrate?: Json
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_plan_substrates_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_plan_substrates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bids_submission_entries: {
         Row: {
           bid_id: string
