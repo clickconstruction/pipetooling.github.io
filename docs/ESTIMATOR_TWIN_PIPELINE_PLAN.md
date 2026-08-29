@@ -11,11 +11,14 @@ sections:
   - The pipeline being built
   - Owner decisions (locked)
   - Defaults adopted (open to override)
+  - Wave 0 — The walking-skeleton test bid
   - Wave 1 — Read the plans
   - Wave 2 — RFI spine + agent reads
   - Wave 3 — The takeoff leg
   - Wave 4 — Close the chain
   - Wave 5 — Fleet polish
+  - The learning loop
+  - Definition of stable
   - Cross-cutting rules & risks
   - Status log
 ---
@@ -52,6 +55,13 @@ run's flight recorder.
 - Bid opens the chain (STG-0); human-opened + twin-assigned is the default path.
 - Two human gates, never delegated: takeoff review; price-and-send.
 - Twin drafts only — no final pricing, no sending; to be made structural (Wave 4).
+  **What "drafting" includes (clarified 2026-08-28):** working the full Takeoffs → Labor →
+  Pricing chain on its own bid — applying takeoff books, mapping assemblies, filling
+  **missing part prices on the bid's frozen book copy** (v2.2444: bid-scoped, so fenced and
+  reviewable), building the labor estimate, and proposing per-section sale prices in the
+  Workbench. The line the gate owns is the *final* number and the send. The **master price
+  book is never twin-writable** — it isn't a bid child; book corrections are suggestions for
+  a human, same doctrine as loss-reason suggestions.
 - RFI loop: per-RFI GC pick (default all bidding GCs); estimator+ approve/send; twins
   draft-only structurally; RFIs non-blocking (open RFIs must surface as assumptions/exclusions
   at the letter). Full detail: `docs/RFI_LOOP_PLAN.md`.
@@ -65,6 +75,29 @@ run's flight recorder.
   after counters prove out — a counters-only takeoff is still a large human time-saver, and
   fixture placement is the higher-confidence vision task.
 - **M4 scorer**: the human estimator whose takeoff exists for the same set (Wendi for LIVSTE).
+
+## Wave 0 — The walking-skeleton test bid (no builds; run it first)
+
+Before building anything, **run the entire chain once on LIVSTE with what exists today**, the
+operator hand-carrying every gap a future tool will fill:
+
+1. STG-0: human opens/confirms the bid, assigns the twin as estimator (assignment = grant).
+2. STG-1: operator files the set in Drive by hand; links stamped on the bid.
+3. STG-2: operator produces a **mini-substrate by hand** (the P001/P002 schedules typed into
+   the schema shape, scope flags, one reconciliation pass) — this doubles as the schema v0
+   fixture and the extractor's target output.
+4. STG-3–gate: reuse the existing human CT takeoff for the set (or a human draws it); the
+   review gate is walked for real.
+5. STG-5–6: the twin, in-app at rung 2, imports counts, applies the takeoff book, drafts
+   labor, Workbench pricing, and the letter — unsent.
+6. Owner reviews at the gate exactly as they would for real.
+
+**Test gate 0 (the point of the whole exercise):** the chain has been walked end to end
+*before any tool exists*, producing **stumble list #0** — where the operator had to improvise,
+where a stage boundary was wrong, where the twin got stuck in-app, what the owner needed at
+the gate and didn't have. That list re-prioritizes Waves 1–4 while they are still cheap to
+change; the mini-substrate becomes Wave 1's ground truth. Cost: operator hours only, zero
+code, zero prod risk beyond one more ZZ-convention draft on a real bid.
 
 ## Wave 1 — Read the plans (harness-heavy, zero prod risk)
 
@@ -114,9 +147,13 @@ scores against her own; eval-harness number recorded in the missions results tab
 | 4.3 | **No-send fence** — structural RLS block on twin writes to `bid_date_sent`/send surfaces (replaces mission-text policy) | PT migration | S |
 | 4.4 | **`drive-intake`** — service-account edge fn: create job folder, upload set + substrate, return links; `file_plans` MCP wrapper; links stamp onto the STG-0 bid | PT edge fn | M |
 | 4.5 | **Heartbeat on `twin_runs`** — current bid/stage/working-blocked-done; formalize the per-stage audit-stamp convention in the pipeline brief | PT + docs | S |
+| 4.6 | **Materials → Labor → draft-pricing enablement** — the middle of the bid workflow, which exists today as human tools on bid-child tables (twin-drivable at rung 2 with no schema work): (a) pipeline-brief section documenting the three-tab workflow with **takeoff books as the counts→assemblies→materials lever** (`applyTakeoffBookTemplates` first, gap-fill second), the exact-vs-rough materials-model choice, the frozen-book-copy price rule, and the Labor tab's sections/direct-costs/per-diem shape; (b) `get_work_state` gains materials/labor/pricing coverage (mappings present? unpriced parts? labor rows? Workbench assignment coverage) so a resumed agent knows where the middle stands; (c) APP_DIRECTORY rows for all three tabs | Docs + PT reads | M |
 
-**Test gate 4: Mission M5** — approved takeoff → drafted, unsent bid; owner reviews from the
-scope sheet + coverage report alone. Then the full chain has run once, end to end.
+**Test gate 4: Mission M5** — approved takeoff → counts imported → takeoff book applied and
+materials mapped → labor built → per-section draft prices with a coverage report → letter
+drafted, bid **unsent**; owner reviews from the scope sheet + coverage report alone and
+compares the draft pricing to what they would have priced. Then the full chain has run once,
+end to end.
 
 ## Wave 5 — Fleet polish (as learnings dictate)
 
@@ -124,6 +161,38 @@ Addenda diff in the extractor (re-entry loop); ct-bridge RFI auto-pull (RFI_LOOP
 letter assumptions chip (R5); agent dashboard surface fed by `get_work_state`; metrics hygiene
 (`AND NOT is_digital_twin` on company stats); pooled seats if the fleet grows; line runs in the
 placement engine.
+
+## The learning loop
+
+The plan's product is not the tools — it's a **stable environment agents can pass work
+through**, and that is reached by iteration, not by finishing the wave tables. Every test gate
+runs the same loop, which already has a proven track record (M1's stumble list → the v2.2430
+lens fix; M3's fence probe → the v2.2454/v2.2461/v2.2466 silent-no-op family):
+
+1. **Results row** — dated entry in the missions results table (`docs/twins/missions/`),
+   scored by a human who never saw the verification section.
+2. **Stumble triage** — every stumble is claimed by exactly one of: a fix PR (app bug),
+   a brief/docs edit (the agent was mis-instructed), a plan amendment (the process was wrong),
+   or a recorded won't-fix with reason. Untriaged stumbles are the definition of un-learned.
+3. **Briefs regenerated + `twin-mcp` redeployed** whenever step 2 touched `docs/twins/` —
+   otherwise the next run learns nothing.
+4. **Status log entry here** — what the gate found, what changed because of it.
+5. **Re-run** the failed portion before declaring the gate passed.
+
+## Definition of stable
+
+The exit criteria — when these hold, the environment is stable and Wave 5 (fleet) is earned:
+
+- An agent takes an assigned bid from STG-0 to a drafted, unsent proposal with **human touches
+  only at the two gates and in answering its questions** — no operator improvisation.
+- **Kill/resume is clean**: a run killed at any stage resumes from `get_work_state` + the
+  audit ledger alone, with no duplicated writes (M3's interrupted run proved resume-from-app
+  works; the standard makes it a requirement, and every mission includes a deliberate
+  mid-run kill).
+- **Every refusal is loud**: no write path fails silently (the v2.2454/2461/2466 standard,
+  held for all new surfaces).
+- The bar is met on **two consecutive real bids** with different plan sets — one bid could be
+  luck; two different sets is a process.
 
 ## Cross-cutting rules & risks
 
@@ -143,9 +212,27 @@ placement engine.
   surfaces.
 - **Parallel sessions**: one wave item = one session card + one PR; claim versions per house
   rules; the CT repo follows CT conventions (vanilla JS feature files + Playwright specs).
+- **Idempotency on every agent write path**: re-running a stage must never duplicate — the
+  takeoff import upserts (or refuses a re-import with a reason), the counts paste already
+  merges duplicate rows, RFI drafts dedupe on (bid, question) — because a resumed agent WILL
+  re-run its last step. This is a review checklist item for every pipeline PR, not a wave.
 
 ## Status log
 
 - 2026-08-28 — Plan written. Fleet state: twin-estimator-1 at rung 2, M1–M3 all PASS, write
   fence live-probed, RFI_LOOP_PLAN merged same day. Nothing in this plan built yet; Wave 1
   items 1.1–1.3 are the recommended immediate start.
+- 2026-08-28 (later) — Owner walked the seven-step chain (plans → reference docs → counts →
+  materials+prices → labor → section pricing → letter) and the middle steps were
+  under-planned: added Wave 4 item 4.6 (materials/labor/draft-pricing enablement — takeoff
+  books as the lever, frozen-book-copy price rule, `get_work_state` middle-coverage), widened
+  M5's test gate to score the full middle, and clarified the drafting-vs-final-pricing line
+  in Owner decisions.
+- 2026-08-28 (final pass) — Audited against the program's two goals (fast first test bid;
+  learning loop toward a stable agent environment). Three gaps closed: **Wave 0** added (the
+  walking-skeleton test bid — the full chain hand-carried on LIVSTE before any tool is built,
+  producing stumble list #0 and the schema-v0 fixture); **The learning loop** formalized
+  (results row → total stumble triage → briefs regen → re-run, with the M1/M3 precedents);
+  **Definition of stable** added (gates-only human touch, clean kill/resume, loud refusals,
+  two consecutive real bids on different sets) plus an idempotency rule for every agent write
+  path. Wave 0 is now the recommended immediate start, ahead of Wave 1.
