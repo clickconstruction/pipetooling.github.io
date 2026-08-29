@@ -6,19 +6,20 @@
 //
 //   iMessage/WhatsApp/Slack fetch the URL and read Open Graph tags; this
 //   Worker returns a 200 HTML shell carrying those tags (branded card image
-//   from pipetooling.com/portal-og-card.png, title personalized by
+//   from clicktooling.com/portal-og-card.png, title personalized by
 //   prettifying the slug -- no data lookup, nothing the URL doesn't already
-//   say), then instantly bounces humans to pipetooling.com/p/<slug> via
+//   say), then instantly bounces humans to clicktooling.com/p/<slug> via
 //   meta-refresh + JS. Preview fetchers don't run JS, people never see it.
 //
 // NOTE: Cloudflare Redirect Rules run BEFORE Workers -- the old "portal short
 // links" 301 rule had to be deleted when this Worker took over the route.
 // noindex everywhere: customer slugs must not be indexed by search engines.
 
-const TARGET = 'https://pipetooling.com/p/';
+// clicktooling since the domain cutover (v2.2495); pipetooling 301s here anyway.
+const TARGET = 'https://clicktooling.com/p/';
 const HOME = 'https://clickplumbing.com/';
-const CARD = 'https://pipetooling.com/portal-og-card.png';
-const ICON = 'https://pipetooling.com/portal-og-icon.png';
+const CARD = 'https://clicktooling.com/portal-og-card.png';
+const ICON = 'https://clicktooling.com/portal-og-icon.png';
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/;
 
 function prettyName(slug) {

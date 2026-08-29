@@ -59,8 +59,11 @@ Prep merged in v2.2440 — all zero-behavior-change:
 5. **Cloudflare on the pipetooling.com zone**:
    - Redirect rule: `pipetooling.com/*` → 301 `https://clicktooling.com/$1`
      (path-preserving, permanent — this rule is forever).
-   - Update the "portal short links" rule on the clickplumbing.com zone:
-     `my.clickplumbing.com/*` → 301 `clicktooling.com/p/*`.
+   - Portal short links on the clickplumbing.com zone: **DONE (v2.2495)** —
+     since v2.2033 this is the `portal-link-shell` Worker (not a redirect
+     rule); its TARGET/CARD/ICON constants now point at clicktooling.com
+     (reference copy `scripts/cloudflare/portal-link-shell.worker.js`, kept in
+     sync with the dashboard).
    - `share.pipetooling.com` (job-share front) keeps working via the wildcard redirect?
      NO — it's its own subdomain worker/rule. **DONE (v2.2494)**:
      `share.clicktooling.com` added as a second custom domain on the
@@ -78,9 +81,11 @@ Prep merged in v2.2440 — all zero-behavior-change:
 - **Announce to the crew**: everyone re-installs the PWA from clicktooling.com and
   re-enables push notifications (both are origin-bound; the old install keeps opening
   but lands on the redirect). Expect a few days of both origins in `usage` data.
-- **Text sweep** (cosmetic, own PR): help guides, twin docs (`docs/twins/*` — then
-  `node scripts/build-twin-mcp-briefs.mjs` + redeploy twin-mcp), UA string in
-  check-estimate-attachment-url, `twin-mcp` tool descriptions.
+- **Text sweep** (cosmetic, own PR): help guides (**done v2.2495** — the fix-cache
+  guide was the only URL mention; team@noreply sender mentions stay), twin docs
+  (`docs/twins/*` — then `node scripts/build-twin-mcp-briefs.mjs` + redeploy
+  twin-mcp), UA string in check-estimate-attachment-url, `twin-mcp` tool
+  descriptions.
 - **Resend sender migration** (in progress, v2.2496): move email sending to
   `team@noreply.clicktooling.com`.
   1. **Flip point shipped (v2.2496)**: every sender reads the `EMAIL_FROM`
