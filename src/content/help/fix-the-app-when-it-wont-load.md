@@ -17,10 +17,10 @@ If loading is slow, the screen offers a **Taking too long? Fix the app** link af
 
 ## 3. Run the repair page
 
-Go to **pipetooling.com/fix** in your phone or computer browser and tap {{button:blue|Fix app}}. It clears the app's cached files and storage so the next load starts fresh. Then reload and sign in again.
+Go to **clicktooling.com/fix** in your phone or computer browser and tap {{button:blue|Fix app}}. It clears the app's cached files and storage so the next load starts fresh. Then reload and sign in again.
 
 :::example Nothing at /fix?
-If that address doesn't open the repair page on your device, use the long form: **pipetooling.com/fix-cache.html** — it works everywhere.
+If that address doesn't open the repair page on your device, use the long form: **clicktooling.com/fix-cache.html** — it works everywhere.
 :::
 
 ## Notes
