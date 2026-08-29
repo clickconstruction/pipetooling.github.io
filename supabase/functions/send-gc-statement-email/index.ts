@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 /**
  * Send a GC statement email (v2.1416, phase 2 of GC statements).
@@ -11,7 +12,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
  * through the caller's RLS (blocks cross-tenant sends); the recipient address
  * itself is office-chosen (statements often go to an AP inbox not on file).
  *
- * Sends via Resend from team@noreply.pipetooling.com with the caller's email
+ * Sends via Resend from the EMAIL_FROM sender with the caller's email
  * as reply-to, then audits into public.gc_statement_emails with the service
  * role (the table has no client write policies) and best-effort logs to
  * email_send_log like every other app send.
@@ -149,7 +150,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'PipeTooling <team@noreply.pipetooling.com>',
+        from: EMAIL_FROM,
         to: [toEmail],
         ...(ccEmails.length ? { cc: ccEmails } : {}),
         subject,
@@ -167,7 +168,7 @@ serve(async (req) => {
     await logEmailSendBestEffort({
       resendEmailId: sent.id ?? null,
       to: [toEmail, ...ccEmails],
-      from: 'PipeTooling <team@noreply.pipetooling.com>',
+      from: EMAIL_FROM,
       subject,
     })
 

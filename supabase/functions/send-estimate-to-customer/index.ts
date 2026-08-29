@@ -14,6 +14,7 @@ import {
   parseAcceptHeaderBrandForEmail,
 } from '../_shared/estimateEmailBrandImage.ts'
 import { buildCustomerAttachmentSentPayload } from '../_shared/estimateCustomerAttachment.ts'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   normalizeSharedEstimateOptions,
   sharedEstimateOptionTotalCents,
@@ -56,7 +57,7 @@ async function sendEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'PipeTooling <team@noreply.pipetooling.com>',
+      from: EMAIL_FROM,
       to: [to],
       subject,
       html: htmlBody,
@@ -68,7 +69,7 @@ async function sendEmailViaResend(
     return { success: false, error: errorData.message || `Resend ${resendResponse.status}` }
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: 'PipeTooling <team@noreply.pipetooling.com>', subject })
+  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: EMAIL_FROM, subject })
   return { success: true }
 }
 

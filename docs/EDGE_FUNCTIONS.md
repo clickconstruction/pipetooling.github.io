@@ -232,7 +232,7 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 
 **Payload**: `{ job_id, recipients: [{label, email}] (1–10; v2.1606 — audit-logged) | to_emails: string[] (v2.1605 fallback), subject, email_html (≤100k chars), email_text }` — subject/html/text are composed client-side by `src/lib/supplyHouseJobAccount.ts` and sent verbatim. After a successful send, inserts one `supply_house_job_accounts` row per recipient with the service role (best-effort).
 
-**Behavior**: sends via Resend from `PipeTooling <team@noreply.pipetooling.com>` with the caller's email as reply-to, then best-effort logs to `email_send_log`. No audit table.
+**Behavior**: sends via Resend from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`) with the caller's email as reply-to, then best-effort logs to `email_send_log`. No audit table.
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY` (service key only for the shared email log helper).
 
@@ -377,7 +377,7 @@ interface InviteUserRequest {
 1. Validates caller is `dev`; validates role and any `service_type_ids`.
 2. Duplicate check on `public.users.email`. A **pending invite** (auth user with `email_confirmed_at` and `last_sign_in_at` both null) is deleted and replaced — re-inviting the same address issues a fresh link ("resend invite"). Anyone else → 400 `User with this email already exists`.
 3. `auth.admin.generateLink({ type: 'invite' })` creates the auth user and returns the action link **without** sending Supabase SMTP mail. The `handle_new_user` trigger reads `invited_role` from user metadata; the function also upserts `public.users` explicitly with role, name, and service-type restriction.
-4. Renders the invitation template and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper (from `PipeTooling <team@noreply.pipetooling.com>`).
+4. Renders the invitation template and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper (from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`)).
 5. **If the Resend send fails, the auth user is deleted** (FK cascade removes `public.users`) and a 500 is returned — a failed invite leaves nothing behind, so retrying is always safe. The action link is never returned in the response.
 
 #### Accepting the invite
@@ -1724,7 +1724,7 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
    - **due tomorrow** — items with `remind_day_before`, instances due tomorrow, to the assignees
    - **escalated** — items with `escalate_after_days`, instances ≥ that many days past due, to the item's `created_by_user_id`
 5. One grouped message per user joining the non-empty buckets; push to every `push_subscriptions` device
-6. **Email fallback** (v2.2096): users with zero push devices (or all pushes failing) get the same body via Resend from `team@noreply.pipetooling.com` (needs `RESEND_API_KEY`; skipped silently without it)
+6. **Email fallback** (v2.2096): users with zero push devices (or all pushes failing) get the same body via Resend from the `EMAIL_FROM` sender (needs `RESEND_API_KEY`; skipped silently without it)
 7. Logs to `notification_history` with `template_type: 'scheduled_reminder'`, `channel: 'push' | 'email'`
 
 **Prerequisites**:
@@ -2372,7 +2372,7 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Body**: `gc_customer_id` (null for development and Share-all sends), `gc_name` (`All GCs` / `All developments` for Share all), `group_by` (`gc`|`development`|`all`), `to_email`, `subject`, `email_html` (≤300k chars), `email_text`, `total`, `job_count`.
 
-**Sends** via Resend from `PipeTooling <team@noreply.pipetooling.com>` with the **caller's email as reply-to** — replies land in a real inbox. Audit-insert failures never fail the request (the email is already out).
+**Sends** via Resend from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`) with the **caller's email as reply-to** — replies land in a real inbox. Audit-insert failures never fail the request (the email is already out).
 
 **Deploy**: `supabase functions deploy send-gc-statement-email --no-verify-jwt` if the hosted gateway still enforces JWT. Requires the `gc_statement_emails` table (migration `20260806202622`); Share-all audit rows additionally need the widened `group_by` CHECK (migration `20260806221045` — a not-yet-pushed CHECK only loses the audit row, never the send).
 

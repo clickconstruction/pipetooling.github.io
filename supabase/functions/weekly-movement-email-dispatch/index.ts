@@ -15,6 +15,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   renderWeeklyMovementHtml,
   renderWeeklyMovementText,
@@ -29,7 +30,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
-const FROM = 'PipeTooling <team@noreply.pipetooling.com>'
+const FROM = EMAIL_FROM
 const RECIPIENT_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller', 'primary'])
 const MAX_QUEUE_BATCH = 10
 const MAX_ATTEMPTS = 5

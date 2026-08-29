@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -45,7 +46,7 @@ async function sendEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'PipeTooling <team@noreply.pipetooling.com>',
+      from: EMAIL_FROM,
       to: [to],
       subject,
       html: htmlBody,
@@ -62,7 +63,7 @@ async function sendEmailViaResend(
   }
 
   const resendData = await resendResponse.json()
-  await logEmailSendBestEffort({ resendEmailId: resendData.id ?? null, to: [to], from: 'PipeTooling <team@noreply.pipetooling.com>', subject })
+  await logEmailSendBestEffort({ resendEmailId: resendData.id ?? null, to: [to], from: EMAIL_FROM, subject })
   return {
     success: true,
     email_id: resendData.id,

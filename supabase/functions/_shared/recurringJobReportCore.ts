@@ -11,6 +11,7 @@ import {
 
 import { addDaysToYmd } from './recurringJobReportTimezone.ts'
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
+import { EMAIL_FROM } from './emailFrom.ts'
 
 export type ActivityScopeMode =
   | 'calendar_yesterday'
@@ -609,7 +610,7 @@ export async function sendResendHtmlEmail(opts: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'PipeTooling <team@noreply.pipetooling.com>',
+      from: EMAIL_FROM,
       to: [opts.to],
       subject: opts.subject,
       html: opts.html,

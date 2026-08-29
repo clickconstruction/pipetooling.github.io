@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 /**
  * Send a job-account setup email to supply house contacts (v2.1605 — the Job
@@ -11,7 +12,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
  * must be readable through the caller's RLS (blocks cross-tenant sends); the
  * recipient addresses are office-chosen supply house contacts.
  *
- * Sends via Resend from team@noreply.pipetooling.com with the caller's email
+ * Sends via Resend from the EMAIL_FROM sender with the caller's email
  * as reply-to, then best-effort logs to email_send_log like every app send.
  */
 
@@ -133,7 +134,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'PipeTooling <team@noreply.pipetooling.com>',
+        from: EMAIL_FROM,
         to: toEmails,
         subject,
         html: emailHtml,
@@ -150,7 +151,7 @@ serve(async (req) => {
     await logEmailSendBestEffort({
       resendEmailId: sent.id ?? null,
       to: toEmails,
-      from: 'PipeTooling <team@noreply.pipetooling.com>',
+      from: EMAIL_FROM,
       subject,
     })
 

@@ -1,8 +1,9 @@
 /** Shared Resend outbound helper (same contract as send-estimate-to-customer). */
 
 import { logEmailSendBestEffort } from './logEmailSend.ts'
+import { EMAIL_FROM } from './emailFrom.ts'
 
-const PIPETOOLING_FROM = 'PipeTooling <team@noreply.pipetooling.com>'
+const PIPETOOLING_FROM = EMAIL_FROM
 
 export async function sendEmailViaResend(
   to: string,
