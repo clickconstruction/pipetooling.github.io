@@ -130,6 +130,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'file_plans',
+    description:
+      "File the plans in Google Drive for one of your bids (pipeline STG-1): creates/reuses the job folder in the shared jobs folder, optionally uploads the plan set from a URL, stamps drive_link/plans_link on the bid, and writes the audit note. Idempotent.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Bid (e.g. 'b403' or uuid) — must be yours (assigned/created)" },
+        plans_url: { type: 'string', description: 'Optional URL of the plan-set PDF to fetch into the folder' },
+        plans_file_name: { type: 'string', description: 'Optional file name for the uploaded plans' },
+      },
+      required: ['bid'],
+    },
+  },
+  {
     name: 'submit_report',
     description: 'File your mission report (answer, evidence, stumbles). Lands in the twin_runs fleet ledger attributed to your twin.',
     inputSchema: {
@@ -454,6 +468,19 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         not_yet_in_v1: ['CT takeoff review status (cross-app; Wave 3.6 — blocked on CT DB access)'],
       }
       return textContent(JSON.stringify(state, null, 2))
+    }
+    case 'file_plans': {
+      // Thin pass-through to drive-intake — the token re-authenticates there and the
+      // assignment check runs server-side; this keeps Drive logic single-sourced.
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const res = await fetch(`${supabaseUrl}/functions/v1/drive-intake`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Twin-Token': presentedToken(req)! },
+        body: JSON.stringify({ bid: args.bid, plans_url: args.plans_url, plans_file_name: args.plans_file_name }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) return textContent(`file_plans failed (${res.status}): ${body.error ?? 'unknown'}`, true)
+      return textContent(JSON.stringify(body, null, 2))
     }
     case 'submit_report': {
       const mission = String(args.mission ?? '').trim() || 'unlabeled'
