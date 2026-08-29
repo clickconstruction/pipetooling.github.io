@@ -36,7 +36,7 @@ function b64url(data: Uint8Array | string): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-async function googleAccessToken(saJson: string): Promise<string> {
+async function googleAccessToken(saJson: string, impersonate?: string): Promise<string> {
   const sa = JSON.parse(saJson) as { client_email: string; private_key: string; token_uri?: string }
   const now = Math.floor(Date.now() / 1000)
   const header = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
@@ -46,6 +46,10 @@ async function googleAccessToken(saJson: string): Promise<string> {
     aud: sa.token_uri ?? 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600,
+    // Domain-wide delegation (DRIVE_IMPERSONATE_USER): uploads act as this Workspace
+    // user, giving files a real storage quota — SAs have none of their own. Requires
+    // the admin-console delegation grant (docs/DRIVE_INTAKE_SETUP.md).
+    ...(impersonate ? { sub: impersonate } : {}),
   }))
   const pem = sa.private_key.replace(/-----[A-Z ]+-----/g, '').replace(/\s+/g, '')
   const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0))
@@ -156,11 +160,28 @@ serve(async (req) => {
     const folder = await findOrCreateFolder(token, jobsFolderId, folderName)
     const folderLink = `https://drive.google.com/drive/folders/${folder.id}`
 
+    // Uploads need a storage quota, which service accounts don't have (Google: "Service
+    // Accounts do not have storage quota", found live 2026-08-29). With
+    // DRIVE_IMPERSONATE_USER set (domain-wide delegation), uploads act as that Workspace
+    // user and gain their quota; without it, the upload leg degrades gracefully — the
+    // folder still lands and the caller is told to drop the file in by hand.
     let plansLink: string | null = null
+    let uploadNote: string | null = null
     if (body.plans_url) {
       const fileName = String(body.plans_file_name ?? `${folderName} - plans.pdf`).slice(0, 140)
-      const up = await uploadFromUrl(token, folder.id, String(body.plans_url), fileName)
-      plansLink = `https://drive.google.com/file/d/${up.id}/view`
+      const impersonate = Deno.env.get('DRIVE_IMPERSONATE_USER')?.trim()
+      try {
+        const upToken = impersonate ? await googleAccessToken(saJson, impersonate) : token
+        const up = await uploadFromUrl(upToken, folder.id, String(body.plans_url), fileName)
+        plansLink = `https://drive.google.com/file/d/${up.id}/view`
+      } catch (e) {
+        const msg = String(e instanceof Error ? e.message : e)
+        if (/storage quota/i.test(msg) && !impersonate) {
+          uploadNote = `Folder is ready, but the plans upload needs a storage quota the service account lacks — drop the file into ${folderLink} by hand, or set DRIVE_IMPERSONATE_USER (domain-wide delegation, see docs/DRIVE_INTAKE_SETUP.md).`
+        } else {
+          uploadNote = `Folder is ready; plans upload failed: ${msg}`
+        }
+      }
     }
 
     // Stamp the bid (set-if-empty for drive_link; plans_link only when we uploaded).
@@ -179,7 +200,7 @@ serve(async (req) => {
       })
     } catch (_) { /* best-effort */ }
 
-    return json({ success: true, folder_id: folder.id, folder_link: folderLink, folder_created: folder.created, plans_link: plansLink, stamped: Object.keys(patch) })
+    return json({ success: true, folder_id: folder.id, folder_link: folderLink, folder_created: folder.created, plans_link: plansLink, upload_note: uploadNote, stamped: Object.keys(patch) })
   } catch (e) {
     return json({ error: String(e instanceof Error ? e.message : e) }, 500)
   }

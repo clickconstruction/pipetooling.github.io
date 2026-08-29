@@ -47,6 +47,23 @@ deleting the key). Never wire a human Google password into anything.
   fetches `plans_url` into it, stamps `drive_link`/`plans_link` on the bid (set-if-empty),
   and writes the `[pipeline STG-1]` audit note. Idempotent — re-runs reuse the folder.
 
+## The upload leg: quota (found live, 2026-08-29)
+
+Google: **"Service Accounts do not have storage quota."** The SA can create folders and
+stamp links (all metadata), but cannot own uploaded file bytes in a My Drive folder — so
+without further setup, `plans_url` uploads degrade gracefully: the folder lands, the
+response carries an `upload_note` telling the caller to drop the file in by hand. Two ways
+to make uploads work, either is fine:
+
+1. **Domain-wide delegation** (built in): admin.google.com → Security → API controls →
+   Domain-wide delegation → Add new → Client ID = the SA's *Unique ID* (IAM & Admin →
+   Service Accounts → drive-intake → Details), scope `https://www.googleapis.com/auth/drive`
+   → Authorize. Then `supabase secrets set DRIVE_IMPERSONATE_USER=bids@clickplumbing.com`
+   and redeploy — uploads act as that user and use their quota.
+2. **A Shared Drive**: move the jobs folder into a Workspace Shared Drive and add the SA's
+   email as a member — files in Shared Drives belong to the drive, not a person, so no
+   quota problem. Update `DRIVE_JOBS_FOLDER_ID` to the new location.
+
 ## Rotation / kill
 
 Delete the key in console (or `supabase secrets unset GOOGLE_SERVICE_ACCOUNT_JSON`);
