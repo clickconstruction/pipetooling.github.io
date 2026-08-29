@@ -257,3 +257,19 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
   (in v2.2477). Wave 2 test gate PASSED: live RFI walk on b403 with substrate-born
   questions; twin draft-only refused loudly, ledger stamps complete. Next: Wave 1.2
   extractor automation (crop-pass recipe proven by hand), Wave 3 (takeoff leg), R3/R5.
+- 2026-08-29 (build day 2 close) — Everything buildable without external unblocks is BUILT,
+  deployed, and live-probed. Shipped: v2.2483 (conversation layer; twin-mcp v8),
+  v2.2484 (no-send guard as trigger PHYSICS — live probe returned "digital twins draft
+  only: sending and outcomes are human acts" — + R5 chip + scopeSheet kernel), the
+  extractor kit (scripts/substrate-extractor + docs/twins/EXTRACTOR.md, PR #2197 —
+  briefs.ts conflict resolved by regeneration per house rule), and the CT side of Wave 3:
+  `takeoff-eval.js` kernel (+node tests) and the deployed `import-takeoff` edge function
+  (twin-only, own-project, idempotent-by-name, canvas-only; contract TAKEOFF_IMPORT.md).
+  get_work_state now carries middle coverage, RFI statuses, open questions, and the latest
+  heartbeat. **Blocked externally, needs the owner**: 4.4 drive-intake (Google service
+  account); CT DB-side items 3.5/3.6 (per-twin CT credentials, changes-requested status —
+  CT migrations apply via the Supabase MCP, unauthenticated in build sessions); Wave-0
+  human legs (Drive filing, review-gate walk). **Remaining engineering**: 3.4 placement
+  engine v0 + its 3.1 fleet calibration run, then missions M4/M5. The environment now
+  satisfies most of the Definition of stable's machinery: queue, brief, resume, questions,
+  heartbeats, loud refusals at every fence.
