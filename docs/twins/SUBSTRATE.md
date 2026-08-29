@@ -216,6 +216,22 @@ be designed around — recorded here so they don't get re-learned:
 5. **Title blocks are the cheap, reliable skeleton.** Sheet number/title/discipline read
    accurately even at low resolution; build the inventory first, spend the DPI budget on the
    located regions.
+6. **Proven working parameters (LIVSTE crop pass, 2026-08-28).** The set is pure vector
+   (no embedded fonts, text as outlines — `pdffonts` empty, `pdfimages -list` shows only
+   logos), so DPI wins completely: `pdftoppm -png -r 600 -x <px> -y <px> -W 800 -H 1455`
+   region renders + `sips -r 90` produced fully legible schedule text; six such tiles
+   extracted the entire 15-row P002 fixture schedule at high confidence. Recipe primitive:
+   `extract-crop.sh <pdf> <page> <x> <y> <w> <h> <out.png> [dpi]` (harness-side). Overview
+   pass at 40 DPI locates regions; ×15 scales overview coords to 600 DPI crop coords.
+7. **Stated scale ≠ printed scale.** LIVSTE's plan sheets say `1/4" = 1'-0"` but the PDF
+   pages are **letter-size prints of E-size sheets** (612×792 pt via `pdfinfo`) — the stated
+   scale is invalid for measuring the file, and the print-reduction ratio is unknown. The
+   `calibration` field (dimension string + endpoints → px/ft) is therefore **mandatory**
+   before any CT scale is set, on this set and any set delivered as a reduced print.
+8. **Schedules may carry no quantity column.** LIVSTE's fixture schedule lists mark,
+   description, make/model, and branch sizes only — quantities exist solely as plan symbols
+   and riser drops. Reconciliation is not a cross-check there; it is the *only* quantity
+   source. The schema's `qty_scheduled: null` is a normal, expected state.
 
 ## Versioning
 
