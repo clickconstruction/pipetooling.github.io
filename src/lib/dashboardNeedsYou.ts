@@ -14,8 +14,9 @@ import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDispl
  * the self-gating banners fold in item-by-item — job follow-ups joined in
  * v2.2487, team reviews in v2.2488, roadmap needs-name in v2.2489, GC weekly
  * in v2.2490 (its green "done" state stays a notice below the card),
- * bulk-delete in v2.2491 (red severity + secondary snooze/dismiss actions).
- * Still a banner below the card: claim-dev.
+ * bulk-delete in v2.2491 (red severity + secondary snooze/dismiss actions),
+ * claim-dev in v2.2492 — the migration is complete: every attention banner
+ * now lives in this one list (GC weekly's green "done" notice excepted).
  *
  * Gating mirrors the banners it replaces exactly: an item appears only when its
  * banner would have rendered. Order is the old banner stack order (deposits,
@@ -39,6 +40,7 @@ export type NeedsYouItem = {
     | 'job-followups'
     | 'gc-review-weekly'
     | 'bulk-delete'
+    | 'claim-dev'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -98,6 +100,13 @@ export type NeedsYouInputs = {
    * snooze/dismiss actions.
    */
   bulkDeleteAlerts: BulkDeleteAlert[] | null
+  /**
+   * Refused break-glass dev-code attempts (v2.2492) — null when hidden
+   * (the hook owns loading/snooze/dismiss). Red like bulk-delete: an attack
+   * indicator, not a work queue.
+   */
+  claimDevRefusedCount: number | null
+  claimDevLookbackDays: number
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -251,6 +260,23 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       secondary: [
         { key: 'snooze', label: 'Snooze 24h' },
         { key: 'dismiss', label: 'Dismiss until count increases' },
+      ],
+    })
+  }
+
+  if (inputs.claimDevRefusedCount != null && inputs.claimDevRefusedCount > 0) {
+    const n = inputs.claimDevRefusedCount
+    items.push({
+      key: 'claim-dev',
+      severity: 'red',
+      kicker: 'Data safety',
+      title: 'Someone tried to become a dev',
+      detail: `${n} refused attempt${n === 1 ? '' : 's'} to use the admin code in the last ${inputs.claimDevLookbackDays} days. They were blocked — the code only works when no dev is available. If this wasn't someone you asked to do it, rotate the code.`,
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Review accounts',
+      secondary: [
+        { key: 'snooze', label: 'Snooze 24h' },
+        { key: 'dismiss', label: 'Dismiss until it happens again' },
       ],
     })
   }
