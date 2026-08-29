@@ -163,3 +163,13 @@ internal lane exists.
 
 - 2026-08-28 — Plan written; decisions locked (per-RFI GC pick / estimator+ gate / wave 1 =
   R1+R2). Nothing built yet.
+- 2026-08-29 — **R1 SHIPPED** (v2.2480, migration `20260829023703` pushed): bids_rfis +
+  BidRfiQueue on the RFI tab + rfiFlow kernel; twin draft-only landed as RESTRICTIVE
+  per-command policies. **R2 SHIPPED both halves same day**: CT `features/rfi-flags.js`
+  (Copy RFI Flags, counttooling main) + the PT paste-import (rode the R1 PR — same
+  surface). **R6 first live walk on b403 (ZZ Twin LIVSTE)**: two real substrate-born
+  RFIs drafted (gas-vs-COMcheck-all-electric; sprinkler trade boundary), RFI-1 walked
+  draft→approved→sent (planhub channel, Knight default pick), all four ledger stamps
+  landed method-less; twin probe: Approve refused LOUDLY ("Twins update drafts only on
+  bids_rfis"), twin draft succeeded (RFI-3). Remaining: R3 (twin_questions), R4
+  (ct-bridge auto-pull), R5 (letter assumptions chip).
