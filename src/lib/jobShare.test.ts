@@ -170,6 +170,6 @@ describe('runJobShare', () => {
 
 describe('buildJobSharePreviewUrl', () => {
   it('builds the branded share URL with an encoded token', () => {
-    expect(buildJobSharePreviewUrl('ab c')).toBe('https://share.pipetooling.com/?t=ab%20c')
+    expect(buildJobSharePreviewUrl('ab c')).toBe('https://share.clicktooling.com/?t=ab%20c')
   })
 })

@@ -62,9 +62,13 @@ Prep merged in v2.2440 — all zero-behavior-change:
    - Update the "portal short links" rule on the clickplumbing.com zone:
      `my.clickplumbing.com/*` → 301 `clicktooling.com/p/*`.
    - `share.pipetooling.com` (job-share front) keeps working via the wildcard redirect?
-     NO — it's its own subdomain worker/rule; either keep it as-is (links say
-     pipetooling) or stand up `share.clicktooling.com` and update
-     `JOB_SHARE_PREVIEW_BASE_URL` in `src/lib/jobShare.ts`.
+     NO — it's its own subdomain worker/rule. **DONE (v2.2494)**:
+     `share.clicktooling.com` added as a second custom domain on the
+     `job-share-preview` Worker (the Worker rewrites to the request's own
+     origin, so both domains just work) and `JOB_SHARE_PREVIEW_BASE_URL` in
+     `src/lib/jobShare.ts` now mints clicktooling links.
+     `share.pipetooling.com` stays on the Worker forever for links already
+     texted.
 6. **Smoke**: sign in at clicktooling.com; dev-login; send a test email (Settings →
    Email templates & testing) and click its links; open a portal link; mint a twin
    session (twin-login default redirect follows APP_ORIGIN).
