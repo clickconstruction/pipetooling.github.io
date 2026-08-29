@@ -86,19 +86,23 @@ Prep merged in v2.2440 — all zero-behavior-change:
   (`docs/twins/*` — then `node scripts/build-twin-mcp-briefs.mjs` + redeploy
   twin-mcp), UA string in check-estimate-attachment-url, `twin-mcp` tool
   descriptions.
-- **Resend sender migration** (in progress, v2.2496): move email sending to
-  `team@noreply.clicktooling.com`.
-  1. **Flip point shipped (v2.2496)**: every sender reads the `EMAIL_FROM`
-     function secret via `supabase/functions/_shared/emailFrom.ts` (fallback =
-     the pipetooling sender). Redeploy all email functions after merging.
-  2. Resend dashboard → Add domain `noreply.clicktooling.com`; create the
-     DKIM/SPF/MX records it lists in the clicktooling.com Cloudflare zone
-     (DNS-only); Verify.
-  3. `supabase secrets set EMAIL_FROM='PipeTooling <team@noreply.clicktooling.com>'`
-     — flips on cold start. Test via Settings → Email templates & testing;
-     check DKIM/SPF pass in the received headers.
+- **Resend sender migration: DONE (v2.2496, completed 2026-08-29)** — email
+  sends from `PipeTooling <team@noreply.clicktooling.com>`.
+  1. Flip point (v2.2496): every sender reads the `EMAIL_FROM` function secret
+     via `supabase/functions/_shared/emailFrom.ts` (fallback = the pipetooling
+     sender); all 29 email functions redeployed.
+  2. `noreply.clicktooling.com` verified in Resend (us-east-1); DKIM/SPF/MX
+     records live in the clicktooling.com Cloudflare zone (mirrors the
+     pipetooling record set exactly).
+  3. `EMAIL_FROM` secret set. Header-verified on a real receive
+     (Outlook): `spf=pass` (send.noreply.clicktooling.com), `dkim=pass`
+     (`header.d=noreply.clicktooling.com`), `dmarc=bestguesspass`.
   4. Keep the pipetooling domain verified in Resend forever (fallback + old
-     reputation).
+     reputation). To roll back: `supabase secrets unset EMAIL_FROM`.
+  - **Open follow-ups**: (a) no `_dmarc` record on either noreply domain
+    (Resend flags it; deliberate parity for now — add to both when wanted);
+    (b) day-zero domain reputation — the first sends can land in Junk until
+    the domain warms up (normal; volume fixes it).
 - Keep the pipetooling.com registration + redirect rule FOREVER — old GC statement and
   portal emails link to it.
 
