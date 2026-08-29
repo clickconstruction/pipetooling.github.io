@@ -24,6 +24,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     gcReviewNudge: null,
     gcReviewIsWednesday: false,
     bulkDeleteAlerts: null,
+    claimDevRefusedCount: null,
+    claimDevLookbackDays: 7,
     ...overrides,
   }
 }
@@ -226,6 +228,19 @@ describe('buildNeedsYouItems', () => {
     const items = buildNeedsYouItems(inputs({ bulkDeleteAlerts: [burst({ bundles: 1 })] }))
     expect(items[0]?.title).toBe('Bulk deletion detected')
     expect(items[0]?.detail).toContain('Taunya deleted 1 record at once')
+  })
+
+  it('claim-dev is the final red item, keeping the rotate-the-code warning', () => {
+    const items = buildNeedsYouItems(inputs({ bulkDeleteAlerts: [burst()], claimDevRefusedCount: 2 }))
+    expect(items.map((i) => i.key)).toEqual(['bulk-delete', 'claim-dev'])
+    const cd = items[1]
+    expect(cd?.severity).toBe('red')
+    expect(cd?.title).toBe('Someone tried to become a dev')
+    expect(cd?.detail).toContain('2 refused attempts to use the admin code in the last 7 days')
+    expect(cd?.detail).toContain('rotate the code')
+    expect(cd?.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
+    expect(buildNeedsYouItems(inputs({ claimDevRefusedCount: 0 }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ claimDevRefusedCount: null }))).toEqual([])
   })
 
   it('singular copy reads naturally', () => {

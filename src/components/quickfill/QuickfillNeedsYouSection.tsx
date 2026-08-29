@@ -14,6 +14,7 @@ import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
+import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -50,6 +51,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   const { overdue: teamReviewsOverdue, cadenceDays: teamReviewCadenceDays } = useTeamReviewsDue(authUser?.id)
   const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(authUser?.id, role)
   const bulkDelete = useBulkDeleteNudge(authUser?.id)
+  const claimDev = useClaimDevAttemptsNudge(authUser?.id)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -96,6 +98,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     gcReviewNudge: null,
     gcReviewIsWednesday: false,
     bulkDeleteAlerts: bulkDelete.visibleAlerts,
+    claimDevRefusedCount: claimDev.visibleCount,
+    claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
   })
 
   useEffect(() => {
@@ -131,12 +135,17 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
             )
           } else if (item.key === 'bulk-delete') {
             navigate('/settings?tab=settings-data#settings-recently-deleted')
+          } else if (item.key === 'claim-dev') {
+            navigate('/settings?tab=settings-people')
           }
         }}
         onSecondary={(item, key) => {
           if (item.key === 'bulk-delete') {
             if (key === 'snooze') bulkDelete.snooze24h()
             else if (key === 'dismiss') bulkDelete.dismissUntilCountIncreases()
+          } else if (item.key === 'claim-dev') {
+            if (key === 'snooze') claimDev.snooze24h()
+            else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
           }
         }}
       />
