@@ -7,6 +7,8 @@ order: 13
 ---
 The **Needs you** card near the top of the Dashboard collects the things waiting on a decision from you — money received but not applied, purchases with no job, lost bids with no reason, jobs quiet too long for their stage, teammates due for your review, roadmap tasks with nobody's name on them, the Wednesday GC review while it's still owed, and (for devs) bulk-deletion and admin-code alerts — with a count in the header and one button per item. When nothing needs you, the card disappears entirely.
 
+The list is ordered **worst first**: red alerts on top, then money waiting to be applied, then the weekly GC deadline, then the work queues with the biggest pile first, and hygiene items last. Walk the list follows the same order, so walking from the top always tackles the worst thing next.
+
 ## Two ways to work it
 
 - **Cards** shows everything at once — each row carries its number on the right and its action on the far right, like {{button:blue|Match deposits}} or {{button:outline|Start call mode}}.

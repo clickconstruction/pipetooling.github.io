@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildNeedsYouItems, type NeedsYouInputs } from './dashboardNeedsYou'
+import { buildNeedsYouItems, rankNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
 
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   return {
@@ -61,7 +61,7 @@ describe('buildNeedsYouItems', () => {
     expect(items).toEqual([])
   })
 
-  it('builds all four items in banner-stack order with faithful copy', () => {
+  it('builds all four v1 items with faithful copy (their worst-first order matches the old stack)', () => {
     const items = buildNeedsYouItems(
       inputs({
         arBankUnallocatedCount: 2,
@@ -99,7 +99,7 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ tallyStaffStalePeopleCount: 0, tallyStaffStaleTxCount: 5 }))).toEqual([])
   })
 
-  it('team reviews slots between lost-bids and job-followups, with the banner copy', () => {
+  it('team reviews ranks below job-followups but above lost-bids, with the banner copy', () => {
     const items = buildNeedsYouItems(
       inputs({
         lostBidNudge: { count: 61, value: 8_700_000 },
@@ -114,7 +114,7 @@ describe('buildNeedsYouItems', () => {
         jobFollowupStageCounts: null,
       }),
     )
-    expect(items.map((i) => i.key)).toEqual(['lost-bids', 'team-reviews', 'job-followups'])
+    expect(items.map((i) => i.key)).toEqual(['job-followups', 'team-reviews', 'lost-bids'])
     const tr = items[1]
     expect(tr?.title).toBe('Team reviews due')
     expect(tr?.detail).toBe("Ana, Bo, Cy +1 more haven't had your review in 45+ days — rate them on Team → Review.")
@@ -127,7 +127,7 @@ describe('buildNeedsYouItems', () => {
     expect(items[0]?.detail).toBe("Ana hasn't had your review in 30+ days — rate them on Team → Review.")
   })
 
-  it('roadmap nudge slots between team-reviews and job-followups', () => {
+  it('roadmap nudge shares the people/planning tier and outranks a smaller team-reviews pile', () => {
     const items = buildNeedsYouItems(
       inputs({
         teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }],
@@ -137,7 +137,7 @@ describe('buildNeedsYouItems', () => {
         jobFollowupCount: 9,
       }),
     )
-    expect(items.map((i) => i.key)).toEqual(['team-reviews', 'roadmap-needs-person', 'job-followups'])
+    expect(items.map((i) => i.key)).toEqual(['job-followups', 'roadmap-needs-person', 'team-reviews'])
     const rm = items[1]
     expect(rm?.title).toBe('Farm 1 · 56 roadmap tasks need a person')
     expect(rm?.detail).toBe('next: 10.2 setup auto watering — open the Plan to hand them out.')
@@ -157,7 +157,7 @@ describe('buildNeedsYouItems', () => {
     expect(items[0]?.detail).toBe('Farm 1 · 40 · Shop · 16 — open the Plan to hand them out.')
   })
 
-  it('job follow-ups joins after the original four, with the banner breakdown', () => {
+  it('job follow-ups outranks lost-bid hygiene, with the banner breakdown', () => {
     const items = buildNeedsYouItems(
       inputs({
         lostBidNudge: { count: 61, value: 8_700_000 },
@@ -165,13 +165,13 @@ describe('buildNeedsYouItems', () => {
         jobFollowupStageCounts: { billed: 41, working: 15, waiting: 12, ready_to_bill: 0, collections: 0 },
       }),
     )
-    expect(items.map((i) => i.key)).toEqual(['lost-bids', 'job-followups'])
-    expect(items[1]?.title).toBe('68 jobs are waiting on a follow-up')
-    expect(items[1]?.detail).toBe(
+    expect(items.map((i) => i.key)).toEqual(['job-followups', 'lost-bids'])
+    expect(items[0]?.title).toBe('68 jobs are waiting on a follow-up')
+    expect(items[0]?.detail).toBe(
       '41 billed with no nudge · 15 working with no recent notes · 12 waiting with nothing scheduled — review them one card at a time.',
     )
-    expect(items[1]?.figure).toBe('68')
-    expect(items[1]?.actionLabel).toBe('Start review')
+    expect(items[0]?.figure).toBe('68')
+    expect(items[0]?.actionLabel).toBe('Start review')
   })
 
   it('job follow-ups respects the office gate and survives a missing breakdown', () => {
@@ -181,13 +181,13 @@ describe('buildNeedsYouItems', () => {
     expect(items[0]?.detail).toBe('review them one card at a time.')
   })
 
-  it('GC weekly: only the due state becomes an item, last in stack order', () => {
+  it('GC weekly: only the due state becomes an item, ranked above the work queues', () => {
     const due = { gcs_outstanding: 11, gcs_certified: 3, gcs_sent: 1 }
     const items = buildNeedsYouItems(
       inputs({ jobFollowupCount: 9, gcReviewStatus: due, gcReviewNudge: 'due', gcReviewIsWednesday: true }),
     )
-    expect(items.map((i) => i.key)).toEqual(['job-followups', 'gc-review-weekly'])
-    const gc = items[1]
+    expect(items.map((i) => i.key)).toEqual(['gc-review-weekly', 'job-followups'])
+    const gc = items[0]
     expect(gc?.title).toBe('GC review is due today')
     expect(gc?.detail).toBe(
       '3 of 11 GCs certified · 1 statement sent — certify each group and send it off so every GC knows what they owe.',
@@ -205,15 +205,15 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ gcReviewEnabled: false, gcReviewStatus: due, gcReviewNudge: 'due' }))).toEqual([])
   })
 
-  it('bulk-delete is a red item with snooze/dismiss secondaries, last in the stack', () => {
+  it('bulk-delete is a red item with snooze/dismiss secondaries, worst of all', () => {
     const items = buildNeedsYouItems(
       inputs({
         jobFollowupCount: 9,
         bulkDeleteAlerts: [burst(), burst({ actor_name: 'Wendi', bundles: 5 }), burst({ bundles: 7 })],
       }),
     )
-    expect(items.map((i) => i.key)).toEqual(['job-followups', 'bulk-delete'])
-    const bd = items[1]
+    expect(items.map((i) => i.key)).toEqual(['bulk-delete', 'job-followups'])
+    const bd = items[0]
     expect(bd?.severity).toBe('red')
     expect(bd?.title).toBe('Bulk deletions detected')
     expect(bd?.detail).toContain('19 records across 3 bursts by 2 people')
@@ -230,10 +230,10 @@ describe('buildNeedsYouItems', () => {
     expect(items[0]?.detail).toContain('Taunya deleted 1 record at once')
   })
 
-  it('claim-dev is the final red item, keeping the rotate-the-code warning', () => {
+  it('claim-dev shares the alert tier (bigger figure first), keeping the rotate-the-code warning', () => {
     const items = buildNeedsYouItems(inputs({ bulkDeleteAlerts: [burst()], claimDevRefusedCount: 2 }))
-    expect(items.map((i) => i.key)).toEqual(['bulk-delete', 'claim-dev'])
-    const cd = items[1]
+    expect(items.map((i) => i.key)).toEqual(['claim-dev', 'bulk-delete'])
+    const cd = items[0]
     expect(cd?.severity).toBe('red')
     expect(cd?.title).toBe('Someone tried to become a dev')
     expect(cd?.detail).toContain('2 refused attempts to use the admin code in the last 7 days')
@@ -241,6 +241,54 @@ describe('buildNeedsYouItems', () => {
     expect(cd?.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
     expect(buildNeedsYouItems(inputs({ claimDevRefusedCount: 0 }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ claimDevRefusedCount: null }))).toEqual([])
+  })
+
+  it('worst-first: a full house ranks alerts, money, deadline, billing, chasing, people, hygiene', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        arBankUnallocatedCount: 2,
+        tallyStaleUnlinkedCount: 97,
+        tallyStaffStalePeopleCount: 2,
+        tallyStaffStaleTxCount: 2,
+        lostBidNudge: { count: 60, value: 8_700_000 },
+        teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }],
+        roadmapNudges: [{ roadmapId: 'r1', title: 'Farm 1', needsName: 56, ready: 4, next: null }],
+        jobFollowupCount: 68,
+        jobFollowupStageCounts: null,
+        gcReviewStatus: { gcs_outstanding: 11, gcs_certified: 0, gcs_sent: 0 },
+        gcReviewNudge: 'due',
+        bulkDeleteAlerts: [burst()],
+        claimDevRefusedCount: 1,
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual([
+      'bulk-delete', // tier 0, tie with claim-dev on figure 1 → build order
+      'claim-dev',
+      'ar-deposits',
+      'gc-review-weekly',
+      'tally-self', // 97 beats the team's 2 in the shared billing tier
+      'tally-team',
+      'job-followups',
+      'roadmap-needs-person', // 56 beats 1 in the shared people/planning tier
+      'team-reviews',
+      'lost-bids',
+    ])
+  })
+
+  it('rankNeedsYouItems treats 99+ as bigger than any two-digit figure and keeps ties stable', () => {
+    const item = (key: NeedsYouItem['key'], figure: string): NeedsYouItem => ({
+      key,
+      severity: 'amber',
+      kicker: '',
+      title: key,
+      detail: '',
+      figure,
+      actionLabel: '',
+    })
+    const ranked = rankNeedsYouItems([item('tally-team', '99'), item('tally-self', '99+')])
+    expect(ranked.map((i) => i.key)).toEqual(['tally-self', 'tally-team'])
+    const tie = rankNeedsYouItems([item('team-reviews', '5'), item('roadmap-needs-person', '5')])
+    expect(tie.map((i) => i.key)).toEqual(['team-reviews', 'roadmap-needs-person'])
   })
 
   it('singular copy reads naturally', () => {
