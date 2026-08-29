@@ -247,3 +247,13 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
   Wave 1 remaining: extractor skill automation (1.2) + quality gate review (1.3 — the
   hand-built substrate stands in as ground truth); calibration still open (no dimension
   strings found yet; letter-print discovery makes it mandatory).
+- 2026-08-29 (build day 1 close) — v2.2477 deployed end to end: migration pushed,
+  twin-mcp v7 live, LIVSTE substrate v0.4 attached to b403 and served; all three agent
+  reads verified against prod (assignment fence refuses b396). Deploy stumble worth
+  remembering: the CLI's bundler regex-scans `import(` inside generated briefs.ts string
+  literals — the harness doc's operator snippet was replaced with the fleet-console
+  instruction (PR #2189). Wave 2: **2.1 SHIPPED** (v2.2480 bids_rfis — see
+  RFI_LOOP_PLAN status), **2.2 SHIPPED** (CT rfi-flags + PT paste), **2.3/2.4 SHIPPED**
+  (in v2.2477). Wave 2 test gate PASSED: live RFI walk on b403 with substrate-born
+  questions; twin draft-only refused loudly, ledger stamps complete. Next: Wave 1.2
+  extractor automation (crop-pass recipe proven by hand), Wave 3 (takeoff leg), R3/R5.
