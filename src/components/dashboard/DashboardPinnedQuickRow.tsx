@@ -20,8 +20,8 @@ import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
 import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
-import DashboardBulkDeleteAlertBanner from '../DashboardBulkDeleteAlertBanner'
 import DashboardClaimDevAttemptsBanner from '../DashboardClaimDevAttemptsBanner'
+import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import NewReportModal from '../NewReportModal'
 import type { PinnedItem } from '../../lib/pinnedTabs'
@@ -310,6 +310,7 @@ export function DashboardPinnedQuickRow({
   const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(hideBanners ? undefined : authUserId, role)
   const { status: gcReviewStatus } = useGcReviewWeekNudge(!hideBanners && officeEligible)
   const gcReviewNudge = gcReviewStatus != null ? gcReviewNudgeState(gcReviewStatus) : null
+  const bulkDelete = useBulkDeleteNudge(hideBanners ? undefined : authUserId)
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -332,6 +333,7 @@ export function DashboardPinnedQuickRow({
     gcReviewStatus,
     gcReviewNudge,
     gcReviewIsWednesday: gcReviewWeekdayIndex() === 3,
+    bulkDeleteAlerts: bulkDelete.visibleAlerts,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -523,6 +525,14 @@ export function DashboardPinnedQuickRow({
               )
             } else if (item.key === 'gc-review-weekly') {
               navigate('/jobs?tab=stages&gcReview=1')
+            } else if (item.key === 'bulk-delete') {
+              navigate('/settings?tab=settings-data#settings-recently-deleted')
+            }
+          }}
+          onSecondary={(item, key) => {
+            if (item.key === 'bulk-delete') {
+              if (key === 'snooze') bulkDelete.snooze24h()
+              else if (key === 'dismiss') bulkDelete.dismissUntilCountIncreases()
             }
           }}
         />
@@ -532,8 +542,6 @@ export function DashboardPinnedQuickRow({
       {!hideBanners && officeEligible && gcReviewStatus != null && gcReviewNudge === 'done' && (
         <GcReviewWeekDoneNotice status={gcReviewStatus} />
       )}
-      {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
-      {!hideBanners && <DashboardBulkDeleteAlertBanner />}
       {/* Dev-only and self-gating: renders nothing unless someone was refused the break-glass dev code. */}
       {!hideBanners && <DashboardClaimDevAttemptsBanner />}
       {!bannersOnly && !jobReportFirst && jobReportRow}

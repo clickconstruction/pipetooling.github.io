@@ -22,24 +22,28 @@ const RAIL: Record<NeedsYouSeverity, string> = {
   blue: '#3b82f6',
   amber: '#f59e0b',
   gray: 'var(--border-400)',
+  red: '#dc2626',
 }
 
 const ACTION_BG: Record<NeedsYouSeverity, string> = {
   blue: '#1d4ed8',
   amber: '#b45309',
   gray: 'var(--bg-muted)',
+  red: '#dc2626',
 }
 
 const ACTION_FG: Record<NeedsYouSeverity, string> = {
   blue: '#ffffff',
   amber: '#ffffff',
   gray: 'var(--text-700)',
+  red: '#ffffff',
 }
 
 const WALK_TINT: Record<NeedsYouSeverity, { background: string; border: string }> = {
   blue: { background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)' },
   amber: { background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)' },
   gray: { background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)' },
+  red: { background: 'var(--bg-orange-tint)', border: '1px solid #fecaca' },
 }
 
 export function DashboardNeedsYouCard({
@@ -47,12 +51,15 @@ export function DashboardNeedsYouCard({
   role,
   items,
   onAction,
+  onSecondary,
 }: {
   userId: string | undefined
   role: UserRole | null
   items: NeedsYouItem[]
   /** Parent owns what each item's action does (navigate / open modal). */
   onAction: (item: NeedsYouItem) => void
+  /** Dispatch for an item's secondary links (v2.2491) — keyed by item.secondary[].key. */
+  onSecondary?: (item: NeedsYouItem, key: string) => void
 }) {
   const [mode, setMode] = useState<NeedsYouMode>(() => readNeedsYouMode(userId))
   const [walkIndex, setWalkIndex] = useState(0)
@@ -79,6 +86,33 @@ export function DashboardNeedsYouCard({
     recordNavClick(userId, role, 'needs-you', `#${item.key}`)
     onAction(item)
   }
+
+  const secondaryLinks = (item: NeedsYouItem) =>
+    item.secondary && item.secondary.length > 0 ? (
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.35rem' }}>
+        {item.secondary.map((sec) => (
+          <button
+            key={sec.key}
+            type="button"
+            onClick={() => {
+              recordNavClick(userId, role, 'needs-you', `#${item.key}-${sec.key}`)
+              onSecondary?.(item, sec.key)
+            }}
+            style={{
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              color: 'var(--text-link)',
+              fontSize: '0.8125rem',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            {sec.label}
+          </button>
+        ))}
+      </div>
+    ) : null
 
   const current = items[Math.min(walkIndex, items.length - 1)] as NeedsYouItem
   const upNext = items.filter((_, i) => i !== Math.min(walkIndex, items.length - 1)).slice(0, 2)
@@ -211,6 +245,7 @@ export function DashboardNeedsYouCard({
                 </button>
               ) : null}
             </div>
+            {secondaryLinks(current)}
           </div>
           {upNext.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.5rem' }}>
@@ -247,6 +282,7 @@ export function DashboardNeedsYouCard({
               <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{it.title}</div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 1 }}>{it.detail}</div>
+                {secondaryLinks(it)}
               </div>
               <div style={{ fontSize: '1.0625rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
                 {it.figure}

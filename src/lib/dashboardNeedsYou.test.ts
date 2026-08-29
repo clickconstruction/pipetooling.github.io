@@ -23,7 +23,21 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     gcReviewStatus: null,
     gcReviewNudge: null,
     gcReviewIsWednesday: false,
+    bulkDeleteAlerts: null,
     ...overrides,
+  }
+}
+
+function burst(over: Partial<{ actor_name: string; bundles: number; window_start: string }> = {}) {
+  return {
+    actor_id: 'a1',
+    actor_name: 'Taunya',
+    bundles: 7,
+    row_count: 20,
+    window_start: '2026-08-28T16:00:00Z',
+    window_end: '2026-08-28T16:05:00Z',
+    tables: ['jobs_ledger'],
+    ...over,
   }
 }
 
@@ -187,6 +201,31 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ gcReviewStatus: { gcs_outstanding: 4, gcs_certified: 4, gcs_sent: 4 }, gcReviewNudge: 'done' }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ gcReviewStatus: due, gcReviewNudge: 'hidden' }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ gcReviewEnabled: false, gcReviewStatus: due, gcReviewNudge: 'due' }))).toEqual([])
+  })
+
+  it('bulk-delete is a red item with snooze/dismiss secondaries, last in the stack', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        jobFollowupCount: 9,
+        bulkDeleteAlerts: [burst(), burst({ actor_name: 'Wendi', bundles: 5 }), burst({ bundles: 7 })],
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['job-followups', 'bulk-delete'])
+    const bd = items[1]
+    expect(bd?.severity).toBe('red')
+    expect(bd?.title).toBe('Bulk deletions detected')
+    expect(bd?.detail).toContain('19 records across 3 bursts by 2 people')
+    expect(bd?.detail).toContain('newest: Taunya')
+    expect(bd?.figure).toBe('3')
+    expect(bd?.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
+  })
+
+  it('bulk-delete singular copy, and null (hidden/snoozed/dismissed) contributes no item', () => {
+    expect(buildNeedsYouItems(inputs({ bulkDeleteAlerts: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ bulkDeleteAlerts: [] }))).toEqual([])
+    const items = buildNeedsYouItems(inputs({ bulkDeleteAlerts: [burst({ bundles: 1 })] }))
+    expect(items[0]?.title).toBe('Bulk deletion detected')
+    expect(items[0]?.detail).toContain('Taunya deleted 1 record at once')
   })
 
   it('singular copy reads naturally', () => {
