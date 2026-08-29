@@ -99,10 +99,12 @@ Prep merged in v2.2440 — all zero-behavior-change:
      (`header.d=noreply.clicktooling.com`), `dmarc=bestguesspass`.
   4. Keep the pipetooling domain verified in Resend forever (fallback + old
      reputation). To roll back: `supabase secrets unset EMAIL_FROM`.
-  - **Open follow-ups**: (a) no `_dmarc` record on either noreply domain
-    (Resend flags it; deliberate parity for now — add to both when wanted);
-    (b) day-zero domain reputation — the first sends can land in Junk until
-    the domain warms up (normal; volume fixes it).
+  5. DMARC (2026-08-29): `_dmarc.noreply` TXT `v=DMARC1; p=none;` added to
+     BOTH zones (clicktooling.com + pipetooling.com, monitoring-only).
+     Tightening to `p=quarantine` and adding `rua=` reporting are separate
+     future decisions.
+  - **Open follow-up**: day-zero domain reputation — the first sends can land
+    in Junk until the domain warms up (normal; volume fixes it).
 - Keep the pipetooling.com registration + redirect rule FOREVER — old GC statement and
   portal emails link to it.
 
