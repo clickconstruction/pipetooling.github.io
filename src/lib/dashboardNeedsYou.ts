@@ -1,14 +1,15 @@
 import type { UserRole } from '../hooks/useAuth'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
 import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFollowupQueue'
+import type { RoadmapNudge } from './dashboardRoadmapNudge'
 
 /**
  * Needs You card (v2.2339, CX-audit Phase 3): the pure item builder behind the
  * dashboard's unified attention list. v1 consolidated the four hook-driven
  * banners (AR deposits, own stale tally, team stale tally, lost-bid reasons);
  * the self-gating banners fold in item-by-item — job follow-ups joined in
- * v2.2487, team reviews in v2.2488. Still banners below the card: roadmap
- * needs-name, GC weekly, bulk-delete, claim-dev.
+ * v2.2487, team reviews in v2.2488, roadmap needs-name in v2.2489. Still
+ * banners below the card: GC weekly, bulk-delete, claim-dev.
  *
  * Gating mirrors the banners it replaces exactly: an item appears only when its
  * banner would have rendered. Order is the old banner stack order (deposits,
@@ -21,7 +22,7 @@ export type NeedsYouSeverity = 'blue' | 'amber' | 'gray'
 
 export type NeedsYouItem = {
   /** Stable key — also the telemetry target (`#<key>`) and the action-dispatch handle. */
-  key: 'ar-deposits' | 'tally-self' | 'tally-team' | 'lost-bids' | 'team-reviews' | 'job-followups'
+  key: 'ar-deposits' | 'tally-self' | 'tally-team' | 'lost-bids' | 'team-reviews' | 'roadmap-needs-person' | 'job-followups'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -50,6 +51,11 @@ export type NeedsYouInputs = {
    */
   teamReviewsOverdue: Array<{ id: string; name: string }>
   teamReviewCadenceDays: number
+  /**
+   * Roadmap "needs a person" nudges (v2.2489). The hook self-gates (empty
+   * without Roadmap-tab access or under the min-count threshold).
+   */
+  roadmapNudges: RoadmapNudge[]
   /**
    * Job Follow-Up Mode queue (v2.2487). Quickfill passes enabled=false — its
    * dedicated Job follow-ups station already carries this count.
@@ -137,6 +143,28 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${n === 1 ? `${preview} hasn't` : `${preview}${more} haven't`} had your review in ${inputs.teamReviewCadenceDays}+ days — rate them on Team → Review.`,
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Open Team Review',
+    })
+  }
+
+  if (inputs.roadmapNudges.length > 0) {
+    const shown = inputs.roadmapNudges.slice(0, 3)
+    const total = inputs.roadmapNudges.reduce((a, n) => a + n.needsName, 0)
+    const single = shown.length === 1 ? shown[0] : undefined
+    items.push({
+      key: 'roadmap-needs-person',
+      severity: 'amber',
+      kicker: 'Roadmap',
+      title: single
+        ? `${single.title} · ${single.needsName} roadmap task${single.needsName === 1 ? '' : 's'} need${single.needsName === 1 ? 's' : ''} a person`
+        : `${total} roadmap tasks need a person`,
+      detail:
+        (single
+          ? single.next
+            ? `next: ${single.next.label}`
+            : 'assign names on the Plan view'
+          : shown.map((n) => `${n.title} · ${n.needsName}`).join(' · ')) + ' — open the Plan to hand them out.',
+      figure: total > 99 ? '99+' : String(total),
+      actionLabel: 'Open Plan',
     })
   }
 
