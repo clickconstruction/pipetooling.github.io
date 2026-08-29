@@ -5,7 +5,7 @@ file: docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md
 type: Engineering / Program plan
 purpose: The umbrella plan for the plans-to-proposal estimator-twin pipeline — every build across PipeTooling, CountTooling, twin-mcp, and the agent harness, sequenced into waves that each end in a live test gate. Sub-plan for the RFI loop lives in RFI_LOOP_PLAN.md. Owner-facing narrative in the "Estimator Twin Pipeline" artifact (2026-08-28).
 audience: Developers, AI Agents
-last_updated: 2026-08-28
+last_updated: 2026-08-29
 sections:
   - The thesis
   - The pipeline being built
@@ -236,3 +236,14 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
   **Definition of stable** added (gates-only human touch, clean kill/resume, loud refusals,
   two consecutive real bids on different sets) plus an idempotency rule for every agent write
   path. Wave 0 is now the recommended immediate start, ahead of Wave 1.
+- 2026-08-29 — Wave 0/1 execution: b403 "ZZ Twin LIVSTE" opened + twin-assigned (STG-0 ✓);
+  substrate schema v0 merged (SUBSTRATE.md + proven crop-pass parameters); LIVSTE substrate
+  hand-built through v0.4 (full fixture schedule via 600 DPI crop pass, plan scales, P001
+  notes incl. animal-gas/renovation-sprinkler/general — quantities pending plan counts).
+  **Default overridden**: substrate home is the `bids_plan_substrates` jsonb table
+  (migration 20260829021122), not a storage bucket — simpler, queryable in-app,
+  fence-covered via bid_id. v2.2477 ships the table + twin-mcp `get_assignments` /
+  `get_plan_brief` / `get_work_state` + estimator-brief §8 (Wave 1.4, 1.5, 2.3, 2.4).
+  Wave 1 remaining: extractor skill automation (1.2) + quality gate review (1.3 — the
+  hand-built substrate stands in as ground truth); calibration still open (no dimension
+  strings found yet; letter-print discovery makes it mandatory).

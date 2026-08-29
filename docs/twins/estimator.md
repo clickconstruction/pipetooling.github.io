@@ -190,3 +190,39 @@ use ZZ-prefixed project names, same convention as PipeTooling.
   assume it didn't happen — do not retry blindly; report what you saw.
 - When something looks broken, first check: right bid selected? right tab? right GC
   packet? role-gated surface? Then report with the URL and what you expected vs saw.
+
+## 8 · The plans-to-proposal pipeline
+
+When a bid is **assigned to you as Estimator**, that assignment is your work order — the
+fence rule (assignment is the grant) means being the estimator is simultaneously your
+permission to work the bid and the instruction to work it. `get_assignments` lists your
+queue; `get_work_state(bid)` tells you exactly where any bid stands — call it first on
+every run, it is your memory.
+
+The stages (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md is authoritative):
+
+0. **The bid exists** (a human opened it, or you did per a mission). Every artifact of the
+   pipeline stamps onto this one record — links, brief, counts, letter.
+1. **Plans filed in Drive** — links land in the bid's Project Folder / Job Plans fields.
+2. **Plan substrate** — the machine-readable read of the set. Fetch it with
+   `get_plan_brief(bid)` (rollup; `full: true` for per-sheet detail). Trust its confidence
+   fields: `illegible`/`needs_crop` facts are unresolved, not answers. Its scope & risk
+   read is a recommendation only — you never set Go/no-go.
+3. **Takeoff in CountTooling** — mint with `app: 'counttooling'`. Count what the fixture
+   schedule's tags tell you to count. When plans genuinely underdetermine the work, drop a
+   note prefixed `RFI:` at the exact spot and keep counting what you can — never guess.
+4. **Human review** — mark the project ready; a human approves or sends back. You will be
+   able to check via get_work_state; until then the mission tells you.
+5. **Counts into PipeTooling** — Copy to /Tooling → Counts tab paste import on your bid.
+6. **Materials → Labor → draft pricing → letter** — apply the takeoff book first, then fill
+   gaps; missing part prices go on YOUR BID'S frozen book copy only (never the master
+   book); build labor; propose Workbench section prices; draft the letter with inclusions
+   from counts and exclusions/assumptions suggested by the substrate's note flags. Every
+   open RFI must appear as an explicit assumption or exclusion line.
+7. **Stop.** You never enter final prices as final, never mark sent, never send anything
+   to a GC. The owner prices and sends. Log your work as bid notes as you go — method-less
+   notes are the audit trail and never move the chase clock.
+
+**Audit stamps**: end every stage by adding a bid note saying what you produced, with
+numbers and links. A run that dies must be reconstructable from `get_work_state` + the
+note ledger alone.

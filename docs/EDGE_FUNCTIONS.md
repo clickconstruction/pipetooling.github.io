@@ -776,6 +776,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Two-app companion (v2.2439)**: `mint_session` takes `app: 'pipetooling' | 'counttooling'` — the CT path calls CountTooling's `twin-login` with CT's twin secret held server-side (one per-twin credential covers both apps; CT per-twin-credential parity deliberately deferred). The CT path re-applies the 6/min rate limit against `twin_runs` (PT's twin-login isn't in that path) and logs the mint (`app=counttooling` in the note).
 
+**Agent reads (v2.2477** — estimator-twin pipeline Wave 1.4 + 2.3/2.4**)**: three service-role read tools, all bid-scoped ones enforcing **assignment-is-the-grant** (the bid's `estimator_id` or `created_by` must be the calling twin): `get_assignments` (the twin's work queue — bids where it is the estimator, with due/GC/link-presence), `get_plan_brief(bid, full?)` (latest `bids_plan_substrates` row for the bid; rollup by default, `full: true` for per-sheet records — contract in `docs/twins/SUBSTRATE.md`), `get_work_state(bid)` (composite resume: bid facts, stamped links, substrate version, counts-row count, last-10 audit-ledger entries; a `not_yet_in_v1` list names what later waves add). Still no business-*write* tools — the doctrine stands.
+
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
 
 ---
