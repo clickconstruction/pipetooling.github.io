@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { callCtManageUser } from '../_shared/ctBridge.ts'
 import { diffCtRoster, type CtRosterDiff, type CtRosterRow, type PtRosterRow } from '../_shared/ctRosterDiff.ts'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 // CT↔PT weekly roster drift audit (v2.2438; CT bridge Phase 3). Cron-invoked Mondays:
 // pulls the PT roster (service role) and the CT roster (manage-user `roster` over the
@@ -11,7 +12,7 @@ import { diffCtRoster, type CtRosterDiff, type CtRosterRow, type PtRosterRow } f
 // Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, CRON_SECRET,
 // CT_MANAGE_USER_URL, CT_MANAGE_USER_SECRET.
 
-const FROM = 'PipeTooling <team@noreply.pipetooling.com>'
+const FROM = EMAIL_FROM
 
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })

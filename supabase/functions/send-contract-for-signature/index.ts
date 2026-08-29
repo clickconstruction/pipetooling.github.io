@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -84,7 +85,7 @@ async function sendEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: 'PipeTooling <team@noreply.pipetooling.com>',
+      from: EMAIL_FROM,
       to: [to],
       subject,
       html: htmlBody,
@@ -96,7 +97,7 @@ async function sendEmailViaResend(
     return { success: false, error: errorData.message || `Resend ${resendResponse.status}` }
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: 'PipeTooling <team@noreply.pipetooling.com>', subject })
+  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: EMAIL_FROM, subject })
   return { success: true }
 }
 

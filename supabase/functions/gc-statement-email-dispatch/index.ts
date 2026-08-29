@@ -12,7 +12,7 @@
  *      (group_by + entity id + include_collections from the row).
  *   2. Entity statements with nothing outstanding are skipped (stamped with a
  *      note, never emailed empty) — but a repeat_weekly chain still advances.
- *   3. Send via Resend from team@noreply.pipetooling.com with the REQUESTER's
+ *   3. Send via Resend from the EMAIL_FROM sender with the REQUESTER's
  *      email as reply-to (matches send-gc-statement-email).
  *   4. Audit into gc_statement_emails (group_by 'all' when no entity id) and
  *      best-effort email_send_log; stamp sent_at; re-enqueue weekly chains.
@@ -23,6 +23,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   chicagoDateStr,
   gcShareAllSubject,
@@ -67,7 +68,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
-const FROM = 'PipeTooling <team@noreply.pipetooling.com>'
+const FROM = EMAIL_FROM
 const MAX_QUEUE_BATCH = 10
 const MAX_ATTEMPTS = 5
 

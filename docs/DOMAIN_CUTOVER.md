@@ -81,9 +81,19 @@ Prep merged in v2.2440 — all zero-behavior-change:
 - **Text sweep** (cosmetic, own PR): help guides, twin docs (`docs/twins/*` — then
   `node scripts/build-twin-mcp-briefs.mjs` + redeploy twin-mcp), UA string in
   check-estimate-attachment-url, `twin-mcp` tool descriptions.
-- **Optional later**: move email sending to `team@noreply.clicktooling.com` (new Resend
-  domain verification, DKIM/SPF); until then mail keeps sending from the pipetooling
-  noreply domain, which is fine indefinitely.
+- **Resend sender migration** (in progress, v2.2496): move email sending to
+  `team@noreply.clicktooling.com`.
+  1. **Flip point shipped (v2.2496)**: every sender reads the `EMAIL_FROM`
+     function secret via `supabase/functions/_shared/emailFrom.ts` (fallback =
+     the pipetooling sender). Redeploy all email functions after merging.
+  2. Resend dashboard → Add domain `noreply.clicktooling.com`; create the
+     DKIM/SPF/MX records it lists in the clicktooling.com Cloudflare zone
+     (DNS-only); Verify.
+  3. `supabase secrets set EMAIL_FROM='PipeTooling <team@noreply.clicktooling.com>'`
+     — flips on cold start. Test via Settings → Email templates & testing;
+     check DKIM/SPF pass in the received headers.
+  4. Keep the pipetooling domain verified in Resend forever (fallback + old
+     reputation).
 - Keep the pipetooling.com registration + redirect rule FOREVER — old GC statement and
   portal emails link to it.
 

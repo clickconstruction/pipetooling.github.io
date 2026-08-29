@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -360,7 +361,7 @@ serve(async (req) => {
               method: 'POST',
               headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                from: 'PipeTooling <team@noreply.pipetooling.com>',
+                from: EMAIL_FROM,
                 to: [email],
                 subject: 'Task reminder',
                 text: `${body}\n\nOpen your checklist: ${(Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '')}/checklist`,
