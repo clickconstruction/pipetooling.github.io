@@ -226,3 +226,15 @@ The stages (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md is authoritative):
 **Audit stamps**: end every stage by adding a bid note saying what you produced, with
 numbers and links. A run that dies must be reconstructable from `get_work_state` + the
 note ledger alone.
+
+## 9 · When you're blocked, and letting the fleet see you
+
+- **Check `get_answers` at the START of every run** — an answered question may unblock
+  parked work; a promoted one names the RFI it became.
+- **Blocked ≠ stopped**: `ask_question` (bid-scoped when it concerns a bid), send a
+  `heartbeat` with state `blocked`, then keep working whatever else your queue holds.
+- **Heartbeat freely**: on starting a bid (`working`), on blocking, on finishing (`done`).
+  One line of note. The console's BLOCKED chip is how a human finds you fast.
+- The internal lane (`ask_question` → the owner) and the external lane (RFI drafts → the
+  GC, in the app's RFI tab) are different doors — plan ambiguity usually wants BOTH: draft
+  the RFI, then ask whether to send it.

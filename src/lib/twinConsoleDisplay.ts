@@ -8,7 +8,7 @@
  * panel must keep up with both.
  */
 
-export type TwinRunVerb = 'sign-in' | 'report' | 'run'
+export type TwinRunVerb = 'sign-in' | 'report' | 'run' | 'heartbeat'
 
 export type TwinRunDisplay = {
   verb: TwinRunVerb
@@ -29,6 +29,13 @@ export function describeTwinRun(
   const note = (notes ?? '').trim()
   if (mission.startsWith('report:')) {
     return { verb: 'report', mission: mission.slice('report:'.length) || 'unlabeled', detail: note }
+  }
+  if (mission === 'heartbeat') {
+    // twin-mcp heartbeat (R3/4.5): notes format `heartbeat stage=<s> state=<st> [free text]`.
+    const stage = /stage=(\S+(?:\s\S+)*?)\sstate=/.exec(note)?.[1] ?? /stage=(\S+)/.exec(note)?.[1] ?? ''
+    const state = /state=(working|blocked|done)/.exec(note)?.[1] ?? ''
+    const free = note.replace(/^heartbeat\s+stage=.*?state=(working|blocked|done)\s*/, '').trim()
+    return { verb: 'heartbeat', mission: state || 'working', detail: `${stage}${free ? ` — ${free}` : ''}` }
   }
   if (note.startsWith('mint ')) {
     const viaMatch = /via=(token:([0-9a-f-]+)|master)/.exec(note)
