@@ -1,18 +1,32 @@
-/** Settings → Advanced tab: collapsible "Fix app" help + admin claim-code form.
+/** Settings → Advanced tab: collapsible "Fix app" help + admin claim-code form
+ * + dev-only email-monitoring links (v2.2497).
  * Self-contained (v2.856): owns its section-open + claim-code state and the
  * claim-dev edge-fn call; on success it invokes onRoleMaybeChanged so the parent
  * reloads (the user's role may have just changed).
- * The role gate (non-subcontractor) stays in the parent. */
+ * The role gate (non-subcontractor) stays in the parent; isDev gates the
+ * DMARC links only. */
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 
+/**
+ * The two Cloudflare DMARC Management dashboards (enabled 2026-08-29, see
+ * docs/DOMAIN_CUTOVER.md → Resend sender migration). Monitoring lives in
+ * Cloudflare on purpose — the app only links there.
+ */
+const DMARC_DASHBOARDS = [
+  { zone: 'clicktooling.com', url: 'https://dash.cloudflare.com/7cad448b9713f42ee58be38cfe9ddaf6/clicktooling.com/email/dmarc-management' },
+  { zone: 'pipetooling.com', url: 'https://dash.cloudflare.com/7cad448b9713f42ee58be38cfe9ddaf6/pipetooling.com/email/dmarc-management' },
+]
+
 export default function SettingsAdvancedTab({
   active,
+  isDev,
   onRoleMaybeChanged,
 }: {
   active: boolean
+  isDev: boolean
   onRoleMaybeChanged: () => void
 }) {
   const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
@@ -89,6 +103,28 @@ export default function SettingsAdvancedTab({
               to clear cached files and reload. Bookmark this link to use when the app won&apos;t load.
             </p>
           </div>
+          {isDev && (
+            <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
+              <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Email domain monitoring</h2>
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                DMARC reports show who is sending email as our domains (should only ever be Resend).
+                Reports collect and render in Cloudflare — check them before tightening the DMARC policy.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.25rem' }}>
+                {DMARC_DASHBOARDS.map((d) => (
+                  <a
+                    key={d.zone}
+                    href={d.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--text-link)', fontWeight: 500, fontSize: '0.875rem' }}
+                  >
+                    DMARC reports — {d.zone} ↗
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
           <form onSubmit={handleClaimCode}>
             <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

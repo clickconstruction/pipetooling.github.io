@@ -1691,6 +1691,7 @@ export default function Settings() {
       {!isSubcontractorLikeRole(myRole) && (
         <SettingsAdvancedTab
           active={activeSettingsTab === 'settings-advanced-tools'}
+          isDev={myRole === 'dev'}
           onRoleMaybeChanged={() => { void loadData() }}
         />
       )}
