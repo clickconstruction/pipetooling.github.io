@@ -11,6 +11,7 @@ import {
 } from '../../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
+import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -44,6 +45,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
   const tallyStaffEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const lostBids = useLostBidNudge(tallyStaffEligible)
+  const { overdue: teamReviewsOverdue, cadenceDays: teamReviewCadenceDays } = useTeamReviewsDue(authUser?.id)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -76,6 +78,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     tallyMinAgeDays: TALLY_STALE_MIN_AGE_DAYS,
     lostBidNudge: lostBids.nudge,
     lostBidNudgeLoading: lostBids.loading,
+    teamReviewsOverdue,
+    teamReviewCadenceDays,
     // Quickfill's dedicated Job follow-ups station (v2.2347) already carries
     // this queue — disabled here so the card doesn't list it twice on one page.
     jobFollowupsEnabled: false,
@@ -103,6 +107,10 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
             setStaffModalOpen(true)
           } else if (item.key === 'lost-bids') {
             navigate('/bids?tab=why-we-lost')
+          } else if (item.key === 'team-reviews') {
+            // Deep link (v2.1564): land the Rate deck ON the first due person.
+            const first = teamReviewsOverdue[0]
+            navigate(`/prospects?tab=team&stage=review${first ? `&rate=${first.id}` : ''}`)
           }
         }}
       />

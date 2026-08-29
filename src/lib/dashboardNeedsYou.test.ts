@@ -13,6 +13,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     tallyMinAgeDays: 2,
     lostBidNudge: null,
     lostBidNudgeLoading: false,
+    teamReviewsOverdue: [],
+    teamReviewCadenceDays: 30,
     jobFollowupsEnabled: true,
     jobFollowupCount: 0,
     jobFollowupStageCounts: null,
@@ -74,6 +76,34 @@ describe('buildNeedsYouItems', () => {
   it('team tally needs BOTH counts > 0, like the banner it replaces', () => {
     expect(buildNeedsYouItems(inputs({ tallyStaffStalePeopleCount: 3, tallyStaffStaleTxCount: 0 }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ tallyStaffStalePeopleCount: 0, tallyStaffStaleTxCount: 5 }))).toEqual([])
+  })
+
+  it('team reviews slots between lost-bids and job-followups, with the banner copy', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        lostBidNudge: { count: 61, value: 8_700_000 },
+        teamReviewsOverdue: [
+          { id: 'u1', name: 'Ana' },
+          { id: 'u2', name: 'Bo' },
+          { id: 'u3', name: 'Cy' },
+          { id: 'u4', name: 'Di' },
+        ],
+        teamReviewCadenceDays: 45,
+        jobFollowupCount: 9,
+        jobFollowupStageCounts: null,
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['lost-bids', 'team-reviews', 'job-followups'])
+    const tr = items[1]
+    expect(tr?.title).toBe('Team reviews due')
+    expect(tr?.detail).toBe("Ana, Bo, Cy +1 more haven't had your review in 45+ days — rate them on Team → Review.")
+    expect(tr?.figure).toBe('4')
+  })
+
+  it('team reviews singular copy and empty gate', () => {
+    expect(buildNeedsYouItems(inputs())).toEqual([])
+    const items = buildNeedsYouItems(inputs({ teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }] }))
+    expect(items[0]?.detail).toBe("Ana hasn't had your review in 30+ days — rate them on Team → Review.")
   })
 
   it('job follow-ups joins after the original four, with the banner breakdown', () => {

@@ -11,12 +11,12 @@ import {
 } from '../../hooks/useArBankUnallocatedCount'
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
 import { useJobFollowupNudge } from '../../hooks/useJobFollowupNudge'
+import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import DashboardGcReviewWeeklyBanner from '../DashboardGcReviewWeeklyBanner'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
-import DashboardTeamReviewsDueBanner from '../DashboardTeamReviewsDueBanner'
 import DashboardRoadmapNeedsNameBanner from '../DashboardRoadmapNeedsNameBanner'
 import DashboardBulkDeleteAlertBanner from '../DashboardBulkDeleteAlertBanner'
 import DashboardClaimDevAttemptsBanner from '../DashboardClaimDevAttemptsBanner'
@@ -302,6 +302,9 @@ export function DashboardPinnedQuickRow({
   const { count: jobFollowupCount, stageCounts: jobFollowupStageCounts } = useJobFollowupNudge(
     !hideBanners && officeEligible,
   )
+  const { overdue: teamReviewsOverdue, cadenceDays: teamReviewCadenceDays } = useTeamReviewsDue(
+    hideBanners ? undefined : authUserId,
+  )
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -314,6 +317,8 @@ export function DashboardPinnedQuickRow({
     tallyMinAgeDays: TALLY_STALE_MIN_AGE_DAYS,
     lostBidNudge,
     lostBidNudgeLoading,
+    teamReviewsOverdue,
+    teamReviewCadenceDays,
     jobFollowupsEnabled: officeEligible,
     jobFollowupCount,
     jobFollowupStageCounts,
@@ -495,11 +500,14 @@ export function DashboardPinnedQuickRow({
               navigate('/bids?tab=why-we-lost')
             } else if (item.key === 'job-followups') {
               navigate('/jobs?tab=stages&followups=1')
+            } else if (item.key === 'team-reviews') {
+              // Deep link (v2.1564): land the Rate deck ON the first due person, not on card 1 of N.
+              const first = teamReviewsOverdue[0]
+              navigate(`/prospects?tab=team&stage=review${first ? `&rate=${first.id}` : ''}`)
             }
           }}
         />
       )}
-      {!hideBanners && <DashboardTeamReviewsDueBanner authUserId={authUserId} />}
       {/* Roadmap "needs a person" (v2.2138): self-gates to the Roadmap-tab audience and a threshold. */}
       {!hideBanners && <DashboardRoadmapNeedsNameBanner authUserId={authUserId} role={role} />}
       {/* Wednesday GC certification (v2.1984): office roles; self-gates to nothing off-days or when done. */}
