@@ -19,10 +19,9 @@ import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDispl
  * now lives in this one list (GC weekly's green "done" notice excepted).
  *
  * Gating mirrors the banners it replaces exactly: an item appears only when its
- * banner would have rendered. Order is the old banner stack order (deposits,
- * own tally, team tally, lost bids, then the migrated banners in their old
- * below-the-card order) — "worst first" ranking can come once the money-figure
- * items (90+ tail etc.) join the list.
+ * banner would have rendered. Order is worst-first (v2.2493): items sort by
+ * NEEDS_YOU_RANK tier, then biggest figure first within a tier (ties keep
+ * build order) — see the rank table for what "worst" means here.
  */
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
@@ -51,6 +50,45 @@ export type NeedsYouItem = {
   actionLabel: string
   /** Small link-style follow-ups (v2.2491) — e.g. snooze/dismiss on alert items. Parent dispatches by key. */
   secondary?: Array<{ key: string; label: string }>
+}
+
+/**
+ * Worst-first tiers (v2.2493). Lower = worse = higher in the card and first in
+ * Walk the list. The tiers, in words: destructive/security events, then money
+ * already received but not applied, then the hard weekly deadline, then
+ * billing accuracy, then revenue chasing, then people/planning, then hygiene.
+ * Items sharing a tier sort by figure (biggest pile first), ties keep build
+ * order. New items MUST pick a tier here — the type makes forgetting a
+ * compile error.
+ */
+export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
+  'bulk-delete': 0,
+  'claim-dev': 0,
+  'ar-deposits': 10,
+  'gc-review-weekly': 20,
+  'tally-self': 30,
+  'tally-team': 30,
+  'job-followups': 40,
+  'team-reviews': 50,
+  'roadmap-needs-person': 50,
+  'lost-bids': 60,
+}
+
+/** "99+" reads as 100 so a capped figure still outranks anything two-digit. */
+function figureValue(figure: string): number {
+  const n = Number.parseInt(figure.replace(/[^0-9]/g, ''), 10)
+  if (!Number.isFinite(n)) return 0
+  return figure.endsWith('+') ? n + 1 : n
+}
+
+/** Stable worst-first sort — exported so surfaces that build items elsewhere can reuse it. */
+export function rankNeedsYouItems(items: NeedsYouItem[]): NeedsYouItem[] {
+  // Array.prototype.sort is stable, so equal (rank, figure) pairs keep build order.
+  return [...items].sort((a, b) => {
+    const rank = NEEDS_YOU_RANK[a.key] - NEEDS_YOU_RANK[b.key]
+    if (rank !== 0) return rank
+    return figureValue(b.figure) - figureValue(a.figure)
+  })
 }
 
 export type NeedsYouInputs = {
@@ -281,7 +319,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  return items
+  return rankNeedsYouItems(items)
 }
 
 /** localStorage key for the per-user Cards/Walk preference. */
