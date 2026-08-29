@@ -99,10 +99,20 @@ Prep merged in v2.2440 — all zero-behavior-change:
      (`header.d=noreply.clicktooling.com`), `dmarc=bestguesspass`.
   4. Keep the pipetooling domain verified in Resend forever (fallback + old
      reputation). To roll back: `supabase secrets unset EMAIL_FROM`.
-  5. DMARC (2026-08-29): `_dmarc.noreply` TXT `v=DMARC1; p=none;` added to
-     BOTH zones (clicktooling.com + pipetooling.com, monitoring-only).
-     Tightening to `p=quarantine` and adding `rua=` reporting are separate
-     future decisions.
+  5. DMARC + rua reporting (2026-08-29): **Cloudflare DMARC Management is
+     enabled on BOTH zones** (dashboard → Email → DMARC Management). It owns
+     one root record per zone — `_dmarc.<zone>` TXT
+     `v=DMARC1; p=none; rua=mailto:<token>@dmarc-reports.cloudflare.net` —
+     and renders the who-sends-as-us dashboards there (first reports ~24h
+     after receivers see mail). The earlier `_dmarc.noreply.<zone>` records
+     were DELETED on purpose: DMARC's org-domain fallback routes the noreply
+     subdomains to the monitored root records (Cloudflare's tool doesn't
+     support subdomain records), and the roots now also cover spoofing of the
+     bare domains. Don't re-add subdomain `_dmarc` records — they'd shadow
+     the root and silently drop reporting. Tightening to `p=quarantine` is a
+     separate future decision, made in that dashboard after reading reports.
+     Deliberately NOT surfaced in the app's dev settings — infrastructure
+     monitoring, checked rarely, already rendered by Cloudflare.
   - **Open follow-up**: day-zero domain reputation — the first sends can land
     in Junk until the domain warms up (normal; volume fixes it).
 - Keep the pipetooling.com registration + redirect rule FOREVER — old GC statement and
