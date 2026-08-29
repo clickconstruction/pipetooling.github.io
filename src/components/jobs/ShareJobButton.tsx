@@ -13,8 +13,8 @@ import {
 } from '../../lib/jobShare'
 
 /**
- * Mint a tokenized share link (Phase 2, v2.1454; revived v2.1770 behind
- * share.pipetooling.com — Supabase neutralizes HTML on its shared functions
+ * Mint a tokenized share link (Phase 2, v2.1454; revived v2.1770 behind the
+ * branded share domain — Supabase neutralizes HTML on its shared functions
  * domain, so the raw function URL rendered as a "Text Document" blob in
  * Messages; the Cloudflare Worker on our own domain restores the rich card).
  * Random 128-bit token, sha256 hash stored in job_share_links (RLS gates the

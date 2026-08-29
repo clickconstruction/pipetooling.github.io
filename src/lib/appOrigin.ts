@@ -11,8 +11,8 @@
  * Deliberately NOT centralized here (different lifecycles — see the runbook):
  *   - team@noreply.pipetooling.com — the email sending domain (Resend-verified; keeps
  *     working after the app moves; migrating it is separate, optional work).
- *   - share.pipetooling.com (jobShare.ts) and my.clickplumbing.com (portalShortOrigin) —
- *     Cloudflare-fronted subdomains with their own rules to update at cutover.
+ *   - share.clicktooling.com (jobShare.ts, since v2.2494) and my.clickplumbing.com
+ *     (portalShortOrigin) — Cloudflare-fronted subdomains with their own rules.
  */
 export const APP_ORIGIN = 'https://clicktooling.com'
 
