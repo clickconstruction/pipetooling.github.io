@@ -95,6 +95,41 @@ const TOOLS = [
     },
   },
   {
+    name: 'ask_question',
+    description:
+      "Park a question for the owner/operator instead of stalling — the INTERNAL lane (RFIs to the GC are the external lane, drafted in the app's RFI tab). Optionally tied to a bid. Answers arrive asynchronously: pull them next run with get_answers. Asking is always better than guessing.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        question: { type: 'string', description: 'The question, self-contained (a human reads it cold)' },
+        bid: { type: 'string', description: "Optional bid it concerns (e.g. 'b403' or uuid)" },
+        mission: { type: 'string', description: 'Optional mission/run label' },
+      },
+      required: ['question'],
+    },
+  },
+  {
+    name: 'get_answers',
+    description:
+      'Your questions and their answers (newest first) — check this at the START of every run; an answered question may unblock parked work. Promoted questions carry the RFI number they became.',
+    inputSchema: { type: 'object', properties: { open_only: { type: 'boolean', description: 'true = only unanswered' } } },
+  },
+  {
+    name: 'heartbeat',
+    description:
+      "Tell the fleet console what you're doing right now: current bid, pipeline stage, and state (working|blocked|done). Send one when you start, when you block (pair it with ask_question), and when you finish. Cheap; send freely.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Bid (e.g. 'b403' or uuid), if the work is bid-scoped" },
+        stage: { type: 'string', description: "Pipeline stage, e.g. 'STG-3 takeoff'" },
+        state: { type: 'string', enum: ['working', 'blocked', 'done'] },
+        note: { type: 'string', description: 'One line of detail' },
+      },
+      required: ['stage', 'state'],
+    },
+  },
+  {
     name: 'submit_report',
     description: 'File your mission report (answer, evidence, stumbles). Lands in the twin_runs fleet ledger attributed to your twin.',
     inputSchema: {
@@ -220,6 +255,73 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         `Signed-in session minted for ${twin.email}.\naction_link (single-use — navigate a browser to it):\n${body.action_link}`,
       )
     }
+    case 'ask_question': {
+      const q = String(args.question ?? '').trim()
+      if (!q) return textContent('Empty question', true)
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      let aboutBidId: string | null = null
+      const bidRef = String(args.bid ?? '').trim()
+      if (bidRef) {
+        const uuidRe = /^[0-9a-f-]{36}$/i
+        const { data: b } = await (uuidRe.test(bidRef)
+          ? admin.from('bids').select('id').eq('id', bidRef).maybeSingle()
+          : admin.from('bids').select('id').eq('bid_number', bidRef.replace(/^(bp|b)/i, '')).maybeSingle())
+        aboutBidId = (b as { id: string } | null)?.id ?? null
+      }
+      const { data: row, error } = await admin
+        .from('twin_questions')
+        .insert({ twin_user_id: twin.twinUserId, about_bid_id: aboutBidId, mission: (args.mission as string) ?? null, question: q })
+        .select('id')
+        .single()
+      if (error) return textContent(`Question not saved: ${error.message}`, true)
+      return textContent(`Question parked (id ${(row as { id: string }).id.slice(0, 8)}). A human answers in the fleet console; pull answers with get_answers on your next run. Keep working what you can.`)
+    }
+    case 'get_answers': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      let sel = admin
+        .from('twin_questions')
+        .select('id, about_bid_id, mission, question, status, answer, answered_at, promoted_rfi_id, created_at')
+        .eq('twin_user_id', twin.twinUserId)
+        .order('created_at', { ascending: false })
+        .limit(50)
+      if (args.open_only === true) sel = sel.eq('status', 'open')
+      const { data, error } = await sel
+      if (error) return textContent(`Lookup failed: ${error.message}`, true)
+      if (!data?.length) return textContent(args.open_only === true ? 'No open questions.' : 'No questions yet — ask_question parks one.')
+      return textContent(JSON.stringify({ questions: data }, null, 2))
+    }
+    case 'heartbeat': {
+      const stage = String(args.stage ?? '').trim()
+      const state = String(args.state ?? '').trim()
+      if (!stage || !['working', 'blocked', 'done'].includes(state)) return textContent("heartbeat needs stage + state in {working|blocked|done}", true)
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      let bidId: string | null = null
+      const bidRef = String(args.bid ?? '').trim()
+      if (bidRef) {
+        const uuidRe = /^[0-9a-f-]{36}$/i
+        const { data: b } = await (uuidRe.test(bidRef)
+          ? admin.from('bids').select('id').eq('id', bidRef).maybeSingle()
+          : admin.from('bids').select('id').eq('bid_number', bidRef.replace(/^(bp|b)/i, '')).maybeSingle())
+        bidId = (b as { id: string } | null)?.id ?? null
+      }
+      const { error } = await admin.from('twin_runs').insert({
+        twin_user_id: twin.twinUserId,
+        mission: 'heartbeat',
+        bid_id: bidId,
+        stage,
+        state,
+        notes: `heartbeat stage=${stage} state=${state}${args.note ? ` ${String(args.note).slice(0, 400)}` : ''}`,
+        ended_at: state === 'done' ? new Date().toISOString() : null,
+      })
+      if (error) return textContent(`Heartbeat not recorded: ${error.message}`, true)
+      return textContent('Heartbeat recorded.')
+    }
     case 'get_assignments': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -288,10 +390,28 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         return textContent(JSON.stringify(payload, null, 2))
       }
       // get_work_state
-      const { count: countRowsCount } = await admin
-        .from('bids_count_rows')
-        .select('id', { count: 'exact', head: true })
+      const countFor = async (table: string) => {
+        const { count } = await admin.from(table).select('id', { count: 'exact', head: true }).eq('bid_id', bid.id)
+        return count ?? 0
+      }
+      const [countRowsCount, exactMappings, roughLines, laborEstimates, priceBookCopies, openQuestions] = await Promise.all([
+        countFor('bids_count_rows'),
+        countFor('bids_takeoff_template_mappings'),
+        countFor('bids_takeoff_rough_part_lines'),
+        countFor('cost_estimates'),
+        countFor('price_book_versions'),
+        admin.from('twin_questions').select('id', { count: 'exact', head: true }).eq('twin_user_id', twin.twinUserId).eq('about_bid_id', bid.id).eq('status', 'open').then((r) => r.count ?? 0),
+      ])
+      const { data: rfiRows } = await admin.from('bids_rfis').select('rfi_number, status').eq('bid_id', bid.id).order('rfi_number')
+      const { data: hb } = await admin
+        .from('twin_runs')
+        .select('stage, state, notes, started_at')
+        .eq('twin_user_id', twin.twinUserId)
+        .eq('mission', 'heartbeat')
         .eq('bid_id', bid.id)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
       const { data: entries } = await admin
         .from('bids_submission_entries')
         .select('occurred_at, contact_method, notes')
@@ -318,11 +438,20 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           itb: bid.itb_links ?? null,
         },
         substrate: sub ? { version: (sub.substrate as Record<string, unknown>).substrate_version, attached_at: sub.created_at } : null,
-        counts_rows: countRowsCount ?? 0,
+        counts_rows: countRowsCount,
+        middle: {
+          takeoff_exact_mappings: exactMappings,
+          takeoff_rough_part_lines: roughLines,
+          labor_estimates: laborEstimates,
+          price_book_copies: priceBookCopies,
+        },
+        rfis: (rfiRows ?? []).map((r: Record<string, unknown>) => ({ n: r.rfi_number, status: r.status })),
+        open_questions_here: openQuestions,
+        latest_heartbeat: hb ? { at: hb.started_at, stage: hb.stage, state: hb.state } : null,
         audit_ledger_tail: (entries ?? []).map((e: Record<string, unknown>) => ({
           at: e.occurred_at, method: e.contact_method ?? 'note', note: String(e.notes ?? '').slice(0, 300),
         })),
-        not_yet_in_v1: ['CT takeoff review status (cross-app; Wave 3)', 'RFIs (Wave 2 bids_rfis)', 'twin_questions (Wave 3)', 'pricing coverage (Wave 4)'],
+        not_yet_in_v1: ['CT takeoff review status (cross-app; Wave 3.6 — blocked on CT DB access)'],
       }
       return textContent(JSON.stringify(state, null, 2))
     }

@@ -77,3 +77,17 @@ describe('nextTwinSeat', () => {
     ).toBe(4)
   })
 })
+
+describe('describeTwinRun — heartbeat rows (v2.2483)', () => {
+  it('parses stage/state and frees the note', () => {
+    const d = describeTwinRun('heartbeat', 'heartbeat stage=STG-3 takeoff state=working placing counters on P200', undefined)
+    expect(d.verb).toBe('heartbeat')
+    expect(d.mission).toBe('working')
+    expect(d.detail).toContain('STG-3 takeoff')
+    expect(d.detail).toContain('placing counters on P200')
+  })
+  it('blocked state surfaces as the mission', () => {
+    const d = describeTwinRun('heartbeat', 'heartbeat stage=STG-2 state=blocked waiting on scale answer', undefined)
+    expect(d.mission).toBe('blocked')
+  })
+})

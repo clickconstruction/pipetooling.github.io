@@ -20,6 +20,17 @@ type TwinRow = { id: string; name: string | null; email: string; role: string; r
 type CredRow = { id: string; twin_user_id: string; label: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
 type RunRow = { twin_user_id: string; mission: string; notes: string | null; started_at: string }
 
+type QuestionRow = {
+  id: string
+  twin_user_id: string
+  about_bid_id: string | null
+  mission: string | null
+  question: string
+  status: 'open' | 'answered' | 'promoted' | 'dismissed'
+  answer: string | null
+  created_at: string
+}
+
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
 const VIOLET = '#8b5cf6'
 
@@ -64,6 +75,8 @@ export default function DigitalTwinsPanel() {
   const [twins, setTwins] = useState<TwinRow[]>([])
   const [creds, setCreds] = useState<CredRow[]>([])
   const [runs, setRuns] = useState<RunRow[]>([])
+  const [questions, setQuestions] = useState<QuestionRow[]>([])
+  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({})
   const [available, setAvailable] = useState(true)
   const [busy, setBusy] = useState(false)
   const [issueForTwin, setIssueForTwin] = useState<string | null>(null)
@@ -94,6 +107,8 @@ export default function DigitalTwinsPanel() {
       setCreds((c.data as CredRow[] | null) ?? [])
       const r = await sb.from('twin_runs').select('twin_user_id, mission, notes, started_at').order('started_at', { ascending: false }).limit(15)
       setRuns((r.data as RunRow[] | null) ?? [])
+      const q = await sb.from('twin_questions').select('id, twin_user_id, about_bid_id, mission, question, status, answer, created_at').order('created_at', { ascending: false }).limit(30)
+      setQuestions(((q.data as QuestionRow[] | null) ?? []).filter(Boolean))
       const seats = await sb.from('users').select('id, counttooling_user_id').eq('is_digital_twin', true).order('email')
       if (seats.error) {
         setCtSeatById(null)
@@ -117,6 +132,66 @@ export default function DigitalTwinsPanel() {
     } catch {
       showToast('Could not copy', 'error')
     }
+  }
+
+
+  /** Answer / promote / dismiss a twin question (R3). Promote drafts an RFI on the
+   * question's bid (source 'manual' — the human owns the wording from here) and links it. */
+  async function answerQuestion(q: QuestionRow) {
+    const text = (answerDrafts[q.id] ?? '').trim()
+    if (!text) return
+    setBusy(true)
+    try {
+      const sb = supabase as never as { from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { eq: (k2: string, v2: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } } }
+      const { data: me } = await supabase.auth.getUser()
+      const { data: rows, error } = await sb.from('twin_questions')
+        .update({ status: 'answered', answer: text, answered_by: me.user?.id ?? null, answered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', q.id).eq('status', 'open').select('id')
+      if (error) throw new Error(error.message)
+      if (!rows || rows.length === 0) { showToast('Question already handled elsewhere — refreshing.', 'error'); await loadAll(); return }
+      setAnswerDrafts((d) => ({ ...d, [q.id]: '' }))
+      showToast('Answer saved — the twin pulls it with get_answers on its next run.', 'success')
+      await loadAll()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally { setBusy(false) }
+  }
+
+  async function dismissQuestion(q: QuestionRow) {
+    setBusy(true)
+    try {
+      const sb = supabase as never as { from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { eq: (k2: string, v2: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } } }
+      const { data: rows, error } = await sb.from('twin_questions')
+        .update({ status: 'dismissed', updated_at: new Date().toISOString() })
+        .eq('id', q.id).eq('status', 'open').select('id')
+      if (error) throw new Error(error.message)
+      if (!rows || rows.length === 0) { await loadAll(); return }
+      await loadAll()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally { setBusy(false) }
+  }
+
+  async function promoteQuestion(q: QuestionRow) {
+    if (!q.about_bid_id) { showToast('This question has no bid — answer it here instead (RFIs live on a bid).', 'error'); return }
+    setBusy(true)
+    try {
+      const sbi = supabase as never as { from: (t: string) => { insert: (v: object) => { select: (c: string) => { single: () => Promise<{ data: { id: string; rfi_number: number } | null; error: { message: string } | null }> } } } }
+      const { data: me } = await supabase.auth.getUser()
+      const { data: rfi, error: e1 } = await sbi.from('bids_rfis')
+        .insert({ bid_id: q.about_bid_id, question: q.question, source: 'manual', created_by: me.user?.id ?? null })
+        .select('id, rfi_number').single()
+      if (e1 || !rfi) throw new Error(e1?.message ?? 'RFI insert failed')
+      const sbu = supabase as never as { from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { eq: (k2: string, v2: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } } }
+      const { error: e2 } = await sbu.from('twin_questions')
+        .update({ status: 'promoted', promoted_rfi_id: rfi.id, updated_at: new Date().toISOString() })
+        .eq('id', q.id).eq('status', 'open').select('id')
+      if (e2) throw new Error(e2.message)
+      showToast(`Promoted to RFI-${rfi.rfi_number} (draft) on the bid's RFI tab.`, 'success')
+      await loadAll()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally { setBusy(false) }
   }
 
   /** Create (idempotently) the CT seat for a twin and store the uuid join key on PT. */
@@ -494,6 +569,44 @@ export default function DigitalTwinsPanel() {
         </div>
       </div>
 
+      {/* Twin questions (R3): the internal ask lane's inbox. Open questions demand a human;
+          answers flow back to the agent via get_answers; bid-scoped ones can graduate into
+          RFI drafts (the external lane). */}
+      <div style={CARD}>
+        <h4 style={CARD_TITLE}><span style={STEP_REF}>Q</span>Twin questions{questions.filter((x) => x.status === 'open').length > 0 ? ` · ${questions.filter((x) => x.status === 'open').length} open` : ''}</h4>
+        {questions.length === 0 ? <p style={MUTED}>No questions yet — a blocked twin parks one with ask_question instead of stalling.</p> : null}
+        {questions.slice(0, 12).map((q) => {
+          const twin = twins.find((t) => t.id === q.twin_user_id)
+          const isOpen = q.status === 'open'
+          return (
+            <div key={q.id} style={{ borderTop: '1px solid var(--border)', padding: '0.45rem 0', fontSize: '0.8rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                <strong>{twin?.name ?? twin?.email ?? 'Twin'}</strong>
+                {q.mission ? <span style={MUTED}>{q.mission}</span> : null}
+                <span style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.06rem 0.4rem', background: isOpen ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: isOpen ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{q.status.toUpperCase()}</span>
+                <span style={{ ...MUTED, marginLeft: 'auto' }}>{relativeTimeFrom(q.created_at, Date.now())}</span>
+              </div>
+              <div style={{ margin: '0.2rem 0', whiteSpace: 'pre-wrap' }}>{q.question}</div>
+              {q.status === 'answered' && q.answer ? <div style={{ ...MUTED, fontStyle: 'italic' }}>→ {q.answer}</div> : null}
+              {isOpen ? (
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                  <input
+                    type="text"
+                    value={answerDrafts[q.id] ?? ''}
+                    onChange={(e) => setAnswerDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
+                    placeholder="Answer the twin\u2026"
+                    style={{ flex: 1, minWidth: 180, padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.78rem' }}
+                  />
+                  <button type="button" style={BTN_PRIMARY} disabled={busy || !(answerDrafts[q.id] ?? '').trim()} onClick={() => void answerQuestion(q)}>Answer</button>
+                  {q.about_bid_id ? <button type="button" style={BTN} disabled={busy} onClick={() => void promoteQuestion(q)}>Promote to RFI</button> : null}
+                  <button type="button" style={{ ...BTN, color: 'var(--text-muted)' }} disabled={busy} onClick={() => void dismissQuestion(q)}>Dismiss</button>
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+
       {/* Step 4: the run ledger, translated to plain English. */}
       <div style={CARD}>
         <h4 style={CARD_TITLE}><span style={STEP_REF}>4</span>Recent runs</h4>
@@ -503,6 +616,9 @@ export default function DigitalTwinsPanel() {
           const chip =
             d.verb === 'sign-in' ? { text: 'SIGN-IN', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' } :
             d.verb === 'report' ? { text: 'REPORT', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-800)' } :
+            d.verb === 'heartbeat' ? (d.mission === 'blocked'
+              ? { text: 'BLOCKED', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
+              : { text: 'PULSE', bg: 'var(--bg-muted)', fg: 'var(--text-muted)' }) :
             { text: 'RUN', bg: 'var(--bg-violet-100)', fg: 'var(--text-violet-800)' }
           return (
             <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', fontSize: '0.76rem', padding: '0.26rem 0', borderBottom: i < runs.length - 1 ? '1px solid var(--border)' : 'none', flexWrap: 'wrap' }}>
