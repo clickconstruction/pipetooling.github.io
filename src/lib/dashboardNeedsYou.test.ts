@@ -19,6 +19,10 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     jobFollowupsEnabled: true,
     jobFollowupCount: 0,
     jobFollowupStageCounts: null,
+    gcReviewEnabled: true,
+    gcReviewStatus: null,
+    gcReviewNudge: null,
+    gcReviewIsWednesday: false,
     ...overrides,
   }
 }
@@ -159,6 +163,30 @@ describe('buildNeedsYouItems', () => {
     const items = buildNeedsYouItems(inputs({ jobFollowupCount: 1 }))
     expect(items[0]?.title).toBe('One job is waiting on a follow-up')
     expect(items[0]?.detail).toBe('review them one card at a time.')
+  })
+
+  it('GC weekly: only the due state becomes an item, last in stack order', () => {
+    const due = { gcs_outstanding: 11, gcs_certified: 3, gcs_sent: 1 }
+    const items = buildNeedsYouItems(
+      inputs({ jobFollowupCount: 9, gcReviewStatus: due, gcReviewNudge: 'due', gcReviewIsWednesday: true }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['job-followups', 'gc-review-weekly'])
+    const gc = items[1]
+    expect(gc?.title).toBe('GC review is due today')
+    expect(gc?.detail).toBe(
+      '3 of 11 GCs certified · 1 statement sent — certify each group and send it off so every GC knows what they owe.',
+    )
+    expect(gc?.figure).toBe('8')
+    expect(buildNeedsYouItems(inputs({ gcReviewStatus: due, gcReviewNudge: 'due' }))[0]?.title).toBe(
+      'GC review is still due this week',
+    )
+  })
+
+  it('GC weekly: done/hidden states and the enabled gate contribute no item', () => {
+    const due = { gcs_outstanding: 4, gcs_certified: 0, gcs_sent: 0 }
+    expect(buildNeedsYouItems(inputs({ gcReviewStatus: { gcs_outstanding: 4, gcs_certified: 4, gcs_sent: 4 }, gcReviewNudge: 'done' }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ gcReviewStatus: due, gcReviewNudge: 'hidden' }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ gcReviewEnabled: false, gcReviewStatus: due, gcReviewNudge: 'due' }))).toEqual([])
   })
 
   it('singular copy reads naturally', () => {

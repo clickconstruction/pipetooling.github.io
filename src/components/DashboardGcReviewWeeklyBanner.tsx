@@ -1,55 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  gcReviewNudgeState,
-  gcReviewWeekStartYmd,
-  gcReviewWeekdayIndex,
-} from '../lib/jobs/gcReviewCertification'
-import { fetchGcReviewWeekStatus, type GcReviewWeekStatus } from '../lib/gcReviewCertifications'
+import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../lib/jobs/gcReviewCertification'
+import type { GcReviewWeekStatus } from '../lib/gcReviewCertifications'
+import { useGcReviewWeekNudge } from '../hooks/useGcReviewWeekNudge'
 
 /**
- * Dashboard attention card for the Wednesday GC certification ritual
- * (v2.1984): amber from Wednesday until every GC with outstanding billed
- * money is certified AND sent this week, green for the rest of Wednesday
- * once done, hidden otherwise (the kernel owns that state machine).
- * Self-gating — renders nothing while loading, on error, or off-days.
- * Office-role gating happens at the mount site. Click-through deep-links to
- * Jobs → Pipeline with GC Review already open (?gcReview=1).
+ * Attention card for the Wednesday GC certification ritual (v2.1984): amber
+ * from Wednesday until every GC with outstanding billed money is certified
+ * AND sent this week, green for the rest of Wednesday once done, hidden
+ * otherwise (the kernel owns that state machine). Self-gating — renders
+ * nothing while loading, on error, or off-days. Office-role gating happens at
+ * the mount site. Since v2.2490 the Dashboard shows the due state as a Needs
+ * You item (plus GcReviewWeekDoneNotice when done); Quickfill's GC weekly
+ * station still renders this banner.
  */
-export default function DashboardGcReviewWeeklyBanner({
-  onCount,
-}: {
-  /** Quickfill metric seam (v2.2347): GCs still to certify this week (0 when done or off-window). */
-  onCount?: (n: number | null) => void
-} = {}) {
-  const navigate = useNavigate()
-  const [status, setStatus] = useState<GcReviewWeekStatus | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    void fetchGcReviewWeekStatus(gcReviewWeekStartYmd()).then(
-      (s) => {
-        if (cancelled) return
-        setStatus(s)
-        const n = s != null && gcReviewNudgeState(s) === 'due' ? Math.max(0, s.gcs_outstanding - s.gcs_certified) : 0
-        onCount?.(n)
-      },
-      () => {
-        if (!cancelled) onCount?.(0)
-      },
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (!status) return null
-  const nudge = gcReviewNudgeState(status)
-  if (nudge === 'hidden') return null
-
-  if (nudge === 'done') {
-    return (
-      <div
+/** The green "done for the week" confirmation — also rendered by the Dashboard quick row (v2.2490). */
+export function GcReviewWeekDoneNotice({ status }: { status: GcReviewWeekStatus }) {
+  return (
+    <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -88,8 +57,32 @@ export default function DashboardGcReviewWeeklyBanner({
           </div>
         </div>
       </div>
+  )
+}
+
+export default function DashboardGcReviewWeeklyBanner({
+  onCount,
+}: {
+  /** Quickfill metric seam (v2.2347): GCs still to certify this week (0 when done or off-window). */
+  onCount?: (n: number | null) => void
+} = {}) {
+  const navigate = useNavigate()
+  const { status, loaded } = useGcReviewWeekNudge(true)
+
+  useEffect(() => {
+    if (!loaded) return
+    onCount?.(
+      status != null && gcReviewNudgeState(status) === 'due'
+        ? Math.max(0, status.gcs_outstanding - status.gcs_certified)
+        : 0,
     )
-  }
+  }, [status, loaded, onCount])
+
+  if (!status) return null
+  const nudge = gcReviewNudgeState(status)
+  if (nudge === 'hidden') return null
+
+  if (nudge === 'done') return <GcReviewWeekDoneNotice status={status} />
 
   const remaining = Math.max(0, status.gcs_outstanding - status.gcs_certified)
   const isWednesday = gcReviewWeekdayIndex() === 3

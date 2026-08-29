@@ -2,14 +2,17 @@ import type { UserRole } from '../hooks/useAuth'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
 import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFollowupQueue'
 import type { RoadmapNudge } from './dashboardRoadmapNudge'
+import type { GcReviewNudgeState } from './jobs/gcReviewCertification'
+import type { GcReviewWeekStatus } from './gcReviewCertifications'
 
 /**
  * Needs You card (v2.2339, CX-audit Phase 3): the pure item builder behind the
  * dashboard's unified attention list. v1 consolidated the four hook-driven
  * banners (AR deposits, own stale tally, team stale tally, lost-bid reasons);
  * the self-gating banners fold in item-by-item — job follow-ups joined in
- * v2.2487, team reviews in v2.2488, roadmap needs-name in v2.2489. Still
- * banners below the card: GC weekly, bulk-delete, claim-dev.
+ * v2.2487, team reviews in v2.2488, roadmap needs-name in v2.2489, GC weekly
+ * in v2.2490 (its green "done" state stays a notice below the card). Still
+ * banners below the card: bulk-delete, claim-dev.
  *
  * Gating mirrors the banners it replaces exactly: an item appears only when its
  * banner would have rendered. Order is the old banner stack order (deposits,
@@ -22,7 +25,15 @@ export type NeedsYouSeverity = 'blue' | 'amber' | 'gray'
 
 export type NeedsYouItem = {
   /** Stable key — also the telemetry target (`#<key>`) and the action-dispatch handle. */
-  key: 'ar-deposits' | 'tally-self' | 'tally-team' | 'lost-bids' | 'team-reviews' | 'roadmap-needs-person' | 'job-followups'
+  key:
+    | 'ar-deposits'
+    | 'tally-self'
+    | 'tally-team'
+    | 'lost-bids'
+    | 'team-reviews'
+    | 'roadmap-needs-person'
+    | 'job-followups'
+    | 'gc-review-weekly'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -63,6 +74,16 @@ export type NeedsYouInputs = {
   jobFollowupsEnabled: boolean
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
+  /**
+   * Wednesday GC certification (v2.2490). Only the 'due' state becomes an
+   * item; 'done' renders as a green notice outside the card. Quickfill passes
+   * enabled=false — its dedicated GC weekly station already carries this.
+   */
+  gcReviewEnabled: boolean
+  gcReviewStatus: GcReviewWeekStatus | null
+  /** Parent computes both from the clock (gcReviewNudgeState/gcReviewWeekdayIndex) — the builder stays pure. */
+  gcReviewNudge: GcReviewNudgeState | null
+  gcReviewIsWednesday: boolean
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -179,6 +200,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${breakdown ? `${breakdown} — ` : ''}review them one card at a time.`,
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Start review',
+    })
+  }
+
+  if (inputs.gcReviewEnabled && inputs.gcReviewStatus != null && inputs.gcReviewNudge === 'due') {
+    const s = inputs.gcReviewStatus
+    const remaining = Math.max(0, s.gcs_outstanding - s.gcs_certified)
+    items.push({
+      key: 'gc-review-weekly',
+      severity: 'amber',
+      kicker: 'Wednesday ritual',
+      title: inputs.gcReviewIsWednesday ? 'GC review is due today' : 'GC review is still due this week',
+      detail: `${s.gcs_certified} of ${s.gcs_outstanding} GCs certified · ${s.gcs_sent} statement${s.gcs_sent === 1 ? '' : 's'} sent — certify each group and send it off so every GC knows what they owe.`,
+      figure: remaining > 99 ? '99+' : String(remaining),
+      actionLabel: 'Open GC Review',
     })
   }
 
