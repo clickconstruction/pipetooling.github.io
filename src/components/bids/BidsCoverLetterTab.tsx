@@ -7,6 +7,7 @@ import { formatCurrency } from '../../lib/format'
 import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { OpenRfiChip } from './OpenRfiChip'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -1112,6 +1113,7 @@ export function BidsCoverLetterTab({
                                 >
                                   {markingSent ? 'Marking…' : 'Mark sent today'}
                                 </button>
+                                <OpenRfiChip bidId={bid.id} />
                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                                   stamps the bid with today as its sent date and this letter's amount as its value
                                   {bid.bid_date_sent ? <> · sent {bid.bid_date_sent.slice(5).replace('-', '/')}</> : null}
@@ -1243,6 +1245,7 @@ export function BidsCoverLetterTab({
                                 >
                                   {markingSent ? 'Marking…' : multi ? `Mark sent to ${gcShort}` : 'Mark sent today'}
                                 </button>
+                                  <OpenRfiChip bidId={bid.id} />
                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                                   {multi
                                     ? `stamps ${gcShort}'s bids with today + base price` +
