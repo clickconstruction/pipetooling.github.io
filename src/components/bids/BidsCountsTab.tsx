@@ -133,18 +133,22 @@ export function BidsCountsTab({
   const [clearAllCountsConfirm, setClearAllCountsConfirm] = useState('')
   const [clearAllCountsBusy, setClearAllCountsBusy] = useState(false)
   // Old/New pills: Old = the classic sortable table; New = the Count Sheet
-  // (summary, by-page audit, quick add). Per-device, default Old.
+  // (summary, by-page audit, quick add). Per-device; New is the landing view
+  // (v2.2474, owner call) — an explicit flip to Old still sticks. The key was
+  // bumped from bids_counts_view_v1 when New became the default, deliberately
+  // dropping every device's remembered view so the whole team lands on New
+  // once (the roadmap_view_v2 pattern).
   const [countsView, setCountsView] = useState<'old' | 'new'>(() => {
     try {
-      return window.localStorage.getItem('bids_counts_view_v1') === 'new' ? 'new' : 'old'
+      return window.localStorage.getItem('bids_counts_view_v2') === 'old' ? 'old' : 'new'
     } catch {
-      return 'old'
+      return 'new'
     }
   })
   const switchCountsView = (next: 'old' | 'new') => {
     setCountsView(next)
     try {
-      window.localStorage.setItem('bids_counts_view_v1', next)
+      window.localStorage.setItem('bids_counts_view_v2', next)
     } catch {
       /* device just won't remember */
     }

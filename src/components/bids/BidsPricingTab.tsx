@@ -442,19 +442,23 @@ export function BidsPricingTab({
   const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
   const [assignTakeoffRow, setAssignTakeoffRow] = useState<{ countRowId: string; fixture: string } | null>(null)
   const [pricingViewModel, setPricingViewModel] = useState<'cost' | 'price'>('price')
-  // Old/New layout pills (v2.NEXT): Old = the classic grid; New = the Workbench
-  // (target solver + live totals). Per-device, default Old while New is refined.
+  // Old/New layout pills: Old = the classic grid; New = the Workbench (target
+  // solver + live totals). Per-device; New is the landing view (v2.2474,
+  // owner call) — an explicit flip to Old still sticks. The key was bumped
+  // from bids_pricing_view_v1 when New became the default, deliberately
+  // dropping every device's remembered view so the whole team lands on New
+  // once (the roadmap_view_v2 pattern).
   const [pricingView, setPricingView] = useState<'old' | 'new'>(() => {
     try {
-      return window.localStorage.getItem('bids_pricing_view_v1') === 'new' ? 'new' : 'old'
+      return window.localStorage.getItem('bids_pricing_view_v2') === 'old' ? 'old' : 'new'
     } catch {
-      return 'old'
+      return 'new'
     }
   })
   const switchPricingView = (next: 'old' | 'new') => {
     setPricingView(next)
     try {
-      window.localStorage.setItem('bids_pricing_view_v1', next)
+      window.localStorage.setItem('bids_pricing_view_v2', next)
     } catch {
       /* device just won't remember */
     }
