@@ -15,6 +15,7 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     lostBidNudgeLoading: false,
     teamReviewsOverdue: [],
     teamReviewCadenceDays: 30,
+    roadmapNudges: [],
     jobFollowupsEnabled: true,
     jobFollowupCount: 0,
     jobFollowupStageCounts: null,
@@ -104,6 +105,36 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs())).toEqual([])
     const items = buildNeedsYouItems(inputs({ teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }] }))
     expect(items[0]?.detail).toBe("Ana hasn't had your review in 30+ days — rate them on Team → Review.")
+  })
+
+  it('roadmap nudge slots between team-reviews and job-followups', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }],
+        roadmapNudges: [
+          { roadmapId: 'r1', title: 'Farm 1', needsName: 56, ready: 4, next: { taskId: 't1', label: '10.2 setup auto watering' } },
+        ],
+        jobFollowupCount: 9,
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['team-reviews', 'roadmap-needs-person', 'job-followups'])
+    const rm = items[1]
+    expect(rm?.title).toBe('Farm 1 · 56 roadmap tasks need a person')
+    expect(rm?.detail).toBe('next: 10.2 setup auto watering — open the Plan to hand them out.')
+    expect(rm?.figure).toBe('56')
+  })
+
+  it('roadmap nudge sums and lists multiple roadmaps', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        roadmapNudges: [
+          { roadmapId: 'r1', title: 'Farm 1', needsName: 40, ready: 0, next: null },
+          { roadmapId: 'r2', title: 'Shop', needsName: 16, ready: 2, next: null },
+        ],
+      }),
+    )
+    expect(items[0]?.title).toBe('56 roadmap tasks need a person')
+    expect(items[0]?.detail).toBe('Farm 1 · 40 · Shop · 16 — open the Plan to hand them out.')
   })
 
   it('job follow-ups joins after the original four, with the banner breakdown', () => {

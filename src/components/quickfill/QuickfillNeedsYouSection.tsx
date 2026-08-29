@@ -12,6 +12,7 @@ import {
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
+import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -46,6 +47,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   const tallyStaffEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const lostBids = useLostBidNudge(tallyStaffEligible)
   const { overdue: teamReviewsOverdue, cadenceDays: teamReviewCadenceDays } = useTeamReviewsDue(authUser?.id)
+  const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(authUser?.id, role)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -80,6 +82,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     lostBidNudgeLoading: lostBids.loading,
     teamReviewsOverdue,
     teamReviewCadenceDays,
+    roadmapNudges,
     // Quickfill's dedicated Job follow-ups station (v2.2347) already carries
     // this queue — disabled here so the card doesn't list it twice on one page.
     jobFollowupsEnabled: false,
@@ -111,6 +114,13 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
             // Deep link (v2.1564): land the Rate deck ON the first due person.
             const first = teamReviewsOverdue[0]
             navigate(`/prospects?tab=team&stage=review${first ? `&rate=${first.id}` : ''}`)
+          } else if (item.key === 'roadmap-needs-person') {
+            const first = roadmapNudges[0]
+            navigate(
+              first
+                ? `/checklist?tab=roadmap&roadmap=${encodeURIComponent(first.roadmapId)}&view=plan`
+                : '/checklist?tab=roadmap',
+            )
           }
         }}
       />

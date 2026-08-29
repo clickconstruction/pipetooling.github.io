@@ -12,12 +12,12 @@ import {
 import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollowUp'
 import { useJobFollowupNudge } from '../../hooks/useJobFollowupNudge'
 import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
+import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import DashboardGcReviewWeeklyBanner from '../DashboardGcReviewWeeklyBanner'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
-import DashboardRoadmapNeedsNameBanner from '../DashboardRoadmapNeedsNameBanner'
 import DashboardBulkDeleteAlertBanner from '../DashboardBulkDeleteAlertBanner'
 import DashboardClaimDevAttemptsBanner from '../DashboardClaimDevAttemptsBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
@@ -305,6 +305,7 @@ export function DashboardPinnedQuickRow({
   const { overdue: teamReviewsOverdue, cadenceDays: teamReviewCadenceDays } = useTeamReviewsDue(
     hideBanners ? undefined : authUserId,
   )
+  const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(hideBanners ? undefined : authUserId, role)
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -319,6 +320,7 @@ export function DashboardPinnedQuickRow({
     lostBidNudgeLoading,
     teamReviewsOverdue,
     teamReviewCadenceDays,
+    roadmapNudges,
     jobFollowupsEnabled: officeEligible,
     jobFollowupCount,
     jobFollowupStageCounts,
@@ -504,12 +506,17 @@ export function DashboardPinnedQuickRow({
               // Deep link (v2.1564): land the Rate deck ON the first due person, not on card 1 of N.
               const first = teamReviewsOverdue[0]
               navigate(`/prospects?tab=team&stage=review${first ? `&rate=${first.id}` : ''}`)
+            } else if (item.key === 'roadmap-needs-person') {
+              const first = roadmapNudges[0]
+              navigate(
+                first
+                  ? `/checklist?tab=roadmap&roadmap=${encodeURIComponent(first.roadmapId)}&view=plan`
+                  : '/checklist?tab=roadmap',
+              )
             }
           }}
         />
       )}
-      {/* Roadmap "needs a person" (v2.2138): self-gates to the Roadmap-tab audience and a threshold. */}
-      {!hideBanners && <DashboardRoadmapNeedsNameBanner authUserId={authUserId} role={role} />}
       {/* Wednesday GC certification (v2.1984): office roles; self-gates to nothing off-days or when done. */}
       {!hideBanners && officeEligible && <DashboardGcReviewWeeklyBanner />}
       {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
