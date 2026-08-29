@@ -4,6 +4,8 @@ import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFol
 import type { RoadmapNudge } from './dashboardRoadmapNudge'
 import type { GcReviewNudgeState } from './jobs/gcReviewCertification'
 import type { GcReviewWeekStatus } from './gcReviewCertifications'
+import type { BulkDeleteAlert } from '../hooks/useBulkDeleteAlerts'
+import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDisplay'
 
 /**
  * Needs You card (v2.2339, CX-audit Phase 3): the pure item builder behind the
@@ -11,8 +13,9 @@ import type { GcReviewWeekStatus } from './gcReviewCertifications'
  * banners (AR deposits, own stale tally, team stale tally, lost-bid reasons);
  * the self-gating banners fold in item-by-item — job follow-ups joined in
  * v2.2487, team reviews in v2.2488, roadmap needs-name in v2.2489, GC weekly
- * in v2.2490 (its green "done" state stays a notice below the card). Still
- * banners below the card: bulk-delete, claim-dev.
+ * in v2.2490 (its green "done" state stays a notice below the card),
+ * bulk-delete in v2.2491 (red severity + secondary snooze/dismiss actions).
+ * Still a banner below the card: claim-dev.
  *
  * Gating mirrors the banners it replaces exactly: an item appears only when its
  * banner would have rendered. Order is the old banner stack order (deposits,
@@ -21,7 +24,8 @@ import type { GcReviewWeekStatus } from './gcReviewCertifications'
  * items (90+ tail etc.) join the list.
  */
 
-export type NeedsYouSeverity = 'blue' | 'amber' | 'gray'
+/** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
+export type NeedsYouSeverity = 'blue' | 'amber' | 'gray' | 'red'
 
 export type NeedsYouItem = {
   /** Stable key — also the telemetry target (`#<key>`) and the action-dispatch handle. */
@@ -34,6 +38,7 @@ export type NeedsYouItem = {
     | 'roadmap-needs-person'
     | 'job-followups'
     | 'gc-review-weekly'
+    | 'bulk-delete'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -42,6 +47,8 @@ export type NeedsYouItem = {
   /** Right-aligned figure in cards mode (count or $), shown big in walk mode. */
   figure: string
   actionLabel: string
+  /** Small link-style follow-ups (v2.2491) — e.g. snooze/dismiss on alert items. Parent dispatches by key. */
+  secondary?: Array<{ key: string; label: string }>
 }
 
 export type NeedsYouInputs = {
@@ -84,6 +91,13 @@ export type NeedsYouInputs = {
   /** Parent computes both from the clock (gcReviewNudgeState/gcReviewWeekdayIndex) — the builder stays pure. */
   gcReviewNudge: GcReviewNudgeState | null
   gcReviewIsWednesday: boolean
+  /**
+   * Bulk-deletion bursts (v2.2491) — null when hidden (non-dev, snoozed,
+   * dismissed; the hook owns that). Red severity: a destructive event, not a
+   * work queue, and it never drains on its own — hence the secondary
+   * snooze/dismiss actions.
+   */
+  bulkDeleteAlerts: BulkDeleteAlert[] | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -214,6 +228,30 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${s.gcs_certified} of ${s.gcs_outstanding} GCs certified · ${s.gcs_sent} statement${s.gcs_sent === 1 ? '' : 's'} sent — certify each group and send it off so every GC knows what they owe.`,
       figure: remaining > 99 ? '99+' : String(remaining),
       actionLabel: 'Open GC Review',
+    })
+  }
+
+  if (inputs.bulkDeleteAlerts != null && inputs.bulkDeleteAlerts.length > 0) {
+    const alerts = inputs.bulkDeleteAlerts
+    const count = alerts.length
+    const totalBundles = alerts.reduce((sum, a) => sum + Number(a.bundles ?? 0), 0)
+    const actors = new Set(alerts.map((a) => a.actor_name)).size
+    const newest = alerts[0] as BulkDeleteAlert
+    items.push({
+      key: 'bulk-delete',
+      severity: 'red',
+      kicker: 'Data safety',
+      title: count === 1 ? 'Bulk deletion detected' : 'Bulk deletions detected',
+      detail:
+        count === 1
+          ? `${newest.actor_name} deleted ${newest.bundles} record${Number(newest.bundles) === 1 ? '' : 's'} at once ${formatDispatchNoteDaysAgoShortPhrase(newest.window_start)} — review them in Recently deleted.`
+          : `${totalBundles} records across ${count} bursts by ${actors} ${actors === 1 ? 'person' : 'people'} — newest: ${newest.actor_name} ${formatDispatchNoteDaysAgoShortPhrase(newest.window_start)}. Review them in Recently deleted.`,
+      figure: count > 99 ? '99+' : String(count),
+      actionLabel: 'Review deletions',
+      secondary: [
+        { key: 'snooze', label: 'Snooze 24h' },
+        { key: 'dismiss', label: 'Dismiss until count increases' },
+      ],
     })
   }
 

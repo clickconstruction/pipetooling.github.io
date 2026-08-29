@@ -13,6 +13,7 @@ import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollow
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
+import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -48,6 +49,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   const lostBids = useLostBidNudge(tallyStaffEligible)
   const { overdue: teamReviewsOverdue, cadenceDays: teamReviewCadenceDays } = useTeamReviewsDue(authUser?.id)
   const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(authUser?.id, role)
+  const bulkDelete = useBulkDeleteNudge(authUser?.id)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -93,6 +95,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     gcReviewStatus: null,
     gcReviewNudge: null,
     gcReviewIsWednesday: false,
+    bulkDeleteAlerts: bulkDelete.visibleAlerts,
   })
 
   useEffect(() => {
@@ -126,6 +129,14 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
                 ? `/checklist?tab=roadmap&roadmap=${encodeURIComponent(first.roadmapId)}&view=plan`
                 : '/checklist?tab=roadmap',
             )
+          } else if (item.key === 'bulk-delete') {
+            navigate('/settings?tab=settings-data#settings-recently-deleted')
+          }
+        }}
+        onSecondary={(item, key) => {
+          if (item.key === 'bulk-delete') {
+            if (key === 'snooze') bulkDelete.snooze24h()
+            else if (key === 'dismiss') bulkDelete.dismissUntilCountIncreases()
           }
         }}
       />
