@@ -273,3 +273,18 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
   engine v0 + its 3.1 fleet calibration run, then missions M4/M5. The environment now
   satisfies most of the Definition of stable's machinery: queue, brief, resume, questions,
   heartbeats, loud refusals at every fence.
+- 2026-08-29 (Wave 4.4 CLOSED) — **drive-intake is live** (v2.2486 + the quota fix): Google
+  project `pipetooling-drive`, service account `drive-intake@pipetooling-drive.iam.gserviceaccount.com`,
+  Drive API enabled, org-policy `iam.disableServiceAccountKeyCreation` overridden to
+  Not-enforced for that project (Robert self-granted Organization Policy Administrator via
+  the console's Fix-access flow), key stored at `~/pipetooling-secrets/drive-intake-key.json`
+  (600), both secrets set, jobs folder shared with the SA. **Live-verified**: the twin called
+  `file_plans` on b403 → job folder created in the shared Drive, `drive_link` stamped on the
+  bid, `[pipeline STG-1]` audit note written; a second call proved idempotency (folder
+  "reused"). **Finding — the SA quota wall**: Google refuses file BYTES to service accounts
+  ("Service Accounts do not have storage quota"); folders/metadata are fine. The upload leg
+  now degrades gracefully (folder + stamp + honest `upload_note`) and gained optional
+  `DRIVE_IMPERSONATE_USER` domain-wide delegation; a Shared Drive is the alternative. Both
+  documented in `docs/DRIVE_INTAKE_SETUP.md`. NOTE: a Google password was pasted into chat
+  during this work — it was never used (passwords are not a credential I will handle, and
+  Google blocks password auth for APIs regardless); **that password should be rotated.**
