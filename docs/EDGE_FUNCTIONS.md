@@ -3,20 +3,20 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 61 Supabase Edge Functions
+purpose: Complete API documentation for all 84 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-08-28
+last_updated: 2026-08-29
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 61
+total_functions: 84
 
 key_sections:
   - name: "Functions"
     anchor: "#functions"
-    description: "Per-function reference (all 61), user admin through Stripe/Mercury"
+    description: "Per-function reference (all 84), user admin through Stripe/Mercury"
   - name: "create-user"
     anchor: "#create-user"
     description: "Create users with roles (dev-only)"
@@ -89,6 +89,7 @@ when_to_read:
    - [dev-login](#dev-login)
    - [twin-login](#twin-login)
    - [twin-mcp](#twin-mcp)
+   - [drive-intake](#drive-intake)
    - [ct-bridge](#ct-bridge)
    - [ct-roster-audit](#ct-roster-audit)
    - [address-autocomplete](#address-autocomplete)
@@ -781,6 +782,20 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **Conversation layer (v2.2483** — RFI_LOOP_PLAN R3 + Wave 4.5**)**: `ask_question` (parks a question in `twin_questions` — the internal lane; optional bid resolves by number/uuid), `get_answers` (the twin's questions newest-first; `open_only`), and `heartbeat` (inserts a `twin_runs` row with bid_id/stage/state — the fleet console shows PULSE/BLOCKED chips). `get_work_state` grew `middle` coverage (takeoff mappings, rough part lines, labor estimates, price-book copies), `rfis` statuses, `open_questions_here`, and `latest_heartbeat`. These are twin-self-scoped writes to twin infrastructure tables, not business data — the fence applier gained a `twin_questions` INSERT-as-self branch.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
+
+---
+
+### drive-intake
+
+**Purpose**: Files a bid in Google Drive — estimator-twin pipeline Wave 4.4 (v2.2499; plan in `docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md`). Find-or-creates the job folder (by `project_name`, idempotent — an existing folder is reused, never duplicated) under the shared jobs folder, optionally uploads the plan set **fetched from a URL** (`plans_url` — plan PDFs are too big to push through MCP), stamps the resulting links onto the bid (`drive_link` set-if-empty; `plans_link` only when the upload succeeded), and writes a `[pipeline STG-1] Drive filed` audit entry to `bids_submission_entries` (best-effort).
+
+**Endpoint**: `POST /functions/v1/drive-intake` · **Auth**: `verify_jwt = false`; two in-function paths — **`X-Twin-Token`** (per-twin credential, sha256 vs `twin_credentials`; the bid must be the twin's own via `estimator_id`/`created_by` — assignment-is-the-grant) or **`Authorization: Bearer <staff JWT>`** (`dev`, `master_technician`, `assistant`, `controller`, `estimator`).
+
+**Request**: `{ bid, plans_url?, plans_file_name? }` — `bid` is a bid number (`b403`/`bp403` prefixes accepted) or uuid. **Response**: `{ success, folder_id, folder_link, folder_created, plans_link, upload_note, stamped }` — a failed upload never fails the call: the folder still lands and `upload_note` explains (degrades gracefully). Drive secrets unset → **503** with a setup pointer.
+
+**Google auth is a service account** (RS256 JWT bearer grant via WebCrypto), never a user password — the SA's email must be a member of the Shared Drive ("PipeTooling Jobs", Content manager). The Shared Drive supplies the storage quota SAs lack; `DRIVE_IMPERSONATE_USER` (domain-wide delegation) exists as an alternative upload identity but **leave it unset unless the admin-console grant exists** — set-but-ungranted breaks uploads (2026-08-29). Setup: [`docs/DRIVE_INTAKE_SETUP.md`](./DRIVE_INTAKE_SETUP.md).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the SA key), **`DRIVE_JOBS_FOLDER_ID`**; optional `DRIVE_IMPERSONATE_USER`.
 
 ---
 
