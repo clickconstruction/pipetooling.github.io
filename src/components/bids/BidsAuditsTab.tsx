@@ -165,20 +165,44 @@ export function BidsAuditsTab({ authUser }: { authUser: User | null }) {
     }
   }
 
-  const finishAudit = async (audit: AuditWithBid) => {
+  // Finish/reopen go through the audit-finish edge fn (v2.2518): one gesture does the
+  // PT side AND flips the twin's CT project review status over the bridge. If the fn
+  // isn't reachable (local dev, pre-deploy), fall back to the PT-side-only writes so
+  // the tab still works — the agent's digest sweep reconciles the CT lane later.
+  const setAuditStatus = async (audit: AuditWithBid, action: 'finish' | 'reopen') => {
     setBusy(`finish:${audit.id}`)
     try {
-      const { error } = await auditDb
-        .from('bid_audits')
-        .update({ status: 'done', completed_at: new Date().toISOString(), completed_by: authUser?.id ?? null, updated_at: new Date().toISOString() })
-        .eq('id', audit.id)
-      if (error) throw new Error(error.message)
-      const noteCount = (notesByAudit[audit.id] ?? []).filter((n) => n.kind === 'note' || n.kind === 'answer').length
-      await auditDb.from('bids_submission_entries').insert({
-        bid_id: audit.bid_id,
-        notes: `[audit] finished by ${authUser?.email ?? 'staff'} — ${noteCount} note(s)/answer(s) left for the robot to digest.`,
-      })
-      showToast('Audit finished — the robot will digest your notes and reply with receipts.', 'success')
+      let viaFn = false
+      try {
+        const { data, error } = await supabase.functions.invoke('audit-finish', {
+          body: { audit_id: audit.id, action },
+        })
+        const resp = data as { ok?: boolean; ct_bridge?: string } | null
+        if (!error && resp?.ok) {
+          viaFn = true
+          if (action === 'finish') {
+            const ct = resp.ct_bridge === 'ok' ? ' Takeoff marked reviewed in CountTooling too.' : ''
+            showToast(`Audit finished — the robot will digest your notes and reply with receipts.${ct}`, 'success')
+          }
+        }
+      } catch {
+        // fall through to the direct writes below
+      }
+      if (!viaFn) {
+        const patch = action === 'finish'
+          ? { status: 'done', completed_at: new Date().toISOString(), completed_by: authUser?.id ?? null, updated_at: new Date().toISOString() }
+          : { status: 'pending', completed_at: null, completed_by: null, updated_at: new Date().toISOString() }
+        const { error } = await auditDb.from('bid_audits').update(patch).eq('id', audit.id)
+        if (error) throw new Error(error.message)
+        if (action === 'finish') {
+          const noteCount = (notesByAudit[audit.id] ?? []).filter((n) => n.kind === 'note' || n.kind === 'answer').length
+          await auditDb.from('bids_submission_entries').insert({
+            bid_id: audit.bid_id,
+            notes: `[audit] finished by ${authUser?.email ?? 'staff'} — ${noteCount} note(s)/answer(s) left for the robot to digest.`,
+          })
+          showToast('Audit finished — the robot will digest your notes and reply with receipts.', 'success')
+        }
+      }
       await load()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
@@ -186,22 +210,8 @@ export function BidsAuditsTab({ authUser }: { authUser: User | null }) {
       setBusy(null)
     }
   }
-
-  const reopenAudit = async (audit: AuditWithBid) => {
-    setBusy(`finish:${audit.id}`)
-    try {
-      const { error } = await auditDb
-        .from('bid_audits')
-        .update({ status: 'pending', completed_at: null, completed_by: null, updated_at: new Date().toISOString() })
-        .eq('id', audit.id)
-      if (error) throw new Error(error.message)
-      await load()
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
-    } finally {
-      setBusy(null)
-    }
-  }
+  const finishAudit = (audit: AuditWithBid) => setAuditStatus(audit, 'finish')
+  const reopenAudit = (audit: AuditWithBid) => setAuditStatus(audit, 'reopen')
 
   const visible = audits.filter((a) => a.status !== 'digested' || showDigested)
   const digestedCount = audits.filter((a) => a.status === 'digested').length

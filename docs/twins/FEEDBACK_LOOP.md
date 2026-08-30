@@ -1,74 +1,71 @@
 ---
 file: docs/twins/FEEDBACK_LOOP.md
 last_updated: 2026-08-30
-purpose: The Wendi audit loop — how human estimator feedback on twin bids reaches the agent, and what the agent must do with it. Read at the START of any twin/backtest session, alongside get_answers.
+purpose: The audit loop — how human estimator feedback on twin bids reaches the agent through the Audits tab, and what the agent must do with it. Read at the START of any twin/backtest session, alongside get_answers.
 ---
 
-# The feedback loop (owner decision 2026-08-30)
+# The audit loop (v2 — owner decision 2026-08-30, supersedes the three-channel v1)
 
-A twin drafts a bid; Wendi audits it in the tools she already uses; the agent digests
-her feedback into permanent improvements and stamps a receipt. Three channels, one
-digest, one receipt rule. The letter itself and the GC relationship stay human —
-the twin's deliverable ends at a clean draft.
+A twin drafts a bid and opens an audit; the human auditor reviews **in one place** —
+the **Audits tab on the Bids page** — with new-tab quick links to both apps; the agent
+digests every note into permanent improvements and posts a receipt under each one.
+The letter itself and the GC relationship stay human — the twin's deliverable ends at
+a clean draft.
 
-## The three channels (all in tools she already knows)
+## The surface (v2.2516–v2.2519)
 
-1. **Plan-space (CountTooling review lane)** — spatial errors. She opens the twin's
-   project, drops notes on the plan, answers the twin's numbered RFI pins in the
-   notes drawer (answer implies resolved), and finishes with *Mark reviewed* or
-   *Request changes* + a review note.
-   *Agent read door:* `get_work_state → ct_takeoff.notes_ledger` (every note with
-   kind / resolved / answer) + `ct_takeoff.projects[].review_status` / `review_note`.
+The Audits tab renders whenever `bid_audits` rows exist; its label carries the pending
+count. Each card:
 
-2. **Row corrections ("Wendi audit" bid version in PipeTooling)** — count, footage,
-   price, and scope errors. Every twin/backtest bid is split into two versions
-   before handoff: **"Twin original"** (frozen — the twin NEVER edits it after
-   handoff, and neither does she) and **"Wendi audit"** (selected — she edits rows
-   in the familiar Counts editor: fix numbers, reprice, delete junk, add missing).
-   *Agent read door:* diff the two versions' `bids_count_rows` (+ pricing
-   assignments/custom prices) row by row. The diff IS the feedback — no prose
-   needed from her. Setup recipe: RPC `split_bid_into_versions(p_bid_id,
-   p_current_name:'Twin original', p_new_name:'Wendi audit', p_clone_pricing:true)`,
-   then clone `bid_pricing_assignments` onto the new rows (the RPC clones price
-   scenarios, not per-row assignments), then set `bids.selected_bid_version_id`
-   to the audit version so she lands on it.
+- **Quick links** (both open in new tabs): the CountTooling takeoff via the stored
+  `ct_view_url` (a `?t=` view link — no sign-in, read-only; the auditor references the
+  twin's numbered pins in notes, e.g. "pin 3: by others"), and the PipeTooling bid via
+  `/bids?tab=counts&bidId=…`.
+- **The twin's questions** with inline answer boxes (`kind='answer'`, threaded by
+  `parent_id`).
+- **Sectioned note composers** — Counts / Footage / Pricing / Scope / General. Section
+  choice is a convenience, never a requirement; General takes anything.
+- **Finish audit** → the `audit-finish` edge function: PT status `done` + ledger stamp
+  + the twin's CT project flipped to `reviewed` over the bridge
+  (`manage-user set_twin_project_review`; fail-soft). Reopen reverses both.
+- **Receipts** render indented under each note: 🤖 → "Learned: …" with the
+  digest-outcome label. When every note has one, the audit is `digested` and the card
+  moves to collapsed history.
 
-3. **The why (`AUDIT:` ledger notes)** — reasoning and standing rules ("we always
-   carry $20k travel past 200 miles", "never bid med gas self-perform"). She types
-   a note starting `AUDIT:` into the bid's submission ledger — the same box she
-   already uses for send notes. SMS-to-owner is the fallback; the owner pastes it
-   into a session verbatim.
-   *Agent read door:* `bids_submission_entries` on twin bids, notes matching
-   `^AUDIT:` (also visible in `get_work_state → audit_ledger_tail`).
+## What the twin does at pipeline end (per bid)
+
+1. Mint a CT view link for its project: CT RPC
+   `create_view_link(p_project_id, p_name, p_expires_at: null)` with the twin's CT JWT.
+2. Insert the `bid_audits` row (`status='pending'`, `ct_project_id`, `ct_view_url`) and
+   PATCH `bids.count_tooling_plans_link` with the same URL.
+3. Seed its open RFIs as `bid_audit_notes` rows (`kind='question'`, best-fit section).
+
+Twin lanes are structural (RLS): a twin can open audits and later close them as
+`digested`, but can never set `done` (verified live 2026-08-30: 42501 on attempt);
+twin-authored notes are limited to `question` and `receipt`.
 
 ## The digest (every twin session, before new work)
 
-Sweep all three channels for anything new since the last digest stamp, then triage
-each item into exactly one bucket:
+Sweep for audits in `status='done'` and notes with `digested_at IS NULL`
+(read door: REST on `bid_audits` / `bid_audit_notes`, or
+`get_work_state → ct_takeoff.notes_ledger` for the plan-space pins). Triage each item
+into exactly one bucket, recorded on the note as `digest_outcome`:
 
-- **Doctrine** → edit `docs/twins/PLACEMENT.md` (or the relevant guide) so the
-  error class can't recur. Example: "read every sheet including PD-* demo plans."
-- **Robot books** → fix prices / hours / aliases in the 🤖 Robot Default books.
-  Example: reshape per-ft rates, loaded-fixture prices.
-- **Code** → kernel/assembler fix (tile-seam dedup, developed-length model), shipped
-  as a normal PR.
-- **Bid-only** → an answer that changes this bid's rows but teaches nothing general.
-  Apply it to the bid and move on.
+- **doctrine** → edit `docs/twins/PLACEMENT.md` (or the relevant guide) so the error
+  class can't recur. Example: "read every sheet including PD-* demo plans."
+- **books** → fix prices / hours / aliases in the 🤖 Robot Default books.
+- **code** → kernel/assembler fix, shipped as a normal PR.
+- **bid_only** → apply to that bid's rows; teaches nothing general.
 
-A standing rule stated once in channel 3 outranks a per-bid answer: promote it to
-doctrine or books immediately.
-
-## The receipt rule (what makes it a loop)
-
-For every item digested, stamp the bid's ledger:
-`[audit-receipt] changed <X> because you said <Y> → <where it landed: doctrine §… /
-book entry … / PR #… / this bid only>`.
-She must be able to see that her feedback landed without asking. The next backtest
-measures whether that error class recurred — recurrence means the digest failed,
-not her.
+A standing rule stated once ("we always carry $20k travel past 200 miles") outranks a
+per-bid answer: promote it to doctrine or books immediately. Then post the receipt —
+`kind='receipt'`, `parent_id` = the note, body "Learned: <what changed> → <where>" —
+set `digested_at` + `digest_outcome` on the note, and when all notes carry receipts,
+set the audit `status='digested'`. The next backtest measures whether the error class
+recurred; recurrence means the digest failed, not the auditor.
 
 ## Current state
 
-- BT-2 (b405, MPH Casa Linda) is the first bid staged for this loop: versions
-  split, audit version priced + selected, CT project `6648c38a` in the ready lane
-  with 7 notes (2 RFIs) awaiting her pass.
+- BT-2 (b405, MPH Casa Linda) is the first card: audit `e7523514…` pending with 4
+  seeded questions, CT project `6648c38a` in the ready lane with 7 pins (2 RFIs),
+  view link stored on the bid and the audit.
