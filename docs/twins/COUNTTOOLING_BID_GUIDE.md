@@ -42,7 +42,14 @@ sends you here at pipeline stage 3; your counts come back to PipeTooling at stag
    Rejections are 400s that name the exact field; fix what they name.
 4. **Flag ambiguities, keep counting**: a note prefixed `RFI:` at the exact spot rides
    the RFI-flags convention into PipeTooling's RFI queue. Never guess a count a plan
-   doesn't support — flag it and move on.
+   doesn't support — flag it and move on. **Notes contract (Notes ledger)**: on-sheet
+   `text` stays SHORT — one line, ≤ ~100 chars (a question for RFIs, a label
+   otherwise). Long provenance (trace workflow, gate numbers) goes in the note's
+   optional `detail` field — it shows in the reviewer's Notes ledger drawer, never as
+   plan-space text. In the app your RFI and detail-bearing notes render as numbered
+   pins, so the sheet stays readable. The reviewer resolves/answers RFIs in the
+   drawer; `get_work_state`'s `ct_takeoff.notes_ledger` hands the answers back to you
+   (`resolved: true` + `answer`) — READ them before re-asking or re-importing.
 5. **Mark ready**: with your CT session, call the `set_project_review_status` RPC
    (`p_project_id`, `p_status: 'ready'`). Your project appears in the human reviewer's
    "Ready for review" lane.
