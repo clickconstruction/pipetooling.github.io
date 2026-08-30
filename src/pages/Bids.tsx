@@ -41,6 +41,8 @@ import type { BidDateSentAttestationPayload } from '../types/bidDateSentAttestat
 import { bidAttestationDisplayName, normalizeBidDateInput } from '../lib/bidDateSentDisplay'
 import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
+import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
+import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
 import { BidsCountsTab } from '../components/bids/BidsCountsTab'
@@ -204,7 +206,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -403,6 +405,9 @@ export default function Bids() {
     () => partitionBidsByScope(bids, twinUserIds),
     [bids, twinUserIds],
   )
+  // Audits tab gating (v2.2517): tab shows whenever audits exist; label carries the
+  // pending count so a waiting robot bid is visible from anywhere on the Bids page.
+  const auditGate = useBidAuditsPendingCount(!!authUser?.id)
   const [lostSummaryModalOpen, setLostSummaryModalOpen] = useState(false)
   const [lostSummaryInitialStaffTab, setLostSummaryInitialStaffTab] = useState<string | null>(null)
   const [bidBoardDeepLinkHighlightId, setBidBoardDeepLinkHighlightId] = useState<string | null>(null)
@@ -1251,7 +1256,7 @@ export default function Bids() {
     )
   }, [location.search, setSearchParams])
 
-  const BIDS_TABS = ['bid-board', 'robot-board', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -2609,6 +2614,17 @@ export default function Bids() {
           {`\u{1F916} Robot Board · ${robotBids.length}`}
         </button>
       ) : null}
+      {auditGate.anyAudits ? (
+        <button
+          type="button"
+          data-tabkey="audits"
+          onClick={() => selectBidsTab('audits')}
+          style={tabStyle(activeTab === 'audits')}
+          title="Robot bids awaiting a human audit — quick links, the robot's questions, and your sectioned notes in one place."
+        >
+          {auditGate.pending > 0 ? `Audits · ${auditGate.pending}` : 'Audits'}
+        </button>
+      ) : null}
       <button
         type="button"
         data-tabkey="builder-review"
@@ -3001,6 +3017,9 @@ export default function Bids() {
         onCancel={closeWorkingBoardArchiveConfirm}
         onConfirm={(id) => { closeWorkingBoardArchiveConfirm(); void archiveWorkingBoardBid(id) }}
       />
+
+      {/* Audits Tab — the robot feedback loop's human side (v2.2517). */}
+      {activeTab === 'audits' && <BidsAuditsTab authUser={authUser} />}
 
       {/* Bid Board Tab */}
       {(activeTab === 'bid-board' || activeTab === 'robot-board') && (
