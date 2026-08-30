@@ -85,6 +85,7 @@ import { buildBidEntryRecencyMaps } from '../lib/bids/bidContacts'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
+import { pruneUnchangedBidUpdateFields } from '../lib/bids/bidUpdatePrune'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -2151,21 +2152,30 @@ export default function Bids() {
     const followupNoteToSave = pendingBidSentFollowupSubmissionNote
     let bidIdForFollowup: string | null = null
     if (editingBid) {
-      const { data: updatedRows, error: err } = await supabase
-        .from('bids')
-        .update(payloadWithAttest)
-        .eq('id', editingBid.id)
-        .select('id')
-      if (err) {
-        setError(err.message)
-        setSavingBid(false)
-        return
-      }
-      // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
-      if (!updateApplied(updatedRows)) {
-        setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
-        setSavingBid(false)
-        return
+      // Dirty fields only: an untouched Save must not write stale form values over
+      // columns stamped after the board row was fetched (drive-intake plans_link clobber).
+      const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttest, {
+        current: bidForm.values,
+        initial: bidForm.initialValues,
+        bidDateSent: { current: bidDateSent, initial: savedBidDateSentRef.current },
+      })
+      if (Object.keys(updatePayload).length > 0) {
+        const { data: updatedRows, error: err } = await supabase
+          .from('bids')
+          .update(updatePayload)
+          .eq('id', editingBid.id)
+          .select('id')
+        if (err) {
+          setError(err.message)
+          setSavingBid(false)
+          return
+        }
+        // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
+        if (!updateApplied(updatedRows)) {
+          setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
+          setSavingBid(false)
+          return
+        }
       }
       bidIdForFollowup = editingBid.id
     } else {
@@ -2271,21 +2281,29 @@ export default function Bids() {
     const followupNoteToSaveCounts = pendingBidSentFollowupSubmissionNote
     let bidId: string
     if (editingBid) {
-      const { data: updatedRows, error: err } = await supabase
-        .from('bids')
-        .update(payloadWithAttestCounts)
-        .eq('id', editingBid.id)
-        .select('id')
-      if (err) {
-        setError(err.message)
-        setSavingBid(false)
-        return
-      }
-      // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
-      if (!updateApplied(updatedRows)) {
-        setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
-        setSavingBid(false)
-        return
+      // Dirty fields only — same stale-form clobber guard as saveBid.
+      const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttestCounts, {
+        current: bidForm.values,
+        initial: bidForm.initialValues,
+        bidDateSent: { current: bidDateSent, initial: savedBidDateSentRef.current },
+      })
+      if (Object.keys(updatePayload).length > 0) {
+        const { data: updatedRows, error: err } = await supabase
+          .from('bids')
+          .update(updatePayload)
+          .eq('id', editingBid.id)
+          .select('id')
+        if (err) {
+          setError(err.message)
+          setSavingBid(false)
+          return
+        }
+        // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
+        if (!updateApplied(updatedRows)) {
+          setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
+          setSavingBid(false)
+          return
+        }
       }
       bidId = editingBid.id
     } else {
