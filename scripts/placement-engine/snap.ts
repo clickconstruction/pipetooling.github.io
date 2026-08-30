@@ -13,6 +13,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
+import { orthogonalizePolyline } from '../../src/lib/takeoffPlacement'
 
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const [manifestPath, pdfPath] = args
@@ -23,7 +24,7 @@ if (!manifestPath || !pdfPath) {
 }
 
 type Pt = { x: number; y: number }
-type Line = { lineTypeId: string; pageIndex: number; dpi: number; points: Pt[] }
+type Line = { lineTypeId: string; pageIndex: number; dpi: number; points: Pt[]; diagonalOk?: boolean }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { lines?: Line[] }
 const lines = manifest.lines ?? []
 if (!lines.length) {
@@ -60,6 +61,7 @@ for (const l of lines) {
 
 let moved = 0
 let stuck = 0
+let orthoed = 0
 for (const [key, group] of byPage) {
   const [pageIndex, dpi] = key.split(':').map(Number) as [number, number]
   const img = loadPgm(pageIndex + 1, dpi)
@@ -81,6 +83,20 @@ for (const [key, group] of byPage) {
     }
     return best ? { x: best.x, y: best.y } : null
   }
+  // Ink coverage of an axis-aligned leg — used to pick which L-corner the drawing took.
+  const legInk = (a: Pt, b: Pt): number => {
+    const len = Math.hypot(b.x - a.x, b.y - a.y)
+    const n = Math.max(1, Math.round(len / 4))
+    let hits = 0
+    for (let k = 0; k <= n; k++) {
+      const x = Math.round(a.x + ((b.x - a.x) * k) / n)
+      const y = Math.round(a.y + ((b.y - a.y) * k) / n)
+      inner: for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        if (x + dx >= 0 && y + dy >= 0 && x + dx < img.w && y + dy < img.h && img.data[(y + dy) * img.w + (x + dx)]! < INK) { hits++; break inner }
+      }
+    }
+    return hits / (n + 1)
+  }
   for (const l of group) {
     for (let i = 0; i < l.points.length; i++) {
       const p = l.points[i]!
@@ -93,7 +109,19 @@ for (const [key, group] of byPage) {
       if (snapped.x !== Math.round(p.x) || snapped.y !== Math.round(p.y)) moved++
       l.points[i] = snapped
     }
+    // Manhattan pass (owner catch 2026-08-30): plumbing is orthogonal — replace every
+    // diagonal shortcut with the L whose corner has more ink under it. Runs declared
+    // diagonalOk (a true 45° tail) are left alone.
+    if (!l.diagonalOk) {
+      const before = l.points.length
+      l.points = orthogonalizePolyline(l.points, (from, to, a, b) => {
+        const scoreA = legInk(from, a) + legInk(a, to)
+        const scoreB = legInk(from, b) + legInk(b, to)
+        return scoreB > scoreA ? b : a
+      })
+      if (l.points.length !== before) orthoed++
+    }
   }
 }
 writeFileSync(manifestPath, JSON.stringify(manifest, null, 1))
-console.error(`snapped ${moved} vertex(es); ${stuck} had no ink in reach. Manifest updated — run registration.ts next.`)
+console.error(`snapped ${moved} vertex(es); orthogonalized ${orthoed} run(s); ${stuck} had no ink in reach. Manifest updated — run registration.ts next.`)

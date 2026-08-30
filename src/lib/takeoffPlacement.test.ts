@@ -15,6 +15,8 @@ import {
   materializeFittings,
   registrationScore,
   applyDefaultCanvases,
+  orthogonalizePolyline,
+  diagonalSegments,
 } from './takeoffPlacement'
 
 describe('rawPxToBasePt', () => {
@@ -180,6 +182,33 @@ describe('applyDefaultCanvases (per-layer review toggling)', () => {
     const out = applyDefaultCanvases(t)
     expect(out.counters.map((c) => c.canvas)).toEqual(['Fixtures', 'Fittings', 'Custom'])
     expect(out.lineTypes[0]!.canvas).toBe('Sanitary')
+  })
+})
+
+describe('orthogonalizePolyline (plumbing is Manhattan)', () => {
+  it('a diagonal shortcut becomes an L through the chosen corner', () => {
+    const out = orthogonalizePolyline(
+      [{ x: 0, y: 0 }, { x: 40, y: 30 }],
+      (_f, _t, a) => a, // horizontal-first corner
+    )
+    expect(out).toEqual([{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 30 }])
+  })
+
+  it('near-axis wobble squares exactly instead of growing corners', () => {
+    const out = orthogonalizePolyline([{ x: 0, y: 0 }, { x: 100, y: 1 }, { x: 100, y: 50 }])
+    expect(out).toEqual([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }])
+  })
+
+  it('jog staircases collapse collinear intermediates', () => {
+    const out = orthogonalizePolyline([
+      { x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 10 }, { x: 120, y: 10 }, { x: 200, y: 10 },
+    ])
+    expect(out).toEqual([{ x: 0, y: 0 }, { x: 50, y: 0 }, { x: 50, y: 10 }, { x: 200, y: 10 }])
+  })
+
+  it('diagonalSegments flags real diagonals and ignores wobble', () => {
+    expect(diagonalSegments([{ x: 0, y: 0 }, { x: 40, y: 30 }])).toHaveLength(1)
+    expect(diagonalSegments([{ x: 0, y: 0 }, { x: 40, y: 1 }])).toHaveLength(0)
   })
 })
 
