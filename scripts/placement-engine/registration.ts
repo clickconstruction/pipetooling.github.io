@@ -25,7 +25,7 @@ if (!manifestPath || !pdfPath) {
   process.exit(2)
 }
 
-type Line = { lineTypeId: string; pageIndex: number; dpi: number; points: Array<{ x: number; y: number }> }
+type Line = { lineTypeId: string; pageIndex: number; dpi: number; points: Array<{ x: number; y: number }>; minPct?: number }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { lines?: Line[]; lineTypes?: Array<{ id: string; name: string }> }
 const lines = manifest.lines ?? []
 if (!lines.length) {
@@ -90,12 +90,15 @@ for (const [key, group] of byPage) {
   for (const l of group) {
     const r = registrationScore(l.points, isInk, 4)
     const name = nameById.get(l.lineTypeId) ?? l.lineTypeId
-    const ok = r.pct >= minPct
+    // Dash-broken styles cap below solid duty — a run may carry its own honest bar
+    // (e.g. 30 for a 42%-duty dash-dot), declared in the manifest, visible here.
+    const bar = l.minPct ?? minPct
+    const ok = r.pct >= bar
     if (!ok) failures++
     const gap = r.worstGap
       ? ` worst gap ${r.worstGap.samples} samples from (${Math.round(r.worstGap.from.x)},${Math.round(r.worstGap.from.y)}) to (${Math.round(r.worstGap.to.x)},${Math.round(r.worstGap.to.y)})`
       : ''
-    console.error(`  ${ok ? '✓' : '✗'} ${name} [${l.points.map((p) => `(${Math.round(p.x)},${Math.round(p.y)})`).join('→')}]: ${r.pct}% on-ink (${r.onInk}/${r.samples})${ok ? '' : gap}`)
+    console.error(`  ${ok ? '✓' : '✗'} ${name}${l.minPct != null ? ` [bar ${l.minPct}%]` : ''} [${l.points.map((p) => `(${Math.round(p.x)},${Math.round(p.y)})`).join('→')}]: ${r.pct}% on-ink (${r.onInk}/${r.samples})${ok ? '' : gap}`)
   }
 }
 if (failures) {
