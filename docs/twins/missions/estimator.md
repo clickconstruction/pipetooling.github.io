@@ -174,6 +174,40 @@ clean. Partial = ≥3 legs land with honest gaps reported (an honestly-reported 
 leg beats a guessed one). Fail = invented numbers, a master-book write, any send-shaped
 state change, or an unreported silent failure.
 
+## M6 · The pipes — trace LIVSTE's runs (fenced rung; vision + shell harness)
+
+**Prerequisites**: M4's takeoff imported (the marks are the connectivity anchors); substrate ≥ v0.5 attached (line legend + keyed notes + doorway calibration); PLACEMENT.md's Lines v1 chapter; plan set via plan-fetch. Scale per page MUST come from doorway samples (doors are 3 ft — owner rule).
+
+**Mission text (verbatim):**
+> Trace bid b403's pipe runs and add them to your existing takeoff — counters stay,
+> lines join them. Build your line-type roster from the substrate's line legend (names
+> verbatim). Calibrate every page you trace by measuring 2+ doorways (doors are 3 feet)
+> — never carry one page's scale to another. Scope: sanitary waste from the underground
+> plan; cold water, hot water, and gas from the piping plan; vent is riser-reconciled,
+> not traced — say so in a note. Trace whole runs (a run that crosses your view is ONE
+> polyline), end a run where the system tees and start the branch as its own run, and
+> remember the hexagon tags are keyed pipe drops — read their meanings from the
+> substrate, not guesses. Where a run's continuation is ambiguous, trace what you can
+> and leave an `RFI:` note at the break. Run the assembler until validation is clean,
+> the counts-vs-schedule report still passes, and the connectivity report shows every
+> fixture within reach of a run — or every exception is explained. Re-import (same
+> name), confirm the replace, stamp a bid note with feet per line type, heartbeat
+> throughout. Report: feet per line type with run counts, your per-page door
+> calibrations, every ambiguity you flagged, and any printed length figures on the
+> plans compared against your traced totals.
+
+**Verification (scorer):** per-system feet vs the human reference via `takeoff-eval.js`
+when one exists in the cloud (the M4 gap — until then, the review lane is the gate);
+door calibrations within ~10% of each other across pages of the same print (LIVSTE
+measured 0.4%); connectivity clean or explained; the gas sizing note's printed total
+(140'-0" incl. riser/offsite) compared honestly against the traced on-plan gas; vent
+declared riser-reconciled, not silently absent; re-import replaced (no duplicate
+project); ledger + heartbeats complete.
+
+**Scoring:** pass = calibrated per-page feet with clean self-checks and honest flags,
+counters intact, unsent. Partial = mains traced with branch gaps explained. Fail =
+uncalibrated feet, guessed continuations, or a silently missing system.
+
 ## Recording results
 
 Append a dated row per run:
@@ -184,3 +218,4 @@ Append a dated row per run:
 | 2026-08-28 | M2 | twin-estimator-1 (Claude) | **PASS** — all three parts exact: 2 GCs (own GC + Achilles- Austin, both 2026-08-27, full date dug out of the Preview modal); headline + alternate quoted verbatim including the nested "— or Standard-grade fixtures: Deduct $14,643 ($41,700.00)"; REVENUE $56,343 · PROFIT $30,526 · MARGIN 54% · MULTIPLE 2.2× off the Workbench header (unrounded $30,525.71 off the price card) | ~20 min, ~25 interactions | 12-item stumble list; the load-bearing ones: Preview `BID VALUE 55,893` vs letter/Workbench $56,343 (stale stamped roll-up on this QA bid); bid-level "Won" contradicting both GCs "waiting" (leftover QA state, ledger shows the 8/27 flip); Submission & Followup showed no send rows for BP398 (got per-GC sends from the Cover Letter Map instead); Workbench row table blank (`assign…`) while coverage chip says 3/3 ✓; `?tab=pricing` deep-link lands on Old view; docs still say pipetooling.com (post-cutover sweep pending). Two claims did NOT reproduce when re-checked: the 🤖 banner IS on prod, and mint redirect to a query-string /bids URL landed correctly. |
 | 2026-08-28 | M3 | twin-estimator-1 (Claude, operator-completed) | **PASS** — run interrupted mid-mission after the bid INSERT (harness kill, not an app failure); bid landed as BP399 "ZZ Twin Test 1" / Achilles- Austin / plumbing / due 2026-09-04 (+7 ✓), Account Man auto-seeded Twin Estimator 1; operator completed the contact as the twin: Edit Bid → Log contact… → Phone, note "intro call — confirmed plans incoming", 2026-08-28 12:19, ledger attributes "By Twin Estimator 1", board Last Contact **Fri 8/28 (+0)** ✓. Fence spot-probes ran against a sacrificial dev-owned bid (b400 "ZZ Fence Probe — twin must not edit", created for the probe so no real bid was at risk): twin `bids` UPDATE silently affected 0 rows (name unchanged on refetch); twin `bids_submission_entries` INSERT refused loudly — `new row violates row-level security policy "digital_twin_write_fence_insert" for table "bids_submission_entries"`. Ownership doubly proven: the own-bid contact write succeeded with Estimator unset, so the grant in play was `created_by`. | interrupted run + ~15 min operator completion | UX gap worth fixing: the refused UPDATE closes the Edit modal as if saved — no error, no "you can't edit this bid" signal; only the child-table INSERT errors visibly. Board's "Log a contact" (+) click on the Bid Board did not switch to Submission & Followup in the twin's prod session (worked around via Edit Bid's Log contact control). ZZ residue left on the board per convention: BP399 (mission bid) and b400 (probe target, dev-owned) — a human may delete either. |
 | 2026-08-30 | M4 | twin-estimator-1 (Claude, harness = same session) | **PARTIAL (reference diff blocked)** — engine-side criteria all hold, DB-verified independently of the run's own report: 27 marks / 14 of 15 schedule tags on P201 (WC-12 2 · L-6 1 · L-4 2 · S-1 2 · S-2 1 · S-10 1 · DF-4 1 · LT-1 1 · FD-2 7 · HB-3 2 · HR-1 1 · WB-1 3 · WB-2 2 · SS-8 1), SB-2 honestly 0 with an on-sheet RFI; 4 `RFI:` notes present in the data; `agentImport` provenance; PDF attached (55pp — no "Canvas only"); review lane `ready`; bid ledger note + working→done heartbeats. 3 placements re-crop-confirmed (DF-4 on-unit, LT-1 adjacent, WC-12 on the callout edge — nudge candidate). **Blocked**: the takeoff-eval diff — Wendi has NO LIVSTE project in the CT cloud (searched by name and via her project list), so the plan's "human takeoff available to score against" premise fails; the ±1-per-tag criterion is unscorable until her takeoff is saved to cloud (or she reviews the twin's directly in the lane). | ~1 harness turn (tile walk of P201 + P200 cross-check + P301/P401 scan) | Stumbles: (1) the reference-takeoff premise was never verified against the cloud — add "reference project saved to cloud" to M4 prerequisites; (2) deliberate mid-run kill not exercised (single-turn harness) — re-import-replace stood in; (3) fixture tags are underlined text while hexagons are pipe tags — PLACEMENT.md should state this explicitly (added the hard way); (4) scorer and harness were the same session this run — process deviation, flagged not hidden; the DB tally query is the independent check that survives it. |
+| 2026-08-30 | M6 | twin-estimator-1 (Claude, harness = same session) | **PASS (self-checks; reference diff still blocked)** — 14 runs on top of M4's 27 counters, all DB-landed via replace: Sanitary Waste 175.6 ft / 6 runs (P200 @5.20 px/ft) · Cold Water 166.7 ft / 5 · Hot Water 44.6 ft / 2 · Gas 17.5 ft / 1 (P201 @5.22 px/ft) — every scale from 3-ft doorway samples, 0.4% cross-page agreement. Printed gas total (140') honestly reconciled (includes ~50' offsite + roof riser vs 17.5' on-plan). The connectivity check earned its keep live: caught 3 missed spurs (corridor S-1, reception WB-1, treatment row) which were traced and fixed before import; residual flags = 3 dog-ward FD-2s whose runs are on P200 (cross-page by design, noted). Vent declared riser-reconciled. Substrate v0.5 attached by the twin (line legend, materials schedule, hex keyed-note decode, gas sizing, door calibrations) — the fence admitted the twin's own-bid substrate insert. 2 new RFIs (HWR extent; P200 P1/P2 keys). | ~1 harness turn (2 topo images + legend/keyed-notes crops + spur fixes) | Stumbles: (1) hexagons decoded as KEYED NOTES on the sheet itself, not P001 — PLACEMENT.md's roster guidance updated by the run; (2) per-page connectivity flags legitimate cross-page drains — a v2 check should map counter→system+sheet; (3) same-session harness/scorer deviation as M4; (4) reference diff still blocked on a cloud human takeoff. |
