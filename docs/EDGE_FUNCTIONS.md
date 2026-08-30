@@ -91,6 +91,7 @@ when_to_read:
    - [twin-mcp](#twin-mcp)
    - [drive-intake](#drive-intake)
    - [ct-bridge](#ct-bridge)
+   - [audit-finish](#audit-finish)
    - [ct-roster-audit](#ct-roster-audit)
    - [address-autocomplete](#address-autocomplete)
    - [send-workflow-notification](#send-workflow-notification)
@@ -818,6 +819,16 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **Endpoint**: `POST /functions/v1/ct-bridge` · **Auth**: `verify_jwt = false`; JWT validated in-function via `getUser` — **devs only**. Every act is logged to the function log (no audit table in v1).
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`CT_MANAGE_USER_URL`**, **`CT_MANAGE_USER_SECRET`** (readable copy: PT main-checkout `.env.twin.local`; rotating it on both projects severs the bridge).
+
+---
+
+### audit-finish
+
+**Purpose**: Ends (or reopens) a robot bid's audit in **one human gesture** (audit loop v2, v2.2518; design in `docs/twins/FEEDBACK_LOOP.md`). `POST { audit_id, action: 'finish' | 'reopen' }`: on finish, sets `bid_audits.status = 'done'` (+ `completed_at/by`), stamps the bid's ledger with the note/answer count, and flips the twin's CountTooling project to `reviewed` via `manage-user set_twin_project_review` (bridge secret, `_shared/ctBridge.ts`); on reopen, back to `pending` and CT `ready`. The CT leg is **fail-soft** — the response's `ct_bridge` field reports `ok` / `skipped` / `failed`, and the PT finish stands regardless (the agent's digest sweep catches stragglers).
+
+**Endpoint**: `POST /functions/v1/audit-finish` · **Auth**: `verify_jwt = false`; JWT validated in-function via `getUser` — estimator+ write roles only, **twins refused** (finishing is structurally human, matching the table's restrictive RLS).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, **`CT_MANAGE_USER_URL`**, **`CT_MANAGE_USER_SECRET`**.
 
 ---
 

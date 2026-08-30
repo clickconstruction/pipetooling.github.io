@@ -587,6 +587,11 @@ verify_jwt = false
 [functions.ct-bridge]
 verify_jwt = false
 
+# Audit loop v2 (v2.2518): JWT validated in-function (estimator+, never twins);
+# finishes/reopens a bid audit and flips the twin's CT project review status.
+[functions.audit-finish]
+verify_jwt = false
+
 # Cron / infra: not browser session; auth via X-Cron-Secret / CRON_SECRET in function.
 [functions.send-scheduled-reminders]
 verify_jwt = false
