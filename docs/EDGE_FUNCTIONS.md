@@ -784,6 +784,20 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ---
 
+### drive-intake
+
+**Purpose**: Estimator-twin pipeline **STG-1 (file plans in Drive)** — v2.2486, Wave 4.4 of `docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md`. Finds-or-creates the bid's job folder (named after `project_name`) under the jobs root, optionally fetches the plan set from `plans_url` into it, stamps `drive_link` / `plans_link` on the bid (**set-if-empty**), and writes the `[pipeline STG-1]` audit note (method-less — never moves the chase clock). Idempotent: re-runs reuse the folder. Google auth is a **service account** (never a user credential); since the 2026-08-30 cutover the jobs root lives in the **"PipeTooling Jobs" Shared Drive**, which is what gives the SA upload quota (SAs cannot own bytes in My Drive) — setup + findings in `docs/DRIVE_INTAKE_SETUP.md`.
+
+**Drive-source fetch (v2.2499)**: a `plans_url` pointing at a Drive file (`file/d/<id>`, `open?id=`, `uc?id=`) is fetched via the **Drive API with the SA's own token** — Drive files are rarely public, but the SA reads anything shared with it, so sharing the source folder with the SA (Viewer) makes plan intake a pure Drive-to-Drive copy that keeps the source's filename. Non-Drive URLs fetch unauthenticated as before. A failed upload never fails the call — the folder still lands and `upload_note` says what to do.
+
+**Endpoint**: `POST /functions/v1/drive-intake` · **Auth**: `X-Twin-Token` (per-twin credential; bid must be the twin's own/assigned — assignment-is-the-grant) **or** staff JWT (dev/master/assistant/controller/estimator). Agents reach it as twin-mcp's `file_plans`.
+
+**Body**: `{ "bid": "b403" | uuid, "plans_url"?: string, "plans_file_name"?: string }` → `{ success, folder_id, folder_link, folder_created, plans_link, upload_note, stamped }`.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the Jobs folder inside the Shared Drive). Optional `DRIVE_IMPERSONATE_USER` (domain-wide delegation) — leave unset unless the delegation grant actually exists; set-but-ungranted breaks every upload at token exchange.
+
+---
+
 ### ct-bridge
 
 **Purpose**: The PT-side proxy of the **CT↔PT user bridge** (v2.2435; architecture in `docs/recent-features/v2.2434.md`). PipeTooling is the single system of record for people; this function is the app's only door to CountTooling's `manage-user` edge function. Forwards an allowlisted verb set — `create` (idempotent), `deactivate` / `reactivate` (CT auth ban), `set_twin_flag`, `update_email`, `lookup`, `roster` (drift audit) — with the bridge secret, which never reaches the browser. Call sites: twin mint + CT-seat retry (`DigitalTwinsPanel`), “Create CountTooling seat” + backfill (Active Accounts), the weekly drift audit. `archive-user` / `restore-user` forward deactivate/reactivate **server-side** via `_shared/ctBridge.ts` instead of calling this proxy, and report the outcome in a fail-soft `ct_bridge` response field — a CT-leg failure never blocks the PT action.

@@ -84,10 +84,36 @@ async function findOrCreateFolder(token: string, parentId: string, name: string)
   return { id: body.id as string, created: true }
 }
 
-async function uploadFromUrl(token: string, folderId: string, url: string, fileName: string): Promise<{ id: string }> {
-  const src = await fetch(url)
-  if (!src.ok || !src.body) throw new Error(`Could not fetch plans_url (${src.status})`)
-  const meta = { name: fileName, parents: [folderId] }
+// A plans_url pointing at a Drive file (file/d/<id>, open?id=, uc?id=) is fetched via the
+// Drive API with the SA's own token — Drive files are rarely public, but the SA can read
+// anything shared with it (the old jobs folder tree included). Non-Drive URLs fetch plain.
+function driveFileIdFromUrl(url: string): string | null {
+  const m = /drive\.google\.com\/(?:file\/d\/([\w-]{20,})|(?:open|uc)\?(?:[^#]*&)?id=([\w-]{20,}))/.exec(url)
+  return m?.[1] ?? m?.[2] ?? null
+}
+
+async function uploadFromUrl(token: string, folderId: string, url: string, fileName: string): Promise<{ id: string; name: string }> {
+  const driveId = driveFileIdFromUrl(url)
+  let src: Response
+  let name = fileName
+  if (driveId) {
+    const metaRes = await fetch(`${DRIVE}/files/${driveId}?fields=name&supportsAllDrives=true`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (metaRes.ok) {
+      const m = await metaRes.json()
+      if (m.name && !fileName.trim()) name = String(m.name)
+      else if (m.name && fileName.endsWith(' - plans.pdf')) name = String(m.name) // default name → keep the source's
+    }
+    src = await fetch(`${DRIVE}/files/${driveId}?alt=media&supportsAllDrives=true`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!src.ok) throw new Error(`Drive source fetch failed (${src.status}) — is the file (or its folder) shared with the service account?`)
+  } else {
+    src = await fetch(url)
+    if (!src.ok || !src.body) throw new Error(`Could not fetch plans_url (${src.status})`)
+  }
+  const meta = { name, parents: [folderId] }
   const boundary = 'drive-intake-' + crypto.randomUUID()
   // Buffer the file (plan sets are tens of MB — within function memory limits).
   const fileBytes = new Uint8Array(await src.arrayBuffer())
@@ -106,7 +132,7 @@ async function uploadFromUrl(token: string, folderId: string, url: string, fileN
   })
   const body = await res.json()
   if (!res.ok || !body.id) throw new Error(`Upload failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
-  return { id: body.id as string }
+  return { id: body.id as string, name }
 }
 
 serve(async (req) => {
