@@ -64,6 +64,26 @@ Press **Escape** to step back to the customer list, and again to close.
 Open **Customer review**, click the top customer, and the contributors panel shows at a glance whether the hours came from estimating or the field — and who did the work.
 :::
 
+## The Robot Board — where digital-twin bids live
+
+Bids owned or worked by a **digital twin** (an AI estimator account — the 🤖 ones) don't sit
+among the human rows. They live on their own scope of the same board: the **🤖 Robot Board**
+tab, right next to Bid Board. The tab only appears when there are robot bids, and its label
+carries the live count.
+
+- A bid moves to the Robot Board when its **Estimator is a twin** (or a twin created it).
+  Un-assign the twin and it comes back to the human board.
+- The Robot Board is the **same board** — same sections, same pills, same row tools, same
+  Edit form. Nothing about a robot bid is read-only for you; reviewing or correcting twin
+  work happens right there.
+- The human Bid Board's section counts and pills **don't count robot bids**, so your
+  Pending number stays yours.
+
+:::example a bid "disappeared" after you assigned the twin
+Set a bid's Estimator to a twin and the row leaves the Bid Board — that's the scope moving,
+not a deletion. Flip to {{button:outline|🤖 Robot Board}} and it's right there.
+:::
+
 ## Deciding whether to bid at all
 
 The go/no-go evaluation checklist (location, payment terms, bid documents, competition…) lives in the bid form: open **New Bid** or a bid's **Edit** form and tap the {{button:outline-blue|Go/no-go}} pill beside the title. It used to be the "Checklist" button on this board.
