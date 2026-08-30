@@ -18,6 +18,15 @@ const harness = existsSync(join(root, harnessPath)) ? read(harnessPath) : ''
 const ctGuidePath = 'docs/twins/COUNTTOOLING_BID_GUIDE.md'
 const ctGuide = existsSync(join(root, ctGuidePath)) ? read(ctGuidePath) : ''
 
+// The placement/extraction protocol set rides the bundle too (owner ask 2026-08-30:
+// a cloud twin without repo access must still read the doctrine). One string, three
+// clearly-headed manuals: PLACEMENT.md (the engine manual) + its named siblings.
+const placementDocs = ['docs/twins/PLACEMENT.md', 'docs/twins/CALIBRATION.md', 'docs/twins/EXTRACTOR.md']
+const placementGuide = placementDocs
+  .filter((d) => existsSync(join(root, d)))
+  .map((d) => `<!-- ===== ${d} ===== -->\n\n${read(d)}`)
+  .join('\n\n---\n\n')
+
 // Extract each mission's verbatim text (the blockquote under "Mission text (verbatim):").
 const missionsSrc = read('docs/twins/missions/estimator.md')
 const missions = {}
@@ -39,7 +48,8 @@ export const BRIEF: string = ${JSON.stringify(brief)}
 export const DIRECTORY: string = ${JSON.stringify(directory)}
 export const HARNESS: string = ${JSON.stringify(harness)}
 export const CT_GUIDE: string = ${JSON.stringify(ctGuide)}
+export const PLACEMENT_GUIDE: string = ${JSON.stringify(placementGuide)}
 export const MISSIONS: Record<string, { title: string; prerequisites: string; text: string }> = ${JSON.stringify(missions, null, 2)}
 `
 writeFileSync(join(root, 'supabase/functions/twin-mcp/briefs.ts'), out)
-console.log(`briefs.ts written: brief ${brief.length}ch, directory ${directory.length}ch, harness ${harness.length}ch, missions ${Object.keys(missions).join(',') || '(none)'}`)
+console.log(`briefs.ts written: brief ${brief.length}ch, directory ${directory.length}ch, harness ${harness.length}ch, placement ${placementGuide.length}ch, missions ${Object.keys(missions).join(',') || '(none)'}`)

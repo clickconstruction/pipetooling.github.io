@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, MISSIONS } from './briefs.ts'
+import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, PLACEMENT_GUIDE, MISSIONS } from './briefs.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
 // A minimal, dependency-free Model Context Protocol server over streamable HTTP
@@ -59,6 +59,11 @@ const TOOLS = [
   {
     name: 'get_ct_guide',
     description: 'Completing a bid\'s takeoff in CountTooling — your access, the plans→import→review→counts loop, the import contract, and the hard limits. Read before any CountTooling work.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_placement_guide',
+    description: 'The takeoff placement protocol set (docs/twins/PLACEMENT.md + CALIBRATION.md + EXTRACTOR.md) — doorway calibration, counters-first placement, line tracing, registration/snap/density gates, branch sweeps, keyed-note census, printed-total reconciliation. Read before placing or tracing anything.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -218,6 +223,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return textContent(HARNESS || 'Harness guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
     case 'get_ct_guide':
       return textContent(CT_GUIDE || 'CountTooling guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
+    case 'get_placement_guide':
+      return textContent(PLACEMENT_GUIDE || 'Placement guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
     case 'get_mission': {
       const m = MISSIONS[String(args.id ?? '').toUpperCase()]
       if (!m) return textContent(`Unknown mission id. Available: ${Object.keys(MISSIONS).join(', ')}`, true)
