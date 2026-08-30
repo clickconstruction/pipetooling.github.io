@@ -110,8 +110,54 @@ export type BidEditForm = {
   reset: (opts: BidEditFormResetOptions) => void
   /** Populate all fields from an existing bid being edited. */
   loadFromBid: (bid: BidWithBuilder, opts: BidEditFormLoadOptions) => void
+  /**
+   * Values snapshot from the last loadFromBid (null after reset). Save paths diff
+   * against it so untouched fields stay OUT of the update payload — an untouched
+   * Save must not clobber columns written server-side after the row was fetched.
+   */
+  initialValues: BidEditFormValues | null
   missingFields: string[]
   canSubmit: boolean
+}
+
+/** Pure mapping from a bid row (+resolved GC display) to the form's field values. */
+export function bidRowToFormValues(bid: BidWithBuilder, opts: BidEditFormLoadOptions): BidEditFormValues {
+  const savedLossCategory = (bid as { loss_category?: string | null }).loss_category ?? null
+  return {
+    driveLink: bid.drive_link ?? '',
+    plansLink: bid.plans_link ?? '',
+    countToolingPlansLink: bid.count_tooling_plans_link ?? '',
+    bidSubmissionLink: bid.bid_submission_link ?? '',
+    itbLinks: parseItbLinks((bid as { itb_links?: unknown }).itb_links),
+    gcCustomerId: opts.gcCustomerId,
+    gcCustomerSearch: opts.gcCustomerSearch,
+    projectName: bid.project_name ?? '',
+    projectId: (bid as { project_id?: string | null }).project_id ?? '',
+    bidNumber: (bid as { bid_number?: string | null }).bid_number ?? '',
+    address: bid.address ?? '',
+    gcContactName: bid.gc_contact_name ?? '',
+    gcContactPhone: bid.gc_contact_phone ?? '',
+    gcContactEmail: bid.gc_contact_email ?? '',
+    projectContactExpanded: true,
+    estimatorId: bid.estimator_id ?? '',
+    accountManagerId: (bid as { account_manager_id?: string | null }).account_manager_id ?? '',
+    formServiceTypeId: (bid as { service_type_id?: string | null }).service_type_id ?? opts.fallbackServiceTypeId,
+    bidDueDate: bid.bid_due_date ?? '',
+    // Postgres `time` comes back as 'HH:MM:SS'; the <input type="time"> wants 'HH:MM'.
+    bidDueTime: (((bid as { bid_due_time?: string | null }).bid_due_time ?? '')).slice(0, 5),
+    estimatedJobStartDate: bid.estimated_job_start_date ?? '',
+    designDrawingPlanDate: bid.design_drawing_plan_date ?? '',
+    submittedTo: (bid as { submitted_to?: string | null }).submitted_to ?? '',
+    outcome: (bid.outcome ?? '') as BidEditOutcomeOption,
+    lossReason: (bid as { loss_reason?: string | null }).loss_reason ?? '',
+    lossCategory: isBidLossCategoryKey(savedLossCategory) ? savedLossCategory : null,
+    bidValue: bid.bid_value != null ? String(bid.bid_value) : '',
+    agreedValue: bid.agreed_value != null ? String(bid.agreed_value) : '',
+    profit: bid.profit != null ? String(bid.profit) : '',
+    distanceFromOffice: bid.distance_from_office ?? '',
+    lastContact: toDatetimeLocal(bid.last_contact),
+    notes: bid.notes ?? '',
+  }
 }
 
 /**
@@ -154,8 +200,10 @@ export function useBidEditForm(): BidEditForm {
   const [notes, setNotes] = useState('')
   const [gcCustomerId, setGcCustomerId] = useState('')
   const [gcCustomerSearch, setGcCustomerSearch] = useState('')
+  const [initialValues, setInitialValues] = useState<BidEditFormValues | null>(null)
 
   const reset = useCallback((opts: BidEditFormResetOptions) => {
+    setInitialValues(null)
     setDriveLink('')
     setPlansLink('')
     setCountToolingPlansLink('')
@@ -191,40 +239,40 @@ export function useBidEditForm(): BidEditForm {
   }, [])
 
   const loadFromBid = useCallback((bid: BidWithBuilder, opts: BidEditFormLoadOptions) => {
-    setDriveLink(bid.drive_link ?? '')
-    setPlansLink(bid.plans_link ?? '')
-    setCountToolingPlansLink(bid.count_tooling_plans_link ?? '')
-    setBidSubmissionLink(bid.bid_submission_link ?? '')
-    setItbLinks(parseItbLinks((bid as { itb_links?: unknown }).itb_links))
-    setGcCustomerId(opts.gcCustomerId)
-    setGcCustomerSearch(opts.gcCustomerSearch)
-    setProjectName(bid.project_name ?? '')
-    setProjectId((bid as { project_id?: string | null }).project_id ?? '')
-    setBidNumber((bid as { bid_number?: string | null }).bid_number ?? '')
-    setAddress(bid.address ?? '')
-    setGcContactName(bid.gc_contact_name ?? '')
-    setGcContactPhone(bid.gc_contact_phone ?? '')
-    setGcContactEmail(bid.gc_contact_email ?? '')
-    setEstimatorId(bid.estimator_id ?? '')
-    setAccountManagerId((bid as { account_manager_id?: string | null }).account_manager_id ?? '')
-    setBidDueDate(bid.bid_due_date ?? '')
-    // Postgres `time` comes back as 'HH:MM:SS'; the <input type="time"> wants 'HH:MM'.
-    setBidDueTime(((bid as { bid_due_time?: string | null }).bid_due_time ?? '').slice(0, 5))
-    setEstimatedJobStartDate(bid.estimated_job_start_date ?? '')
-    setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
-    setSubmittedTo((bid as { submitted_to?: string | null }).submitted_to ?? '')
-    setOutcome((bid.outcome ?? '') as BidEditOutcomeOption)
-    setLossReason((bid as { loss_reason?: string | null }).loss_reason ?? '')
-    const savedLossCategory = (bid as { loss_category?: string | null }).loss_category ?? null
-    setLossCategory(isBidLossCategoryKey(savedLossCategory) ? savedLossCategory : null)
-    setBidValue(bid.bid_value != null ? String(bid.bid_value) : '')
-    setAgreedValue(bid.agreed_value != null ? String(bid.agreed_value) : '')
-    setProfit(bid.profit != null ? String(bid.profit) : '')
-    setDistanceFromOffice(bid.distance_from_office ?? '')
-    setLastContact(toDatetimeLocal(bid.last_contact))
-    setNotes(bid.notes ?? '')
-    setFormServiceTypeId((bid as { service_type_id?: string | null }).service_type_id ?? opts.fallbackServiceTypeId)
-    setProjectContactExpanded(true)
+    const v = bidRowToFormValues(bid, opts)
+    setDriveLink(v.driveLink)
+    setPlansLink(v.plansLink)
+    setCountToolingPlansLink(v.countToolingPlansLink)
+    setBidSubmissionLink(v.bidSubmissionLink)
+    setItbLinks(v.itbLinks)
+    setGcCustomerId(v.gcCustomerId)
+    setGcCustomerSearch(v.gcCustomerSearch)
+    setProjectName(v.projectName)
+    setProjectId(v.projectId)
+    setBidNumber(v.bidNumber)
+    setAddress(v.address)
+    setGcContactName(v.gcContactName)
+    setGcContactPhone(v.gcContactPhone)
+    setGcContactEmail(v.gcContactEmail)
+    setEstimatorId(v.estimatorId)
+    setAccountManagerId(v.accountManagerId)
+    setBidDueDate(v.bidDueDate)
+    setBidDueTime(v.bidDueTime)
+    setEstimatedJobStartDate(v.estimatedJobStartDate)
+    setDesignDrawingPlanDate(v.designDrawingPlanDate)
+    setSubmittedTo(v.submittedTo)
+    setOutcome(v.outcome)
+    setLossReason(v.lossReason)
+    setLossCategory(v.lossCategory)
+    setBidValue(v.bidValue)
+    setAgreedValue(v.agreedValue)
+    setProfit(v.profit)
+    setDistanceFromOffice(v.distanceFromOffice)
+    setLastContact(v.lastContact)
+    setNotes(v.notes)
+    setFormServiceTypeId(v.formServiceTypeId)
+    setProjectContactExpanded(v.projectContactExpanded)
+    setInitialValues(v)
   }, [])
 
   const missingFields = useMemo(() => {
@@ -305,5 +353,5 @@ export function useBidEditForm(): BidEditForm {
     setGcCustomerSearch,
   }
 
-  return { values, setters, reset, loadFromBid, missingFields, canSubmit }
+  return { values, setters, reset, loadFromBid, initialValues, missingFields, canSubmit }
 }

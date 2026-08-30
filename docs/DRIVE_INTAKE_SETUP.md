@@ -46,6 +46,14 @@ deleting the key). Never wire a human Google password into anything.
 - Behavior: finds-or-creates the job folder named after the bid's project, optionally
   fetches `plans_url` into it, stamps `drive_link`/`plans_link` on the bid (set-if-empty),
   and writes the `[pipeline STG-1]` audit note. Idempotent — re-runs reuse the folder.
+- **Drive-hosted sources (v2.2499)**: a `plans_url` that is a Drive file link
+  (`file/d/<id>`, `open?id=`, `uc?id=`) is fetched with the **SA's own token**, so plan
+  intake from an existing Drive folder is a pure Drive-to-Drive copy keeping the source
+  filename. The source (file or any ancestor folder) must be **shared with the SA**
+  (Viewer is enough) — watch for Google's "sharing outside your organization → Share
+  anyway" confirmation, which silently kills the share if dismissed (bit us live
+  2026-08-30). Non-Drive URLs fetch unauthenticated as before; a failed upload never
+  fails the call (`upload_note` says what to do).
 
 ## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 

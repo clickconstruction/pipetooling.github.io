@@ -11,7 +11,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // Google auth is a SERVICE ACCOUNT, never a user password: the GOOGLE_SERVICE_ACCOUNT_JSON
 // secret holds the SA key; the SA's email must be shared into the jobs folder
 // (Content manager). Folder id via DRIVE_JOBS_FOLDER_ID. Setup: docs/DRIVE_INTAKE_SETUP.md.
-// Idempotent: an existing folder with the job's name is reused, never duplicated.
+// Idempotent: an existing folder with the job's name is reused, never duplicated, and an
+// existing same-name file in that folder is reused instead of re-uploading the plan set.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,10 +85,50 @@ async function findOrCreateFolder(token: string, parentId: string, name: string)
   return { id: body.id as string, created: true }
 }
 
-async function uploadFromUrl(token: string, folderId: string, url: string, fileName: string): Promise<{ id: string }> {
-  const src = await fetch(url)
-  if (!src.ok || !src.body) throw new Error(`Could not fetch plans_url (${src.status})`)
-  const meta = { name: fileName, parents: [folderId] }
+// A plans_url pointing at a Drive file (file/d/<id>, open?id=, uc?id=) is fetched via the
+// Drive API with the SA's own token — Drive files are rarely public, but the SA can read
+// anything shared with it (the old jobs folder tree included). Non-Drive URLs fetch plain.
+function driveFileIdFromUrl(url: string): string | null {
+  const m = /drive\.google\.com\/(?:file\/d\/([\w-]{20,})|(?:open|uc)\?(?:[^#]*&)?id=([\w-]{20,}))/.exec(url)
+  return m?.[1] ?? m?.[2] ?? null
+}
+
+async function findExistingFile(token: string, folderId: string, name: string): Promise<string | null> {
+  const q = encodeURIComponent(`name = '${name.replace(/'/g, "\\'")}' and '${folderId}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false`)
+  const found = await fetch(`${DRIVE}/files?q=${q}&fields=files(id,name)&supportsAllDrives=true&includeItemsFromAllDrives=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then((r) => r.json())
+  return found.files?.[0]?.id ?? null
+}
+
+async function uploadFromUrl(token: string, folderId: string, url: string, fileName: string): Promise<{ id: string; name: string; reused: boolean }> {
+  const driveId = driveFileIdFromUrl(url)
+  let name = fileName
+  if (driveId) {
+    const metaRes = await fetch(`${DRIVE}/files/${driveId}?fields=name&supportsAllDrives=true`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (metaRes.ok) {
+      const m = await metaRes.json()
+      if (m.name && !fileName.trim()) name = String(m.name)
+      else if (m.name && fileName.endsWith(' - plans.pdf')) name = String(m.name) // default name → keep the source's
+    }
+  }
+  // Reuse-or-refuse (pipeline cross-cutting rule): a same-name file already in the job
+  // folder means a prior run landed it — return it instead of uploading a second copy.
+  const existingId = await findExistingFile(token, folderId, name)
+  if (existingId) return { id: existingId, name, reused: true }
+  let src: Response
+  if (driveId) {
+    src = await fetch(`${DRIVE}/files/${driveId}?alt=media&supportsAllDrives=true`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!src.ok) throw new Error(`Drive source fetch failed (${src.status}) — is the file (or its folder) shared with the service account?`)
+  } else {
+    src = await fetch(url)
+    if (!src.ok || !src.body) throw new Error(`Could not fetch plans_url (${src.status})`)
+  }
+  const meta = { name, parents: [folderId] }
   const boundary = 'drive-intake-' + crypto.randomUUID()
   // Buffer the file (plan sets are tens of MB — within function memory limits).
   const fileBytes = new Uint8Array(await src.arrayBuffer())
@@ -106,7 +147,7 @@ async function uploadFromUrl(token: string, folderId: string, url: string, fileN
   })
   const body = await res.json()
   if (!res.ok || !body.id) throw new Error(`Upload failed (${res.status}): ${body.error?.message ?? 'unknown'}`)
-  return { id: body.id as string }
+  return { id: body.id as string, name, reused: false }
 }
 
 serve(async (req) => {
@@ -166,6 +207,7 @@ serve(async (req) => {
     // user and gain their quota; without it, the upload leg degrades gracefully — the
     // folder still lands and the caller is told to drop the file in by hand.
     let plansLink: string | null = null
+    let plansReused = false
     let uploadNote: string | null = null
     if (body.plans_url) {
       const fileName = String(body.plans_file_name ?? `${folderName} - plans.pdf`).slice(0, 140)
@@ -174,6 +216,7 @@ serve(async (req) => {
         const upToken = impersonate ? await googleAccessToken(saJson, impersonate) : token
         const up = await uploadFromUrl(upToken, folder.id, String(body.plans_url), fileName)
         plansLink = `https://drive.google.com/file/d/${up.id}/view`
+        plansReused = up.reused
       } catch (e) {
         const msg = String(e instanceof Error ? e.message : e)
         if (/storage quota/i.test(msg) && !impersonate) {
@@ -195,12 +238,12 @@ serve(async (req) => {
       await admin.from('bids_submission_entries').insert({
         bid_id: bid.id,
         occurred_at: new Date().toISOString(),
-        notes: `[pipeline STG-1] Drive filed: folder ${folder.created ? 'created' : 'reused'} (${folderLink})${plansLink ? ` · plans uploaded (${plansLink})` : ''}`,
+        notes: `[pipeline STG-1] Drive filed: folder ${folder.created ? 'created' : 'reused'} (${folderLink})${plansLink ? ` · plans ${plansReused ? 'reused' : 'uploaded'} (${plansLink})` : ''}`,
         created_by: isTwin ? callerId : callerId,
       })
     } catch (_) { /* best-effort */ }
 
-    return json({ success: true, folder_id: folder.id, folder_link: folderLink, folder_created: folder.created, plans_link: plansLink, upload_note: uploadNote, stamped: Object.keys(patch) })
+    return json({ success: true, folder_id: folder.id, folder_link: folderLink, folder_created: folder.created, plans_link: plansLink, plans_reused: plansReused, upload_note: uploadNote, stamped: Object.keys(patch) })
   } catch (e) {
     return json({ error: String(e instanceof Error ? e.message : e) }, 500)
   }

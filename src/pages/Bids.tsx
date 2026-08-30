@@ -8,6 +8,7 @@ import {
   resolveActorDisplayName,
 } from '../lib/outcomeChangeBidNote'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
+import { isRobotBid, partitionBidsByScope } from '../lib/bidBoardScope'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -85,6 +86,7 @@ import { buildBidEntryRecencyMaps } from '../lib/bids/bidContacts'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
+import { pruneUnchangedBidUpdateFields } from '../lib/bids/bidUpdatePrune'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -202,7 +204,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -391,6 +393,16 @@ export default function Bids() {
   const [scrollToLaborDirectCosts, setScrollToLaborDirectCosts] = useState(false)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidBoardSectionOpen, setBidBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
+  const [robotBoardSectionOpen, setRobotBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
+  // People|Robots board scope (v2.2500): ids of users flagged is_digital_twin. Loaded
+  // without an archived filter — a bid assigned to a retired twin still belongs on the
+  // Robot Board, not back among the humans.
+  const [twinUserIds, setTwinUserIds] = useState<ReadonlySet<string>>(() => new Set())
+  /** People|Robots split of the board (v2.2500) — one predicate, every rollup follows. */
+  const { people: peopleBids, robots: robotBids } = useMemo(
+    () => partitionBidsByScope(bids, twinUserIds),
+    [bids, twinUserIds],
+  )
   const [lostSummaryModalOpen, setLostSummaryModalOpen] = useState(false)
   const [lostSummaryInitialStaffTab, setLostSummaryInitialStaffTab] = useState<string | null>(null)
   const [bidBoardDeepLinkHighlightId, setBidBoardDeepLinkHighlightId] = useState<string | null>(null)
@@ -447,7 +459,9 @@ export default function Bids() {
 
   const applyBidBoardDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
     bidBoardPendingScrollBidIdRef.current = null
-    setActiveTab('bid-board')
+    // v2.2500: a twin's bid lives on the Robot Board — land the deep link where the row is.
+    const robot = isRobotBid(bid, twinUserIds)
+    setActiveTab(robot ? 'robot-board' : 'bid-board')
     const sectionKey =
       bid.outcome === 'won'
         ? ('won' as const)
@@ -458,7 +472,7 @@ export default function Bids() {
             : !bid.bid_date_sent
               ? ('unsent' as const)
               : ('pending' as const)
-    setBidBoardSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
+    ;(robot ? setRobotBoardSectionOpen : setBidBoardSectionOpen)((prev) => ({ ...prev, [sectionKey]: true }))
     setBidBoardDeepLinkHighlightGen((g) => g + 1)
     if (bidBoardDeepLinkTimeoutRef.current) {
       clearTimeout(bidBoardDeepLinkTimeoutRef.current)
@@ -473,7 +487,7 @@ export default function Bids() {
       document.getElementById(`bid-board-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 150)
     consumeBidIdParam()
-  }, [consumeBidIdParam])
+  }, [consumeBidIdParam, twinUserIds])
 
   const applySubmissionFollowupDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
     submissionFollowupPendingDeepLinkBidIdRef.current = null
@@ -909,6 +923,19 @@ export default function Bids() {
     }
   }
 
+  async function loadTwinUserIds() {
+    try {
+      const data = await withSupabaseRetry(
+        async () => supabase.from('users').select('id').eq('is_digital_twin', true),
+        'load twin user ids for board scope',
+      )
+      const rows = (data as { id: string }[] | null) ?? []
+      setTwinUserIds(new Set(rows.map((r) => r.id)))
+    } catch {
+      // Scope degrades to "everything is people" — the pre-scope behavior, never a crash.
+    }
+  }
+
   async function loadCustomers() {
     const { data, error } = await supabase
       .from('customers')
@@ -1224,7 +1251,7 @@ export default function Bids() {
     )
   }, [location.search, setSearchParams])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'robot-board', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -1588,7 +1615,7 @@ export default function Bids() {
   useEffect(() => {
     if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
       const t = setTimeout(async () => {
-        await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadTemplatePriceBookVersions(), loadMaterialTemplates()])
+        await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadTwinUserIds(), loadFixtureTypes(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadTemplatePriceBookVersions(), loadMaterialTemplates()])
       }, 80)
       return () => clearTimeout(t)
     }
@@ -1604,6 +1631,7 @@ export default function Bids() {
           loadCustomerContacts(),
           loadCustomerContactPersons(),
           loadEstimatorUsers(),
+          loadTwinUserIds(),
           loadFixtureTypes(),
           loadTakeoffBookVersions(),
           loadLaborBookVersions(),
@@ -2151,21 +2179,30 @@ export default function Bids() {
     const followupNoteToSave = pendingBidSentFollowupSubmissionNote
     let bidIdForFollowup: string | null = null
     if (editingBid) {
-      const { data: updatedRows, error: err } = await supabase
-        .from('bids')
-        .update(payloadWithAttest)
-        .eq('id', editingBid.id)
-        .select('id')
-      if (err) {
-        setError(err.message)
-        setSavingBid(false)
-        return
-      }
-      // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
-      if (!updateApplied(updatedRows)) {
-        setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
-        setSavingBid(false)
-        return
+      // Dirty fields only: an untouched Save must not write stale form values over
+      // columns stamped after the board row was fetched (drive-intake plans_link clobber).
+      const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttest, {
+        current: bidForm.values,
+        initial: bidForm.initialValues,
+        bidDateSent: { current: bidDateSent, initial: savedBidDateSentRef.current },
+      })
+      if (Object.keys(updatePayload).length > 0) {
+        const { data: updatedRows, error: err } = await supabase
+          .from('bids')
+          .update(updatePayload)
+          .eq('id', editingBid.id)
+          .select('id')
+        if (err) {
+          setError(err.message)
+          setSavingBid(false)
+          return
+        }
+        // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
+        if (!updateApplied(updatedRows)) {
+          setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
+          setSavingBid(false)
+          return
+        }
       }
       bidIdForFollowup = editingBid.id
     } else {
@@ -2271,21 +2308,29 @@ export default function Bids() {
     const followupNoteToSaveCounts = pendingBidSentFollowupSubmissionNote
     let bidId: string
     if (editingBid) {
-      const { data: updatedRows, error: err } = await supabase
-        .from('bids')
-        .update(payloadWithAttestCounts)
-        .eq('id', editingBid.id)
-        .select('id')
-      if (err) {
-        setError(err.message)
-        setSavingBid(false)
-        return
-      }
-      // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
-      if (!updateApplied(updatedRows)) {
-        setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
-        setSavingBid(false)
-        return
+      // Dirty fields only — same stale-form clobber guard as saveBid.
+      const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttestCounts, {
+        current: bidForm.values,
+        initial: bidForm.initialValues,
+        bidDateSent: { current: bidDateSent, initial: savedBidDateSentRef.current },
+      })
+      if (Object.keys(updatePayload).length > 0) {
+        const { data: updatedRows, error: err } = await supabase
+          .from('bids')
+          .update(updatePayload)
+          .eq('id', editingBid.id)
+          .select('id')
+        if (err) {
+          setError(err.message)
+          setSavingBid(false)
+          return
+        }
+        // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
+        if (!updateApplied(updatedRows)) {
+          setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
+          setSavingBid(false)
+          return
+        }
       }
       bidId = editingBid.id
     } else {
@@ -2553,6 +2598,17 @@ export default function Bids() {
       >
         Bid Board
       </button>
+      {robotBids.length > 0 ? (
+        <button
+          type="button"
+          data-tabkey="robot-board"
+          onClick={() => selectBidsTab('robot-board')}
+          style={tabStyle(activeTab === 'robot-board')}
+          title="Bids owned or worked by digital twins — same board, robot scope. The Bid Board hides these."
+        >
+          {`\u{1F916} Robot Board · ${robotBids.length}`}
+        </button>
+      ) : null}
       <button
         type="button"
         data-tabkey="builder-review"
@@ -2947,15 +3003,15 @@ export default function Bids() {
       />
 
       {/* Bid Board Tab */}
-      {activeTab === 'bid-board' && (
+      {(activeTab === 'bid-board' || activeTab === 'robot-board') && (
         <BidsBidBoardTab
-          bids={bids}
+          bids={activeTab === 'robot-board' ? robotBids : peopleBids}
           authUser={authUser}
           isDev={myRole === 'dev'}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}
-          sectionOpen={bidBoardSectionOpen}
-          onSectionOpenChange={setBidBoardSectionOpen}
+          sectionOpen={activeTab === 'robot-board' ? robotBoardSectionOpen : bidBoardSectionOpen}
+          onSectionOpenChange={activeTab === 'robot-board' ? setRobotBoardSectionOpen : setBidBoardSectionOpen}
           deepLinkHighlightId={bidBoardDeepLinkHighlightId}
           deepLinkHighlightGen={bidBoardDeepLinkHighlightGen}
           onEditBid={openEditBid}

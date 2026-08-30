@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-08-28
+last_updated: 2026-08-30
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -69,10 +69,14 @@ deep-links a specific bid into a tool tab.
 Roles: dev, master, assistant, controller, estimator, primary; superintendent draft tabs
 only (no Pricing / Cover Letter / Submission); no subs/helpers.
 
-- `?tab=bid-board` — **Bid Board**: every bid by status section (Not yet won or lost / Won /
-  Lost / Started). Row shows value, due, estimator, last contact; multi-GC bids show a line
-  per GC (sent date · waiting/won/lost pill). Key actions: set per-GC outcome, open notes,
-  update last contact, open Edit Bid (✎), jump to tool tabs (icons).
+- `?tab=bid-board` — **Bid Board**: every HUMAN bid by status section (Not yet won or lost /
+  Won / Lost / Started). Row shows value, due, estimator, last contact; multi-GC bids show a
+  line per GC (sent date · waiting/won/lost pill). Key actions: set per-GC outcome, open
+  notes, update last contact, open Edit Bid (✎), jump to tool tabs (icons).
+- `?tab=robot-board` — **🤖 Robot Board** (v2.2500): the same board scoped to bids whose
+  estimator or creator is a digital twin — YOUR bids live here, not on `bid-board`. Same
+  sections, rollups, and actions; the human board and its counts exclude these rows. The
+  tab renders only when robot bids exist.
 - `?tab=builder-review` — per-customer review: section counts, estimating/job hours.
 - `?tab=call-queue` — **Followup, By builder**: call-mode queue grouped by builder; log
   calls, outcomes, next-followup promises.
