@@ -188,3 +188,48 @@ One `import-takeoff` call with the takeoff.json + `pdf_url` (PipeTooling `plan-f
 replaces; that is the fix loop. Then `set_project_review_status → 'ready'` and watch
 `get_work_state.ct_takeoff` for `reviewed` or `changes` + note (get_ct_guide has the full
 loop). Log the run: bid note with per-tag counts + heartbeats.
+
+## Keyed-note census: the hexes ARE the drops (owner refinement pass, 2026-08-30)
+
+Plan hexagons are per-sheet keyed notes, and on plumbing sheets they are **sized
+pipe drops/risers** — the sub-resolution stubs you cannot trace (trap arms,
+riser turns, sub-2-ft leads) are exactly what the architect keyed instead of
+drawing. Do not trace them; **count them**:
+
+1. **Decode the sheet's own KEYED NOTES table FIRST.** Every P-series sheet
+   carries its table in the same margin region (this set: raw300
+   `(300,75,900,750)`, top-left, both P200 and P201). Crop the FULL region the
+   substrate names — a half-height crop silently loses table rows (W32 was
+   missing from the v0.5 substrate for exactly this reason). Decode every key
+   before counting anything.
+2. **One CT counter per key, on a `Drops` canvas** — name carries the decoded
+   size (`P1 · 2"W dn + 2"V up`, `W23 · 1/2"CW dn`). The reviewer toggles the
+   layer like any other; pricing reads sized-drop counts directly.
+3. **Census by tiles**: 4 crops at 300 DPI over the plan zone, count every hex
+   with its raw coordinate. Cross-check across sheets — the same fixture's
+   waste key (P200) and water key (P201) land at the same plan position (staff
+   WC-12: P2 @ (325,808) on P200, W32+P26 @ (312,807/791) on P201).
+4. **The census is also a fixture audit**: a keyed pair with no fixture mark
+   under it is a missed fixture (this pass surfaced a possible second L-6 in
+   the staff row — recount before the eval diff).
+5. **Schedule report reads ✗ for keyed counters — that is correct.** They are
+   keyed notes, not scheduled fixtures; say so in the import note instead of
+   forcing them into the schedule.
+
+## Printed-total reconciliation: name every foot you didn't trace (gas, 2026-08-30)
+
+A printed total (the gas sizing note's `140'-0"`) is a cross-check, not a
+target to trace toward. Reconcile it as **on-plan traced + named allowances**,
+each carried as an on-sheet note with `detail`:
+
+- on-plan traced footage (here 23.8 ft, registration-gated);
+- **vertical allowances** keyed on the sheet (G1 `2" gas up to roof` — count
+  the hex, note the riser height as an allowance);
+- **continuation symbols** (the break squiggle) = off-sheet scope; drop a
+  scope-boundary note at the symbol (`gas continues offsite`, `4" waste
+  continued at tenant`) so the exclusion is a written fact, not a silent gap;
+- equipment loads printed at the terminus (WH-1 `199 CFH`) ride the note
+  detail — they justify the pipe size at pricing time.
+
+The reconciliation lives where the reviewer can see it: notes at the exact
+symbols, arithmetic in the import note.
