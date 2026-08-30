@@ -319,3 +319,18 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
   its 3.1 calibration run, extractor automation (1.2), then M4/M5. Residue: CT project
   "ZZ Twin LIVSTE takeoff" sits in the review lane as `ready` (a probe — a reviewer
   can exercise Request changes on it).
+- 2026-08-30 (placement train, v2.2504) — **Waves 3.4 (engine v0), 3.1 (calibration),
+  and 1.2 (extractor automation) BUILT; every wave-table engineering item is now done.**
+  Placement engine v0: coordinate kernel `src/lib/takeoffPlacement.ts` (tested — base
+  frame, rotated-crop and overview hops, assembly, import-mirror validation,
+  counts-vs-schedule self-check), assembler CLI + pagesize, and PLACEMENT.md (the
+  vision model IS the engine; this is its manual). Proven on the REAL set: LIVSTE
+  fetched via plan-fetch with the twin token, P201 fixture tags crisp at 300 DPI, a
+  real placement round-tripped, self-check caught a planted miss. Calibration:
+  205 human takeoffs → CALIBRATION.md (marks p50 = 51, lines p50 = 57; **finding:
+  humans count valves/cleanouts/hose bibbs the schedule never lists — M4 scores
+  per-tag over schedule tags; the gap list is the v1 roster**). Extractor automation:
+  sweep.sh + tiles.sh. **M4 mission written** (twin draws the LIVSTE counters,
+  Wendi's takeoff is the reference, deliberate mid-walk kill); briefs carry M1–M5,
+  twin-mcp redeployed. What remains is RUNNING: M4, then M5, then the review-gate
+  walks — operator/owner acts, not builds.
