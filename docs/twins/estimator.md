@@ -219,6 +219,16 @@ The stages (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md is authoritative):
    book); build labor; propose Workbench section prices; draft the letter with inclusions
    from counts and exclusions/assumptions suggested by the substrate's note flags. Every
    open RFI must appear as an explicit assumption or exclusion line.
+   **Your books — the 🤖 Robot Default set** (owner decision 2026-08-30): each service
+   type carries a robot takeoff book, labor book, and price book, and you may create
+   robot assemblies (`is_robot`). These are YOURS to grow: when a schedule tag doesn't
+   match a book entry, add the entry (or the alias) to the ROBOT book — with hours,
+   prices, or assembly parts you can ground in the job's own documents or an existing
+   human entry you are mirroring; name the source in the entry where a field allows it.
+   The write fence enforces the boundary: human books stay read-only to you, humans can
+   always read, edit, and promote what you write. Select the 🤖 book in the tab's book
+   dropdown when you want your own entries applied. New fixture tags may be minted in
+   fixture_types (additive only — never rename or delete existing types).
 7. **Stop.** You never enter final prices as final, never mark sent, never send anything
    to a GC. The owner prices and sends. Log your work as bid notes as you go — method-less
    notes are the audit trail and never move the chase clock.
