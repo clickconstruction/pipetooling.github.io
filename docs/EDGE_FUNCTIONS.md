@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 61 Supabase Edge Functions
+purpose: Complete API documentation for all 84 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-08-29
 estimated_read_time: 20-25 minutes
@@ -11,12 +11,12 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 61
+total_functions: 84
 
 key_sections:
   - name: "Functions"
     anchor: "#functions"
-    description: "Per-function reference (all 61), user admin through Stripe/Mercury"
+    description: "Per-function reference (all 84), user admin through Stripe/Mercury"
   - name: "create-user"
     anchor: "#create-user"
     description: "Create users with roles (dev-only)"
@@ -89,6 +89,7 @@ when_to_read:
    - [dev-login](#dev-login)
    - [twin-login](#twin-login)
    - [twin-mcp](#twin-mcp)
+   - [drive-intake](#drive-intake)
    - [ct-bridge](#ct-bridge)
    - [ct-roster-audit](#ct-roster-audit)
    - [address-autocomplete](#address-autocomplete)
@@ -790,9 +791,9 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Drive-source fetch (v2.2499)**: a `plans_url` pointing at a Drive file (`file/d/<id>`, `open?id=`, `uc?id=`) is fetched via the **Drive API with the SA's own token** — Drive files are rarely public, but the SA reads anything shared with it, so sharing the source folder with the SA (Viewer) makes plan intake a pure Drive-to-Drive copy that keeps the source's filename. Non-Drive URLs fetch unauthenticated as before. A failed upload never fails the call — the folder still lands and `upload_note` says what to do.
 
-**Endpoint**: `POST /functions/v1/drive-intake` · **Auth**: `X-Twin-Token` (per-twin credential; bid must be the twin's own/assigned — assignment-is-the-grant) **or** staff JWT (dev/master/assistant/controller/estimator). Agents reach it as twin-mcp's `file_plans`.
+**Endpoint**: `POST /functions/v1/drive-intake` · **Auth**: `verify_jwt = false`, both paths validated in-function — `X-Twin-Token` (per-twin credential; bid must be the twin's own/assigned — assignment-is-the-grant) **or** staff JWT (dev/master/assistant/controller/estimator). Agents reach it as twin-mcp's `file_plans`.
 
-**Body**: `{ "bid": "b403" | uuid, "plans_url"?: string, "plans_file_name"?: string }` → `{ success, folder_id, folder_link, folder_created, plans_link, plans_reused, upload_note, stamped }`.
+**Body**: `{ "bid": "b403" | uuid, "plans_url"?: string, "plans_file_name"?: string }` (bid number accepts `b`/`bp` prefixes) → `{ success, folder_id, folder_link, folder_created, plans_link, plans_reused, upload_note, stamped }`. Drive secrets unset → **503** with a setup pointer.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the Jobs folder inside the Shared Drive). Optional `DRIVE_IMPERSONATE_USER` (domain-wide delegation) — leave unset unless the delegation grant actually exists; set-but-ungranted breaks every upload at token exchange.
 
