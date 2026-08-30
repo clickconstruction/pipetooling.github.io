@@ -5,7 +5,7 @@ file: docs/DRIVE_INTAKE_SETUP.md
 type: Runbook / Setup
 purpose: One-time Google setup for the drive-intake edge function (estimator-twin pipeline Wave 4.4) — a SERVICE ACCOUNT, never a user password. Five minutes in console.cloud.google.com, two supabase secrets, one deploy.
 audience: Owner, Developers
-last_updated: 2026-08-29
+last_updated: 2026-08-30
 ---
 
 Why a service account: the function needs a robot identity that can write ONE shared
@@ -46,23 +46,41 @@ deleting the key). Never wire a human Google password into anything.
 - Behavior: finds-or-creates the job folder named after the bid's project, optionally
   fetches `plans_url` into it, stamps `drive_link`/`plans_link` on the bid (set-if-empty),
   and writes the `[pipeline STG-1]` audit note. Idempotent — re-runs reuse the folder.
+- **Drive-hosted sources (v2.2499)**: a `plans_url` that is a Drive file link
+  (`file/d/<id>`, `open?id=`, `uc?id=`) is fetched with the **SA's own token**, so plan
+  intake from an existing Drive folder is a pure Drive-to-Drive copy keeping the source
+  filename. The source (file or any ancestor folder) must be **shared with the SA**
+  (Viewer is enough) — watch for Google's "sharing outside your organization → Share
+  anyway" confirmation, which silently kills the share if dismissed (bit us live
+  2026-08-30). Non-Drive URLs fetch unauthenticated as before; a failed upload never
+  fails the call (`upload_note` says what to do).
 
-## The upload leg: quota (found live, 2026-08-29)
+## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 
-Google: **"Service Accounts do not have storage quota."** The SA can create folders and
-stamp links (all metadata), but cannot own uploaded file bytes in a My Drive folder — so
-without further setup, `plans_url` uploads degrade gracefully: the folder lands, the
-response carries an `upload_note` telling the caller to drop the file in by hand. Two ways
-to make uploads work, either is fine:
+The jobs root now lives in a **Workspace Shared Drive**, which is why uploads work: files
+in a Shared Drive belong to the drive, not a person, so the SA quota rule ("Service
+Accounts do not have storage quota", found live 2026-08-29 — SAs cannot own file bytes in
+a My Drive folder) never applies. Live config, end-to-end verified (folder create + PDF
+byte-upload + both stamps through the deployed function):
 
-1. **Domain-wide delegation** (built in): admin.google.com → Security → API controls →
-   Domain-wide delegation → Add new → Client ID = the SA's *Unique ID* (IAM & Admin →
-   Service Accounts → drive-intake → Details), scope `https://www.googleapis.com/auth/drive`
-   → Authorize. Then `supabase secrets set DRIVE_IMPERSONATE_USER=bids@clickplumbing.com`
-   and redeploy — uploads act as that user and use their quota.
-2. **A Shared Drive**: move the jobs folder into a Workspace Shared Drive and add the SA's
-   email as a member — files in Shared Drives belong to the drive, not a person, so no
-   quota problem. Update `DRIVE_JOBS_FOLDER_ID` to the new location.
+- Shared Drive **"PipeTooling Jobs"** (`0AI1sqwYSeegpUk9PVA`), created by
+  `bids@douglasmining.com`, with the SA added as a member.
+- `DRIVE_JOBS_FOLDER_ID` = the **Jobs** folder inside it (`11Ul_SuChL_Gq7EVUaDf9DJQwZXJsma30`).
+- `DRIVE_IMPERSONATE_USER` was **unset** at cutover: the domain-wide-delegation grant was
+  never made, and with the var set but ungranted, every upload fails at token exchange —
+  set it only after actually authorizing delegation in the admin console.
+
+Found live during cutover:
+- The SA **cannot create Shared Drives** (`userCannotCreateTeamDrives`) — a human creates
+  the drive and shares it with the SA; after that the robot does everything (it finds the
+  drive via `drives.list` as a member).
+- The SA could upload but not delete its own probe file (404 on delete) — likely a
+  member-role ceiling; harmless for intake (it only ever adds).
+
+Domain-wide delegation remains a documented alternative (admin.google.com → Security →
+API controls → Domain-wide delegation → SA's Unique ID + scope
+`https://www.googleapis.com/auth/drive`, then set `DRIVE_IMPERSONATE_USER` and redeploy),
+but the Shared Drive is the chosen path — tighter blast radius than impersonating a user.
 
 ## Rotation / kill
 
