@@ -96,8 +96,8 @@ export type PlacedNote = { pageIndex: number; raw: Pt; dpi: number; text: string
 /** A traced pipe run: vertices in RAW page px at `dpi`, in drawing order. */
 export type PlacedLine = { lineTypeId: string; pageIndex: number; dpi: number; points: Pt[] }
 
-export type TakeoffCounter = { id: string; name: string; color?: string }
-export type TakeoffLineType = { id: string; name: string; color?: string }
+export type TakeoffCounter = { id: string; name: string; color?: string; canvas?: string }
+export type TakeoffLineType = { id: string; name: string; color?: string; canvas?: string }
 
 export type TakeoffJson = {
   version: 1
@@ -223,6 +223,67 @@ export function feetByLineType(t: TakeoffJson): Array<{ lineType: string; feet: 
     }
   }
   return Array.from(acc.entries()).map(([lineType, e]) => ({ lineType, feet: Math.round(e.feet * 10) / 10, runs: e.runs }))
+}
+
+// --- Registration: the trace must sit ON the drawing (owner gate, 2026-08-30) ---
+// The plan is ink; the trace is coordinates. A run whose samples don't land on dark
+// pixels is a floating trace — approximately-right feet and misplaced fittings. The
+// sampler is injected (the script owns rasterization); the kernel owns the walk.
+
+export function registrationScore(
+  points: Pt[],
+  isInk: (p: Pt) => boolean,
+  stepPx = 6,
+): { samples: number; onInk: number; pct: number; worstGap: { from: Pt; to: Pt; samples: number } | null } {
+  let samples = 0
+  let onInk = 0
+  let gapStart: Pt | null = null
+  let gapLen = 0
+  let worst: { from: Pt; to: Pt; samples: number } | null = null
+  let prev: Pt | null = null
+  const visit = (p: Pt) => {
+    samples++
+    if (isInk(p)) {
+      onInk++
+      if (gapStart && prev && (!worst || gapLen > worst.samples)) worst = { from: gapStart, to: prev, samples: gapLen }
+      gapStart = null
+      gapLen = 0
+    } else {
+      if (!gapStart) gapStart = p
+      gapLen++
+    }
+    prev = p
+  }
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!
+    const b = points[i]!
+    const len = Math.hypot(b.x - a.x, b.y - a.y)
+    const n = Math.max(1, Math.round(len / stepPx))
+    for (let k = i === 1 ? 0 : 1; k <= n; k++) {
+      visit({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n })
+    }
+  }
+  if (gapStart && prev && (!worst || gapLen > (worst as { samples: number } | null)?.samples!)) {
+    worst = { from: gapStart, to: prev, samples: gapLen }
+  }
+  return { samples, onInk, pct: samples ? Math.round((onInk / samples) * 1000) / 10 : 0, worstGap: worst }
+}
+
+/**
+ * Layered-canvas defaults (review ergonomics, 2026-08-30): fixture counters land on a
+ * "Fixtures" canvas, each line system on a canvas named after it, fittings on
+ * "Fittings" — CountTooling's existing canvas switcher / show-all / hide-marks then
+ * give the reviewer per-layer toggling with zero new UI. Explicit `canvas` values win.
+ */
+export function applyDefaultCanvases(t: TakeoffJson): TakeoffJson {
+  const out: TakeoffJson = JSON.parse(JSON.stringify(t))
+  for (const c of out.counters) {
+    if (!c.canvas) c.canvas = c.id.startsWith('fit-') ? 'Fittings' : 'Fixtures'
+  }
+  for (const lt of out.lineTypes) {
+    if (!lt.canvas) lt.canvas = lt.name
+  }
+  return out
 }
 
 // --- Fitting derivation (owner ask, 2026-08-30): the joints are free — they fall out

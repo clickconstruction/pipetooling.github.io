@@ -19,7 +19,7 @@
  * }
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines, deriveFittings, fittingSummary, materializeFittings } from '../../src/lib/takeoffPlacement'
+import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines, deriveFittings, fittingSummary, materializeFittings, applyDefaultCanvases } from '../../src/lib/takeoffPlacement'
 
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const manifestPath = args[0]
@@ -78,6 +78,9 @@ if (fittings.length) {
   }
 }
 if (skippedUnscaledPages.length) console.error(`fittings: skipped unscaled page(s) ${skippedUnscaledPages.join(',')}`)
+// Per-layer review toggling: Fixtures / one canvas per system / Fittings (CT's canvas
+// switcher + show-all + hide-marks give the toggles; import-takeoff builds the layers).
+takeoff = applyDefaultCanvases(takeoff)
 const out = args[1]
 const json = JSON.stringify(takeoff, null, 2)
 if (out) {

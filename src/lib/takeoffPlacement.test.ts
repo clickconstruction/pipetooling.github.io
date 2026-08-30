@@ -13,6 +13,8 @@ import {
   deriveFittings,
   fittingSummary,
   materializeFittings,
+  registrationScore,
+  applyDefaultCanvases,
 } from './takeoffPlacement'
 
 describe('rawPxToBasePt', () => {
@@ -144,6 +146,40 @@ describe('lines: assembly, scale requirement, feet, connectivity', () => {
     const { far, skippedUnscaled } = marksFarFromLines(t, 6)
     expect(skippedUnscaled).toBe(0)
     expect(far).toEqual([{ counter: 'WC-1', page: 0, feet: 20 }])
+  })
+})
+
+describe('registrationScore (the trace must sit on the ink)', () => {
+  it('a line fully on ink scores 100', () => {
+    const r = registrationScore([{ x: 0, y: 0 }, { x: 120, y: 0 }], (p) => p.y === 0, 6)
+    expect(r.pct).toBe(100)
+    expect(r.worstGap).toBeNull()
+  })
+
+  it('a floating stretch is scored down and its worst gap located', () => {
+    // Ink exists only for x < 60 — the back half of the line floats.
+    const r = registrationScore([{ x: 0, y: 0 }, { x: 120, y: 0 }], (p) => p.x < 60, 6)
+    expect(r.pct).toBeLessThan(60)
+    expect(r.worstGap).not.toBeNull()
+    expect(r.worstGap!.from.x).toBeGreaterThanOrEqual(60)
+    expect(r.worstGap!.to.x).toBe(120)
+  })
+})
+
+describe('applyDefaultCanvases (per-layer review toggling)', () => {
+  it('fixtures, per-system, and fittings land on their own canvases; explicit wins', () => {
+    const t = assembleTakeoff({
+      counters: [
+        { id: 'c-wc1', name: 'WC-1' },
+        { id: 'fit-cw-tee', name: 'CW · Tee' },
+        { id: 'c-x', name: 'X', canvas: 'Custom' },
+      ],
+      lineTypes: [{ id: 'lt-sa', name: 'Sanitary' }],
+      marks: [{ counterId: 'c-wc1', pageIndex: 0, raw: { x: 1, y: 1 }, dpi: 72 }],
+    })
+    const out = applyDefaultCanvases(t)
+    expect(out.counters.map((c) => c.canvas)).toEqual(['Fixtures', 'Fittings', 'Custom'])
+    expect(out.lineTypes[0]!.canvas).toBe('Sanitary')
   })
 })
 

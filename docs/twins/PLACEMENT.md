@@ -114,6 +114,28 @@ riser rather than traced.
 5. A run you can't follow (buried under a wing break, ambiguous continuation): trace what
    you can and drop an `RFI:` note at the break — same never-guess rule as counters.
 
+## Registration: the trace must sit ON the drawing (owner gate, 2026-08-30)
+
+A trace that floats off the linework gives approximately-right feet and misplaced
+fittings — and it LOOKS fine until overlaid. Three tools close the loop (all in
+`scripts/placement-engine/`, run against the plan PDF):
+
+1. **`registration.ts <manifest> <pdf> [minPct]`** — renders each traced page to
+   grayscale and scores every run's samples against the ink (±3 px window). A run under
+   the threshold fails loudly with its worst floating gap located in RAW px. Gate every
+   import on this. Dash-broken styles (waste "—W—", dash-dot water) cap below 100% by
+   construction — 75–85% is honest for them; solid runs should score 95+.
+2. **`snap.ts <manifest> <pdf> [radius]`** — pulls every vertex onto the nearest ink.
+   Fixes endpoint sloppiness only; a mid-segment gap means the PATH is wrong.
+3. **`follow.ts <pdf> <page0> <dpi> <x> <y> <h±|v±>`** — walks the ink itself from an
+   anchor, emitting the actual path with its jogs. Use scanline probes (dark-pixel rows/
+   columns from the same PGM) to find each system's true position first — **walls render
+   as linework too**: a run that follows a wall scores well and is still wrong, so
+   confirm the system identity from labels/legend before keeping a followed path.
+4. Import only after: registration clean at your threshold, counts-vs-schedule clean,
+   connectivity clean or explained. What you could not trace to the gate's standard is
+   an on-sheet `RFI:` note and an honest exclusion — never a straight line through rooms.
+
 ## Fittings: the joints fall out of the geometry (owner ask, 2026-08-30)
 
 You never place fittings — they are DERIVED from your traced runs by the kernel
