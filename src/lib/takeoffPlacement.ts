@@ -271,6 +271,62 @@ export function registrationScore(
 }
 
 /**
+ * Manhattan orthogonalization (owner catch, 2026-08-30): plumbing drawings are
+ * orthogonal — a run goes straight, turns 90°, continues. A tracer that connects
+ * jog-start to jog-end draws a DIAGONAL SHORTCUT through rooms the architect never
+ * piped (and mints phantom 45° fittings from its own artifact). This pass replaces
+ * every non-axis-aligned segment with the L-path whose corner the chooser prefers
+ * (the script chooses by ink coverage; genuinely diagonal runs — a true 45° tail —
+ * are skipped by the caller, never mangled).
+ */
+export function orthogonalizePolyline(
+  points: Pt[],
+  chooseCorner: (from: Pt, to: Pt, cornerA: Pt, cornerB: Pt) => Pt = (_f, _t, a) => a,
+  axisTolPx = 2,
+): Pt[] {
+  const out: Pt[] = []
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i]!
+    if (i === 0) {
+      out.push(p)
+      continue
+    }
+    const prev = out[out.length - 1]!
+    const dx = Math.abs(p.x - prev.x)
+    const dy = Math.abs(p.y - prev.y)
+    if (dx <= axisTolPx || dy <= axisTolPx) {
+      // Already axis-aligned (within drawing wobble) — square it exactly.
+      out.push(dx <= axisTolPx ? { x: prev.x, y: p.y } : { x: p.x, y: prev.y })
+    } else {
+      const cornerA = { x: p.x, y: prev.y } // travel horizontally first
+      const cornerB = { x: prev.x, y: p.y } // travel vertically first
+      out.push(chooseCorner(prev, p, cornerA, cornerB), p)
+    }
+  }
+  // Drop collinear intermediates and zero-length hops the squaring may have made.
+  const clean: Pt[] = []
+  for (const p of out) {
+    const a = clean[clean.length - 2]
+    const b = clean[clean.length - 1]
+    if (b && b.x === p.x && b.y === p.y) continue
+    if (a && b && ((a.x === b.x && b.x === p.x) || (a.y === b.y && b.y === p.y))) clean[clean.length - 1] = p
+    else clean.push(p)
+  }
+  return clean
+}
+
+/** Non-axis-aligned segments (beyond wobble) — registration flags these unless the run is declared diagonalOk. */
+export function diagonalSegments(points: Pt[], axisTolPx = 2): Array<{ from: Pt; to: Pt }> {
+  const out: Array<{ from: Pt; to: Pt }> = []
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!
+    const b = points[i]!
+    if (Math.abs(b.x - a.x) > axisTolPx && Math.abs(b.y - a.y) > axisTolPx) out.push({ from: a, to: b })
+  }
+  return out
+}
+
+/**
  * Layered-canvas defaults (review ergonomics, 2026-08-30): fixture counters land on a
  * "Fixtures" canvas, each line system on a canvas named after it, fittings on
  * "Fittings" — CountTooling's existing canvas switcher / show-all / hide-marks then

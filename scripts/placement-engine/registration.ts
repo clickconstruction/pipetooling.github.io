@@ -15,7 +15,7 @@ import { readFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawnSync } from 'node:child_process'
-import { registrationScore } from '../../src/lib/takeoffPlacement'
+import { registrationScore, diagonalSegments } from '../../src/lib/takeoffPlacement'
 
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const [manifestPath, pdfPath] = args
@@ -25,7 +25,7 @@ if (!manifestPath || !pdfPath) {
   process.exit(2)
 }
 
-type Line = { lineTypeId: string; pageIndex: number; dpi: number; points: Array<{ x: number; y: number }>; minPct?: number }
+type Line = { lineTypeId: string; pageIndex: number; dpi: number; points: Array<{ x: number; y: number }>; minPct?: number; diagonalOk?: boolean }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { lines?: Line[]; lineTypes?: Array<{ id: string; name: string }> }
 const lines = manifest.lines ?? []
 if (!lines.length) {
@@ -93,7 +93,10 @@ for (const [key, group] of byPage) {
     // Dash-broken styles cap below solid duty — a run may carry its own honest bar
     // (e.g. 30 for a 42%-duty dash-dot), declared in the manifest, visible here.
     const bar = l.minPct ?? minPct
-    const ok = r.pct >= bar
+    // Plumbing is Manhattan: an undeclared diagonal is a tracer shortcut, not pipe.
+    const diags = l.diagonalOk ? [] : diagonalSegments(l.points)
+    const ok = r.pct >= bar && diags.length === 0
+    for (const d of diags) console.error(`  ⚠ ${name}: diagonal segment (${Math.round(d.from.x)},${Math.round(d.from.y)})→(${Math.round(d.to.x)},${Math.round(d.to.y)}) — orthogonalize (snap.ts) or declare diagonalOk`)
     if (!ok) failures++
     const gap = r.worstGap
       ? ` worst gap ${r.worstGap.samples} samples from (${Math.round(r.worstGap.from.x)},${Math.round(r.worstGap.from.y)}) to (${Math.round(r.worstGap.to.x)},${Math.round(r.worstGap.to.y)})`

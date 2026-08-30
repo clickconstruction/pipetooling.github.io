@@ -139,7 +139,14 @@ fittings — and it LOOKS fine until overlaid. Three tools close the loop (all i
    columns from the same PGM) to find each system's true position first — **walls render
    as linework too**: a run that follows a wall scores well and is still wrong, so
    confirm the system identity from labels/legend before keeping a followed path.
-5. Import only after: registration clean at your threshold, counts-vs-schedule clean,
+5. **Plumbing is Manhattan** (owner catch, 2026-08-30): architects draw runs that go
+   straight, turn 90°, and continue — a tracer that connects jog-start to jog-end draws
+   a diagonal shortcut through un-piped rooms and mints phantom 45° fittings from its
+   own artifact. snap.ts orthogonalizes every run (the L-corner with more ink under it
+   wins); registration REFUSES undeclared diagonal segments. A genuinely diagonal run
+   (a true 45° tail) is declared `diagonalOk` on that line — deliberately, per run,
+   never as a default.
+6. Import only after: registration clean at your threshold, counts-vs-schedule clean,
    connectivity clean or explained. What you could not trace to the gate's standard is
    an on-sheet `RFI:` note and an honest exclusion — never a straight line through rooms.
 
