@@ -40,6 +40,10 @@ sends you here at pipeline stage 3; your counts come back to PipeTooling at stag
    plans under your marks (55-page sets are fine; 50 MB cap). Re-import with the same
    name REPLACES the project — that is your fix-and-retry loop, never a duplicate.
    Rejections are 400s that name the exact field; fix what they name.
+3½. **Read the placement protocols before placing anything**: `get_placement_guide`
+   serves the full doctrine set (doorway calibration, counters-first placement, line
+   tracing + registration gates, branch sweeps, keyed-note census, printed-total
+   reconciliation) — the same manual repo-side agents read at docs/twins/PLACEMENT.md.
 4. **Flag ambiguities, keep counting**: a note prefixed `RFI:` at the exact spot rides
    the RFI-flags convention into PipeTooling's RFI queue. Never guess a count a plan
    doesn't support — flag it and move on. **Notes contract (Notes ledger)**: on-sheet

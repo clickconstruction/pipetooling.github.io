@@ -3,7 +3,7 @@
 ---
 file: docs/twins/PLACEMENT.md
 type: Harness procedure / Skill
-purpose: How an agent turns a substrate + plan-set PDF into a placed, imported CountTooling takeoff — the counters-first procedure, coordinate math, self-checks, and tooling. Wave 3.4 of ESTIMATOR_TWIN_PIPELINE_PLAN.md. The vision model IS the engine; this file is its operating manual (EXTRACTOR.md's sibling).
+purpose: How an agent turns a substrate + plan-set PDF into a placed, imported CountTooling takeoff — the counters-first procedure, coordinate math, self-checks, and tooling. Wave 3.4 of ESTIMATOR_TWIN_PIPELINE_PLAN.md. The vision model IS the engine; this file is its operating manual (EXTRACTOR.md's sibling) Served by twin-mcp as get_placement_guide (bundled with CALIBRATION.md + EXTRACTOR.md).
 audience: AI Agents, harness operators, Developers
 last_updated: 2026-08-30
 key_sections:
