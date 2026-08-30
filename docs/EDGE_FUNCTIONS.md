@@ -781,6 +781,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Conversation layer (v2.2483** — RFI_LOOP_PLAN R3 + Wave 4.5**)**: `ask_question` (parks a question in `twin_questions` — the internal lane; optional bid resolves by number/uuid), `get_answers` (the twin's questions newest-first; `open_only`), and `heartbeat` (inserts a `twin_runs` row with bid_id/stage/state — the fleet console shows PULSE/BLOCKED chips). `get_work_state` grew `middle` coverage (takeoff mappings, rough part lines, labor estimates, price-book copies), `rfis` statuses, `open_questions_here`, and `latest_heartbeat`. These are twin-self-scoped writes to twin infrastructure tables, not business data — the fence applier gained a `twin_questions` INSERT-as-self branch.
 
+**Robot-ready train (v2.2503)**: `get_ct_guide` (the CountTooling completing-a-bid brief, bundled from `docs/twins/COUNTTOOLING_BID_GUIDE.md`); `get_work_state` gains **`ct_takeoff`** — the twin's CountTooling projects with review status + reviewer note, fetched over the CT bridge (`manage-user` verb `twin_projects`, fail-soft); the CT `mint_session` path now mirrors the per-twin token hash to CT (`set_twin_credential`, best-effort) and mints with **`X-Twin-Token`** (CT verifies locally — CT-4 credential parity), falling back to the fleet secret on 401.
+
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
 
 ---
@@ -796,6 +798,16 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **Body**: `{ "bid": "b403" | uuid, "plans_url"?: string, "plans_file_name"?: string }` (bid number accepts `b`/`bp` prefixes) → `{ success, folder_id, folder_link, folder_created, plans_link, plans_reused, upload_note, stamped }`. Drive secrets unset → **503** with a setup pointer.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the Jobs folder inside the Shared Drive). Optional `DRIVE_IMPERSONATE_USER` (domain-wide delegation) — leave unset unless the delegation grant actually exists; set-but-ungranted breaks every upload at token exchange.
+
+---
+
+### plan-fetch
+
+**Purpose**: The pipeline's **plan-bytes door** (v2.2503, robot-ready train CT-1): streams a bid's plan set — the Drive file behind `bids.plans_link` — to an authorized caller using the service account's token (scope `drive.readonly`). Built so CountTooling's `import-takeoff` (`pdf_url` + `pdf_headers: {"X-Twin-Token": …}`) can pull the PDF server-side without holding any Google credential: a twin's takeoff import arrives WITH the plan set. Loud errors: no `plans_link` → file the plans first (drive-intake); non-Drive link → 422; Drive 4xx → "is the file shared with the service account?".
+
+**Endpoint**: `GET /functions/v1/plan-fetch?bid=b403` (or `POST {"bid":"b403"}`) · **Auth**: `X-Twin-Token` (per-twin credential; the bid must be the twin's own/assigned — assignment-is-the-grant) **or** staff JWT (dev/master/assistant/controller/estimator). `verify_jwt = false` (in-function auth, drive-intake's model). Responds with raw PDF bytes (streamed, Content-Type/Length passed through).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**.
 
 ---
 

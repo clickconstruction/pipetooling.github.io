@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { BRIEF, DIRECTORY, HARNESS, MISSIONS } from './briefs.ts'
+import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, MISSIONS } from './briefs.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
 // A minimal, dependency-free Model Context Protocol server over streamable HTTP
@@ -54,6 +54,11 @@ const TOOLS = [
   {
     name: 'get_harness_guide',
     description: 'The harness kit (docs/twins/TWIN_HARNESS.md) — auth, session semantics, rules of engagement, safety rungs.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_ct_guide',
+    description: 'Completing a bid\'s takeoff in CountTooling — your access, the plans→import→review→counts loop, the import contract, and the hard limits. Read before any CountTooling work.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -211,6 +216,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return textContent(DIRECTORY)
     case 'get_harness_guide':
       return textContent(HARNESS || 'Harness guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
+    case 'get_ct_guide':
+      return textContent(CT_GUIDE || 'CountTooling guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
     case 'get_mission': {
       const m = MISSIONS[String(args.id ?? '').toUpperCase()]
       if (!m) return textContent(`Unknown mission id. Available: ${Object.keys(MISSIONS).join(', ')}`, true)
@@ -240,11 +247,34 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         if ((count ?? 0) >= 6) return textContent('Rate limited: max 6 mints per minute per twin (across both apps). Wait a minute and retry.', true)
         const ctEmail = twin.email.replace('@twins.pipetooling.local', '@twins.counttooling.local')
         const redirectTo = (args.redirectTo as string) || 'https://counttooling.com'
-        const res = await fetch(ctUrl, {
+        // CT-4 per-twin credential parity: mirror this token's hash to CT (idempotent,
+        // best-effort — needs the manage-user bridge), then mint with the PER-TWIN token.
+        // Fall back to the shared fleet secret only if CT doesn't know the token yet.
+        const rawToken = presentedToken(req)!
+        const bridgeUrl = Deno.env.get('CT_MANAGE_USER_URL')
+        const bridgeSecret = Deno.env.get('CT_MANAGE_USER_SECRET')
+        if (bridgeUrl && bridgeSecret) {
+          try {
+            await fetch(bridgeUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Bridge-Secret': bridgeSecret },
+              body: JSON.stringify({ verb: 'set_twin_credential', email: ctEmail, token_hash: await sha256Hex(rawToken) }),
+            })
+          } catch (_) { /* sync best-effort; the secret fallback below still mints */ }
+        }
+        let res = await fetch(ctUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Twin-Login-Secret': ctSecret },
+          headers: { 'Content-Type': 'application/json', 'X-Twin-Token': rawToken },
           body: JSON.stringify({ email: ctEmail, redirectTo, run: (args.run as string) || 'mcp-mint' }),
         })
+        if (res.status === 401) {
+          console.log('[twin-mcp] CT per-twin mint refused; falling back to fleet secret')
+          res = await fetch(ctUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Twin-Login-Secret': ctSecret },
+            body: JSON.stringify({ email: ctEmail, redirectTo, run: (args.run as string) || 'mcp-mint' }),
+          })
+        }
         const body = await res.json().catch(() => ({}))
         if (!res.ok) return textContent(`CountTooling mint failed (${res.status}): ${body.error ?? 'unknown'}`, true)
         try {
@@ -465,7 +495,27 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         audit_ledger_tail: (entries ?? []).map((e: Record<string, unknown>) => ({
           at: e.occurred_at, method: e.contact_method ?? 'note', note: String(e.notes ?? '').slice(0, 300),
         })),
-        not_yet_in_v1: ['CT takeoff review status (cross-app; Wave 3.6 — blocked on CT DB access)'],
+        // CT-3 (Wave 3.6 closure): the twin's CountTooling projects with review state —
+        // 'changes' + review_note is the reviewer sending the takeoff BACK; fix and
+        // re-mark ready. Fetched over the CT bridge; degrades to an error note, never a throw.
+        ct_takeoff: await (async () => {
+          try {
+            const ctUrl = Deno.env.get('CT_MANAGE_USER_URL')
+            const ctSecret = Deno.env.get('CT_MANAGE_USER_SECRET')
+            if (!ctUrl || !ctSecret) return { error: 'CT bridge not configured' }
+            const ctEmail = twin.email.replace('@twins.pipetooling.local', '@twins.counttooling.local')
+            const r = await fetch(ctUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Bridge-Secret': ctSecret },
+              body: JSON.stringify({ verb: 'twin_projects', email: ctEmail }),
+            })
+            const body = await r.json()
+            if (!r.ok) return { error: `CT bridge ${r.status}: ${body?.error ?? 'unknown'}` }
+            return { projects: body.projects ?? [] }
+          } catch (e) {
+            return { error: String(e instanceof Error ? e.message : e) }
+          }
+        })(),
       }
       return textContent(JSON.stringify(state, null, 2))
     }

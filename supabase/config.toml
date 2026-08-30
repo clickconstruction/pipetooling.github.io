@@ -693,3 +693,8 @@ verify_jwt = false
 # JWT validated in the function body (getUser) — gateway verify_jwt caused 401s for browser sessions.
 [functions.address-autocomplete]
 verify_jwt = false
+
+# plan-fetch: X-Twin-Token calls carry no JWT; auth is validated in-function
+# (per-twin credential or staff getUser) — same model as drive-intake.
+[functions.plan-fetch]
+verify_jwt = false

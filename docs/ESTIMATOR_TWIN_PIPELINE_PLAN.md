@@ -303,3 +303,19 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
   PDFs (via `plans_url`); residue: BP399 carries a dummy test PDF, quota-probe.txt sits in
   the Jobs folder, and the old My Drive jobs folder + its LiveWell/LIVSTE folders are
   orphaned and deletable.
+- 2026-08-30 (robot-ready CountTooling train, v2.2503) — **Waves 3.5 and 3.6 CLOSED**;
+  the STG-3 seam is robot-operable end to end except the placement engine itself.
+  Owner directive: "build the tools within CountTooling to make the upload and drawing
+  of lines by other robots seamless before M5." Shipped + live-probed same day:
+  **CT-1** plan-fetch (PT) + import-takeoff `pdf_url` (CT) — the twin's project arrives
+  WITH the 55-page/36MB LIVSTE set under its marks in ONE call (E2E via a real twin
+  token: mint → import → verify; re-import replaced, 1 storage object); **CT-2**
+  review `changes` + `review_note` (twin `ready` ok, twin `changes` refused loudly);
+  **CT-3** `get_work_state.ct_takeoff` over the bridge; **CT-4** per-twin CT
+  credentials (sync-on-mint, independent revocation); **CT-5** `get_ct_guide` — the
+  CountTooling completing-a-bid brief, served by twin-mcp (owner's ask, made structural).
+  Also live: the Robot Board (v2.2500) keeps twin bids off the human board.
+  Remaining before the robot army estimates alone: **3.4 placement engine v0** +
+  its 3.1 calibration run, extractor automation (1.2), then M4/M5. Residue: CT project
+  "ZZ Twin LIVSTE takeoff" sits in the review lane as `ready` (a probe — a reviewer
+  can exercise Request changes on it).
