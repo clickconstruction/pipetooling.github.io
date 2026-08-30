@@ -233,3 +233,59 @@ each carried as an on-sheet note with `detail`:
 
 The reconciliation lives where the reviewer can see it: notes at the exact
 symbols, arithmetic in the import note.
+
+## The third dimension (backtest BT-1 doctrine, 2026-08-30)
+
+Plan-view tracing captures the horizontal projection only. On BT-1 the human
+reference carried 3.5× the twin's water feet and ~9× its fittings — almost all of
+it vertical. The fix is not to draw what isn't drawn; it is **explicit vertical
+allowances** in the manifest (`verticals: VerticalAllowance[]`):
+
+- one entry per family of identical verticals (bay drops, wet-wall drops, waste
+  stub-ups, VTR risers, trap-primer laterals, site continuations);
+- every height NAMES ITS SOURCE — a mount height printed on the plan ("valve at
+  10' AFF", "WH-1 24\" A.F.F."), a keyed note, or a doctrine default (2 ft
+  slab stub; deck height assumed and flagged RFI when the architectural set
+  wasn't read);
+- each entry carries the fittings it implies (a drop = tee at the main + 90 at
+  the turn-down; a stub-up = 90 + tee; a VTR = 90).
+The assembler folds allowances into the size-split feet and fitting counts of
+the **tooling paste block** (`<out>.tooling.txt` — the ESTIMATE view) and prints
+them itemized. CountTooling stays the DRAWN view — allowances never appear as
+lines there, because nothing on the sheet registers them.
+
+## Size attribution (BT-1 doctrine)
+
+The plans label pipe sizes on nearly every run — read them and carry them. A
+manifest line takes `size: '3"'`; the assembler mints a size-variant lineType
+(`3" Sanitary Waste`) on the SAME system canvas, so CT layers stay per-system
+while feet, fittings, and tooling rows all split by size — the shape a priced
+takeoff needs (`ft of 3" Sanitary Waste`, `2" Sanitary Waste · Tee`). Split a
+drawn run where its label changes size. Fitting derivation joins branches
+ACROSS sizes within a system (a 2" branch tees into the 3" main) and names the
+fitting by the BRANCH size, matching estimator convention.
+
+## Fitting allowances (BT-1 doctrine)
+
+Geometry-derived fittings are a FLOOR, not a count — plan-view topology cannot
+see riser fittings, fixture-drop fittings, vent turns, or underground bends
+(BT-1: 13 derived vs 120 in the human reference; with allowances the twin
+reached ~67). Every vertical allowance declares its fittings; the standard
+table: drop/stub-up = 1 tee + 1–2 90s; VTR = 1 90; primer lateral = 2 90s.
+Review the assembler's itemized allowance print before import.
+
+## Scope-call standards (BT-1)
+
+- **"By others" beats habit**: a system the plan marks by-others (compressed
+  air on BT-1) is EXCLUDED from counts and named in the letter — even when a
+  human reference counted it. If pricing it anyway is desired, that is the
+  owner's call in review, not the takeoff's.
+- **On-sheet oddities are counted, then flagged**: keyed systems with unclear
+  ownership (3" PVC pit conduit) get counted under their own line type + an
+  on-sheet note asking whose scope they are.
+- **Cost lines may ride the counts** (the human pattern: `rentals`,
+  `bfp/hammass` as count rows) — allowed, name them plainly.
+- **The robot price book carries mirrored unit prices** from sent/won human
+  bids (source named in the ledger note when added). Entry names MATCH the
+  tooling-row names exactly (`ft of 1/2" Cold Water`, `3" Sanitary Waste ·
+  Tee`) so Workbench matching lines up without aliases.

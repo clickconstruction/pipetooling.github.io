@@ -349,7 +349,7 @@ export function applyDefaultCanvases(t: TakeoffJson): TakeoffJson {
 // --- a BRANCH (≈90° = tee, ≈45° = wye). Odd angles are flagged, never silently binned.
 
 export type FittingKind = 'ell90' | 'ell45' | 'tee' | 'wye' | 'odd-turn' | 'odd-branch'
-export type Fitting = { kind: FittingKind; lineType: string; page: number; at: Pt; angle: number }
+export type Fitting = { kind: FittingKind; lineType: string; page: number; at: Pt; angle: number; system?: string }
 
 const ANGLE_TOL = 20 // degrees either side of 90/45
 
@@ -365,7 +365,14 @@ function classifyAngle(theta: number, turn: boolean): FittingKind {
  * real feet via the page scale — unscaled pages are skipped entirely (lines there are
  * already refused by validation).
  */
-export function deriveFittings(t: TakeoffJson, joinFeet = 2): { fittings: Fitting[]; skippedUnscaledPages: number[] } {
+export function deriveFittings(
+  t: TakeoffJson,
+  joinFeet = 2,
+  /** Maps a lineTypeId to its SYSTEM for branch joins (size-split types join across
+   *  sizes: a 2" branch tees into a 3" main). Default: each lineTypeId is its own system. */
+  systemOf?: (lineTypeId: string) => string,
+): { fittings: Fitting[]; skippedUnscaledPages: number[] } {
+  const sysOf = systemOf ?? ((id: string) => id)
   const nameById = new Map(t.lineTypes.map((lt) => [lt.id, lt.name]))
   const fittings: Fitting[] = []
   const skippedUnscaledPages: number[] = []
@@ -395,17 +402,18 @@ export function deriveFittings(t: TakeoffJson, joinFeet = 2): { fittings: Fittin
         const outDir = { x: next.x - v.x, y: next.y - v.y }
         const theta = angleBetween(inDir, outDir) // 0 = straight through
         if (theta < 15) continue // drawing wobble, not a fitting
-        fittings.push({ kind: classifyAngle(theta, true), lineType: nameById.get(pl.lineTypeId) ?? pl.lineTypeId, page: p.index, at: v, angle: Math.round(theta) })
+        fittings.push({ kind: classifyAngle(theta, true), lineType: nameById.get(pl.lineTypeId) ?? pl.lineTypeId, page: p.index, at: v, angle: Math.round(theta), system: sysOf(pl.lineTypeId) })
       }
     }
     // 2) Branches: an endpoint of one run on the BODY of another (same system).
     const byType = new Map<string, typeof polys>()
     for (const pl of polys) {
-      const list = byType.get(pl.lineTypeId) ?? []
+      const key = sysOf(pl.lineTypeId)
+      const list = byType.get(key) ?? []
       list.push(pl)
-      byType.set(pl.lineTypeId, list)
+      byType.set(key, list)
     }
-    for (const [ltId, group] of byType) {
+    for (const [systemKey, group] of byType) {
       for (let bi = 0; bi < group.length; bi++) {
         const b = group[bi]!
         for (const [end, dirNext] of [
@@ -439,10 +447,10 @@ export function deriveFittings(t: TakeoffJson, joinFeet = 2): { fittings: Fittin
           if (best.onEndpoint) {
             // End-to-end join: a continuation (coupling) or a drawn-in-two-pieces elbow.
             if (branchAngle < 15) continue
-            fittings.push({ kind: classifyAngle(branchAngle, true), lineType: nameById.get(ltId) ?? ltId, page: p.index, at: end, angle: Math.round(branchAngle) })
+            fittings.push({ kind: classifyAngle(branchAngle, true), lineType: nameById.get(b.lineTypeId) ?? b.lineTypeId, page: p.index, at: end, angle: Math.round(branchAngle), system: systemKey })
           } else {
             if (branchAngle < 15) continue // running into the pipe axially — a coupling, not a fitting
-            fittings.push({ kind: classifyAngle(branchAngle, false), lineType: nameById.get(ltId) ?? ltId, page: p.index, at: end, angle: Math.round(branchAngle) })
+            fittings.push({ kind: classifyAngle(branchAngle, false), lineType: nameById.get(b.lineTypeId) ?? b.lineTypeId, page: p.index, at: end, angle: Math.round(branchAngle), system: systemKey })
           }
         }
       }
@@ -453,7 +461,7 @@ export function deriveFittings(t: TakeoffJson, joinFeet = 2): { fittings: Fittin
       if (f.page !== p.index) continue
       for (let j = 0; j < i; j++) {
         const g = fittings[j]!
-        if (g.page === p.index && g.lineType === f.lineType && Math.hypot(g.at.x - f.at.x, g.at.y - f.at.y) < joinPx / 2) {
+        if (g.page === p.index && (g.system ?? g.lineType) === (f.system ?? f.lineType) && Math.hypot(g.at.x - f.at.x, g.at.y - f.at.y) < joinPx / 2) {
           // Branch beats turn at the same joint (the tee IS the fitting there).
           if ((f.kind === 'tee' || f.kind === 'wye') && (g.kind === 'ell90' || g.kind === 'ell45')) fittings[j] = f
           fittings.splice(i, 1)
@@ -576,6 +584,106 @@ export function countsVsSchedule(
   const scheduledTags = new Set(schedule.map((s) => s.tag))
   for (const [name, n] of placed) {
     if (!scheduledTags.has(name)) rows.push({ tag: name, placed: n, scheduled: null, ok: false })
+  }
+  return rows
+}
+
+// --- The third dimension (backtest BT-1 doctrine, 2026-08-30): plan-view tracing
+// --- captures the horizontal projection only. Real takeoffs carry the vertical
+// --- world — fixture drops, risers to hose valves, vent stacks, underground burial
+// --- rise — as explicit, reviewable ALLOWANCES with named sources (a mount height
+// --- printed on the plan, a keyed note, a doctrine default). Wendi's reference on
+// --- BT-1: 3.5x the twin's water feet and ~9x its fittings, almost all vertical.
+
+export type VerticalAllowance = {
+  /** Human-readable line, e.g. 'IWH lav drop pair' — shows in reports. */
+  label: string
+  /** System name (must match a lineType canvas/system), e.g. 'Sanitary Waste'. */
+  system: string
+  /** Pipe size, e.g. '1/2"' — sizes the emitted feet/fitting rows. */
+  size?: string
+  /** How many identical verticals. */
+  count: number
+  /** Vertical feet EACH (mount height, burial depth, riser rise). */
+  feetEach: number
+  /** Fittings each vertical implies (e.g. one 90 at top + tee at the main). */
+  fittings?: Array<{ kind: FittingKind; countEach: number }>
+  /** Where the height came from — a plan note, schedule, or doctrine default. */
+  source: string
+}
+
+export function expandVerticalAllowances(list: VerticalAllowance[]): {
+  feetRows: Array<{ system: string; size?: string; feet: number }>
+  fittingRows: Array<{ system: string; size?: string; kind: FittingKind; count: number }>
+  totalFeet: number
+} {
+  const feetAcc = new Map<string, { system: string; size?: string; feet: number }>()
+  const fitAcc = new Map<string, { system: string; size?: string; kind: FittingKind; count: number }>()
+  let totalFeet = 0
+  for (const va of list) {
+    if (!(va.count > 0) || !(va.feetEach >= 0)) continue
+    const feet = va.count * va.feetEach
+    totalFeet += feet
+    const fk = `${va.size ?? ''}|${va.system}`
+    const fe = feetAcc.get(fk)
+    if (fe) fe.feet += feet
+    else feetAcc.set(fk, { system: va.system, size: va.size, feet })
+    for (const f of va.fittings ?? []) {
+      const key = `${va.size ?? ''}|${va.system}|${f.kind}`
+      const e = fitAcc.get(key)
+      const add = va.count * f.countEach
+      if (e) e.count += add
+      else fitAcc.set(key, { system: va.system, size: va.size, kind: f.kind, count: add })
+    }
+  }
+  const round2 = (n: number) => Math.round(n * 100) / 100
+  return {
+    feetRows: Array.from(feetAcc.values()).map((r) => ({ ...r, feet: round2(r.feet) })),
+    fittingRows: Array.from(fitAcc.values()),
+    totalFeet: round2(totalFeet),
+  }
+}
+
+/**
+ * The paste-ready counts block for PipeTooling's Import Counts — the ESTIMATE view:
+ * drawn geometry PLUS vertical allowances, size-split. CountTooling stays the visual
+ * layer (drawn lines only); this is what prices. Row shape matches the import dialog:
+ * fixture name TAB count (TAB plan page added by the caller if wanted).
+ */
+export function buildToolingRows(
+  t: TakeoffJson,
+  opts: { fittings?: Fitting[]; allowances?: VerticalAllowance[] } = {},
+): Array<{ fixture: string; count: number }> {
+  const rows: Array<{ fixture: string; count: number }> = []
+  // Fixture/drop counters (materialized fittings excluded — they re-enter via opts.fittings).
+  for (const c of t.counters) {
+    if (c.id.startsWith('fit-')) continue
+    let n = 0
+    for (const p of t.pages) n += p.counterMarkers?.[c.id]?.length ?? 0
+    if (n > 0) rows.push({ fixture: c.name, count: n })
+  }
+  // Fittings: geometry-derived (names already size-carrying when lineTypes are) +
+  // allowance fittings, merged by display name.
+  const fitAcc = new Map<string, number>()
+  for (const s of fittingSummary(opts.fittings ?? [])) {
+    const name = `${s.lineType} · ${FITTING_LABEL[s.kind]}`
+    fitAcc.set(name, (fitAcc.get(name) ?? 0) + s.count)
+  }
+  const { feetRows, fittingRows } = expandVerticalAllowances(opts.allowances ?? [])
+  for (const fr of fittingRows) {
+    const name = `${fr.size ? fr.size + ' ' : ''}${fr.system} · ${FITTING_LABEL[fr.kind]}`
+    fitAcc.set(name, (fitAcc.get(name) ?? 0) + fr.count)
+  }
+  for (const [name, count] of fitAcc) rows.push({ fixture: name, count })
+  // Feet: drawn per (size-named) lineType + allowance feet, merged by name.
+  const feetAcc = new Map<string, number>()
+  for (const f of feetByLineType(t)) feetAcc.set(f.lineType, (feetAcc.get(f.lineType) ?? 0) + f.feet)
+  for (const fr of feetRows) {
+    const name = `${fr.size ? fr.size + ' ' : ''}${fr.system}`
+    feetAcc.set(name, (feetAcc.get(name) ?? 0) + fr.feet)
+  }
+  for (const [name, feet] of feetAcc) {
+    if (feet > 0) rows.push({ fixture: `ft of ${name}`, count: Math.round(feet * 100) / 100 })
   }
   return rows
 }

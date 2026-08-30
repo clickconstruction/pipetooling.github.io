@@ -17,6 +17,8 @@ import {
   applyDefaultCanvases,
   orthogonalizePolyline,
   diagonalSegments,
+  expandVerticalAllowances,
+  buildToolingRows,
 } from './takeoffPlacement'
 
 describe('rawPxToBasePt', () => {
@@ -303,5 +305,103 @@ describe('countsVsSchedule', () => {
       { tag: 'LAV-1', placed: 0, scheduled: null, ok: false },
       { tag: 'MYSTERY-9', placed: 1, scheduled: null, ok: false },
     ])
+  })
+})
+
+
+describe('size-split fitting joins (BT-1 doctrine)', () => {
+  const sized = {
+    version: 1 as const,
+    counters: [],
+    lineTypes: [
+      { id: 'lt-w-3', name: '3" Sanitary Waste', canvas: 'Sanitary Waste' },
+      { id: 'lt-w-2', name: '2" Sanitary Waste', canvas: 'Sanitary Waste' },
+      { id: 'lt-cw-1', name: '1" Cold Water', canvas: 'Cold Water' },
+    ],
+    pages: [
+      {
+        index: 0,
+        scale: { pixelsPerUnit: 10, unit: 'ft' },
+        polylines: [
+          { points: [{ x: 0, y: 100 }, { x: 400, y: 100 }], lineTypeId: 'lt-w-3' },
+          { points: [{ x: 200, y: 100 }, { x: 200, y: 300 }], lineTypeId: 'lt-w-2' },
+          { points: [{ x: 100, y: 105 }, { x: 100, y: 250 }], lineTypeId: 'lt-cw-1' },
+        ],
+      },
+    ],
+  }
+  const systemOf = (id: string) => (id.startsWith('lt-w') ? 'Sanitary Waste' : 'Cold Water')
+
+  it('a 2" branch tees into the 3" main when grouped by system', () => {
+    const { fittings } = deriveFittings(sized, 2, systemOf)
+    const tees = fittings.filter((f) => f.kind === 'tee')
+    expect(tees).toHaveLength(1)
+    expect(tees[0]!.lineType).toBe('2" Sanitary Waste')
+  })
+
+  it('without systemOf the cross-size join is (still) invisible — the old behavior', () => {
+    const { fittings } = deriveFittings(sized, 2)
+    expect(fittings.filter((f) => f.kind === 'tee')).toHaveLength(0)
+  })
+
+  it('a crossing CW endpoint near the SAN main never joins it', () => {
+    const { fittings } = deriveFittings(sized, 2, systemOf)
+    expect(fittings.filter((f) => f.lineType.includes('Cold Water'))).toHaveLength(0)
+  })
+})
+
+describe('expandVerticalAllowances', () => {
+  it('multiplies, groups by system+size, and rounds', () => {
+    const out = expandVerticalAllowances([
+      { label: 'lav drops', system: 'Cold Water', size: '1/2"', count: 4, feetEach: 2.5, fittings: [{ kind: 'ell90', countEach: 2 }], source: 'note 9' },
+      { label: 'bay drops', system: 'Cold Water', size: '1/2"', count: 3, feetEach: 10, fittings: [{ kind: 'ell90', countEach: 1 }, { kind: 'tee', countEach: 1 }], source: 'keyed 5 @10ft AFF' },
+      { label: 'VTRs', system: 'Vent', size: '3"', count: 2, feetEach: 14, source: 'roof deck' },
+    ])
+    expect(out.totalFeet).toBe(4 * 2.5 + 30 + 28)
+    expect(out.feetRows).toEqual(
+      expect.arrayContaining([
+        { system: 'Cold Water', size: '1/2"', feet: 40 },
+        { system: 'Vent', size: '3"', feet: 28 },
+      ]),
+    )
+    expect(out.fittingRows).toEqual(
+      expect.arrayContaining([
+        { system: 'Cold Water', size: '1/2"', kind: 'ell90', count: 11 },
+        { system: 'Cold Water', size: '1/2"', kind: 'tee', count: 3 },
+      ]),
+    )
+  })
+})
+
+describe('buildToolingRows', () => {
+  it('merges drawn feet + allowances and names rows the /Tooling way', () => {
+    const t = {
+      version: 1 as const,
+      counters: [
+        { id: 'c-wc', name: 'WC-1' },
+        { id: 'fit-x', name: '3" Sanitary Waste · Tee' },
+      ],
+      lineTypes: [{ id: 'lt-w-3', name: '3" Sanitary Waste', canvas: 'Sanitary Waste' }],
+      pages: [
+        {
+          index: 0,
+          scale: { pixelsPerUnit: 10, unit: 'ft' },
+          counterMarkers: { 'c-wc': [{ x: 1, y: 1 }], 'fit-x': [{ x: 2, y: 2 }] },
+          polylines: [{ points: [{ x: 0, y: 0 }, { x: 100, y: 0 }], lineTypeId: 'lt-w-3' }],
+        },
+      ],
+    }
+    const rows = buildToolingRows(t, {
+      fittings: [{ kind: 'tee' as const, lineType: '3" Sanitary Waste', page: 0, at: { x: 2, y: 2 }, angle: 90 }],
+      allowances: [
+        { label: 'wc drop', system: 'Sanitary Waste', size: '3"', count: 1, feetEach: 2, fittings: [{ kind: 'ell90' as const, countEach: 1 }], source: 'doctrine' },
+      ],
+    })
+    const byName = Object.fromEntries(rows.map((r) => [r.fixture, r.count]))
+    expect(byName['WC-1']).toBe(1)
+    expect(byName['3" Sanitary Waste · Tee']).toBe(1)
+    expect(byName['3" Sanitary Waste · 90 Ell']).toBe(1)
+    expect(byName['ft of 3" Sanitary Waste']).toBe(12)   // 10 drawn + 2 allowance
+    expect(rows.find((r) => r.fixture.startsWith('fit-'))).toBeUndefined()
   })
 })
