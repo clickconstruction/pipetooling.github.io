@@ -5,7 +5,7 @@ file: docs/DIGITAL_TWINS_PLAN.md
 type: Engineering / Product plan
 purpose: Staged plan for role-impersonating agent accounts ("digital twins") that test, validate, and eventually perform real work in PipeTooling — per-role briefs, an app directory, first-class twin identity in the schema, and a mission harness.
 audience: Developers, AI Agents, Digital Twins
-last_updated: 2026-08-28
+last_updated: 2026-08-30
 sections:
   - The idea
   - Owner decisions (locked)
@@ -51,6 +51,10 @@ not a greenfield one.
 - **Twin work is visible, humans are never fenced**: twin bids sit on the shared board
   with the twin's name in the Estimator column; real estimators can read AND edit twin
   work (the review workflow). The write-fence is one-directional — it binds twins only.
+  *Amended 2026-08-30 (v2.2500)*: "shared board" became a **shared board with two scopes**
+  — the 🤖 Robot Board tab holds bids whose estimator/creator is a twin, and the human
+  Bid Board (and its rollups) excludes them. A lens, not a wall: one click apart, same
+  cards, same edit affordances; twins still get no twin-only UI paths.
 - **Assignment is the grant**: setting a real bid's estimator to a twin admits that bid to
   the twin's write-fence; un-assigning revokes it. Giving a twin real work is one
   deliberate, visible, reversible act in the normal UI.
