@@ -19,7 +19,7 @@
  * }
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { assembleTakeoff, validateTakeoff, countsVsSchedule } from '../../src/lib/takeoffPlacement'
+import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines } from '../../src/lib/takeoffPlacement'
 
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const manifestPath = args[0]
@@ -29,6 +29,12 @@ if (!manifestPath) {
 }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
 const takeoff = assembleTakeoff(manifest)
+// Door calibration report (doors are 3 ft — owner rule): per page, median + outliers.
+for (const [page, ds] of Object.entries(manifest.doorSamples ?? {}) as Array<[string, { dpi: number; doors: Array<{ a: { x: number; y: number }; b: { x: number; y: number } }> }]>) {
+  const cal = calibrateFromDoors(ds.doors, ds.dpi)
+  console.error(`page ${page} scale from ${ds.doors.length} door(s): ${cal.pixelsPerUnit.toFixed(3)} px/ft` +
+    (cal.outliers.length ? `  ⚠ outlier sample index(es) ${cal.outliers.join(',')} — remeasure or drop` : ''))
+}
 const problems = validateTakeoff(takeoff, manifest.pdfPageCount)
 if (problems.length) {
   console.error('REJECTED (import-takeoff would refuse these by the same names):')
@@ -43,6 +49,19 @@ if (Array.isArray(manifest.schedule) && manifest.schedule.length) {
     console.error(`  ${r.ok ? '✓' : '✗'} ${r.tag}: placed ${r.placed}` + (r.scheduled != null ? ` / scheduled ${r.scheduled}` : ' (presence-only)'))
   }
   if (bad.length) console.error(`  ${bad.length} tag(s) off — fix or explain each in the import note before shipping.`)
+}
+const feet = feetByLineType(takeoff)
+if (feet.length) {
+  console.error('feet by line type:')
+  for (const f of feet) console.error(`  ${f.lineType}: ${f.feet} ft over ${f.runs} run(s)`)
+  const conn = marksFarFromLines(takeoff)
+  if (conn.far.length) {
+    console.error(`connectivity: ${conn.far.length} fixture(s) > 6 ft from any run — trace or explain:`)
+    for (const c of conn.far) console.error(`  ✗ ${c.counter} on page ${c.page} (${c.feet} ft away)`)
+  } else {
+    console.error('connectivity: every fixture has a run within 6 ft ✓')
+  }
+  if (conn.skippedUnscaled) console.error(`  (${conn.skippedUnscaled} mark(s) on unscaled pages skipped)`)
 }
 const out = args[1]
 const json = JSON.stringify(takeoff, null, 2)

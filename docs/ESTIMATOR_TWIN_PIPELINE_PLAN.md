@@ -75,6 +75,11 @@ run's flight recorder.
   after counters prove out — a counters-only takeoff is still a large human time-saver, and
   fixture placement is the higher-confidence vision task.
 - **M4 scorer**: the human estimator whose takeoff exists for the same set (Wendi for LIVSTE).
+- **Scale calibration standard (owner rule, 2026-08-30): doorways are the ruler.** Stated
+  scales lie on reduced prints and can change per page; door openings are always 3 feet
+  and every sheet has several — measure 2–4 per traced page, median wins, >10% outliers
+  get remeasured (kernel `calibrateFromDoors`; procedure in `docs/twins/PLACEMENT.md`).
+  Dimension strings demote to the once-per-set cross-check.
 
 ## Wave 0 — The walking-skeleton test bid (no builds; run it first)
 

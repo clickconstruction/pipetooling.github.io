@@ -6,6 +6,10 @@ import {
   assembleTakeoff,
   validateTakeoff,
   countsVsSchedule,
+  pixelsPerUnitFromSpan,
+  calibrateFromDoors,
+  feetByLineType,
+  marksFarFromLines,
 } from './takeoffPlacement'
 
 describe('rawPxToBasePt', () => {
@@ -64,6 +68,79 @@ describe('assembleTakeoff + validateTakeoff', () => {
     const problems = validateTakeoff(t, 55)
     expect(problems.some((p) => p.includes('unknown counter id c-nope'))).toBe(true)
     expect(problems.some((p) => p.includes("beyond the PDF's page count (55)"))).toBe(true)
+  })
+})
+
+describe('door calibration (doors are 3 ft)', () => {
+  it('one span of known feet gives base-frame px per foot', () => {
+    // 90 raw px at 300 dpi = 21.6 pt over 3 ft → 7.2 pt/ft
+    expect(pixelsPerUnitFromSpan({ x: 0, y: 0 }, { x: 90, y: 0 }, 3, 300)).toBeCloseTo(7.2)
+  })
+  it('median wins and >10% outliers are flagged by index', () => {
+    const doors = [
+      { a: { x: 0, y: 0 }, b: { x: 90, y: 0 } },
+      { a: { x: 0, y: 0 }, b: { x: 92, y: 0 } },
+      { a: { x: 0, y: 0 }, b: { x: 150, y: 0 } }, // mis-measured (a double door?)
+    ]
+    const cal = calibrateFromDoors(doors, 300)
+    expect(cal.pixelsPerUnit).toBeCloseTo((92 * 72) / 300 / 3)
+    expect(cal.outliers).toEqual([2])
+  })
+})
+
+describe('lines: assembly, scale requirement, feet, connectivity', () => {
+  const counters = [{ id: 'c-wc1', name: 'WC-1' }]
+  const lineTypes = [{ id: 'lt-sa', name: 'Sanitary' }]
+
+  it('doorSamples calibrate the page; traced feet come out right', () => {
+    const t = assembleTakeoff({
+      counters,
+      lineTypes,
+      marks: [{ counterId: 'c-wc1', pageIndex: 0, raw: { x: 300, y: 300 }, dpi: 300 }],
+      lines: [{ lineTypeId: 'lt-sa', pageIndex: 0, dpi: 300, points: [{ x: 300, y: 300 }, { x: 1200, y: 300 }] }],
+      doorSamples: { 0: { dpi: 300, doors: [{ a: { x: 0, y: 0 }, b: { x: 90, y: 0 } }] } },
+    })
+    expect(validateTakeoff(t, 55)).toEqual([])
+    expect(t.pages[0]!.scale).toEqual({ pixelsPerUnit: 7.2, unit: 'ft' })
+    // 900 raw px @300 = 216 pt; 216 / 7.2 = 30 ft
+    expect(feetByLineType(t)).toEqual([{ lineType: 'Sanitary', feet: 30, runs: 1 }])
+  })
+
+  it('polylines on an unscaled page are refused loudly', () => {
+    const t = assembleTakeoff({
+      counters,
+      lineTypes,
+      marks: [],
+      lines: [{ lineTypeId: 'lt-sa', pageIndex: 0, dpi: 300, points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] }],
+    })
+    expect(validateTakeoff(t).some((p) => p.includes('doorways are 3 ft'))).toBe(true)
+  })
+
+  it('unknown lineTypeId is named, like import-takeoff would', () => {
+    const t = assembleTakeoff({
+      counters,
+      lineTypes,
+      marks: [],
+      lines: [{ lineTypeId: 'lt-nope', pageIndex: 0, dpi: 300, points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] }],
+      pageScales: { 0: { pixelsPerUnit: 7.2, unit: 'ft' } },
+    })
+    expect(validateTakeoff(t).some((p) => p.includes('unknown lineTypeId lt-nope'))).toBe(true)
+  })
+
+  it('connectivity: a fixture with no run within reach is flagged in feet', () => {
+    const t = assembleTakeoff({
+      counters,
+      lineTypes,
+      marks: [
+        { counterId: 'c-wc1', pageIndex: 0, raw: { x: 300, y: 310 }, dpi: 300 }, // ~2.4pt off the run → 0.33 ft
+        { counterId: 'c-wc1', pageIndex: 0, raw: { x: 300, y: 900 }, dpi: 300 }, // 144pt → 20 ft away
+      ],
+      lines: [{ lineTypeId: 'lt-sa', pageIndex: 0, dpi: 300, points: [{ x: 0, y: 300 }, { x: 1200, y: 300 }] }],
+      pageScales: { 0: { pixelsPerUnit: 7.2, unit: 'ft' } },
+    })
+    const { far, skippedUnscaled } = marksFarFromLines(t, 6)
+    expect(skippedUnscaled).toBe(0)
+    expect(far).toEqual([{ counter: 'WC-1', page: 0, feet: 20 }])
   })
 })
 

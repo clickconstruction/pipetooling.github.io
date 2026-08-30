@@ -14,10 +14,27 @@ key_sections:
   - Import & review
 ---
 
-Line runs come after counters prove out (locked default): a counters-only takeoff is
-already a large human time-saver, and fixture placement is the higher-confidence vision
-task. Everything below is counters; the takeoff.json contract already carries
-quickLines/polylines for the day the engine grows them.
+Counters proved out on LIVSTE (M4, 2026-08-30); this manual now carries both legs:
+counters first, then line runs — which add exactly two requirements counters never had:
+a **per-page scale** and a **line-type roster from the legend**.
+
+## Scale: doorways are the ruler (owner rule, 2026-08-30)
+
+The stated scale on a reduced print is a lie, and the true scale **can change from page
+to page** — never carry one page's calibration to another. The field-proven standard:
+**door openings are always 3 feet.** Every plan sheet has several, which makes the
+calibration self-verifying:
+
+1. On each sheet you will trace, crop 2–4 doorways (the gap in the wall line at a door
+   swing arc), and measure each opening jamb-to-jamb in RAW px.
+2. Feed them to the kernel — `calibrateFromDoors(doors, dpi)` (or `doorSamples` in the
+   assembler manifest): the median wins, and any sample >10% off is flagged (you
+   mis-measured, or it's a double/oversized door — remeasure or drop it, never average
+   it in).
+3. Cross-check once per set against a dimension string or the known building SF when
+   available; record both in your import note.
+4. A page with polylines and no scale is REJECTED by the local validator (and the feet
+   would be meaningless) — calibrate before tracing, every page.
 
 ## Tooling
 
@@ -72,6 +89,30 @@ hand-derived coordinate is a bug you'll find only at review.
 - **Local validation** mirrors import-takeoff exactly — a clean assemble never 400s.
 - **Visual spot-check**: re-crop 2–3 placed points (±60 px window at 300 DPI) and confirm
   the mark sits on the symbol. Cheap, catches frame mistakes wholesale.
+
+## Lines v1: tracing the runs
+
+The roster comes from the plans, mirroring counters-from-the-schedule: the P001 legend
+maps line styles to systems, and the hexagon tags you IGNORED for counters (P26, W1, …)
+are the line identity system. v1 scope: **per-system polylines** (Cold Water, Hot Water,
+Sanitary, Vent, Gas — sizes ride the hex tags later); sanitary traced from the
+underground plan (P200), water from the piping plan (P201); vent reconciled against the
+riser rather than traced.
+
+1. Calibrate the page first (doorways, above) — the validator refuses unscaled lines.
+2. Trace topology at medium DPI (150–200) full-width bands — runs cross tile borders, so
+   trace a whole run before moving on; refine vertex positions in 300 DPI crops only
+   where junctions crowd. Record vertices in RAW px, in drawing order, one manifest
+   `lines` entry per continuous run.
+3. Junctions: end a polyline where the system tees; start the branch as its own run.
+   Crossing lines that don't connect (different systems) are NOT junctions.
+4. Self-checks (the assembler prints all three):
+   - **feet by line type** — sane against CALIBRATION.md's bands and the building SF;
+   - **connectivity** — every placed fixture within ~6 ft of a matching run
+     (`marksFarFromLines`); a flagged fixture means a missed run or a wrong trace;
+   - door-calibration outliers — resolved, not averaged away.
+5. A run you can't follow (buried under a wing break, ambiguous continuation): trace what
+   you can and drop an `RFI:` note at the break — same never-guess rule as counters.
 
 ## Import & review
 
