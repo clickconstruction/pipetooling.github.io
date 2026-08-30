@@ -511,7 +511,26 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
             })
             const body = await r.json()
             if (!r.ok) return { error: `CT bridge ${r.status}: ${body?.error ?? 'unknown'}` }
-            return { projects: body.projects ?? [] }
+            const projects = body.projects ?? []
+            // Notes-ledger loop (2026-08-30): pull the note ledger of the most
+            // recently touched project — open RFIs are questions still waiting,
+            // answered ones carry the reviewer's answer (read before re-asking).
+            let rfis: unknown = null
+            const newest = projects[0]
+            if (newest?.id) {
+              try {
+                const rr = await fetch(ctUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'X-Bridge-Secret': ctSecret },
+                  body: JSON.stringify({ verb: 'twin_rfis', email: ctEmail, project_id: newest.id }),
+                })
+                const rb = await rr.json()
+                rfis = rr.ok ? rb : { error: `twin_rfis ${rr.status}: ${rb?.error ?? 'unknown'}` }
+              } catch (e) {
+                rfis = { error: String(e instanceof Error ? e.message : e) }
+              }
+            }
+            return { projects, notes_ledger: rfis }
           } catch (e) {
             return { error: String(e instanceof Error ? e.message : e) }
           }
