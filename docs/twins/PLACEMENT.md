@@ -114,6 +114,19 @@ riser rather than traced.
 5. A run you can't follow (buried under a wing break, ambiguous continuation): trace what
    you can and drop an `RFI:` note at the break — same never-guess rule as counters.
 
+## Fittings: the joints fall out of the geometry (owner ask, 2026-08-30)
+
+You never place fittings — they are DERIVED from your traced runs by the kernel
+(`deriveFittings`, printed by the assembler on every run): an interior vertex that turns
+≈90° is a **90 Ell**, ≈45° a **45 Ell**; a run endpoint landing on another same-system
+run's body at ≈90° is a **Tee**, at ≈45° a **Wye**; axial end-to-end joins are couplings
+(not counted); anything outside ±20° of 90/45 is flagged **odd** — name it or fix the
+trace, never let it vanish. `"materializeFittings": true` in the manifest bakes them in
+as visible counters ("CW · Tee") so the reviewer sees every joint on the sheet. Trace
+consequences: place your vertices AT the true corner (a lazy vertex mints a phantom odd
+fitting), and end branches ON the main they tee from (the snap radius is ~2 ft). Sizes
+and reducers ride the keyed-note hexes for now — a later pass.
+
 ## Import & review
 
 One `import-takeoff` call with the takeoff.json + `pdf_url` (PipeTooling `plan-fetch?bid=…`,

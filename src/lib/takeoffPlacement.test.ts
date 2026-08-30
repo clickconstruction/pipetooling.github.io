@@ -10,6 +10,9 @@ import {
   calibrateFromDoors,
   feetByLineType,
   marksFarFromLines,
+  deriveFittings,
+  fittingSummary,
+  materializeFittings,
 } from './takeoffPlacement'
 
 describe('rawPxToBasePt', () => {
@@ -141,6 +144,75 @@ describe('lines: assembly, scale requirement, feet, connectivity', () => {
     const { far, skippedUnscaled } = marksFarFromLines(t, 6)
     expect(skippedUnscaled).toBe(0)
     expect(far).toEqual([{ counter: 'WC-1', page: 0, feet: 20 }])
+  })
+})
+
+describe('fitting derivation (the joints fall out of the geometry)', () => {
+  const lineTypes = [{ id: 'lt-cw', name: 'CW' }]
+  const scale = { 0: { pixelsPerUnit: 7.2, unit: 'ft' } }
+
+  it('90° interior turn = ell90; 45° = ell45; shallow wobble ignored', () => {
+    const t = assembleTakeoff({
+      counters: [],
+      lineTypes,
+      marks: [],
+      lines: [
+        { lineTypeId: 'lt-cw', pageIndex: 0, dpi: 72, points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }] },
+        { lineTypeId: 'lt-cw', pageIndex: 0, dpi: 72, points: [{ x: 0, y: 200 }, { x: 100, y: 200 }, { x: 170, y: 270 }] },
+        { lineTypeId: 'lt-cw', pageIndex: 0, dpi: 72, points: [{ x: 0, y: 400 }, { x: 100, y: 400 }, { x: 200, y: 410 }] },
+      ],
+      pageScales: scale,
+    })
+    const { fittings } = deriveFittings(t)
+    const kinds = fittings.map((f) => f.kind).sort()
+    expect(kinds).toEqual(['ell45', 'ell90'])
+  })
+
+  it('endpoint on another run body: 90° = tee, 45° = wye; axial join = coupling (none)', () => {
+    const t = assembleTakeoff({
+      counters: [],
+      lineTypes,
+      marks: [],
+      lines: [
+        { lineTypeId: 'lt-cw', pageIndex: 0, dpi: 72, points: [{ x: 0, y: 0 }, { x: 300, y: 0 }] },     // main
+        { lineTypeId: 'lt-cw', pageIndex: 0, dpi: 72, points: [{ x: 100, y: 0 }, { x: 100, y: 80 }] },  // 90 branch
+        { lineTypeId: 'lt-cw', pageIndex: 0, dpi: 72, points: [{ x: 200, y: 0 }, { x: 260, y: 60 }] },  // 45 branch
+        { lineTypeId: 'lt-cw', pageIndex: 0, dpi: 72, points: [{ x: 300, y: 0 }, { x: 400, y: 0 }] },   // continuation
+      ],
+      pageScales: scale,
+    })
+    const { fittings } = deriveFittings(t)
+    const kinds = fittings.map((f) => f.kind).sort()
+    expect(kinds).toEqual(['tee', 'wye'])
+  })
+
+  it('summary rolls up per system+kind; materialize turns fittings into visible counters', () => {
+    const t = assembleTakeoff({
+      counters: [],
+      lineTypes,
+      marks: [],
+      lines: [
+        { lineTypeId: 'lt-cw', pageIndex: 0, dpi: 72, points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 200, y: 100 }] },
+      ],
+      pageScales: scale,
+    })
+    const { fittings } = deriveFittings(t)
+    expect(fittingSummary(fittings)).toEqual([{ lineType: 'CW', kind: 'ell90', count: 2 }])
+    const m = materializeFittings(t, fittings)
+    const fitCounter = m.counters.find((c) => c.name === 'CW · 90 Ell')
+    expect(fitCounter).toBeTruthy()
+    expect(m.pages[0]!.counterMarkers![fitCounter!.id]).toHaveLength(2)
+    expect(validateTakeoff(m)).toEqual([])
+  })
+
+  it('unscaled pages are skipped and reported', () => {
+    const t = assembleTakeoff({
+      counters: [],
+      lineTypes,
+      marks: [],
+      lines: [{ lineTypeId: 'lt-cw', pageIndex: 3, dpi: 72, points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }] }],
+    })
+    expect(deriveFittings(t).skippedUnscaledPages).toEqual([3])
   })
 })
 

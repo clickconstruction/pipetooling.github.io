@@ -19,7 +19,7 @@
  * }
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines } from '../../src/lib/takeoffPlacement'
+import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines, deriveFittings, fittingSummary, materializeFittings } from '../../src/lib/takeoffPlacement'
 
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const manifestPath = args[0]
@@ -28,7 +28,7 @@ if (!manifestPath) {
   process.exit(2)
 }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-const takeoff = assembleTakeoff(manifest)
+let takeoff = assembleTakeoff(manifest)
 // Door calibration report (doors are 3 ft — owner rule): per page, median + outliers.
 for (const [page, ds] of Object.entries(manifest.doorSamples ?? {}) as Array<[string, { dpi: number; doors: Array<{ a: { x: number; y: number }; b: { x: number; y: number } }> }]>) {
   const cal = calibrateFromDoors(ds.doors, ds.dpi)
@@ -63,6 +63,21 @@ if (feet.length) {
   }
   if (conn.skippedUnscaled) console.error(`  (${conn.skippedUnscaled} mark(s) on unscaled pages skipped)`)
 }
+// Fittings fall out of the traced geometry (owner ask 2026-08-30): turns = elbows,
+// branches = tees/wyes; odd angles flagged. `"materializeFittings": true` in the
+// manifest bakes them in as visible counters ("CW · Tee") for review in the app.
+const { fittings, skippedUnscaledPages } = deriveFittings(takeoff)
+if (fittings.length) {
+  console.error('fittings derived from geometry:')
+  for (const s of fittingSummary(fittings)) console.error(`  ${s.lineType} · ${s.kind}: ${s.count}`)
+  const odd = fittings.filter((f) => f.kind.startsWith('odd'))
+  for (const f of odd) console.error(`  ⚠ ${f.lineType} ${f.kind} at (${Math.round(f.at.x)},${Math.round(f.at.y)}) page ${f.page} — ${f.angle}°, name it or fix the trace`)
+  if (manifest.materializeFittings === true) {
+    takeoff = materializeFittings(takeoff, fittings)
+    console.error(`  materialized ${fittings.length} fitting marker(s) as counters`)
+  }
+}
+if (skippedUnscaledPages.length) console.error(`fittings: skipped unscaled page(s) ${skippedUnscaledPages.join(',')}`)
 const out = args[1]
 const json = JSON.stringify(takeoff, null, 2)
 if (out) {

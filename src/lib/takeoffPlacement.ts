@@ -225,6 +225,173 @@ export function feetByLineType(t: TakeoffJson): Array<{ lineType: string; feet: 
   return Array.from(acc.entries()).map(([lineType, e]) => ({ lineType, feet: Math.round(e.feet * 10) / 10, runs: e.runs }))
 }
 
+// --- Fitting derivation (owner ask, 2026-08-30): the joints are free — they fall out
+// --- of the traced geometry. Every interior vertex of a run is a TURN (≈90° = elbow,
+// --- ≈45° = 45-elbow); every run endpoint landing on another same-system run's body is
+// --- a BRANCH (≈90° = tee, ≈45° = wye). Odd angles are flagged, never silently binned.
+
+export type FittingKind = 'ell90' | 'ell45' | 'tee' | 'wye' | 'odd-turn' | 'odd-branch'
+export type Fitting = { kind: FittingKind; lineType: string; page: number; at: Pt; angle: number }
+
+const ANGLE_TOL = 20 // degrees either side of 90/45
+
+function classifyAngle(theta: number, turn: boolean): FittingKind {
+  if (Math.abs(theta - 90) <= ANGLE_TOL) return turn ? 'ell90' : 'tee'
+  if (Math.abs(theta - 45) <= ANGLE_TOL) return turn ? 'ell45' : 'wye'
+  return turn ? 'odd-turn' : 'odd-branch'
+}
+
+/**
+ * Derive fittings from a takeoff's polylines. Same-page, same-lineType only (a branch
+ * joins its own system). `joinFeet` is the snap radius for endpoint-to-run joins, in
+ * real feet via the page scale — unscaled pages are skipped entirely (lines there are
+ * already refused by validation).
+ */
+export function deriveFittings(t: TakeoffJson, joinFeet = 2): { fittings: Fitting[]; skippedUnscaledPages: number[] } {
+  const nameById = new Map(t.lineTypes.map((lt) => [lt.id, lt.name]))
+  const fittings: Fitting[] = []
+  const skippedUnscaledPages: number[] = []
+  const angleBetween = (a: Pt, b: Pt): number => {
+    const la = Math.hypot(a.x, a.y)
+    const lb = Math.hypot(b.x, b.y)
+    if (la === 0 || lb === 0) return 0
+    const cos = Math.max(-1, Math.min(1, (a.x * b.x + a.y * b.y) / (la * lb)))
+    return (Math.acos(cos) * 180) / Math.PI
+  }
+  for (const p of t.pages) {
+    const polys = p.polylines ?? []
+    if (!polys.length) continue
+    const ppu = p.scale?.pixelsPerUnit
+    if (!ppu) {
+      skippedUnscaledPages.push(p.index)
+      continue
+    }
+    const joinPx = joinFeet * ppu
+    // 1) Turns at interior vertices.
+    for (const pl of polys) {
+      for (let i = 1; i < pl.points.length - 1; i++) {
+        const prev = pl.points[i - 1]!
+        const v = pl.points[i]!
+        const next = pl.points[i + 1]!
+        const inDir = { x: v.x - prev.x, y: v.y - prev.y }
+        const outDir = { x: next.x - v.x, y: next.y - v.y }
+        const theta = angleBetween(inDir, outDir) // 0 = straight through
+        if (theta < 15) continue // drawing wobble, not a fitting
+        fittings.push({ kind: classifyAngle(theta, true), lineType: nameById.get(pl.lineTypeId) ?? pl.lineTypeId, page: p.index, at: v, angle: Math.round(theta) })
+      }
+    }
+    // 2) Branches: an endpoint of one run on the BODY of another (same system).
+    const byType = new Map<string, typeof polys>()
+    for (const pl of polys) {
+      const list = byType.get(pl.lineTypeId) ?? []
+      list.push(pl)
+      byType.set(pl.lineTypeId, list)
+    }
+    for (const [ltId, group] of byType) {
+      for (let bi = 0; bi < group.length; bi++) {
+        const b = group[bi]!
+        for (const [end, dirNext] of [
+          [b.points[0]!, b.points[1]!],
+          [b.points[b.points.length - 1]!, b.points[b.points.length - 2]!],
+        ] as Array<[Pt, Pt]>) {
+          const branchDir = { x: dirNext.x - end.x, y: dirNext.y - end.y }
+          let best: { dist: number; segDir: Pt; onEndpoint: boolean } | null = null
+          for (let ai = 0; ai < group.length; ai++) {
+            if (ai === bi) continue
+            const a = group[ai]!
+            for (let i = 1; i < a.points.length; i++) {
+              const s1 = a.points[i - 1]!
+              const s2 = a.points[i]!
+              const dx = s2.x - s1.x
+              const dy = s2.y - s1.y
+              const len2 = dx * dx + dy * dy
+              const u = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((end.x - s1.x) * dx + (end.y - s1.y) * dy) / len2))
+              const proj = { x: s1.x + u * dx, y: s1.y + u * dy }
+              const dist = Math.hypot(end.x - proj.x, end.y - proj.y)
+              if (!best || dist < best.dist) {
+                const nearSegEnd = Math.min(Math.hypot(proj.x - s1.x, proj.y - s1.y), Math.hypot(proj.x - s2.x, proj.y - s2.y))
+                const isPolyEndpoint = (i === 1 && u === 0) || (i === a.points.length - 1 && u === 1)
+                best = { dist, segDir: { x: dx, y: dy }, onEndpoint: isPolyEndpoint && nearSegEnd < 1 }
+              }
+            }
+          }
+          if (!best || best.dist > joinPx) continue
+          const theta = angleBetween(branchDir, best.segDir)
+          const branchAngle = Math.min(theta, 180 - theta) // vs the run's axis, direction-agnostic
+          if (best.onEndpoint) {
+            // End-to-end join: a continuation (coupling) or a drawn-in-two-pieces elbow.
+            if (branchAngle < 15) continue
+            fittings.push({ kind: classifyAngle(branchAngle, true), lineType: nameById.get(ltId) ?? ltId, page: p.index, at: end, angle: Math.round(branchAngle) })
+          } else {
+            if (branchAngle < 15) continue // running into the pipe axially — a coupling, not a fitting
+            fittings.push({ kind: classifyAngle(branchAngle, false), lineType: nameById.get(ltId) ?? ltId, page: p.index, at: end, angle: Math.round(branchAngle) })
+          }
+        }
+      }
+    }
+    // Dedupe co-located fittings (two detections of the same joint within the snap radius).
+    for (let i = fittings.length - 1; i >= 0; i--) {
+      const f = fittings[i]!
+      if (f.page !== p.index) continue
+      for (let j = 0; j < i; j++) {
+        const g = fittings[j]!
+        if (g.page === p.index && g.lineType === f.lineType && Math.hypot(g.at.x - f.at.x, g.at.y - f.at.y) < joinPx / 2) {
+          // Branch beats turn at the same joint (the tee IS the fitting there).
+          if ((f.kind === 'tee' || f.kind === 'wye') && (g.kind === 'ell90' || g.kind === 'ell45')) fittings[j] = f
+          fittings.splice(i, 1)
+          break
+        }
+      }
+    }
+  }
+  return { fittings, skippedUnscaledPages }
+}
+
+/** Per system+kind rollup for reports and materials counts. */
+export function fittingSummary(fittings: Fitting[]): Array<{ lineType: string; kind: FittingKind; count: number }> {
+  const acc = new Map<string, number>()
+  for (const f of fittings) acc.set(`${f.lineType} ${f.kind}`, (acc.get(`${f.lineType} ${f.kind}`) ?? 0) + 1)
+  return Array.from(acc.entries())
+    .map(([k, count]) => {
+      const [lineType, kind] = k.split(' ') as [string, FittingKind]
+      return { lineType, kind, count }
+    })
+    .sort((a, b) => a.lineType.localeCompare(b.lineType) || a.kind.localeCompare(b.kind))
+}
+
+const FITTING_LABEL: Record<FittingKind, string> = {
+  ell90: '90 Ell',
+  ell45: '45 Ell',
+  tee: 'Tee',
+  wye: 'Wye (45)',
+  'odd-turn': 'Odd turn',
+  'odd-branch': 'Odd branch',
+}
+
+/**
+ * Materialize derived fittings as counters + markers on the takeoff (mutates a copy):
+ * they become visible, reviewable marks in CountTooling — "CW · Tee", "Sanitary · 90 Ell".
+ * Odd angles materialize too (flagged names) so the reviewer sees them on the sheet.
+ */
+export function materializeFittings(t: TakeoffJson, fittings: Fitting[]): TakeoffJson {
+  const out: TakeoffJson = JSON.parse(JSON.stringify(t))
+  const counterIdFor = new Map<string, string>()
+  for (const f of fittings) {
+    const label = `${f.lineType} · ${FITTING_LABEL[f.kind]}`
+    let cid = counterIdFor.get(label)
+    if (!cid) {
+      cid = 'fit-' + label.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      counterIdFor.set(label, cid)
+      out.counters.push({ id: cid, name: label, color: '#888780' })
+    }
+    const page = out.pages.find((p) => p.index === f.page)
+    if (!page) continue
+    const markers = (page.counterMarkers ??= {})
+    ;(markers[cid] ??= []).push({ x: f.at.x, y: f.at.y })
+  }
+  return out
+}
+
 /**
  * Connectivity self-check: every placed fixture should have a pipe run nearby — a WC
  * with no line within reach is a tracing miss. Distance is point-to-segment in base px,
