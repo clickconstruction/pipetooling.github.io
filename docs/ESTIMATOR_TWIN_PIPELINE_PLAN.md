@@ -5,7 +5,7 @@ file: docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md
 type: Engineering / Program plan
 purpose: The umbrella plan for the plans-to-proposal estimator-twin pipeline — every build across PipeTooling, CountTooling, twin-mcp, and the agent harness, sequenced into waves that each end in a live test gate. Sub-plan for the RFI loop lives in RFI_LOOP_PLAN.md. Owner-facing narrative in the "Estimator Twin Pipeline" artifact (2026-08-28).
 audience: Developers, AI Agents
-last_updated: 2026-08-29
+last_updated: 2026-08-30
 sections:
   - The thesis
   - The pipeline being built
@@ -288,3 +288,18 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
   documented in `docs/DRIVE_INTAKE_SETUP.md`. NOTE: a Google password was pasted into chat
   during this work — it was never used (passwords are not a credential I will handle, and
   Google blocks password auth for APIs regardless); **that password should be rotated.**
+- 2026-08-30 — **The SA quota wall is CLOSED: upload leg live via Shared Drive.** Owner
+  created Shared Drive "PipeTooling Jobs" as bids@douglasmining.com and added the SA;
+  everything else ran robotically through a temporary dev-gated `drive-admin-setup` edge
+  function (deleted after use — the SA key never left Google/Supabase): drive discovered
+  via `drives.list`, Jobs folder created, byte-upload probe PASSED, `DRIVE_JOBS_FOLDER_ID`
+  flipped, `DRIVE_IMPERSONATE_USER` unset (delegation never granted; set-but-ungranted
+  breaks uploads at token exchange), `drive-intake` redeployed. End-to-end verified on
+  BP399 (folder + real PDF upload + both stamps + audit note) and b403 re-filed into the
+  Shared Drive (drive_link re-pointed via the Edit Bid form). Found live: SAs cannot
+  CREATE Shared Drives (`userCannotCreateTeamDrives`) — human creates + shares once, robot
+  does the rest. A second Google password was pasted into chat this session (bids@) —
+  refused per doctrine; **rotate it**. STG-1 is now fully robot-operable including plan
+  PDFs (via `plans_url`); residue: BP399 carries a dummy test PDF, quota-probe.txt sits in
+  the Jobs folder, and the old My Drive jobs folder + its LiveWell/LIVSTE folders are
+  orphaned and deletable.
