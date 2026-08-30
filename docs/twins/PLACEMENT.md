@@ -289,3 +289,27 @@ Review the assembler's itemized allowance print before import.
   bids (source named in the ledger note when added). Entry names MATCH the
   tooling-row names exactly (`ft of 1/2" Cold Water`, `3" Sanitary Waste ·
   Tee`) so Workbench matching lines up without aliases.
+
+## Product price research (owner ask, 2026-08-30): the schedule names what to look up
+
+The fixture schedule hands you manufacturer + catalog number for every scheduled
+product — that is a research list. The protocol:
+
+1. **Search the exact catalog number** (manufacturer or major distributor listing —
+   Ferguson, SupplyHouse, Grainger, the manufacturer's own page). Prefer a page
+   showing a live price for that exact model.
+2. **Record it as a robot part** (`material_parts`, `is_robot`): name = schedule
+   designation + model ("OI-1 · Striem OS-25 oil interceptor"), `manufacturer`,
+   and **`link` = the exact page you read the price on — MANDATORY** (the owner's
+   rule: an estimator must be able to click and check every researched price).
+   `notes` carries date, price type (list/street), and any caveat.
+3. **Record the price** (`material_part_prices`) attributed to the **'🤖 Web
+   Research' supply house** with today's effective_date — researched prices never
+   masquerade as supplier quotes.
+4. **What you may record**: a displayed price for the exact model. Close-variant
+   pricing (different trim of the same body) is recordable with the variance named
+   in notes. "Call for pricing", login-walled, or quantity-negotiated items get NO
+   price — record the part with its link and a note, and flag it.
+5. **Researched prices are COST-basis inputs** for assemblies and estimating
+   context. Sale prices stay the Workbench's margin decision — never copy a
+   researched cost into a sale price book entry.
