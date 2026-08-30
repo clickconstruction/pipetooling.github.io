@@ -19,7 +19,7 @@
  * }
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines, deriveFittings, fittingSummary, materializeFittings, applyDefaultCanvases } from '../../src/lib/takeoffPlacement'
+import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines, deriveFittings, fittingSummary, materializeFittings, applyDefaultCanvases, expandVerticalAllowances, buildToolingRows, type VerticalAllowance } from '../../src/lib/takeoffPlacement'
 
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const manifestPath = args[0]
@@ -28,6 +28,34 @@ if (!manifestPath) {
   process.exit(2)
 }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+// Size attribution (BT-1 doctrine): a manifest line may carry `size` ('3"').
+// Sized lines get a size-variant lineType — id `<base>@<size>`, name '3" Sanitary
+// Waste', SAME canvas (=system) so CT layers stay per-system and fitting joins
+// group across sizes. Unsized lines keep their base type.
+const systemById = new Map<string, string>()
+{
+  const baseTypes: Array<{ id: string; name: string; color?: string; canvas?: string }> = manifest.lineTypes ?? []
+  const byId = new Map(baseTypes.map((lt) => [lt.id, lt]))
+  const extraTypes = new Map<string, { id: string; name: string; color?: string; canvas?: string }>()
+  for (const lt of baseTypes) systemById.set(lt.id, lt.canvas ?? lt.name)
+  for (const l of manifest.lines ?? []) {
+    if (!l.size) continue
+    const base = byId.get(l.lineTypeId)
+    if (!base) continue
+    const vid = `${base.id}@${String(l.size).replace(/[^0-9a-z/]+/gi, '')}`
+    if (!extraTypes.has(vid)) {
+      extraTypes.set(vid, { id: vid, name: `${l.size} ${base.name}`, color: base.color, canvas: base.canvas ?? base.name })
+      systemById.set(vid, base.canvas ?? base.name)
+    }
+    l.lineTypeId = vid
+  }
+  if (extraTypes.size) {
+    // Keep every type something still references (a base type survives only if an
+    // unsized line still uses it).
+    const used = new Set((manifest.lines ?? []).map((l: { lineTypeId: string }) => l.lineTypeId))
+    manifest.lineTypes = [...baseTypes, ...extraTypes.values()].filter((lt) => used.has(lt.id))
+  }
+}
 let takeoff = assembleTakeoff(manifest)
 // Door calibration report (doors are 3 ft — owner rule): per page, median + outliers.
 for (const [page, ds] of Object.entries(manifest.doorSamples ?? {}) as Array<[string, { dpi: number; doors: Array<{ a: { x: number; y: number }; b: { x: number; y: number } }> }]>) {
@@ -66,7 +94,7 @@ if (feet.length) {
 // Fittings fall out of the traced geometry (owner ask 2026-08-30): turns = elbows,
 // branches = tees/wyes; odd angles flagged. `"materializeFittings": true` in the
 // manifest bakes them in as visible counters ("CW · Tee") for review in the app.
-const { fittings, skippedUnscaledPages } = deriveFittings(takeoff)
+const { fittings, skippedUnscaledPages } = deriveFittings(takeoff, 2, (id) => systemById.get(id) ?? id)
 if (fittings.length) {
   console.error('fittings derived from geometry:')
   for (const s of fittingSummary(fittings)) console.error(`  ${s.lineType} · ${s.kind}: ${s.count}`)
@@ -81,11 +109,27 @@ if (skippedUnscaledPages.length) console.error(`fittings: skipped unscaled page(
 // Per-layer review toggling: Fixtures / one canvas per system / Fittings (CT's canvas
 // switcher + show-all + hide-marks give the toggles; import-takeoff builds the layers).
 takeoff = applyDefaultCanvases(takeoff)
+// The third dimension: manifest.verticals (VerticalAllowance[]) — explicit vertical
+// footage + fitting allowances with named sources. Reported here and folded into the
+// tooling paste block; never drawn in CT (nothing on-plan to register them against).
+const allowances: VerticalAllowance[] = manifest.verticals ?? []
+if (allowances.length) {
+  const ex = expandVerticalAllowances(allowances)
+  console.error(`vertical allowances: ${ex.totalFeet} ft over ${allowances.length} entr(y/ies):`)
+  for (const va of allowances) console.error(`  ${va.label}: ${va.count} × ${va.feetEach} ft ${va.size ?? ''} ${va.system} — ${va.source}`)
+  for (const fr of ex.fittingRows) console.error(`  fittings allowance: ${fr.size ?? ''} ${fr.system} ${fr.kind} × ${fr.count}`)
+}
+// The paste-ready /Tooling block (estimate view: drawn + allowances, size-split).
+const toolingRows = buildToolingRows(takeoff, { fittings, allowances })
 const out = args[1]
 const json = JSON.stringify(takeoff, null, 2)
 if (out) {
   writeFileSync(out, json)
   console.error(`wrote ${out}`)
+  const planPage = manifest.toolingPlanPage != null ? `\t${manifest.toolingPlanPage}` : ''
+  const toolingText = toolingRows.map((r) => `${r.fixture}\t${r.count}${planPage}`).join('\n')
+  writeFileSync(out.replace(/\.json$/, '') + '.tooling.txt', toolingText + '\n')
+  console.error(`wrote ${out.replace(/\.json$/, '')}.tooling.txt (${toolingRows.length} paste rows — drawn + allowances)`)
 } else {
   console.log(json)
 }
