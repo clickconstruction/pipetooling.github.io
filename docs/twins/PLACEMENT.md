@@ -155,6 +155,18 @@ fittings — and it LOOKS fine until overlaid. Three tools close the loop (all i
 7. Import only after: registration clean at your threshold, counts-vs-schedule clean,
    connectivity clean or explained. What you could not trace to the gate's standard is
    an on-sheet `RFI:` note and an honest exclusion — never a straight line through rooms.
+8. **Mains are not a takeoff — sweep for the branches** (owner catch #4, 2026-08-30).
+   A registered spine with clean gates can still be missing every lateral to the
+   fixtures, and the connectivity check will NOT catch it when the fixture marks live
+   on a different sheet than the runs (per-page check — cross-page blindness). After
+   the mains register, run branch density sweeps perpendicular to each main/header
+   (v-sweeps across horizontal runs, h-sweeps across vertical ones, both sides) and
+   walk every hit to its fixture; crop-decode the diagonal wyes density can't see.
+   On LIVSTE P200 this pass found 20 laterals the spine trace had skipped — dog-ward
+   FD drops + collector, SS-8 drop, wet-table wyes, WC riser, lab verticals, west
+   laterals — and SAN footage went 174.5 → 290.3 ft (+66%). The fitting mix is the
+   tell: a traced system with almost no tees is a spine, not a takeoff (tees went
+   3 → 20 when the branches landed).
 
 ## Fittings: the joints fall out of the geometry (owner ask, 2026-08-30)
 
