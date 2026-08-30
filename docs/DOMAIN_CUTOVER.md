@@ -113,6 +113,19 @@ Prep merged in v2.2440 — all zero-behavior-change:
      separate future decision, made in that dashboard after reading reports.
      Deliberately NOT surfaced in the app's dev settings — infrastructure
      monitoring, checked rarely, already rendered by Cloudflare.
+  6. **Supabase Auth SMTP sender (2026-08-29)**: the auth mailer (password
+     resets — the ONLY auth-generated email; sign-in emails go through the
+     send-sign-in-email edge fn) is custom SMTP via smtp.resend.com,
+     configured in the Supabase dashboard (Authentication → Emails → SMTP
+     Settings, NOT in config.toml). Sender flipped to
+     `"Pipe Notifications" <team@noreply.clicktooling.com>`; verified by a
+     real /recover send (Delivered, From confirmed in Resend's log).
+     **GOTCHA**: the form's write-only Password field can submit EMPTY on
+     save and wipe the stored SMTP key — auth email then 500s with
+     `535 "Authentication credentials invalid"` (visible in Auth logs). When
+     editing ANYTHING on that form, re-paste the Resend API key
+     (`pipetooling-supabase-smtp` in Resend → API keys) in the same save,
+     then test a password reset.
   - **Open follow-up**: day-zero domain reputation — the first sends can land
     in Junk until the domain warms up (normal; volume fixes it).
 - Keep the pipetooling.com registration + redirect rule FOREVER — old GC statement and
@@ -120,7 +133,9 @@ Prep merged in v2.2440 — all zero-behavior-change:
 
 ## Deliberately unchanged
 
-- `team@noreply.pipetooling.com` — sending domain, independent of the app domain.
+- `mailto:team@pipetooling.com` VAPID subject in the 6 web-push functions — a
+  protocol contact field sent to push services, never user-visible; sweep
+  whenever those functions are next touched.
 - `@twins.pipetooling.local` fleet emails — internal identifiers, not URLs.
 - `my.clickplumbing.com` — the customer-facing short domain (rule target changes only).
 - Supabase project URLs (`yewfzhbofbbyvkvtaatw.supabase.co`) — endpoints don't move.
