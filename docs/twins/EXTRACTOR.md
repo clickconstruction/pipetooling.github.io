@@ -5,7 +5,7 @@ file: docs/twins/EXTRACTOR.md
 type: Harness procedure / Skill
 purpose: How an agent harness turns a plan-set PDF into a SUBSTRATE.md-conformant substrate — the exact two-pass procedure, tooling, parameters, and coordinate math proven on the LIVSTE set (2026-08-28/29). Wave 1.2 of ESTIMATOR_TWIN_PIPELINE_PLAN.md. The vision model IS the extractor; this file is its operating manual.
 audience: AI Agents, harness operators, Developers
-last_updated: 2026-08-29
+last_updated: 2026-08-30
 key_sections:
   - Tooling
   - "Pass 1: structure"
@@ -24,6 +24,12 @@ Two shell primitives in `scripts/substrate-extractor/` (poppler + sips; both pro
 - `extract-crop.sh <pdf> <page> <x> <y> <w> <h> <out.png> [dpi=600]` — the crop pass:
   renders ONLY the region (pdftoppm `-x -y -W -H`, pixels at the render DPI, RAW
   pre-rotation page coords), rotates 90° CW for reading.
+- `sweep.sh <pdf> <outdir> [dpi=40] [first] [last]` (Wave 1.2 automation) — overview
+  EVERY page in one call + `manifest.txt`; Pass 1 starts from a complete contact set.
+- `tiles.sh <pdf> <page> <x> <y> <w> <h> <cols> <rows> <outdir> [dpi=300] [overlap=60]`
+  — tile a region into a grid of readable crops in one call + `tiles.txt` (raw rects
+  for the coordinate kernel). The walk-the-drawing primitive for schedules AND the
+  placement engine's plan sheets (docs/twins/PLACEMENT.md).
 
 Check the set first: `pdffonts` empty + `pdfimages -list` showing only logos = **pure
 vector** (CAD plot, text as outlines) — DPI wins completely and 600 DPI crops read

@@ -63,7 +63,7 @@ const TOOLS = [
   },
   {
     name: 'get_mission',
-    description: 'One mission, verbatim (M1, M2, M3). You receive only the mission text — scoring is done independently.',
+    description: 'One mission, verbatim (M1–M5). You receive only the mission text — scoring is done independently.',
     inputSchema: {
       type: 'object',
       properties: { id: { type: 'string', description: 'Mission id, e.g. M1' } },

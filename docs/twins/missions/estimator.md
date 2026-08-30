@@ -82,9 +82,45 @@ real bid errors) — and everything it did is attributable to `created_by`.
 stays (test residue convention) or is deleted by a human — twins cannot delete what
 they must not.
 
+## M4 · The takeoff — counters on LIVSTE (fenced rung; vision + shell harness)
+
+**Prerequisites**: rung 2; b403 "ZZ Twin LIVSTE" assigned; substrate attached; the plan set fetchable via `plan-fetch?bid=b403`; the harness has shell access to the placement kit (`docs/twins/PLACEMENT.md` — scripts/substrate-extractor + scripts/placement-engine) and a vision-capable model. M5 does NOT require this mission (it can run from the human takeoff).
+
+**Mission text (verbatim):**
+> Do the LIVSTE takeoff yourself — counters only, no lines. Fetch bid b403's plan set,
+> read `get_ct_guide` and the placement procedure (docs/twins/PLACEMENT.md), and build
+> your counter roster from the substrate's fixture schedule, names verbatim. Walk every
+> plumbing PLAN sheet in the set and place one mark on each scheduled fixture the plans
+> show, aiming at the fixture symbol. Where a tag can't be resolved — ambiguous leader,
+> symbol you can't find, a tag on the plans that is not in the schedule — place nothing
+> there and leave an `RFI:` note at the exact spot instead; never guess. Run the
+> assembler until it accepts your manifest and its counts-vs-schedule report is clean or
+> every ✗ is explained in your import note. Import with the plan set attached
+> (`pdf_url` = plan-fetch), visually re-crop and confirm three of your own placements,
+> then mark the project ready for review. Stamp a bid note with your per-tag counts and
+> heartbeat as you go. Then file a report: per-tag placed counts, every tag you flagged
+> instead of placing, which sheets you walked, total marks, and the two slowest parts of
+> the run.
+
+**Verification (scorer):** diff the twin's project against the human LIVSTE reference
+(Wendi's — the MPH LIVSTE project) with `takeoff-eval.js`'s `diffTakeoffs`, **per tag and
+only over the substrate schedule's tags** — CALIBRATION.md's load-bearing finding is that
+humans also count valves/cleanouts/hose bibbs the schedule never lists; those gaps are a
+recorded DELIVERABLE of this mission (the v1 roster), not a miss. Score: per-tag counts
+within ±1 of the reference on schedule tags; placements land on fixture symbols
+(spot-check 5 via re-crops); unresolved tags carry `RFI:` notes rather than guesses; the
+project has the PDF attached (no "Canvas only"), `agentImport` provenance, sits in the
+review lane as `ready`, and the bid ledger + heartbeats tell the run's story. The
+operator kills the run once mid-walk; resume must not duplicate (re-import replaces).
+Record the eval numbers in this table.
+
+**Scoring:** pass = schedule-tag counts ±1 with on-symbol placements and honest flags,
+unsent/reviewable, resume clean. Partial = right procedure with count misses explained.
+Fail = guessed placements, invented tags, totals padded, or silent gaps.
+
 ## M5 · The full middle — counts to a drafted proposal (fenced rung)
 
-**Prerequisites**: rung 2 (`read_only` false); b403 "ZZ Twin LIVSTE" assigned to the twin; substrate attached (`get_plan_brief` serves it); the human LIVSTE takeoff reachable via the bid's CountTooling Plans link (operator links the reviewed project — this mission starts from an approved takeoff, it does not draw one); plan set filed in the bid's Drive folder. M4 (twin-drawn takeoff) is NOT a prerequisite.
+**Prerequisites**: rung 2 (`read_only` false); b403 "ZZ Twin LIVSTE" assigned to the twin; substrate attached (`get_plan_brief` serves it); the human LIVSTE takeoff reachable via the bid's CountTooling Plans link (operator links the reviewed project — this mission starts from an approved takeoff, it does not draw one) OR an M4-drawn takeoff approved through review; plan set filed in the bid's Drive folder. M4 is NOT a prerequisite.
 
 **Mission text (verbatim):**
 > Your bid b403 "ZZ Twin LIVSTE" has an approved takeoff waiting in CountTooling — the
