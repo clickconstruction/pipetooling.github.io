@@ -127,12 +127,19 @@ fittings — and it LOOKS fine until overlaid. Three tools close the loop (all i
    construction — 75–85% is honest for them; solid runs should score 95+.
 2. **`snap.ts <manifest> <pdf> [radius]`** — pulls every vertex onto the nearest ink.
    Fixes endpoint sloppiness only; a mid-segment gap means the PATH is wrong.
-3. **`follow.ts <pdf> <page0> <dpi> <x> <y> <h±|v±>`** — walks the ink itself from an
+3. **`density.ts <pdf> <page0> <dpi> <h|v> <perpFrom> <perpTo> <alongFrom> <alongTo>`**
+   — the dash-aware line finder: integrates ink ALONG the candidate run direction, so a
+   dashed line shows as a fill band at its exact coordinate (solid ≈90%+, dash-dot
+   25–70%, noise ≈0–5%) while single-row scanlines land in gaps and miss it entirely.
+   Use it FIRST to locate every system's true position and duty cycle; the duty sets
+   that run's registration bar (`minPct` per line in the manifest — solid 75+,
+   dash-broken 25–40).
+4. **`follow.ts <pdf> <page0> <dpi> <x> <y> <h±|v±>`** — walks the ink itself from an
    anchor, emitting the actual path with its jogs. Use scanline probes (dark-pixel rows/
    columns from the same PGM) to find each system's true position first — **walls render
    as linework too**: a run that follows a wall scores well and is still wrong, so
    confirm the system identity from labels/legend before keeping a followed path.
-4. Import only after: registration clean at your threshold, counts-vs-schedule clean,
+5. Import only after: registration clean at your threshold, counts-vs-schedule clean,
    connectivity clean or explained. What you could not trace to the gate's standard is
    an on-sheet `RFI:` note and an honest exclusion — never a straight line through rooms.
 
