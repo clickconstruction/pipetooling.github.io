@@ -263,8 +263,9 @@ export function registrationScore(
       visit({ x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n })
     }
   }
-  if (gapStart && prev && (!worst || gapLen > (worst as { samples: number } | null)?.samples!)) {
-    worst = { from: gapStart, to: prev, samples: gapLen }
+  if (gapStart && prev) {
+    const prevWorst = worst as { samples: number } | null
+    if (!prevWorst || gapLen > prevWorst.samples) worst = { from: gapStart, to: prev, samples: gapLen }
   }
   return { samples, onInk, pct: samples ? Math.round((onInk / samples) * 1000) / 10 : 0, worstGap: worst }
 }
