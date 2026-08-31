@@ -64,12 +64,13 @@ Press **Escape** to step back to the customer list, and again to close.
 Open **Customer review**, click the top customer, and the contributors panel shows at a glance whether the hours came from estimating or the field — and who did the work.
 :::
 
-## The Robot Board — where digital-twin bids live
+## The 🤖 tab — where digital-twin bids live
 
 Bids owned or worked by a **digital twin** (an AI estimator account — the 🤖 ones) don't sit
-among the human rows. They live on their own scope of the same board: the **🤖 Robot Board**
-tab, right next to Bid Board. The tab only appears when there are robot bids, and its label
-carries the live count.
+among the human rows. Everything robot lives under one **🤖** tab next to Bid Board, with two
+views inside: the **Robot Board** (twin bids, with its live count) and **Audits** (robot bids
+waiting on a human review). The tab only appears when there are robot bids or audits, and its
+badge counts the audits waiting on you — opening it lands on Audits when any are pending.
 
 - A bid moves to the Robot Board when its **Estimator is a twin** (or a twin created it).
   Un-assign the twin and it comes back to the human board.
@@ -81,7 +82,8 @@ carries the live count.
 
 :::example a bid "disappeared" after you assigned the twin
 Set a bid's Estimator to a twin and the row leaves the Bid Board — that's the scope moving,
-not a deletion. Flip to {{button:outline|🤖 Robot Board}} and it's right there.
+not a deletion. Open {{button:outline|🤖}} and flip to the {{button:outline|Robot Board}}
+view — it's right there.
 :::
 
 ## Deciding whether to bid at all
