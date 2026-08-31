@@ -99,7 +99,7 @@ export function RobotBidReadinessModal({ bid, onClose, onEditBid }: RobotBidRead
               <li key={item.key} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', fontSize: '0.875rem' }}>
                 <span
                   aria-hidden
-                  style={{ fontWeight: 700, color: item.ok ? 'var(--text-emerald-800)' : item.required ? '#dc2626' : 'var(--text-muted)' }}
+                  style={{ fontWeight: 700, color: item.ok ? 'var(--text-emerald-800)' : item.required ? 'var(--text-red-600)' : 'var(--text-muted)' }}
                 >
                   {item.ok ? '✓' : '✗'}
                 </span>
