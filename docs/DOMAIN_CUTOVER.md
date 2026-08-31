@@ -5,7 +5,7 @@ file: DOMAIN_CUTOVER.md
 type: Runbook
 purpose: The exact steps to make clicktooling.com this app's main URL, with pipetooling.com kept forever as a path-preserving redirect so no link in the wild breaks
 audience: Owner + AI agents
-last_updated: 2026-08-30
+last_updated: 2026-08-31
 key_sections:
   - name: "Decision & prep already done"
   - name: "Prerequisites (before cutover day)"
@@ -108,7 +108,9 @@ Prep merged in v2.2440 — all zero-behavior-change:
   twin-mcp), UA string in check-estimate-attachment-url, `twin-mcp` tool
   descriptions.
 - **Resend sender migration: DONE (v2.2496, completed 2026-08-29)** — email
-  sends from `PipeTooling <team@noreply.clicktooling.com>`.
+  sends from `ClickTooling <team@noreply.clicktooling.com>` (display name
+  flipped from PipeTooling 2026-08-31, alongside the v2.2525/v2.2526 renames;
+  same secret, same verified domain — functions pick it up on cold start).
   1. Flip point (v2.2496): every sender reads the `EMAIL_FROM` function secret
      via `supabase/functions/_shared/emailFrom.ts` (fallback = the pipetooling
      sender); all 29 email functions redeployed.
