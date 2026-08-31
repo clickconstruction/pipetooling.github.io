@@ -5,7 +5,7 @@ roles: assistant, master_technician, subcontractor, estimator, primary, superint
 keywords: email, schedule, digest, report, notifications, weekly, settings
 order: 60
 ---
-PipeTooling can email you several different things — daily job report digests, the Billed Awaiting Payment report, your dispatch day, payment notifications, the Weekly movement report, and GC statements scheduled from GC Review — sends you set up show with their destination address, and standing copies addressed to YOUR email show on your own schedule too. **My email schedule** shows all of it in one place, so you always know what's coming and when.
+ClickTooling can email you several different things — daily job report digests, the Billed Awaiting Payment report, your dispatch day, payment notifications, the Weekly movement report, and GC statements scheduled from GC Review — sends you set up show with their destination address, and standing copies addressed to YOUR email show on your own schedule too. **My email schedule** shows all of it in one place, so you always know what's coming and when.
 
 ## Where to find it
 

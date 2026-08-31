@@ -242,7 +242,7 @@ export default function ContractAccept() {
                 </Link>
               ) : thankYouCta.status === 'signed_in' ? (
                 <Link to="/dashboard" style={contractThankYouPrimaryLinkStyle}>
-                  Return to PipeTooling
+                  Return to ClickTooling
                 </Link>
               ) : null}
             </div>

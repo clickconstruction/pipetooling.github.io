@@ -126,15 +126,15 @@ export function substituteNotificationVariables(
  * (settings → email templates → "Create"). Product copy — preserve verbatim. */
 export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { subject: string; body: string }> = {
   invitation: {
-    subject: 'Invitation to join PipeTooling',
-    body: 'Hi {{name}},\n\nYou\'ve been invited to join PipeTooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn\'t expect this invitation, you can safely ignore this email.',
+    subject: 'Invitation to join ClickTooling',
+    body: 'Hi {{name}},\n\nYou\'ve been invited to join ClickTooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn\'t expect this invitation, you can safely ignore this email.',
   },
   sign_in: {
-    subject: 'Sign in to PipeTooling',
-    body: 'Hi {{name}},\n\nClick the link below to sign in to your PipeTooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
+    subject: 'Sign in to ClickTooling',
+    body: 'Hi {{name}},\n\nClick the link below to sign in to your ClickTooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
   },
   login_as: {
-    subject: 'Sign in to PipeTooling',
+    subject: 'Sign in to ClickTooling',
     body: 'Hi {{name}},\n\nA dev has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
   },
   stage_assigned_started: {

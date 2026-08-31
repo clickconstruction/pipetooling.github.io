@@ -780,7 +780,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
                   >
                     {sending ? 'Sending…' : 'Send from app'}
                     <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                      PipeTooling sends it — replies go to you
+                      ClickTooling sends it — replies go to you
                     </span>
                   </button>
                 </div>

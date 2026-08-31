@@ -3221,7 +3221,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
               {(contractDocumentDeleteTarget.status === 'sent' ||
                 contractDocumentDeleteTarget.status === 'signed') && (
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-600)', margin: '0 0 1rem', lineHeight: 1.45 }}>
-                  <strong>Note:</strong> This removes the contract record from PipeTooling, including any stored
+                  <strong>Note:</strong> This removes the contract record from ClickTooling, including any stored
                   signature. Email or files saved outside this app are not affected.
                 </p>
               )}

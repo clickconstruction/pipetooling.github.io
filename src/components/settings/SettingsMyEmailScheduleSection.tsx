@@ -119,7 +119,7 @@ export default function SettingsMyEmailScheduleSection() {
       {open && (
         <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: '0.75rem 0' }}>
-            Emails PipeTooling sends <strong>you</strong>, week by week. Central time.
+            Emails ClickTooling sends <strong>you</strong>, week by week. Central time.
           </p>
           {loading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }} role="status">

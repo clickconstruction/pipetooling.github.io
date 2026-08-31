@@ -115,8 +115,8 @@ export default function UnwindStripeOobPaymentModal({
           Undo out-of-band payment?
         </h2>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-          This issues a <strong>credit note</strong> in Stripe for the PipeTooling-recorded out-of-band close, then
-          moves the invoice back to <strong>Billed</strong> and removes the linked payment in PipeTooling. Only use
+          This issues a <strong>credit note</strong> in Stripe for the ClickTooling-recorded out-of-band close, then
+          moves the invoice back to <strong>Billed</strong> and removes the linked payment in ClickTooling. Only use
           when the customer did not actually pay or the close was a mistake.
         </p>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>

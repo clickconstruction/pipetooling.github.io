@@ -18,9 +18,9 @@ const DEFAULT_REDIRECT = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetoo
 const ALLOWED_REDIRECT = /^(https:\/\/pipetooling\.com\/|http:\/\/localhost:5(173|175)\/)/
 
 // Fallbacks must match the Settings "sign_in" template defaults (src/pages/Settings.tsx openEditTemplate).
-const DEFAULT_SUBJECT = 'Sign in to PipeTooling'
+const DEFAULT_SUBJECT = 'Sign in to ClickTooling'
 const DEFAULT_BODY =
-  "Hi {{name}},\n\nClick the link below to sign in to your PipeTooling account:\n\n{{link}}\n\nIf you didn't request this sign-in link, you can safely ignore this email."
+  "Hi {{name}},\n\nClick the link below to sign in to your ClickTooling account:\n\n{{link}}\n\nIf you didn't request this sign-in link, you can safely ignore this email."
 
 function escapeHtml(s: string): string {
   return s

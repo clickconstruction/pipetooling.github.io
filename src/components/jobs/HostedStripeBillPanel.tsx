@@ -173,7 +173,7 @@ const stripeHeroAmountText: CSSProperties = {
 
 /**
  * Stripe hosted bill body shared by View bill and Bill Customer (after create).
- * Loads `get-stripe-invoice-details` and renders line items, totals, share links, PipeTooling footer.
+ * Loads `get-stripe-invoice-details` and renders line items, totals, share links, ClickTooling footer.
  */
 export function HostedStripeBillPanel({
   invoice,
@@ -451,7 +451,7 @@ export function HostedStripeBillPanel({
                 fontSize: '0.875rem',
               }}
             >
-              <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Saved in PipeTooling</div>
+              <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Saved in ClickTooling</div>
               <div style={{ display: 'grid', gap: '0.35rem' }}>
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Billed amount: </span>${formatMoney(Number(inv.amount ?? 0))}
@@ -576,7 +576,7 @@ export function HostedStripeBillPanel({
                             {!fromStripe ? (
                               <span style={{ fontWeight: 400, color: 'var(--text-faint)', fontSize: '0.75rem' }}>
                                 {' '}
-                                · PipeTooling record
+                                · ClickTooling record
                               </span>
                             ) : null}
                           </>
@@ -699,7 +699,7 @@ export function HostedStripeBillPanel({
                     <li style={{ marginBottom: '0.35rem' }}>
                       Stripe will delete a draft invoice or void an open unpaid invoice so this hosted link cannot be paid.
                     </li>
-                    <li style={{ marginBottom: '0.35rem' }}>PipeTooling will remove this billed line.</li>
+                    <li style={{ marginBottom: '0.35rem' }}>ClickTooling will remove this billed line.</li>
                     <li>
                       If this is the last billed invoice on the job, the job moves back to <strong>Ready to Bill</strong>.
                     </li>
@@ -864,7 +864,7 @@ export function HostedStripeBillPanel({
             gap: '0.2rem',
           }}
         >
-          <div>Applied in PipeTooling: ${formatMoney(applied)}</div>
+          <div>Applied in ClickTooling: ${formatMoney(applied)}</div>
           <div>Open on invoice (app): ${formatMoney(invoiceRemaining)}</div>
         </div>
       ) : null}

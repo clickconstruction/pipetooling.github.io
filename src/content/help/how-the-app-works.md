@@ -1,11 +1,11 @@
 ---
-title: understand how PipeTooling works
+title: understand how ClickTooling works
 category: Getting Started
 roles: all
 keywords: overview, masters, assistants, subs, projects, stages, sharing, mission
 order: 1
 ---
-PipeTooling is one system for the whole shop: win work (**Bids**, **Estimates**), run it (**Projects** with workflow steps, the **Jobs** pipeline, **Schedule & Dispatch**), and settle it (billing, payments, payroll, banking).
+ClickTooling is one system for the whole shop: win work (**Bids**, **Estimates**), run it (**Projects** with workflow steps, the **Jobs** pipeline, **Schedule & Dispatch**), and settle it (billing, payments, payroll, banking).
 
 **People** come in nine roles. **Masters** own customers and projects. Office staff — **Assistants** and **Controllers** — work across the company's customers; controllers also handle payroll. Field roles — **Subs** and **Helpers** — see only work assigned to them. **Estimators** live in Bids and Materials, **Primaries** are customer-side principals with billing visibility, **Superintendents** supervise their assigned projects, and **Devs** administer everything.
 
@@ -57,4 +57,4 @@ The header is your map. On a phone, most of these live behind the {{icon:gear}} 
 
 ## Our mission
 
-PipeTooling is designed to decrease the actions and thinking necessary for Plumbers, Electricians, and HVAC techs to engage and win work, while reducing the communication risk of completing that work with Assistants, Teammates, Subs, and Customers. The mission is to reduce uncertainty so better and faster decisions can be made.
+ClickTooling is designed to decrease the actions and thinking necessary for Plumbers, Electricians, and HVAC techs to engage and win work, while reducing the communication risk of completing that work with Assistants, Teammates, Subs, and Customers. The mission is to reduce uncertainty so better and faster decisions can be made.

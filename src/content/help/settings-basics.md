@@ -57,4 +57,4 @@ Pages you pin appear in a quick bar for fast navigation, and pins sync across yo
 
 ## How the app works
 
-Looking for the plain-language explainer of roles, projects, and sharing? That's the "How do I understand how PipeTooling works?" guide here in Help (also under Settings → Guides).
+Looking for the plain-language explainer of roles, projects, and sharing? That's the "How do I understand how ClickTooling works?" guide here in Help (also under Settings → Guides).

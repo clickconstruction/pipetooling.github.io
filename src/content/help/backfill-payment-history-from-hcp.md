@@ -26,7 +26,7 @@ The list is only a preview — no payments exist until you press Record, and Can
 
 ## Tips HCP collected on top of the job total
 
-HouseCall Pro's "Job amount" includes any tip the customer added, but jobs came into PipeTooling at the pre-tip figure — so a job HCP shows as $370 collected reads $360 here and the $10 tip is invisible. The same tool finds these: below the payments list, a **Tips** section shows every tipped job with its before → after total.
+HouseCall Pro's "Job amount" includes any tip the customer added, but jobs came into ClickTooling at the pre-tip figure — so a job HCP shows as $370 collected reads $360 here and the $10 tip is invisible. The same tool finds these: below the payments list, a **Tips** section shows every tipped job with its before → after total.
 
 1. Each checked row adds a **Tip (HCP)** line item to the job's bill and a matching tip payment dated when HCP collected it — billed and collected both land on the HCP total.
 2. A Billed job that becomes fully collected once its tip lands also moves to **Paid** automatically (the row says so in green).

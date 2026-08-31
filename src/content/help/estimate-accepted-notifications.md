@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, estimator
 keywords: estimate accepted, acceptance notification, estimate email, who gets notified, accepted notifications, quote accepted, estimate alert, notify on acceptance
 order: 62
 ---
-When a customer accepts an estimate, PipeTooling emails the office. There are two lists, and both are sent:
+When a customer accepts an estimate, ClickTooling emails the office. There are two lists, and both are sent:
 
 - **Always notify** — an org-wide list set once. These people get an email for *every* accepted estimate, including estimates already sitting with customers.
 - **Email when customer accepts** — extra people picked on one specific estimate.
@@ -44,4 +44,4 @@ So it is safe to add someone broadly — they simply will not be emailed about e
 
 ## What the email says
 
-The subject reads **Quote #123 accepted — <customer name>**, and the body links straight to the estimate in PipeTooling.
+The subject reads **Quote #123 accepted — <customer name>**, and the body links straight to the estimate in ClickTooling.

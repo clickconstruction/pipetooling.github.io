@@ -22,7 +22,7 @@ function ymdFromDbDateish(raw: string | null | undefined): string | null {
 }
 
 /**
- * Reconstructs the PipeTooling physical-invoice PDF model from a billed ledger row + job snapshot.
+ * Reconstructs the ClickTooling physical-invoice PDF model from a billed ledger row + job snapshot.
  * Not necessarily identical to the original Stripe PDF or the exact PDF first emailed for physical sends.
  */
 export function buildPhysicalInvoiceDocumentForBilledInvoice(

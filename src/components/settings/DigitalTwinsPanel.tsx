@@ -557,7 +557,7 @@ export default function DigitalTwinsPanel() {
           <code style={{ fontSize: '0.7rem' }}>docs/twins/TWIN_HARNESS.md</code>
           <span style={{ ...MUTED, fontWeight: 600 }}>CT backfill</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', ...MUTED }}>
-            link existing CountTooling accounts to their PipeTooling people by email
+            link existing CountTooling accounts to their ClickTooling people by email
             <button type="button" style={COPY_CHIP} disabled={busy || ctSeatById === null} onClick={() => void backfillCtLinks()}>run backfill</button>
           </span>
           <span style={{ ...MUTED, fontWeight: 600 }}>Kill switch</span>

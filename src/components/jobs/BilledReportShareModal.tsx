@@ -240,7 +240,7 @@ export default function BilledReportShareModal({
         </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Emails the report — grouped by customer with amounts due, clickable contacts, and links that open each job in
-          PipeTooling. Numbers are built fresh at send time.
+          ClickTooling. Numbers are built fresh at send time.
         </p>
 
         <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Send to</h3>

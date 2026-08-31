@@ -413,7 +413,7 @@ export function BidsBuilderReviewTab({
   }
 
   const callSheetGeneratedLabel = () =>
-    `Generated ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — PipeTooling Followup`
+    `Generated ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — ClickTooling Followup`
 
   // One shared last-contact definition for sort + display (v2.1385 kernel);
   // previously duplicated inline with subtly different comparison code.

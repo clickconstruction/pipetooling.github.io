@@ -65,7 +65,7 @@ export function BankingStripeInvoicesPanel() {
   return (
     <div>
       <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', maxWidth: 720, fontSize: '0.9375rem', lineHeight: 1.55 }}>
-        Ledger invoice rows from <code>jobs_ledger_invoices</code>. <strong>App status</strong> is the PipeTooling column;{' '}
+        Ledger invoice rows from <code>jobs_ledger_invoices</code>. <strong>App status</strong> is the ClickTooling column;{' '}
         <strong>Stripe status</strong> is synced from Stripe (webhook) when present. Rows with no <strong>Stripe invoice</strong> id are
         highlighted. Showing up to {INVOICES_PAGE_SIZE} rows, newest first.
       </p>

@@ -5,7 +5,7 @@ roles: all
 keywords: update, new version, reload, refresh, white screen, stale, fix app, hard reload
 order: 4
 ---
-PipeTooling updates itself. When a new version has been released while you had the app open, a small pill appears at the bottom of the screen:
+ClickTooling updates itself. When a new version has been released while you had the app open, a small pill appears at the bottom of the screen:
 
 :::example The update pill
 A new version is ready. {{button:blue|Reload}} Not now

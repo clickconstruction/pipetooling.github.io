@@ -230,7 +230,7 @@ export default function AgreedWriteDownModal({
         {isStripeHosted ? (
           <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-blue-800)', lineHeight: 1.4 }}>
             This invoice is hosted on Stripe: we will create a <strong>credit note</strong> for the difference so
-            Stripe stays in sync with PipeTooling.
+            Stripe stays in sync with ClickTooling.
           </p>
         ) : null}
         <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}>

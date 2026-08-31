@@ -799,7 +799,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                       onChange={(e) => { setTemplateSubject(e.target.value); setTemplateError(null) }}
                       required
                       disabled={templateSaving}
-                      placeholder="e.g., Welcome to PipeTooling"
+                      placeholder="e.g., Welcome to ClickTooling"
                       style={{ width: '100%', padding: '0.5rem' }}
                     />
                     <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -821,7 +821,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                       required
                       disabled={templateSaving}
                       rows={12}
-                      placeholder="e.g., Hi {{name}},&#10;&#10;You've been invited to join PipeTooling as a {{role}}. Click the link below to set up your account:&#10;&#10;{{link}}"
+                      placeholder="e.g., Hi {{name}},&#10;&#10;You've been invited to join ClickTooling as a {{role}}. Click the link below to set up your account:&#10;&#10;{{link}}"
                       style={{ width: '100%', padding: '0.5rem', fontFamily: 'monospace', fontSize: '0.875rem' }}
                     />
                     <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
