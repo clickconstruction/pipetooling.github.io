@@ -39,7 +39,7 @@ self.addEventListener('message', (event) => {
 // Web Push: show notification when push message received
 self.addEventListener('push', (event: PushEvent) => {
   const data = (event.data?.json() || {}) as { title?: string; body?: string; url?: string; tag?: string }
-  const title = data.title || 'PipeTooling'
+  const title = data.title || 'ClickTooling'
   const options = {
     body: data.body,
     icon: '/favicon.svg',
