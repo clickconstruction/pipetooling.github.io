@@ -3,6 +3,11 @@
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=yewfzhbofbbyvkvtaatw&features=storage%2Cbranching%2Cfunctions%2Cdevelopment%2Cdebugging%2Cdatabase%2Cdocs"
+    },
+    "twin-mcp": {
+      "type": "http",
+      "url": "https://yewfzhbofbbyvkvtaatw.supabase.co/functions/v1/twin-mcp",
+      "headers": { "X-Twin-Token": "${TWIN_ESTIMATOR_1_TOKEN}" }
     }
   }
 }
