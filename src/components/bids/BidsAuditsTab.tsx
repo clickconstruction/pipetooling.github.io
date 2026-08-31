@@ -13,6 +13,7 @@ import {
   computeAuditDraftTotal,
   sortAuditsForTab,
   canWriteBidAudit,
+  formatAuditRequestedStamp,
   type AuditSection,
   type BidAuditRow,
   type BidAuditNoteRow,
@@ -260,7 +261,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                     <span style={{ color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>{openQ} unanswered question{openQ === 1 ? '' : 's'}</span>
                   ) : null}
                   <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                    requested {audit.requested_at.slice(0, 10)}
+                    {formatAuditRequestedStamp(audit.requested_at)}
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>

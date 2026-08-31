@@ -5,6 +5,7 @@ import {
   computeAuditDraftTotal,
   sortAuditsForTab,
   canWriteBidAudit,
+  formatAuditRequestedStamp,
   type BidAuditNoteRow,
 } from './bidAudits'
 
@@ -119,5 +120,23 @@ describe('canWriteBidAudit', () => {
   it('twin accounts are view-only regardless of role', () => {
     expect(canWriteBidAudit('estimator', true)).toBe(false)
     expect(canWriteBidAudit('dev', true)).toBe(false)
+  })
+})
+
+describe('formatAuditRequestedStamp', () => {
+  const at = new Date('2026-08-30T14:14:00').getTime()
+  const iso = new Date(at).toISOString()
+  it('rolls minutes → hours → days', () => {
+    expect(formatAuditRequestedStamp(iso, at + 12 * 60_000)).toMatch(/· 12m ago$/)
+    expect(formatAuditRequestedStamp(iso, at + 19 * 3_600_000)).toMatch(/· 19h ago$/)
+    expect(formatAuditRequestedStamp(iso, at + 72 * 3_600_000)).toMatch(/· 3d ago$/)
+  })
+  it('carries date and time of day', () => {
+    const s = formatAuditRequestedStamp(iso, at + 3_600_000)
+    expect(s).toMatch(/^requested Aug 30, /)
+    expect(s).toMatch(/\d{1,2}:\d{2}/)
+  })
+  it('falls back to the date slice on a bad timestamp', () => {
+    expect(formatAuditRequestedStamp('nonsense-date')).toBe('requested nonsense-d')
   })
 })

@@ -157,6 +157,18 @@ export function canWriteBidAudit(role: string | null | undefined, isDigitalTwin 
   return (AUDIT_WRITE_ROLES as readonly string[]).includes(role ?? '')
 }
 
+// "requested Aug 30, 2:14 PM · 19h ago" — the Audits tab stamp (v2.2533). Relative part
+// rolls minutes → hours → days so a reviewer can triage queue age at a glance.
+export function formatAuditRequestedStamp(iso: string, now: number = Date.now()): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return `requested ${iso.slice(0, 10)}`
+  const date = d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  const mins = Math.max(0, Math.floor((now - d.getTime()) / 60_000))
+  const ago = mins < 60 ? `${mins}m ago` : mins < 48 * 60 ? `${Math.floor(mins / 60)}h ago` : `${Math.floor(mins / (24 * 60))}d ago`
+  return `requested ${date}, ${time} · ${ago}`
+}
+
 export function sortAuditsForTab<T extends { status: AuditStatus; requested_at: string }>(audits: T[]): T[] {
   const rank: Record<AuditStatus, number> = { pending: 0, done: 1, digested: 2 }
   return [...audits].sort((a, b) => {
