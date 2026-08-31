@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   LATE_GRACE_MINUTES,
+  computeAttendanceSummaryForUser,
   computeLatenessByCell,
   latenessCellKey,
+  latenessLedgerEntries,
   type LatenessBlockRow,
   type LatenessSessionRow,
 } from './scheduleLateness'
@@ -96,5 +98,56 @@ describe('computeLatenessByCell', () => {
     const map = computeLatenessByCell([block({})], [session({ clocked_in_at: '2026-08-31T13:38:00Z' })])
     expect(map.get(KEY)?.label).toBe('Late 40m')
     expect(map.get(KEY)?.minutesLate).toBe(38)
+  })
+})
+
+// v2.2551: People-side ledger helpers.
+describe('latenessLedgerEntries', () => {
+  it('flattens the map newest-first with ids parsed from the key', () => {
+    const entries = latenessLedgerEntries(
+      [block({}), block({ work_date: '2026-08-28', time_start: '08:00:00' })],
+      [
+        session({}),
+        session({ work_date: '2026-08-28', clocked_in_at: '2026-08-28T14:00:00Z' }), // 9:00 CDT, 1h late
+      ],
+    )
+    expect(entries.map((e) => e.work_date)).toEqual(['2026-08-31', '2026-08-28'])
+    expect(entries[0]?.user_id).toBe('u1')
+    expect(entries[1]?.label).toBe('Late 1h')
+  })
+})
+
+describe('computeAttendanceSummaryForUser', () => {
+  it('counts scheduled, clocked-in, on-time, late days and the median', () => {
+    const blocks = [
+      block({}), // 8/31 late 137m
+      block({ work_date: '2026-08-28' }), // on time
+      block({ work_date: '2026-08-27' }), // late 30m
+      block({ work_date: '2026-08-26' }), // no clock-in
+      block({ assignee_user_id: 'u2' }), // someone else
+    ]
+    const sessions = [
+      session({}),
+      session({ work_date: '2026-08-28', clocked_in_at: '2026-08-28T13:00:00Z' }),
+      session({ work_date: '2026-08-27', clocked_in_at: '2026-08-27T13:30:00Z' }),
+    ]
+    const s = computeAttendanceSummaryForUser(blocks, sessions, 'u1')
+    expect(s).toEqual({
+      scheduledDays: 4,
+      clockInDays: 3,
+      onTimeDays: 1,
+      lateDays: 2,
+      medianLateMinutes: 84, // (30 + 137) / 2 rounded
+    })
+  })
+
+  it('empty inputs → zeros and null median', () => {
+    expect(computeAttendanceSummaryForUser([], [], 'u1')).toEqual({
+      scheduledDays: 0,
+      clockInDays: 0,
+      onTimeDays: 0,
+      lateDays: 0,
+      medianLateMinutes: null,
+    })
   })
 })

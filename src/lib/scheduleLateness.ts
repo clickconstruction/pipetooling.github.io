@@ -99,6 +99,95 @@ export function latenessCellKey(userId: string, workDateYmd: string): string {
   return `${userId}\t${workDateYmd}`
 }
 
+/** Flat ledger entry (the People-side attendance timeline, v2.2551). */
+export type LatenessLedgerEntry = PersonDayLateness & {
+  user_id: string
+  work_date: string
+}
+
+/** The per-cell map flattened for timeline rendering, newest work_date first. */
+export function latenessLedgerEntries(
+  blocks: readonly LatenessBlockRow[],
+  sessions: readonly LatenessSessionRow[],
+  graceMinutes: number = LATE_GRACE_MINUTES,
+): LatenessLedgerEntry[] {
+  const out: LatenessLedgerEntry[] = []
+  for (const [key, info] of computeLatenessByCell(blocks, sessions, graceMinutes)) {
+    const [user_id, work_date] = key.split('\t')
+    if (!user_id || !work_date) continue
+    out.push({ user_id, work_date, ...info })
+  }
+  out.sort((a, b) => (a.work_date < b.work_date ? 1 : a.work_date > b.work_date ? -1 : 0))
+  return out
+}
+
+export type AttendanceSummary = {
+  /** Distinct work_dates with at least one scheduled block. */
+  scheduledDays: number
+  /** Scheduled days where the person clocked in at all. */
+  clockInDays: number
+  /** Scheduled days where the first clock-in beat the grace window. */
+  onTimeDays: number
+  lateDays: number
+  medianLateMinutes: number | null
+}
+
+/** The 90-day picture for one person (the summary card, v2.2551). */
+export function computeAttendanceSummaryForUser(
+  blocks: readonly LatenessBlockRow[],
+  sessions: readonly LatenessSessionRow[],
+  userId: string,
+  graceMinutes: number = LATE_GRACE_MINUTES,
+): AttendanceSummary {
+  const myBlocks = blocks.filter((b) => b.assignee_user_id === userId)
+  const mySessions = sessions.filter((s) => s.user_id === userId)
+  const scheduledDates = new Set(myBlocks.map((b) => b.work_date))
+  const late = computeLatenessByCell(myBlocks, mySessions, graceMinutes)
+  const clockInDates = new Set(
+    mySessions.filter((s) => !s.rejected_at && !s.revoked_at).map((s) => s.work_date),
+  )
+  let clockInDays = 0
+  for (const d of scheduledDates) if (clockInDates.has(d)) clockInDays += 1
+  const lateMinutes = [...late.values()].map((l) => l.minutesLate).sort((a, b) => a - b)
+  const lateDays = lateMinutes.length
+  const mid = Math.floor(lateMinutes.length / 2)
+  const medianLateMinutes =
+    lateMinutes.length === 0
+      ? null
+      : lateMinutes.length % 2 === 1
+        ? lateMinutes[mid]!
+        : Math.round((lateMinutes[mid - 1]! + lateMinutes[mid]!) / 2)
+  return {
+    scheduledDays: scheduledDates.size,
+    clockInDays,
+    onTimeDays: clockInDays - lateDays,
+    lateDays,
+    medianLateMinutes,
+  }
+}
+
+/** Fetch schedule blocks for a date range (all visible users; RLS-filtered). */
+export async function fetchScheduleBlocksForRange(
+  startYmd: string,
+  endYmd: string,
+): Promise<{ data: LatenessBlockRow[]; error: string | null }> {
+  if (!startYmd || !endYmd) return { data: [], error: null }
+  try {
+    const data = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('job_schedule_blocks')
+          .select('assignee_user_id, work_date, time_start')
+          .gte('work_date', startYmd)
+          .lte('work_date', endYmd),
+      'fetchScheduleBlocksForRange',
+    )
+    return { data: (data ?? []) as LatenessBlockRow[], error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e, 'Failed to load schedule blocks') }
+  }
+}
+
 /**
  * Fetch the clock-in rows the kernel needs for a set of users over a date
  * range (RLS-filtered: viewers who can't read someone's sessions simply get
