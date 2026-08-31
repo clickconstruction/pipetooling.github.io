@@ -19,7 +19,7 @@ export const PHYSICAL_INVOICE_FOOTER_LABEL_MAX_CHARS = 200
 const LS_KEY_PHYSICAL_INVOICE_FOOTER_PRESETS = 'pipetooling-physical-invoice-footer-presets'
 
 /** Shipped default bodies (repo). */
-export const PHYSICAL_INVOICE_FOOTER_PRESET_STANDARD = `PipeTooling — Click Plumbing and Electrical
+export const PHYSICAL_INVOICE_FOOTER_PRESET_STANDARD = `ClickTooling — Click Plumbing and Electrical
 Questions about this invoice? Reply to this email or call the office.
 Ph: 801-252-5155
 12925 FM 20 Kingsbury TX 78638`

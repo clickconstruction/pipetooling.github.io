@@ -24,9 +24,9 @@ const DEFAULT_REDIRECT = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetoo
 const ALLOWED_REDIRECT = /^(https:\/\/pipetooling\.com\/|http:\/\/localhost:5(173|175)\/)/
 
 // Fallbacks must match the Settings "invitation" template defaults (src/pages/Settings.tsx openEditTemplate).
-const DEFAULT_SUBJECT = 'Invitation to join PipeTooling'
+const DEFAULT_SUBJECT = 'Invitation to join ClickTooling'
 const DEFAULT_BODY =
-  "Hi {{name}},\n\nYou've been invited to join PipeTooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn't expect this invitation, you can safely ignore this email."
+  "Hi {{name}},\n\nYou've been invited to join ClickTooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn't expect this invitation, you can safely ignore this email."
 
 /** Mirrors src/lib/userRoleDisplay.ts displayLabelForUserRole. */
 function displayLabelForRole(role: string): string {

@@ -321,7 +321,7 @@ export function StripeInvoiceSendFromStripeButton({
               </h2>
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                 Have Stripe email this invoice to{' '}
-                <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong>? PipeTooling will not send the
+                <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong>? ClickTooling will not send the
                 email — Stripe will.
               </p>
               <div
@@ -341,7 +341,7 @@ export function StripeInvoiceSendFromStripeButton({
                     marginBottom: '0.5rem',
                   }}
                 >
-                  Most recent sends (PipeTooling)
+                  Most recent sends (ClickTooling)
                 </div>
                 {sendHistoryLoading ? (
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading…</div>

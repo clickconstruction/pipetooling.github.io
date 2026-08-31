@@ -114,7 +114,7 @@ export default function AcceptInvite() {
 
   return (
     <div style={{ maxWidth: 360, margin: '4rem auto', padding: '0 1rem' }}>
-      <h1 style={{ marginBottom: '1rem' }}>Welcome to PipeTooling</h1>
+      <h1 style={{ marginBottom: '1rem' }}>Welcome to ClickTooling</h1>
       <p style={{ marginBottom: '1rem', color: 'var(--text-700)' }}>
         Choose a password to finish setting up your account.
       </p>

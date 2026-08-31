@@ -80,7 +80,7 @@ describe('BidsAuditsTab', () => {
     const ctLink = screen.getByText('Open takeoff (CountTooling) ↗') as HTMLAnchorElement
     expect(ctLink.getAttribute('href')).toBe('https://counttooling.com/app/?t=tok')
     expect(ctLink.getAttribute('target')).toBe('_blank')
-    const ptLink = screen.getByText('Open bid (PipeTooling) ↗') as HTMLAnchorElement
+    const ptLink = screen.getByText('Open bid (ClickTooling) ↗') as HTMLAnchorElement
     expect(ptLink.getAttribute('href')).toBe('/bids?tab=counts&bidId=bid-405')
     expect(ptLink.getAttribute('target')).toBe('_blank')
 

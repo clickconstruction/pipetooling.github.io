@@ -12,7 +12,7 @@ Every checklist task keeps a running record — who created it, each time it was
 Tap anywhere on a task card (the title area, not the {{icon:help|gear}} ⋮ menu) and it expands in place:
 
 :::example An expanded card
-Fill out QuickFill in PipeTooling.com
+Fill out QuickFill in ClickTooling.com
 You created this task · Feb 17
 Taunya completed · Mar 2
 Taunya completed · Wed 10:07 AM

@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, estimator
 keywords: counttooling, import, takeoff, copy to tooling, counts, line feet, ft of, unscaled, px, view link, plans link
 order: 96
 ---
-CountTooling counts the drawings; PipeTooling prices them. The bridge is one clipboard copy — no retyping.
+CountTooling counts the drawings; ClickTooling prices them. The bridge is one clipboard copy — no retyping.
 
 ## Copy in CountTooling
 
@@ -15,9 +15,9 @@ In CountTooling, open the project and click {{button:blue|Copy to /Tooling}} in 
 - Line types copy as feet: `ft of 2in Copper · 148.50 · pages 1, 2`.
 - If a page has lines but no scale, CountTooling stops and asks you to **Set scale** first. If you choose **Export anyway**, those runs copy as `px of …` — pixel lengths, not feet.
 
-## Paste in PipeTooling
+## Paste in ClickTooling
 
-Open the bid in **Bids → Counts** and click {{button:outline|Import from /Tooling}} (top-right, beside the ×). PipeTooling reads the clipboard and adds the rows straight onto the bid; if the browser won't share the clipboard, a paste box opens instead — paste and click **Import**.
+Open the bid in **Bids → Counts** and click {{button:outline|Import from /Tooling}} (top-right, beside the ×). ClickTooling reads the clipboard and adds the rows straight onto the bid; if the browser won't share the clipboard, a paste box opens instead — paste and click **Import**.
 
 The toast tells you what arrived: *Imported 35 rows: 29 counts (1,122 ea) · 6 line types (444.74 ft).* Each row lands with its unit set — counters as **ea**, line types as **ft**, unscaled runs as **px** — so the Count Sheet totals them apart without guessing. The view link is saved to the bid as its **CountTooling plans** link (the crosshair icon on the Bid Board), so anyone pricing it can open the marked-up drawings.
 

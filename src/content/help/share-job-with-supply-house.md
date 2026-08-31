@@ -6,7 +6,7 @@ keywords: supply house, job account, share, email, ferguson, morrison, account s
 order: 88
 ---
 
-Supply houses setting up a **job account** ask for the same packet every time: the property's name, address, and phone numbers, plus the owner's info — the homeowner, or for commercial work the building owner **and their company name**. The share button packages all of it into one email that goes out **from your own inbox** — or from PipeTooling if you prefer.
+Supply houses setting up a **job account** ask for the same packet every time: the property's name, address, and phone numbers, plus the owner's info — the homeowner, or for commercial work the building owner **and their company name**. The share button packages all of it into one email that goes out **from your own inbox** — or from ClickTooling if you prefer.
 
 ## Where it is
 
@@ -34,7 +34,7 @@ Three ways to get the packet out:
 
 - {{button:blue|Email from my inbox}} — the main path. It opens a ready-to-send draft in your own email app, addressed to the contacts you picked with the subject and packet filled in. You press send there, so the email comes **from your address** and replies land straight in your inbox.
 - {{button:outline|Copy for email}} — copies the addressed packet (To, subject, body) so you can paste it into any compose window. Handy when you write email in the browser.
-- **Other → Send from app** — the original path: PipeTooling delivers "Job account setup — 964 · Pondhill demo" with the packet as a clean table, replies still go to your email.
+- **Other → Send from app** — the original path: ClickTooling delivers "Job account setup — 964 · Pondhill demo" with the packet as a clean table, replies still go to your email.
 
 Because the app can't see your inbox, the first two paths finish with one honest tap: after the draft opens (or the packet copies), the modal asks — send it, then hit {{button:blue|Sent — log it}} so the share is remembered. {{button:outline|Didn't send it}} backs out without recording anything.
 

@@ -188,7 +188,7 @@ export default function DocumentsJobBilledInvoiceModal({
           <>
             <HostedStripeBillPanel invoice={invWithJob} />
             <hr style={{ margin: '1.25rem 0', border: 'none', borderTop: '1px solid var(--border)' }} />
-            <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 600 }}>Invoice PDF (PipeTooling layout)</h3>
+            <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 600 }}>Invoice PDF (ClickTooling layout)</h3>
             <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Reconstructed from job data; may differ from the original Stripe or emailed PDF.
             </p>

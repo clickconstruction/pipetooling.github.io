@@ -4,7 +4,7 @@
  *
  * After OFFER_AFTER failed password attempts on the SAME email, the sign-in
  * page offers to email a one-time sign-in link instead (signInWithOtp with
- * shouldCreateUser: false — PipeTooling accounts are office-provisioned, so a
+ * shouldCreateUser: false — ClickTooling accounts are office-provisioned, so a
  * typo'd email must never create one). Counters are per normalized email so a
  * typo'd address's failures don't qualify the corrected one.
  *

@@ -14,7 +14,7 @@ When a robot estimator finishes a draft bid, it asks for your audit. Everything 
 ## Look the bid over (two quick links)
 
 1. {{button:blue|Open takeoff (CountTooling) ↗}} opens the robot's plan markups in a new tab — no sign-in needed. Its notes are numbered pins on the plans.
-2. {{button:blue|Open bid (PipeTooling) ↗}} opens the bid's Counts in a new tab, so you can see every row and price it drafted.
+2. {{button:blue|Open bid (ClickTooling) ↗}} opens the bid's Counts in a new tab, so you can see every row and price it drafted.
 3. Flip between those tabs and the audit card as you go — nothing you type is lost.
 
 :::example Referring to the plans

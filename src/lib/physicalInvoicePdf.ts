@@ -534,7 +534,7 @@ async function buildPhysicalInvoicePdfBlobDetailed(docModel: PhysicalInvoiceDocu
   doc.setPage(pageCount)
   doc.setFontSize(8)
   doc.setTextColor(100, 100, 100)
-  doc.text('PipeTooling', PAGE_MARGIN, 280)
+  doc.text('ClickTooling', PAGE_MARGIN, 280)
   doc.setTextColor(0, 0, 0)
 
   return doc.output('blob')
@@ -613,7 +613,7 @@ async function buildPhysicalInvoicePdfBlobSimple(docModel: PhysicalInvoiceDocume
   doc.setPage(pageCount)
   doc.setFontSize(8)
   doc.setTextColor(100, 100, 100)
-  doc.text('PipeTooling', PAGE_MARGIN, 280)
+  doc.text('ClickTooling', PAGE_MARGIN, 280)
   doc.setTextColor(0, 0, 0)
 
   return doc.output('blob')

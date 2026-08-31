@@ -21,7 +21,7 @@ import {
 /**
  * The Audits tab (v2.2517, FEEDBACK_LOOP v2): the human side of the robot feedback
  * loop. Each card is one twin bid awaiting audit — quick links open the CountTooling
- * takeoff (view link) and the PipeTooling bid in NEW tabs, the twin's questions take
+ * takeoff (view link) and the ClickTooling bid in NEW tabs, the twin's questions take
  * inline answers, and sectioned note boxes (counts / footage / pricing / scope /
  * general) collect the auditor's feedback right here. Finish audit closes the card;
  * the agent later digests every note, posts a receipt reply underneath, and the card
@@ -272,7 +272,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                     <span style={{ ...linkBtnStyle, opacity: 0.5, cursor: 'default' }}>Takeoff link pending</span>
                   )}
                   <a href={`/bids?tab=counts&bidId=${audit.bid_id}`} target="_blank" rel="noreferrer" style={linkBtnStyle}>
-                    Open bid (PipeTooling) ↗
+                    Open bid (ClickTooling) ↗
                   </a>
                 </div>
                 {threaded.questions.length > 0 ? (
