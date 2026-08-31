@@ -19,11 +19,13 @@ vi.mock('../lib/supabase', () => ({
     auth: {
       // An auth error keeps the component on the page (no cache clear / reload path).
       signInWithPassword: vi.fn(async () => ({ error: { message: 'Invalid login credentials' } })),
+      signInWithOtp: vi.fn(async () => ({ error: null })),
     },
   },
 }))
 
 const signInMock = vi.mocked(supabase.auth.signInWithPassword)
+const otpMock = vi.mocked(supabase.auth.signInWithOtp)
 
 function renderSignIn() {
   return render(
@@ -114,5 +116,78 @@ describe('SignIn password storage', () => {
     } finally {
       Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
     }
+  })
+})
+
+// v2.2524: magic-link fallback (ported from CountTooling). After two failed password
+// attempts on the SAME email, the page offers to email a one-time sign-in link
+// (signInWithOtp, shouldCreateUser: false — accounts are office-provisioned).
+describe('SignIn magic-link fallback', () => {
+  async function failOnce() {
+    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter' })
+    // The button reads "Signing in…" until the failure branch fully settles
+    // (error + failure counter set) — waiting on it avoids racing that state.
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Sign in' }) as HTMLButtonElement).disabled).toBe(false)
+    })
+  }
+
+  it('offers the link only after two failures on the same email', async () => {
+    renderSignIn()
+    fillFields()
+    await failOnce()
+    expect(screen.queryByRole('button', { name: 'Email me a sign-in link' })).toBeNull()
+    await failOnce()
+    expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeTruthy()
+  })
+
+  it('changing the email hides the offer until that email qualifies', async () => {
+    renderSignIn()
+    fillFields()
+    await failOnce()
+    await failOnce()
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'other@clickplumbing.com' } })
+    expect(screen.queryByRole('button', { name: 'Email me a sign-in link' })).toBeNull()
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wendi@clickplumbing.com' } })
+    expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeTruthy()
+  })
+
+  it('sends via signInWithOtp (no account creation) and shows the sent state with a held Resend', async () => {
+    renderSignIn()
+    fillFields()
+    await failOnce()
+    await failOnce()
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link' }))
+    await screen.findByText('Check your email')
+    expect(otpMock).toHaveBeenCalledWith({
+      email: 'wendi@clickplumbing.com',
+      options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/dashboard` },
+    })
+    const resend = screen.getByRole('button', { name: /Resend in/ }) as HTMLButtonElement
+    expect(resend.disabled).toBe(true)
+    expect(screen.getByText('wendi@clickplumbing.com')).toBeTruthy()
+  })
+
+  it('Back to password returns to the form with the offer still visible', async () => {
+    renderSignIn()
+    fillFields()
+    await failOnce()
+    await failOnce()
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link' }))
+    await screen.findByText('Check your email')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to password sign-in' }))
+    expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeTruthy()
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('')
+  })
+
+  it('translates the no-account OTP error instead of leaking GoTrue wording', async () => {
+    otpMock.mockResolvedValueOnce({ error: { message: 'Signups not allowed for otp' } } as never)
+    renderSignIn()
+    fillFields()
+    await failOnce()
+    await failOnce()
+    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link' }))
+    expect(await screen.findByText(/No account found for that email/)).toBeTruthy()
+    expect(screen.queryByText('Check your email')).toBeNull()
   })
 })
