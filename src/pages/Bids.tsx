@@ -3019,7 +3019,7 @@ export default function Bids() {
       />
 
       {/* Audits Tab — the robot feedback loop's human side (v2.2517). */}
-      {activeTab === 'audits' && <BidsAuditsTab authUser={authUser} />}
+      {activeTab === 'audits' && <BidsAuditsTab authUser={authUser} myRole={myRole} />}
 
       {/* Bid Board Tab */}
       {(activeTab === 'bid-board' || activeTab === 'robot-board') && (
