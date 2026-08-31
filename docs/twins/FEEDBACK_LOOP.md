@@ -62,6 +62,12 @@ into exactly one bucket, recorded on the note as `digest_outcome`:
 - **books** → fix prices / hours / aliases in the 🤖 Robot Default books.
 - **code** → kernel/assembler fix, shipped as a normal PR.
 - **bid_only** → apply to that bid's rows; teaches nothing general.
+- **reference_quality** (v2.2545) → the disagreement is the REFERENCE's fault: the
+  historical record is incomplete or untrustworthy (sparse rows, round hand-entered
+  value, weak-loss category, never-updated outcome). Digest as reference_quality and
+  file a repair task on the human bid (a bid note naming the suspect field) instead of
+  falsely teaching doctrine — the robots fix the history they practice on. A human
+  approves the actual record change.
 
 A standing rule stated once ("we always carry $20k travel past 200 miles") outranks a
 per-bid answer: promote it to doctrine or books immediately. Then post the receipt —
@@ -69,6 +75,28 @@ per-bid answer: promote it to doctrine or books immediately. Then post the recei
 set `digested_at` + `digest_outcome` on the note, and when all notes carry receipts,
 set the audit `status='digested'`. The next backtest measures whether the error class
 recurred; recurrence means the digest failed, not the auditor.
+
+## Reference grading (v2.2545 — the sparse-era accommodation)
+
+The pre-2026-03 book was recorded while the company was still learning what to
+track (survey 2026-08-31: 132 Tier-A bids of 344, 127 of them recent; 98 have no
+plans link at all). Grade every backtest reference instead of trusting or
+discarding it:
+
+- **A** plans+value+counts+pricing → full scorecard · **B** plans+value → dollar
+  scorecard only · **C** plans+counts → quantity scorecard only · **D** plans
+  only → census reps, no scorecard · **X** no plans → repair or exclude, with the
+  reason recorded.
+- `open_backtest` returns the blind-safe `reference_grade` (field PRESENCE only).
+  Kernel of record: `src/lib/bids/referenceGrade.ts`.
+- **At unseal (STG-6), compute the quality flags** and stamp grade+flags on the
+  scorecard note: `roundValue` (value % $100 == 0 — hand-entered, BT-11),
+  `weakLoss` (loss_category no_bid / project_died — the number never competed,
+  BT-9/10), `lossUncategorized`, `stale` (>6 months). **Gate A/B denominators
+  take only grade A/B references with every flag clear.** Tier C/D runs still
+  teach doctrine; they never move gates.
+- Mismatch vs a sparse/flagged reference → digest bucket `reference_quality`
+  (above), not doctrine.
 
 ## Current state
 

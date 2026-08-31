@@ -168,7 +168,7 @@ const TOOLS = [
   {
     name: 'open_backtest',
     description:
-      "Open a blind backtest of a human reference bid (pipeline STG-0): creates a 'ZZ Twin <PROJECT> (backtest)' bid owned by and assigned to YOUR twin, copying ONLY the reference's logistics (project name, address, customer, service type, distance, plans link) — never its counts, pricing, value, or outcome, so the blind protocol is structural. Idempotent per reference. Stamps the STG-0 ledger note. The reference stays sealed until your STG-6 scorecard stamp.",
+      "Open a blind backtest of a human reference bid (pipeline STG-0): creates a 'ZZ Twin <PROJECT> (backtest)' bid owned by and assigned to YOUR twin, copying ONLY the reference's logistics (project name, address, customer, service type, distance, plans link) — never its counts, pricing, value, or outcome, so the blind protocol is structural. Idempotent per reference. Stamps the STG-0 ledger note. Returns a blind-safe reference_grade (A=full scorecard .. D=census-only, X=no plans) computed from field PRESENCE only; quality flags (round value, weak-loss category, staleness) are unseal-time. The reference stays sealed until your STG-6 scorecard stamp.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -672,11 +672,30 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const { data: refBid, error: refErr } = await rq.maybeSingle()
       if (refErr) return textContent(`Reference lookup failed: ${refErr.message}`, true)
       if (!refBid) return textContent(`No bid found for "${ref}"`, true)
+      // Reference data-grade (v2.2545) — PRESENCE booleans only, blind-safe: says
+      // whether a scorecard will be possible, never what the sealed fields hold.
+      // Quality flags (round value, weak-loss category, staleness) are unseal-time
+      // only — see FEEDBACK_LOOP.md "Reference grading".
+      const [{ count: countRows }, { count: pricingRows }, { data: presence }] = await Promise.all([
+        admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
+        admin.from('bid_pricing_assignments').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
+        admin.from('bids').select('id').eq('id', refBid.id).not('bid_value', 'is', null).maybeSingle(),
+      ])
+      const hasPlans = !!String(refBid.plans_link ?? '').trim()
+      const hasValue = !!presence
+      const hasCounts = (countRows ?? 0) > 0
+      const hasPricing = (pricingRows ?? 0) > 0
+      const referenceGrade = !hasPlans ? 'X' : hasValue && hasCounts && hasPricing ? 'A' : hasValue ? 'B' : hasCounts ? 'C' : 'D'
+      const gradeNote = referenceGrade === 'A' ? 'full scorecard possible'
+        : referenceGrade === 'B' ? 'dollar-level scorecard only (no reference takeoff rows)'
+        : referenceGrade === 'C' ? 'quantity scorecard only (no reliable reference value)'
+        : referenceGrade === 'D' ? 'census reps only — no scorecard'
+        : 'no plans — not backtestable'
       const ztName = `ZZ Twin ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()} (backtest)`
       const { data: existing } = await admin
         .from('bids').select('id, bid_number').eq('created_by', twin.twinUserId).eq('project_name', ztName).maybeSingle()
       if (existing) {
-        return textContent(JSON.stringify({ ok: true, reused: true, bid: `b${existing.bid_number}`, bid_id: existing.id, name: ztName }, null, 2))
+        return textContent(JSON.stringify({ ok: true, reused: true, bid: `b${existing.bid_number}`, bid_id: existing.id, name: ztName, reference_grade: referenceGrade, grade_note: gradeNote }, null, 2))
       }
       const dueDays = Number(args.due_in_days ?? 7)
       const due = new Date(Date.now() + (Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 7) * 86400_000).toISOString().slice(0, 10)
@@ -707,8 +726,9 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({
         ok: true, reused: false, bid: `b${created.bid_number}`, bid_id: created.id, name: ztName,
+        reference_grade: referenceGrade, grade_note: gradeNote,
         logistics: { address: refBid.address, distance_from_office: refBid.distance_from_office, plans_link: !!refBid.plans_link, due },
-        next: 'file_plans if plans_link is empty; then substrate (STG-2), takeoff (STG-3), counts+books (STG-5), scorecard (STG-6), audit.',
+        next: 'file_plans if plans_link is empty; then substrate (STG-2), takeoff (STG-3), counts+books (STG-5), scorecard (STG-6) — compute quality flags (round value, weak-loss, stale) at unseal and stamp grade+flags on the scorecard; gate denominators take A/B gate-eligible refs only.',
       }, null, 2))
     }
     case 'add_bid_note': {
@@ -1051,7 +1071,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.1' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.2' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
