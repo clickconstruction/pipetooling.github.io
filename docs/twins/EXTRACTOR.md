@@ -41,11 +41,24 @@ generator field and expect `illegible` facts.
 1. `pdfinfo` — page size and count. **Letter-size pages of E-sheets are the norm** (LIVSTE:
    612×792pt): everything is ~4× reduced, which is why page-level reads fail and why the
    stated drawing scale is INVALID for measurement (see SUBSTRATE.md design note 7).
-2. Overview every page at 40 DPI. From title blocks alone (readable even at 40 DPI):
+2. **Orientation gate (owner rule, 2026-08-30, BT-3): settle each sheet's reading
+   orientation BEFORE any region work — never assume the last set's convention.** Render
+   one sheet raw (plain `pdftoppm`, no rotation) and check where the title block text
+   reads horizontally: raw-readable sheets (BT-3 Hyper Kidz: full-size 2160×3024 pt,
+   text horizontal) take UNROTATED crops, while 90°-CCW-drawn sheets (LIVSTE) take the
+   kit's CW-rotating crops and the rotated coordinate math. Record the per-sheet
+   `reading_rotation` (`0` or `90ccw`) in the substrate's sheet inventory and use it for
+   EVERY crop/tile on that sheet — a wrong assumption costs a misfired crop pass on
+   every region (three on BT-3 before this gate existed). Mixed text on one sheet is
+   normal (vertical section titles over a horizontal title block); the TITLE BLOCK is
+   the arbiter. If the plans arrive mis-rotated for bidding entirely, note it in the
+   substrate and orient the crops accordingly — the takeoff never inherits a sideways
+   frame.
+3. Overview every page at 40 DPI. From title blocks alone (readable even at 40 DPI):
    sheet number, title, discipline → the full sheet inventory + classification.
-3. On in-trade sheets, locate regions to crop: schedules, note blocks, legends, the
+4. On in-trade sheets, locate regions to crop: schedules, note blocks, legends, the
    drawing-title/scale strip, riser diagrams. Record each as an overview bbox.
-4. Reconcile the set's self-indexes (cover drawing list vs the trade's own sheet index) —
+5. Reconcile the set's self-indexes (cover drawing list vs the trade's own sheet index) —
    a sheet in one but not the other is a flagged question.
 
 ## Pass 2: crops
