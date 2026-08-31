@@ -5,6 +5,14 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 /** Default `user_time_off.note` when marking absence from the team strip (searchable). */
 export const NOT_COMING_IN_NOTE = 'Not coming in'
 
+/**
+ * `user_time_off.note` for the dispatch no-call-no-show action (v2.2540).
+ * Distinct from NOT_COMING_IN_NOTE so the board chip can read NCNS; the undo
+ * RPC (pay_staff_remove_not_coming_in_for_user_day) matches both notes since
+ * migration 20260831194854.
+ */
+export const NO_CALL_NO_SHOW_NOTE = 'No call, no show'
+
 export type RecordNotComingInForUserAsStaffResult =
   | { ok: true; alreadyMarked: false; syncWarning?: string }
   | { ok: true; alreadyMarked: true }
@@ -32,6 +40,8 @@ async function userHasTimeOffOverlappingDate(userId: string, workDateYmd: string
 export async function recordNotComingInForUserAsStaff(params: {
   subjectUserId: string
   workDateYmd: string
+  /** Override the time-off note (e.g. NO_CALL_NO_SHOW_NOTE for the dispatch NCNS action). */
+  note?: string
 }): Promise<RecordNotComingInForUserAsStaffResult> {
   const { subjectUserId, workDateYmd } = params
   try {
@@ -42,7 +52,7 @@ export async function recordNotComingInForUserAsStaff(params: {
       userIds: [subjectUserId],
       startDate: workDateYmd,
       endDate: workDateYmd,
-      note: NOT_COMING_IN_NOTE,
+      note: params.note ?? NOT_COMING_IN_NOTE,
     })
     if (parsed.error) {
       return { ok: false, message: parsed.error, details: parsed }

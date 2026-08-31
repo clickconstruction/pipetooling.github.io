@@ -99,12 +99,15 @@ import {
   validateScheduleDispatchBlockTimeRange,
 } from './scheduleDispatchRemoveBlockModal'
 import {
+  NO_CALL_NO_SHOW_NOTE,
   recordNotComingInForUserAsStaff,
   removeNotComingInForUserAsStaff,
 } from '../../lib/notComingInTimeOff'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   buildUserTimeOffByCell,
   fetchUserTimeOffForUsersInRange,
+  userTimeOffCellKey,
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
@@ -1693,6 +1696,114 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     await markNotComingInForPersonDay(subjectUserId, workDateYmd)
   }, [hubCellAddContext, closeHubAssignJobPicker, markNotComingInForPersonDay])
 
+  /** Mirrors the day-editor's NCNS gate (payroll-side roles); the RPC enforces
+   * payroll access OR team-lead regardless — this only decides link visibility. */
+  const canRecordNcns = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+
+  /**
+   * NCNS from the assign picker (v2.2540). ORDER MATTERS: the RPC runs while the
+   * schedule blocks still exist — with zero clock sessions it accepts the incident
+   * only as "scheduled, no clock time", so clearing blocks first would make it
+   * refuse. On any RPC refusal (open session / already recorded / access denied)
+   * nothing else happens — no half-marked day.
+   */
+  const handleRecordNcnsFromAssignPicker = useCallback(
+    async (details: string) => {
+      if (!hubCellAddContext) return
+      const subjectUserId = hubCellAddContext.assigneeUserId
+      const workDateYmd = hubCellAddContext.workDate
+      const personName = hubPeopleNameById.get(subjectUserId) ?? 'Team member'
+      const existingBlockIds = (
+        hubPersonDayBlocks.get(hubPersonDayKey(subjectUserId, workDateYmd)) ?? []
+      ).map((b) => b.id)
+      closeHubAssignJobPicker()
+      setNotComingInBusy(true)
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            supabase.rpc('record_ncns_and_reject_sessions_for_day', {
+              p_subject_user_id: subjectUserId,
+              p_work_date: workDateYmd,
+              ...(details ? { p_details: details } : {}),
+            }),
+          'record ncns from dispatch',
+        )
+        const row = (data ?? [])[0] as
+          | { rejected_count: number; had_approved_sessions: boolean; error_message: string | null }
+          | undefined
+        if (!row || row.error_message) {
+          showToast(row?.error_message ?? 'Could not record NCNS.', 'error')
+          return
+        }
+
+        // Incident is on record — now clear the day like "not coming in" does,
+        // with the NCNS note so the board chip reads NCNS.
+        const timeOff = await recordNotComingInForUserAsStaff({
+          subjectUserId,
+          workDateYmd,
+          note: NO_CALL_NO_SHOW_NOTE,
+        })
+        let removedCount = 0
+        let removalFailures = 0
+        if (existingBlockIds.length > 0) {
+          const settled = await Promise.all(
+            existingBlockIds.map(async (id) => {
+              const { error } = await deleteJobScheduleBlock(id)
+              return { id, error }
+            }),
+          )
+          removedCount = settled.filter((r) => !r.error).length
+          removalFailures = settled.length - removedCount
+        }
+
+        const parts = [`NCNS recorded for ${personName} (${workDateYmd}).`]
+        if (row.rejected_count > 0) {
+          parts.push(`${row.rejected_count} clock session${row.rejected_count === 1 ? '' : 's'} rejected.`)
+        }
+        if (row.had_approved_sessions) parts.push('Approved hours were unwound.')
+        if (removedCount > 0) {
+          parts.push(`Removed ${removedCount} schedule block${removedCount === 1 ? '' : 's'}.`)
+        }
+        showToast(parts.join(' '), 'success')
+        if (!timeOff.ok) {
+          showToast(`Day-off marking failed: ${timeOff.message} (the incident is recorded).`, 'warning')
+        } else if (timeOff.alreadyMarked) {
+          showToast(`${personName} already had time off recorded for the day.`, 'warning')
+        } else if (timeOff.syncWarning) {
+          showToast(`Salary sync: ${timeOff.syncWarning}`, 'warning')
+        }
+        if (removalFailures > 0) {
+          showToast(
+            `${removalFailures} schedule block${removalFailures === 1 ? '' : 's'} could not be removed; please remove manually.`,
+            'warning',
+          )
+        }
+
+        if (jobId) {
+          await load()
+        } else {
+          await loadHub({ quiet: true })
+        }
+        void refreshHubUserTimeOff()
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : String(e), 'error')
+      } finally {
+        setNotComingInBusy(false)
+      }
+    },
+    [
+      hubCellAddContext,
+      hubPeopleNameById,
+      hubPersonDayBlocks,
+      closeHubAssignJobPicker,
+      showToast,
+      jobId,
+      load,
+      loadHub,
+      refreshHubUserTimeOff,
+    ],
+  )
+
   /** Empty-cell "off" button: mark that person/day as not coming in directly. */
   const onMarkNotComingInForCell = useCallback(
     (personUserId: string, workDate: string) => {
@@ -1711,6 +1822,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         personLabel: string
         workDate: string
         workDateLabel: string
+        /** NCNS chip: sterner modal copy — the attendance incident stays on record. */
+        isNcns: boolean
       }
     | null
   >(null)
@@ -1720,14 +1833,16 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     (personUserId: string, workDate: string) => {
       if (!canEdit) return
       const personLabel = hubPeopleNameById.get(personUserId) ?? 'Team member'
+      const cellInfo = hubUserTimeOffByCell.get(userTimeOffCellKey(personUserId, workDate))
       setUndoNotComingInTarget({
         personUserId,
         personLabel,
         workDate,
         workDateLabel: scheduleFormatWeekdayLong(workDate),
+        isNcns: cellInfo?.variant === 'ncns',
       })
     },
-    [canEdit, hubPeopleNameById],
+    [canEdit, hubPeopleNameById, hubUserTimeOffByCell],
   )
 
   const handleCancelUndoNotComingIn = useCallback(() => {
@@ -1753,7 +1868,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         showToast(`${target.personLabel} was already cleared for ${target.workDate}.`, 'warning')
       } else {
         showToast(
-          `${target.personLabel} is no longer marked Not coming in (${target.workDate}).`,
+          target.isNcns
+            ? `NCNS schedule mark cleared for ${target.personLabel} (${target.workDate}). The attendance incident stays on record.`
+            : `${target.personLabel} is no longer marked Not coming in (${target.workDate}).`,
           'success',
         )
         if (result.syncWarning) {
@@ -2405,6 +2522,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           busy={undoNotComingInBusy}
           personLabel={undoNotComingInTarget?.personLabel ?? ''}
           workDateLabel={undoNotComingInTarget?.workDateLabel ?? ''}
+          isNcns={undoNotComingInTarget?.isNcns ?? false}
           onCancel={handleCancelUndoNotComingIn}
           onConfirm={() => void handleConfirmUndoNotComingIn()}
         />
@@ -2482,6 +2600,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
                   busy: notComingInBusy,
                   onConfirm: handleMarkNotComingInTodayFromAssignPicker,
                 }
+              : undefined
+          }
+          noCallNoShow={
+            hubAssignJobPickerIntent === 'cell' && hubCellAddContext && canRecordNcns
+              ? { busy: notComingInBusy, onConfirm: handleRecordNcnsFromAssignPicker }
               : undefined
           }
         />

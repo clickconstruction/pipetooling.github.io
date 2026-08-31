@@ -53,6 +53,7 @@ import { RemoveScheduleBlockConfirmModal } from './scheduleDispatchRemoveBlockMo
 import {
   buildUserTimeOffByCell,
   fetchUserTimeOffForUsersInRange,
+  userTimeOffCellKey,
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
 
@@ -413,6 +414,8 @@ export function ScheduleDispatchJobWeek() {
         personLabel: string
         workDate: string
         workDateLabel: string
+        /** NCNS chip (v2.2540): sterner modal copy — the incident stays on record. */
+        isNcns: boolean
       }
     | null
   >(null)
@@ -422,14 +425,16 @@ export function ScheduleDispatchJobWeek() {
     (personUserId: string, workDate: string) => {
       if (!canEdit) return
       const personLabel = nameByUserId.get(personUserId) ?? 'Team member'
+      const cellInfo = userTimeOffByCell.get(userTimeOffCellKey(personUserId, workDate))
       setUndoNotComingInTarget({
         personUserId,
         personLabel,
         workDate,
         workDateLabel: scheduleFormatWeekdayLong(workDate),
+        isNcns: cellInfo?.variant === 'ncns',
       })
     },
-    [canEdit, nameByUserId],
+    [canEdit, nameByUserId, userTimeOffByCell],
   )
 
   const handleCancelUndoNotComingIn = useCallback(() => {
@@ -1076,6 +1081,7 @@ export function ScheduleDispatchJobWeek() {
         busy={undoNotComingInBusy}
         personLabel={undoNotComingInTarget?.personLabel ?? ''}
         workDateLabel={undoNotComingInTarget?.workDateLabel ?? ''}
+        isNcns={undoNotComingInTarget?.isNcns ?? false}
         onCancel={handleCancelUndoNotComingIn}
         onConfirm={() => void handleConfirmUndoNotComingIn()}
       />

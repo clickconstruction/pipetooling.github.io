@@ -16,6 +16,10 @@ const baseChipStyle: CSSProperties = {
 }
 
 function chipStyleForVariant(info: UserTimeOffCellInfo): CSSProperties {
+  if (info.variant === 'ncns') {
+    // Harder red than "Not coming in" — an NCNS is an attendance incident, not a heads-up.
+    return { ...baseChipStyle, background: '#dc2626', color: '#fff', borderColor: '#b91c1c' }
+  }
   if (info.variant === 'not_coming_in') {
     return { ...baseChipStyle, background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderColor: 'var(--border-red)' }
   }

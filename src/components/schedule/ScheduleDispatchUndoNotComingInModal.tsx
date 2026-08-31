@@ -11,6 +11,7 @@ export function ScheduleDispatchUndoNotComingInModal({
   workDateLabel,
   onCancel,
   onConfirm,
+  isNcns = false,
 }: {
   open: boolean
   busy: boolean
@@ -18,6 +19,8 @@ export function ScheduleDispatchUndoNotComingInModal({
   workDateLabel: string
   onCancel: () => void
   onConfirm: () => void
+  /** NCNS chip (v2.2540): sterner copy — clearing the mark never deletes the attendance incident. */
+  isNcns?: boolean
 }) {
   if (!open) return null
   return (
@@ -54,10 +57,17 @@ export function ScheduleDispatchUndoNotComingInModal({
           id="schedule-dispatch-undo-not-coming-in-title"
           style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}
         >
-          Remove the Not coming in mark?
+          {isNcns ? 'Clear the NCNS mark from the schedule?' : 'Remove the Not coming in mark?'}
         </h2>
         <p style={{ margin: '0 0 1rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.4 }}>
           {personLabel} on {workDateLabel} — they’ll be schedulable again.
+          {isNcns ? (
+            <>
+              {' '}
+              The <strong>attendance incident stays on record</strong> (write-ups &amp; review); removing
+              it is a separate payroll-side action.
+            </>
+          ) : null}
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button

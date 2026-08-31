@@ -1,14 +1,14 @@
 import { supabase } from './supabase'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { NOT_COMING_IN_NOTE } from './notComingInTimeOff'
+import { NOT_COMING_IN_NOTE, NO_CALL_NO_SHOW_NOTE } from './notComingInTimeOff'
 
 export type UserTimeOffRow = Pick<
   Database['public']['Tables']['user_time_off']['Row'],
   'id' | 'user_id' | 'start_date' | 'end_date' | 'kind' | 'note'
 >
 
-export type UserTimeOffCellVariant = 'not_coming_in' | 'time_off'
+export type UserTimeOffCellVariant = 'ncns' | 'not_coming_in' | 'time_off'
 
 export type UserTimeOffCellInfo = {
   variant: UserTimeOffCellVariant
@@ -35,17 +35,23 @@ function rowOverlapsDate(row: UserTimeOffRow, dayKey: string): boolean {
 /**
  * Pick the most specific overlapping row for a person/day. When more than one
  * `user_time_off` row overlaps the same day:
- *   1. prefer rows whose note matches `NOT_COMING_IN_NOTE` (the action we add
- *      from Schedule Dispatch);
+ *   1. prefer rows whose note matches a dispatch action — NCNS outranks
+ *      "Not coming in" (the incident is the weightier fact);
  *   2. then prefer single-day rows over multi-day ranges (more specific intent);
  *   3. otherwise fall back to the first match.
  */
 export function pickUserTimeOffRowForCell(rows: UserTimeOffRow[]): UserTimeOffRow | null {
   if (rows.length === 0) return null
+  // 0 = NCNS, 1 = Not coming in, 2 = anything else.
+  const dispatchRank = (row: UserTimeOffRow): number => {
+    const note = (row.note ?? '').trim()
+    if (note === NO_CALL_NO_SHOW_NOTE) return 0
+    if (note === NOT_COMING_IN_NOTE) return 1
+    return 2
+  }
   const sorted = [...rows].sort((a, b) => {
-    const aIsNci = (a.note ?? '').trim() === NOT_COMING_IN_NOTE
-    const bIsNci = (b.note ?? '').trim() === NOT_COMING_IN_NOTE
-    if (aIsNci !== bIsNci) return aIsNci ? -1 : 1
+    const rank = dispatchRank(a) - dispatchRank(b)
+    if (rank !== 0) return rank
     const aSingle = isSingleDayRow(a)
     const bSingle = isSingleDayRow(b)
     if (aSingle !== bSingle) return aSingle ? -1 : 1
@@ -56,10 +62,11 @@ export function pickUserTimeOffRowForCell(rows: UserTimeOffRow[]): UserTimeOffRo
 
 export function userTimeOffInfoFromRow(row: UserTimeOffRow): UserTimeOffCellInfo {
   const note = (row.note ?? '').trim()
+  const isNcns = note === NO_CALL_NO_SHOW_NOTE && isSingleDayRow(row)
   const isNci = note === NOT_COMING_IN_NOTE && isSingleDayRow(row)
   return {
-    variant: isNci ? 'not_coming_in' : 'time_off',
-    label: isNci ? 'Not coming in' : 'Off',
+    variant: isNcns ? 'ncns' : isNci ? 'not_coming_in' : 'time_off',
+    label: isNcns ? 'NCNS' : isNci ? 'Not coming in' : 'Off',
     note: row.note ?? null,
     kind: row.kind,
   }

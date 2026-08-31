@@ -75,6 +75,7 @@ export function ScheduleDispatchAssignJobPickerModal({
   duplicateAddressNotice,
   evidenceMode = 'lines-only',
   notComingIn,
+  noCallNoShow,
 }: {
   open: boolean
   onClose: () => void
@@ -110,6 +111,18 @@ export function ScheduleDispatchAssignJobPickerModal({
     busy?: boolean
     onConfirm: () => void | Promise<void>
   }
+  /**
+   * When provided (alongside notComingIn), the footer also offers a quieter
+   * "No call, no show" action (v2.2540). Its confirm step is sterner — it files
+   * an attendance incident, rejects clock time, clears blocks, and marks the day
+   * off — and takes an optional what-happened details string. Only pass it for
+   * viewers who can actually record NCNS (payroll-side roles); the RPC enforces
+   * regardless.
+   */
+  noCallNoShow?: {
+    busy?: boolean
+    onConfirm: (details: string) => void | Promise<void>
+  }
 }) {
   const searchRef = useRef<HTMLInputElement>(null)
   /** Phones: pin to the top and size to the visual viewport so the picker fills
@@ -117,6 +130,8 @@ export function ScheduleDispatchAssignJobPickerModal({
   const isMobile = useIsMobile()
   const visualViewportHeight = useVisualViewportHeight()
   const [notComingInConfirming, setNotComingInConfirming] = useState(false)
+  const [ncnsConfirming, setNcnsConfirming] = useState(false)
+  const [ncnsDetails, setNcnsDetails] = useState('')
   /** Keyboard-highlighted result (-1 = none); ↓/↑ move it, Enter picks it, typing resets it. */
   const [activeIndex, setActiveIndex] = useState(-1)
   /** "#" number mode (live-filter variant of the Stages jump chip). */
@@ -149,6 +164,10 @@ export function ScheduleDispatchAssignJobPickerModal({
   }, [open])
 
   useEffect(() => {
+    if (!open) {
+      setNcnsConfirming(false)
+      setNcnsDetails('')
+    }
     if (!open) setNotComingInConfirming(false)
   }, [open])
 
@@ -616,7 +635,94 @@ export function ScheduleDispatchAssignJobPickerModal({
             </ul>
           )}
         </div>
-        {notComingIn && notComingInConfirming ? (
+        {notComingIn && noCallNoShow && ncnsConfirming ? (
+          <div
+            role="alertdialog"
+            aria-label="Confirm record no-call-no-show"
+            style={{
+              border: '1px solid var(--border-red)',
+              background: 'var(--bg-red-tint)',
+              borderRadius: 6,
+              padding: '0.6rem 0.75rem',
+              marginTop: '0.75rem',
+            }}
+          >
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-red-900)', lineHeight: 1.4 }}>
+              Record a <strong>no-call-no-show</strong> for <strong>{notComingIn.personLabel}</strong>
+              {notComingIn.workDateLabel ? (
+                <>
+                  {' '}on <strong>{notComingIn.workDateLabel}</strong>
+                </>
+              ) : null}
+              ? This files an <strong>attendance incident</strong> (visible in write-ups and review),
+              rejects any clock time for the day
+              {notComingIn.existingBlockCount > 0 ? (
+                <>
+                  , removes their{' '}
+                  <strong>
+                    {notComingIn.existingBlockCount} schedule block
+                    {notComingIn.existingBlockCount === 1 ? '' : 's'}
+                  </strong>
+                </>
+              ) : null}
+              , and marks the day off.
+            </p>
+            <textarea
+              value={ncnsDetails}
+              onChange={(e) => setNcnsDetails(e.target.value)}
+              placeholder="What happened? (optional — saved on the incident)"
+              rows={2}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                marginBottom: '0.5rem',
+                padding: '0.4rem 0.5rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                fontSize: '0.8125rem',
+                font: 'inherit',
+                resize: 'vertical',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                disabled={noCallNoShow.busy}
+                onClick={() => setNcnsConfirming(false)}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.8125rem',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  cursor: noCallNoShow.busy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={noCallNoShow.busy}
+                onClick={() => {
+                  if (noCallNoShow.busy) return
+                  void noCallNoShow.onConfirm(ncnsDetails.trim())
+                }}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.8125rem',
+                  background: noCallNoShow.busy ? '#fca5a5' : '#b91c1c',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: noCallNoShow.busy ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                {noCallNoShow.busy ? 'Saving…' : 'Record NCNS'}
+              </button>
+            </div>
+          </div>
+        ) : notComingIn && notComingInConfirming ? (
           <div
             role="alertdialog"
             aria-label="Confirm mark not coming in today"
@@ -715,6 +821,27 @@ export function ScheduleDispatchAssignJobPickerModal({
                   }}
                 >
                   Not coming in today
+                </button>
+              ) : null}
+              {notComingIn && noCallNoShow ? (
+                <button
+                  type="button"
+                  disabled={noCallNoShow.busy}
+                  onClick={() => setNcnsConfirming(true)}
+                  title="Record a no-call-no-show — files an attendance incident"
+                  style={{
+                    padding: '0.45rem 0.6rem',
+                    fontSize: '0.8125rem',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-red-700)',
+                    cursor: noCallNoShow.busy ? 'not-allowed' : 'pointer',
+                    textDecoration: 'underline',
+                    fontWeight: 500,
+                    opacity: 0.85,
+                  }}
+                >
+                  No call, no show
                 </button>
               ) : null}
             </div>
