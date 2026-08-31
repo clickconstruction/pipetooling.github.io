@@ -143,6 +143,10 @@ This will also remove their **2 existing schedule blocks** for the day.
 {{button:outline|Cancel}} &nbsp; {{button:red|Confirm not coming in}}
 :::
 
+## Who came in late
+
+If someone clocks in more than 15 minutes after their first scheduled block, their day cell shows an amber **◔ Late** chip with how late they were (e.g. *◔ Late 2h 15m*). Nothing to mark and nothing to undo — it's computed from their actual clock-in against the schedule. Hover it for the receipt: scheduled start, actual clock-in, exact minutes. No chip means on time (within the grace window), and a person with **no** clock-in at all never shows Late — that's a call-out or no-show question, handled by the red chips above.
+
 ## No call, no show
 
 When someone simply didn't show and didn't call, use **No call, no show** — the quieter red link next to {{button:outline|Not coming in today}} in the same footer (office and payroll-side roles only). This one has teeth: besides clearing the day's blocks and marking the day off, it **files an attendance incident** (visible in write-ups and People → Review) and **rejects any clock time** recorded for the day. You can add a line about what happened — it's saved on the incident.
