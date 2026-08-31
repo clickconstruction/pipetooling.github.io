@@ -42,6 +42,7 @@ import { bidAttestationDisplayName, normalizeBidDateInput } from '../lib/bidDate
 import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
+import { RobotBidReadinessModal } from '../components/bids/RobotBidReadinessModal'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
@@ -405,6 +406,15 @@ export default function Bids() {
     () => partitionBidsByScope(bids, twinUserIds),
     [bids, twinUserIds],
   )
+
+  // Robot readiness (v2.2530): source bid id → its twin copy, for the board icon's
+  // "robot bid exists" state. Pairing is stamped by twin-mcp at open time.
+  const twinBidBySourceId = useMemo(() => {
+    const m = new Map<string, BidWithBuilder>()
+    for (const twin of robotBids) if (twin.twin_source_bid_id) m.set(twin.twin_source_bid_id, twin)
+    return m
+  }, [robotBids])
+  const [robotReadinessBid, setRobotReadinessBid] = useState<BidWithBuilder | null>(null)
   // Audits tab gating (v2.2517): tab shows whenever audits exist; label carries the
   // pending count so a waiting robot bid is visible from anywhere on the Bids page.
   const auditGate = useBidAuditsPendingCount(!!authUser?.id)
@@ -3133,8 +3143,23 @@ export default function Bids() {
           gcPacketsByBid={gcPacketsByBid}
           roomStatesByBid={roomStatesByBid}
           recipientsByBidId={bidGcRecipientsByBidId}
+          robotReadiness={
+            activeTab === 'robot-board'
+              ? undefined
+              : {
+                  twinBidBySourceId,
+                  onOpenReadiness: setRobotReadinessBid,
+                  onOpenTwinBid: applyBidBoardDeepLinkToBid,
+                }
+          }
         />
       )}
+
+      <RobotBidReadinessModal
+        bid={robotReadinessBid}
+        onClose={() => setRobotReadinessBid(null)}
+        onEditBid={(bid) => openEditBid(bid as BidWithBuilder)}
+      />
 
       {/* Builder Review Tab */}
       {(activeTab === 'builder-review' || activeTab === 'call-queue' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear') && (
