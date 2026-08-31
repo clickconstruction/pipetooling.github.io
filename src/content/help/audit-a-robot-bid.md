@@ -9,7 +9,8 @@ When a robot estimator finishes a draft bid, it asks for your audit. Everything 
 ## Find your pending audits
 
 1. Go to **Bids**. When a robot bid is waiting on you, an {{chip:yellow|Audits · 1}} tab appears near the Bid Board — the number is how many are waiting.
-2. Open it. Each waiting bid is a card marked {{chip:yellow|Awaiting your audit}}, with the draft total and row count right in the header.
+2. Open it. Audits show as one-line rows — bid, status, draft total, how far the robot landed from our number, question count, and age. **One card is open at a time**; tap any row to open it (finishing an audit opens the next one for you).
+3. The open card starts with a comparison strip — the robot's draft, our number (when it exists), and the difference. A shadow bid shows {{chip:gray|Δ sealed 🔒}} instead: the robot's price stays hidden until our bid goes out, so nobody's estimate can be influenced.
 
 ## Look the bid over (two quick links)
 
@@ -23,9 +24,10 @@ Mention pin numbers in your notes — "pin 3: those are by others" — and the r
 
 ## Answer its questions and leave your notes
 
-1. The card lists **the robot's questions** first (🤖). Type in the box and hit {{button:blue|Answer}} — short is fine.
-2. Below are note boxes for **Counts**, **Footage**, **Pricing**, **Scope**, and **General**. Type each thing you'd tell a junior estimator — "waste footage way low", "we always carry travel past 200 miles" — and hit {{button:gray|Add}}. Use whichever box fits; **General** takes anything.
-3. When you're done, hit {{button:green|Finish audit}}. The card flips to {{chip:blue|Waiting on robot digest}} and the bid's ledger records that you finished.
+1. **Biggest rows — tap to judge**: the card lists the robot's largest-dollar rows. Tap 👍 if a row looks right, or 🚩 to flag it — a flag drafts the note for you ("ft of 2" waste — robot has ×224…"), ready to finish in your own words and {{button:gray|Add note}}.
+2. The card lists **the robot's questions** (🤖), each anchored to the plan sheet it came from. Type in the box and hit {{button:blue|Answer}} — short is fine.
+3. Anything else goes in the **one note box** at the bottom — pick a section chip (Counts / Footage / Pricing / Scope / General) if it fits, or leave it on General. Type each thing you'd tell a junior estimator — "we always carry travel past 200 miles."
+4. When you're done, hit {{button:green|Finish audit}}. The card flips to {{chip:blue|Waiting on robot digest}}, the ledger records it, and the next waiting audit opens automatically.
 
 ## What happens to your notes
 
