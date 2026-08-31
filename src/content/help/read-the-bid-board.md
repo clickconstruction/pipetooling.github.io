@@ -100,6 +100,10 @@ Every row carries a small robot icon just left of the bid number:
   bid** — the icon turns green and the request lands in the robot queue.
 - **Green** — a robot bid has been requested (hover shows when). Click again to
   withdraw the request.
+- **Grade badge (A / B / C / D / X)** — on **won, lost, and started** bids the icon
+  answers a different question: how much can a robot *learn* from this record? Green A
+  = complete training reference; amber = partly recorded; grey X = no plans on file.
+  Click for the checklist of what's missing and the quickest fix.
 - **🤖 (colorful)** — a robot bid already exists. Click for a side-by-side comparison —
   the robot's number vs ours, counts, and footage — with jump links to the robot's
   counts, pricing, and CountTooling takeoff, plus our own counts and pricing.
