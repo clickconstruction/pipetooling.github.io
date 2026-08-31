@@ -48,6 +48,25 @@ calibration self-verifying:
   hand-convert.
 - Scoring: CT repo `takeoff-eval.js` (`diffTakeoffs`) against a human reference.
 
+## Sheet coverage: read EVERY sheet, demo plans included (BT-2 doctrine, 2026-08-30)
+
+The sheet inventory is a checklist, not a menu. Walk **every** sheet in the set and
+account for each one in your import note — traced, counted, or excluded WITH the
+reason written down. Two classes trap a plans-sheet-only reader:
+
+- **Demo plans (PD-\*, D-\*, "PLUMBING DEMOLITION")** carry real scope: fixtures to
+  remove, cap, or relocate, each a labor/pricing row even though nothing new is
+  installed. Count them like any plan sheet — a `Demo` canvas with one counter per
+  demoed fixture class (`DEMO · WC remove`, `DEMO · cap 2"W`) keeps them out of the
+  new-work tallies while pricing still sees them. On BT-2 the unread PD-100 hid 27
+  demo fixtures (~$13.5k of scope).
+- **Schedules, notes, risers, and site sheets** aren't traced, but each still gets a
+  pass for keyed notes, printed totals, mount heights, and by-others statements —
+  the reconciliation inputs the other doctrines below consume.
+
+A sheet your import note doesn't mention is a silent gap; the auditor should be able
+to read the note and know no sheet was skipped.
+
 ## The counters-first procedure
 
 1. **Read the substrate first** (`get_plan_brief`): the fixture schedule is your counter
@@ -86,6 +105,12 @@ hand-derived coordinate is a bug you'll find only at review.
 - **Counts vs schedule** (`countsVsSchedule`, printed by the assembler): every scheduled
   tag placed the scheduled number of times; qty-less schedules check presence.
   Reconciliation rows in the substrate (plan vs riser counts) are the tie-breaker.
+- **Tile-seam dedup runs automatically** (BT-2: FD-2 counted 12 vs 11 off a ~22 px
+  overlap pair): the assembler drops same-counter same-page marks within 24 raw px
+  (`dedupeSeamMarks`; `"seamDedupePx"` in the manifest overrides, 0 disables) and
+  prints every drop. Read that list — a drop that ISN'T a seam pair means two real
+  fixtures sit closer than the window; re-place with `seamDedupePx` lowered rather
+  than losing one.
 - **Local validation** mirrors import-takeoff exactly — a clean assemble never 400s.
 - **Visual spot-check**: re-crop 2–3 placed points (±60 px window at 300 DPI) and confirm
   the mark sits on the symbol. Cheap, catches frame mistakes wholesale.
@@ -253,6 +278,30 @@ The assembler folds allowances into the size-split feet and fitting counts of
 the **tooling paste block** (`<out>.tooling.txt` — the ESTIMATE view) and prints
 them itemized. CountTooling stays the DRAWN view — allowances never appear as
 lines there, because nothing on the sheet registers them.
+
+## Developed length: price developed feet, not projected feet (BT-2 doctrine, 2026-08-30)
+
+BT-2 proved the residual: with registration-clean traces AND itemized vertical
+allowances, twin footage still ran **55–65% of the human reference on every
+system**. What's missing is developed length — fitting take-up, offsets around
+structure, trap arms and sub-resolution laterals, the wall-thickness the plan-view
+centerline ignores. Estimators price developed feet; the drawn takeoff is a
+projection.
+
+- Declare per-system factors in the manifest:
+  `"developedLength": [{ "system": "Cold Water", "factor": 1.6, "source": "BT-2 calibration 2026-08-30" }]`.
+  **Default 1.6** (the BT-2 midpoint; `DEFAULT_DEVELOPED_LENGTH_FACTOR` in the
+  kernel) for every traced pressure + DWV system until a later backtest recalibrates
+  per system — every factor NAMES ITS SOURCE like any allowance.
+- The assembler scales DRAWN feet inside the size-split tooling rows (price-book
+  names still match) and prints the per-system itemization (drawn × factor =
+  developed); vertical allowances ride **unscaled** — they are already real 3D feet.
+- CountTooling stays the drawn view: factors never touch the CT lines, only the
+  tooling paste block. A system the factor list doesn't cover is carried as-is and
+  the report says so — an uncovered system is visible, never silently unscaled.
+- Recalibration duty: every backtest recomputes twin-vs-reference footage per
+  system; a factor that leaves the ratio outside 0.9–1.1 gets retuned in this file
+  with the new backtest named as source.
 
 ## Size attribution (BT-1 doctrine)
 
