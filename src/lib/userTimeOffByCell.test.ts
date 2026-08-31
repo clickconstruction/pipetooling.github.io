@@ -6,7 +6,7 @@ import {
   userTimeOffInfoFromRow,
   type UserTimeOffRow,
 } from './userTimeOffByCell'
-import { NOT_COMING_IN_NOTE } from './notComingInTimeOff'
+import { NOT_COMING_IN_NOTE, NO_CALL_NO_SHOW_NOTE } from './notComingInTimeOff'
 
 const baseRow = (overrides: Partial<UserTimeOffRow>): UserTimeOffRow => ({
   id: 'r1',
@@ -181,5 +181,29 @@ describe('buildUserTimeOffByCell', () => {
     expect(map.get(userTimeOffCellKey('u2', '2026-05-19'))?.variant).toBe('time_off')
     expect(map.has(userTimeOffCellKey('u1', '2026-05-19'))).toBe(false)
     expect(map.has(userTimeOffCellKey('u2', '2026-05-18'))).toBe(false)
+  })
+})
+
+// v2.2540: the dispatch NCNS action gets its own chip variant, outranking
+// "Not coming in" when both rows overlap a day.
+describe('NCNS cell variant (v2.2540)', () => {
+  it('single-day NCNS note renders the ncns variant with the NCNS label', () => {
+    const info = userTimeOffInfoFromRow(baseRow({ note: NO_CALL_NO_SHOW_NOTE }))
+    expect(info.variant).toBe('ncns')
+    expect(info.label).toBe('NCNS')
+  })
+
+  it('multi-day rows with the NCNS note fall back to plain time off', () => {
+    const info = userTimeOffInfoFromRow(
+      baseRow({ note: NO_CALL_NO_SHOW_NOTE, start_date: '2026-08-30', end_date: '2026-08-31' }),
+    )
+    expect(info.variant).toBe('time_off')
+  })
+
+  it('NCNS outranks Not coming in when both overlap the day', () => {
+    const nci = baseRow({ id: 'nci', note: NOT_COMING_IN_NOTE })
+    const ncns = baseRow({ id: 'ncns', note: NO_CALL_NO_SHOW_NOTE })
+    expect(pickUserTimeOffRowForCell([nci, ncns])?.id).toBe('ncns')
+    expect(pickUserTimeOffRowForCell([ncns, nci])?.id).toBe('ncns')
   })
 })

@@ -143,6 +143,13 @@ This will also remove their **2 existing schedule blocks** for the day.
 {{button:outline|Cancel}} &nbsp; {{button:red|Confirm not coming in}}
 :::
 
+## No call, no show
+
+When someone simply didn't show and didn't call, use **No call, no show** — the quieter red link next to {{button:outline|Not coming in today}} in the same footer (office and payroll-side roles only). This one has teeth: besides clearing the day's blocks and marking the day off, it **files an attendance incident** (visible in write-ups and People → Review) and **rejects any clock time** recorded for the day. You can add a line about what happened — it's saved on the incident.
+
+The cell then shows a solid red **NCNS** chip instead of the softer "Not coming in" one. Clicking the chip clears the schedule marking if plans change — but the attendance incident stays on record; removing an incident is a separate payroll-side action.
+
+
 Once confirmed, the cell shows a {{chip:red|Not coming in}} chip. Click the chip to undo it.
 
 ## Sharing the day's schedule
