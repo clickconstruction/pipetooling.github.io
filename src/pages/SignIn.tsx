@@ -135,7 +135,10 @@ export default function SignIn() {
 
   if (magicSent) {
     return (
-      <AuthPublicLandingLayout>
+      <AuthPublicLandingLayout
+        titleLinkText="ClickPlumbing.com"
+        titleLinkAriaLabel="ClickPlumbing.com — visit Click Plumbing (opens in new tab)"
+      >
         <div className="auth-public-landing__signin-stack">
           <div className="auth-public-landing__signin-box">
             <div className="auth-public-landing__signin-magic-sent">
@@ -170,7 +173,10 @@ export default function SignIn() {
   }
 
   return (
-    <AuthPublicLandingLayout>
+    <AuthPublicLandingLayout
+      titleLinkText="ClickPlumbing.com"
+      titleLinkAriaLabel="ClickPlumbing.com — visit Click Plumbing (opens in new tab)"
+    >
       <div className="auth-public-landing__signin-stack">
         <div className="auth-public-landing__signin-box">
           {sessionMessage && (

@@ -108,8 +108,9 @@ Prep merged in v2.2440 — all zero-behavior-change:
   twin-mcp), UA string in check-estimate-attachment-url, `twin-mcp` tool
   descriptions.
 - **Resend sender migration: DONE (v2.2496, completed 2026-08-29)** — email
-  sends from `ClickTooling <team@noreply.clicktooling.com>` (display name
-  flipped from PipeTooling 2026-08-31, alongside the v2.2525/v2.2526 renames;
+  sends from `Click Plumbing and Electrical <team@noreply.clicktooling.com>`
+  (display name flipped from PipeTooling 2026-08-31 alongside the
+  v2.2525/v2.2526 renames — owner picked the company name over the app name;
   same secret, same verified domain — functions pick it up on cold start).
   1. Flip point (v2.2496): every sender reads the `EMAIL_FROM` function secret
      via `supabase/functions/_shared/emailFrom.ts` (fallback = the pipetooling
