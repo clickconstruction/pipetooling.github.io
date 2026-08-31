@@ -76,6 +76,8 @@ type BidsBidBoardTabProps = {
     twinBidBySourceId: ReadonlyMap<string, BidWithBuilder>
     onOpenReadiness: (bid: BidWithBuilder) => void
     onOpenTwinBid: (twin: BidWithBuilder, source: BidWithBuilder) => void
+    /** v2.2542: yellow click requests a robot bid (green); green click withdraws. */
+    onToggleRequest: (bid: BidWithBuilder) => void
   }
 }
 
@@ -437,13 +439,20 @@ export function BidsBidBoardTab({
       )
     }
     const ready = robotBidReadiness(bid).state === 'ready'
+    // v2.2542: the prompt modal left the board — yellow requests (green), green withdraws.
+    const requested = ready && !!bid.robot_requested_at
+    const title = requested
+      ? `Robot bid requested ${new Date(bid.robot_requested_at!).toLocaleDateString()} — click to withdraw`
+      : ready
+        ? 'Ready for a robot — click to request a robot bid'
+        : 'A robot can’t bid this yet — see why'
     return (
       <button
         type="button"
-        onClick={() => robotReadiness.onOpenReadiness(bid)}
-        title={ready ? 'Ready for a robot — get the kickoff prompt' : 'A robot can’t bid this yet — see why'}
-        aria-label={`${ready ? 'Robot-ready' : 'Not robot-ready'} — ${bid.project_name ?? 'bid'}`}
-        style={{ ...actionStyle, color: ready ? '#eab308' : 'var(--border-strong)' }}
+        onClick={() => (ready ? robotReadiness.onToggleRequest(bid) : robotReadiness.onOpenReadiness(bid))}
+        title={title}
+        aria-label={`${requested ? 'Robot bid requested' : ready ? 'Robot-ready' : 'Not robot-ready'} — ${bid.project_name ?? 'bid'}`}
+        style={{ ...actionStyle, color: requested ? '#16a34a' : ready ? '#eab308' : 'var(--border-strong)' }}
       >
         <BidBoardIcon d={BID_BOARD_ICON_PATHS.robot} size={18} />
       </button>

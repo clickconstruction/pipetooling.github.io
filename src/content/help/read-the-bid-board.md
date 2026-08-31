@@ -93,9 +93,10 @@ Every row carries a small robot icon just left of the bid number:
 - **Grey** — a robot can't duplicate this bid yet. Click it to see exactly what's
   missing (plans link and service type are the blockers) with a fix hint for each,
   and jump straight into the Edit form.
-- **Yellow** — the bid has everything a robot needs. Click it and copy the ready-made
-  kickoff prompt; paste that into the robot and it produces a full blind bid and files
-  an audit when done.
+- **Yellow** — the bid has everything a robot needs. **Click it to request a robot
+  bid** — the icon turns green and the request lands in the robot queue.
+- **Green** — a robot bid has been requested (hover shows when). Click again to
+  withdraw the request.
 - **🤖 (colorful)** — a robot bid already exists. Click for a side-by-side comparison —
   the robot's number vs ours, counts, and footage — with jump links to the robot's
   counts, pricing, and CountTooling takeoff, plus our own counts and pricing.
