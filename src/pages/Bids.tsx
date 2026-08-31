@@ -43,6 +43,7 @@ import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { RobotBidReadinessModal } from '../components/bids/RobotBidReadinessModal'
+import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
@@ -415,6 +416,7 @@ export default function Bids() {
     return m
   }, [robotBids])
   const [robotReadinessBid, setRobotReadinessBid] = useState<BidWithBuilder | null>(null)
+  const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
   // Audits tab gating (v2.2517): tab shows whenever audits exist; label carries the
   // pending count so a waiting robot bid is visible from anywhere on the Bids page.
   const auditGate = useBidAuditsPendingCount(!!authUser?.id)
@@ -3149,7 +3151,7 @@ export default function Bids() {
               : {
                   twinBidBySourceId,
                   onOpenReadiness: setRobotReadinessBid,
-                  onOpenTwinBid: applyBidBoardDeepLinkToBid,
+                  onOpenTwinBid: (twin, source) => setRobotComparePair({ source, twin }),
                 }
           }
         />
@@ -3159,6 +3161,13 @@ export default function Bids() {
         bid={robotReadinessBid}
         onClose={() => setRobotReadinessBid(null)}
         onEditBid={(bid) => openEditBid(bid as BidWithBuilder)}
+      />
+
+      <RobotBidComparisonModal
+        pair={robotComparePair}
+        onClose={() => setRobotComparePair(null)}
+        onOpenBidTab={(bid, tab) => selectBidAndSyncUrl(bid as BidWithBuilder, tab)}
+        onOpenRobotBoard={(twin) => applyBidBoardDeepLinkToBid(twin as BidWithBuilder)}
       />
 
       {/* Builder Review Tab */}

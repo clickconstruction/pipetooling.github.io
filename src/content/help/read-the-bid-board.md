@@ -96,7 +96,9 @@ Every row carries a small robot icon just left of the bid number:
 - **Yellow** — the bid has everything a robot needs. Click it and copy the ready-made
   kickoff prompt; paste that into the robot and it produces a full blind bid and files
   an audit when done.
-- **🤖 (colorful)** — a robot bid already exists. Click to jump to it on the Robot Board.
+- **🤖 (colorful)** — a robot bid already exists. Click for a side-by-side comparison —
+  the robot's number vs ours, counts, and footage — with jump links to the robot's
+  counts, pricing, and CountTooling takeoff, plus our own counts and pricing.
 
 ## Deciding whether to bid at all
 

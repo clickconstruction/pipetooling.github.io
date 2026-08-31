@@ -75,7 +75,7 @@ type BidsBidBoardTabProps = {
     /** source bid id → its digital-twin copy (bids.twin_source_bid_id pairing). */
     twinBidBySourceId: ReadonlyMap<string, BidWithBuilder>
     onOpenReadiness: (bid: BidWithBuilder) => void
-    onOpenTwinBid: (twin: BidWithBuilder) => void
+    onOpenTwinBid: (twin: BidWithBuilder, source: BidWithBuilder) => void
   }
 }
 
@@ -427,9 +427,9 @@ export function BidsBidBoardTab({
       return (
         <button
           type="button"
-          onClick={() => robotReadiness.onOpenTwinBid(twin)}
-          title={`Robot bid exists (b${twin.bid_number ?? '?'}) — open it on the Robot Board`}
-          aria-label={`Robot bid exists for ${bid.project_name ?? 'bid'} — open it on the Robot Board`}
+          onClick={() => robotReadiness.onOpenTwinBid(twin, bid)}
+          title={`Robot bid exists (b${twin.bid_number ?? '?'}) — see how it compares`}
+          aria-label={`Robot bid exists for ${bid.project_name ?? 'bid'} — see how it compares`}
           style={{ ...actionStyle, fontSize: '0.9375rem', lineHeight: 1 }}
         >
           {'\u{1F916}'}
