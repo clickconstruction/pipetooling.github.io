@@ -165,6 +165,32 @@ const TOOLS = [
       required: ['mission', 'report'],
     },
   },
+  {
+    name: 'open_backtest',
+    description:
+      "Open a blind backtest of a human reference bid (pipeline STG-0): creates a 'ZZ Twin <PROJECT> (backtest)' bid owned by and assigned to YOUR twin, copying ONLY the reference's logistics (project name, address, customer, service type, distance, plans link) — never its counts, pricing, value, or outcome, so the blind protocol is structural. Idempotent per reference. Stamps the STG-0 ledger note. The reference stays sealed until your STG-6 scorecard stamp.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        reference_bid: { type: 'string', description: "The human bid to re-estimate blind (e.g. 'b370' or uuid)" },
+        due_in_days: { type: 'number', description: 'Optional due date offset for the twin bid (default 7)' },
+      },
+      required: ['reference_bid'],
+    },
+  },
+  {
+    name: 'add_bid_note',
+    description:
+      "Write one entry to a bid's audit ledger — the pipeline's flight recorder ('[pipeline STG-N] …' stamps, scorecards, run logs). Only on bids you created or are the assigned estimator for. Notes never move the follow-up clock.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Bid (e.g. 'b406' or uuid) — must be yours (assigned/created)" },
+        note: { type: 'string', description: 'The ledger entry text (max 8000 chars)' },
+      },
+      required: ['bid', 'note'],
+    },
+  },
 ]
 
 function json(body: unknown, status = 200): Response {
@@ -574,6 +600,76 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (error) return textContent(`Report not saved: ${error.message}`, true)
       return textContent(`Report filed for ${mission} — it is in the fleet ledger, attributed to ${twin.email}.`)
     }
+    case 'open_backtest': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.reference_bid ?? '').trim()
+      if (!ref) return textContent('Missing reference_bid (bid number like b370, or uuid)', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      // Logistics fields ONLY — the blind protocol is structural: counts, pricing,
+      // bid_value, and outcome are never selected here and never reach the caller.
+      let rq = admin.from('bids').select('id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id')
+      rq = uuidRe.test(ref) ? rq.eq('id', ref) : rq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: refBid, error: refErr } = await rq.maybeSingle()
+      if (refErr) return textContent(`Reference lookup failed: ${refErr.message}`, true)
+      if (!refBid) return textContent(`No bid found for "${ref}"`, true)
+      const ztName = `ZZ Twin ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()} (backtest)`
+      const { data: existing } = await admin
+        .from('bids').select('id, bid_number').eq('created_by', twin.twinUserId).eq('project_name', ztName).maybeSingle()
+      if (existing) {
+        return textContent(JSON.stringify({ ok: true, reused: true, bid: `b${existing.bid_number}`, bid_id: existing.id, name: ztName }, null, 2))
+      }
+      const dueDays = Number(args.due_in_days ?? 7)
+      const due = new Date(Date.now() + (Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 7) * 86400_000).toISOString().slice(0, 10)
+      const { data: created, error: insErr } = await admin
+        .from('bids')
+        .insert({
+          project_name: ztName,
+          address: refBid.address,
+          customer_id: refBid.customer_id,
+          service_type_id: refBid.service_type_id,
+          distance_from_office: refBid.distance_from_office,
+          plans_link: refBid.plans_link,
+          gc_builder_id: refBid.gc_builder_id,
+          bid_due_date: due,
+          created_by: twin.twinUserId,
+          estimator_id: twin.twinUserId,
+          notes: `Blind backtest of b${refBid.bid_number}. Reference sealed until the STG-6 scorecard stamp. Opened via twin-mcp open_backtest.`,
+        })
+        .select('id, bid_number')
+        .single()
+      if (insErr) return textContent(`Backtest bid not created: ${insErr.message}`, true)
+      await admin.from('bids_submission_entries').insert({
+        bid_id: created.id,
+        notes: `[pipeline STG-0] Blind backtest of b${refBid.bid_number} (${refBid.project_name}) opened via twin-mcp open_backtest by ${twin.email}. Logistics copied (address, customer, service type, distance ${refBid.distance_from_office ?? '?'} mi, plans link); reference counts/pricing/outcome SEALED until STG-6.`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({
+        ok: true, reused: false, bid: `b${created.bid_number}`, bid_id: created.id, name: ztName,
+        logistics: { address: refBid.address, distance_from_office: refBid.distance_from_office, plans_link: !!refBid.plans_link, due },
+        next: 'file_plans if plans_link is empty; then substrate (STG-2), takeoff (STG-3), counts+books (STG-5), scorecard (STG-6), audit.',
+      }, null, 2))
+    }
+    case 'add_bid_note': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const note = String(args.note ?? '').trim()
+      if (!ref || !note) return textContent('add_bid_note needs bid + note', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let q = admin.from('bids').select('id, bid_number, estimator_id, created_by')
+      q = uuidRe.test(ref) ? q.eq('id', ref) : q.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid, error } = await q.maybeSingle()
+      if (error) return textContent(`Bid lookup failed: ${error.message}`, true)
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.estimator_id !== twin.twinUserId && bid.created_by !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — notes land only on your own bids.`, true)
+      }
+      const { error: insErr } = await admin.from('bids_submission_entries').insert({ bid_id: bid.id, notes: note.slice(0, 8000) })
+      if (insErr) return textContent(`Note not saved: ${insErr.message}`, true)
+      return textContent(`Note recorded on b${bid.bid_number} (${note.length > 120 ? note.slice(0, 120) + '…' : note})`)
+    }
     default:
       return textContent(`Unknown tool: ${name}`, true)
   }
@@ -588,7 +684,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.0.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.1.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
