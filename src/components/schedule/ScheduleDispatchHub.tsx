@@ -61,6 +61,8 @@ import {
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
+import { ScheduleDispatchLateChip } from './ScheduleDispatchLateChip'
+import { latenessCellKey, type PersonDayLateness } from '../../lib/scheduleLateness'
 import { DispatchSettingsModal, type DispatchSettingsModalRosterRow } from './DispatchSettingsModal'
 import { useDispatchNoteRequirements } from '../../contexts/DispatchNoteRequirementsContext'
 import {
@@ -1072,6 +1074,7 @@ function HubPeopleDayCell({
   onRequestEditBlockNote,
   onOpenPersonDay,
   timeOffInfo,
+  lateInfo,
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
   linkedCopyMode = null,
@@ -1110,6 +1113,8 @@ function HubPeopleDayCell({
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
   onOpenPersonDay?: (b: JobScheduleBlockRow) => void
   timeOffInfo?: UserTimeOffCellInfo | null
+  /** Derived lateness for this person-day (v2.2550); suppressed while a time-off chip shows. */
+  lateInfo?: PersonDayLateness | null
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
   linkedCopyMode?: LinkedCopyMode | null
@@ -1259,6 +1264,10 @@ function HubPeopleDayCell({
                 : 'Click to mark as coming in'
             }
           />
+        </div>
+      ) : lateInfo ? (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+          <ScheduleDispatchLateChip info={lateInfo} />
         </div>
       ) : null}
       {cellBlocks.length === 0 ? (
@@ -1487,6 +1496,8 @@ type HubPeoplePanelProps = {
   showHideWeekendToggle?: boolean
   /** Per-cell time-off info keyed by `userTimeOffCellKey`; when present a chip is rendered. */
   userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
+  /** Derived per-cell lateness (v2.2550) — renders the informational amber Late chip. */
+  latenessByCell?: ReadonlyMap<string, PersonDayLateness>
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
@@ -1554,6 +1565,7 @@ function HubPeoplePanel({
   showExpectedManpower = true,
   showHideWeekendToggle = true,
   userTimeOffByCell,
+  latenessByCell,
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
 }: HubPeoplePanelProps) {
@@ -2339,6 +2351,8 @@ function HubPeoplePanel({
                     const cellBlocks = personDayBlocks.get(hubPersonDayKey(person.userId, dk)) ?? []
                     const timeOffInfo =
                       userTimeOffByCell?.get(userTimeOffCellKey(person.userId, dk)) ?? null
+                    const lateInfo =
+                      timeOffInfo ? null : latenessByCell?.get(latenessCellKey(person.userId, dk)) ?? null
                     return (
                       <HubPeopleDayCell
                         key={dk}
@@ -2375,6 +2389,7 @@ function HubPeoplePanel({
                         onRequestEditBlockNote={onRequestEditBlockNote}
               onOpenPersonDay={onOpenPersonDay}
                         timeOffInfo={timeOffInfo}
+                        lateInfo={lateInfo}
                         onRequestUndoNotComingIn={onRequestUndoNotComingIn}
                         onMarkNotComingInForCell={onMarkNotComingInForCell}
                         isBottomRow={itemIndex === peopleDisplayRows.length - 1}
@@ -2958,6 +2973,8 @@ type Props = {
   showHideWeekendToggle?: boolean
   /** Map keyed by `userTimeOffCellKey(userId, workDate)` → time-off info to render as a chip on the cell. */
   userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
+  /** Derived per-cell lateness (v2.2550) — renders the informational amber Late chip. */
+  latenessByCell?: ReadonlyMap<string, PersonDayLateness>
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
@@ -3065,6 +3082,7 @@ export function ScheduleDispatchHub({
   showHubViewTabs = true,
   showHideWeekendToggle = true,
   userTimeOffByCell,
+  latenessByCell,
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
   weekNavRightSlot,
@@ -3492,6 +3510,7 @@ export function ScheduleDispatchHub({
           showExpectedManpower={showExpectedManpower}
           showHideWeekendToggle={showHideWeekendToggle}
           userTimeOffByCell={userTimeOffByCell}
+          latenessByCell={latenessByCell}
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
           onMarkNotComingInForCell={onMarkNotComingInForCell}
         />
@@ -3590,6 +3609,7 @@ export function ScheduleDispatchHub({
           showExpectedManpower={showExpectedManpower}
           showHideWeekendToggle={showHideWeekendToggle}
           userTimeOffByCell={userTimeOffByCell}
+          latenessByCell={latenessByCell}
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
           onMarkNotComingInForCell={onMarkNotComingInForCell}
         />

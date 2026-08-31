@@ -110,6 +110,7 @@ import {
   userTimeOffCellKey,
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
+import { computeLatenessByCell, fetchClockInsForUsersInRange, type PersonDayLateness } from '../../lib/scheduleLateness'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 import { stripTrailingZip } from '../../lib/displayAddress'
 
@@ -433,6 +434,32 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     () => [...hubAllPeopleRows.map((r) => r.userId)].sort().join('|'),
     [hubAllPeopleRows],
   )
+
+  /** Derived Late chips (v2.2550): clock-ins vs earliest block start, per cell. */
+  const [hubLatenessByCell, setHubLatenessByCell] = useState<Map<string, PersonDayLateness>>(
+    () => new Map(),
+  )
+  const refreshHubLateness = useCallback(async () => {
+    const userIds = hubAllPeopleRows.map((r) => r.userId)
+    if (userIds.length === 0 || !weekStart || !weekEnd || hubWeekBlocks.length === 0) {
+      setHubLatenessByCell(new Map())
+      return
+    }
+    const { data, error } = await fetchClockInsForUsersInRange(userIds, weekStart, weekEnd)
+    if (error) return
+    const blockRows = hubWeekBlocks.map((b) => ({
+      assignee_user_id: b.assignee_user_id,
+      work_date: b.work_date,
+      time_start: b.time_start,
+      job_label:
+        (hubJobTitleById.get(scheduleBlockAnchorId(b)) ?? '').split('·')[0]?.trim() || null,
+    }))
+    setHubLatenessByCell(computeLatenessByCell(blockRows, data))
+  }, [hubAllPeopleRows, weekStart, weekEnd, hubWeekBlocks, hubJobTitleById])
+
+  useEffect(() => {
+    void refreshHubLateness()
+  }, [refreshHubLateness])
 
   const refreshHubUserTimeOff = useCallback(async () => {
     const userIds = hubAllPeopleRows.map((r) => r.userId)
@@ -2444,6 +2471,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               })
             }
             userTimeOffByCell={hubUserTimeOffByCell}
+            latenessByCell={hubLatenessByCell}
             onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
             onMarkNotComingInForCell={canEdit ? onMarkNotComingInForCell : undefined}
           />
