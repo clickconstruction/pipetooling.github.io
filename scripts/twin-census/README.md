@@ -50,3 +50,23 @@ missed. Results: `example-livste-results.json`.
   classify tip direction from the *average* of the two edge vectors.
 - Chairs and table symbols are the false-positive reservoir (45-degree
   diagonals); the slope-ratio window rejects them.
+
+## T2 — path_census.py (footage)
+
+`path_census.py inventory plans.pdf 84` buckets every stroke by CAD pen
+(gray, width); `path_census.py chains plans.pdf 84 0.0 2.33 9 5` chains
+one pen's strokes into runs and reports per-run footage with symbol /
+margin / border chains filtered out. Decide pen→system once per set by
+painting a bucket over a 72dpi render (1px = 1pt) and looking.
+
+Scale: calibrate pt-per-ft from grid-label spacing vs the stated bay
+size (TSAOG: 270pt bays = 30'-0" -> 9 pt/ft on full-size 30x42 at 1/8").
+
+Validated mechanics on TSAOG (four pens decoded: sanitary, CW, fire,
+storm/RD; runs match the drawing on overlay). The 0.85-1.1
+reference-ratio gate is pending a scope-matched reference — the TSAOG
+attempt instead surfaced that the fetched set was core/shell while the
+reference takeoff priced the tenant fit-out (BT-15 reclassified).
+**Protocol rule that fall-out bought: at unseal, line-compare the
+reference takeoff's tags against the fetched set — a reference fixture
+absent from the set means scope mismatch, stop scoring.**
