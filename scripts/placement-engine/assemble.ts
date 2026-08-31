@@ -19,7 +19,7 @@
  * }
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines, deriveFittings, fittingSummary, materializeFittings, applyDefaultCanvases, expandVerticalAllowances, buildToolingRows, type VerticalAllowance } from '../../src/lib/takeoffPlacement'
+import { assembleTakeoff, validateTakeoff, countsVsSchedule, calibrateFromDoors, feetByLineType, marksFarFromLines, deriveFittings, fittingSummary, materializeFittings, applyDefaultCanvases, expandVerticalAllowances, buildToolingRows, dedupeSeamMarks, developedFeetBySystem, type VerticalAllowance, type DevelopedLengthFactor } from '../../src/lib/takeoffPlacement'
 
 const args = process.argv.slice(2).filter((a) => a !== '--')
 const manifestPath = args[0]
@@ -54,6 +54,19 @@ const systemById = new Map<string, string>()
     // unsized line still uses it).
     const used = new Set((manifest.lines ?? []).map((l: { lineTypeId: string }) => l.lineTypeId))
     manifest.lineTypes = [...baseTypes, ...extraTypes.values()].filter((lt) => used.has(lt.id))
+  }
+}
+// Tile-seam dedup (BT-2: FD-2 12v11 off a ~22 px overlap pair). Default 24 raw px at
+// each mark's dpi; `"seamDedupePx": 0` in the manifest disables, a number overrides.
+{
+  const seamPx = typeof manifest.seamDedupePx === 'number' ? manifest.seamDedupePx : 24
+  if (seamPx > 0 && Array.isArray(manifest.marks) && manifest.marks.length) {
+    const { kept, dropped } = dedupeSeamMarks(manifest.marks, seamPx)
+    if (dropped.length) {
+      console.error(`tile-seam dedup: dropped ${dropped.length} duplicate mark(s) within ${seamPx} px:`)
+      for (const d of dropped) console.error(`  ${d.counterId} page ${d.pageIndex} at raw (${Math.round(d.raw.x)},${Math.round(d.raw.y)}) — ${d.distPt} pt from its keeper`)
+      manifest.marks = kept
+    }
   }
 }
 let takeoff = assembleTakeoff(manifest)
@@ -119,8 +132,20 @@ if (allowances.length) {
   for (const va of allowances) console.error(`  ${va.label}: ${va.count} × ${va.feetEach} ft ${va.size ?? ''} ${va.system} — ${va.source}`)
   for (const fr of ex.fittingRows) console.error(`  fittings allowance: ${fr.size ?? ''} ${fr.system} ${fr.kind} × ${fr.count}`)
 }
+// Developed length (BT-2 doctrine): drawn plan feet are projected feet; estimators
+// price developed feet. manifest.developedLength = [{ system, factor, source }] —
+// factors scale drawn feet inside the tooling rows; the itemization prints here so
+// the reviewer sees exactly what was scaled and why. Systems without a factor are
+// carried as-is and say so.
+const developedLength: DevelopedLengthFactor[] = manifest.developedLength ?? []
+if (developedLength.length) {
+  console.error('developed-length factors (drawn → developed, allowances ride unscaled):')
+  for (const r of developedFeetBySystem(takeoff, developedLength)) {
+    console.error(`  ${r.system}: ${r.drawnFeet} ft × ${r.factor} = ${r.developedFeet} ft — ${r.source}`)
+  }
+}
 // The paste-ready /Tooling block (estimate view: drawn + allowances, size-split).
-const toolingRows = buildToolingRows(takeoff, { fittings, allowances })
+const toolingRows = buildToolingRows(takeoff, { fittings, allowances, developedLength })
 const out = args[1]
 const json = JSON.stringify(takeoff, null, 2)
 if (out) {

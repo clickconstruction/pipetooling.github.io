@@ -113,6 +113,39 @@ export type TakeoffJson = {
   }>
 }
 
+/**
+ * Tile-seam dedup (BT-2 doctrine, 2026-08-30): the crop-tile walk reads overlapping
+ * tiles, so the same physical fixture can be recorded from two tiles a few raw px
+ * apart (BT-2: FD-2 counted 12 vs 11 off a ~22 px seam pair). Two marks of the SAME
+ * counter on the SAME page closer than `seamPx` (at each mark's own dpi) are one
+ * fixture — keep the first, report the drop. Real same-tag fixtures sit whole feet
+ * apart on plan; the seam window is sub-foot at plan scales.
+ */
+export function dedupeSeamMarks(
+  marks: PlacedMark[],
+  seamPx = 24,
+): { kept: PlacedMark[]; dropped: Array<{ counterId: string; pageIndex: number; raw: Pt; dpi: number; distPt: number }> } {
+  const kept: PlacedMark[] = []
+  const dropped: Array<{ counterId: string; pageIndex: number; raw: Pt; dpi: number; distPt: number }> = []
+  for (const m of marks) {
+    const mPt = rawPxToBasePt(m.raw, m.dpi)
+    const dup = kept.find((k) => {
+      if (k.counterId !== m.counterId || k.pageIndex !== m.pageIndex) return false
+      const kPt = rawPxToBasePt(k.raw, k.dpi)
+      // Threshold in base pt: the wider of the two marks' seam windows.
+      const tolPt = Math.max((seamPx * 72) / m.dpi, (seamPx * 72) / k.dpi)
+      return Math.hypot(kPt.x - mPt.x, kPt.y - mPt.y) <= tolPt
+    })
+    if (dup) {
+      const dPt = rawPxToBasePt(dup.raw, dup.dpi)
+      dropped.push({ counterId: m.counterId, pageIndex: m.pageIndex, raw: m.raw, dpi: m.dpi, distPt: Math.round(Math.hypot(dPt.x - mPt.x, dPt.y - mPt.y) * 100) / 100 })
+    } else {
+      kept.push(m)
+    }
+  }
+  return { kept, dropped }
+}
+
 export function assembleTakeoff(input: {
   counters: TakeoffCounter[]
   lineTypes?: TakeoffLineType[]
@@ -644,15 +677,66 @@ export function expandVerticalAllowances(list: VerticalAllowance[]): {
   }
 }
 
+// --- Developed length (BT-2 doctrine, 2026-08-30): even with registration-clean
+// --- traces AND itemized vertical allowances, the twin's footage ran 55–65% of the
+// --- human reference on EVERY system. The residual is developed length — fitting
+// --- take-up, offsets around structure, trap arms and short laterals below trace
+// --- resolution, wall thickness the plan-view centerline ignores. Estimators price
+// --- developed feet, not projected feet; the factor converts one to the other,
+// --- per system, applied to DRAWN feet only (verticals are already real 3D feet).
+
+export type DevelopedLengthFactor = { system: string; factor: number; source: string }
+
+/** BT-2 calibration midpoint (twin drawn feet ÷ human developed feet ≈ 0.55–0.65). */
+export const DEFAULT_DEVELOPED_LENGTH_FACTOR = 1.6
+
+const sysKey = (s: string) => s.trim().toLowerCase()
+
+/** lineType NAME → system (its canvas after applyDefaultCanvases; falls back to name). */
+function systemByLineTypeName(t: TakeoffJson): Map<string, string> {
+  return new Map(t.lineTypes.map((lt) => [lt.name, lt.canvas ?? lt.name]))
+}
+
+/**
+ * Per-system developed-length report: drawn plan feet → developed feet at each
+ * system's factor. Systems with no matching factor entry keep factor 1 (reported,
+ * so an uncovered system is visible, never silently unscaled).
+ */
+export function developedFeetBySystem(
+  t: TakeoffJson,
+  factors: DevelopedLengthFactor[],
+): Array<{ system: string; factor: number; source: string; drawnFeet: number; developedFeet: number }> {
+  const bySystem = new Map<string, number>()
+  const sysOf = systemByLineTypeName(t)
+  for (const f of feetByLineType(t)) {
+    const system = sysOf.get(f.lineType) ?? f.lineType
+    bySystem.set(system, (bySystem.get(system) ?? 0) + f.feet)
+  }
+  const factorFor = (system: string) => factors.find((x) => sysKey(x.system) === sysKey(system))
+  return Array.from(bySystem.entries()).map(([system, drawnFeet]) => {
+    const f = factorFor(system)
+    const factor = f?.factor ?? 1
+    return {
+      system,
+      factor,
+      source: f?.source ?? 'no factor — drawn feet carried as-is',
+      drawnFeet: Math.round(drawnFeet * 10) / 10,
+      developedFeet: Math.round(drawnFeet * factor * 10) / 10,
+    }
+  })
+}
+
 /**
  * The paste-ready counts block for PipeTooling's Import Counts — the ESTIMATE view:
  * drawn geometry PLUS vertical allowances, size-split. CountTooling stays the visual
  * layer (drawn lines only); this is what prices. Row shape matches the import dialog:
  * fixture name TAB count (TAB plan page added by the caller if wanted).
+ * `developedLength` factors scale the DRAWN feet inside the same size-split rows
+ * (so price-book matching by row name still lines up); allowance feet ride unscaled.
  */
 export function buildToolingRows(
   t: TakeoffJson,
-  opts: { fittings?: Fitting[]; allowances?: VerticalAllowance[] } = {},
+  opts: { fittings?: Fitting[]; allowances?: VerticalAllowance[]; developedLength?: DevelopedLengthFactor[] } = {},
 ): Array<{ fixture: string; count: number }> {
   const rows: Array<{ fixture: string; count: number }> = []
   // Fixture/drop counters (materialized fittings excluded — they re-enter via opts.fittings).
@@ -675,9 +759,15 @@ export function buildToolingRows(
     fitAcc.set(name, (fitAcc.get(name) ?? 0) + fr.count)
   }
   for (const [name, count] of fitAcc) rows.push({ fixture: name, count })
-  // Feet: drawn per (size-named) lineType + allowance feet, merged by name.
+  // Feet: drawn per (size-named) lineType (× its system's developed-length factor)
+  // + allowance feet, merged by name.
   const feetAcc = new Map<string, number>()
-  for (const f of feetByLineType(t)) feetAcc.set(f.lineType, (feetAcc.get(f.lineType) ?? 0) + f.feet)
+  const sysOf = systemByLineTypeName(t)
+  const dlFor = (lineTypeName: string): number => {
+    const system = sysOf.get(lineTypeName) ?? lineTypeName
+    return (opts.developedLength ?? []).find((x) => sysKey(x.system) === sysKey(system))?.factor ?? 1
+  }
+  for (const f of feetByLineType(t)) feetAcc.set(f.lineType, (feetAcc.get(f.lineType) ?? 0) + f.feet * dlFor(f.lineType))
   for (const fr of feetRows) {
     const name = `${fr.size ? fr.size + ' ' : ''}${fr.system}`
     feetAcc.set(name, (feetAcc.get(name) ?? 0) + fr.feet)

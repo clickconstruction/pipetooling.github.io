@@ -19,6 +19,8 @@ import {
   diagonalSegments,
   expandVerticalAllowances,
   buildToolingRows,
+  dedupeSeamMarks,
+  developedFeetBySystem,
 } from './takeoffPlacement'
 
 describe('rawPxToBasePt', () => {
@@ -403,5 +405,84 @@ describe('buildToolingRows', () => {
     expect(byName['3" Sanitary Waste · 90 Ell']).toBe(1)
     expect(byName['ft of 3" Sanitary Waste']).toBe(12)   // 10 drawn + 2 allowance
     expect(rows.find((r) => r.fixture.startsWith('fit-'))).toBeUndefined()
+  })
+
+  it('developed-length factors scale drawn feet only; allowance feet ride unscaled', () => {
+    const t = {
+      version: 1 as const,
+      counters: [],
+      lineTypes: [{ id: 'lt-w-3', name: '3" Sanitary Waste', canvas: 'Sanitary Waste' }],
+      pages: [
+        {
+          index: 0,
+          scale: { pixelsPerUnit: 10, unit: 'ft' },
+          polylines: [{ points: [{ x: 0, y: 0 }, { x: 100, y: 0 }], lineTypeId: 'lt-w-3' }],
+        },
+      ],
+    }
+    const rows = buildToolingRows(t, {
+      allowances: [{ label: 'wc drop', system: 'Sanitary Waste', size: '3"', count: 1, feetEach: 2, source: 'doctrine' }],
+      developedLength: [{ system: 'sanitary waste', factor: 1.6, source: 'BT-2 calibration' }],
+    })
+    const byName = Object.fromEntries(rows.map((r) => [r.fixture, r.count]))
+    expect(byName['ft of 3" Sanitary Waste']).toBe(18)   // 10 drawn × 1.6 + 2 allowance
+  })
+})
+
+describe('dedupeSeamMarks (tile-seam dedup, BT-2)', () => {
+  it('drops a same-counter same-page pair inside the seam window, keeps distinct fixtures', () => {
+    const marks = [
+      { counterId: 'c-fd', pageIndex: 3, raw: { x: 1000, y: 1000 }, dpi: 300 },
+      { counterId: 'c-fd', pageIndex: 3, raw: { x: 1022, y: 1000 }, dpi: 300 },   // the FD-2 seam dup (~22 px)
+      { counterId: 'c-fd', pageIndex: 3, raw: { x: 1500, y: 1000 }, dpi: 300 },   // a real second fixture
+      { counterId: 'c-wc', pageIndex: 3, raw: { x: 1010, y: 1000 }, dpi: 300 },   // different counter — untouched
+      { counterId: 'c-fd', pageIndex: 4, raw: { x: 1010, y: 1000 }, dpi: 300 },   // different page — untouched
+    ]
+    const { kept, dropped } = dedupeSeamMarks(marks)
+    expect(kept.length).toBe(4)
+    expect(dropped.length).toBe(1)
+    expect(dropped[0]!.raw.x).toBe(1022)
+    expect(dropped[0]!.distPt).toBeCloseTo((22 * 72) / 300, 1)
+  })
+
+  it('mixed-dpi pairs use the wider seam window; 0/off handled by callers', () => {
+    const marks = [
+      { counterId: 'c-fd', pageIndex: 0, raw: { x: 500, y: 500 }, dpi: 600 },
+      { counterId: 'c-fd', pageIndex: 0, raw: { x: 250 + 10, y: 250 }, dpi: 300 },  // same spot in base pt + 10px@300
+    ]
+    const { kept, dropped } = dedupeSeamMarks(marks)
+    expect(kept.length).toBe(1)
+    expect(dropped.length).toBe(1)
+  })
+})
+
+describe('developedFeetBySystem', () => {
+  it('reports per-system drawn → developed with unmatched systems carried at 1', () => {
+    const t = {
+      version: 1 as const,
+      counters: [],
+      lineTypes: [
+        { id: 'lt-cw', name: '1/2" Cold Water', canvas: 'Cold Water' },
+        { id: 'lt-gas', name: 'Gas', canvas: 'Gas' },
+      ],
+      pages: [
+        {
+          index: 0,
+          scale: { pixelsPerUnit: 10, unit: 'ft' },
+          polylines: [
+            { points: [{ x: 0, y: 0 }, { x: 100, y: 0 }], lineTypeId: 'lt-cw' },
+            { points: [{ x: 0, y: 0 }, { x: 50, y: 0 }], lineTypeId: 'lt-gas' },
+          ],
+        },
+      ],
+    }
+    const report = developedFeetBySystem(t, [{ system: 'Cold Water', factor: 1.6, source: 'BT-2' }])
+    const cw = report.find((r) => r.system === 'Cold Water')!
+    const gas = report.find((r) => r.system === 'Gas')!
+    expect(cw.drawnFeet).toBe(10)
+    expect(cw.developedFeet).toBe(16)
+    expect(gas.factor).toBe(1)
+    expect(gas.developedFeet).toBe(5)
+    expect(gas.source).toMatch(/no factor/)
   })
 })
