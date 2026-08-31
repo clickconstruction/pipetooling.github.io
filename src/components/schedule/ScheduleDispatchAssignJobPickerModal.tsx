@@ -640,7 +640,7 @@ export function ScheduleDispatchAssignJobPickerModal({
             role="alertdialog"
             aria-label="Confirm record no-call-no-show"
             style={{
-              border: '1px solid #fca5a5',
+              border: '1px solid var(--border-red)',
               background: 'var(--bg-red-tint)',
               borderRadius: 6,
               padding: '0.6rem 0.75rem',
