@@ -339,6 +339,30 @@ Review the assembler's itemized allowance print before import.
   tooling-row names exactly (`ft of 1/2" Cold Water`, `3" Sanitary Waste ·
   Tee`) so Workbench matching lines up without aliases.
 
+## The pricing model (BT-2 doctrine, 2026-08-30 — mirrored from b376)
+
+The 🤖 Robot Default book was reshaped to the human sale model (source: Wendi's
+keyed b376 rows; ledger note on b405). The shape, so future mirrors keep it:
+
+- **Fixtures carry LOADED prices** — the fixture row absorbs its share of labor,
+  trim, and connections (WC/Lav $3,350-class, sinks $4,350-class, specialty gear
+  at its own mirrored number), NOT material-concept prices. A fixture priced
+  under ~$500 is a red flag outside demo/cleanout/bib rows.
+- **Footage is two-tier**: buried/underground sewer is cheap dirt work
+  ($25–35/ft regardless of diameter); above-slab cast iron carries the system
+  price ($130–160/ft); copper water rides its size curve ($22–90/ft). Never
+  price buried 4" at the above-slab CI rate — that single row was the BT-2
+  price miss ($204/ft vs her $35).
+- **Every bid carries a `Travel & Rentals (per mile from office)` row** with
+  count = `bids.distance_from_office` (book price $80/mi; calibration: her flat
+  $20,000 at 249 mi). Name the distance source in the letter assumptions.
+- **Demo fixtures price at `Demo Fixture (remove/cap)`** ($500/ea) — the PD-*
+  sheet-coverage doctrine feeds this row.
+- **Med gas stays a certified-sub allowance** — outlets/fittings/manifold
+  entries are basis numbers, not self-perform prices; say so in the letter.
+- Letter uplift over raw rows is the OWNER's margin decision (b376 sent at
+  ~1.84× rows) — the twin never applies it; the draft stops at book-priced rows.
+
 ## Product price research (owner ask, 2026-08-30): the schedule names what to look up
 
 The fixture schedule hands you manufacturer + catalog number for every scheduled
