@@ -5,13 +5,19 @@ file: docs/twins/PLACEMENT.md
 type: Harness procedure / Skill
 purpose: How an agent turns a substrate + plan-set PDF into a placed, imported CountTooling takeoff — the counters-first procedure, coordinate math, self-checks, and tooling. Wave 3.4 of ESTIMATOR_TWIN_PIPELINE_PLAN.md. The vision model IS the engine; this file is its operating manual (EXTRACTOR.md's sibling) Served by twin-mcp as get_placement_guide (bundled with CALIBRATION.md + EXTRACTOR.md).
 audience: AI Agents, harness operators, Developers
-last_updated: 2026-08-30
+last_updated: 2026-08-31
 key_sections:
   - Tooling
   - The counters-first procedure
   - Coordinate math
   - Self-checks (counters prove out)
   - Import & review
+  - Density tiers pick the pricing posture
+  - The small-TI rule
+  - Footage is traced by default
+  - Set-class triage before the census
+  - Reference protocol at unseal
+  - Institutional / district multiplier
 ---
 
 Counters proved out on LIVSTE (M4, 2026-08-30); this manual now carries both legs:
@@ -427,3 +433,113 @@ product — that is a research list. The protocol:
 5. **Researched prices are COST-basis inputs** for assemblies and estimating
    context. Sale prices stay the Workbench's margin decision — never copy a
    researched cost into a sale price book entry.
+
+## Density tiers pick the pricing posture (retro sweep + BT-7 doctrine, 2026-08-31)
+
+The material-tier rule above needs one more input the spec box can't give:
+**how occupied the slab and ceiling are.** The retro sweep across BT-2..BT-6
+isolated it, and BT-7 validated it blind (−17% on a kitchen TI where the old
+posture read −39%):
+
+- **Occupied/congested** (kitchen TI, vet clinic, owner-spec grocery): loaded
+  CI waste $130–160/ft AND copper water — working around equipment, hoods,
+  existing trades is what the loaded rate encodes.
+- **New-slab/open** (ground-up shell, open TI): material tiers — PVC $25/ft
+  waste, PEX-practice $13/ft water — even when the written spec is stricter
+  (next section).
+
+## Price to her tier logic, not the material spec (BT-6 doctrine, 2026-08-31)
+
+BT-6 (Pepper Lunch, −39% before the fix) sharpened BT-3's spec-box rule in both
+directions. The spec box picks the *material family*; the human picks the *rate*
+by practice:
+
+- Above-ground 2"/3" waste+vent goes at the LOADED $140–160/ft entries even
+  when the spec allows PVC — the rate encodes labor, not resin.
+- Water is priced at the PEX tier ($12–13/ft) even when a spec clause says
+  Type L copper — she bids her practice, not the clause.
+- Underground bulk stays the cheap-dirt tier regardless.
+- **Trap primers count PER TRAP** (BT-6: 13 where the schedule showed one TP
+  model). **Gas equipment drops each carry their own 1/2" footage.**
+- **Two-view sheets double text counts** (above-grade + underground drawn
+  side-by-side): detect via paired x-offsets at matching y, partition to one
+  view per counter, riser cross-check. BT-7 corollary: enlarged-kitchen
+  right-side clusters may be REAL fixtures, not duplicates — verify against the
+  riser before deduping.
+
+## The small-TI rule (BT-11 → BT-12 doctrine, 2026-08-31)
+
+BT-11 (ATI Schertz, +59.9%) exposed that footage+fitting rows POISON a small
+job; the micro-sweep calibrated the replacement and BT-12 validated it blind
+(−2.6%, zero tuning):
+
+- **Trigger**: fewer than ~10 fixtures in a single cluster.
+- **Price per-fixture all-in**: WC $3,350 exactly (×3 verified), sink battery
+  $2,000/station, specialty (MS/EWC/DF) $2,500.
+- **DROP entirely**: footage rows, fitting rows, sawcut rows — they are inside
+  the per-fixture number at this scale.
+- **KEEP**: dedicated runs (gas, storm), specials (grease, med gas), travel.
+
+## Footage is traced by default (BT-8 + T2, 2026-08-31)
+
+Untraced footage models regress to 0.60× of reference (BT-8). The correction
+hierarchy:
+
+1. **Trace with the T2 path census** (`scripts/twin-census/path_census.py`):
+   pen inventory → one visual overlay to map pen→system → chained runs with
+   symbol/margin filters. Calibrate scale per view (grid-label spacing or
+   doorways — Revit letter prints MIX scales on one sheet: 1/8 plans beside
+   1/16 demo views, BT-16).
+2. Where the set is full-raster (Class C) and tracing is impossible, model
+   footage and apply the **1.6× correction** — and say so in the import note.
+
+## Set-class triage before the census (T1/T2 toolkit, 2026-08-31)
+
+First minutes with any set: classify it, then pick tools
+(`scripts/twin-census/README.md`):
+
+- **Class A — vector + text**: pdftotext census (tags, schedules, keyed notes)
+  + T2 footage. Fastest path.
+- **Class B — vector, no text** (AutoCAD SHX stroke soup): T1 vector census —
+  shape hashing for repeated words/boxes, geometric detection for keynote
+  hexagons (106/106 on LIVSTE), 600dpi crops at detected positions to read
+  tags, sheet-margin KEYED NOTES legends to decode them. Never sweep crops
+  blindly; the census aims every look.
+- **Class C — full-raster scans**: template-match (T3, unbuilt) or targeted
+  vision; footage falls back to the 1.6× rule.
+
+## Reference protocol at unseal (BT-9/10, BT-14, BT-15, BT-16 — 2026-08-31)
+
+Rules the backtest/shadow scorecard MUST apply before a delta means anything:
+
+- **Reference-quality gate** (BT-9/10): longshot references (loss_reason
+  "longshot in the dark", no_bid, stale) are not gate-eligible. Prefer WON or
+  competitive-loss + recent + has-takeoff.
+- **Scope-match check** (BT-15 void → BT-16 first pass): line-compare the
+  reference takeoff's fixture tags against the fetched plan set. A reference
+  fixture absent from the set = scope mismatch = STOP SCORING and flag. BT-15
+  scored −28% against the wrong package (core/shell set vs her tenant-fit-out
+  takeoff) and the delta was void.
+- **Bid-tab band** (BT-15 rule, survives its void): when a bid tab exists,
+  score against the winning band, not only the single human number.
+- **Index-listed-but-missing sheets → RFI first** (BT-14): when the set's own
+  index names sheets the file doesn't contain, park the question before
+  estimating around the hole.
+
+## Institutional / district multiplier (BT-16 hypothesis — PENDING AUDIT)
+
+BT-16 (AISD Garcia MS): quantities matched the reference takeoff nearly
+line-for-line, and the price still landed −57.5%. Same scope, 2.35× price gap —
+school-district work carries prevailing wage, summer-phasing compression,
+district GCs/bonds, and painting of exposed piping (her rows carry paint; the
+commercial book does not).
+
+- **Working rule (unconfirmed)**: on ISD/district/prevailing-wage bids, apply
+  ~2.2–2.4× over the loaded book before comparing to the human number. Caveat:
+  the reference LOST on price, so the market band sits below it and the true
+  multiplier may be nearer ~1.8–2.2×.
+- **Do not misread the delta**: when the scope-match check passes and the gap
+  is uniform across systems, suspect the wage/tier basis — not the takeoff and
+  not the book's commercial rates.
+- Confirmation question is seeded on the b422 audit; promote this section to
+  hard doctrine (and a book multiplier entry) when Wendi answers.
