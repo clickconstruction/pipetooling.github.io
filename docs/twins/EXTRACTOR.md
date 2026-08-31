@@ -56,9 +56,9 @@ generator field and expect `illegible` facts.
    frame.
 3. Overview every page at 40 DPI. From title blocks alone (readable even at 40 DPI):
    sheet number, title, discipline → the full sheet inventory + classification.
-3. On in-trade sheets, locate regions to crop: schedules, note blocks, legends, the
+4. On in-trade sheets, locate regions to crop: schedules, note blocks, legends, the
    drawing-title/scale strip, riser diagrams. Record each as an overview bbox.
-4. Reconcile the set's self-indexes (cover drawing list vs the trade's own sheet index) —
+5. Reconcile the set's self-indexes (cover drawing list vs the trade's own sheet index) —
    a sheet in one but not the other is a flagged question.
 
 ## Pass 2: crops
