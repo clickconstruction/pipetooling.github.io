@@ -2603,26 +2603,25 @@ export default function Bids() {
       >
         Bid Board
       </button>
-      {robotBids.length > 0 ? (
+      {robotBids.length > 0 || auditGate.anyAudits ? (
         <button
           type="button"
-          data-tabkey="robot-board"
-          onClick={() => selectBidsTab('robot-board')}
-          style={tabStyle(activeTab === 'robot-board')}
-          title="Bids owned or worked by digital twins — same board, robot scope. The Bid Board hides these."
+          data-tabkey={activeTab === 'audits' ? 'audits' : 'robot-board'}
+          onClick={() => {
+            // Robots group (Followup precedent): entering lands on Audits when work is
+            // pending (or it's the only lens), else the Robot Board. Re-clicking while
+            // inside keeps the lens you picked.
+            const inGroup = activeTab === 'robot-board' || activeTab === 'audits'
+            const landing =
+              auditGate.anyAudits && (auditGate.pending > 0 || robotBids.length === 0)
+                ? 'audits'
+                : 'robot-board'
+            selectBidsTab(inGroup ? activeTab : landing)
+          }}
+          style={tabStyle(activeTab === 'robot-board' || activeTab === 'audits')}
+          title="Robot Board and Audits, merged — twin-owned bids and the human audit queue, lenses inside"
         >
-          {`\u{1F916} Robot Board · ${robotBids.length}`}
-        </button>
-      ) : null}
-      {auditGate.anyAudits ? (
-        <button
-          type="button"
-          data-tabkey="audits"
-          onClick={() => selectBidsTab('audits')}
-          style={tabStyle(activeTab === 'audits')}
-          title="Robot bids awaiting a human audit — quick links, the robot's questions, and your sectioned notes in one place."
-        >
-          {auditGate.pending > 0 ? `Audits · ${auditGate.pending}` : 'Audits'}
+          {auditGate.pending > 0 ? `\u{1F916} · ${auditGate.pending}` : '\u{1F916}'}
         </button>
       ) : null}
       <button
@@ -3017,6 +3016,46 @@ export default function Bids() {
         onCancel={closeWorkingBoardArchiveConfirm}
         onConfirm={(id) => { closeWorkingBoardArchiveConfirm(); void archiveWorkingBoardBid(id) }}
       />
+
+      {/* Robots group lens bar — Robot Board and Audits as lenses under the 🤖 tab
+          (same segmented-control chrome as the Followup lenses). Each lens keeps its
+          own visibility gate; the bar only shows when there's more than one lens. */}
+      {(activeTab === 'robot-board' || activeTab === 'audits') && robotBids.length > 0 && auditGate.anyAudits && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => selectBidsTab('robot-board')}
+              title="Bids owned or worked by digital twins — same board, robot scope. The Bid Board hides these."
+              style={{
+                padding: '0.45rem 1rem',
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === 'robot-board' ? '#3b82f6' : 'transparent',
+                color: activeTab === 'robot-board' ? 'white' : 'var(--text-700)',
+                fontWeight: activeTab === 'robot-board' ? 700 : 400,
+              }}
+            >
+              {`Robot Board · ${robotBids.length}`}
+            </button>
+            <button
+              type="button"
+              onClick={() => selectBidsTab('audits')}
+              title="Robot bids awaiting a human audit — quick links, the robot's questions, and your sectioned notes in one place."
+              style={{
+                padding: '0.45rem 1rem',
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === 'audits' ? '#3b82f6' : 'transparent',
+                color: activeTab === 'audits' ? 'white' : 'var(--text-700)',
+                fontWeight: activeTab === 'audits' ? 700 : 400,
+              }}
+            >
+              {auditGate.pending > 0 ? `Audits · ${auditGate.pending}` : 'Audits'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Audits Tab — the robot feedback loop's human side (v2.2517). */}
       {activeTab === 'audits' && <BidsAuditsTab authUser={authUser} myRole={myRole} />}
