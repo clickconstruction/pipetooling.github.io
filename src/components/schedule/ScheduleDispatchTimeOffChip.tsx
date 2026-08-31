@@ -75,8 +75,10 @@ export function ScheduleDispatchTimeOffChip({
         onClick={handleClick}
         disabled={busy}
         style={{
-          ...chipStyleForVariant(info),
+          // Reset first, variant second: the variant's background must win or the
+          // solid NCNS chip renders white-on-transparent (v2.2540).
           ...buttonResetStyle,
+          ...chipStyleForVariant(info),
           opacity: busy ? 0.6 : 1,
           cursor: busy ? 'wait' : 'pointer',
         }}
