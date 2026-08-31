@@ -503,8 +503,17 @@ export default function Bids() {
     window.setTimeout(() => {
       document.getElementById(`bid-board-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 150)
-    consumeBidIdParam()
-  }, [consumeBidIdParam, twinUserIds])
+    // Write the landing tab into the URL along with the bidId cleanup: the URL-sync
+    // effect re-runs on every searchParams change and snaps activeTab back to ?tab= —
+    // with only the React state set, a robot landing flashed and bounced back to the
+    // board named in the URL (v2.2533 fix).
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('bidId')
+      if (next.has('tab')) next.set('tab', robot ? 'robot-board' : 'bid-board')
+      return next
+    }, { replace: true })
+  }, [setSearchParams, twinUserIds])
 
   const applySubmissionFollowupDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
     submissionFollowupPendingDeepLinkBidIdRef.current = null
