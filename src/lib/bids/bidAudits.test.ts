@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   threadAuditNotes,
   openQuestionCount,
+  questionContextLine,
   computeAuditDraftTotal,
   sortAuditsForTab,
   canWriteBidAudit,
@@ -138,5 +139,37 @@ describe('formatAuditRequestedStamp', () => {
   })
   it('falls back to the date slice on a bad timestamp', () => {
     expect(formatAuditRequestedStamp('nonsense-date')).toBe('requested nonsense-d')
+  })
+})
+
+// v2.2535: question ordering + the anchored-context line.
+describe('question section ordering (v2.2535)', () => {
+  it('orders questions by section, created_at within a section', () => {
+    const t = threadAuditNotes([
+      note({ id: 'qg', kind: 'question', section: 'general', created_at: '2026-08-30T09:00:00Z' }),
+      note({ id: 'qp', kind: 'question', section: 'pricing', created_at: '2026-08-30T09:01:00Z' }),
+      note({ id: 'qc2', kind: 'question', section: 'counts', created_at: '2026-08-30T09:03:00Z' }),
+      note({ id: 'qc1', kind: 'question', section: 'counts', created_at: '2026-08-30T09:02:00Z' }),
+    ])
+    expect(t.questions.map((q) => q.question.id)).toEqual(['qc1', 'qc2', 'qp', 'qg'])
+  })
+})
+
+describe('questionContextLine', () => {
+  it('joins sheet and context', () => {
+    expect(questionContextLine({ sheet_ref: 'P2.1', context: '$18k of med-gas rides on this' })).toBe(
+      'On P2.1 — $18k of med-gas rides on this',
+    )
+  })
+
+  it('renders each alone', () => {
+    expect(questionContextLine({ sheet_ref: 'P2.1', context: null })).toBe('On P2.1')
+    expect(questionContextLine({ sheet_ref: null, context: 'seen near the kennel wall' })).toBe('seen near the kennel wall')
+  })
+
+  it('null for unanchored questions — including pre-migration rows with the fields absent', () => {
+    expect(questionContextLine({ sheet_ref: null, context: null })).toBe(null)
+    expect(questionContextLine({} as { sheet_ref?: string | null; context?: string | null })).toBe(null)
+    expect(questionContextLine({ sheet_ref: '  ', context: '' })).toBe(null)
   })
 })

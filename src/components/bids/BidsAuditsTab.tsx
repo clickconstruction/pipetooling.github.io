@@ -10,6 +10,7 @@ import {
   AUDIT_DIGEST_OUTCOME_LABELS,
   threadAuditNotes,
   openQuestionCount,
+  questionContextLine,
   computeAuditDraftTotal,
   sortAuditsForTab,
   canWriteBidAudit,
@@ -282,9 +283,33 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {threaded.questions.map(({ question, answer }) => {
                         const key = `answer:${question.id}`
+                        const contextLine = questionContextLine(question)
                         return (
                           <div key={question.id} style={{ padding: '0.6rem 0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6 }}>
-                            <div style={{ fontSize: '0.875rem' }}>🤖 {question.body}</div>
+                            <div style={{ fontSize: '0.875rem' }}>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  marginRight: '0.5rem',
+                                  padding: '0.05rem 0.45rem',
+                                  borderRadius: 9999,
+                                  border: '1px solid var(--border)',
+                                  background: 'var(--surface)',
+                                  color: 'var(--text-muted)',
+                                  fontSize: '0.6875rem',
+                                  fontWeight: 600,
+                                  verticalAlign: 'middle',
+                                }}
+                              >
+                                {AUDIT_SECTION_LABELS[question.section]}
+                              </span>
+                              🤖 {question.body}
+                            </div>
+                            {contextLine ? (
+                              <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                                {contextLine}
+                              </div>
+                            ) : null}
                             {answer ? (
                               <div style={{ marginTop: '0.4rem', fontSize: '0.875rem', color: 'var(--text-green-800)' }}>✓ {answer.body}</div>
                             ) : audit.status === 'pending' && canWrite ? (

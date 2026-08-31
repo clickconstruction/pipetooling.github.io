@@ -59,6 +59,13 @@ export type BidAuditNoteRow = {
   created_at: string
   digested_at: string | null
   digest_outcome: AuditDigestOutcome | null
+  /**
+   * Question anchors (v2.2535, nullable): where the twin saw it ("P2.1") and
+   * why it's asking. Undefined until the migration lands (select('*') simply
+   * omits absent columns) — consumers must treat missing as null.
+   */
+  sheet_ref?: string | null
+  context?: string | null
   /** PostgREST embed (author:users(name)); absent in unit tests. */
   author?: { name: string | null } | null
 }
@@ -97,8 +104,12 @@ export function threadAuditNotes(notes: BidAuditNoteRow[]): ThreadedAuditNotes {
     if (n.kind === 'answer' && !answersByParent.has(n.parent_id)) answersByParent.set(n.parent_id, n)
     if (n.kind === 'receipt' && !receiptsByParent.has(n.parent_id)) receiptsByParent.set(n.parent_id, n)
   }
+  // Section order (then created_at, via the stable sort of an already-sorted
+  // list) so counts questions sit next to the Counts composer they'll feed.
+  const sectionRank = (s: AuditSection) => AUDIT_SECTIONS.indexOf(s)
   const questions: ThreadedQuestion[] = sorted
     .filter((n) => n.kind === 'question')
+    .sort((a, b) => sectionRank(a.section) - sectionRank(b.section))
     .map((q) => ({ question: q, answer: answersByParent.get(q.id) ?? null }))
   const sections = AUDIT_SECTIONS.map((section) => ({
     section,
@@ -112,6 +123,20 @@ export function threadAuditNotes(notes: BidAuditNoteRow[]): ThreadedAuditNotes {
 /** Open-question count for the card header (unanswered twin questions). */
 export function openQuestionCount(threaded: ThreadedAuditNotes): number {
   return threaded.questions.filter((q) => q.answer == null).length
+}
+
+/**
+ * The muted line under a question: "On P2.1 — what the twin saw / what rides
+ * on the answer." Null when the twin anchored nothing (pre-v2.2535 rows and
+ * plain questions render exactly as before).
+ */
+export function questionContextLine(q: Pick<BidAuditNoteRow, 'sheet_ref' | 'context'>): string | null {
+  const sheet = (q.sheet_ref ?? '').trim()
+  const context = (q.context ?? '').trim()
+  if (sheet && context) return `On ${sheet} — ${context}`
+  if (sheet) return `On ${sheet}`
+  if (context) return context
+  return null
 }
 
 export type AuditCountRow = { id: string; count: number; bid_version_id: string | null }
