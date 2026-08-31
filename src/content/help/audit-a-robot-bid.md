@@ -10,7 +10,8 @@ When a robot estimator finishes a draft bid, it asks for your audit. Everything 
 
 1. Go to **Bids**. When a robot bid is waiting on you, an {{chip:yellow|Audits · 1}} tab appears near the Bid Board — the number is how many are waiting.
 2. Open it. Audits show as one-line rows — bid, status, draft total, how far the robot landed from our number, question count, and age. **One card is open at a time**; tap any row to open it (finishing an audit opens the next one for you).
-3. The open card starts with a comparison strip — the robot's draft, our number (when it exists), and the difference. A shadow bid shows {{chip:gray|Δ sealed 🔒}} instead: the robot's price stays hidden until our bid goes out, so nobody's estimate can be influenced.
+3. The open card starts with the robot's own confession — 🤖 **Where I'm least sure** — so you can check its suspicions first, then a comparison strip (its draft, our number, the difference) and a **system scoreboard**: waste + vent, water, gas, med-gas, and fixtures, robot vs ours with a ratio, so you see *where* the money diverges before touching a row.
+4. A shadow bid shows a {{chip:gray|🔒}} row instead of a card: the whole audit stays locked until our own bid goes out — even seeing the robot's takeoff early could sway your number. It opens by itself once we send.
 
 ## Look the bid over (two quick links)
 
@@ -24,7 +25,11 @@ Mention pin numbers in your notes — "pin 3: those are by others" — and the r
 
 ## Answer its questions and leave your notes
 
-1. **Biggest rows — tap to judge**: the card lists the robot's largest-dollar rows. Tap 👍 if a row looks right, or 🚩 to flag it — a flag drafts the note for you ("ft of 2" waste — robot has ×224…"), ready to finish in your own words and {{button:gray|Add note}}.
+1. **The differences, in three lists**: the card matches the robot's rows against ours by name and shows only where they differ — {{chip:red|ROBOT MISSED}} (rows we carry that it doesn't — the dangerous kind), {{chip:yellow|ROBOT ADDED}} (rows it carries that we don't), and {{chip:blue|QUANTITY GAPS}} (same row, different number) — biggest dollars first. Judge each one with one tap:
+   - {{button:red|✗ Robot's wrong}} — drafts a teaching note for you; edit if you like and hit **Post**.
+   - {{button:amber|📋 Our record's off}} — the robot found a hole in OUR bid; posting files a record-repair.
+   - {{button:green|✓ Both fine}} — scope difference or judgment call; posts instantly.
+   Rows that match within 15% aren't shown — there's nothing to judge there. (When there's no reference bid to compare against, the card falls back to listing the robot's biggest rows with 👍 / 🚩.)
 2. The card lists **the robot's questions** (🤖), each anchored to the plan sheet it came from. Type in the box and hit {{button:blue|Answer}} — short is fine.
 3. Anything else goes in the **one note box** at the bottom — pick a section chip (Counts / Footage / Pricing / Scope / General) if it fits, or leave it on General. Type each thing you'd tell a junior estimator — "we always carry travel past 200 miles."
 4. When you're done, hit {{button:green|Finish audit}}. The card flips to {{chip:blue|Waiting on robot digest}}, the ledger records it, and the next waiting audit opens automatically.

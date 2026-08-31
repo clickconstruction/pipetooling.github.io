@@ -77,6 +77,8 @@ describe('BidsAuditsTab', () => {
   it('renders the pending card: links, question, note + receipt, Finish audit', async () => {
     renderWithProviders(<BidsAuditsTab authUser={null} myRole="dev" />)
     await waitFor(() => expect(screen.getByText(/ZZ Twin MPH CASA LINDA/)).toBeTruthy())
+    // Auto-expand of the first pending card lands one effect-tick after the row renders.
+    await waitFor(() => expect(screen.getByText('Open takeoff (CountTooling) ↗')).toBeTruthy())
 
     const ctLink = screen.getByText('Open takeoff (CountTooling) ↗') as HTMLAnchorElement
     expect(ctLink.getAttribute('href')).toBe('https://counttooling.com/app/?t=tok')
@@ -89,7 +91,7 @@ describe('BidsAuditsTab', () => {
     expect(screen.getByPlaceholderText('Type your answer…')).toBeTruthy()
     expect(screen.getByText('Waste footage way low.')).toBeTruthy()
     expect(screen.getByText(/Learned: developed-length multiplier/)).toBeTruthy()
-    expect(screen.getByText(/placement doctrine/)).toBeTruthy()
+    expect(screen.getAllByText(/placement doctrine/).length).toBeGreaterThan(0) // receipt label + coaching strip
     expect(screen.getByText('Finish audit')).toBeTruthy()
 
     // One composer with section chips on a pending card (cockpit rework).

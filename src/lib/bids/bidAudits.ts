@@ -45,6 +45,13 @@ export type BidAuditRow = {
   created_by: string | null
   created_at: string
   updated_at: string
+  /**
+   * The robot's own confession of where this draft is least sure (v2.2553,
+   * nullable) — written by twin-mcp ct_finish_takeoff, shown atop the audit
+   * card. Undefined until the migration lands (select('*') omits absent
+   * columns) — consumers must treat missing as null.
+   */
+  self_assessment?: string | null
 }
 
 export type BidAuditNoteRow = {
