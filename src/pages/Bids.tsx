@@ -44,6 +44,8 @@ import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { RobotBidReadinessModal } from '../components/bids/RobotBidReadinessModal'
 import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
+import { BidsRobotQueueTab } from '../components/bids/BidsRobotQueueTab'
+import { buildRobotQueue } from '../lib/bids/robotQueue'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
@@ -208,7 +210,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-queue' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -415,8 +417,42 @@ export default function Bids() {
     for (const twin of robotBids) if (twin.twin_source_bid_id) m.set(twin.twin_source_bid_id, twin)
     return m
   }, [robotBids])
+  // v2.2542: Queue lens badge — same kernel as the lens body and the board icons.
+  const robotQueueCount = useMemo(() => {
+    if (myRole !== 'dev') return 0
+    const staleDueBefore = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
+    const q = buildRobotQueue(peopleBids, (bidId) => twinBidBySourceId.has(bidId), { staleDueBefore })
+    return q.requested.length + q.ready.length
+  }, [myRole, peopleBids, twinBidBySourceId])
+
   const [robotReadinessBid, setRobotReadinessBid] = useState<BidWithBuilder | null>(null)
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
+
+  // v2.2542: yellow robot click requests a robot bid (green); green withdraws.
+  // Optimistic local patch + DB write; the dev Queue lens reads the same columns.
+  const toggleRobotRequest = useCallback(async (bid: BidWithBuilder) => {
+    const requesting = !bid.robot_requested_at
+    const patch = requesting
+      ? { robot_requested_at: new Date().toISOString(), robot_requested_by: authUser?.id ?? null }
+      : { robot_requested_at: null, robot_requested_by: null }
+    setBids((prev) => prev.map((b) => (b.id === bid.id ? { ...b, ...patch } : b)))
+    const { error: updErr } = await supabase.from('bids').update(patch).eq('id', bid.id)
+    if (updErr) {
+      setBids((prev) =>
+        prev.map((b) =>
+          b.id === bid.id
+            ? { ...b, robot_requested_at: bid.robot_requested_at, robot_requested_by: bid.robot_requested_by }
+            : b,
+        ),
+      )
+      showToast(`Couldn't ${requesting ? 'request' : 'withdraw'} the robot bid: ${updErr.message}`, 'error')
+      return
+    }
+    showToast(
+      requesting ? "Robot bid requested — it's in the dev queue. Click again to withdraw." : 'Robot bid request withdrawn.',
+      'success',
+    )
+  }, [authUser?.id, showToast])
   // Audits tab gating (v2.2517): tab shows whenever audits exist; label carries the
   // pending count so a waiting robot bid is visible from anywhere on the Bids page.
   const auditGate = useBidAuditsPendingCount(!!authUser?.id)
@@ -1277,7 +1313,7 @@ export default function Bids() {
     )
   }, [location.search, setSearchParams])
 
-  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-queue', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -1351,6 +1387,15 @@ export default function Bids() {
       workingBoardPendingDeepLinkBidIdRef.current = null
       workingDeepLinkAppliedBidIdRef.current = null
       setWorkingBoardDeepLinkBidId(null)
+    }
+    if (tab === 'robot-queue' && myRole != null && myRole !== 'dev') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'bid-board')
+        return next
+      }, { replace: true })
+      setActiveTab('bid-board')
+      return
     }
     if (tab === 'bid-costs' && myRole != null && myRole !== 'dev') {
       setSearchParams((p) => {
@@ -2642,14 +2687,14 @@ export default function Bids() {
               // Robots group (Followup precedent): entering lands on Audits when work is
               // pending (or it's the only lens), else the Robot Board. Re-clicking while
               // inside keeps the lens you picked.
-              const inGroup = activeTab === 'robot-board' || activeTab === 'audits'
+              const inGroup = activeTab === 'robot-board' || activeTab === 'audits' || activeTab === 'robot-queue'
               const landing =
                 auditGate.anyAudits && (auditGate.pending > 0 || robotBids.length === 0)
                   ? 'audits'
                   : 'robot-board'
               selectBidsTab(inGroup ? activeTab : landing)
             }}
-            style={tabStyle(activeTab === 'robot-board' || activeTab === 'audits')}
+            style={tabStyle(activeTab === 'robot-board' || activeTab === 'audits' || activeTab === 'robot-queue')}
             title="Robot Board and Audits, merged — twin-owned bids and the human audit queue, lenses inside"
             aria-label={
               auditGate.pending > 0
@@ -3083,7 +3128,8 @@ export default function Bids() {
       {/* Robots group lens bar — Robot Board and Audits as lenses under the 🤖 tab
           (same segmented-control chrome as the Followup lenses). Each lens keeps its
           own visibility gate; the bar only shows when there's more than one lens. */}
-      {(activeTab === 'robot-board' || activeTab === 'audits') && robotBids.length > 0 && auditGate.anyAudits && (
+      {(activeTab === 'robot-board' || activeTab === 'audits' || activeTab === 'robot-queue') &&
+        [robotBids.length > 0, auditGate.anyAudits, myRole === 'dev'].filter(Boolean).length > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)', alignItems: 'center' }}>
             <button
@@ -3116,12 +3162,48 @@ export default function Bids() {
             >
               {auditGate.pending > 0 ? `Audits · ${auditGate.pending}` : 'Audits'}
             </button>
+            {myRole === 'dev' && (
+              <button
+                type="button"
+                onClick={() => selectBidsTab('robot-queue')}
+                title="Dev only — every robot-able bid, requested ones first; kickoff prompts live here."
+                style={{
+                  padding: '0.45rem 1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === 'robot-queue' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'robot-queue' ? 'white' : 'var(--text-700)',
+                  fontWeight: activeTab === 'robot-queue' ? 700 : 400,
+                }}
+              >
+                {`Queue · ${robotQueueCount}`}{' '}
+                <span
+                  style={{
+                    fontSize: '0.58rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.05em',
+                    padding: '0 4px',
+                    borderRadius: 3,
+                    border: activeTab === 'robot-queue' ? '1px solid rgba(255,255,255,0.6)' : '1px solid #ca8a04',
+                    color: activeTab === 'robot-queue' ? 'white' : 'var(--text-yellow-800)',
+                    verticalAlign: '1px',
+                  }}
+                >
+                  DEV
+                </span>
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* Audits Tab — the robot feedback loop's human side (v2.2517). */}
       {activeTab === 'audits' && <BidsAuditsTab authUser={authUser} myRole={myRole} />}
+
+      {/* Robot Queue lens (v2.2542, dev only) — requested above ready; prompts live here. */}
+      {activeTab === 'robot-queue' && myRole === 'dev' && (
+        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} onOpenBid={openEditBid} />
+      )}
 
       {/* Bid Board Tab */}
       {(activeTab === 'bid-board' || activeTab === 'robot-board') && (
@@ -3161,6 +3243,7 @@ export default function Bids() {
                   twinBidBySourceId,
                   onOpenReadiness: setRobotReadinessBid,
                   onOpenTwinBid: (twin, source) => setRobotComparePair({ source, twin }),
+                  onToggleRequest: (bid) => void toggleRobotRequest(bid),
                 }
           }
         />

@@ -1158,6 +1158,8 @@ export type Database = {
           selected_price_book_version_id: string | null
           selected_takeoff_book_version_id: string | null
           service_type_id: string
+          robot_requested_at: string | null
+          robot_requested_by: string | null
           submitted_to: string | null
           twin_source_bid_id: string | null
           updated_at: string | null
@@ -1221,6 +1223,8 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id: string
+          robot_requested_at?: string | null
+          robot_requested_by?: string | null
           submitted_to?: string | null
           twin_source_bid_id?: string | null
           updated_at?: string | null
@@ -1284,6 +1288,8 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id?: string
+          robot_requested_at?: string | null
+          robot_requested_by?: string | null
           submitted_to?: string | null
           twin_source_bid_id?: string | null
           updated_at?: string | null
@@ -1310,6 +1316,13 @@ export type Database = {
             columns: ["twin_source_bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_robot_requested_by_fkey"
+            columns: ["robot_requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
