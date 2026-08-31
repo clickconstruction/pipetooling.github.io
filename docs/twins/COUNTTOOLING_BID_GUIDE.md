@@ -20,6 +20,9 @@ sends you here at pipeline stage 3; your counts come back to PipeTooling at stag
 - **The agent door**: `POST /functions/v1/import-takeoff` on CountTooling with your CT
   session JWT (twin accounts only). You do NOT robot-mouse the canvas — you compute
   placements and import them. Full payload contract: `TAKEOFF_IMPORT.md` in the CT repo.
+  **Always pass `external_ref` with your bid number** (e.g. `"external_ref": "b409"`) —
+  it renders as the bid-stamp chip in CT's project lists and Bid Board, is matched by
+  list search, and is how reviewers tell audit projects apart.
 - **The plan bytes**: PipeTooling's `GET /functions/v1/plan-fetch?bid=<bid>` streams your
   bid's plan set (your `X-Twin-Token` authorizes it; assignment is the grant).
 - **The review flow**: your project carries `review_status` — you mark it `ready`, a
