@@ -652,6 +652,9 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           bid_due_date: due,
           created_by: twin.twinUserId,
           estimator_id: twin.twinUserId,
+          // v2.2530: pair the twin copy with its human source — drives the Bid
+          // Board robot-readiness icon's "robot bid exists" state.
+          twin_source_bid_id: refBid.id,
           notes: `Blind backtest of b${refBid.bid_number}. Reference sealed until the STG-6 scorecard stamp. Opened via twin-mcp open_backtest.`,
         })
         .select('id, bid_number')

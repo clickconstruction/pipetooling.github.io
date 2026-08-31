@@ -1159,6 +1159,7 @@ export type Database = {
           selected_takeoff_book_version_id: string | null
           service_type_id: string
           submitted_to: string | null
+          twin_source_bid_id: string | null
           updated_at: string | null
           working_board_archived_at: string | null
           working_board_archived_by: string | null
@@ -1221,6 +1222,7 @@ export type Database = {
           selected_takeoff_book_version_id?: string | null
           service_type_id: string
           submitted_to?: string | null
+          twin_source_bid_id?: string | null
           updated_at?: string | null
           working_board_archived_at?: string | null
           working_board_archived_by?: string | null
@@ -1283,6 +1285,7 @@ export type Database = {
           selected_takeoff_book_version_id?: string | null
           service_type_id?: string
           submitted_to?: string | null
+          twin_source_bid_id?: string | null
           updated_at?: string | null
           working_board_archived_at?: string | null
           working_board_archived_by?: string | null
@@ -1298,6 +1301,13 @@ export type Database = {
           {
             foreignKeyName: "bids_adopted_into_bid_id_fkey"
             columns: ["adopted_into_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_twin_source_bid_id_fkey"
+            columns: ["twin_source_bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
             referencedColumns: ["id"]

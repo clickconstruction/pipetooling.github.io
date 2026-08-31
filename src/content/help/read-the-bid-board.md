@@ -86,6 +86,18 @@ not a deletion. Open {{button:outline|🤖}} and flip to the {{button:outline|Ro
 view — it's right there.
 :::
 
+## The robot icon on each row — can a robot bid this?
+
+Every row carries a small robot icon just left of the bid number:
+
+- **Grey** — a robot can't duplicate this bid yet. Click it to see exactly what's
+  missing (plans link and service type are the blockers) with a fix hint for each,
+  and jump straight into the Edit form.
+- **Yellow** — the bid has everything a robot needs. Click it and copy the ready-made
+  kickoff prompt; paste that into the robot and it produces a full blind bid and files
+  an audit when done.
+- **🤖 (colorful)** — a robot bid already exists. Click to jump to it on the Robot Board.
+
 ## Deciding whether to bid at all
 
 The go/no-go evaluation checklist (location, payment terms, bid documents, competition…) lives in the bid form: open **New Bid** or a bid's **Edit** form and tap the {{button:outline-blue|Go/no-go}} pill beside the title. It used to be the "Checklist" button on this board.

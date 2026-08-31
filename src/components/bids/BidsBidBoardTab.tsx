@@ -9,6 +9,7 @@ import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import { resolveBidLedgerPrefix, formatBidLedgerNumberLabel, bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { compareBidsForBidBoardDueDate, compareBidsForBidBoardPendingRecency } from '../../lib/compareBidsForBidBoardDueDate'
 import { shouldShowEmptyBidValueAlert } from '../../lib/bidBoardEmptyBidValueAlert'
+import { robotBidReadiness } from '../../lib/bids/robotBidReadiness'
 import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -69,6 +70,13 @@ type BidsBidBoardTabProps = {
   roomStatesByBid?: Record<string, Record<string, BidRoomStateSummary>>
   /** Per-GC note counts (v2.2217): `${bidId}:${gcCustomerId}` → n. */
   gcNoteCounts?: Record<string, number>
+  /** Robot readiness icon (v2.2530) — human board only; omit on the Robot Board. */
+  robotReadiness?: {
+    /** source bid id → its digital-twin copy (bids.twin_source_bid_id pairing). */
+    twinBidBySourceId: ReadonlyMap<string, BidWithBuilder>
+    onOpenReadiness: (bid: BidWithBuilder) => void
+    onOpenTwinBid: (twin: BidWithBuilder) => void
+  }
 }
 
 const BID_BOARD_UNSENT_SECTION_LABEL = 'Unsent / Working Bids'
@@ -105,6 +113,7 @@ const BID_BOARD_ICON_PATHS = {
   bidSend: 'M240 112L128 112C119.2 112 112 119.2 112 128L112 512C112 520.8 119.2 528 128 528L208 528L208 576L128 576C92.7 576 64 547.3 64 512L64 128C64 92.7 92.7 64 128 64L261.5 64C278.5 64 294.8 70.7 306.8 82.7L429.3 205.3C441.3 217.3 448 233.6 448 250.6L448 400.1L400 400.1L400 272.1L312 272.1C272.2 272.1 240 239.9 240 200.1L240 112.1zM380.1 224L288 131.9L288 200C288 213.3 298.7 224 312 224L380.1 224zM272 444L304 444C337.1 444 364 470.9 364 504C364 537.1 337.1 564 304 564L292 564L292 592C292 603 283 612 272 612C261 612 252 603 252 592L252 464C252 453 261 444 272 444zM304 524C315 524 324 515 324 504C324 493 315 484 304 484L292 484L292 524L304 524zM400 444L432 444C460.7 444 484 467.3 484 496L484 560C484 588.7 460.7 612 432 612L400 612C389 612 380 603 380 592L380 464C380 453 389 444 400 444zM432 572C438.6 572 444 566.6 444 560L444 496C444 489.4 438.6 484 432 484L420 484L420 572L432 572zM508 464C508 453 517 444 528 444L576 444C587 444 596 453 596 464C596 475 587 484 576 484L548 484L548 508L576 508C587 508 596 517 596 528C596 539 587 548 576 548L548 548L548 592C548 603 539 612 528 612C517 612 508 603 508 592L508 464z',
   counts: 'M348 62.7C330.7 52.7 309.3 52.7 292 62.7L207.8 111.3C190.5 121.3 179.8 139.8 179.8 159.8L179.8 261.7L91.5 312.7C74.2 322.7 63.5 341.2 63.5 361.2L63.5 458.5C63.5 478.5 74.2 497 91.5 507L175.8 555.6C193.1 565.6 214.5 565.6 231.8 555.6L320.1 504.6L408.4 555.6C425.7 565.6 447.1 565.6 464.4 555.6L548.5 507C565.8 497 576.5 478.5 576.5 458.5L576.5 361.2C576.5 341.2 565.8 322.7 548.5 312.7L460.2 261.7L460.2 159.8C460.2 139.8 449.5 121.3 432.2 111.3L348 62.7zM296 356.6L296 463.1L207.7 514.1C206.5 514.8 205.1 515.2 203.7 515.2L203.7 409.9L296 356.6zM527.4 357.2C528.1 358.4 528.5 359.8 528.5 361.2L528.5 458.5C528.5 461.4 527 464 524.5 465.4L440.2 514C439 514.7 437.6 515.1 436.2 515.1L436.2 409.8L527.4 357.2zM412.3 159.8L412.3 261.7L320 315L320 208.5L411.2 155.9C411.9 157.1 412.3 158.5 412.3 159.9z',
   gear: 'M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z',
+  robot: 'M320 64c13 0 24 11 24 24v40h120c40 0 72 32 72 72v192c0 40-32 72-72 72H176c-40 0-72-32-72-72V200c0-40 32-72 72-72h120V88c0-13 11-24 24-24zM48 296c0-18 14-32 32-32v160c-18 0-32-14-32-32v-96zm544-32c18 0 32 14 32 32v96c0 18-14 32-32 32V264zM224 232a40 40 0 100 80 40 40 0 000-80zm192 0a40 40 0 100 80 40 40 0 000-80zM232 400h176c13 0 24 11 24 24s-11 24-24 24H232c-13 0-24-11-24-24s11-24 24-24z',
 } as const
 
 /** One jump icon per workflow tab, in tab-strip order — the cluster doubles as
@@ -164,6 +173,7 @@ export function BidsBidBoardTab({
   gcPacketsByBid,
   roomStatesByBid,
   gcNoteCounts,
+  robotReadiness,
 }: BidsBidBoardTabProps) {
   // How the viewer's OWN name is boxed on the board (per-account, per-theme —
   // picked via the color wheel on the Health line, v2.1710).
@@ -405,6 +415,41 @@ export function BidsBidBoardTab({
     toggleBidBoardRowExpanded(bidId)
   }
 
+  /** Robot readiness icon (v2.2530): 🤖 emoji when a twin bid exists (click jumps to it
+      on the Robot Board), yellow glyph when a robot could bid this (click shows the
+      kickoff prompt), grey glyph when required inputs are missing (click explains).
+      One kernel (`robotBidReadiness`) decides state here AND fills the modal, so the
+      row and the explanation can never disagree. */
+  function renderRobotReadinessIcon(bid: BidWithBuilder, actionStyle: React.CSSProperties) {
+    if (!robotReadiness) return null
+    const twin = robotReadiness.twinBidBySourceId.get(bid.id)
+    if (twin) {
+      return (
+        <button
+          type="button"
+          onClick={() => robotReadiness.onOpenTwinBid(twin)}
+          title={`Robot bid exists (b${twin.bid_number ?? '?'}) — open it on the Robot Board`}
+          aria-label={`Robot bid exists for ${bid.project_name ?? 'bid'} — open it on the Robot Board`}
+          style={{ ...actionStyle, fontSize: '0.9375rem', lineHeight: 1 }}
+        >
+          {'\u{1F916}'}
+        </button>
+      )
+    }
+    const ready = robotBidReadiness(bid).state === 'ready'
+    return (
+      <button
+        type="button"
+        onClick={() => robotReadiness.onOpenReadiness(bid)}
+        title={ready ? 'Ready for a robot — get the kickoff prompt' : 'A robot can’t bid this yet — see why'}
+        aria-label={`${ready ? 'Robot-ready' : 'Not robot-ready'} — ${bid.project_name ?? 'bid'}`}
+        style={{ ...actionStyle, color: ready ? '#eab308' : 'var(--border-strong)' }}
+      >
+        <BidBoardIcon d={BID_BOARD_ICON_PATHS.robot} size={18} />
+      </button>
+    )
+  }
+
   /** Counts button · bid number (+ unread-notes badge) · Edit gear. */
   function renderBidBoardBidNumberCluster(bid: BidWithBuilder) {
     const notesUnreadRaw = bidBoardNotesUnreadByBidId[bid.id] ?? 0
@@ -498,6 +543,7 @@ export function BidsBidBoardTab({
             <BidBoardIcon d={BID_BOARD_ICON_PATHS[j.icon]} size={18} />
           </button>
         ))}
+        {robotReadiness ? renderRobotReadinessIcon(bid, actionStyle) : null}
         {numberNode}
         <button
           type="button"
