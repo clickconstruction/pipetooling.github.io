@@ -13,8 +13,19 @@ export type NcnsListRow = {
   details: string | null
 }
 
+/** Derived attendance row (v2.2551): computed from clock records, never filed. */
+export type LateTimelineEntry = {
+  user_id: string
+  subject_name: string
+  work_date: string
+  label: string
+  title: string
+  minutesLate: number
+}
+
 export type WriteupsTimelineRow =
   | { kind: 'writeup'; sortMs: number; writeup: WriteupListRow }
   | { kind: 'ncns'; sortMs: number; ncns: NcnsListRow }
+  | { kind: 'late'; sortMs: number; late: LateTimelineEntry }
 
 export const NCNS_TEMPLATE_SORT_KEY = 'No-call, no-show'

@@ -7,7 +7,20 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { WriteupEditorModal, type WriteupListRow } from './WriteupEditorModal'
 import { WriteupTemplateManagerModal, type WriteupTemplateRow } from './WriteupTemplateManagerModal'
 import { NcnsDetailModal } from './NcnsDetailModal'
-import { NCNS_TEMPLATE_SORT_KEY, type NcnsListRow, type WriteupsTimelineRow } from './writeupsTimelineTypes'
+import { NCNS_TEMPLATE_SORT_KEY, type LateTimelineEntry, type NcnsListRow, type WriteupsTimelineRow } from './writeupsTimelineTypes'
+import {
+  computeAttendanceSummaryForUser,
+  fetchClockInsForUsersInRange,
+  fetchScheduleBlocksForRange,
+  latenessLedgerEntries,
+  type LatenessBlockRow,
+  type LatenessSessionRow,
+} from '../../lib/scheduleLateness'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+
+const LATE_TEMPLATE_SORT_KEY = 'Late arrival (derived)'
+const ATTENDANCE_WINDOW_DAYS = 90
+
 
 type TemplateOption = {
   id: string
@@ -39,6 +52,10 @@ export function WriteupsContractsSubTab({
   const [templates, setTemplates] = useState<WriteupTemplateRow[]>([])
   const [writeups, setWriteups] = useState<WriteupListRow[]>([])
   const [ncnsRows, setNcnsRows] = useState<NcnsListRow[]>([])
+  // Derived attendance (v2.2551): raw inputs for the lateness kernel, last 90 days.
+  const [attendanceBlocks, setAttendanceBlocks] = useState<LatenessBlockRow[]>([])
+  const [attendanceSessions, setAttendanceSessions] = useState<LatenessSessionRow[]>([])
+  const [showAttendance, setShowAttendance] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -118,6 +135,17 @@ export function WriteupsContractsSubTab({
           }
         })
       )
+      // Derived attendance inputs (fail-soft: an error just means no late rows).
+      const endYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+      const startYmd = calendarYmdInAppTzFromIso(
+        new Date(Date.now() - ATTENDANCE_WINDOW_DAYS * 86_400_000).toISOString(),
+      )
+      const [blk, ses] = await Promise.all([
+        fetchScheduleBlocksForRange(startYmd, endYmd),
+        fetchClockInsForUsersInRange(users.map((u) => u.id), startYmd, endYmd),
+      ])
+      setAttendanceBlocks(blk.error ? [] : blk.data)
+      setAttendanceSessions(ses.error ? [] : ses.data)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load writeups')
       setNcnsRows([])
@@ -147,6 +175,34 @@ export function WriteupsContractsSubTab({
     [templates]
   )
 
+  const lateEntries = useMemo((): LateTimelineEntry[] => {
+    return latenessLedgerEntries(attendanceBlocks, attendanceSessions).map((e) => ({
+      user_id: e.user_id,
+      subject_name: users.find((u) => u.id === e.user_id)?.name ?? 'Unknown',
+      work_date: e.work_date,
+      label: e.label,
+      title: e.title,
+      minutesLate: e.minutesLate,
+    }))
+  }, [attendanceBlocks, attendanceSessions, users])
+
+  /** The one person the Subject filter narrows to (the F summary card's subject). */
+  const focusUser = useMemo(() => {
+    const q = filterSubject.trim().toLowerCase()
+    if (!q) return null
+    const matches = users.filter((u) => u.name.toLowerCase().includes(q))
+    return matches.length === 1 ? matches[0]! : null
+  }, [filterSubject, users])
+
+  const focusSummary = useMemo(() => {
+    if (!focusUser) return null
+    const summary = computeAttendanceSummaryForUser(attendanceBlocks, attendanceSessions, focusUser.id)
+    const cutoff30 = calendarYmdInAppTzFromIso(new Date(Date.now() - 30 * 86_400_000).toISOString())
+    const lates30 = lateEntries.filter((l) => l.user_id === focusUser.id && l.work_date >= cutoff30).length
+    const ncnsCount = ncnsRows.filter((r) => r.subject_user_id === focusUser.id).length
+    return { summary, lates30, ncnsCount }
+  }, [focusUser, attendanceBlocks, attendanceSessions, lateEntries, ncnsRows])
+
   const filteredSorted = useMemo((): WriteupsTimelineRow[] => {
     let wRows = [...writeups]
     const q = filterSubject.trim().toLowerCase()
@@ -159,6 +215,9 @@ export function WriteupsContractsSubTab({
     let nRows = includeNcns ? [...ncnsRows] : []
     if (q) nRows = nRows.filter((r) => r.subject_name.toLowerCase().includes(q))
 
+    let lRows = includeNcns && showAttendance ? [...lateEntries] : []
+    if (q) lRows = lRows.filter((r) => r.subject_name.toLowerCase().includes(q))
+
     const timeline: WriteupsTimelineRow[] = [
       ...wRows.map((w) => ({
         kind: 'writeup' as const,
@@ -170,19 +229,24 @@ export function WriteupsContractsSubTab({
         sortMs: new Date(n.created_at).getTime(),
         ncns: n,
       })),
+      ...lRows.map((l) => ({
+        kind: 'late' as const,
+        sortMs: new Date(`${l.work_date}T12:00:00`).getTime(),
+        late: l,
+      })),
     ]
 
     timeline.sort((a, b) => {
       if (sortKey === 'subject') {
-        const sa = a.kind === 'writeup' ? a.writeup.subject_name : a.ncns.subject_name
-        const sb = b.kind === 'writeup' ? b.writeup.subject_name : b.ncns.subject_name
+        const sa = a.kind === 'writeup' ? a.writeup.subject_name : a.kind === 'ncns' ? a.ncns.subject_name : a.late.subject_name
+        const sb = b.kind === 'writeup' ? b.writeup.subject_name : b.kind === 'ncns' ? b.ncns.subject_name : b.late.subject_name
         const c = sa.localeCompare(sb, undefined, { sensitivity: 'base' })
         if (c !== 0) return c
         return b.sortMs - a.sortMs
       }
       if (sortKey === 'template') {
-        const ta = a.kind === 'writeup' ? a.writeup.template_name : NCNS_TEMPLATE_SORT_KEY
-        const tb = b.kind === 'writeup' ? b.writeup.template_name : NCNS_TEMPLATE_SORT_KEY
+        const ta = a.kind === 'writeup' ? a.writeup.template_name : a.kind === 'ncns' ? NCNS_TEMPLATE_SORT_KEY : LATE_TEMPLATE_SORT_KEY
+        const tb = b.kind === 'writeup' ? b.writeup.template_name : b.kind === 'ncns' ? NCNS_TEMPLATE_SORT_KEY : LATE_TEMPLATE_SORT_KEY
         const c = ta.localeCompare(tb, undefined, { sensitivity: 'base' })
         if (c !== 0) return c
         return b.sortMs - a.sortMs
@@ -190,7 +254,7 @@ export function WriteupsContractsSubTab({
       return b.sortMs - a.sortMs
     })
     return timeline
-  }, [writeups, ncnsRows, filterSubject, filterTemplateId, filterStatus, filterDisclosure, sortKey])
+  }, [writeups, ncnsRows, lateEntries, showAttendance, filterSubject, filterTemplateId, filterStatus, filterDisclosure, sortKey])
 
   async function deleteWriteup(r: WriteupListRow) {
     if (r.status === 'submitted' && !isDev) {
@@ -311,7 +375,57 @@ export function WriteupsContractsSubTab({
             <option value="template">Template</option>
           </select>
         </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)', cursor: 'pointer', paddingBottom: '0.35rem' }}>
+            <input
+              type="checkbox"
+              checked={showAttendance}
+              onChange={(e) => setShowAttendance(e.target.checked)}
+            />
+            Show attendance (derived)
+          </label>
+        </div>
       </div>
+
+      {focusUser && focusSummary && showAttendance ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
+              Attendance — {focusUser.name}, last {ATTENDANCE_WINDOW_DAYS} days
+            </span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>derived from clock records</span>
+          </div>
+          <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.5rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
+            <span>
+              <strong style={{ color: 'var(--text-amber-800)' }}>Late {focusSummary.summary.lateDays}×</strong>
+              {focusSummary.summary.medianLateMinutes != null
+                ? ` · median ${focusSummary.summary.medianLateMinutes}m`
+                : ''}
+            </span>
+            <span><strong style={{ color: 'var(--text-red-700)' }}>NCNS {focusSummary.ncnsCount}</strong></span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              On time {focusSummary.summary.onTimeDays} of {focusSummary.summary.scheduledDays} scheduled day
+              {focusSummary.summary.scheduledDays === 1 ? '' : 's'}
+            </span>
+          </div>
+          {focusSummary.lates30 >= 3 ? (
+            <div style={{ marginTop: '0.6rem', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.45rem 0.7rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span><strong>{focusSummary.lates30} lates in the last 30 days.</strong></span>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditorRow(null)
+                  setEditorMode('create')
+                  setEditorOpen(true)
+                }}
+                style={{ background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8125rem', padding: 0 }}
+              >
+                Start a tardiness write-up →
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
@@ -377,7 +491,7 @@ export function WriteupsContractsSubTab({
                         )}
                       </td>
                     </tr>
-                  ) : (
+                  ) : row.kind === 'ncns' ? (
                     <tr key={`ncns-${row.ncns.id}`} style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-amber-tint)' }}>
                       <td style={td}>
                         <span
@@ -410,6 +524,36 @@ export function WriteupsContractsSubTab({
                           View
                         </button>
                       </td>
+                    </tr>
+                  ) : (
+                    <tr key={`late-${row.late.user_id}-${row.late.work_date}`} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={td}>
+                        <span
+                          title={row.late.title}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            color: 'var(--text-amber-800)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.02em',
+                          }}
+                        >
+                          <span aria-hidden>◔</span> Late
+                        </span>
+                      </td>
+                      <td style={td}>{row.late.subject_name}</td>
+                      <td style={td}>
+                        <div title={row.late.title}>{row.late.label}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Work date: {row.late.work_date}</div>
+                      </td>
+                      <td style={{ ...td, color: 'var(--text-muted)' }}>clock records</td>
+                      <td style={td}>{row.late.work_date}</td>
+                      <td style={{ ...td, color: 'var(--text-muted)' }}>Derived</td>
+                      <td style={td}>—</td>
+                      <td style={td} />
                     </tr>
                   )
                 )
