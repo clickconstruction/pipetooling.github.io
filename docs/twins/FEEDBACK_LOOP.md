@@ -1,6 +1,6 @@
 ---
 file: docs/twins/FEEDBACK_LOOP.md
-last_updated: 2026-08-30
+last_updated: 2026-08-31
 purpose: The audit loop — how human estimator feedback on twin bids reaches the agent through the Audits tab, and what the agent must do with it. Read at the START of any twin/backtest session, alongside get_answers.
 ---
 
@@ -39,6 +39,12 @@ count. Each card:
 2. Insert the `bid_audits` row (`status='pending'`, `ct_project_id`, `ct_view_url`) and
    PATCH `bids.count_tooling_plans_link` with the same URL.
 3. Seed its open RFIs as `bid_audit_notes` rows (`kind='question'`, best-fit section).
+   **Anchor every question you can (v2.2535)**: set `sheet_ref` to the plan sheet where
+   you saw it (e.g. `'P2.1'`) and `context` to one sentence of what you saw and what
+   rides on the answer (e.g. `'4 wet tables with rough-ins drawn but absent from the
+   fixture schedule — ~$18k of connects hangs on this'`). The Audits card renders both
+   under the question; an unanchored question makes the auditor hunt through the whole
+   set. Both columns are nullable — omit them only when there is genuinely no sheet.
 
 Twin lanes are structural (RLS): a twin can open audits and later close them as
 `digested`, but can never set `done` (verified live 2026-08-30: 42501 on attempt);
