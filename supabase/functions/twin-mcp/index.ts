@@ -191,6 +191,23 @@ const TOOLS = [
       required: ['bid', 'note'],
     },
   },
+  {
+    name: 'ct_finish_takeoff',
+    description:
+      'One-call STG-3 finisher: server-side mints YOUR CountTooling session, imports the takeoff (import-takeoff, idempotent by name), marks the project review-ready, mints a view link, stamps count_tooling_link on the bid, and opens the bid_audits row. The bid number is stamped as external_ref automatically and the plan set rides via plan-fetch — no browser, no scripts. Only on bids you created or are assigned to.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your bid (e.g. 'b410' or uuid) — becomes external_ref and the plan-fetch source" },
+        name: { type: 'string', description: 'CT project name (re-import with the same name replaces)' },
+        note: { type: 'string', description: 'Optional provenance note stored in the takeoff data' },
+        takeoff: { type: 'object', description: 'takeoff.json v1 (counters, lineTypes, pages) — TAKEOFF_IMPORT.md contract' },
+        view_name: { type: 'string', description: "Optional view-link label (default '<bid> audit view')" },
+        skip_pdf: { type: 'boolean', description: 'Skip the plan-fetch PDF leg (default false)' },
+      },
+      required: ['bid', 'name', 'takeoff'],
+    },
+  },
 ]
 
 function json(body: unknown, status = 200): Response {
@@ -670,6 +687,123 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (insErr) return textContent(`Note not saved: ${insErr.message}`, true)
       return textContent(`Note recorded on b${bid.bid_number} (${note.length > 120 ? note.slice(0, 120) + '…' : note})`)
     }
+    case 'ct_finish_takeoff': {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      // 0. Fence: the bid must be the twin's own (assigned/created), same rule as add_bid_note.
+      const ref = String(args.bid ?? '').trim()
+      const projName = String(args.name ?? '').trim()
+      const takeoff = args.takeoff
+      if (!ref || !projName || !takeoff || typeof takeoff !== 'object') {
+        return textContent('ct_finish_takeoff needs bid + name + takeoff (v1 object)', true)
+      }
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, estimator_id, created_by')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid, error: bidErr } = await bq.maybeSingle()
+      if (bidErr) return textContent(`Bid lookup failed: ${bidErr.message}`, true)
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.estimator_id !== twin.twinUserId && bid.created_by !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — takeoffs land only on your own bids.`, true)
+      }
+      const bidTag = `b${bid.bid_number}`
+
+      // 1. Mint a CT session server-side: per-twin token first, fleet secret fallback
+      //    (same path as mint_session), then walk the magic link ourselves — the verify
+      //    redirect's fragment carries the access_token, no browser required.
+      const ctLoginUrl = Deno.env.get('CT_TWIN_LOGIN_URL')
+      const ctSecret = Deno.env.get('COUNTTOOLING_TWIN_LOGIN_SECRET')
+      if (!ctLoginUrl) return textContent('CT_TWIN_LOGIN_URL not configured on this server', true)
+      const ctBase = new URL(ctLoginUrl).origin
+      // CT publishable anon key (ships in the CT client's config.js — public by design).
+      const CT_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhycXh2ZnlkbXZ0dndodmVmbXFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzODM0NTMsImV4cCI6MjA4Nzk1OTQ1M30.dqn8DwO-dc0z2GwunCfEo5VO8lPRUGaN6ruzAm33HSs'
+      const ctEmail = twin.email.replace('@twins.pipetooling.local', '@twins.counttooling.local')
+      const rawToken = presentedToken(req)!
+      let mintRes = await fetch(ctLoginUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Twin-Token': rawToken },
+        body: JSON.stringify({ email: ctEmail, redirectTo: 'https://counttooling.com', run: `ct-finish:${bidTag}` }),
+      })
+      if (mintRes.status === 401 && ctSecret) {
+        mintRes = await fetch(ctLoginUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Twin-Login-Secret': ctSecret },
+          body: JSON.stringify({ email: ctEmail, redirectTo: 'https://counttooling.com', run: `ct-finish:${bidTag}` }),
+        })
+      }
+      const mintBody = await mintRes.json().catch(() => ({}))
+      if (!mintRes.ok || !mintBody.action_link) {
+        return textContent(`CT mint failed (${mintRes.status}): ${mintBody.error ?? 'unknown'}`, true)
+      }
+      const verifyRes = await fetch(mintBody.action_link, { redirect: 'manual' })
+      const loc = verifyRes.headers.get('location') ?? ''
+      const jwtMatch = loc.match(/access_token=([^&]+)/)
+      if (!jwtMatch) return textContent(`CT verify did not yield a session (status ${verifyRes.status}) — link may be expired`, true)
+      const ctJwt = jwtMatch[1]
+
+      // 2. Import the takeoff. external_ref is ALWAYS the bid tag (bid-stamp doctrine);
+      //    the plan set rides via plan-fetch with the caller's own token.
+      const importBody: Record<string, unknown> = {
+        name: projName,
+        note: String(args.note ?? '').slice(0, 400) || `twin-mcp ct_finish_takeoff for ${bidTag}`,
+        external_ref: bidTag,
+        takeoff,
+      }
+      if (args.skip_pdf !== true) {
+        importBody.pdf_url = `${supabaseUrl}/functions/v1/plan-fetch?bid=${bidTag}`
+        importBody.pdf_headers = { 'X-Twin-Token': rawToken }
+      }
+      const impRes = await fetch(`${ctBase}/functions/v1/import-takeoff`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ctJwt}`, apikey: CT_ANON, 'Content-Type': 'application/json' },
+        body: JSON.stringify(importBody),
+      })
+      const impBody = await impRes.json().catch(() => ({}))
+      if (!impRes.ok || !impBody.project_id) {
+        return textContent(`import-takeoff failed (${impRes.status}): ${JSON.stringify(impBody).slice(0, 600)}`, true)
+      }
+      const projectId = impBody.project_id as string
+
+      // 3. Review-ready + view link (best-effort loud: failures reported, marks kept).
+      const rpcHeaders = { Authorization: `Bearer ${ctJwt}`, apikey: CT_ANON, 'Content-Type': 'application/json' }
+      const readyRes = await fetch(`${ctBase}/rest/v1/rpc/set_project_review_status`, {
+        method: 'POST', headers: rpcHeaders,
+        body: JSON.stringify({ p_project_id: projectId, p_status: 'ready' }),
+      })
+      const linkRes = await fetch(`${ctBase}/rest/v1/rpc/create_view_link`, {
+        method: 'POST', headers: rpcHeaders,
+        body: JSON.stringify({ p_project_id: projectId, p_name: String(args.view_name ?? '').trim() || `${bidTag} audit view` }),
+      })
+      const linkBody = await linkRes.json().catch(() => ({}))
+      const viewUrl = linkBody?.token ? `https://counttooling.com/app/?t=${linkBody.token}` : null
+
+      // 4. PT side: stamp count_tooling_link + open the audit row (idempotent).
+      if (viewUrl) {
+        await admin.from('bids').update({ count_tooling_link: viewUrl }).eq('id', bid.id).then(() => {}, () => {})
+        const { data: existingAudit } = await admin.from('bid_audits').select('id').eq('bid_id', bid.id).maybeSingle()
+        if (!existingAudit) {
+          await admin.from('bid_audits').insert({
+            bid_id: bid.id, ct_project_id: projectId, ct_view_url: viewUrl,
+            status: 'pending', created_by: twin.twinUserId,
+          }).then(() => {}, () => {})
+        }
+      }
+      await admin.from('twin_runs').insert({
+        twin_user_id: twin.twinUserId,
+        mission: `ct-finish:${bidTag}`,
+        notes: `project=${projectId} markers=${impBody.counter_count ?? '?'} pdf=${impBody.pdf ? (impBody.pdf.ok ? 'ok' : 'FAIL') : 'skipped'} view=${viewUrl ?? 'none'}`,
+        ended_at: new Date().toISOString(),
+      }).then(() => {}, () => {})
+
+      return textContent(JSON.stringify({
+        ok: true, bid: bidTag, project_id: projectId, replaced: !!impBody.replaced,
+        counter_count: impBody.counter_count ?? null, line_count: impBody.line_count ?? null,
+        pdf: impBody.pdf ?? null, review_ready: readyRes.ok, view_url: viewUrl,
+        audit: viewUrl ? 'bid_audits row ensured + count_tooling_link stamped' : 'view link failed — audit row not created',
+      }, null, 2))
+    }
     default:
       return textContent(`Unknown tool: ${name}`, true)
   }
@@ -684,7 +818,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.1.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.2.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
