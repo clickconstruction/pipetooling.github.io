@@ -53,8 +53,8 @@ export default defineConfig({
         globIgnores: ['**/help/**', '**/easter-eggs/**'],
       },
       manifest: {
-        name: 'PipeTooling',
-        short_name: 'PipeTooling',
+        name: 'ClickTooling',
+        short_name: 'ClickTooling',
         description: 'Construction workflow and bid management',
         theme_color: '#f97316',
         background_color: '#ffffff',
