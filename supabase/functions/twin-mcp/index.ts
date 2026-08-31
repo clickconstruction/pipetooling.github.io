@@ -211,7 +211,7 @@ const TOOLS = [
   {
     name: 'get_shadow_queue',
     description:
-      'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate — created recently, plans present, NOT yet sent (so the shadow is blind by nature), not a ZZ bid, not already shadowed. Returns logistics only. Pick one and open_shadow it.',
+      'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate — created recently, plans present, NOT yet sent (so the shadow is blind by nature), not a ZZ bid, not already shadowed. HUMAN-REQUESTED bids (the green robot icon on the Bid Board) come FIRST, oldest ask on top, and bypass the lookback window — work those before the rest. Returns logistics only. Pick one and open_shadow it.',
     inputSchema: {
       type: 'object',
       properties: { days: { type: 'number', description: 'Lookback window in days (default 14)' } },
@@ -860,22 +860,56 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 14) * 86400_000).toISOString()
       // Logistics only — pricing fields don't exist yet on eligible bids by definition
       // (bid_date_sent IS NULL is the blindness guarantee), and are never selected anyway.
-      const { data: rows, error } = await admin
-        .from('bids')
-        .select('id, bid_number, project_name, address, distance_from_office, bid_due_date, plans_link, created_at')
-        .is('bid_date_sent', null)
-        .not('plans_link', 'is', null)
-        .gte('created_at', since)
-        .not('project_name', 'ilike', 'ZZ %')
-        .order('created_at', { ascending: false })
-        .limit(25)
-      if (error) return textContent(`Queue lookup failed: ${error.message}`, true)
+      const QUEUE_COLS = 'id, bid_number, project_name, address, distance_from_office, bid_due_date, plans_link, created_at, robot_requested_at, robot_requested_by'
+      // v2.2543: human-requested bids (the green robot icon) come first and bypass
+      // the lookback window — a person's ask shouldn't age out of the queue.
+      const [recentRes, requestedRes] = await Promise.all([
+        admin
+          .from('bids')
+          .select(QUEUE_COLS)
+          .is('bid_date_sent', null)
+          .not('plans_link', 'is', null)
+          .gte('created_at', since)
+          .not('project_name', 'ilike', 'ZZ %')
+          .order('created_at', { ascending: false })
+          .limit(25),
+        admin
+          .from('bids')
+          .select(QUEUE_COLS)
+          .is('bid_date_sent', null)
+          .not('plans_link', 'is', null)
+          .not('robot_requested_at', 'is', null)
+          .not('project_name', 'ilike', 'ZZ %')
+          .order('robot_requested_at', { ascending: true })
+          .limit(25),
+      ])
+      if (recentRes.error) return textContent(`Queue lookup failed: ${recentRes.error.message}`, true)
+      if (requestedRes.error) return textContent(`Queue lookup failed: ${requestedRes.error.message}`, true)
       const { data: shadowed } = await admin.from('twin_shadow_runs').select('reference_bid_id')
       const taken = new Set((shadowed ?? []).map((r: { reference_bid_id: string }) => r.reference_bid_id))
-      const queue = (rows ?? [])
-        .filter((b) => !taken.has(b.id) && String(b.plans_link ?? '').trim() !== '')
-        .map((b) => ({ bid: `b${b.bid_number}`, project: b.project_name, address: b.address, miles: b.distance_from_office, due: b.bid_due_date, created: b.created_at }))
-      return textContent(JSON.stringify({ eligible: queue.length, queue, next: 'open_shadow(reference_bid, axis) on one — then estimate exactly like a backtest and lock_shadow before the human number exists.' }, null, 2))
+      type QueueRow = { id: string; bid_number: string; project_name: string | null; address: string | null; distance_from_office: number | null; bid_due_date: string | null; plans_link: string | null; created_at: string | null; robot_requested_at: string | null; robot_requested_by: string | null }
+      const eligible = (rows: QueueRow[] | null) => (rows ?? []).filter((b) => !taken.has(b.id) && String(b.plans_link ?? '').trim() !== '')
+      const requested = eligible(requestedRes.data as QueueRow[] | null)
+      const requestedIds = new Set(requested.map((b) => b.id))
+      const rest = eligible(recentRes.data as QueueRow[] | null).filter((b) => !requestedIds.has(b.id))
+      const requesterIds = [...new Set(requested.map((b) => b.robot_requested_by).filter((x): x is string => !!x))]
+      const { data: requesters } = requesterIds.length
+        ? await admin.from('users').select('id, name').in('id', requesterIds)
+        : { data: [] as Array<{ id: string; name: string | null }> }
+      const nameById = new Map((requesters ?? []).map((u: { id: string; name: string | null }) => [u.id, u.name]))
+      const toEntry = (b: QueueRow) => ({
+        bid: `b${b.bid_number}`,
+        project: b.project_name,
+        address: b.address,
+        miles: b.distance_from_office,
+        due: b.bid_due_date,
+        created: b.created_at,
+        ...(b.robot_requested_at
+          ? { requested: true, requested_at: b.robot_requested_at, requested_by: (b.robot_requested_by && nameById.get(b.robot_requested_by)) || null }
+          : {}),
+      })
+      const queue = [...requested.map(toEntry), ...rest.map(toEntry)]
+      return textContent(JSON.stringify({ eligible: queue.length, requested: requested.length, queue, next: 'open_shadow(reference_bid, axis) on one — requested entries first. Then estimate exactly like a backtest and lock_shadow before the human number exists.' }, null, 2))
     }
     case 'open_shadow': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -909,6 +943,9 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           plans_link: refBid.plans_link,
           gc_builder_id: refBid.gc_builder_id,
           bid_due_date: refBid.bid_due_date,
+          // v2.2543: pair the shadow with its live source so the Bid Board's
+          // robot icon turns colorful the moment the shadow opens.
+          twin_source_bid_id: refBid.id,
           created_by: twin.twinUserId,
           estimator_id: twin.twinUserId,
           notes: `Shadow estimate of live bid b${refBid.bid_number} (fleet Phase 1). Blind by nature — opened before the human number exists. Opened via twin-mcp open_shadow.`,
@@ -1014,7 +1051,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.1' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
