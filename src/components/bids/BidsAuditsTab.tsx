@@ -70,6 +70,14 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
   const [composer, setComposer] = useState<Record<string, string>>({}) // key: `${auditId}:${section}` or `answer:${questionId}`
   const [busy, setBusy] = useState<string | null>(null)
   const [showDigested, setShowDigested] = useState(false)
+  // Cockpit (v2.2548): one card open at a time; the rest collapse to triage rows.
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  // twin bid_id -> its reference (for the comparison strip; sealed while the ref is unsent).
+  const [refByBidId, setRefByBidId] = useState<Record<string, { refNumber: string | null; refValue: number | null; refSent: boolean }>>({})
+  // Expanded card's biggest robot rows (lazy) + local 👍 acks / 🚩 flags.
+  const [topRowsByBid, setTopRowsByBid] = useState<Record<string, Array<{ id: string; fixture: string; count: number; ext: number }>>>({})
+  const [rowJudgments, setRowJudgments] = useState<Record<string, 'ok' | 'flagged'>>({})
+  const [composerSection, setComposerSection] = useState<Record<string, AuditSection>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -85,6 +93,31 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
       )) as AuditWithBid[] | null
       const list = sortAuditsForTab(auditRows ?? [])
       setAudits(list)
+      setExpandedId((cur) => cur ?? list.find((a) => a.status === 'pending')?.id ?? null)
+      // Comparison strip inputs: each twin bid's reference (twin_source_bid_id pairing).
+      // Seal rule: an unsent reference's value is NEVER shown (shadow anchoring).
+      void (async () => {
+        try {
+          const twinIds = list.map((a) => a.bid_id)
+          if (!twinIds.length) return
+          const twins = ((await auditDb.from('bids').select('id, twin_source_bid_id').in('id', twinIds)).data ?? []) as Array<{ id: string; twin_source_bid_id: string | null }>
+          const refIds = [...new Set(twins.map((t) => t.twin_source_bid_id).filter((x): x is string => !!x))]
+          const refs = refIds.length
+            ? (((await auditDb.from('bids').select('id, bid_number, bid_value, bid_date_sent').in('id', refIds)).data ?? []) as Array<{ id: string; bid_number: string | null; bid_value: number | string | null; bid_date_sent: string | null }>)
+            : []
+          const refById = new Map(refs.map((r) => [r.id, r]))
+          const out: Record<string, { refNumber: string | null; refValue: number | null; refSent: boolean }> = {}
+          for (const t of twins) {
+            const r = t.twin_source_bid_id ? refById.get(t.twin_source_bid_id) : undefined
+            if (!r) continue
+            const sent = !!r.bid_date_sent
+            out[t.id] = { refNumber: r.bid_number, refValue: sent && r.bid_value != null ? Number(r.bid_value) : null, refSent: sent }
+          }
+          setRefByBidId(out)
+        } catch {
+          /* strip is optional context — never block the tab */
+        }
+      })()
       const auditIds = list.map((a) => a.id)
       if (auditIds.length) {
         const notes = (await withSupabaseRetry(
@@ -149,6 +182,40 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
   useEffect(() => {
     void load()
   }, [load])
+
+  // Biggest robot rows for the expanded card — tap to judge (v2.2548).
+  useEffect(() => {
+    const audit = audits.find((a) => a.id === expandedId)
+    if (!audit || topRowsByBid[audit.bid_id]) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = ((await auditDb.from('bids_count_rows').select('id, fixture, count, bid_version_id').eq('bid_id', audit.bid_id)).data ?? []) as Array<{ id: string; fixture: string; count: number; bid_version_id: string | null }>
+        const assigns = ((await auditDb.from('bid_pricing_assignments').select('count_row_id, price_book_entry_id, unit_price_override').eq('bid_id', audit.bid_id)).data ?? []) as Array<{ count_row_id: string; price_book_entry_id: string | null; unit_price_override: number | null }>
+        const entryIds = [...new Set(assigns.map((a) => a.price_book_entry_id).filter((x): x is string => !!x))]
+        const entries = entryIds.length ? (((await auditDb.from('price_book_entries').select('id, total_price').in('id', entryIds)).data ?? []) as Array<{ id: string; total_price: number | null }>) : []
+        const priceById = new Map(entries.map((e) => [e.id, e.total_price ?? 0]))
+        const byRow = new Map(assigns.map((a) => [a.count_row_id, a]))
+        const version = audit.bids?.selected_bid_version_id ?? null
+        const top = rows
+          .filter((r) => (version ? r.bid_version_id === version : r.bid_version_id == null))
+          .map((r) => {
+            const a = byRow.get(r.id)
+            const unit = a ? (a.unit_price_override ?? (a.price_book_entry_id ? (priceById.get(a.price_book_entry_id) ?? 0) : 0)) : 0
+            return { id: r.id, fixture: r.fixture, count: Number(r.count), ext: Number(r.count) * Number(unit) }
+          })
+          .sort((a, b) => b.ext - a.ext)
+          .slice(0, 8)
+        if (!cancelled) setTopRowsByBid((prev) => ({ ...prev, [audit.bid_id]: top }))
+      } catch {
+        /* judgment list is optional — the card still works without it */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expandedId, audits])
 
   const insertNote = async (audit: AuditWithBid, section: AuditSection, kind: 'note' | 'answer', body: string, parentId: string | null, composerKey: string) => {
     if (!body.trim()) return
@@ -218,7 +285,11 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
       setBusy(null)
     }
   }
-  const finishAudit = (audit: AuditWithBid) => setAuditStatus(audit, 'finish')
+  const finishAudit = async (audit: AuditWithBid) => {
+    await setAuditStatus(audit, 'finish')
+    const next = audits.find((a) => a.id !== audit.id && a.status === 'pending')
+    setExpandedId(next?.id ?? null)
+  }
   const reopenAudit = (audit: AuditWithBid) => setAuditStatus(audit, 'reopen')
 
   const visible = audits.filter((a) => a.status !== 'digested' || showDigested)
@@ -248,8 +319,41 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
             const chip = STATUS_CHIP[audit.status]
             const draft = draftByAudit[audit.id]
             const bidLabel = `b${audit.bids?.bid_number ?? '?'} · ${audit.bids?.project_name ?? 'Unknown project'}`
+            const ref = refByBidId[audit.bid_id]
+            const deltaPct = ref?.refValue && draft ? ((draft.total - ref.refValue) / ref.refValue) * 100 : null
+            const deltaNode = deltaPct != null ? (
+              <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, fontSize: '0.8125rem', color: Math.abs(deltaPct) <= 8 ? 'var(--text-emerald-800)' : 'var(--text-red-600)' }}>
+                {deltaPct > 0 ? '+' : ''}{deltaPct.toFixed(1)}% vs ours
+              </span>
+            ) : ref && !ref.refSent ? (
+              <span title="The robot's number stays sealed until our bid goes out" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Δ sealed 🔒</span>
+            ) : null
+            const feedbackCount = (notesByAudit[audit.id] ?? []).filter((n) => n.kind === 'note' || n.kind === 'answer').length
+            if (audit.id !== expandedId) {
+              return (
+                <button
+                  key={audit.id}
+                  type="button"
+                  onClick={() => setExpandedId(audit.id)}
+                  style={{ display: 'flex', flexWrap: 'wrap', gap: '0.55rem', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit', width: '100%' }}
+                >
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{bidLabel}</span>
+                  <span style={{ padding: '0.1rem 0.55rem', borderRadius: 999, background: chip.bg, color: chip.fg, fontSize: '0.7rem' }}>{chip.label}</span>
+                  {draft ? <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>draft ${Math.round(draft.total).toLocaleString()}</span> : null}
+                  {deltaNode}
+                  {audit.status === 'pending' && openQ > 0 ? (
+                    <span style={{ color: 'var(--text-amber-800)', fontSize: '0.78rem' }}>{openQ} question{openQ === 1 ? '' : 's'}</span>
+                  ) : null}
+                  {feedbackCount > 0 ? <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{feedbackCount} note{feedbackCount === 1 ? '' : 's'}</span> : null}
+                  <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.72rem' }}>{formatAuditRequestedStamp(audit.requested_at)}</span>
+                </button>
+              )
+            }
+            const topRows = topRowsByBid[audit.bid_id]
+            const cardComposerKey = `${audit.id}:card`
+            const cardSection = composerSection[audit.id] ?? 'general'
             return (
-              <div key={audit.id} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1rem 1.25rem' }}>
+              <div key={audit.id} style={{ border: '2px solid #3b82f6', borderRadius: 8, background: 'var(--surface)', padding: '1rem 1.25rem' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <span style={{ fontWeight: 600 }}>{bidLabel}</span>
                   <span style={{ padding: '0.15rem 0.6rem', borderRadius: 999, background: chip.bg, color: chip.fg, fontSize: '0.75rem' }}>{chip.label}</span>
@@ -277,6 +381,76 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                     Open bid (ClickTooling) ↗
                   </a>
                 </div>
+
+                {/* Comparison strip (v2.2548): the evidence comes to the card. */}
+                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                  <span style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.85rem' }}>
+                    <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Robot draft</span>
+                    <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>{draft ? `$${Math.round(draft.total).toLocaleString()}` : '—'}</span>
+                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{draft ? `${draft.rowCount} rows` : ''}</span>
+                  </span>
+                  <span style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.85rem' }}>
+                    <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                      Ours{ref?.refNumber ? ` (b${ref.refNumber})` : ''}
+                    </span>
+                    <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>
+                      {ref?.refValue != null ? `$${Math.round(ref.refValue).toLocaleString()}` : ref && !ref.refSent ? 'not sent yet' : '—'}
+                    </span>
+                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{ref && !ref.refSent ? 'shadow — sealed 🔒' : ''}</span>
+                  </span>
+                  {deltaPct != null ? (
+                    <span style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.85rem' }}>
+                      <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Delta</span>
+                      <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: Math.abs(deltaPct) <= 8 ? 'var(--text-emerald-800)' : 'var(--text-red-600)' }}>
+                        {deltaPct > 0 ? '+' : ''}{deltaPct.toFixed(1)}%
+                      </span>
+                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{deltaPct > 0 ? 'robot over' : 'robot under'}</span>
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* Biggest rows — tap to judge; a flag prefills the composer (v2.2548). */}
+                {audit.status === 'pending' && topRows && topRows.length > 0 ? (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                      Biggest rows — tap to judge (a flag drafts the note for you)
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      {topRows.map((row) => {
+                        const judged = rowJudgments[row.id]
+                        return (
+                          <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.4rem 0.65rem', border: '1px solid var(--border)', borderRadius: 6, fontSize: '0.8125rem', flexWrap: 'wrap' }}>
+                            <span>{row.fixture}</span>
+                            <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-muted)' }}>×{Number.isInteger(row.count) ? row.count : row.count.toFixed(1)}</span>
+                            <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 600 }}>${Math.round(row.ext).toLocaleString()}</span>
+                            <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.35rem' }}>
+                              <button
+                                type="button"
+                                disabled={!canWrite}
+                                onClick={() => {
+                                  setRowJudgments((prev) => ({ ...prev, [row.id]: 'flagged' }))
+                                  const guess: AuditSection = row.fixture.toLowerCase().startsWith('ft of') ? 'footage' : 'counts'
+                                  setComposerSection((prev) => ({ ...prev, [audit.id]: guess }))
+                                  setComposer((prev) => ({ ...prev, [cardComposerKey]: `${row.fixture} — robot has ×${row.count} ($${Math.round(row.ext).toLocaleString()}): ` }))
+                                }}
+                                style={{ border: `1px solid ${judged === 'flagged' ? 'var(--text-red-600)' : 'var(--border-strong)'}`, background: judged === 'flagged' ? 'var(--bg-red-100)' : 'var(--surface)', borderRadius: 6, padding: '0.15rem 0.6rem', cursor: 'pointer', fontSize: '0.8125rem' }}
+                              >
+                                🚩
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRowJudgments((prev) => ({ ...prev, [row.id]: prev[row.id] === 'ok' ? undefined as never : 'ok' }))}
+                                style={{ border: `1px solid ${judged === 'ok' ? 'var(--text-emerald-800)' : 'var(--border-strong)'}`, background: judged === 'ok' ? 'var(--bg-green-tint)' : 'var(--surface)', borderRadius: 6, padding: '0.15rem 0.6rem', cursor: 'pointer', fontSize: '0.8125rem' }}
+                              >
+                                👍
+                              </button>
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : null}
                 {threaded.questions.length > 0 ? (
                   <div style={{ marginBottom: '1rem' }}>
                     <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem' }}>The robot&apos;s questions</div>
@@ -340,8 +514,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                   </div>
                 ) : null}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {threaded.sections.map(({ section, items }) => {
-                    const key = `${audit.id}:${section}`
+                  {threaded.sections.filter(({ items }) => items.length > 0).map(({ section, items }) => {
                     return (
                       <div key={section}>
                         <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
@@ -365,29 +538,51 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                             ) : null}
                           </div>
                         ))}
-                        {audit.status === 'pending' && canWrite ? (
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <textarea
-                              value={composer[key] ?? ''}
-                              onChange={(e) => setComposer((p) => ({ ...p, [key]: e.target.value }))}
-                              placeholder={`Anything off in ${AUDIT_SECTION_LABELS[section].toLowerCase()}? Type it like a text.`}
-                              rows={(composer[key] ?? '').includes('\n') ? 3 : 1}
-                              style={{ flex: 1, padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
-                            />
-                            <button
-                              type="button"
-                              disabled={busy === key || !(composer[key] ?? '').trim()}
-                              onClick={() => void insertNote(audit, section, 'note', composer[key] ?? '', null, key)}
-                              style={{ padding: '0.4rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', alignSelf: 'flex-start' }}
-                            >
-                              Add
-                            </button>
-                          </div>
-                        ) : null}
+
                       </div>
                     )
                   })}
                 </div>
+                {audit.status === 'pending' && canWrite ? (
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.9rem' }}>
+                    {(['general', 'counts', 'footage', 'pricing', 'scope'] as AuditSection[]).map((sec) => (
+                      <button
+                        key={sec}
+                        type="button"
+                        onClick={() => setComposerSection((prev) => ({ ...prev, [audit.id]: sec }))}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          border: '1px solid',
+                          borderColor: cardSection === sec ? '#3b82f6' : 'var(--border)',
+                          background: cardSection === sec ? '#3b82f6' : 'var(--surface)',
+                          color: cardSection === sec ? 'white' : 'var(--text-muted)',
+                          borderRadius: 999,
+                          padding: '0.15rem 0.65rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {AUDIT_SECTION_LABELS[sec]}
+                      </button>
+                    ))}
+                    <textarea
+                      value={composer[cardComposerKey] ?? ''}
+                      onChange={(e) => setComposer((p) => ({ ...p, [cardComposerKey]: e.target.value }))}
+                      placeholder="Anything off? One box — pick a section chip if it fits."
+                      rows={(composer[cardComposerKey] ?? '').includes('\n') ? 3 : 1}
+                      style={{ flex: '1 1 260px', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                    />
+                    <button
+                      type="button"
+                      disabled={busy === cardComposerKey || !(composer[cardComposerKey] ?? '').trim()}
+                      onClick={() => void insertNote(audit, cardSection, 'note', composer[cardComposerKey] ?? '', null, cardComposerKey)}
+                      style={{ padding: '0.4rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                    >
+                      Add note
+                    </button>
+                  </div>
+                ) : null}
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
                   {!canWrite ? null : audit.status === 'pending' ? (
                     <button
