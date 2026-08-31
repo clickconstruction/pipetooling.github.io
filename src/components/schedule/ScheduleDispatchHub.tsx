@@ -1230,11 +1230,15 @@ function HubPeopleDayCell({
               onClick={
                 canEdit &&
                 onRequestUndoNotComingIn &&
-                timeOffInfo.variant === 'not_coming_in'
+                (timeOffInfo.variant === 'not_coming_in' || timeOffInfo.variant === 'ncns')
                   ? () => onRequestUndoNotComingIn(personUserId, workDate)
                   : undefined
               }
-              interactiveTitle="Click to mark as coming in"
+              interactiveTitle={
+                timeOffInfo.variant === 'ncns'
+                  ? 'Click to clear the schedule marking (the attendance incident stays on record)'
+                  : 'Click to mark as coming in'
+              }
             />
           </span>
         </div>
@@ -1245,11 +1249,15 @@ function HubPeopleDayCell({
             onClick={
               canEdit &&
               onRequestUndoNotComingIn &&
-              timeOffInfo.variant === 'not_coming_in'
+              (timeOffInfo.variant === 'not_coming_in' || timeOffInfo.variant === 'ncns')
                 ? () => onRequestUndoNotComingIn(personUserId, workDate)
                 : undefined
             }
-            interactiveTitle="Click to mark as coming in"
+            interactiveTitle={
+              timeOffInfo.variant === 'ncns'
+                ? 'Click to clear the schedule marking (the attendance incident stays on record)'
+                : 'Click to mark as coming in'
+            }
           />
         </div>
       ) : null}
