@@ -2604,25 +2604,67 @@ export default function Bids() {
         Bid Board
       </button>
       {robotBids.length > 0 || auditGate.anyAudits ? (
-        <button
-          type="button"
+        /* Pending-audit count renders as the same red inbox pill as Unsent/Working
+           (v2.2531) — same "needs you" semantic, same visual language. */
+        <span
           data-tabkey={activeTab === 'audits' ? 'audits' : 'robot-board'}
-          onClick={() => {
-            // Robots group (Followup precedent): entering lands on Audits when work is
-            // pending (or it's the only lens), else the Robot Board. Re-clicking while
-            // inside keeps the lens you picked.
-            const inGroup = activeTab === 'robot-board' || activeTab === 'audits'
-            const landing =
-              auditGate.anyAudits && (auditGate.pending > 0 || robotBids.length === 0)
-                ? 'audits'
-                : 'robot-board'
-            selectBidsTab(inGroup ? activeTab : landing)
+          style={{
+            position: 'relative',
+            display: 'inline-flex',
+            alignItems: 'center',
+            flexShrink: 0,
           }}
-          style={tabStyle(activeTab === 'robot-board' || activeTab === 'audits')}
-          title="Robot Board and Audits, merged — twin-owned bids and the human audit queue, lenses inside"
         >
-          {auditGate.pending > 0 ? `\u{1F916} · ${auditGate.pending}` : '\u{1F916}'}
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              // Robots group (Followup precedent): entering lands on Audits when work is
+              // pending (or it's the only lens), else the Robot Board. Re-clicking while
+              // inside keeps the lens you picked.
+              const inGroup = activeTab === 'robot-board' || activeTab === 'audits'
+              const landing =
+                auditGate.anyAudits && (auditGate.pending > 0 || robotBids.length === 0)
+                  ? 'audits'
+                  : 'robot-board'
+              selectBidsTab(inGroup ? activeTab : landing)
+            }}
+            style={tabStyle(activeTab === 'robot-board' || activeTab === 'audits')}
+            title="Robot Board and Audits, merged — twin-owned bids and the human audit queue, lenses inside"
+            aria-label={
+              auditGate.pending > 0
+                ? `Robots, ${auditGate.pending} audit${auditGate.pending === 1 ? '' : 's'} pending`
+                : 'Robots'
+            }
+          >
+            {'\u{1F916}'}
+          </button>
+          {auditGate.pending > 0 ? (
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                minWidth: '0.875rem',
+                height: '0.875rem',
+                padding: '0 0.2rem',
+                borderRadius: 9999,
+                background: '#dc2626',
+                color: 'white',
+                fontSize: '0.625rem',
+                fontWeight: 700,
+                lineHeight: '0.875rem',
+                textAlign: 'center',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxSizing: 'content-box',
+              }}
+            >
+              {auditGate.pending > 9 ? '9+' : String(auditGate.pending)}
+            </span>
+          ) : null}
+        </span>
       ) : null}
       <button
         type="button"
