@@ -1,0 +1,22 @@
+{
+  "set": "MPH LIVSTE (b419 shadow reference b396)",
+  "tool": "T1 vector census — hex keynote detection (diagonal-pair geometry, merge-proof)",
+  "date": "2026-08-31",
+  "plumbing_sheets": {"31": "P201 underground sanitary", "32": "P30x water/gas plan", "33": "med-gas plan", "34": "P401 plumbing roof"},
+  "verified": "106/106 detections dead-center on hexagons at 600dpi; 0 false positives after angle+direction filters",
+  "tally": {
+    "p31_sanitary": {"P1 2\"W DN + 2\"V UP": 15, "P2 3\"W DN + 2\"V UP": 9, "P42 3\" P-trap + MIFAB MI-HAIR hair trap (grooming tubs)": 3, "P26 2\"V UP": 2},
+    "p32_water_gas": {"P26 2\"V UP": 25, "W1 1/2CW+1/2HW DN": 12, "W23 1/2CW DN": 4, "W2 CW/HW to owner equip via casework": 2, "W4 3/4CW+3/4HW DN": 2, "W32 3/4CW DN": 2, "G1 2\" gas up to roof": 1},
+    "p33_medgas": {"M9 1/2\" O2 ceiling outlet": 12, "M6 1/2\" scavenger evac ceiling connection (Supera EVC880)": 6, "M11 animal gas wall outlets (see arch)": 5, "M2 lighted wall switch": 1, "M3 2\" scavenger fan thru roof": 1, "M4 cap 2\" evac main": 1, "M7 manifold source valve": 1, "M8 pressure switch+gauge AP-1": 1, "M12 3/4\" O2 source supply": 1},
+    "p34_roof": {"G3 gas connection at roof equip": 3, "G6": 1}
+  },
+  "derived": {
+    "sanitary_fixture_drops": 24,
+    "grooming_tub_traps": 3,
+    "vent_risers_2in": 27,
+    "water_connection_points": 22,
+    "o2_outlets": 12, "evac_connections": 6, "animal_gas_wall_locations": 5,
+    "roof_gas_connections": 4
+  },
+  "note": "p34 P401 roof gas was OUTSIDE the SHADOW-2 review subset (pages 31-33)."
+}
