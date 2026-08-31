@@ -1,5 +1,8 @@
-import { Fragment } from 'react'
+import { Fragment, useMemo } from 'react'
 import type { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
+import { BID_BOARD_WEEKLY_SENT_DEFAULT_MAX_WEEKS } from '../../lib/bidBoardWeeklySentStats'
+import { buildPulseStats } from '../../lib/bids/estimatingPulse'
+import { getDefaultWeekRange } from '../../utils/dateUtils'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidBoardEstimatingPulseSection } from './BidBoardEstimatingPulseSection'
 import { BidBoardWeeklyEstimatorLaborDevSection } from './BidBoardWeeklyEstimatorLaborDevSection'
@@ -28,12 +31,19 @@ export function BidBoardEstimatingHealthSection({
   isDev,
   openBid,
 }: BidBoardEstimatingHealthSectionProps) {
+  // Bidding-cost card context (v2.2541): won $/week over the same window as the
+  // pulse's Won / week card, so the dev card's percentage agrees with the strip.
+  const wonDollarsPerWeek = useMemo(() => {
+    const stats = buildPulseStats(filteredBids, getDefaultWeekRange().start)
+    return stats.wonDollars / BID_BOARD_WEEKLY_SENT_DEFAULT_MAX_WEEKS
+  }, [filteredBids])
+
   return (
     <Fragment>
       <BidBoardEstimatingPulseSection filteredBids={filteredBids} openBid={openBid} />
       {isDev && (
         <Fragment>
-          <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} />
+          <BidBoardWeeklyEstimatorLaborDevSection weeks={weeklySentSummaries} wonDollarsPerWeek={wonDollarsPerWeek} />
           <BidBoardSentShareDevSection filteredBids={filteredBids} />
         </Fragment>
       )}

@@ -77,7 +77,7 @@ type ListModalState = {
   bidIds: string[]
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+export function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <div style={statCardStyle}>
       <div style={statLabelStyle}>{label}</div>
@@ -380,6 +380,11 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
             label="Avg / week"
             value={formatPulseMoney(stats.sentDollars / windowWeeks)}
             sub={`sent value over ${windowWeeks} weeks`}
+          />
+          <StatCard
+            label="Won / week"
+            value={formatPulseMoney(stats.wonDollars / windowWeeks)}
+            sub={`won value over ${windowWeeks} weeks`}
           />
           <StatCard label="Last 4 weeks" value={String(stats.last4Count)} sub={`${formatPulseMoney(stats.last4Dollars)} sent`} />
           <StatCard label="Won rate (count)" value={wonPctCount} sub={`${stats.wonCount} of ${stats.decidedCount} decided`} />
