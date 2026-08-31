@@ -208,6 +208,47 @@ const TOOLS = [
       required: ['bid', 'name', 'takeoff'],
     },
   },
+  {
+    name: 'get_shadow_queue',
+    description:
+      'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate — created recently, plans present, NOT yet sent (so the shadow is blind by nature), not a ZZ bid, not already shadowed. Returns logistics only. Pick one and open_shadow it.',
+    inputSchema: {
+      type: 'object',
+      properties: { days: { type: 'number', description: 'Lookback window in days (default 14)' } },
+    },
+  },
+  {
+    name: 'open_shadow',
+    description:
+      "Open a shadow estimate of a LIVE bid (fleet Phase 1): creates a 'ZZ Shadow <PROJECT>' bid owned by YOUR twin with logistics only, and registers the twin_shadow_runs row. Refused if the reference has already been sent (that would be a backtest — use open_backtest). Idempotent per reference. Estimate it exactly like a backtest, then lock_shadow your total BEFORE the human number exists.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        reference_bid: { type: 'string', description: "The live bid to shadow (e.g. 'b420' or uuid)" },
+        axis: { type: 'string', description: "Axis classification for the confidence scoreboard, e.g. 'restaurant-ti', 'warehouse', 'small-ti'" },
+      },
+      required: ['reference_bid'],
+    },
+  },
+  {
+    name: 'lock_shadow',
+    description:
+      'Lock your shadow total (fleet Phase 1): records the blind total on the twin_shadow_runs row and stamps the ledger. Must happen BEFORE the reference bid is sent; refused after. Scoring is automatic later via score_shadows.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your ZZ Shadow bid (e.g. 'b418' or uuid)" },
+        total: { type: 'number', description: 'The locked blind total in dollars' },
+      },
+      required: ['bid', 'total'],
+    },
+  },
+  {
+    name: 'score_shadows',
+    description:
+      "Score every locked shadow whose reference has since been SENT (bid_value + date present): computes delta vs the human number, marks the run scored, and stamps scorecard notes on both bids. Call at the start of any run — it is the auto-scorecard. Returns the runs scored plus per-axis rolling stats (the confidence scoreboard data).",
+    inputSchema: { type: 'object', properties: {} },
+  },
 ]
 
 function json(body: unknown, status = 200): Response {
@@ -811,6 +852,154 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         audit: viewUrl ? 'bid_audits row ensured + count_tooling_link stamped' : 'view link failed — audit row not created',
       }, null, 2))
     }
+    case 'get_shadow_queue': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const days = Number(args.days ?? 14)
+      const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 14) * 86400_000).toISOString()
+      // Logistics only — pricing fields don't exist yet on eligible bids by definition
+      // (bid_date_sent IS NULL is the blindness guarantee), and are never selected anyway.
+      const { data: rows, error } = await admin
+        .from('bids')
+        .select('id, bid_number, project_name, address, distance_from_office, bid_due_date, plans_link, created_at')
+        .is('bid_date_sent', null)
+        .not('plans_link', 'is', null)
+        .gte('created_at', since)
+        .not('project_name', 'ilike', 'ZZ %')
+        .order('created_at', { ascending: false })
+        .limit(25)
+      if (error) return textContent(`Queue lookup failed: ${error.message}`, true)
+      const { data: shadowed } = await admin.from('twin_shadow_runs').select('reference_bid_id')
+      const taken = new Set((shadowed ?? []).map((r: { reference_bid_id: string }) => r.reference_bid_id))
+      const queue = (rows ?? [])
+        .filter((b) => !taken.has(b.id) && String(b.plans_link ?? '').trim() !== '')
+        .map((b) => ({ bid: `b${b.bid_number}`, project: b.project_name, address: b.address, miles: b.distance_from_office, due: b.bid_due_date, created: b.created_at }))
+      return textContent(JSON.stringify({ eligible: queue.length, queue, next: 'open_shadow(reference_bid, axis) on one — then estimate exactly like a backtest and lock_shadow before the human number exists.' }, null, 2))
+    }
+    case 'open_shadow': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.reference_bid ?? '').trim()
+      if (!ref) return textContent('Missing reference_bid', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let rq = admin.from('bids').select('id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent')
+      rq = uuidRe.test(ref) ? rq.eq('id', ref) : rq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: refBid, error: refErr } = await rq.maybeSingle()
+      if (refErr) return textContent(`Reference lookup failed: ${refErr.message}`, true)
+      if (!refBid) return textContent(`No bid found for "${ref}"`, true)
+      if (refBid.bid_date_sent) {
+        return textContent(`b${refBid.bid_number} has already been SENT — a shadow would not be blind. Use open_backtest instead.`, true)
+      }
+      const { data: existingRun } = await admin.from('twin_shadow_runs').select('id, shadow_bid_id, status').eq('reference_bid_id', refBid.id).maybeSingle()
+      if (existingRun) {
+        const { data: sb } = await admin.from('bids').select('bid_number').eq('id', existingRun.shadow_bid_id).maybeSingle()
+        return textContent(JSON.stringify({ ok: true, reused: true, shadow_bid: `b${sb?.bid_number}`, status: existingRun.status }, null, 2))
+      }
+      const ztName = `ZZ Shadow ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()}`
+      const { data: created, error: insErr } = await admin
+        .from('bids')
+        .insert({
+          project_name: ztName,
+          address: refBid.address,
+          customer_id: refBid.customer_id,
+          service_type_id: refBid.service_type_id,
+          distance_from_office: refBid.distance_from_office,
+          plans_link: refBid.plans_link,
+          gc_builder_id: refBid.gc_builder_id,
+          bid_due_date: refBid.bid_due_date,
+          created_by: twin.twinUserId,
+          estimator_id: twin.twinUserId,
+          notes: `Shadow estimate of live bid b${refBid.bid_number} (fleet Phase 1). Blind by nature — opened before the human number exists. Opened via twin-mcp open_shadow.`,
+        })
+        .select('id, bid_number')
+        .single()
+      if (insErr) return textContent(`Shadow bid not created: ${insErr.message}`, true)
+      const { error: runErr } = await admin.from('twin_shadow_runs').insert({
+        shadow_bid_id: created.id, reference_bid_id: refBid.id, twin_user_id: twin.twinUserId,
+        axis: String(args.axis ?? '').trim() || null,
+      })
+      if (runErr) return textContent(`Shadow run not registered: ${runErr.message}`, true)
+      await admin.from('bids_submission_entries').insert({
+        bid_id: created.id,
+        notes: `[shadow STG-0] Shadow of live b${refBid.bid_number} (${refBid.project_name}) opened by ${twin.email}. Axis: ${String(args.axis ?? '') || 'unclassified'}. Lock the blind total with lock_shadow BEFORE the human bid is sent; score_shadows finishes the loop automatically.`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({
+        ok: true, reused: false, shadow_bid: `b${created.bid_number}`, shadow_bid_id: created.id,
+        reference: `b${refBid.bid_number}`, axis: String(args.axis ?? '') || null,
+        next: 'Estimate like a backtest (census -> counts -> pricing), then lock_shadow(bid, total).',
+      }, null, 2))
+    }
+    case 'lock_shadow': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const total = Number(args.total)
+      if (!ref || !Number.isFinite(total) || total <= 0) return textContent('lock_shadow needs bid + positive total', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      const { data: run, error: runErr } = await admin.from('twin_shadow_runs')
+        .select('id, status, reference_bid_id, twin_user_id').eq('shadow_bid_id', bid.id).maybeSingle()
+      if (runErr || !run) return textContent(`No shadow run for b${bid.bid_number}`, true)
+      if (run.twin_user_id !== twin.twinUserId) return textContent('Not your shadow run', true)
+      if (run.status === 'scored') return textContent('Run already scored — locking refused', true)
+      const { data: refBid } = await admin.from('bids').select('bid_number, bid_date_sent').eq('id', run.reference_bid_id).maybeSingle()
+      if (refBid?.bid_date_sent) {
+        return textContent(`Reference b${refBid.bid_number} was SENT before you locked — this run is contaminated. Marking nothing; flag it in the ledger and drop the run.`, true)
+      }
+      const { error } = await admin.from('twin_shadow_runs')
+        .update({ status: 'locked', locked_total: total, locked_at: new Date().toISOString() })
+        .eq('id', run.id)
+      if (error) return textContent(`Lock failed: ${error.message}`, true)
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[shadow LOCK] Blind total $${total.toLocaleString()} locked at ${new Date().toISOString()} — before the human number exists. Scoring is automatic when the reference is sent.`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({ ok: true, shadow_bid: `b${bid.bid_number}`, locked_total: total, status: 'locked' }, null, 2))
+    }
+    case 'score_shadows': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const { data: locked, error } = await admin.from('twin_shadow_runs')
+        .select('id, shadow_bid_id, reference_bid_id, axis, locked_total').eq('status', 'locked')
+      if (error) return textContent(`Lookup failed: ${error.message}`, true)
+      const scored: Array<Record<string, unknown>> = []
+      for (const run of locked ?? []) {
+        const { data: refBid } = await admin.from('bids')
+          .select('bid_number, project_name, bid_value, bid_date_sent, outcome').eq('id', run.reference_bid_id).maybeSingle()
+        if (!refBid?.bid_date_sent || refBid.bid_value == null) continue
+        const refVal = Number(refBid.bid_value)
+        const delta = refVal > 0 ? ((Number(run.locked_total) - refVal) / refVal) * 100 : null
+        await admin.from('twin_shadow_runs').update({
+          status: 'scored', reference_value: refVal,
+          delta_pct: delta == null ? null : Math.round(delta * 10) / 10,
+          scored_at: new Date().toISOString(),
+        }).eq('id', run.id)
+        const { data: sb } = await admin.from('bids').select('bid_number').eq('id', run.shadow_bid_id).maybeSingle()
+        const line = `[shadow SCORECARD] Twin locked $${Number(run.locked_total).toLocaleString()} (blind, pre-send) vs human $${refVal.toLocaleString()} = ${delta == null ? 'n/a' : (delta > 0 ? '+' : '') + (Math.round(delta * 10) / 10) + '%'} — axis ${run.axis ?? 'unclassified'}, reference b${refBid.bid_number} (${refBid.project_name}).`
+        await admin.from('bids_submission_entries').insert({ bid_id: run.shadow_bid_id, notes: line }).then(() => {}, () => {})
+        await admin.from('bids_submission_entries').insert({ bid_id: run.reference_bid_id, notes: line }).then(() => {}, () => {})
+        scored.push({ shadow_bid: `b${sb?.bid_number}`, reference: `b${refBid.bid_number}`, axis: run.axis, locked: run.locked_total, human: refVal, delta_pct: delta == null ? null : Math.round(delta * 10) / 10 })
+      }
+      // Confidence scoreboard: rolling per-axis stats over all scored runs.
+      const { data: allScored } = await admin.from('twin_shadow_runs')
+        .select('axis, delta_pct, scored_at').eq('status', 'scored').order('scored_at', { ascending: false })
+      const byAxis: Record<string, number[]> = {}
+      for (const r of allScored ?? []) (byAxis[r.axis ?? 'unclassified'] ??= []).push(Number(r.delta_pct))
+      const scoreboard = Object.entries(byAxis).map(([axis, deltas]) => ({
+        axis, runs: deltas.length,
+        mean_abs_pct: Math.round((deltas.reduce((s, d) => s + Math.abs(d), 0) / deltas.length) * 10) / 10,
+        last5_in_8pct: deltas.slice(0, 5).filter((d) => Math.abs(d) <= 8).length,
+        gate_b_met: deltas.length >= 5 && deltas.slice(0, 5).every((d) => Math.abs(d) <= 8),
+      }))
+      return textContent(JSON.stringify({ newly_scored: scored, scoreboard }, null, 2))
+    }
     default:
       return textContent(`Unknown tool: ${name}`, true)
   }
@@ -825,7 +1014,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.2.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
