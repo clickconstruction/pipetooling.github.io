@@ -9,7 +9,7 @@ At the bottom of **Bids → Bid Board** (the **Health** pill jumps there) lives 
 
 ## The pulse
 
-Five stat cards up top: **Sent** (count and total $), **Last 4 weeks**, **Won rate by count**, **Won rate by $**, and **Still waiting** (the outstanding pile). The two won rates answer different questions — by count treats every bid the same; by $ tells you whether you're winning the *money*.
+Six stat cards up top: **Sent** (count and total $), **Avg / week** (the average sent value per week across the whole window — quiet weeks count, so it's the honest run rate), **Last 4 weeks**, **Won rate by count**, **Won rate by $**, and **Still waiting** (the outstanding pile). The two won rates answer different questions — by count treats every bid the same; by $ tells you whether you're winning the *money*.
 
 Below them, one bar per week (last 26, oldest → newest). Each bar splits by the bids' *current* outcome:
 
