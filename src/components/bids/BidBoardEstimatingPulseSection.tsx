@@ -376,6 +376,11 @@ export function BidBoardEstimatingPulseSection({ filteredBids, openBid }: { filt
           }}
         >
           <StatCard label="Sent" value={String(stats.sentCount)} sub={`${formatPulseMoney(stats.sentDollars)} total`} />
+          <StatCard
+            label="Avg / week"
+            value={formatPulseMoney(stats.sentDollars / windowWeeks)}
+            sub={`sent value over ${windowWeeks} weeks`}
+          />
           <StatCard label="Last 4 weeks" value={String(stats.last4Count)} sub={`${formatPulseMoney(stats.last4Dollars)} sent`} />
           <StatCard label="Won rate (count)" value={wonPctCount} sub={`${stats.wonCount} of ${stats.decidedCount} decided`} />
           <StatCard
