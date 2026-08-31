@@ -3,6 +3,7 @@ import type { BidBoardWeekSentSummary } from '../../lib/bidBoardWeeklySentStats'
 import type { BidBoardWeeklyLaborCostCell } from '../../lib/bidBoardWeeklyEstimatorLaborCost'
 import {
   aggregateClockHoursByUserAndWeek,
+  averageWeeklyBiddingCost,
   BID_BOARD_ESTIMATOR_UNASSIGNED_KEY,
   formatLaborCentsPerDollarSent,
   buildBidBoardWeeklyLaborCostMatrix,
@@ -10,6 +11,7 @@ import {
   hourlyWageForUserName,
   type ClockSessionRowForLaborCost,
 } from '../../lib/bidBoardWeeklyEstimatorLaborCost'
+import { StatCard } from './BidBoardEstimatingPulseSection'
 import { buildBidBoardWeeklySentPivot } from '../../lib/bidBoardWeeklySentStats'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
@@ -83,12 +85,20 @@ async function fetchClockSessionsLaborWindow(args: {
   return all
 }
 
-export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBoardWeekSentSummary[] }) {
+export function BidBoardWeeklyEstimatorLaborDevSection({
+  weeks,
+  wonDollarsPerWeek,
+}: {
+  weeks: BidBoardWeekSentSummary[]
+  /** Won $/week over the pulse window — the cost card's percentage base (v2.2541). */
+  wonDollarsPerWeek?: number
+}) {
   const pivot = useMemo(() => buildBidBoardWeeklySentPivot(weeks), [weeks])
   const headingId = useId()
   const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [matrix, setMatrix] = useState(() => new Map<string, BidBoardWeeklyLaborCostCell>())
+  const [weeklyCost, setWeeklyCost] = useState<ReturnType<typeof averageWeeklyBiddingCost> | null>(null)
 
   const estimatorIdsSorted = useMemo(() => {
     const ids = pivot.rows.map((r) => r.estimatorKey).filter((k) => k !== BID_BOARD_ESTIMATOR_UNASSIGNED_KEY)
@@ -148,6 +158,13 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
           wageByUserId,
         })
         setMatrix(m)
+        setWeeklyCost(
+          averageWeeklyBiddingCost({
+            hoursByUserWeek: hoursMap,
+            wageByUserId,
+            weekStarts: pivot.weeks.map((w) => w.weekStart),
+          }),
+        )
       } catch (e: unknown) {
         if (!cancelled) {
           setFetchError(formatErrorMessage(e))
@@ -208,6 +225,24 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
       {loading && <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading labor data…</p>}
       {fetchError !== null && !loading ? (
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>{fetchError}</p>
+      ) : null}
+
+      {/* Bidding cost / week card (v2.2541): estimator clock-hours × wage across the
+          window ÷ window weeks, with the cost as a share of won $/week beneath it.
+          Same quiet-weeks-count convention as the pulse's Avg / Won per week cards. */}
+      {!loading && weeklyCost?.avgWeeklyCostDollars != null ? (
+        <div style={{ maxWidth: 260, margin: '0.35rem 0 0.25rem' }}>
+          <StatCard
+            label="Bidding cost / week"
+            value={`$${formatCurrency(weeklyCost.avgWeeklyCostDollars)}`}
+            sub={
+              (wonDollarsPerWeek && wonDollarsPerWeek > 0
+                ? `${((weeklyCost.avgWeeklyCostDollars / wonDollarsPerWeek) * 100).toFixed(1)}% of won $/week`
+                : 'won $/week unavailable') +
+              (weeklyCost.usersMissingWage > 0 ? ` · ${weeklyCost.usersMissingWage} estimator(s) missing a wage` : '')
+            }
+          />
+        </div>
       ) : null}
 
       {pivot.weeks.length === 0 ? (

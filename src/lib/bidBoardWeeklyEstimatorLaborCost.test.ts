@@ -3,6 +3,7 @@ import type { BidBoardWeekEstimatorRow } from './bidBoardWeeklySentStats'
 import { buildBidBoardWeeklySentPivot, type BidBoardWeekSentSummary } from './bidBoardWeeklySentStats'
 import {
   aggregateClockHoursByUserAndWeek,
+  averageWeeklyBiddingCost,
   BID_BOARD_ESTIMATOR_UNASSIGNED_KEY,
   buildBidBoardWeeklyLaborCostMatrix,
   buildHourlyWageLookupByNormalizedName,
@@ -196,5 +197,44 @@ describe('buildBidBoardWeeklyLaborCostMatrix', () => {
 describe('formatLaborCentsPerDollarSent', () => {
   it('formats finite values', () => {
     expect(formatLaborCentsPerDollarSent(12.345)).toBe('12.3¢/$')
+  })
+})
+
+describe('averageWeeklyBiddingCost', () => {
+  it('averages hours×wage over ALL window weeks (quiet weeks count)', () => {
+    const r = averageWeeklyBiddingCost({
+      hoursByUserWeek: new Map([
+        ['u1:2026-08-02', 10],
+        ['u1:2026-08-09', 20],
+        ['u2:2026-08-02', 5],
+      ]),
+      wageByUserId: new Map([
+        ['u1', 40],
+        ['u2', 30],
+      ]),
+      weekStarts: ['2026-08-02', '2026-08-09', '2026-08-16', '2026-08-23'],
+    })
+    expect(r.totalCostDollars).toBe(10 * 40 + 20 * 40 + 5 * 30)
+    expect(r.avgWeeklyCostDollars).toBeCloseTo((10 * 40 + 20 * 40 + 5 * 30) / 4)
+    expect(r.usersMissingWage).toBe(0)
+  })
+
+  it('skips weeks outside the window and flags users with hours but no wage', () => {
+    const r = averageWeeklyBiddingCost({
+      hoursByUserWeek: new Map([
+        ['u1:2026-08-02', 10],
+        ['u1:2025-01-05', 99],
+        ['u3:2026-08-02', 8],
+      ]),
+      wageByUserId: new Map([['u1', 40]]),
+      weekStarts: ['2026-08-02'],
+    })
+    expect(r.totalCostDollars).toBe(400)
+    expect(r.usersMissingWage).toBe(1)
+  })
+
+  it('empty window → null average', () => {
+    const r = averageWeeklyBiddingCost({ hoursByUserWeek: new Map(), wageByUserId: new Map(), weekStarts: [] })
+    expect(r.avgWeeklyCostDollars).toBeNull()
   })
 })

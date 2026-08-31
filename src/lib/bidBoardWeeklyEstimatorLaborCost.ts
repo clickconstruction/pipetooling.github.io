@@ -117,3 +117,34 @@ export function formatLaborCentsPerDollarSent(centsPerDollar: number): string {
   const rounded = Math.round(centsPerDollar * 10) / 10
   return `${rounded}¢/$`
 }
+
+/**
+ * Average weekly bidding labor cost (v2.2541): total estimator clock-hours ×
+ * hourly wage across the window, divided by the number of window weeks — quiet
+ * weeks count, matching the pulse's Avg / week convention. Users with hours but
+ * no configured wage can't be costed; `usersMissingWage` flags the understatement.
+ */
+export function averageWeeklyBiddingCost(args: {
+  hoursByUserWeek: ReadonlyMap<string, number>
+  wageByUserId: ReadonlyMap<string, number | null>
+  weekStarts: readonly string[]
+}): { avgWeeklyCostDollars: number | null; totalCostDollars: number; usersMissingWage: number } {
+  const { hoursByUserWeek, wageByUserId, weekStarts } = args
+  if (weekStarts.length === 0) return { avgWeeklyCostDollars: null, totalCostDollars: 0, usersMissingWage: 0 }
+  const weekSet = new Set(weekStarts)
+  const missing = new Set<string>()
+  let total = 0
+  for (const [key, hours] of hoursByUserWeek) {
+    const sep = key.lastIndexOf(':')
+    const userId = key.slice(0, sep)
+    const weekStart = key.slice(sep + 1)
+    if (!weekSet.has(weekStart)) continue
+    const wage = wageByUserId.get(userId)
+    if (wage === undefined || wage === null || !Number.isFinite(wage)) {
+      if (hours > 0) missing.add(userId)
+      continue
+    }
+    total += hours * wage
+  }
+  return { avgWeeklyCostDollars: total / weekStarts.length, totalCostDollars: total, usersMissingWage: missing.size }
+}
