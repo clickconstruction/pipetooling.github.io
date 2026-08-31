@@ -67,10 +67,13 @@ Open **Customer review**, click the top customer, and the contributors panel sho
 ## The 🤖 tab — where digital-twin bids live
 
 Bids owned or worked by a **digital twin** (an AI estimator account — the 🤖 ones) don't sit
-among the human rows. Everything robot lives under one **🤖** tab next to Bid Board, with two
-views inside: the **Robot Board** (twin bids, with its live count) and **Audits** (robot bids
-waiting on a human review). The tab only appears when there are robot bids or audits, and its
-badge counts the audits waiting on you — opening it lands on Audits when any are pending.
+among the human rows. Everything robot lives under one **🤖** tab next to Bid Board, with views
+inside: the **Robot Board** (twin bids, with its live count), **Audits** (robot bids waiting on
+a human review), and **Shadows** — every robot practice bid told as a five-step story:
+requested, estimated blind, price sealed 🔒, waiting on our bid, opened & scored. The robot's
+sealed price stays hidden until our bid goes out, so nobody's estimate can be influenced. The
+tab only appears when there are robot bids or audits, and its badge counts the audits waiting
+on you — opening it lands on Audits when any are pending.
 
 - A bid moves to the Robot Board when its **Estimator is a twin** (or a twin created it).
   Un-assign the twin and it comes back to the human board.
