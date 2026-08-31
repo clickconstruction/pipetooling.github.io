@@ -363,6 +363,46 @@ keyed b376 rows; ledger note on b405). The shape, so future mirrors keep it:
 - Letter uplift over raw rows is the OWNER's margin decision (b376 sent at
   ~1.84× rows) — the twin never applies it; the draft stops at book-priced rows.
 
+## Material tiers: the spec box picks the rates (BT-3 doctrine, 2026-08-31)
+
+BT-3 (Hyper Kidz, PVC-spec TI) proved the loaded-fixture model transfers across
+job types (twin fixtures $101k vs ~$95k implied — within 6%) and that the entire
+price miss lived in the footage/fitting tier: the book charged cast-iron rates
+($140–160/ft on 2"/3") on a job whose spec box reads PVC waste/vent +
+copper/CPVC/PEX water, where the human priced $13/ft water and $25/ft sewer
+flat. Twin raw $218k vs her sent $134k; re-tiered ≈ $129k — within 4%.
+
+- **Read the PLUMBING MATERIAL SPECIFICATION box during extraction and record it
+  in the substrate.** It is a pricing input, not trivia.
+- The 🤖 Robot Default book carries BOTH tiers. **PVC waste/vent spec** → assign
+  ft/fitting rows to the `(PVC)` entries (`ft of 2" Sanitary Waste (PVC)` $25,
+  PVC fitting set mirrored from b370). **CPVC/PEX-permitted water** → `ft of
+  Water (CPVC/PEX tier, any size)` $13. **Copper-only water / cast-iron waste**
+  → the standard entries (the b376 tier).
+- **The tell that the tier is wrong**: on a fixture-driven TI, a footage+fittings
+  bucket rivaling or exceeding the fixtures bucket means re-check the spec box
+  before drafting.
+
+## Count valves beyond the schedule (BT-3 doctrine)
+
+BT-3's only count miss was BALL VALVE 0 vs 12 — exactly CALIBRATION.md's
+load-bearing finding (humans count valves/cleanouts the schedule never lists).
+After placing scheduled fixtures, sweep for isolation valves: one per fixture
+group/battery header, one at each equipment connection (WH in/out, RP, laundry),
+one at the service entry. When the plan draws valve symbols, count those; when
+it doesn't, carry the sweep-derived count as an allowance row named plainly
+(`Ball Valve (isolation)`) with the derivation in the import note.
+
+## 4" underground fittings ride an allowance (BT-3 doctrine)
+
+Plan-view Manhattan tracing of a buried 4" spine yields almost no fittings
+(BT-3: 2 vs her 36 on the 4" family) — the bends, wye-and-eighth stacks, and
+riser turns live below slab and in the NTS riser. Derive a 4" fitting allowance
+from the riser: per WC battery ≈ 1 tee per WC into the main + 1 90 per
+direction change shown; per FCO a cleanout tee; per POC a coupling + bend. Carry
+it as vertical-allowance fittings with the riser named as source — geometry
+stays the floor, never the count.
+
 ## Product price research (owner ask, 2026-08-30): the schedule names what to look up
 
 The fixture schedule hands you manufacturer + catalog number for every scheduled
