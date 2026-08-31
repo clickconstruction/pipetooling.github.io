@@ -10,6 +10,8 @@ import { resolveBidLedgerPrefix, formatBidLedgerNumberLabel, bidNumberMatchesQue
 import { compareBidsForBidBoardDueDate, compareBidsForBidBoardPendingRecency } from '../../lib/compareBidsForBidBoardDueDate'
 import { shouldShowEmptyBidValueAlert } from '../../lib/bidBoardEmptyBidValueAlert'
 import { robotBidReadiness } from '../../lib/bids/robotBidReadiness'
+import { referenceGrade } from '../../lib/bids/referenceGrade'
+import { GRADE_COLORS } from './RobotReferenceGradeModal'
 import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -78,6 +80,9 @@ type BidsBidBoardTabProps = {
     onOpenTwinBid: (twin: BidWithBuilder, source: BidWithBuilder) => void
     /** v2.2542: yellow click requests a robot bid (green); green click withdraws. */
     onToggleRequest: (bid: BidWithBuilder) => void
+    /** v2.2547: decided rows show the reference grade instead of readiness. */
+    referencePresence: ReadonlyMap<string, { hasCounts: boolean; hasPricing: boolean }>
+    onOpenGrade: (bid: BidWithBuilder) => void
   }
 }
 
@@ -435,6 +440,47 @@ export function BidsBidBoardTab({
           style={{ ...actionStyle, fontSize: '0.9375rem', lineHeight: 1 }}
         >
           {'\u{1F916}'}
+        </button>
+      )
+    }
+    // v2.2547: a decided bid is a REFERENCE — the icon answers "can a robot learn
+    // from this?" (grade badge) instead of "can a robot bid this?".
+    if (bid.outcome) {
+      const presence = robotReadiness.referencePresence.get(bid.id)
+      const grade = referenceGrade({
+        hasPlans: !!bid.plans_link?.trim(),
+        hasValue: bid.bid_value != null && Number(bid.bid_value) > 0,
+        hasCounts: presence?.hasCounts ?? false,
+        hasPricing: presence?.hasPricing ?? false,
+      })
+      const color = GRADE_COLORS[grade]
+      return (
+        <button
+          type="button"
+          onClick={() => robotReadiness.onOpenGrade(bid)}
+          title={`Reference grade ${grade} — how much can a robot learn from this record? Click for details.`}
+          aria-label={`Reference grade ${grade} — ${bid.project_name ?? 'bid'}`}
+          style={{ ...actionStyle, color, position: 'relative' }}
+        >
+          <BidBoardIcon d={BID_BOARD_ICON_PATHS.robot} size={18} />
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              right: -1,
+              bottom: -1,
+              fontSize: '0.5625rem',
+              fontWeight: 800,
+              lineHeight: 1,
+              padding: '1px 3px',
+              borderRadius: 3,
+              color: 'white',
+              background: color,
+              fontFamily: 'ui-monospace, monospace',
+            }}
+          >
+            {grade}
+          </span>
         </button>
       )
     }

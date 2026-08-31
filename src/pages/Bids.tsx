@@ -44,6 +44,7 @@ import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { RobotBidReadinessModal } from '../components/bids/RobotBidReadinessModal'
 import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
+import { RobotReferenceGradeModal } from '../components/bids/RobotReferenceGradeModal'
 import { BidsRobotQueueTab } from '../components/bids/BidsRobotQueueTab'
 import { BidsRobotShadowsTab } from '../components/bids/BidsRobotShadowsTab'
 import { buildRobotQueue } from '../lib/bids/robotQueue'
@@ -425,6 +426,22 @@ export default function Bids() {
     const q = buildRobotQueue(peopleBids, (bidId) => twinBidBySourceId.has(bidId), { staleDueBefore })
     return q.requested.length + q.ready.length
   }, [myRole, peopleBids, twinBidBySourceId])
+
+  // v2.2547: counts/pricing presence for decided bids (grade badge inputs).
+  const [referencePresence, setReferencePresence] = useState<ReadonlyMap<string, { hasCounts: boolean; hasPricing: boolean }>>(() => new Map())
+  const [robotGradeBid, setRobotGradeBid] = useState<BidWithBuilder | null>(null)
+  useEffect(() => {
+    if (!authUser?.id) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient).rpc('list_reference_presence')
+      if (cancelled || !data) return
+      setReferencePresence(new Map((data as Array<{ bid_id: string; has_counts: boolean; has_pricing: boolean }>).map((r) => [r.bid_id, { hasCounts: r.has_counts, hasPricing: r.has_pricing }])))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id])
 
   const [robotReadinessBid, setRobotReadinessBid] = useState<BidWithBuilder | null>(null)
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
@@ -3270,6 +3287,8 @@ export default function Bids() {
                   onOpenReadiness: setRobotReadinessBid,
                   onOpenTwinBid: (twin, source) => setRobotComparePair({ source, twin }),
                   onToggleRequest: (bid) => void toggleRobotRequest(bid),
+                  referencePresence,
+                  onOpenGrade: setRobotGradeBid,
                 }
           }
         />
@@ -3278,6 +3297,13 @@ export default function Bids() {
       <RobotBidReadinessModal
         bid={robotReadinessBid}
         onClose={() => setRobotReadinessBid(null)}
+        onEditBid={(bid) => openEditBid(bid as BidWithBuilder)}
+      />
+
+      <RobotReferenceGradeModal
+        bid={robotGradeBid}
+        presence={robotGradeBid ? (referencePresence.get(robotGradeBid.id) ?? null) : null}
+        onClose={() => setRobotGradeBid(null)}
         onEditBid={(bid) => openEditBid(bid as BidWithBuilder)}
       />
 
