@@ -752,8 +752,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         takeoff,
       }
       if (args.skip_pdf !== true) {
-        importBody.pdf_url = `${supabaseUrl}/functions/v1/plan-fetch?bid=${bidTag}`
-        importBody.pdf_headers = { 'X-Twin-Token': rawToken }
+        // Default: the bid's own plan set via plan-fetch. pdf_url overrides for the
+        // oversized-set fallback (a compressed copy staged elsewhere) — https only.
+        const pdfOverride = String(args.pdf_url ?? '').trim()
+        if (pdfOverride && !/^https:\/\//.test(pdfOverride)) return textContent('pdf_url must be https', true)
+        importBody.pdf_url = pdfOverride || `${supabaseUrl}/functions/v1/plan-fetch?bid=${bidTag}`
+        importBody.pdf_headers = pdfOverride ? undefined : { 'X-Twin-Token': rawToken }
       }
       const impRes = await fetch(`${ctBase}/functions/v1/import-takeoff`, {
         method: 'POST',
