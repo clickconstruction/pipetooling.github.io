@@ -5,7 +5,7 @@ file: DOMAIN_CUTOVER.md
 type: Runbook
 purpose: The exact steps to make clicktooling.com this app's main URL, with pipetooling.com kept forever as a path-preserving redirect so no link in the wild breaks
 audience: Owner + AI agents
-last_updated: 2026-08-28
+last_updated: 2026-08-30
 key_sections:
   - name: "Decision & prep already done"
   - name: "Prerequisites (before cutover day)"
@@ -78,9 +78,30 @@ Prep merged in v2.2440 — all zero-behavior-change:
 
 ## After cutover
 
+- **Stale service worker on the old origin — the `/sw.js` tombstone (v2.2522)**:
+  returning visitors do NOT "land on the redirect" — the old PWA service worker
+  registered on the pipetooling.com origin intercepts every navigation, and once its
+  precache is gone it dies with `net::ERR_FAILED` (a service worker may not satisfy a
+  navigation with a cross-origin-redirected response). It can never heal on its own:
+  the browser's update check for `/sw.js` also hits the zone-wide 301, and a
+  cross-origin redirect is a failed script fetch (only a 404/410 auto-unregisters).
+  The fix, live on the pipetooling.com Cloudflare zone and kept FOREVER (any device
+  that ever installed the old PWA needs it exactly once, whenever it next visits):
+  - The zone redirect rule excludes `URI Path ≠ /sw.js` (Single Redirects run before
+    Workers, so without the exclusion the Worker route is unreachable).
+  - The `sw-tombstone` Worker (reference copy
+    `scripts/cloudflare/sw-tombstone.worker.js`, kept in sync with the dashboard)
+    serves a self-destructing service worker at `pipetooling.com/sw.js`: on the next
+    update check it installs, wipes the origin's caches, unregisters, and
+    re-navigates open tabs — which then follow the normal 301.
+  - Verify with `curl -i https://pipetooling.com/sw.js` → expect `200` +
+    `content-type: application/javascript` (a 301 means the exclusion is missing).
+  - The same trap awaits old clicktooling.com PWA users when that app moves to
+    plumbingtooling.com — repeat this on that zone at its cutover.
 - **Announce to the crew**: everyone re-installs the PWA from clicktooling.com and
-  re-enables push notifications (both are origin-bound; the old install keeps opening
-  but lands on the redirect). Expect a few days of both origins in `usage` data.
+  re-enables push notifications (both are origin-bound; the old install opens the old
+  origin — served by the tombstone flow above, it lands on the redirect after one
+  update check). Expect a few days of both origins in `usage` data.
 - **Text sweep** (cosmetic, own PR): help guides (**done v2.2495** — the fix-cache
   guide was the only URL mention; team@noreply sender mentions stay), twin docs
   (`docs/twins/*` — then `node scripts/build-twin-mcp-briefs.mjs` + redeploy
