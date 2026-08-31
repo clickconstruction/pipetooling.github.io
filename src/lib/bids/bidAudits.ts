@@ -146,6 +146,17 @@ export function computeAuditDraftTotal(
 }
 
 /** Sort audits for the tab: pending first (oldest request first), then done, then digested (newest first). */
+// Mirrors the bid_audits/bid_audit_notes write RLS (20260830230000_bid_audits.sql):
+// primary and superintendent can read audits but every write is denied, and twin
+// accounts are fenced to the API lanes (question/receipt) — so the tab renders
+// view-only for them instead of surfacing raw 42501 errors on Add/Answer/Finish.
+export const AUDIT_WRITE_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const
+
+export function canWriteBidAudit(role: string | null | undefined, isDigitalTwin = false): boolean {
+  if (isDigitalTwin) return false
+  return (AUDIT_WRITE_ROLES as readonly string[]).includes(role ?? '')
+}
+
 export function sortAuditsForTab<T extends { status: AuditStatus; requested_at: string }>(audits: T[]): T[] {
   const rank: Record<AuditStatus, number> = { pending: 0, done: 1, digested: 2 }
   return [...audits].sort((a, b) => {

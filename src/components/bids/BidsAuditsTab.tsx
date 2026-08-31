@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useIsDigitalTwin } from '../../hooks/useIsDigitalTwin'
 import {
   AUDIT_SECTION_LABELS,
   AUDIT_DIGEST_OUTCOME_LABELS,
@@ -11,6 +12,7 @@ import {
   openQuestionCount,
   computeAuditDraftTotal,
   sortAuditsForTab,
+  canWriteBidAudit,
   type AuditSection,
   type BidAuditRow,
   type BidAuditNoteRow,
@@ -53,8 +55,12 @@ const linkBtnStyle: React.CSSProperties = {
   fontSize: '0.875rem',
 }
 
-export function BidsAuditsTab({ authUser }: { authUser: User | null }) {
+export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myRole: string | null }) {
   const { showToast } = useToastContext()
+  const isTwin = useIsDigitalTwin()
+  // Mirrors the write RLS: primary/superintendent (and twin sessions) get a clean
+  // view-only card instead of raw 42501 errors from Add/Answer/Finish.
+  const canWrite = canWriteBidAudit(myRole, isTwin)
   const [audits, setAudits] = useState<AuditWithBid[]>([])
   const [notesByAudit, setNotesByAudit] = useState<Record<string, BidAuditNoteRow[]>>({})
   const [draftByAudit, setDraftByAudit] = useState<Record<string, DraftSummary>>({})
@@ -219,8 +225,14 @@ export function BidsAuditsTab({ authUser }: { authUser: User | null }) {
   return (
     <div>
       <div style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-        Robot bids waiting on a human audit. Open both links, look things over, answer the robot&apos;s questions, and
-        leave your notes here — it learns from every one and replies with a receipt.
+        {canWrite ? (
+          <>
+            Robot bids waiting on a human audit. Open both links, look things over, answer the robot&apos;s questions, and
+            leave your notes here — it learns from every one and replies with a receipt.
+          </>
+        ) : (
+          <>Robot bids and their audit trail — view only for your role.</>
+        )}
       </div>
       {loading ? (
         <div style={{ color: 'var(--text-muted)' }}>Loading audits…</div>
@@ -274,7 +286,7 @@ export function BidsAuditsTab({ authUser }: { authUser: User | null }) {
                             <div style={{ fontSize: '0.875rem' }}>🤖 {question.body}</div>
                             {answer ? (
                               <div style={{ marginTop: '0.4rem', fontSize: '0.875rem', color: 'var(--text-green-800)' }}>✓ {answer.body}</div>
-                            ) : audit.status === 'pending' ? (
+                            ) : audit.status === 'pending' && canWrite ? (
                               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                                 <input
                                   type="text"
@@ -327,7 +339,7 @@ export function BidsAuditsTab({ authUser }: { authUser: User | null }) {
                             ) : null}
                           </div>
                         ))}
-                        {audit.status === 'pending' ? (
+                        {audit.status === 'pending' && canWrite ? (
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <textarea
                               value={composer[key] ?? ''}
@@ -351,7 +363,7 @@ export function BidsAuditsTab({ authUser }: { authUser: User | null }) {
                   })}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-                  {audit.status === 'pending' ? (
+                  {!canWrite ? null : audit.status === 'pending' ? (
                     <button
                       type="button"
                       disabled={busy === `finish:${audit.id}`}

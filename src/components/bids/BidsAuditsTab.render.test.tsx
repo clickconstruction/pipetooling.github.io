@@ -68,9 +68,13 @@ vi.mock('../../lib/supabase', () => ({
   supabase: { from: (table: string) => tableResult(table) },
 }))
 
+// The twin write-fence hook needs AuthProvider; the smokes only care that a
+// non-twin renders, so stub it false.
+vi.mock('../../hooks/useIsDigitalTwin', () => ({ useIsDigitalTwin: () => false }))
+
 describe('BidsAuditsTab', () => {
   it('renders the pending card: links, question, note + receipt, Finish audit', async () => {
-    renderWithProviders(<BidsAuditsTab authUser={null} />)
+    renderWithProviders(<BidsAuditsTab authUser={null} myRole="dev" />)
     await waitFor(() => expect(screen.getByText(/ZZ Twin MPH CASA LINDA/)).toBeTruthy())
 
     const ctLink = screen.getByText('Open takeoff (CountTooling) ↗') as HTMLAnchorElement
@@ -93,5 +97,20 @@ describe('BidsAuditsTab', () => {
     // Digested history is collapsed behind the toggle.
     expect(screen.queryByText('Old Backtest')).toBeNull()
     expect(screen.getByText(/Show digested audits \(1\)/)).toBeTruthy()
+  })
+
+  it('read-only roles (write RLS mirror) see the card without composers or Finish audit', async () => {
+    renderWithProviders(<BidsAuditsTab authUser={null} myRole="superintendent" />)
+    await waitFor(() => expect(screen.getByText(/ZZ Twin MPH CASA LINDA/)).toBeTruthy())
+
+    // Content still renders…
+    expect(screen.getByText(/Wet tables owner-furnished\?/)).toBeTruthy()
+    expect(screen.getByText('Waste footage way low.')).toBeTruthy()
+
+    // …but every write surface is gone: answer box, section composers, Finish audit.
+    expect(screen.queryByPlaceholderText('Type your answer…')).toBeNull()
+    expect(screen.queryAllByPlaceholderText(/Type it like a text/).length).toBe(0)
+    expect(screen.queryByText('Finish audit')).toBeNull()
+    expect(screen.getByText(/view only for your role/)).toBeTruthy()
   })
 })

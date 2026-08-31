@@ -4,6 +4,7 @@ import {
   openQuestionCount,
   computeAuditDraftTotal,
   sortAuditsForTab,
+  canWriteBidAudit,
   type BidAuditNoteRow,
 } from './bidAudits'
 
@@ -102,5 +103,21 @@ describe('sortAuditsForTab', () => {
       { id: 'dg-old', status: 'digested' as const, requested_at: '2026-08-22' },
     ]
     expect(sortAuditsForTab(audits).map((a) => a.id)).toEqual(['p-old', 'p-new', 'dn', 'dg-new', 'dg-old'])
+  })
+})
+
+describe('canWriteBidAudit', () => {
+  it('matches the write-RLS role list', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator']) {
+      expect(canWriteBidAudit(role)).toBe(true)
+    }
+    for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers', null, undefined, '']) {
+      expect(canWriteBidAudit(role)).toBe(false)
+    }
+  })
+
+  it('twin accounts are view-only regardless of role', () => {
+    expect(canWriteBidAudit('estimator', true)).toBe(false)
+    expect(canWriteBidAudit('dev', true)).toBe(false)
   })
 })
