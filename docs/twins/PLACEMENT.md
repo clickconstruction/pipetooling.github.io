@@ -209,7 +209,8 @@ and reducers ride the keyed-note hexes for now — a later pass.
 ## Import & review
 
 One `import-takeoff` call with the takeoff.json + `pdf_url` (PipeTooling `plan-fetch?bid=…`,
-`pdf_headers: {"X-Twin-Token": …}`) — plans land under your marks. Re-import (same name)
+`pdf_headers: {"X-Twin-Token": …}`) + `external_ref` set to the bid number (`"b409"` — the
+CT bid-stamp chip; always pass it) — plans land under your marks. Re-import (same name)
 replaces; that is the fix loop. Then `set_project_review_status → 'ready'` and watch
 `get_work_state.ct_takeoff` for `reviewed` or `changes` + note (get_ct_guide has the full
 loop). Log the run: bid note with per-tag counts + heartbeats.
