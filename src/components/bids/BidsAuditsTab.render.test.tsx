@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Render smokes for BidsAuditsTab (v2.2517) — the robot feedback loop's human
- * side: pending card with quick links + question answer box + sectioned
- * composers + Finish audit; digested history stays collapsed behind a toggle.
+ * Render smokes for BidsAuditsTab (v2.2549 cockpit) — the robot feedback loop's
+ * human side: triage rows with one card expanded, quick links + question answer
+ * box + single sectioned composer + Finish audit; digested history stays
+ * collapsed behind a toggle.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
@@ -91,8 +92,9 @@ describe('BidsAuditsTab', () => {
     expect(screen.getByText(/placement doctrine/)).toBeTruthy()
     expect(screen.getByText('Finish audit')).toBeTruthy()
 
-    // Every section offers a composer on a pending card.
-    expect(screen.getAllByPlaceholderText(/Type it like a text/).length).toBe(5)
+    // One composer with section chips on a pending card (cockpit rework).
+    expect(screen.getByPlaceholderText(/Anything off\?/)).toBeTruthy()
+    expect(screen.getByText('Add note')).toBeTruthy()
 
     // Digested history is collapsed behind the toggle.
     expect(screen.queryByText('Old Backtest')).toBeNull()
@@ -107,9 +109,9 @@ describe('BidsAuditsTab', () => {
     expect(screen.getByText(/Wet tables owner-furnished\?/)).toBeTruthy()
     expect(screen.getByText('Waste footage way low.')).toBeTruthy()
 
-    // …but every write surface is gone: answer box, section composers, Finish audit.
+    // …but every write surface is gone: answer box, composer, Finish audit.
     expect(screen.queryByPlaceholderText('Type your answer…')).toBeNull()
-    expect(screen.queryAllByPlaceholderText(/Type it like a text/).length).toBe(0)
+    expect(screen.queryByPlaceholderText(/Anything off\?/)).toBeNull()
     expect(screen.queryByText('Finish audit')).toBeNull()
     expect(screen.getByText(/view only for your role/)).toBeTruthy()
   })
