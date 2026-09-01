@@ -224,7 +224,7 @@ serve(async (req) => {
     const subject =
       typeof body.subject === 'string' && body.subject.trim().length > 0
         ? body.subject.trim()
-        : 'Invoice from PipeTooling'
+        : 'Invoice from ClickTooling'
 
     const textPlain =
       typeof body.email_text === 'string' && body.email_text.trim().length > 0

@@ -50,11 +50,11 @@ function htmlResponse(status: number, body: string, cacheSeconds = 0) {
 }
 
 function notActivePage(): string {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>PipeTooling</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>ClickTooling</title>
 <meta name="viewport" content="width=device-width, initial-scale=1"></head>
 <body style="font-family:-apple-system,sans-serif;padding:2rem;color:#1c2635">
 <p>This share link is no longer active.</p>
-<p><a href="${(Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '')}">Open PipeTooling</a></p>
+<p><a href="${(Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '')}">Open ClickTooling</a></p>
 </body></html>`
 }
 
@@ -174,7 +174,7 @@ serve(async (req) => {
   const selfUrl = `${publicBase}/functions/v1/job-share?t=${encodeURIComponent(rawToken)}`
 
   const og = [
-    `<meta property="og:site_name" content="PipeTooling">`,
+    `<meta property="og:site_name" content="ClickTooling">`,
     `<meta property="og:type" content="website">`,
     `<meta property="og:title" content="${escapeHtml(title)}">`,
     description ? `<meta property="og:description" content="${escapeHtml(description)}">` : '',

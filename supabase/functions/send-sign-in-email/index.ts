@@ -15,7 +15,7 @@ interface SendSignInEmailRequest {
 }
 
 const DEFAULT_REDIRECT = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '') + '/dashboard' // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
-const ALLOWED_REDIRECT = /^(https:\/\/pipetooling\.com\/|http:\/\/localhost:5(173|175)\/)/
+const ALLOWED_REDIRECT = /^(https:\/\/(pipetooling|clicktooling)\.com\/|http:\/\/localhost:5(173|175)\/)/
 
 // Fallbacks must match the Settings "sign_in" template defaults (src/pages/Settings.tsx openEditTemplate).
 const DEFAULT_SUBJECT = 'Sign in to ClickTooling'

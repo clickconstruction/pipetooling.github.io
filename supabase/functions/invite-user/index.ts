@@ -21,7 +21,7 @@ interface InviteUserRequest {
 const VALID_ROLES = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller']
 
 const DEFAULT_REDIRECT = (Deno.env.get('APP_ORIGIN')?.trim() || 'https://pipetooling.com').replace(/\/+$/, '') + '/accept-invite' // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
-const ALLOWED_REDIRECT = /^(https:\/\/pipetooling\.com\/|http:\/\/localhost:5(173|175)\/)/
+const ALLOWED_REDIRECT = /^(https:\/\/(pipetooling|clicktooling)\.com\/|http:\/\/localhost:5(173|175)\/)/
 
 // Fallbacks must match the Settings "invitation" template defaults (src/pages/Settings.tsx openEditTemplate).
 const DEFAULT_SUBJECT = 'Invitation to join ClickTooling'

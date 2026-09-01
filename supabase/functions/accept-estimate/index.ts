@@ -149,11 +149,11 @@ async function notifyStaffEstimateAccepted(params: {
   const appLink = `${origin}/estimates/${quote}`
   const textPlain =
     `${acceptor} accepted estimate #${quote}${titleTrim ? `: ${titleTrim}` : ''}${optLine}.\n\n` +
-    `Open in PipeTooling: ${appLink}\n`
+    `Open in ClickTooling: ${appLink}\n`
   const htmlBody =
     `<p><strong>${escapeHtmlLite(acceptor)}</strong> accepted <strong>Quote #${quote}</strong>` +
     `${titleTrim ? `: ${escapeHtmlLite(titleTrim)}` : ''}${optLine ? escapeHtmlLite(optLine) : ''}.</p>` +
-    `<p><a href="${appLink}">Open estimate in PipeTooling</a></p>`
+    `<p><a href="${appLink}">Open estimate in ClickTooling</a></p>`
 
   for (const u of userRows ?? []) {
     const em = typeof u.email === 'string' ? u.email.trim() : ''

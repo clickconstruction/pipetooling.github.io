@@ -571,7 +571,7 @@ export function buildRecurringJobReportHtml(
     body += `</div>`
   }
 
-  body += `<p style="margin:24px 0 0;color:#9ca3af;font-size:12px;">PipeTooling — recurring job reports</p></div>`
+  body += `<p style="margin:24px 0 0;color:#9ca3af;font-size:12px;">ClickTooling — recurring job reports</p></div>`
   return body
 }
 

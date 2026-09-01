@@ -176,7 +176,7 @@ function buildReportEmail(content: ReportContent): { subject: string; html: stri
       content.authorName,
     )}</div>
     <div style="border-top:1px solid #e5e7eb;padding-top:16px">${fieldsHtml}</div>
-    <div style="margin-top:24px;font-size:12px;color:#9ca3af">Sent by PipeTooling because you're subscribed to report emails.</div>
+    <div style="margin-top:24px;font-size:12px;color:#9ca3af">Sent by ClickTooling because you're subscribed to report emails.</div>
   </div>`
 
   const textLines = [

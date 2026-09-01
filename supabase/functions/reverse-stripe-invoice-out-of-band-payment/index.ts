@@ -90,7 +90,7 @@ serve(async (req) => {
     }
 
     if (invRow.status !== 'paid') {
-      return jsonResponse({ error: 'Invoice must be Paid in PipeTooling to unwind out-of-band payment' }, 400)
+      return jsonResponse({ error: 'Invoice must be Paid in ClickTooling to unwind out-of-band payment' }, 400)
     }
 
     const stripeInvId = (invRow.stripe_invoice_id ?? '').trim()
@@ -143,7 +143,7 @@ serve(async (req) => {
       return jsonResponse(
         {
           error:
-            'This Stripe invoice was not marked paid via PipeTooling out-of-band (missing bookkeeping metadata). Unwind in Stripe, then align the ledger manually or contact support.',
+            'This Stripe invoice was not marked paid via ClickTooling out-of-band (missing bookkeeping metadata). Unwind in Stripe, then align the ledger manually or contact support.',
         },
         400,
       )
@@ -232,7 +232,7 @@ serve(async (req) => {
         {
           error: rpcErr.message,
           warning:
-            'Stripe may have issued a credit note while the database update failed. Check Stripe and PipeTooling ledgers.',
+            'Stripe may have issued a credit note while the database update failed. Check Stripe and ClickTooling ledgers.',
         },
         502,
       )

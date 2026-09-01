@@ -122,7 +122,7 @@ function renderShell(p: ReadyToBillPayload, detailed: boolean, manualNote?: stri
       </table>
       <p style="margin:14px 0 0;font-size:13px;color:#44403c;">Open Jobs &rarr; Pipeline &rarr; Ready to Bill to bill the customer.</p>
       ${manualNote ? `<p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${esc(manualNote)}</p>` : ''}
-      <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">PipeTooling &mdash; sent when a job moves to Ready to Bill.</p>
+      <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">ClickTooling &mdash; sent when a job moves to Ready to Bill.</p>
     </div>
   </div>`
 }
