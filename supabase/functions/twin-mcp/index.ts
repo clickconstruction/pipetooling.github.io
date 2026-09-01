@@ -202,6 +202,7 @@ const TOOLS = [
         name: { type: 'string', description: 'CT project name (re-import with the same name replaces)' },
         note: { type: 'string', description: 'Optional provenance note stored in the takeoff data' },
         takeoff: { type: 'object', description: 'takeoff.json v1 (counters, lineTypes, pages) — TAKEOFF_IMPORT.md contract' },
+        self_assessment: { type: 'string', description: "Your confession for the auditor: 2-3 sentences on where THIS draft is least sure (modeled vs traced footage, guessed sub scopes, unread sheets). Shown atop the audit card as 'Where I'm least sure' — always send it." },
         view_name: { type: 'string', description: "Optional view-link label (default '<bid> audit view')" },
         skip_pdf: { type: 'boolean', description: 'Skip the plan-fetch PDF leg (default false)' },
       },
@@ -848,6 +849,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const viewUrl = linkBody?.token ? `https://counttooling.com/app/?t=${linkBody.token}` : null
 
       // 4. PT side: stamp count_tooling_link + open the audit row (idempotent).
+      const selfAssessment = String(args.self_assessment ?? '').trim().slice(0, 2000) || null
       if (viewUrl) {
         await admin.from('bids').update({ count_tooling_link: viewUrl }).eq('id', bid.id).then(() => {}, () => {})
         const { data: existingAudit } = await admin.from('bid_audits').select('id').eq('bid_id', bid.id).maybeSingle()
@@ -855,7 +857,11 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           await admin.from('bid_audits').insert({
             bid_id: bid.id, ct_project_id: projectId, ct_view_url: viewUrl,
             status: 'pending', created_by: twin.twinUserId,
+            ...(selfAssessment ? { self_assessment: selfAssessment } : {}),
           }).then(() => {}, () => {})
+        } else if (selfAssessment) {
+          // Re-finish (replaced takeoff): refresh the confession to match the new draft.
+          await admin.from('bid_audits').update({ self_assessment: selfAssessment }).eq('id', existingAudit.id).then(() => {}, () => {})
         }
       }
       await admin.from('twin_runs').insert({
@@ -1071,7 +1077,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.2' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.3' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

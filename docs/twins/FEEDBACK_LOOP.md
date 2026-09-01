@@ -69,6 +69,19 @@ into exactly one bucket, recorded on the note as `digest_outcome`:
   falsely teaching doctrine — the robots fix the history they practice on. A human
   approves the actual record change.
 
+**Verdict tags (v2.2553 — the cockpit pre-triages for you).** The audit card's diff
+rows post one-tap verdict notes whose bodies start with a machine tag; honor them as
+the auditor's explicit routing before your own judgment:
+
+- `[verdict:teach]` → the robot is wrong: digest as **doctrine** or **books**.
+- `[verdict:record]` → OUR record is wrong: digest as **reference_quality** + repair task.
+- `[verdict:ok]` → scope difference / judgment call: digest as **bid_only** (usually no change).
+
+Also write your own confession at STG-3: pass `self_assessment` to `ct_finish_takeoff`
+(2-3 sentences on where THIS draft is least sure — modeled-not-traced footage, guessed
+sub scopes, unread sheets). It renders atop the audit card so the auditor checks your
+suspicions first.
+
 A standing rule stated once ("we always carry $20k travel past 200 miles") outranks a
 per-bid answer: promote it to doctrine or books immediately. Then post the receipt —
 `kind='receipt'`, `parent_id` = the note, body "Learned: <what changed> → <where>" —
