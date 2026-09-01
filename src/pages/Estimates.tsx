@@ -5801,7 +5801,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             </button>
             <span
               aria-live="polite"
-              style={{ alignSelf: 'center', fontSize: '0.75rem', color: draftAutosave.status === 'error' ? '#dc2626' : 'var(--text-muted)' }}
+              style={{ alignSelf: 'center', fontSize: '0.75rem', color: draftAutosave.status === 'error' ? 'var(--text-red-600)' : 'var(--text-muted)' }}
             >
               {draftAutosave.status === 'error'
                 ? 'Autosave failed — press Save draft'
