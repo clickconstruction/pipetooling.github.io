@@ -10,6 +10,8 @@
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledAgeDays, stageRowBilledAgeReference, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { fixturesForInvoiceBill } from '../invoiceScopedFixtures'
+import { arLineItemFromFixture, type ArLineItem } from '../arModalLineItems'
 
 export type BilledBreakdownBill = {
   /** Jump handle: focus this invoice row when set, else focus the job shell row. */
@@ -17,12 +19,46 @@ export type BilledBreakdownBill = {
   jobId: string
   jobName: string
   jobNumber: string
+  /** Job site address (`jobs_ledger.job_address`; may be blank). */
+  jobAddress: string
   /** Open remainder on this row (what the section total sums). */
   amount: number
   /** Days since the bill's reference date — the aging chips' clock; null = no date (can't age). */
   ageDays: number | null
   /** True when the age counts from a hand-set est. bill date rather than the billed date. */
   ageHandSet: boolean
+  /**
+   * Billable fixture lines this bill genuinely covers: the invoice's linked
+   * segments, or the primary bundle's exact-sum unlinked segments
+   * (`fixturesForInvoiceBill`), or every line for a job-shell row. Empty for
+   * an invoice on the whole-job-proration fallback — listing the whole job's
+   * lines at real prices under a partial bill would oversell what this bill
+   * asks for.
+   */
+  lineItems: ArLineItem[]
+}
+
+/** Board fixtures arrive sequence-sorted (enrichJobsLedgerPrimaryRows); scoping preserves that order. */
+function billLineItems(row: StageRow): ArLineItem[] {
+  const fixtures = row.job.fixtures ?? []
+  let scoped = fixtures
+  if (row.kind !== 'job') {
+    const inv = row.inv
+    scoped = fixturesForInvoiceBill(fixtures, inv.id, inv)
+    // fixturesForInvoiceBill falls back to ALL lines when none belong to this
+    // invoice (the bill itself prorates them); here that reads as the bill
+    // covering the whole job — show no lines instead.
+    if (scoped.length > 0 && !scoped.some((f) => (f.invoice_id ?? null) === inv.id)) {
+      const exactSumBundle = inv.is_primary_rtb_bundle === true && scoped.every((f) => (f.invoice_id ?? null) === null)
+      if (!exactSumBundle) return []
+    }
+  }
+  const out: ArLineItem[] = []
+  for (const f of scoped) {
+    const item = arLineItemFromFixture(f)
+    if (item) out.push(item)
+  }
+  return out
 }
 
 export type BilledBreakdownCustomerGroup = {
@@ -54,7 +90,9 @@ export function buildBilledByCustomerBreakdown(
       jobId: job.id,
       jobName: (job.job_name ?? '').trim() || '—',
       jobNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
+      jobAddress: (job.job_address ?? '').trim(),
       amount,
+      lineItems: billLineItems(row),
       ageDays: stageRowBilledAgeDays(row, now),
       ageHandSet: stageRowBilledAgeReference(row)?.handSet ?? false,
     }
