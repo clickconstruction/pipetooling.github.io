@@ -13,6 +13,7 @@ import {
   type CrewDayPayload,
 } from '../../lib/crewDay'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
+import CrewDayEmailModal from './CrewDayEmailModal'
 
 /**
  * Dashboard "Crew Day" section (v2.2602): who was on what jobs and what they
@@ -109,6 +110,8 @@ export function DashboardCrewDaySection({
   const [loadError, setLoadError] = useState(false)
   const [loadedAtMs, setLoadedAtMs] = useState(() => Date.now())
   const [showAllPeople, setShowAllPeople] = useState(false)
+  /** ✉ share modal (v2.2603) — schedule/send the crew_day email stream. */
+  const [emailModalOpen, setEmailModalOpen] = useState(false)
 
   const visible = Boolean(authUserId) && isCrewDayRole(role)
 
@@ -172,7 +175,18 @@ export function DashboardCrewDaySection({
           marginBottom: '0.5rem',
         }}
       >
-        <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>Crew Day</h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>Crew Day</h2>
+          <button
+            type="button"
+            onClick={() => setEmailModalOpen(true)}
+            title="Email Crew Day — now or on a schedule"
+            aria-label="Email Crew Day"
+            style={{ ...navBtnStyle, lineHeight: 1 }}
+          >
+            ✉
+          </button>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <button type="button" style={navBtnStyle} aria-label="Previous day" onClick={() => setYmd((d) => shiftYmd(d, -1))}>
             ◀
@@ -341,6 +355,7 @@ export function DashboardCrewDaySection({
           ) : null}
         </>
       )}
+      {emailModalOpen ? <CrewDayEmailModal onClose={() => setEmailModalOpen(false)} /> : null}
     </div>
   )
 }
