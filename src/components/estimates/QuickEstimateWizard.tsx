@@ -685,7 +685,7 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
         if (e.target === e.currentTarget) closeAndKeep()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label="Quick Estimate" style={sheetStyle}>
+      <div role="dialog" aria-modal="true" aria-label="Estimate/Change Order" style={sheetStyle}>
         <div
           style={{
             display: 'flex',
@@ -696,7 +696,7 @@ export function QuickEstimateWizard({ open, onClose }: { open: boolean; onClose:
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <strong style={{ fontSize: '0.95rem' }}>Quick Estimate</strong>
+          <strong style={{ fontSize: '0.95rem' }}>Estimate/Change Order</strong>
           <button
             type="button"
             aria-label="Save and close"

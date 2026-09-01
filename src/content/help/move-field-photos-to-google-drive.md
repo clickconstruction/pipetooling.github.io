@@ -4,7 +4,7 @@ category: Office
 roles: dev, assistant, controller
 keywords: field photos, google drive, quick estimate, handover, quickfill, photos, drive link, change order photos
 ---
-When a master writes up a change order from the field with **Quick Estimate**, any photos they snap land in app storage — they can't do Google Drive from a job site. All customer photos belong in Google Drive long-term, so the photos wait for you on Quickfill until you move them over.
+When a master writes up a change order from the field with **Estimate/Change Order**, any photos they snap land in app storage — they can't do Google Drive from a job site. All customer photos belong in Google Drive long-term, so the photos wait for you on Quickfill until you move them over.
 
 ## Work the section
 
