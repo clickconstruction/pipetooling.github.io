@@ -45,6 +45,8 @@ import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
+import { bidPackageLabel } from '../../lib/bidPackageLabel'
+import { buildBidFixtureCountsText } from '../../lib/buildBidFixtureCountsText'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -1811,6 +1813,26 @@ export function BidsPricingTab({
     }
   }
 
+  /**
+   * "Copy fixtures for text" (parts houses): names + counts of the viewed version only —
+   * no prices, so no ★ check; works before a price book or cost estimate exists.
+   */
+  async function copyFixtureCountsForText() {
+    const bid = selectedBidForPricing
+    if (!bid) return
+    const text = buildBidFixtureCountsText({
+      bidLabel: bidPackageLabel(bid, ledgerPrefixMap),
+      rows: pricingCountRows,
+    })
+    try {
+      if (typeof navigator === 'undefined' || !navigator.clipboard) throw new Error('Clipboard unavailable in this browser.')
+      await navigator.clipboard.writeText(text)
+      showToast('Fixture list copied — names and counts only, no prices.', 'success')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not copy to clipboard.', 'error')
+    }
+  }
+
   function printPricingPage() {
     requestWithStarCheck('print')
   }
@@ -2700,9 +2722,12 @@ export function BidsPricingTab({
                   onShare={() => requestWithStarCheck('share')}
                   csvDisabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
                   csvTitle="Select a price book and ensure Counts and Labor exist"
+                  fixturesDisabled={pricingCountRows.length === 0}
+                  fixturesTitle="Add Counts first — nothing to copy yet"
                   onPrint={() => printPricingPage()}
                   onCsv={() => downloadPricingCsv()}
                   onReview={() => void printAllPricingPages()}
+                  onCopyFixtures={() => void copyFixtureCountsForText()}
                 />
                 {!narrowViewport640 ? (
                   <button
