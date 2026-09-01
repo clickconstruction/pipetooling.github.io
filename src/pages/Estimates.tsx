@@ -45,6 +45,7 @@ import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import CustomerSearchCombobox from '../components/customers/CustomerSearchCombobox'
+import { useJobFormAutosaveSlice } from '../components/jobs/useJobFormAutosaveSlice'
 import NewCustomerForm from '../components/NewCustomerForm'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
@@ -3567,7 +3568,38 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     }
   }, [row, isDraft, projectsForPicker])
 
-  async function saveDraft(options?: { quiet?: boolean }): Promise<boolean> {
+  /**
+   * The exact draft UPDATE payload — one builder shared by saveDraft and the
+   * autosave dirty check (v2.2592), so "dirty" can never disagree with what a
+   * save would actually write.
+   */
+  function buildDraftPersistPayload(attDb: { url: string | null; label: string | null }) {
+    const optionsPersist = estimateOptionsDraftPersistFields(estimateOptions, viewedOptionKey, lines)
+    return {
+      title: title.trim() || (isCO ? 'Change order' : 'Estimate'),
+      terms_snapshot: terms,
+      // Options (v2.2457): with 2+ options the legacy fields mirror the RECOMMENDED
+      // option (owner decision 3 — Pipeline/list show the number you'd forecast);
+      // without options everything writes exactly as before (options_snapshot clears).
+      line_items_snapshot: optionsPersist.line_items_snapshot ?? lines,
+      total_cents: optionsPersist.total_cents ?? totalCents,
+      options_snapshot: optionsPersist.options_snapshot,
+      valid_until: validUntil.trim() ? validUntil.trim() : null,
+      for_address: forAddress.trim() ? forAddress.trim() : null,
+      project_id: linkedProjectId || null,
+      internal_notes: internalNotes.trim() ? internalNotes.trim() : null,
+      customer_id: customerId,
+      customer_email: resolveCustomerEmailForPersist(),
+      customer_experience_overrides: buildCustomerExperienceOverridesPayload(),
+      accept_header_brand: acceptHeaderBrand,
+      customer_attachment_url: attDb.url,
+      customer_attachment_label: attDb.label,
+      accept_notify_user_ids: [...new Set(acceptNotifyUserIds.filter((id) => typeof id === 'string' && id.length > 0))],
+      ...(isCO ? { change_order_fields: coFields } : {}),
+    }
+  }
+
+  async function saveDraft(options?: { quiet?: boolean; skipReload?: boolean }): Promise<boolean> {
     if (!row || !isDraft || saving) return false
     const quiet = options?.quiet ?? false
     const attDb = normalizeCustomerAttachmentDraftForDb(customerAttachmentUrl, customerAttachmentLabel)
@@ -3576,40 +3608,21 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       return false
     }
     setSaving(true)
-    const optionsPersist = estimateOptionsDraftPersistFields(estimateOptions, viewedOptionKey, lines)
     try {
       await withSupabaseRetry(
         async () =>
           await supabase
             .from('estimates')
-            .update({
-              title: title.trim() || (isCO ? 'Change order' : 'Estimate'),
-              terms_snapshot: terms,
-              // Options (v2.2457): with 2+ options the legacy fields mirror the RECOMMENDED
-              // option (owner decision 3 — Pipeline/list show the number you'd forecast);
-              // without options everything writes exactly as before (options_snapshot clears).
-              line_items_snapshot: optionsPersist.line_items_snapshot ?? lines,
-              total_cents: optionsPersist.total_cents ?? totalCents,
-              options_snapshot: optionsPersist.options_snapshot,
-              valid_until: validUntil.trim() ? validUntil.trim() : null,
-              for_address: forAddress.trim() ? forAddress.trim() : null,
-              project_id: linkedProjectId || null,
-              internal_notes: internalNotes.trim() ? internalNotes.trim() : null,
-              customer_id: customerId,
-              customer_email: resolveCustomerEmailForPersist(),
-              customer_experience_overrides: buildCustomerExperienceOverridesPayload(),
-              accept_header_brand: acceptHeaderBrand,
-              customer_attachment_url: attDb.url,
-              customer_attachment_label: attDb.label,
-              accept_notify_user_ids: [...new Set(acceptNotifyUserIds.filter((id) => typeof id === 'string' && id.length > 0))],
-              ...(isCO ? { change_order_fields: coFields } : {}),
-            })
+            .update(buildDraftPersistPayload(attDb))
             .eq('id', row.id)
             .eq('status', 'draft'),
         'save estimate',
       )
       if (!quiet) showToast('Saved', 'success')
-      await load()
+      // Autosave (v2.2592) skips the reload: load() re-seeds the whole editor
+      // from the row (resets lines, options, the viewed option) and would
+      // clobber whatever was typed while the save was in flight.
+      if (!options?.skipReload) await load()
       return true
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save'), 'error')
@@ -3634,6 +3647,35 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     // Customer-link changes only; avoid re-saving on every keystroke. saveDraft reads latest form state when the IIFE runs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, row?.id, isDraft, loading])
+
+  // Draft autosave (v2.2592, Taunya: work wiped by a hard reload mid-edit).
+  // Reuses the Edit-Job autosave slice: baseline vs the EXACT persist payload,
+  // ~1.5s debounce after the last change, quiet + reload-skipping save. jobId
+  // gates on !loading so the baseline is captured only after hydration
+  // completes — never against a half-hydrated editor.
+  const draftAutosaveAttachment = normalizeCustomerAttachmentDraftForDb(customerAttachmentUrl, customerAttachmentLabel)
+  const draftAutosaveBlocked = Boolean(customerAttachmentUrl.trim() && !draftAutosaveAttachment.url)
+  const draftAutosaveSliceJson =
+    row && isDraft && !draftAutosaveBlocked ? JSON.stringify(buildDraftPersistPayload(draftAutosaveAttachment)) : ''
+  const draftAutosave = useJobFormAutosaveSlice({
+    jobId: row && isDraft && !loading ? row.id : null,
+    sliceJson: draftAutosaveSliceJson,
+    save: () => saveDraft({ quiet: true, skipReload: true }),
+    enabled: !saving && !sending && !draftAutosaveBlocked,
+    debounceMs: 1500,
+  })
+  const draftAutosaveFlushRef = useRef(draftAutosave.flush)
+  draftAutosaveFlushRef.current = draftAutosave.flush
+  useEffect(() => {
+    // Her loss scenario is "ran off to look something up": flush the pending
+    // debounce the moment the tab is hidden, so the save lands before any
+    // later hard reload can wipe it.
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') void draftAutosaveFlushRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [])
 
   async function sendToCustomer() {
     if (!row || row.status !== 'draft' || sending || !user) return
@@ -5757,6 +5799,18 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <button type="button" onClick={() => void saveDraft()} disabled={saving} style={estSecondaryButton(saving)}>
               {saving ? 'Saving…' : 'Save draft'}
             </button>
+            <span
+              aria-live="polite"
+              style={{ alignSelf: 'center', fontSize: '0.75rem', color: draftAutosave.status === 'error' ? 'var(--text-red-600)' : 'var(--text-muted)' }}
+            >
+              {draftAutosave.status === 'error'
+                ? 'Autosave failed — press Save draft'
+                : saving || draftAutosave.status === 'saving'
+                  ? 'Autosaving…'
+                  : draftAutosave.status === 'saved'
+                    ? 'Autosaved'
+                    : ''}
+            </span>
             <button
               type="button"
               onClick={() => void sendToCustomer()}
