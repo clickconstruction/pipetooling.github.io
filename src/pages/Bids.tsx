@@ -3267,7 +3267,7 @@ export default function Bids() {
 
       {/* Robot Queue lens (v2.2542, dev only) — requested above ready; prompts live here. */}
       {activeTab === 'robot-queue' && myRole === 'dev' && (
-        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} onOpenBid={openEditBid} />
+        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} referencePresence={referencePresence} onOpenBid={openEditBid} />
       )}
 
       {/* Confidence scoreboard (v2.2560, dev only) — per-axis Gate-B cards + run ledger. */}
