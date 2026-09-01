@@ -6,12 +6,16 @@ import {
   type BilledBreakdownBill,
 } from '../../lib/jobs/billedByCustomerBreakdown'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { formatCurrency } from '../../lib/format'
+import { stripTrailingZip } from '../../lib/displayAddress'
 
 /**
  * WAITING ON CUSTOMERS → "Who owes what" (v2.1929): the Billed Awaiting
  * Payment rows regrouped per customer — total owed, bill count, worst age —
- * expandable to the individual bills, each with View → jump to that row on
- * the board. Same modal frame as the Capable of Being Billed breakdown.
+ * expandable to the individual bills, each rendered as a card (mockup-approved
+ * "Option C") with the job address, the bill's scoped line items, and
+ * View on board → jump to that row. Same modal frame as the Capable of Being
+ * Billed breakdown.
  */
 export default function BilledByCustomerBreakdownModal({
   rows,
@@ -48,11 +52,15 @@ export default function BilledByCustomerBreakdownModal({
       padding: '0.05rem 0.4rem',
       borderRadius: 9999,
       whiteSpace: 'nowrap',
+      // Transparent base border keeps all chips the same height; the neutral
+      // chip needs a visible one — its bg matches the sub-row/card surfaces
+      // it sits on, so without a border the pill disappears (v2.1929 nit).
+      border: '1px solid transparent',
       ...(days >= 90
         ? { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' }
         : days >= 30
           ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
-          : { background: 'var(--bg-subtle)', color: 'var(--text-muted)' }),
+          : { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }),
     }
     // The dot marks an age counted from a hand-set est. bill date (a correction)
     // rather than the billed date the app stamped — see stageRowBilledAgeReference.
@@ -188,26 +196,86 @@ function FragmentRows({
           {formatUsdNoCents(g.total)}
         </td>
       </tr>
-      {open &&
-        g.bills.map((b) => (
-          <tr key={`${g.key}-${b.invoiceId ?? b.jobId}`} style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
-            <td style={{ ...cellStyle, paddingLeft: '2rem' }}>
-              <div style={{ fontSize: '0.8125rem' }}>{b.jobName}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.jobNumber}</div>
-            </td>
-            <td style={{ ...cellStyle, textAlign: 'center' }}>
-              <button
-                type="button"
-                onClick={() => onOpenBill(b)}
-                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-              >
-                View
-              </button>
-            </td>
-            <td style={{ ...cellStyle, textAlign: 'center' }}>{ageChip(b.ageDays, b.ageHandSet)}</td>
-            <td style={{ ...cellStyle, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(b.amount)}</td>
-          </tr>
-        ))}
+      {open && (
+        <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+          <td colSpan={4} style={{ padding: '0.625rem 0.75rem 0.75rem 2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {g.bills.map((b) => (
+                <BillCard key={`${g.key}-${b.invoiceId ?? b.jobId}`} bill={b} ageChip={ageChip} onOpenBill={onOpenBill} />
+              ))}
+            </div>
+          </td>
+        </tr>
+      )}
     </>
+  )
+}
+
+function BillCard({
+  bill: b,
+  ageChip,
+  onOpenBill,
+}: {
+  bill: BilledBreakdownBill
+  ageChip: (days: number | null, handSet?: boolean) => React.ReactNode
+  onOpenBill: (bill: BilledBreakdownBill) => void
+}) {
+  const address = stripTrailingZip(b.jobAddress)
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.625rem 0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{b.jobName}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {b.jobNumber}
+            {address ? (
+              <>
+                {' · '}
+                <svg
+                  aria-hidden
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--text-faint)"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ verticalAlign: -1 }}
+                >
+                  <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>{' '}
+                {address}
+              </>
+            ) : null}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem', flexShrink: 0 }}>
+          <span style={{ fontSize: '0.875rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(b.amount)}</span>
+          {ageChip(b.ageDays, b.ageHandSet)}
+        </div>
+      </div>
+      {b.lineItems.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', marginTop: '0.5rem', paddingTop: '0.375rem', borderTop: '1px solid var(--border)' }}>
+          {b.lineItems.map((l, idx) => (
+            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
+              {/* Wrap, don't ellipsize: nowrap min-content widens the host table past the modal. */}
+              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{l.label}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>${formatCurrency(l.amount)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+        <button
+          type="button"
+          onClick={() => onOpenBill(b)}
+          style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+        >
+          View on board
+        </button>
+      </div>
+    </div>
   )
 }

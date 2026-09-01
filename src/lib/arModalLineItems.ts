@@ -23,6 +23,18 @@ export type ArLineItem = {
   amount: number
 }
 
+export type ArFixtureLineFields = Pick<ArFixtureRow, 'name' | 'count' | 'line_unit_price'>
+
+/** One billable fixture line → {label, amount}; null when not billable (empty name or count × unit ≤ 0). */
+export function arLineItemFromFixture(r: ArFixtureLineFields): ArLineItem | null {
+  const name = (r.name ?? '').trim()
+  const count = Number(r.count ?? 0)
+  const unit = Number(r.line_unit_price ?? 0)
+  const amount = count * unit
+  if (!name || !(amount > 0)) return null
+  return { label: count > 1 ? `${name} ×${count}` : name, amount }
+}
+
 /** Group billable fixture lines by job, in sequence order (unsequenced last, then by name). */
 export function buildArLineItemsByJob(rows: ArFixtureRow[]): Map<string, ArLineItem[]> {
   const sorted = [...rows].sort((a, b) => {
@@ -33,15 +45,11 @@ export function buildArLineItemsByJob(rows: ArFixtureRow[]): Map<string, ArLineI
   })
   const byJob = new Map<string, ArLineItem[]>()
   for (const r of sorted) {
-    const name = (r.name ?? '').trim()
-    const count = Number(r.count ?? 0)
-    const unit = Number(r.line_unit_price ?? 0)
-    const amount = count * unit
-    if (!name || !(amount > 0)) continue
-    const label = count > 1 ? `${name} ×${count}` : name
+    const item = arLineItemFromFixture(r)
+    if (!item) continue
     const list = byJob.get(r.job_id)
-    if (list) list.push({ label, amount })
-    else byJob.set(r.job_id, [{ label, amount }])
+    if (list) list.push(item)
+    else byJob.set(r.job_id, [item])
   }
   return byJob
 }
