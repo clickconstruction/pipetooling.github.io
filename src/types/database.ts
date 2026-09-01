@@ -3519,6 +3519,57 @@ export type Database = {
           },
         ]
       }
+      crew_day_email_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          recipient_user_id: string
+          repeat_weekly: boolean
+          requested_by: string
+          send_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id: string
+          repeat_weekly?: boolean
+          requested_by: string
+          send_at: string
+          sent_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id?: string
+          repeat_weekly?: boolean
+          requested_by?: string
+          send_at?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crew_day_email_requests_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crew_day_email_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_addresses: {
         Row: {
           address: string
@@ -16403,6 +16454,11 @@ export type Database = {
       get_billed_report_email_payload: { Args: never; Returns: Json }
       get_collect_payment_certify_payload: {
         Args: { p_job_id: string }
+        Returns: Json
+      }
+      get_crew_day_payload: { Args: { p_day: string }; Returns: Json }
+      get_crew_day_payload_for_user: {
+        Args: { p_day: string; p_user_id: string }
         Returns: Json
       }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
