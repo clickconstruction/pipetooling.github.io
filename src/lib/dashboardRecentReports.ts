@@ -28,6 +28,23 @@ export type RecentReportRow = {
 
 export type ReportRowState = 'new' | 'opened' | 'done'
 
+/**
+ * Roles that see the Recent Reports section (v2 gate lived inline in
+ * Dashboard.tsx + three copies inside the section; single definition since the
+ * superintendent rollout). `list_reports_with_job_info` already scopes
+ * superintendents server-side to their assigned projects' reports.
+ */
+export function isDashboardRecentReportsRole(role: string | null | undefined): boolean {
+  return (
+    role === 'dev' ||
+    role === 'master_technician' ||
+    role === 'assistant' ||
+    role === 'controller' ||
+    role === 'primary' ||
+    role === 'superintendent'
+  )
+}
+
 export function reportRowState(
   id: string,
   readIds: ReadonlySet<string>,

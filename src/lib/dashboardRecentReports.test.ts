@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatReportRowTime,
+  isDashboardRecentReportsRole,
   openedNotShownCount,
   recentReportsNewCount,
   reportRowState,
@@ -90,5 +91,19 @@ describe('formatReportRowTime', () => {
 
   it('tolerates junk input', () => {
     expect(formatReportRowTime('not-a-date', Date.now())).toEqual({ clock: '', day: '' })
+  })
+})
+
+describe('isDashboardRecentReportsRole', () => {
+  it('admits office roles, primary, and superintendent', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent']) {
+      expect(isDashboardRecentReportsRole(role)).toBe(true)
+    }
+  })
+
+  it('excludes field roles, estimator, and null', () => {
+    for (const role of ['subcontractor', 'helpers', 'estimator', null, undefined, '']) {
+      expect(isDashboardRecentReportsRole(role)).toBe(false)
+    }
   })
 })
