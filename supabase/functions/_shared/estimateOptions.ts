@@ -23,7 +23,7 @@ export type SharedEstimateOption = {
   line_items: EstimateOptionLine[]
 }
 
-export const MAX_ESTIMATE_OPTIONS = 4
+export const MAX_ESTIMATE_OPTIONS = 6
 
 function normalizeLine(x: unknown): EstimateOptionLine {
   const o = (x && typeof x === 'object' ? x : {}) as Record<string, unknown>

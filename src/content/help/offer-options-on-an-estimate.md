@@ -9,7 +9,7 @@ An estimate can offer the customer a **choice** — Repair vs. Replace, Good / B
 
 ## Build the options
 
-On a draft estimate, press {{button:outline|＋ Option}} above the Line items. The first press turns your current estimate into **two options**: your current line items become Option 1 (marked {{chip:yellow|★ Recommended}}), and Option 2 starts as an editable copy. Press {{button:outline|＋ Option}} again for a third or fourth — four is the ceiling; past that a customer stops choosing.
+On a draft estimate, press {{button:outline|＋ Option}} above the Line items. The first press turns your current estimate into **two options**: your current line items become Option 1 (marked {{chip:yellow|★ Recommended}}), and Option 2 starts as an editable copy. Press {{button:outline|＋ Option}} again for more — six is the ceiling; past that a customer stops choosing.
 
 - **The cards are the options.** Each card shows the option's name, its running total, and how many line items it holds. Click a card to edit that option — the Line items editor below always edits the card that says *editing*.
 - **Name and pitch**: the fields under the cards name the option ("Replace 50-gal") and give the one-line pitch the customer reads under it ("New 50-gallon gas heater, code-current install, 6-yr warranty"). Sell it here — this is your word on the page.

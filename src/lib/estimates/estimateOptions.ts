@@ -30,8 +30,11 @@ export type EstimateOption = {
   line_items: EstimateLineItemNormalized[]
 }
 
-/** Owner decision 4: beyond this the customer page turns into a menu and chooses nothing. */
-export const MAX_ESTIMATE_OPTIONS = 4
+/**
+ * Beyond this the customer page turns into a menu and chooses nothing. Originally 4 (owner
+ * decision, v2.2457); raised to 6 when a customer asked for 5 separate options (2026-09-01).
+ */
+export const MAX_ESTIMATE_OPTIONS = 6
 
 export function newEstimateOptionKey(): string {
   try {
