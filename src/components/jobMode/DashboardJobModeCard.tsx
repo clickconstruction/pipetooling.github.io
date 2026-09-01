@@ -20,7 +20,10 @@ import {
   pickCurrentAndNextScheduleBlock,
   type JobModeScheduleBlock,
 } from '../../lib/jobModePickCurrentNext'
-import JobModeAdvanceNotesModal from './JobModeAdvanceNotesModal'
+import { buildJobModeDayRail, type JobModeDayRailRow } from '../../lib/jobModeDayRail'
+import JobModeAdvanceNotesModal, {
+  type JobModeAdvanceDestination,
+} from './JobModeAdvanceNotesModal'
 import JobModeDetailsSection from './JobModeDetailsSection'
 
 type LeaveReportJobPick = {
@@ -36,6 +39,8 @@ type Props = {
   onLeaveReport: (job: LeaveReportJobPick) => void
   /** Mounts TurnawayModal in Dashboard (client not home / site not ready). */
   onTurnaway: (job: LeaveReportJobPick) => void
+  /** False for salaried users — their sessions auto-materialize, no manual clock-out. */
+  canClockOut: boolean
 }
 
 type OpenSessionState = {
@@ -158,10 +163,87 @@ const turnawayBtn: CSSProperties = {
   color: 'white',
 }
 
+const wrapUpBtn: CSSProperties = {
+  ...bigButtonBase,
+  background: '#dc2626',
+  color: 'white',
+}
+
 const disabledBtnOverlay: CSSProperties = {
   background: '#9ca3af',
   color: 'white',
   cursor: 'not-allowed',
+}
+
+const quietClockOutBtn: CSSProperties = {
+  alignSelf: 'center',
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  color: 'var(--text-muted)',
+  fontSize: '0.8125rem',
+  fontWeight: 600,
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
+  padding: '0.1rem 0.4rem',
+}
+
+const railWrap: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+}
+
+const railTitle: CSSProperties = {
+  fontSize: '0.72rem',
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--text-faint)',
+  marginBottom: '0.15rem',
+}
+
+const railRowBase: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
+  width: '100%',
+  textAlign: 'left',
+  padding: '0.4rem 0.45rem',
+  borderRadius: 8,
+  border: 'none',
+  background: 'none',
+  color: 'var(--text-gray-800)',
+  fontSize: '0.86rem',
+}
+
+const railDotBase: CSSProperties = {
+  width: 16,
+  height: 16,
+  borderRadius: '50%',
+  flexShrink: 0,
+  boxSizing: 'border-box',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: 10,
+  fontWeight: 800,
+  lineHeight: 1,
+}
+
+const railTimeStyle: CSSProperties = {
+  color: 'var(--text-muted)',
+  fontSize: '0.78rem',
+  fontVariantNumeric: 'tabular-nums',
+  flexShrink: 0,
+  width: 58,
+}
+
+const railFlagStyle: CSSProperties = {
+  fontSize: '0.66rem',
+  fontWeight: 700,
+  letterSpacing: '0.04em',
+  flexShrink: 0,
 }
 
 const errorRow: CSSProperties = {
@@ -174,7 +256,7 @@ function safeTrim(s: string | null | undefined): string {
   return (s ?? '').trim()
 }
 
-export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway }: Props) {
+export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
   const navigate = useNavigate()
   const { role } = useAuth()
@@ -203,7 +285,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       cancelled = true
     }
   }, [])
-  const { requestOpenUpdateFocus, applyUpdateFocusDirect } = useUpdateFocusOpenerBridge()
+  const { requestOpenUpdateFocus, applyUpdateFocusDirect, requestClockOut } = useUpdateFocusOpenerBridge()
 
   const [workDateYmd, setWorkDateYmd] = useState<string>(() => denverCalendarDayKey(Date.now()))
   const [loading, setLoading] = useState(true)
@@ -212,8 +294,12 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const [openSession, setOpenSession] = useState<OpenSessionState>(null)
   const [currentJobInfo, setCurrentJobInfo] = useState<CurrentClockJobInfo | null>(null)
   const [currentBidInfo, setCurrentBidInfo] = useState<CurrentClockBidInfo | null>(null)
+  /** Jobs with a closed clock session today — drives the rail's ✓s and the unvisited-aware picker. */
+  const [visitedJobIds, setVisitedJobIds] = useState<ReadonlySet<string>>(new Set())
 
   const [advanceModalOpen, setAdvanceModalOpen] = useState(false)
+  const [advanceIntent, setAdvanceIntent] = useState<'start-first' | 'next-job'>('next-job')
+  const [advanceInitialJobId, setAdvanceInitialJobId] = useState<string | null>(null)
   const [advanceSaving, setAdvanceSaving] = useState(false)
   const [advanceError, setAdvanceError] = useState<string | null>(null)
 
@@ -228,7 +314,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       const today = denverCalendarDayKey(Date.now())
       setWorkDateYmd(today)
 
-      const [blocksRaw, openRaw] = await Promise.all([
+      const [blocksRaw, openRaw, visitedRaw] = await Promise.all([
         withSupabaseRetry(
           async () =>
             supabase
@@ -254,6 +340,19 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               .limit(1)
               .maybeSingle(),
           'job mode load open clock session',
+        ),
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .select('job_ledger_id')
+              .eq('user_id', userId)
+              .eq('work_date', today)
+              .not('clocked_out_at', 'is', null)
+              .not('job_ledger_id', 'is', null)
+              .is('rejected_at', null)
+              .is('revoked_at', null),
+          'job mode load visited jobs today',
         ),
       ])
       if (gen !== reloadGenRef.current) return
@@ -287,6 +386,12 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         })
       }
       setScheduleBlocks(blocksList)
+
+      const visitedSet = new Set<string>()
+      for (const r of (visitedRaw ?? []) as Array<{ job_ledger_id: string | null }>) {
+        if (r?.job_ledger_id) visitedSet.add(r.job_ledger_id)
+      }
+      setVisitedJobIds(visitedSet)
 
       const open = (openRaw ?? null) as
         | { id: string; job_ledger_id: string | null; bid_id: string | null }
@@ -405,8 +510,19 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         openSession: openSession
           ? { jobLedgerId: openSession.jobLedgerId, bidId: openSession.bidId }
           : null,
+        visitedJobIds,
       }),
-    [scheduleBlocks, openSession],
+    [scheduleBlocks, openSession, visitedJobIds],
+  )
+
+  const dayRail = useMemo(
+    () =>
+      buildJobModeDayRail({
+        blocks: scheduleBlocks,
+        currentJobId: openSession?.jobLedgerId ?? null,
+        visitedJobIds,
+      }),
+    [scheduleBlocks, openSession?.jobLedgerId, visitedJobIds],
   )
 
   function jobNumberLabel(serviceTypeId: string | null, hcp: string | null, click: string | null): string {
@@ -416,14 +532,6 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     const tag = getBidServiceTypeTag(stName)?.tag ?? (stName ? stName.slice(0, 4) : null)
     if (tag) return `${tag.toUpperCase()} ${effectiveJobLedgerNumber(hcp, click) || '—'}`
     return formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, prefixMap), hcp, click)
-  }
-
-  function destinationLabelForNext(): string {
-    const nb = picked.nextBlock
-    if (!nb) return ''
-    const num = jobNumberLabel(nb.service_type_id, nb.hcp_number, nb.click_number)
-    const name = safeTrim(nb.job_name) || '—'
-    return `${num} · ${name}`
   }
 
   // Header content depends on state.
@@ -571,6 +679,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     | { kind: 'next'; intent: 'start-first' | 'next-job'; label: string }
     | { kind: 'open-update-focus'; label: string }
     | { kind: 'manual-clock-in'; label: string }
+    | { kind: 'wrap-up'; label: string }
     | { kind: 'last-job'; label: string }
 
   const rightButton: RightButton = (() => {
@@ -584,6 +693,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       return { kind: 'next', intent: 'next-job', label: 'Next\nJob' }
     }
     if (picked.state === 'on-scheduled-job-last') {
+      // Every other job today is visited — offer the day's ending instead of a
+      // dead button (v2.2558). Salaried users keep the informational label.
+      if (canClockOut) return { kind: 'wrap-up', label: 'Wrap Up\nDay' }
       return { kind: 'last-job', label: 'Last job\nof the day' }
     }
     if (picked.state === 'on-off-schedule-job' && picked.nextBlock) {
@@ -596,6 +708,13 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     return { kind: 'open-update-focus', label: 'Choose Next\nJob' }
   })()
 
+  function openAdvanceModal(intent: 'start-first' | 'next-job', initialJobId: string | null) {
+    setAdvanceIntent(intent)
+    setAdvanceInitialJobId(initialJobId)
+    setAdvanceError(null)
+    setAdvanceModalOpen(true)
+  }
+
   async function handleRightButton() {
     if (rightButton.kind === 'manual-clock-in') {
       // Defer to existing clock-in flow.
@@ -606,21 +725,48 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       requestOpenUpdateFocus()
       return
     }
+    if (rightButton.kind === 'wrap-up') {
+      // Same guarded flow as the visible clock-out button (tally gate + review).
+      requestClockOut()
+      return
+    }
     if (rightButton.kind === 'last-job') {
       // No-op; the button is informational.
       return
     }
-    setAdvanceError(null)
-    setAdvanceModalOpen(true)
+    openAdvanceModal(rightButton.intent, picked.nextBlock?.job_id ?? null)
   }
 
-  async function handleConfirmAdvance(notes: string) {
-    if (rightButton.kind !== 'next' || !picked.nextBlock) return
+  /** Rail rows a tech can jump to: unvisited, not the current focus. */
+  function handleRailRowTap(row: JobModeDayRailRow) {
+    if (row.status === 'current' || row.status === 'done') return
+    openAdvanceModal(openSession ? 'next-job' : 'start-first', row.block.job_id)
+  }
+
+  function formatBlockTime(t: string): string {
+    const m = /^(\d{1,2}):(\d{2})/.exec(t.trim())
+    if (!m?.[1] || !m[2]) return t
+    const h = Number(m[1])
+    const hh = h % 12 === 0 ? 12 : h % 12
+    return `${hh}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`
+  }
+
+  // Where the advance modal can send the tech: today's still-open jobs.
+  const advanceDestinations: JobModeAdvanceDestination[] = dayRail.rows
+    .filter((r) => r.status === 'still-open' || r.status === 'upcoming')
+    .map((r) => ({
+      jobId: r.block.job_id,
+      label: `${jobNumberLabel(r.block.service_type_id, r.block.hcp_number, r.block.click_number)} · ${safeTrim(r.block.job_name) || '—'}`,
+      sublabel: `${formatBlockTime(r.block.time_start)} · ${safeTrim(r.block.job_address) || '—'}`,
+      suggested: picked.nextBlock?.job_id === r.block.job_id,
+    }))
+
+  async function handleConfirmAdvance(notes: string, destinationJobId: string) {
     setAdvanceSaving(true)
     setAdvanceError(null)
     try {
       const res = await applyUpdateFocusDirect({
-        jobLedgerId: picked.nextBlock.job_id,
+        jobLedgerId: destinationJobId,
         bidId: null,
         notes,
       })
@@ -696,6 +842,69 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         />
       ) : null}
       {error ? <div style={errorRow}>{error}</div> : null}
+      {!loading && dayRail.rows.length > 0 ? (
+        <div style={railWrap}>
+          <div style={railTitle}>
+            Today · {dayRail.doneCount} of {dayRail.totalCount} done
+          </div>
+          {dayRail.rows.map((row) => {
+            const tappable = row.status === 'still-open' || row.status === 'upcoming'
+            const dot =
+              row.status === 'done' ? (
+                <span style={{ ...railDotBase, background: '#16a34a', color: 'white' }} aria-hidden="true">✓</span>
+              ) : row.status === 'current' ? (
+                <span style={{ ...railDotBase, border: '5px solid #16a34a', background: 'var(--surface)' }} aria-hidden="true" />
+              ) : row.status === 'still-open' ? (
+                <span style={{ ...railDotBase, border: '2px solid #d97706', color: '#d97706' }} aria-hidden="true">!</span>
+              ) : (
+                <span style={{ ...railDotBase, border: '2px solid var(--text-faint)' }} aria-hidden="true" />
+              )
+            const num = jobNumberLabel(row.block.service_type_id, row.block.hcp_number, row.block.click_number)
+            const name = safeTrim(row.block.job_name) || '—'
+            return (
+              <button
+                key={row.block.job_id}
+                type="button"
+                disabled={!tappable}
+                aria-label={
+                  tappable
+                    ? `Go to ${num} ${name}`
+                    : `${num} ${name} — ${row.status === 'current' ? 'current job' : 'done'}`
+                }
+                style={{
+                  ...railRowBase,
+                  cursor: tappable ? 'pointer' : 'default',
+                  ...(row.status === 'current'
+                    ? { background: 'var(--bg-green-tint)', outline: '1.5px solid #16a34a' }
+                    : null),
+                  ...(row.status === 'done' ? { color: 'var(--text-muted)' } : null),
+                }}
+                onClick={() => handleRailRowTap(row)}
+              >
+                {dot}
+                <span style={railTimeStyle}>{formatBlockTime(row.block.time_start)}</span>
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontWeight: 600,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {num} · {name}
+                </span>
+                {row.status === 'current' ? (
+                  <span style={{ ...railFlagStyle, color: '#16a34a' }}>NOW</span>
+                ) : row.status === 'still-open' ? (
+                  <span style={{ ...railFlagStyle, color: '#d97706' }}>STILL OPEN</span>
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
       <div style={buttonRow}>
         <button
           type="button"
@@ -715,7 +924,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           style={
             rightButton.kind === 'last-job'
               ? { ...nextJobBtn, ...disabledBtnOverlay }
-              : nextJobBtn
+              : rightButton.kind === 'wrap-up'
+                ? wrapUpBtn
+                : nextJobBtn
           }
           disabled={rightButton.kind === 'last-job'}
           aria-label={rightButton.label.replace('\n', ' ')}
@@ -737,6 +948,17 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           Turnaway — not ready / not home
         </button>
       </div>
+      {!loading && openSession && canClockOut && rightButton.kind !== 'wrap-up' ? (
+        <button
+          type="button"
+          style={quietClockOutBtn}
+          aria-label="Clock out"
+          title="Clock out without switching jobs (lunch, leaving early)"
+          onClick={() => requestClockOut()}
+        >
+          Clock out
+        </button>
+      ) : null}
       {(() => {
         // Details for the clocked-in job, else the Ready-to-start next job.
         const detailsTarget =
@@ -757,11 +979,20 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       })()}
       <JobModeAdvanceNotesModal
         open={advanceModalOpen}
-        destinationLabel={destinationLabelForNext()}
-        intent={rightButton.kind === 'next' ? rightButton.intent : 'next-job'}
+        intent={advanceIntent}
+        destinations={advanceDestinations}
+        initialJobId={advanceInitialJobId}
         saving={advanceSaving}
         errorMessage={advanceError}
-        onConfirm={(notes) => void handleConfirmAdvance(notes)}
+        onConfirm={(notes, destinationJobId) => void handleConfirmAdvance(notes, destinationJobId)}
+        onDoneForDay={
+          openSession && canClockOut
+            ? () => {
+                setAdvanceModalOpen(false)
+                requestClockOut()
+              }
+            : null
+        }
         onCancel={() => {
           if (advanceSaving) return
           setAdvanceModalOpen(false)

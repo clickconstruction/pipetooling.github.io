@@ -66,35 +66,51 @@ export function sortJobModeScheduleBlocks(
 export function pickCurrentAndNextScheduleBlock(opts: {
   blocks: readonly JobModeScheduleBlock[]
   openSession: JobModeOpenSessionInput
+  /**
+   * Ledger ids of jobs already visited today (a closed clock session on that
+   * job). Lets "Next Job" wrap back to a skipped job instead of walking off the
+   * end of the day (v2.2558). Omitted = nothing visited yet.
+   */
+  visitedJobIds?: ReadonlySet<string>
 }): JobModeCurrentNext {
   const ordered = sortJobModeScheduleBlocks(opts.blocks)
   const first = ordered[0] ?? null
   const session = opts.openSession ?? null
+  const visited = opts.visitedJobIds ?? new Set<string>()
+  // First block whose job hasn't been visited yet — the right restart/entry
+  // point after a mid-day clock-out or an off-schedule detour.
+  const firstUnvisited = ordered.find((b) => !visited.has(b.job_id)) ?? first
 
   if (!session) {
     if (!first) {
       return { state: 'no-clock-no-schedule', currentBlock: null, nextBlock: null }
     }
-    return { state: 'not-clocked-in-with-schedule', currentBlock: null, nextBlock: first }
+    return { state: 'not-clocked-in-with-schedule', currentBlock: null, nextBlock: firstUnvisited }
   }
 
   if (session.bidId) {
-    return { state: 'on-bid', currentBlock: null, nextBlock: first }
+    return { state: 'on-bid', currentBlock: null, nextBlock: firstUnvisited }
   }
 
   const currentJobId = session.jobLedgerId
   if (!currentJobId) {
-    return { state: 'on-off-schedule-job', currentBlock: null, nextBlock: first }
+    return { state: 'on-off-schedule-job', currentBlock: null, nextBlock: firstUnvisited }
   }
 
   const currentBlockIndex = ordered.findIndex((b) => b.job_id === currentJobId)
   const currentBlock = currentBlockIndex >= 0 ? ordered[currentBlockIndex] ?? null : null
   if (!currentBlock) {
-    return { state: 'on-off-schedule-job', currentBlock: null, nextBlock: first }
+    return { state: 'on-off-schedule-job', currentBlock: null, nextBlock: firstUnvisited }
   }
-  // "Next Job" means a different job — skip same-job continuation windows.
+  // "Next Job" means a different, still-unvisited job. Prefer rolling forward
+  // in time order; when nothing unvisited remains ahead, wrap back to the
+  // earliest skipped job. Same-job continuation windows never count.
+  const isNextCandidate = (b: JobModeScheduleBlock) =>
+    b.job_id !== currentJobId && !visited.has(b.job_id)
   const nextBlock =
-    ordered.slice(currentBlockIndex + 1).find((b) => b.job_id !== currentJobId) ?? null
+    ordered.slice(currentBlockIndex + 1).find(isNextCandidate) ??
+    ordered.find(isNextCandidate) ??
+    null
   if (!nextBlock) {
     return { state: 'on-scheduled-job-last', currentBlock, nextBlock: null }
   }
