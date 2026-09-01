@@ -78,6 +78,7 @@ import { submitLinkJobPicturesDispatchRequestForJob } from '../lib/linkJobPictur
 import { readEdgeFunctionErrorBody } from '../lib/readEdgeFunctionErrorBody'
 import { useDashboardBoot } from '../hooks/useDashboardBoot'
 import { formatDatetime } from '../lib/dashboardProjectsCard'
+import { isDashboardRecentReportsRole } from '../lib/dashboardRecentReports'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
 import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
@@ -1010,7 +1011,7 @@ export default function Dashboard() {
   /** Projects card wraps Assigned + Subscribed stages; visible if either sub-section would show. */
   const projectsCardVisible =
     userLoading || showAssigned || (showSubscribed && (subscribedLoading || subscribedSteps.length > 0))
-  const showRecent = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
+  const showRecent = isDashboardRecentReportsRole(role)
   const showFinancials = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 
   const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || isAssistantLike(role)

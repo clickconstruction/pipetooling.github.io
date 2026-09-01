@@ -83,7 +83,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 | Billing Pipeline | ✓ (copy 2) | ✓ (copy 2) | ✓ (copy 1) | — | — | — | — |
 | My Schedule | — | — | — | — | — | — | ✓ |
 | My Bids | ✓ | ✓ | ✓ | ✓ | ✓ | — (gate excludes superintendent despite loader including it — see quirks) | — |
-| Recent Reports (`showRecent`) | ✓ | ✓ | ✓ | — | ✓ | — | — |
+| Recent Reports (`showRecent` = `isDashboardRecentReportsRole`, v2.2599) | ✓ | ✓ | ✓ | — | ✓ | ✓ | — |
 | Team Ready to Bill (`isDashboardTeamReadyToBillRole`) | — | — | — | ✓ | ✓ | ✓ | ✓ |
 | Assigned Jobs | any role with rows from `list_assigned_jobs_for_dashboard` (RPC scopes rows); "Send to Billing" hidden for helpers | | | | | | |
 | Upcoming inspection | ✓ | ✓ | ✓ | — | ✓ | — | — (also hidden when the `inspections` quick button is toggled off) |

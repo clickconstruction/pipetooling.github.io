@@ -573,6 +573,9 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Permissions**:
 
+**Dashboard**:
+- Recent Reports section (v2.2599) — `list_reports_with_job_info` scopes rows to reports on their assigned projects (`can_access_project_row` / `superintendent_report_job_anchor_allowed`); no email-settings gear (office roles only)
+
 **Workflow**:
 - Can see all stages in accessible workflows (like assistant)
 - Can assign people to stages (Assign button visible)

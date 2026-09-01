@@ -7,6 +7,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { formatReportFieldValueInlineList } from '../../lib/reportSignatureField'
 import {
   formatReportRowTime,
+  isDashboardRecentReportsRole,
   openedNotShownCount,
   recentReportsNewCount,
   reportRowState,
@@ -87,7 +88,7 @@ export function DashboardRecentReportsSection({
 
   useEffect(() => {
     if (!authUserId) return
-    const showRecent = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
+    const showRecent = isDashboardRecentReportsRole(role)
     if (!showRecent) return
     setRecentReportsLoading(true)
     const load = async () => {
@@ -154,8 +155,7 @@ export function DashboardRecentReportsSection({
     load()
   }, [authUserId, role, isReportEnabledOnlyUser])
 
-  const dashboardReportsEnabled =
-    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
+  const dashboardReportsEnabled = isDashboardRecentReportsRole(role)
   const dashboardReportsFilters = useMemo(
     () => [{ event: '*' as const, schema: 'public', table: 'reports' }],
     [],
@@ -214,7 +214,7 @@ export function DashboardRecentReportsSection({
 
   const newCount = recentReportsNewCount(recentReports, readReportIds, doneReportIds)
   const hiddenOpenedCount = openedNotShownCount(recentReports, readReportIds, doneReportIds, sessionOpenedIds)
-  const showRecent = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
+  const showRecent = isDashboardRecentReportsRole(role)
   const nowMs = Date.now()
 
   return (
