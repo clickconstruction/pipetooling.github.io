@@ -52,6 +52,7 @@ import {
   type ArStripeAutoCloseCandidate,
 } from '../../lib/arStripeAutoClose'
 import { matchArDepositToPayer } from '../../lib/jobs/arDepositCustomerMatch'
+import { buildArExactMatchSweep } from '../../lib/jobs/arExactMatchSweep'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 
 type MercuryCandidate =
@@ -377,6 +378,105 @@ export default function BankPaymentsModal({
     const shown = new Set(depositPayerTargets.map((t) => t.key))
     return bankPaymentQuickMatchTargets.filter((t) => !shown.has(t.key))
   }, [bankPaymentQuickMatchTargets, depositPayerTargets])
+
+  /**
+   * Exact-match sweep (batch pass): deposits where exactly one open non-Stripe
+   * bill shares the cents-exact amount, and no other deposit claims it.
+   */
+  const exactMatchSweep = useMemo(
+    () => buildArExactMatchSweep(candidates, targets),
+    [candidates, targets],
+  )
+  const [sweepOpen, setSweepOpen] = useState(false)
+  /** Deposit ids the user un-ticked in the review panel. */
+  const [sweepExcluded, setSweepExcluded] = useState<Set<string>>(() => new Set())
+  const [sweepApplying, setSweepApplying] = useState(false)
+  const [sweepProgress, setSweepProgress] = useState(0)
+  const [sweepResults, setSweepResults] = useState<Array<{ depositId: string; ok: boolean; error?: string }> | null>(
+    null,
+  )
+
+  useEffect(() => {
+    if (!open) {
+      setSweepOpen(false)
+      setSweepExcluded(new Set())
+      setSweepResults(null)
+      setSweepProgress(0)
+    }
+  }, [open])
+
+  const candidateById = useMemo(
+    () => new Map(candidates.map((c) => [c.mercury_transaction_id, c] as const)),
+    [candidates],
+  )
+
+  /** Ticked pairs not already applied in this panel session (guards Retry from double-applying successes before the list refreshes). */
+  const sweepPairsPending = exactMatchSweep.pairs.filter(
+    (p) => !sweepExcluded.has(p.depositId) && sweepResults?.find((r) => r.depositId === p.depositId)?.ok !== true,
+  )
+
+  async function applyExactMatchSweep() {
+    const toApply = sweepPairsPending
+    if (toApply.length === 0 || !canApply) return
+    setSweepApplying(true)
+    /** Successes from a prior pass stay recorded so Retry can't double-apply them before the list refreshes. */
+    const priorOk = (sweepResults ?? []).filter((r) => r.ok)
+    setSweepResults(null)
+    setSweepProgress(0)
+    const results: Array<{ depositId: string; ok: boolean; error?: string }> = [...priorOk]
+    for (const pair of toApply) {
+      const d = candidateById.get(pair.depositId)
+      const t = targetByKey.get(pair.targetKey)
+      let outcome: { ok: boolean; error?: string }
+      if (!d || !t) {
+        outcome = { ok: false, error: 'Deposit or bill no longer listed — refresh and retry.' }
+      } else {
+        const postedMs = d.posted_at ? new Date(d.posted_at).getTime() : Number.NaN
+        const paidOn = Number.isNaN(postedMs) ? null : denverCalendarDayKey(postedMs)
+        if (!paidOn) {
+          outcome = { ok: false, error: 'Missing Mercury posted date.' }
+        } else {
+          try {
+            const data = await withSupabaseRetry(
+              async () =>
+                supabase.rpc('apply_mercury_bank_payment_allocations', {
+                  p_mercury_transaction_id: d.mercury_transaction_id,
+                  p_paid_on: paidOn,
+                  p_payment_type: mercuryKindPaymentTypeLabel(d.kind, kindBadges),
+                  p_note: '',
+                  p_allocations: [
+                    t.invoiceId
+                      ? { invoice_id: t.invoiceId, amount: pair.amountCents / 100 }
+                      : { job_id: t.jobId, amount: pair.amountCents / 100 },
+                  ],
+                  p_allow_stripe_hosted: false,
+                }),
+              'apply_mercury_bank_payment_allocations',
+            )
+            const payload = data as { error?: string } | null
+            if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
+              outcome = { ok: false, error: payload.error }
+            } else {
+              outcome = { ok: true }
+            }
+          } catch (e: unknown) {
+            outcome = { ok: false, error: e instanceof Error ? e.message : 'Apply failed' }
+          }
+        }
+      }
+      results.push({ depositId: pair.depositId, ...outcome })
+      setSweepProgress((n) => n + 1)
+    }
+    setSweepResults(results)
+    setSweepApplying(false)
+    await onApplied()
+    void refreshList()
+    if (results.every((r) => r.ok)) {
+      setSweepOpen(false)
+      setSweepExcluded(new Set())
+      setSweepResults(null)
+    }
+  }
 
   /** Targets whose remaining equals this deposit's remaining (same tolerance as the quick picks) — accents payer chips. */
   const depositAmountMatchKeys = useMemo(() => {
@@ -1071,6 +1171,151 @@ export default function BankPaymentsModal({
               </div>
             </div>
           ) : null}
+          {sweepOpen ? (
+            <div
+              role="dialog"
+              aria-label="Review exact deposit matches"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 3,
+                background: 'var(--surface)',
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0,
+              }}
+            >
+              <div style={{ padding: '0.85rem 1.25rem 0.5rem', flexShrink: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>Exact deposit matches</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Each deposit below matches exactly one open bill to the cent. Un-tick any pair you're not sure
+                  about, then apply the rest in one pass. Ambiguous amounts are skipped, never guessed.
+                </div>
+              </div>
+              <div style={{ flex: 1, overflow: 'auto', padding: '0 1.25rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <tbody>
+                    {exactMatchSweep.pairs.map((p) => {
+                      const d = candidateById.get(p.depositId)
+                      const t = targetByKey.get(p.targetKey)
+                      const result = sweepResults?.find((r) => r.depositId === p.depositId)
+                      const posted = d?.posted_at
+                        ? new Date(d.posted_at).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ })
+                        : '—'
+                      return (
+                        <tr key={p.depositId} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '0.5rem 0.5rem 0.5rem 0', width: 24, verticalAlign: 'top' }}>
+                            <input
+                              type="checkbox"
+                              checked={!sweepExcluded.has(p.depositId)}
+                              disabled={sweepApplying}
+                              onChange={(e) => {
+                                const checked = e.target.checked
+                                setSweepExcluded((prev) => {
+                                  const next = new Set(prev)
+                                  if (checked) next.delete(p.depositId)
+                                  else next.add(p.depositId)
+                                  return next
+                                })
+                              }}
+                              aria-label={`Include ${formatMoney(p.amountCents / 100)} from ${d?.counterparty_name ?? '—'}`}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.5rem 0.5rem 0', verticalAlign: 'top' }}>
+                            <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
+                              {formatMoney(p.amountCents / 100)}
+                            </strong>
+                            <span style={{ color: 'var(--text-muted)' }}>
+                              {' '}
+                              · {(d?.counterparty_name ?? '').trim() || '—'} · {posted}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.5rem 0', verticalAlign: 'top' }}>
+                            <span style={{ color: 'var(--text-faint)' }}>→ </span>
+                            {t ? bankPaymentTargetPrimaryLabel(t) : '—'}
+                            {result ? (
+                              <div
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: result.ok ? 'var(--text-green-700)' : 'var(--text-red-700)',
+                                  marginTop: 2,
+                                }}
+                              >
+                                {result.ok ? '✓ applied' : `✗ ${result.error ?? 'failed'}`}
+                              </div>
+                            ) : null}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {exactMatchSweep.skipped.length > 0 ? (
+                  <div style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Skipped as ambiguous:{' '}
+                    {exactMatchSweep.skipped
+                      .map(
+                        (s) =>
+                          `$${formatMoney(s.amountCents / 100)} (${s.depositCount} deposit${s.depositCount === 1 ? '' : 's'} / ${s.targetCount} bill${s.targetCount === 1 ? '' : 's'})`,
+                      )
+                      .join(' · ')}{' '}
+                    — pick those by hand.
+                  </div>
+                ) : null}
+              </div>
+              <div
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  borderTop: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flexShrink: 0,
+                }}
+              >
+                {sweepApplying ? (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginRight: 'auto' }}>
+                    Applying {sweepProgress} of {sweepPairsPending.length}…
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={sweepApplying}
+                  onClick={() => {
+                    setSweepOpen(false)
+                    setSweepResults(null)
+                  }}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: 4,
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
+                    cursor: sweepApplying ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {sweepResults?.some((r) => !r.ok) ? 'Close' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  disabled={sweepApplying || sweepPairsPending.length === 0}
+                  onClick={() => void applyExactMatchSweep()}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: 4,
+                    border: 'none',
+                    background: sweepApplying ? '#9ca3af' : '#2563eb',
+                    color: 'white',
+                    cursor: sweepApplying ? 'not-allowed' : 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  {sweepResults?.some((r) => !r.ok) ? 'Retry failed' : 'Apply'} {sweepPairsPending.length} deposit
+                  {sweepPairsPending.length === 1 ? '' : 's'}
+                </button>
+              </div>
+            </div>
+          ) : null}
           <div
             style={{
               display: 'flex',
@@ -1162,6 +1407,49 @@ export default function BankPaymentsModal({
               />
               Show fully applied and returned deposits
             </label>
+            {canApply && exactMatchSweep.pairs.length > 0 ? (
+              <div
+                style={{
+                  margin: '0 0.5rem 0.5rem',
+                  padding: '0.45rem 0.6rem',
+                  border: '1px solid var(--border-green)',
+                  background: 'var(--bg-green-tint)',
+                  borderRadius: 6,
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ color: 'var(--text-700)' }}>
+                  <strong>{exactMatchSweep.pairs.length}</strong>
+                  {exactMatchSweep.pairs.length === 1 ? ' deposit matches' : ' deposits each match'} exactly one open
+                  bill — <strong>${formatMoney(exactMatchSweep.totalCents / 100)}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSweepOpen(true)
+                    setSweepResults(null)
+                  }}
+                  style={{
+                    padding: '0.3rem 0.6rem',
+                    borderRadius: 4,
+                    border: 'none',
+                    background: '#2563eb',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  Review &amp; apply…
+                </button>
+              </div>
+            ) : null}
             <div style={{ flex: 1, overflow: 'auto' }}>
               {listError && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{listError}</p>

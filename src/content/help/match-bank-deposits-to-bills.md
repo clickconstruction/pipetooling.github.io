@@ -21,6 +21,19 @@ The deposit's bank name, note, and memo are checked against your customers and G
 - Initials work: a check deposited as "DRF" finds **Done Right Foundation**. Check services often put the real customer in the deposit memo — that's read too, and the header says so ("Memo mentions…").
 - No clear match? You still get the **Matches deposit amount** row (any bill equal to the deposit, whoever it belongs to) and the full searchable picker.
 
+## Clear the obvious ones in one pass
+
+When deposits each match exactly one open bill to the cent, a green bar appears above the deposit list:
+
+:::example the sweep bar
+**3 deposits each match exactly one open bill — $5,145.72** {{button:blue|Review & apply…}}
+:::
+
+The review panel lists each pair — deposit on the left, the bill it pays on the right. Everything starts ticked; un-tick anything you're not sure about, then {{button:blue|Apply 3 deposits}} records them all. Two safety rules:
+
+- **Ambiguous amounts are skipped, never guessed** — if two deposits and three bills all say $250.00, the panel tells you and leaves them for you to pick by hand (the customer chips make that quick).
+- **Bills sent through Stripe are never swept** — those need the paid-outside-Stripe confirmation, one at a time.
+
 ## Finding a bill by hand
 
 The bill picker searches by amount, job number, job name, address — and now the **customer or GC name**, even when the job name doesn't mention them. Typing "weiss" finds Weiss Services' bills no matter what the jobs are called.
