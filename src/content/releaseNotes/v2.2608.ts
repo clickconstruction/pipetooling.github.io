@@ -7,6 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'The "pick a section…" dropdown now extends past the modal toward the bottom of the page, so all the Division 22 sections show in one open list instead of a three-row scroll.',
+    'It also opens wide enough that no section name wraps — every code and title reads on one line.',
   ],
 }
 
