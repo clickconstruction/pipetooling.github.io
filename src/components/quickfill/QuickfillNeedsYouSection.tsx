@@ -15,6 +15,7 @@ import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
+import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -52,6 +53,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(authUser?.id, role)
   const bulkDelete = useBulkDeleteNudge(authUser?.id)
   const claimDev = useClaimDevAttemptsNudge(authUser?.id)
+  const lienUnconditionalEnabled = Boolean(authUser?.id) && tallyStaffEligible
+  const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -103,6 +106,9 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     // Robot audits stay a Dashboard concern — Quickfill is the billing desk.
     robotAuditsEnabled: false,
     robotAuditsPending: 0,
+    // Unconditional follow-ups ARE billing-desk work (v2.2582).
+    lienUnconditionalEnabled,
+    lienUnconditionalOwed,
   })
 
   useEffect(() => {
@@ -140,6 +146,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
             navigate('/settings?tab=settings-data#settings-recently-deleted')
           } else if (item.key === 'claim-dev') {
             navigate('/settings?tab=settings-people')
+          } else if (item.key === 'lien-unconditional') {
+            navigate('/jobs?tab=stages')
           }
         }}
         onSecondary={(item, key) => {

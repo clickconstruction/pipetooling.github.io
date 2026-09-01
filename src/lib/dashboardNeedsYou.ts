@@ -41,6 +41,7 @@ export type NeedsYouItem = {
     | 'bulk-delete'
     | 'claim-dev'
     | 'robot-audits'
+    | 'lien-unconditional'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -66,6 +67,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'bulk-delete': 0,
   'claim-dev': 0,
   'ar-deposits': 10,
+  'lien-unconditional': 20,
   'gc-review-weekly': 20,
   'tally-self': 30,
   'tally-team': 30,
@@ -155,10 +157,36 @@ export type NeedsYouInputs = {
    */
   robotAuditsEnabled: boolean
   robotAuditsPending: number
+  /**
+   * Cleared payments behind conditional lien releases (v2.2582) — the GC is
+   * owed the unconditional follow-up. Null while loading; the hook reports
+   * zero on error so the card stays quiet.
+   */
+  lienUnconditionalEnabled: boolean
+  lienUnconditionalOwed: { count: number; total: number } | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   const items: NeedsYouItem[] = []
+
+  if (inputs.lienUnconditionalEnabled && (inputs.lienUnconditionalOwed?.count ?? 0) > 0) {
+    const { count: n, total } = inputs.lienUnconditionalOwed as { count: number; total: number }
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'lien-unconditional',
+      severity: 'blue',
+      kicker: 'Lien releases',
+      title:
+        n === 1
+          ? 'A payment cleared behind a conditional release'
+          : `${n} payments cleared behind conditional releases`,
+      detail:
+        (n === 1 ? `A check (${money}) has cleared since its` : `${money} in checks have cleared since their`) +
+        ' conditional lien release was issued — the customer is owed the unconditional version. Issue it from Bill Customer → Lien releases on each job.',
+      figure: String(n),
+      actionLabel: n === 1 ? 'Issue release' : 'Issue releases',
+    })
+  }
 
   if (inputs.arBankEnabled && (inputs.arBankUnallocatedCount ?? 0) > 0) {
     const n = inputs.arBankUnallocatedCount as number

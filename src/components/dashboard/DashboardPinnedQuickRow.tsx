@@ -22,6 +22,7 @@ import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcRevie
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
+import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import NewReportModal from '../NewReportModal'
@@ -319,6 +320,10 @@ export function DashboardPinnedQuickRow({
   const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
   const { pending: robotAuditsPending } = useBidAuditsPendingCount(robotAuditsEnabled)
 
+  // Cleared payments behind conditional lien releases (v2.2582) — office set.
+  const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+
   const needsYouItems = buildNeedsYouItems({
     role,
     arBankUnallocatedCount,
@@ -345,6 +350,8 @@ export function DashboardPinnedQuickRow({
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
     robotAuditsEnabled,
     robotAuditsPending,
+    lienUnconditionalEnabled,
+    lienUnconditionalOwed,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -542,6 +549,8 @@ export function DashboardPinnedQuickRow({
               navigate('/settings?tab=settings-people')
             } else if (item.key === 'robot-audits') {
               navigate('/bids?tab=audits')
+            } else if (item.key === 'lien-unconditional') {
+              navigate('/jobs?tab=stages')
             }
           }}
           onSecondary={(item, key) => {

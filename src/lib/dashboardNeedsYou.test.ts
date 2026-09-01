@@ -28,6 +28,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     claimDevLookbackDays: 7,
     robotAuditsEnabled: true,
     robotAuditsPending: 0,
+    lienUnconditionalEnabled: true,
+    lienUnconditionalOwed: null,
     ...overrides,
   }
 }
@@ -257,6 +259,33 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.title).toBe('23 robot bids are waiting on your audit')
     expect(many[0]?.figure).toBe('23')
     expect(buildNeedsYouItems(inputs({ robotAuditsPending: 120 }))[0]?.figure).toBe('99+')
+  })
+
+  it('lien-unconditional (v2.2582): blue money item, gone at zero, disabled, or while loading', () => {
+    expect(buildNeedsYouItems(inputs({ lienUnconditionalOwed: { count: 0, total: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienUnconditionalEnabled: false, lienUnconditionalOwed: { count: 2, total: 3000 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienUnconditionalOwed: null }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ lienUnconditionalOwed: { count: 1, total: 2200 } }))
+    expect(one[0]?.key).toBe('lien-unconditional')
+    expect(one[0]?.severity).toBe('blue')
+    expect(one[0]?.title).toBe('A payment cleared behind a conditional release')
+    expect(one[0]?.detail).toContain('$2,200')
+    expect(one[0]?.actionLabel).toBe('Issue release')
+    const many = buildNeedsYouItems(inputs({ lienUnconditionalOwed: { count: 3, total: 5400 } }))
+    expect(many[0]?.title).toBe('3 payments cleared behind conditional releases')
+    expect(many[0]?.figure).toBe('3')
+    expect(many[0]?.actionLabel).toBe('Issue releases')
+  })
+
+  it('lien-unconditional sits in the received-money tier: below ar-deposits, above billing accuracy', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        arBankUnallocatedCount: 5,
+        tallyStaleUnlinkedCount: 2,
+        lienUnconditionalOwed: { count: 1, total: 2200 },
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['ar-deposits', 'lien-unconditional', 'tally-self'])
   })
 
   it('robot-audits shares the people/planning tier: below revenue chasing, above hygiene', () => {

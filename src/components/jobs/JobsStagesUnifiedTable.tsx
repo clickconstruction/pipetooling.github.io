@@ -101,6 +101,8 @@ export type JobsStagesUnifiedTableProps = {
   onOpenLienTooling?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
   /** Release of lien (v2.2579): open the in-app waiver-and-release modal. */
   onOpenLienRelease?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
+  /** Jobs with a live (non-voided) release — their release button wears a blue box (v2.2582). */
+  lienReleaseJobIds?: ReadonlySet<string>
   /** Billed Awaiting Payment: flag the row's job as difficult-to-collect (Collections section). */
   onJobMoveToCollections?: (j: JobWithDetails) => void
   /** Collections: short muted note line under the amounts (e.g. the stored collections reason). */
@@ -189,6 +191,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     showClickTooling = true,
     onOpenLienTooling,
     onOpenLienRelease,
+    lienReleaseJobIds,
     onJobMoveToCollections,
     jobNoteLine,
     stagesJobFlashId,
@@ -725,9 +728,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 <button
                                   type="button"
                                   onClick={() => onOpenLienRelease({ job: j, invoice: bundleInv ?? null })}
-                                  title="Release of lien — generate a conditional or unconditional waiver and release"
+                                  title={lienReleaseJobIds?.has(j.id) ? 'This job has an issued lien release — click to view or issue another' : 'Release of lien — generate a conditional or unconditional waiver and release'}
                                   aria-label="Release of lien"
-                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  style={{ padding: '0.25rem', background: lienReleaseJobIds?.has(j.id) ? 'var(--bg-blue-tint)' : 'none', border: lienReleaseJobIds?.has(j.id) ? '2px solid #2563eb' : 'none', borderRadius: 6, cursor: 'pointer', color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   <FileCheck2 size={16} aria-hidden />
                                 </button>
@@ -1132,9 +1135,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             <button
                               type="button"
                               onClick={() => onOpenLienRelease({ job, invoice: inv })}
-                              title="Release of lien — generate a conditional or unconditional waiver and release"
+                              title={lienReleaseJobIds?.has(job.id) ? 'This job has an issued lien release — click to view or issue another' : 'Release of lien — generate a conditional or unconditional waiver and release'}
                               aria-label="Release of lien"
-                              style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              style={{ padding: '0.25rem', background: lienReleaseJobIds?.has(job.id) ? 'var(--bg-blue-tint)' : 'none', border: lienReleaseJobIds?.has(job.id) ? '2px solid #2563eb' : 'none', borderRadius: 6, cursor: 'pointer', color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
                               <FileCheck2 size={16} aria-hidden />
                             </button>
