@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatCurrency } from '../../lib/format'
 import { formatRevenueMultiple, marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
@@ -46,7 +47,8 @@ import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
 import { bidPackageLabel } from '../../lib/bidPackageLabel'
-import { buildBidFixtureCountsText } from '../../lib/buildBidFixtureCountsText'
+import { buildBidFixtureCountsText, buildBidFixtureCountsTextGrouped } from '../../lib/buildBidFixtureCountsText'
+import { classifySpecSection, type SpecSectionMatchKind, type SpecSectionMatchRule } from '../../lib/classifySpecSection'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -1816,18 +1818,61 @@ export function BidsPricingTab({
   /**
    * "Copy fixtures for text" (parts houses): names + counts of the viewed version only —
    * no prices, so no ★ check; works before a price book or cost estimate exists.
+   * v2.2587: rows are grouped under Division 22 section headers via the org-wide
+   * spec-section ledger (read at click time). If the ledger can't be read, the copy
+   * falls back to the flat list — it never blocks.
    */
   async function copyFixtureCountsForText() {
     const bid = selectedBidForPricing
     if (!bid) return
-    const text = buildBidFixtureCountsText({
-      bidLabel: bidPackageLabel(bid, ledgerPrefixMap),
-      rows: pricingCountRows,
-    })
+    const bidLabel = bidPackageLabel(bid, ledgerPrefixMap)
+
+    let text: string
+    let unmatchedNames = 0
+    try {
+      const [ruleRows, sectionRows] = await Promise.all([
+        withSupabaseRetry(
+          () => supabase.from('spec_section_match_rules').select('pattern, match_kind, section_code, priority'),
+          'load spec section match rules',
+        ),
+        withSupabaseRetry(() => supabase.from('spec_sections').select('code, title'), 'load spec sections'),
+      ])
+      const knownKinds = new Set<string>(['starts_with', 'contains', 'exact'])
+      const rules: SpecSectionMatchRule[] = (ruleRows ?? [])
+        .filter((r) => knownKinds.has(r.match_kind))
+        .map((r) => ({
+          pattern: r.pattern,
+          matchKind: r.match_kind as SpecSectionMatchKind,
+          sectionCode: r.section_code,
+          priority: r.priority,
+        }))
+      const unmatched = new Set<string>()
+      text = buildBidFixtureCountsTextGrouped({
+        bidLabel,
+        rows: pricingCountRows,
+        sectionCodeForName: (name) => {
+          const match = classifySpecSection(name, rules)
+          if (match.outcome === 'matched') return match.sectionCode
+          if (match.outcome === 'unmatched' && name) unmatched.add(name)
+          return null
+        },
+        sectionTitleByCode: new Map((sectionRows ?? []).map((s) => [s.code, s.title])),
+      })
+      unmatchedNames = unmatched.size
+    } catch {
+      // Ledger unreachable — the flat list still goes out.
+      text = buildBidFixtureCountsText({ bidLabel, rows: pricingCountRows })
+    }
+
     try {
       if (typeof navigator === 'undefined' || !navigator.clipboard) throw new Error('Clipboard unavailable in this browser.')
       await navigator.clipboard.writeText(text)
-      showToast('Fixture list copied — names and counts only, no prices.', 'success')
+      showToast(
+        unmatchedNames > 0
+          ? `Fixture list copied — grouped by Division 22, no prices. ${unmatchedNames} name${unmatchedNames === 1 ? '' : 's'} under “No code yet”.`
+          : 'Fixture list copied — names and counts only, no prices.',
+        'success',
+      )
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not copy to clipboard.', 'error')
     }
