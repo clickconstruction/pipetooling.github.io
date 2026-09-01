@@ -11,6 +11,7 @@ import {
 import { buildMoneyWaiting, openBillsForCustomers, billWaitTone, type MoneyWaitingRow, type OpenBill, type OpenBillTone } from '../../lib/jobs/moneyWaiting'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
+import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
@@ -523,7 +524,7 @@ export default function PaySpeedsBreakdownModal({
                         }}
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: 'auto minmax(120px, 170px) 1fr auto',
+                          gridTemplateColumns: 'auto minmax(120px, 170px) 1fr auto auto',
                           gap: '0.6rem',
                           alignItems: 'center',
                           padding: '0.4rem 0.45rem',
@@ -564,6 +565,18 @@ export default function PaySpeedsBreakdownModal({
                             {c.ownMedianDays != null ? `usually ~${c.ownMedianDays}d` : `no history — vs company ~${money.companyMedianDays}d`} ·{' '}
                             <b style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(c.open)}</b> open on {jobs} {jobs === 1 ? 'job' : 'jobs'}
                           </span>
+                        </span>
+                        {/* Portal globe (v2.2564, owner ask): the customer's portal one
+                            click away from the money conversation — top-right of the row
+                            in both states (the header stays visible when expanded).
+                            stopPropagation keeps it from toggling the row; the button
+                            renders nothing for non-office roles. */}
+                        <span
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          style={{ display: 'inline-flex', alignItems: 'flex-start' }}
+                        >
+                          <CustomerPortalGlobeButton customerId={c.customerId} customerName={c.name} size={13} />
                         </span>
                       </div>
                       {expanded && (
