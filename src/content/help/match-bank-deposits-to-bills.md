@@ -50,4 +50,13 @@ Tapping it fills one allocation line per bill for you to review, then {{button:b
 
 You can always split a deposit yourself: {{button:outline|Add Additional Allocation}} adds lines, and the matched customer's chips make it easy to pick their bills one at a time until the remaining hits zero.
 
-If someone already recorded the payment by hand in Edit Job, switch the line to **Payment received** and link the deposit to that recorded payment instead — that avoids counting the same money twice.
+## If the payment was already recorded by hand
+
+When you point a deposit at a bill whose job already has a same-amount payment recorded (say, someone marked it paid in Edit Job), the modal warns you — that money may already be counted:
+
+:::example the guard
+**This payment may already be recorded.** A 2,918.22 payment dated Aug 26 is on this job with no bank deposit linked. Linking it avoids counting the money twice.
+{{button:blue|Link that payment instead}} {{button:outline|It's a different payment}}
+:::
+
+**Link that payment instead** switches the line to **Payment received** with that payment picked and the amount locked — the deposit links to the existing record and no duplicate is created. If it really is a separate payment, **It's a different payment** keeps your pick. You can always switch a line to **Payment received** yourself, too.

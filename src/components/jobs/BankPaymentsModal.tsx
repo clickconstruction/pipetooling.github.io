@@ -54,6 +54,7 @@ import {
 import { matchArDepositToPayer } from '../../lib/jobs/arDepositCustomerMatch'
 import { buildArExactMatchSweep } from '../../lib/jobs/arExactMatchSweep'
 import { findExactBillCombos } from '../../lib/jobs/arPayerBillCombos'
+import { findRecordedPaymentCollisions } from '../../lib/jobs/arLinkCollision'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 
 type MercuryCandidate =
@@ -677,12 +678,16 @@ export default function BankPaymentsModal({
     setArBankReturnedMarkMode(false)
   }, [open])
 
+  /** Allocation-line ids whose "link that payment instead" steer was waved off ("It's a different payment"). */
+  const [linkSteerDismissedLineIds, setLinkSteerDismissedLineIds] = useState<Set<string>>(() => new Set())
+
   useEffect(() => {
     if (!open || !selectedId) return
     setAllocLines([{ id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' }])
     setApplyError(null)
     setStripeOutOfBandConfirmed(false)
     setStripeCloseResults(null)
+    setLinkSteerDismissedLineIds(new Set())
   }, [open, selectedId])
 
   // Recorded-payment candidates for the "Payment received" allocation kind
@@ -1807,6 +1812,16 @@ export default function BankPaymentsModal({
                             .filter((r) => r.id !== line.id && r.kind === 'payment' && r.targetKey.trim())
                             .map((r) => r.targetKey),
                         )
+                        /** v2.2591 link guard: a same-amount unlinked recorded payment on the picked job usually means LINK, not create. */
+                        const linkCollisions =
+                          line.kind === 'billed' && picked && !linkSteerDismissedLineIds.has(line.id)
+                            ? findRecordedPaymentCollisions(
+                                picked.jobId,
+                                parseBankPaymentAllocationAmount(line.amountStr),
+                                recordedPayments,
+                              ).filter((p) => !takenPaymentIds.has(p.payment_id))
+                            : []
+                        const linkCollision = linkCollisions[0]
                         const kindToggleSegStyle = (active: boolean): CSSProperties => ({
                           padding: '0.25rem 0.6rem',
                           fontSize: '0.75rem',
@@ -2089,6 +2104,74 @@ export default function BankPaymentsModal({
                                     <strong style={{ fontWeight: 600, color: 'var(--text-700)' }}>
                                       {formatBankPaymentTargetDollars(picked.remaining)}
                                     </strong>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {linkCollision ? (
+                                <div
+                                  role="note"
+                                  aria-label="This payment may already be recorded"
+                                  style={{
+                                    marginTop: 8,
+                                    padding: '0.55rem 0.7rem',
+                                    border: '1px solid #f59e0b',
+                                    borderRadius: 6,
+                                    background: 'var(--bg-amber-tint)',
+                                    fontSize: '0.78rem',
+                                    lineHeight: 1.45,
+                                    color: 'var(--text-amber-800)',
+                                  }}
+                                >
+                                  <strong>This payment may already be recorded.</strong> A{' '}
+                                  {formatMoney(Math.abs(Number(linkCollision.amount) || 0))} payment
+                                  {linkCollision.paid_on && /^\d{4}-\d{2}-\d{2}$/.test(linkCollision.paid_on.trim())
+                                    ? ` dated ${formatWorkDateYmdFriendly(linkCollision.paid_on.trim())}`
+                                    : ''}{' '}
+                                  is on this job with no bank deposit linked
+                                  {linkCollisions.length > 1 ? ` (${linkCollisions.length} such payments)` : ''}.
+                                  Linking it avoids counting the money twice.
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: 6 }}>
+                                    <button
+                                      type="button"
+                                      disabled={!canApply}
+                                      onClick={() => {
+                                        setAllocLineKind(line.id, 'payment')
+                                        applyRecordedPaymentTarget(line.id, linkCollision.payment_id)
+                                      }}
+                                      style={{
+                                        padding: '0.3rem 0.6rem',
+                                        borderRadius: 4,
+                                        border: 'none',
+                                        background: '#2563eb',
+                                        color: 'white',
+                                        cursor: !canApply ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      Link that payment instead
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setLinkSteerDismissedLineIds((prev) => {
+                                          const next = new Set(prev)
+                                          next.add(line.id)
+                                          return next
+                                        })
+                                      }
+                                      style={{
+                                        padding: '0.3rem 0.6rem',
+                                        borderRadius: 4,
+                                        border: '1px solid var(--border-strong)',
+                                        background: 'var(--surface)',
+                                        color: 'var(--text-700)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                      }}
+                                    >
+                                      It&apos;s a different payment
+                                    </button>
                                   </div>
                                 </div>
                               ) : null}
