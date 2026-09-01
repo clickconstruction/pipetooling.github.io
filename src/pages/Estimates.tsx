@@ -160,10 +160,9 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
 
 const SEND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-// Mirrors the live EMAIL_FROM edge-function secret (sender the customer sees).
-// Display name stays "PipeTooling" until the owner flips the secret to ClickTooling —
-// update both together (`supabase secrets set EMAIL_FROM=…`).
-const ESTIMATE_EMAIL_FROM_LABEL = 'PipeTooling <team@noreply.clicktooling.com>'
+// Mirrors the live EMAIL_FROM edge-function secret (sender the customer sees) —
+// if that secret changes, update this label (and supabase/functions/_shared/emailFrom.ts) with it.
+const ESTIMATE_EMAIL_FROM_LABEL = 'ClickTooling <team@noreply.clicktooling.com>'
 
 const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
 
