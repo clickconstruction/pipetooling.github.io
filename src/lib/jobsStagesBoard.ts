@@ -235,11 +235,21 @@ function bankPaymentTargetSearchLabel(job: JobWithDetails, shortLabel: string, r
   /** Lead with dollar amount (plain text for SearchableSelect search); UI can bold via `labelContent`. */
   const dollars = `$${rem}`
   /** Customer + GC join the search text so typing the payer's name always finds the bill (they're often absent from the job name). */
-  const payers = [bankPaymentTargetCustomerName(job), bankPaymentTargetGcName(job)].filter(
-    (p) => p.length > 0 && !name.toLowerCase().includes(p.toLowerCase()),
-  )
+  const payers = dedupedPayerNames(name, bankPaymentTargetCustomerName(job), bankPaymentTargetGcName(job))
   const rest = [hcp, name, ...payers, addr, shortLabel].filter((s) => s.length > 0).join(' · ')
   return rest ? `${dollars} · ${rest}` : dollars
+}
+
+/** Payer names worth showing next to a job name: blanks, repeats, and names the job name already contains drop out. */
+function dedupedPayerNames(jobName: string, ...candidates: string[]): string[] {
+  const out: string[] = []
+  for (const p of candidates) {
+    if (p.length === 0) continue
+    if (jobName.toLowerCase().includes(p.toLowerCase())) continue
+    if (out.some((x) => x.toLowerCase() === p.toLowerCase())) continue
+    out.push(p)
+  }
+  return out
 }
 
 function bankPaymentTargetCustomerName(job: JobWithDetails): string {
@@ -255,9 +265,10 @@ export function formatBankPaymentTargetDollars(remaining: number): string {
   return `$${bankPaymentTargetMoneyStr(remaining)}`
 }
 
-/** Text after the leading amount: HCP, job name, address, short line (matches `searchLabel` tail). */
+/** Text after the leading amount: HCP, job name, payer(s), address, short line (matches `searchLabel` tail). */
 export function bankPaymentTargetCuesAfterAmount(t: BankPaymentTarget): string {
-  return [t.hcpNumber, t.jobName, t.jobAddress, t.label].filter((s) => s.trim().length > 0).join(' · ')
+  const payers = dedupedPayerNames(t.jobName, t.customerName, t.gcName)
+  return [t.hcpNumber, t.jobName, ...payers, t.jobAddress, t.label].filter((s) => s.trim().length > 0).join(' · ')
 }
 
 /** Address and invoice # for the summary line under the picker (amount shown separately). */
