@@ -1,6 +1,6 @@
 ---
 file: docs/twins/FEEDBACK_LOOP.md
-last_updated: 2026-08-31
+last_updated: 2026-09-01
 purpose: The audit loop — how human estimator feedback on twin bids reaches the agent through the Audits tab, and what the agent must do with it. Read at the START of any twin/backtest session, alongside get_answers.
 ---
 
@@ -111,8 +111,12 @@ discarding it:
 - Mismatch vs a sparse/flagged reference → digest bucket `reference_quality`
   (above), not doctrine.
 
-## Current state
+## Current state (2026-09-01)
 
-- BT-2 (b405, MPH Casa Linda) is the first card: audit `e7523514…` pending with 4
-  seeded questions, CT project `6648c38a` in the ready lane with 7 pins (2 RFIs),
-  view link stored on the bid and the audit.
+- The loop is at volume: **24 audits pending** (the program bottleneck — the Audits
+  tab badge, Scoreboard pill, and the Dashboard Needs-you item v2.2573 all carry the
+  count), 4 sealed shadows awaiting score, 8 scored runs on record. BT-2 (b405, MPH
+  Casa Linda) is still the oldest open card — 4 questions unanswered.
+- Two axes are BLOCKED pending audit answers: institutional (district wage-tier
+  multiplier, on the b422 audit) and proto/auto-service (untraced-footage / site-scope
+  question).
