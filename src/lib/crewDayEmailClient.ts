@@ -5,13 +5,12 @@
  * moneyWaitingEmailClient.ts (the reference).
  *
  * Immediate sends and previews go through the edge function (caller JWT,
- * crew-day-eligible gate — superintendents included); SCHEDULED sends are a
+ * office-role gate — office only since v2.2615); SCHEDULED sends are a
  * plain table insert — the pg_cron dispatcher (every 5 min) picks rows up
  * when send_at arrives and rebuilds that RECIPIENT's crew day at send time.
  */
 import { supabase } from './supabase'
 import { openHtmlInNewTab } from './paidJobEmailClient'
-import { isCrewDayRole } from './crewDay'
 
 export { openHtmlInNewTab }
 
@@ -24,15 +23,7 @@ function fnError(r: FnResult, fallback: string): string | null {
   return null
 }
 
-/**
- * Who may RECEIVE the email — the crew-day set (each email is rebuilt for the
- * recipient's own scope). Keep in sync with RECIPIENT_ROLES in
- * supabase/functions/crew-day-email-dispatch/index.ts (the server enforces;
- * this filters the picker so users can't select someone the server rejects).
- */
-export function isCrewDayEmailRecipientRole(role: string | null | undefined): boolean {
-  return isCrewDayRole(role)
-}
+export { isCrewDayEmailRole } from './crewDay'
 
 /** mode 'preview' — the rendered Crew Day email HTML for the CALLER's scope (throws with a readable message). */
 export async function fetchCrewDayPreview(): Promise<string> {

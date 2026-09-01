@@ -50,6 +50,7 @@ describe('DashboardCrewDaySection', () => {
     render(<DashboardCrewDaySection authUserId="u-1" role="superintendent" />)
     await waitFor(() => expect(screen.getByText('Marcus V.')).toBeTruthy())
     expect(screen.getByText('Crew Day')).toBeTruthy()
+    expect(screen.queryByLabelText('Email Crew Day')).toBeNull() // office-only since v2.2615
     expect(screen.getAllByText('4821 · Maple Ridge Ph 2').length).toBe(2) // Marcus worked it, DeShawn was scheduled on it
     expect(screen.getByText(/Rough complete on 3–5/)).toBeTruthy()
     expect(screen.getByText('Scheduled — never clocked in')).toBeTruthy() // DeShawn
@@ -62,5 +63,6 @@ describe('DashboardCrewDaySection', () => {
     render(<DashboardCrewDaySection authUserId="u-1" role="dev" />)
     await waitFor(() => expect(screen.getByText('No crew activity for this day.')).toBeTruthy())
     expect(screen.queryByText('Scoped to your assigned projects.')).toBeNull()
+    expect(screen.getByLabelText('Email Crew Day')).toBeTruthy() // office roles keep the ✉
   })
 })

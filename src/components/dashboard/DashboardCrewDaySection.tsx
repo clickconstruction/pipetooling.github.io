@@ -8,6 +8,7 @@ import {
   buildCrewDayView,
   formatCrewDayBlockTime,
   formatCrewDayHours,
+  isCrewDayEmailRole,
   isCrewDayRole,
   type CrewDayFlag,
   type CrewDayPayload,
@@ -177,15 +178,22 @@ export function DashboardCrewDaySection({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>Crew Day</h2>
-          <button
-            type="button"
-            onClick={() => setEmailModalOpen(true)}
-            title="Email Crew Day — now or on a schedule"
-            aria-label="Email Crew Day"
-            style={{ ...navBtnStyle, lineHeight: 1 }}
-          >
-            ✉
-          </button>
+          {/* Office roles only (v2.2615): superintendents don't get the email —
+              the dashboard is their window (owner decision; server enforces too). */}
+          {isCrewDayEmailRole(role) ? (
+            <button
+              type="button"
+              onClick={() => setEmailModalOpen(true)}
+              title="Email Crew Day — now or on a schedule"
+              aria-label="Email Crew Day"
+              style={{ ...navBtnStyle, lineHeight: 1, display: 'inline-flex', alignItems: 'center' }}
+            >
+              {/* Icon: Font Awesome Free 7.x — envelope (OFL/CC-BY), owner-picked. */}
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={14} height={14} fill="currentColor" aria-hidden focusable={false}>
+                <path d="M112 128C85.5 128 64 149.5 64 176C64 191.1 71.1 205.3 83.2 214.4L291.2 370.4C308.3 383.2 331.7 383.2 348.8 370.4L556.8 214.4C568.9 205.3 576 191.1 576 176C576 149.5 554.5 128 528 128L112 128zM64 260L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 260L377.6 408.8C343.5 434.4 296.5 434.4 262.4 408.8L64 260z" />
+              </svg>
+            </button>
+          ) : null}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <button type="button" style={navBtnStyle} aria-label="Previous day" onClick={() => setYmd((d) => shiftYmd(d, -1))}>
@@ -355,7 +363,7 @@ export function DashboardCrewDaySection({
           ) : null}
         </>
       )}
-      {emailModalOpen ? <CrewDayEmailModal onClose={() => setEmailModalOpen(false)} /> : null}
+      {emailModalOpen && isCrewDayEmailRole(role) ? <CrewDayEmailModal onClose={() => setEmailModalOpen(false)} /> : null}
     </div>
   )
 }

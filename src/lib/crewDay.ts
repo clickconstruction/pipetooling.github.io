@@ -296,3 +296,14 @@ export function isCrewDayRole(role: string | null | undefined): boolean {
     role === 'superintendent'
   )
 }
+
+/**
+ * Roles that may SEND or RECEIVE the crew_day email stream — OFFICE ONLY
+ * since v2.2615: superintendents see the section but never the email (owner
+ * decision — the dashboard is their window). Keep in sync with SENDER_ROLES /
+ * RECIPIENT_ROLES in supabase/functions/crew-day-email-dispatch/index.ts and
+ * the crew_day_email_requests INSERT policy.
+ */
+export function isCrewDayEmailRole(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller'
+}
