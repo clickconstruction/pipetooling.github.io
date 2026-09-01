@@ -96,6 +96,13 @@ describe('JobsStagesTable render smoke', () => {
     expect(screen.getByText('Tech One')).toBeTruthy()
   })
 
+  it('renders a Share job button per row (v2.2613 — Waiting/Working join the every-row promise)', () => {
+    const a = makeJob({ job_name: 'Share Alpha' })
+    const b = makeJob({ job_name: 'Share Beta' })
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [a, b] })} />)
+    expect(screen.getAllByLabelText('Share job')).toHaveLength(2)
+  })
+
   it('renders the editable pct input per row when showPctComplete is on', () => {
     const a = makeJob({ job_name: 'Working Alpha', pct_complete: 40 })
     const b = makeJob({ job_name: 'Working Beta', pct_complete: null })

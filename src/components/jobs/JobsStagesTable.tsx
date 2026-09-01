@@ -11,6 +11,7 @@ import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
+import { ShareJobButton } from './ShareJobButton'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
@@ -443,6 +444,13 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                           Edit
                         </button>
                         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                            {/* Share first — same order as the billing stages' icon row
+                                (v2.2576); closes the v2.1452 gap where Waiting/Working
+                                rows missed the "every Pipeline row" promise. */}
+                            <ShareJobButton
+                              jobId={j.id}
+                              fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
+                            />
                             <button
                               type="button"
                               onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
