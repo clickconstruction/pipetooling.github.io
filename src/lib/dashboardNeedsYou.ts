@@ -40,6 +40,7 @@ export type NeedsYouItem = {
     | 'gc-review-weekly'
     | 'bulk-delete'
     | 'claim-dev'
+    | 'robot-audits'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -71,6 +72,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-followups': 40,
   'team-reviews': 50,
   'roadmap-needs-person': 50,
+  'robot-audits': 50,
   'lost-bids': 60,
 }
 
@@ -145,6 +147,14 @@ export type NeedsYouInputs = {
    */
   claimDevRefusedCount: number | null
   claimDevLookbackDays: number
+  /**
+   * Robot bids awaiting a human audit (v2.2573) — the twin program's
+   * bottleneck. The count comes from useBidAuditsPendingCount, which already
+   * holds back sealed shadows (their reference bid hasn't gone out, so the
+   * audit isn't workable yet). Enabled for the auditing roles only.
+   */
+  robotAuditsEnabled: boolean
+  robotAuditsPending: number
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -299,6 +309,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         { key: 'snooze', label: 'Snooze 24h' },
         { key: 'dismiss', label: 'Dismiss until count increases' },
       ],
+    })
+  }
+
+  if (inputs.robotAuditsEnabled && inputs.robotAuditsPending > 0) {
+    const n = inputs.robotAuditsPending
+    items.push({
+      key: 'robot-audits',
+      severity: 'amber',
+      kicker: 'Robot training',
+      title: n === 1 ? 'One robot bid is waiting on your audit' : `${n} robot bids are waiting on your audit`,
+      detail: 'The card shows where the robot and our bid differ — judge each difference with one tap, and it learns from every verdict.',
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Open Audits',
     })
   }
 

@@ -100,6 +100,9 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     bulkDeleteAlerts: bulkDelete.visibleAlerts,
     claimDevRefusedCount: claimDev.visibleCount,
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
+    // Robot audits stay a Dashboard concern — Quickfill is the billing desk.
+    robotAuditsEnabled: false,
+    robotAuditsPending: 0,
   })
 
   useEffect(() => {

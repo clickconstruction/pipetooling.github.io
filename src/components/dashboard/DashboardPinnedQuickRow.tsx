@@ -21,6 +21,7 @@ import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
+import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import NewReportModal from '../NewReportModal'
@@ -313,6 +314,11 @@ export function DashboardPinnedQuickRow({
   const bulkDelete = useBulkDeleteNudge(hideBanners ? undefined : authUserId)
   const claimDev = useClaimDevAttemptsNudge(hideBanners ? undefined : authUserId)
 
+  // Robot audits (v2.2573): the auditing roles — estimators do the work, dev
+  // sees everything. The hook's sealed-shadow hold keeps unworkable audits out.
+  const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
+  const { pending: robotAuditsPending } = useBidAuditsPendingCount(robotAuditsEnabled)
+
   const needsYouItems = buildNeedsYouItems({
     role,
     arBankUnallocatedCount,
@@ -337,6 +343,8 @@ export function DashboardPinnedQuickRow({
     bulkDeleteAlerts: bulkDelete.visibleAlerts,
     claimDevRefusedCount: claimDev.visibleCount,
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
+    robotAuditsEnabled,
+    robotAuditsPending,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -532,6 +540,8 @@ export function DashboardPinnedQuickRow({
               navigate('/settings?tab=settings-data#settings-recently-deleted')
             } else if (item.key === 'claim-dev') {
               navigate('/settings?tab=settings-people')
+            } else if (item.key === 'robot-audits') {
+              navigate('/bids?tab=audits')
             }
           }}
           onSecondary={(item, key) => {
