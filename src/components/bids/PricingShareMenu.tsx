@@ -7,11 +7,13 @@
 import { useEffect, useRef, useState } from 'react'
 
 type Item = {
-  key: 'print' | 'csv' | 'review'
+  key: 'print' | 'csv' | 'review' | 'fixtures'
   label: string
   hint?: string
   disabled?: boolean
   title?: string
+  /** Draw a separator above this item. */
+  dividerBefore?: boolean
   onPick: () => void
 }
 
@@ -22,9 +24,12 @@ export function PricingShareMenu({
   onShare,
   csvDisabled,
   csvTitle,
+  fixturesDisabled,
+  fixturesTitle,
   onPrint,
   onCsv,
   onReview,
+  onCopyFixtures,
 }: {
   canShare: boolean
   shareDisabled: boolean
@@ -32,9 +37,12 @@ export function PricingShareMenu({
   onShare: () => void
   csvDisabled: boolean
   csvTitle: string
+  fixturesDisabled: boolean
+  fixturesTitle: string
   onPrint: () => void
   onCsv: () => void
   onReview: () => void
+  onCopyFixtures: () => void
 }) {
   const [open, setOpen] = useState(false)
   // Phone fix: the menu hangs right-aligned off the button; near the screen's left edge that clips,
@@ -74,7 +82,8 @@ export function PricingShareMenu({
   const items: Item[] = [
     { key: 'print', label: 'Print', hint: 'the price you’re viewing', onPick: onPrint },
     { key: 'csv', label: 'Download CSV', disabled: csvDisabled, title: csvDisabled ? csvTitle : undefined, onPick: onCsv },
-    { key: 'review', label: 'Print all prices — review', hint: 'every price option in one document', onPick: onReview },
+    { key: 'review', label: 'Print all prices — review', hint: 'every price option in one document', dividerBefore: true, onPick: onReview },
+    { key: 'fixtures', label: 'Copy fixtures for text', hint: 'names + counts only, no prices — for parts houses', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
   ]
 
   const caretStyle: React.CSSProperties = canShare
@@ -111,8 +120,8 @@ export function PricingShareMenu({
         }}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={canShare ? 'More ways to get this pricing out — Print, CSV, review' : 'Export — Print, CSV, review'}
-        title={canShare ? 'Print · Download CSV · Print all prices' : 'Print · Download CSV · Print all prices'}
+        aria-label={canShare ? 'More ways to get this pricing out — Print, CSV, review, copy fixtures' : 'Export — Print, CSV, review, copy fixtures'}
+        title={'Print · Download CSV · Print all prices · Copy fixtures for text'}
         style={caretStyle}
       >
         {canShare ? '▾' : 'Export ▾'}
@@ -124,9 +133,9 @@ export function PricingShareMenu({
           aria-label="Get this pricing out"
           style={{ position: 'absolute', ...(alignLeft ? { left: 0 } : { right: 0 }), top: 'calc(100% + 0.3rem)', minWidth: '15.5rem', maxWidth: 'calc(100vw - 1rem)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.3rem', zIndex: 40 }}
         >
-          {items.map((it, i) => (
+          {items.map((it) => (
             <span key={it.key}>
-              {i === 2 ? <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0.4rem' }} /> : null}
+              {it.dividerBefore ? <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0.4rem' }} /> : null}
               <button
                 type="button"
                 role="menuitem"
