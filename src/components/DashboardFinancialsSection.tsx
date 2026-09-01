@@ -3,8 +3,17 @@ import { supabase } from '../lib/supabase'
 import { stripTrailingZip } from '../lib/displayAddress'
 import { buildArLineItemsByJob, type ArLineItem } from '../lib/arModalLineItems'
 import DashboardArCustomersView from './DashboardArCustomersView'
+import DashboardArCallCard, { ArChasePillTag } from './DashboardArCallCard'
 import { buildArCustomerRollup } from '../lib/arCustomerRollup'
-import { parsePaySpeedsRpc, type PaySpeedData } from '../lib/jobs/billedExpectedPay'
+import { arCustomerChasePill } from '../lib/arCustomerChase'
+import { parseChaseTouchesRpc, type ChaseTouch } from '../lib/jobs/paymentChase'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import {
+  parsePaySpeedsRpc,
+  parsePromisedPayDatesRpc,
+  type PaySpeedData,
+  type PromisedPayDate,
+} from '../lib/jobs/billedExpectedPay'
 import { Link, useNavigate } from 'react-router-dom'
 import { groupPayrollStubItems, isPayrollPersonGroup, payrollWeekLabel, type PayrollRowOrGroup } from '../lib/apPayrollGroups'
 import { formatCurrency } from '../lib/format'
@@ -497,13 +506,35 @@ function ItemsModal({
     }
   }, [cardKey])
   const arCustomersActive = cardKey === 'ar' && arView === 'customers'
+  const arTodayYmd = new Date().toLocaleDateString('en-CA')
   const arRollup = useMemo(
-    () =>
-      cardKey === 'ar'
-        ? buildArCustomerRollup(bucket.items, arPaySpeeds, new Date().toLocaleDateString('en-CA'))
-        : null,
-    [cardKey, bucket.items, arPaySpeeds],
+    () => (cardKey === 'ar' ? buildArCustomerRollup(bucket.items, arPaySpeeds, arTodayYmd) : null),
+    [cardKey, bucket.items, arPaySpeeds, arTodayYmd],
   )
+  // Call sheet (v2.2572): chase pills + call card need the Payment Chase inputs.
+  // Office roles only (the Pipeline chase gate); every fetch fails soft.
+  const { role: viewerRole } = useAuth()
+  const canChase = viewerRole === 'dev' || viewerRole === 'master_technician' || isAssistantLike(viewerRole)
+  const [arChaseTouches, setArChaseTouches] = useState<ChaseTouch[] | null>(null)
+  const [arPromises, setArPromises] = useState<Record<string, PromisedPayDate> | null>(null)
+  const [arChaseRefresh, setArChaseRefresh] = useState(0)
+  useEffect(() => {
+    if (cardKey !== 'ar' || !canChase) return
+    let cancelled = false
+    void supabase
+      .rpc('list_payment_chase_touches' as never)
+      .then(({ data: raw }) => {
+        if (!cancelled) setArChaseTouches(parseChaseTouchesRpc(raw as unknown))
+      }, () => {})
+    void supabase
+      .rpc('list_job_promised_pay_dates' as never)
+      .then(({ data: raw }) => {
+        if (!cancelled) setArPromises(parsePromisedPayDatesRpc(raw as unknown))
+      }, () => {})
+    return () => {
+      cancelled = true
+    }
+  }, [cardKey, canChase, arChaseRefresh])
   // AR line items (v2.1595, "Variant B"): one fixtures fetch for every AR job on
   // open. Line items start EXPANDED — a chevron beside the first line collapses
   // a stack back to the compact "N line items" chip; collapsedArLineKeys tracks
@@ -794,6 +825,28 @@ function ItemsModal({
         billExtras={arBillExtras}
         collectionsSection={arCollectionsSection}
         isMobile={isMobile}
+        rowBadge={(row) => {
+          const pill = arCustomerChasePill({
+            customerId: row.customerId,
+            jobIds: [...new Set(row.bills.map((b) => b.item.jobId).filter((id): id is string => id != null))],
+            pastPace: row.pastPace,
+            touches: arChaseTouches,
+            promises: arPromises,
+            todayYmd: arTodayYmd,
+          })
+          return pill ? <ArChasePillTag pill={pill} /> : null
+        }}
+        expansionFooter={(row) => (
+          <DashboardArCallCard
+            row={row}
+            paySpeeds={arPaySpeeds}
+            touches={arChaseTouches}
+            todayYmd={arTodayYmd}
+            canAct={canChase}
+            linesByJob={arLinesByJob}
+            onChanged={() => setArChaseRefresh((n) => n + 1)}
+          />
+        )}
       />
     ) : null
   const arCustomersCountLabel = arRollup

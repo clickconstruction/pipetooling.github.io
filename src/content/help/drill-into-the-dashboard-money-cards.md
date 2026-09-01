@@ -37,6 +37,19 @@ Each customer row shows their open bills as a small **bar** (one segment per bil
 - Tap a row to unfold **every bill they owe** — wait chip, job link, billed date, amount, and the line items already unfolded — and the globe on the row opens their customer portal.
 - Search matches the customer name **or any of their jobs** — typing a job number surfaces the whole customer.
 
+## The call sheet
+
+Customer rows also wear their **chase state**, straight from the Payment Chase queue: {{chip:red|Owes a call}} when they're past pace and untouched, {{chip:green|Promised Sep 4}} when they named a date, {{chip:red|Promise broken}} when that date slipped a week, {{chip:gray|Touched Aug 31}} while a recent call keeps them quiet, and a dispute pill when one is open.
+
+Below the bills, each expanded customer gets a **call card** for office roles:
+
+1. A ready-made opener — *3 bills past their ~35d — oldest 169d: 273 · Dudley (Lennox), $13,420.*
+2. **They paid** chips: their last payments with how many days each took, colored against the company pace.
+3. The **last touch** on record — who called, when, and how it went.
+4. One-tap outcomes: {{button:outline|They promised…}} stamps the date they named on their late bills, {{button:outline|Can't reach — snooze 7d}} parks them, and {{button:outline|Copy summary}} puts the whole picture — bills and line items — on your clipboard for a text or email.
+
+Outcomes here and in the Pipeline's Payment Chase are **the same records** — a promise logged on the Dashboard shows up in the chase queue, and a call logged there quiets the row here.
+
 Not Billed Out rows get the same address + line-items treatment, and each amount carries context — *of $33,500 job total · 80% done* — so a job that's mostly billed reads differently from one that's untouched. Jobs **100% done with nothing billed at all** wear an amber {{chip:yellow|done — nothing billed}} flag: that money is one Bill Customer away.
 
 In Accounts Payable, team payroll and sub labor each have their **own section** with their own count and subtotal. A person several weeks behind shows as **one row with their total owed**, aged by their oldest unpaid week — tap {{chip:gray|8 open weeks ▾}} to unfold the individual weeks, or tap the person's name to open the People → Payroll ledger with their name already searched.
