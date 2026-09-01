@@ -33,6 +33,8 @@ Wendi opens BP376's pricing, taps {{button:green|Share}}, taps the {{chip:blue|M
 
 Need a supply house to price the job? Don't send them the package — it has your sale prices in it. Instead, open the {{button:green|▾}} menu beside Share and pick **Copy fixtures for text**. It copies only the fixture names and counts of the version you're viewing — no prices, no totals, no links — ready to paste into a text or email to the parts house.
 
+The list arrives grouped by Division 22 spec section (22 11 16 Domestic Water Piping, 22 42 13 Water Closets &amp; Urinals, …) in spec-book order, so the counter can work it section by section. Fixtures the ledger doesn't recognize yet land in a "No code yet" tail at the bottom — the copy always works, and the toast tells you how many names still need a code.
+
 It works as soon as the bid has Counts, even before you've set up a price book or labor.
 
 :::example Getting cost pricing before the bid is priced

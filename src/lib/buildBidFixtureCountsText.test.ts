@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildBidFixtureCountsText } from './buildBidFixtureCountsText'
+import { buildBidFixtureCountsText, buildBidFixtureCountsTextGrouped } from './buildBidFixtureCountsText'
 
 describe('buildBidFixtureCountsText', () => {
   it('formats the bid label, one line per row, and the item count', () => {
@@ -66,6 +66,83 @@ describe('buildBidFixtureCountsText', () => {
   it('emits only the bid line when no row is usable', () => {
     const text = buildBidFixtureCountsText({ bidLabel: 'BP001 Empty', rows: [] })
     expect(text).toBe('Bid: BP001 Empty')
+  })
+
+  it('grouped: sections in ascending code order, No code yet tail, same item count', () => {
+    const codeByName = new Map<string, string | null>([
+      ['WC-1', '22 42 13'],
+      ['L-1', '22 42 16'],
+      ['ft of 4IN WASTE', '22 13 16'],
+      ['GPR-10', null],
+      ['DEMO', null],
+    ])
+    const text = buildBidFixtureCountsTextGrouped({
+      bidLabel: 'BP339 SAISD - DAVIS MS PHASE II',
+      rows: [
+        { fixture: 'WC-1', count: 4 },
+        { fixture: 'L-1', count: 12 },
+        { fixture: 'GPR-10', count: 1 },
+        { fixture: 'ft of 4IN WASTE', count: 751.45 },
+        { fixture: 'DEMO', count: 24 },
+        { fixture: 'ZERO', count: 0 },
+      ],
+      sectionCodeForName: (name) => codeByName.get(name) ?? null,
+      sectionTitleByCode: new Map([
+        ['22 42 13', 'Commercial Water Closets and Urinals'],
+        ['22 42 16', 'Commercial Lavatories and Sinks'],
+        ['22 13 16', 'Sanitary Waste and Vent Piping'],
+      ]),
+    })
+    expect(text).toBe(
+      [
+        'Bid: BP339 SAISD - DAVIS MS PHASE II',
+        '',
+        '22 13 16 · Sanitary Waste and Vent Piping',
+        'ft of 4IN WASTE — 751.45',
+        '',
+        '22 42 13 · Commercial Water Closets and Urinals',
+        'WC-1 — 4',
+        '',
+        '22 42 16 · Commercial Lavatories and Sinks',
+        'L-1 — 12',
+        '',
+        'No code yet',
+        'GPR-10 — 1',
+        'DEMO — 24',
+        '',
+        'Items: 5',
+      ].join('\n'),
+    )
+  })
+
+  it('grouped: a code with no known title prints the code alone; all matched means no tail', () => {
+    const text = buildBidFixtureCountsTextGrouped({
+      bidLabel: 'Bid',
+      rows: [{ fixture: 'WC-1', count: 2 }],
+      sectionCodeForName: () => '22 42 13',
+      sectionTitleByCode: new Map(),
+    })
+    expect(text).toContain('\n22 42 13\nWC-1 — 2')
+    expect(text).not.toContain('No code yet')
+  })
+
+  it('grouped: emits only the bid line when no row is usable, and stays price-free', () => {
+    expect(
+      buildBidFixtureCountsTextGrouped({
+        bidLabel: 'BP001 Empty',
+        rows: [],
+        sectionCodeForName: () => null,
+        sectionTitleByCode: new Map(),
+      }),
+    ).toBe('Bid: BP001 Empty')
+    const text = buildBidFixtureCountsTextGrouped({
+      bidLabel: 'Bid',
+      rows: [{ fixture: 'WC-1', count: 4 }],
+      sectionCodeForName: () => '22 42 13',
+      sectionTitleByCode: new Map(),
+    })
+    expect(text).not.toContain('$')
+    expect(text.toLowerCase()).not.toMatch(/price|revenue|profit|margin|total:/)
   })
 
   it('never contains money — no dollar signs, totals, or price words', () => {
