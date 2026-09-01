@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatCurrency } from '../../lib/format'
 import { formatRevenueMultiple, marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
@@ -47,9 +46,8 @@ import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
 import { bidPackageLabel } from '../../lib/bidPackageLabel'
-import { buildBidFixtureCountsText, buildBidFixtureCountsTextGrouped } from '../../lib/buildBidFixtureCountsText'
-import { classifySpecSection, type SpecSectionMatchKind, type SpecSectionMatchRule } from '../../lib/classifySpecSection'
 import { SpecSectionAuditModal } from './SpecSectionAuditModal'
+import { PrepareFixtureCopyModal } from './PrepareFixtureCopyModal'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -748,6 +746,7 @@ export function BidsPricingTab({
   // Package and send (Pricing tab → "Package and send" modal — left of CSV)
   const [packageSendOpen, setPackageSendOpen] = useState(false)
   const [d22AuditOpen, setD22AuditOpen] = useState(false)
+  const [prepareCopyOpen, setPrepareCopyOpen] = useState(false)
   // F2 (v2.2120): Share / Print / CSV honor the ★. When the scenario you're viewing isn't the
   // customer's, a chooser asks which price to use; picking ★ loads that scenario's prices on
   // the fly (no view switch), so "the ★ is what the customer sees — Cover Letter, Share, Print,
@@ -1817,69 +1816,6 @@ export function BidsPricingTab({
     }
   }
 
-  /**
-   * "Copy fixtures for text" (parts houses): names + counts of the viewed version only —
-   * no prices, so no ★ check; works before a price book or cost estimate exists.
-   * v2.2587: rows are grouped under Division 22 section headers via the org-wide
-   * spec-section ledger (read at click time). If the ledger can't be read, the copy
-   * falls back to the flat list — it never blocks.
-   */
-  async function copyFixtureCountsForText() {
-    const bid = selectedBidForPricing
-    if (!bid) return
-    const bidLabel = bidPackageLabel(bid, ledgerPrefixMap)
-
-    let text: string
-    let unmatchedNames = 0
-    try {
-      const [ruleRows, sectionRows] = await Promise.all([
-        withSupabaseRetry(
-          () => supabase.from('spec_section_match_rules').select('pattern, match_kind, section_code, priority'),
-          'load spec section match rules',
-        ),
-        withSupabaseRetry(() => supabase.from('spec_sections').select('code, title'), 'load spec sections'),
-      ])
-      const knownKinds = new Set<string>(['starts_with', 'contains', 'exact'])
-      const rules: SpecSectionMatchRule[] = (ruleRows ?? [])
-        .filter((r) => knownKinds.has(r.match_kind))
-        .map((r) => ({
-          pattern: r.pattern,
-          matchKind: r.match_kind as SpecSectionMatchKind,
-          sectionCode: r.section_code,
-          priority: r.priority,
-        }))
-      const unmatched = new Set<string>()
-      text = buildBidFixtureCountsTextGrouped({
-        bidLabel,
-        rows: pricingCountRows,
-        sectionCodeForName: (name) => {
-          const match = classifySpecSection(name, rules)
-          if (match.outcome === 'matched') return match.sectionCode
-          if (match.outcome === 'unmatched' && name) unmatched.add(name)
-          return null
-        },
-        sectionTitleByCode: new Map((sectionRows ?? []).map((s) => [s.code, s.title])),
-      })
-      unmatchedNames = unmatched.size
-    } catch {
-      // Ledger unreachable — the flat list still goes out.
-      text = buildBidFixtureCountsText({ bidLabel, rows: pricingCountRows })
-    }
-
-    try {
-      if (typeof navigator === 'undefined' || !navigator.clipboard) throw new Error('Clipboard unavailable in this browser.')
-      await navigator.clipboard.writeText(text)
-      showToast(
-        unmatchedNames > 0
-          ? `Fixture list copied — grouped by Division 22, no prices. ${unmatchedNames} name${unmatchedNames === 1 ? '' : 's'} under “No code yet”.`
-          : 'Fixture list copied — names and counts only, no prices.',
-        'success',
-      )
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not copy to clipboard.', 'error')
-    }
-  }
-
   function printPricingPage() {
     requestWithStarCheck('print')
   }
@@ -2774,7 +2710,7 @@ export function BidsPricingTab({
                   onPrint={() => printPricingPage()}
                   onCsv={() => downloadPricingCsv()}
                   onReview={() => void printAllPricingPages()}
-                  onCopyFixtures={() => void copyFixtureCountsForText()}
+                  onCopyFixtures={() => setPrepareCopyOpen(true)}
                   onOpenD22Audit={canPackageAndSendBidPricing ? () => setD22AuditOpen(true) : undefined}
                 />
                 {!narrowViewport640 ? (
@@ -6336,6 +6272,15 @@ export function BidsPricingTab({
       })() : null}
 
       <SpecSectionAuditModal open={d22AuditOpen} onClose={() => setD22AuditOpen(false)} />
+
+      {selectedBidForPricing ? (
+        <PrepareFixtureCopyModal
+          open={prepareCopyOpen}
+          onClose={() => setPrepareCopyOpen(false)}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
+        />
+      ) : null}
 
       {packageSendOpen && selectedBidForPricing && selectedPricingVersionId && pricingPackageSource ? (
         <PackageAndSendBidPricingModal
