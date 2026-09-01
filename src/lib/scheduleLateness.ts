@@ -128,7 +128,10 @@ export type AttendanceSummary = {
   clockInDays: number
   /** Scheduled days where the first clock-in beat the grace window. */
   onTimeDays: number
+  /** Unexcused late days — what the banner and median run on. */
   lateDays: number
+  /** Late days carrying an excuse annotation (v2.2556) — shown as "(N excused)". */
+  excusedDays: number
   medianLateMinutes: number | null
 }
 
@@ -138,6 +141,8 @@ export function computeAttendanceSummaryForUser(
   sessions: readonly LatenessSessionRow[],
   userId: string,
   graceMinutes: number = LATE_GRACE_MINUTES,
+  /** Cell keys (latenessCellKey) carrying an excuse annotation — excluded from lateDays/median. */
+  excusedKeys?: ReadonlySet<string>,
 ): AttendanceSummary {
   const myBlocks = blocks.filter((b) => b.assignee_user_id === userId)
   const mySessions = sessions.filter((s) => s.user_id === userId)
@@ -148,7 +153,13 @@ export function computeAttendanceSummaryForUser(
   )
   let clockInDays = 0
   for (const d of scheduledDates) if (clockInDates.has(d)) clockInDays += 1
-  const lateMinutes = [...late.values()].map((l) => l.minutesLate).sort((a, b) => a - b)
+  let excusedDays = 0
+  const lateMinutes: number[] = []
+  for (const [key, l] of late) {
+    if (excusedKeys?.has(key)) excusedDays += 1
+    else lateMinutes.push(l.minutesLate)
+  }
+  lateMinutes.sort((a, b) => a - b)
   const lateDays = lateMinutes.length
   const mid = Math.floor(lateMinutes.length / 2)
   const medianLateMinutes =
@@ -160,8 +171,10 @@ export function computeAttendanceSummaryForUser(
   return {
     scheduledDays: scheduledDates.size,
     clockInDays,
-    onTimeDays: clockInDays - lateDays,
+    // Excused days were still arrivals after grace; they are neither on-time nor counted late.
+    onTimeDays: clockInDays - lateDays - excusedDays,
     lateDays,
+    excusedDays,
     medianLateMinutes,
   }
 }
@@ -266,4 +279,80 @@ export function computeLatenessByCell(
     })
   }
   return out
+}
+
+/** Excuse note beside a derived late day (v2.2556; append-only table). */
+export type AttendanceAnnotationRow = {
+  subject_user_id: string
+  work_date: string
+  note: string
+  created_at: string
+  /** PostgREST embed (author:users(name)); absent in unit tests. */
+  author?: { name: string | null } | null
+}
+
+/** Latest note per person-day (append-only table: corrections are newer rows). */
+export function latestAnnotationByCell(
+  rows: readonly AttendanceAnnotationRow[],
+): Map<string, AttendanceAnnotationRow> {
+  const out = new Map<string, AttendanceAnnotationRow>()
+  for (const r of rows) {
+    const key = latenessCellKey(r.subject_user_id, r.work_date)
+    const cur = out.get(key)
+    if (!cur || r.created_at > cur.created_at) out.set(key, r)
+  }
+  return out
+}
+
+/**
+ * Fetch excuse annotations for a date range. Queries through an untyped view
+ * (attendance_annotations reaches src/types/database.ts with the post-push
+ * gen-types run — BidRfiQueue pattern); a missing table renders as "no
+ * excuses", never a broken tab.
+ */
+export async function fetchAttendanceAnnotationsForRange(
+  startYmd: string,
+  endYmd: string,
+): Promise<{ data: AttendanceAnnotationRow[]; error: string | null }> {
+  if (!startYmd || !endYmd) return { data: [], error: null }
+  try {
+    const db = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
+    const { data, error } = await db
+      .from('attendance_annotations')
+      .select('subject_user_id, work_date, note, created_at, author:users!attendance_annotations_author_id_fkey(name)')
+      .gte('work_date', startYmd)
+      .lte('work_date', endYmd)
+      .order('created_at')
+    if (error) {
+      if (/does not exist/i.test(error.message)) return { data: [], error: null }
+      return { data: [], error: error.message }
+    }
+    return { data: (data ?? []) as unknown as AttendanceAnnotationRow[], error: null }
+  } catch (e) {
+    return { data: [], error: formatErrorMessage(e, 'Failed to load attendance notes') }
+  }
+}
+
+/** Insert an excuse note (RLS: office roles, author must be self). */
+export async function addAttendanceAnnotation(params: {
+  subjectUserId: string
+  workDateYmd: string
+  note: string
+  authorId: string
+}): Promise<{ ok: boolean; message?: string }> {
+  const note = params.note.trim()
+  if (!note) return { ok: false, message: 'Write what happened first.' }
+  try {
+    const db = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
+    const { error } = await db.from('attendance_annotations').insert({
+      subject_user_id: params.subjectUserId,
+      work_date: params.workDateYmd,
+      note,
+      author_id: params.authorId,
+    })
+    if (error) return { ok: false, message: error.message }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, message: formatErrorMessage(e, 'Could not save the note') }
+  }
 }

@@ -6,6 +6,7 @@ import {
   computeLatenessByCell,
   latenessCellKey,
   latenessLedgerEntries,
+  latestAnnotationByCell,
   type LatenessBlockRow,
   type LatenessSessionRow,
 } from './scheduleLateness'
@@ -137,6 +138,7 @@ describe('computeAttendanceSummaryForUser', () => {
       clockInDays: 3,
       onTimeDays: 1,
       lateDays: 2,
+      excusedDays: 0,
       medianLateMinutes: 84, // (30 + 137) / 2 rounded
     })
   })
@@ -147,7 +149,52 @@ describe('computeAttendanceSummaryForUser', () => {
       clockInDays: 0,
       onTimeDays: 0,
       lateDays: 0,
+      excusedDays: 0,
       medianLateMinutes: null,
     })
+  })
+})
+
+// v2.2556: excuse annotations.
+describe('latestAnnotationByCell', () => {
+  it('latest note per person-day wins (append-only corrections)', () => {
+    const map = latestAnnotationByCell([
+      { subject_user_id: 'u1', work_date: '2026-08-31', note: 'first', created_at: '2026-08-31T18:00:00Z' },
+      { subject_user_id: 'u1', work_date: '2026-08-31', note: 'corrected', created_at: '2026-08-31T19:00:00Z' },
+      { subject_user_id: 'u1', work_date: '2026-08-28', note: 'other day', created_at: '2026-08-31T17:00:00Z' },
+    ])
+    expect(map.get(latenessCellKey('u1', '2026-08-31'))?.note).toBe('corrected')
+    expect(map.get(latenessCellKey('u1', '2026-08-28'))?.note).toBe('other day')
+  })
+})
+
+describe('computeAttendanceSummaryForUser with excused days', () => {
+  it('excused lates leave lateDays and the median, land in excusedDays', () => {
+    const blocks = [
+      block({}), // 8/31 late 137m
+      block({ work_date: '2026-08-27' }), // late 30m
+      block({ work_date: '2026-08-28' }), // on time
+    ]
+    const sessions = [
+      session({}),
+      session({ work_date: '2026-08-27', clocked_in_at: '2026-08-27T13:30:00Z' }),
+      session({ work_date: '2026-08-28', clocked_in_at: '2026-08-28T13:00:00Z' }),
+    ]
+    const excused = new Set([latenessCellKey('u1', '2026-08-31')])
+    const s = computeAttendanceSummaryForUser(blocks, sessions, 'u1', undefined, excused)
+    expect(s).toEqual({
+      scheduledDays: 3,
+      clockInDays: 3,
+      onTimeDays: 1,
+      lateDays: 1,
+      excusedDays: 1,
+      medianLateMinutes: 30,
+    })
+  })
+
+  it('no excused set behaves as before (plus excusedDays: 0)', () => {
+    const s = computeAttendanceSummaryForUser([block({})], [session({})], 'u1')
+    expect(s.lateDays).toBe(1)
+    expect(s.excusedDays).toBe(0)
   })
 })

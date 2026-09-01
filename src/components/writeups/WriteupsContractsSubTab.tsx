@@ -15,7 +15,13 @@ import {
   latenessLedgerEntries,
   type LatenessBlockRow,
   type LatenessSessionRow,
+  latestAnnotationByCell,
+  fetchAttendanceAnnotationsForRange,
+  addAttendanceAnnotation,
+  latenessCellKey,
+  type AttendanceAnnotationRow,
 } from '../../lib/scheduleLateness'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 const LATE_TEMPLATE_SORT_KEY = 'Late arrival (derived)'
@@ -34,6 +40,8 @@ type Props = {
   userOptions: SearchableSelectOption[]
   authUserId: string
   isDev: boolean
+  /** Viewer role — gates the excuse-note composer (office roles only, v2.2556). */
+  myRole?: string | null
 }
 
 function formatNcnsWorkDateCell(ymd: string): string {
@@ -46,6 +54,7 @@ export function WriteupsContractsSubTab({
   userOptions,
   authUserId,
   isDev,
+  myRole,
 }: Props) {
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
@@ -56,6 +65,11 @@ export function WriteupsContractsSubTab({
   const [attendanceBlocks, setAttendanceBlocks] = useState<LatenessBlockRow[]>([])
   const [attendanceSessions, setAttendanceSessions] = useState<LatenessSessionRow[]>([])
   const [showAttendance, setShowAttendance] = useState(true)
+  const [annotations, setAnnotations] = useState<AttendanceAnnotationRow[]>([])
+  /** Inline excuse composer: which late row is open + its draft. */
+  const [noteOpenKey, setNoteOpenKey] = useState<string | null>(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteSaving, setNoteSaving] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -140,12 +154,14 @@ export function WriteupsContractsSubTab({
       const startYmd = calendarYmdInAppTzFromIso(
         new Date(Date.now() - ATTENDANCE_WINDOW_DAYS * 86_400_000).toISOString(),
       )
-      const [blk, ses] = await Promise.all([
+      const [blk, ses, ann] = await Promise.all([
         fetchScheduleBlocksForRange(startYmd, endYmd),
         fetchClockInsForUsersInRange(users.map((u) => u.id), startYmd, endYmd),
+        fetchAttendanceAnnotationsForRange(startYmd, endYmd),
       ])
       setAttendanceBlocks(blk.error ? [] : blk.data)
       setAttendanceSessions(ses.error ? [] : ses.data)
+      setAnnotations(ann.error ? [] : ann.data)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load writeups')
       setNcnsRows([])
@@ -160,6 +176,10 @@ export function WriteupsContractsSubTab({
 
   const [tplModalOpen, setTplModalOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
+  /** Escalation-banner prefill (v2.2556): subject + tardiness template + derived facts. */
+  const [editorPrefill, setEditorPrefill] = useState<
+    { subjectUserId: string; templateId: string | null; contextNote: string } | null
+  >(null)
   const [editorMode, setEditorMode] = useState<'create' | 'edit_draft' | 'view_submitted'>('create')
   const [editorRow, setEditorRow] = useState<WriteupListRow | null>(null)
   const [ncnsDetailRow, setNcnsDetailRow] = useState<NcnsListRow | null>(null)
@@ -175,16 +195,54 @@ export function WriteupsContractsSubTab({
     [templates]
   )
 
+  const annotationByCell = useMemo(() => latestAnnotationByCell(annotations), [annotations])
+
+  /** Office roles may excuse a late (mirrors the table's INSERT RLS). */
+  const canAnnotate = isDev || myRole === 'master_technician' || isAssistantLike(myRole ?? null)
+
+  const saveExcuseNote = useCallback(
+    async (subjectUserId: string, workDateYmd: string) => {
+      setNoteSaving(true)
+      try {
+        const res = await addAttendanceAnnotation({
+          subjectUserId,
+          workDateYmd,
+          note: noteDraft,
+          authorId: authUserId,
+        })
+        if (!res.ok) {
+          setError(res.message ?? 'Could not save the note')
+          return
+        }
+        setNoteOpenKey(null)
+        setNoteDraft('')
+        const endYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+        const startYmd = calendarYmdInAppTzFromIso(
+          new Date(Date.now() - ATTENDANCE_WINDOW_DAYS * 86_400_000).toISOString(),
+        )
+        const ann = await fetchAttendanceAnnotationsForRange(startYmd, endYmd)
+        if (!ann.error) setAnnotations(ann.data)
+      } finally {
+        setNoteSaving(false)
+      }
+    },
+    [noteDraft, authUserId],
+  )
+
   const lateEntries = useMemo((): LateTimelineEntry[] => {
-    return latenessLedgerEntries(attendanceBlocks, attendanceSessions).map((e) => ({
-      user_id: e.user_id,
-      subject_name: users.find((u) => u.id === e.user_id)?.name ?? 'Unknown',
-      work_date: e.work_date,
-      label: e.label,
-      title: e.title,
-      minutesLate: e.minutesLate,
-    }))
-  }, [attendanceBlocks, attendanceSessions, users])
+    return latenessLedgerEntries(attendanceBlocks, attendanceSessions).map((e) => {
+      const ann = annotationByCell.get(latenessCellKey(e.user_id, e.work_date))
+      return {
+        user_id: e.user_id,
+        subject_name: users.find((u) => u.id === e.user_id)?.name ?? 'Unknown',
+        work_date: e.work_date,
+        label: e.label,
+        title: e.title,
+        minutesLate: e.minutesLate,
+        excuse: ann ? { note: ann.note, authorName: ann.author?.name ?? null } : null,
+      }
+    })
+  }, [attendanceBlocks, attendanceSessions, users, annotationByCell])
 
   /** The one person the Subject filter narrows to (the F summary card's subject). */
   const focusUser = useMemo(() => {
@@ -196,12 +254,22 @@ export function WriteupsContractsSubTab({
 
   const focusSummary = useMemo(() => {
     if (!focusUser) return null
-    const summary = computeAttendanceSummaryForUser(attendanceBlocks, attendanceSessions, focusUser.id)
+    const excusedKeys = new Set(annotationByCell.keys())
+    const summary = computeAttendanceSummaryForUser(
+      attendanceBlocks,
+      attendanceSessions,
+      focusUser.id,
+      undefined,
+      excusedKeys,
+    )
     const cutoff30 = calendarYmdInAppTzFromIso(new Date(Date.now() - 30 * 86_400_000).toISOString())
-    const lates30 = lateEntries.filter((l) => l.user_id === focusUser.id && l.work_date >= cutoff30).length
+    // Excused lates never feed the escalation banner.
+    const lates30 = lateEntries.filter(
+      (l) => l.user_id === focusUser.id && l.work_date >= cutoff30 && !l.excuse,
+    ).length
     const ncnsCount = ncnsRows.filter((r) => r.subject_user_id === focusUser.id).length
     return { summary, lates30, ncnsCount }
-  }, [focusUser, attendanceBlocks, attendanceSessions, lateEntries, ncnsRows])
+  }, [focusUser, attendanceBlocks, attendanceSessions, lateEntries, ncnsRows, annotationByCell])
 
   const filteredSorted = useMemo((): WriteupsTimelineRow[] => {
     let wRows = [...writeups]
@@ -305,6 +373,7 @@ export function WriteupsContractsSubTab({
             type="button"
             onClick={() => {
               setEditorRow(null)
+              setEditorPrefill(null)
               setEditorMode('create')
               setEditorOpen(true)
             }}
@@ -398,6 +467,7 @@ export function WriteupsContractsSubTab({
           <div style={{ display: 'flex', gap: '1.25rem', marginTop: '0.5rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
             <span>
               <strong style={{ color: 'var(--text-amber-800)' }}>Late {focusSummary.summary.lateDays}×</strong>
+              {focusSummary.summary.excusedDays > 0 ? ` (${focusSummary.summary.excusedDays} excused)` : ''}
               {focusSummary.summary.medianLateMinutes != null
                 ? ` · median ${focusSummary.summary.medianLateMinutes}m`
                 : ''}
@@ -414,7 +484,21 @@ export function WriteupsContractsSubTab({
               <button
                 type="button"
                 onClick={() => {
+                  if (!focusUser || !focusSummary) return
+                  const tardiness = templates.find((t) => t.is_active && /tardi/i.test(t.name)) ?? null
+                  const recent = lateEntries
+                    .filter((l) => l.user_id === focusUser.id && !l.excuse)
+                    .slice(0, 5)
+                    .map((l) => `${l.work_date} (${l.label.replace(/^Late /, '')})`)
+                    .join(', ')
+                  const contextNote =
+                    `${focusSummary.lates30} unexcused lates in the last 30 days` +
+                    (focusSummary.summary.medianLateMinutes != null
+                      ? `, median ${focusSummary.summary.medianLateMinutes}m over ${ATTENDANCE_WINDOW_DAYS} days`
+                      : '') +
+                    (recent ? `. Most recent: ${recent}.` : '.')
                   setEditorRow(null)
+                  setEditorPrefill({ subjectUserId: focusUser.id, templateId: tardiness?.id ?? null, contextNote })
                   setEditorMode('create')
                   setEditorOpen(true)
                 }}
@@ -526,7 +610,10 @@ export function WriteupsContractsSubTab({
                       </td>
                     </tr>
                   ) : (
-                    <tr key={`late-${row.late.user_id}-${row.late.work_date}`} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <tr
+                      key={`late-${row.late.user_id}-${row.late.work_date}`}
+                      style={{ borderBottom: '1px solid var(--border)', opacity: row.late.excuse ? 0.55 : 1 }}
+                    >
                       <td style={td}>
                         <span
                           title={row.late.title}
@@ -548,10 +635,68 @@ export function WriteupsContractsSubTab({
                       <td style={td}>
                         <div title={row.late.title}>{row.late.label}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Work date: {row.late.work_date}</div>
+                        {row.late.excuse ? (
+                          <div
+                            style={{
+                              marginTop: '0.25rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              background: 'var(--bg-blue-tint)',
+                              border: '1px solid var(--border)',
+                              color: 'var(--text-blue-800)',
+                              borderRadius: 999,
+                              padding: '0.05rem 0.5rem',
+                              fontSize: '0.72rem',
+                            }}
+                          >
+                            Excused — {row.late.excuse.note}
+                            {row.late.excuse.authorName ? (
+                              <span style={{ color: 'var(--text-muted)' }}>· {row.late.excuse.authorName}</span>
+                            ) : null}
+                          </div>
+                        ) : canAnnotate ? (
+                          noteOpenKey === latenessCellKey(row.late.user_id, row.late.work_date) ? (
+                            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.3rem', alignItems: 'center' }}>
+                              <input
+                                type="text"
+                                value={noteDraft}
+                                autoFocus
+                                onChange={(e) => setNoteDraft(e.target.value)}
+                                placeholder="What happened? (e.g. Excused — dentist, told office 7:40)"
+                                style={{ flex: 1, minWidth: 220, padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.78rem' }}
+                              />
+                              <button
+                                type="button"
+                                disabled={noteSaving || !noteDraft.trim()}
+                                onClick={() => void saveExcuseNote(row.late.user_id, row.late.work_date)}
+                                style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                {noteSaving ? 'Saving…' : 'Save'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={noteSaving}
+                                onClick={() => { setNoteOpenKey(null); setNoteDraft('') }}
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => { setNoteOpenKey(latenessCellKey(row.late.user_id, row.late.work_date)); setNoteDraft('') }}
+                              style={{ marginTop: '0.2rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
+                            >
+                              Add note
+                            </button>
+                          )
+                        ) : null}
                       </td>
                       <td style={{ ...td, color: 'var(--text-muted)' }}>clock records</td>
                       <td style={td}>{row.late.work_date}</td>
-                      <td style={{ ...td, color: 'var(--text-muted)' }}>Derived</td>
+                      <td style={{ ...td, color: 'var(--text-muted)' }}>{row.late.excuse ? 'Excused' : 'Derived'}</td>
                       <td style={td}>—</td>
                       <td style={td} />
                     </tr>
@@ -575,7 +720,11 @@ export function WriteupsContractsSubTab({
         onClose={() => {
           setEditorOpen(false)
           setEditorRow(null)
+          setEditorPrefill(null)
         }}
+        initialSubjectUserId={editorPrefill?.subjectUserId ?? null}
+        initialTemplateId={editorPrefill?.templateId ?? null}
+        contextNote={editorPrefill?.contextNote ?? null}
         mode={editorMode}
         row={editorRow}
         templates={templateOptionsForEditor}
