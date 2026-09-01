@@ -4881,6 +4881,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           rows={unfilteredBoardLists.billedActiveRows}
           loading={!nonPaidScopesMerged}
           canSeeCharts={authRole === 'dev' || authRole === 'controller'}
+          authRole={authRole}
           onClose={() => setBilledBreakdownOpen(false)}
           onOpenBill={(bill) => {
             setBilledBreakdownOpen(false)
