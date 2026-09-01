@@ -5,7 +5,7 @@ file: docs/twins/PLACEMENT.md
 type: Harness procedure / Skill
 purpose: How an agent turns a substrate + plan-set PDF into a placed, imported CountTooling takeoff — the counters-first procedure, coordinate math, self-checks, and tooling. Wave 3.4 of ESTIMATOR_TWIN_PIPELINE_PLAN.md. The vision model IS the engine; this file is its operating manual (EXTRACTOR.md's sibling) Served by twin-mcp as get_placement_guide (bundled with CALIBRATION.md + EXTRACTOR.md).
 audience: AI Agents, harness operators, Developers
-last_updated: 2026-08-31
+last_updated: 2026-09-01
 key_sections:
   - Tooling
   - The counters-first procedure
@@ -15,6 +15,8 @@ key_sections:
   - Density tiers pick the pricing posture
   - The small-TI rule
   - Footage is traced by default
+  - Vent is riser-shaped, not plan-shaped
+  - Census sweep additions
   - Set-class triage before the census
   - Reference protocol at unseal
   - Institutional / district multiplier
@@ -480,6 +482,16 @@ job; the micro-sweep calibrated the replacement and BT-12 validated it blind
   the per-fixture number at this scale.
 - **KEEP**: dedicated runs (gas, storm), specials (grease, med gas), travel.
 
+**Measured residual (BT-17/18, 2026-09-01 — PENDING owner decision, parked as
+question 836b6c22):** with fixture accuracy at 100/100/91%, the rule still
+landed −21/−29/−17% on the Take 5 pair + Church cafe — the human itemizes
+branch footage, vent, water, and hammer arrestors ON TOP of fixture money at
+this scale. Candidate fixes (do not apply until answered): a footage residual
+(~$6–8k on sub-$50k jobs) or ~30% higher per-fixture all-ins; plus a
+"Take 5 proto package" book entry (pair-implied ≈ $37.4k building +
+~$51/mi travel, sources b166/b237). Until then, expect small-TI locks to run
+light and say so in the lock note.
+
 ## Footage is traced by default (BT-8 + T2, 2026-08-31)
 
 Untraced footage models regress to 0.60× of reference (BT-8). The correction
@@ -492,6 +504,46 @@ hierarchy:
    1/16 demo views, BT-16).
 2. Where the set is full-raster (Class C) and tracing is impossible, model
    footage and apply the **1.6× correction** — and say so in the import note.
+
+## Vent is riser-shaped, not plan-shaped (BT-19 doctrine, 2026-09-01)
+
+The Hunter Rd triple put twin vent ratios at 0.17×/0.28×/0.54× even with the
+1.6× correction applied — on two-story sets the vent tree (every fixture's 2"V
+to the collector, transitions under windows, VTR stacks at the back of the
+building) dwarfs its plan-view shadow. The reference carried 835 ft of vent on
+a building whose 4" waste ran 236 ft.
+
+- **Model vent from the RISER, not the plan**: count the riser's 2"V drops ×
+  their floor-to-collector heights + the horizontal collector length. Where no
+  riser exists, carry vent ≈ 1.5–2× waste footage as a named allowance.
+- **Model under-slab mains at BUILDING length on multi-wing plans** — the
+  office reference ran 369 ft of 4" spanning both wings; a wet-cluster-width
+  model halves it.
+- The 1.6× correction stays valid for WASTE (ratios 0.82–1.25× on the same
+  runs); it was never a vent model.
+
+## Census sweep additions (BT-17..19 doctrine, 2026-09-01)
+
+Additions to the count-past-the-schedule sweep (CALIBRATION.md's load-bearing
+finding), plus one refinement:
+
+- **Hammer arrestors count PER quick-closing connection** — beverage/kitchen
+  TIs carry many (Church cafe: 9 where the protos carry 1). Sweep solenoid
+  fixtures: dishwashers, ice makers, carbonators, sensor valves, washers.
+- **IMB (ice-maker box) hides in office break rooms** — the office reference
+  carried 2 the census missed. One per break-room refrigerator recess.
+- **FD default on office sets**: 1 per HVAC closet + 1 per restroom.
+- **Drawn trim beats the sweep** (refines the BT-3 valve rule): when the riser
+  DRAWS its trim — balancing/check valves, expansion tank, circulating pump,
+  thermometers, hose-end drains — count the drawn items and SKIP the
+  sweep-derived valve allowance. The sweep applies only when the plans show no
+  valve symbols at all (BT-19: sweep carried 12 ball valves vs the engineer's
+  drawn 1).
+- **Parse WHAT is by-others** (refines the BT-1 scope call): exclude the thing
+  the note names, not the system around it. "CA system by others" on Take 5
+  protos means the compressor/equipment — the human priced ~70 ft of
+  galvanized CA piping + fittings on BOTH protos. Equipment by others ≠ piping
+  by others; when ambiguous, count the piping and drop an `RFI:` note.
 
 ## Set-class triage before the census (T1/T2 toolkit, 2026-08-31)
 
@@ -525,6 +577,16 @@ Rules the backtest/shadow scorecard MUST apply before a delta means anything:
 - **Index-listed-but-missing sheets → RFI first** (BT-14): when the set's own
   index names sheets the file doesn't contain, park the question before
   estimating around the hole.
+- **A loss note IS a band** (BT-19): "winner came in far below / less than
+  half" in loss_reason bounds the market the same way a bid tab does — report
+  the delta vs the human AND vs the implied winner band. Three campus
+  buildings lost to <0.5× the human number; the twin at −20..−34% was still
+  ~1.5× the winner. A uniform gap of that shape is a market-posture flag for
+  the owner, not a takeoff or tier error.
+- **Check a reused shell's ledger BEFORE working it** (BT-4/BT-5 rediscovery):
+  `open_backtest` with `reused: true` may hand back a shell that already ran
+  through STG-6 — read `get_work_state`'s audit ledger first. A scored
+  backtest can never be re-run blind; keep the prior result and move on.
 
 ## Institutional / district multiplier (BT-16 hypothesis — PENDING AUDIT)
 
