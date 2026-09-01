@@ -80,3 +80,22 @@ Kernel: `src/lib/twinScorecard.ts` (unit-tested). Emits the JSON scorecard
 stderr summary; exits 2 on a scope-match FAIL — that run must not be
 scored, flag the reference instead (PLACEMENT.md "Reference protocol at
 unseal").
+
+## T3 — template_match.py (Class C raster counting)
+
+Pure-numpy FFT normalized cross-correlation for full-raster scan sets
+where nothing is parseable. Harvest a template from ONE confirmed symbol
+instance, then match the whole sheet:
+
+    template_match.py harvest page.png <cx> <cy> <half> template.png
+    template_match.py match page.png template.png 0.55 out
+    # -> peaks + circled verification image; raise the threshold to the
+    #    gap between real hits and lookalikes, verify visually, count.
+
+Validated on Proud Mary K105 (the BT-14 count-miss sheet): 9/9 "FS"
+floor-sink callouts found in 5.6s with clean threshold separation (real
+0.73-0.94 vs lookalike bubbles K30/K38A at <=0.70) — the twin's blind
+run had found 6. Corollary that closed the rest of BT-14's miss: trap
+primers are DERIVED, not hunted — TP per trap (9 FS + 1 FD = 10 TP).
+Text inside a callout bubble is what separates it from same-shape
+bubbles; template symbols WITH their text, not bare shapes.
