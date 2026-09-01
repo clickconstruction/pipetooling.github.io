@@ -201,10 +201,16 @@ export function saveBankPaymentsSortingConfigToLocalCache(cfg: BankingSortingCon
   }
 }
 
-/** Read org-wide AR sorting from `app_settings`. Use `rowExists` to decide legacy local migration. */
+/**
+ * 'row' = org row read; 'no-row' = confirmed absent (safe to migrate legacy local);
+ * 'error' = read failed — the row may exist, so callers must not treat this as absent.
+ */
+export type BankPaymentsSortingConfigFetchOutcome = 'row' | 'no-row' | 'error'
+
+/** Read org-wide AR sorting from `app_settings`. `outcome` distinguishes a missing row from a failed read. */
 export async function fetchBankPaymentsSortingConfigFromAppSettings(): Promise<{
   config: BankingSortingConfigV1
-  rowExists: boolean
+  outcome: BankPaymentsSortingConfigFetchOutcome
 }> {
   try {
     const data = (await withSupabaseRetry(
@@ -217,22 +223,39 @@ export async function fetchBankPaymentsSortingConfigFromAppSettings(): Promise<{
       'fetch_bank_payments_sorting_config',
     )) as { value_text: string | null } | null
     if (data == null) {
-      return { config: defaultBankingSortingConfig(), rowExists: false }
+      return { config: defaultBankingSortingConfig(), outcome: 'no-row' }
     }
     const text = data.value_text
     if (text == null || text.trim() === '') {
-      return { config: defaultBankingSortingConfig(), rowExists: true }
+      return { config: defaultBankingSortingConfig(), outcome: 'row' }
     }
     try {
       const parsed: unknown = JSON.parse(text)
       const n = normalizeConfig(parsed)
-      return { config: n ?? defaultBankingSortingConfig(), rowExists: true }
+      return { config: n ?? defaultBankingSortingConfig(), outcome: 'row' }
     } catch {
-      return { config: defaultBankingSortingConfig(), rowExists: true }
+      return { config: defaultBankingSortingConfig(), outcome: 'row' }
     }
   } catch {
-    return { config: defaultBankingSortingConfig(), rowExists: false }
+    return { config: defaultBankingSortingConfig(), outcome: 'error' }
   }
+}
+
+/**
+ * What the AR modal should do with its sorting config after the `app_settings` fetch resolves.
+ * `config: null` means keep the current in-memory config (org-cache already seeded it).
+ * `migrateUpsert` is true ONLY on a confirmed missing row — never on a failed read, which
+ * once risked a dev browser clobbering the org-wide filter with local defaults.
+ */
+export function resolveSortingConfigAfterFetch(args: {
+  outcome: BankPaymentsSortingConfigFetchOutcome
+  fetched: BankingSortingConfigV1
+  legacyLocal: BankingSortingConfigV1
+  orgCachePresent: boolean
+}): { config: BankingSortingConfigV1 | null; saveCache: boolean; migrateUpsert: boolean } {
+  if (args.outcome === 'row') return { config: args.fetched, saveCache: true, migrateUpsert: false }
+  if (args.outcome === 'no-row') return { config: args.legacyLocal, saveCache: true, migrateUpsert: true }
+  return { config: args.orgCachePresent ? null : args.legacyLocal, saveCache: false, migrateUpsert: false }
 }
 
 /** Dev-only (RLS): upsert global AR sorting JSON. */
@@ -253,8 +276,8 @@ export async function upsertBankPaymentsSortingConfigToAppSettings(cfg: BankingS
 export async function resolveBankPaymentsSortingConfigForAr(
   authUserId: string | undefined,
 ): Promise<BankingSortingConfigV1> {
-  const { config, rowExists } = await fetchBankPaymentsSortingConfigFromAppSettings()
-  if (rowExists) return config
+  const { config, outcome } = await fetchBankPaymentsSortingConfigFromAppSettings()
+  if (outcome === 'row') return config
   return loadBankPaymentsSortingConfig(authUserId)
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import { BankingSortingConfigModal } from '../BankingSortingConfigModal'
 import type { BankingSortingConfigV1 } from '../../lib/bankingSortingConfig'
@@ -9,6 +9,7 @@ import {
   fetchBankPaymentsSortingConfigFromAppSettings,
   loadBankPaymentsSortingConfig,
   loadBankPaymentsSortingConfigFromLocalCache,
+  resolveSortingConfigAfterFetch,
   saveBankPaymentsSortingConfigToLocalCache,
   upsertBankPaymentsSortingConfigToAppSettings,
 } from '../../lib/bankingSortingConfig'
@@ -169,6 +170,13 @@ export default function BankPaymentsModal({
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(
     () => loadBankPaymentsSortingConfigFromLocalCache() ?? defaultBankingSortingConfig(),
   )
+  /**
+   * Cold cache: hold the list fetch until the org config resolves — otherwise the
+   * first fetch runs with the unfiltered default and shows the whole bank feed.
+   */
+  const [sortingConfigResolved, setSortingConfigResolved] = useState<boolean>(
+    () => loadBankPaymentsSortingConfigFromLocalCache() != null,
+  )
   const [devFilterOpen, setDevFilterOpen] = useState(false)
   const [sortingConfigModalOpen, setSortingConfigModalOpen] = useState(false)
   const [kindChoices, setKindChoices] = useState<string[]>([])
@@ -265,6 +273,9 @@ export default function BankPaymentsModal({
 
   const canApply = canRoleApplyBankPayments(authRole)
 
+  /** List is loading OR the first fetch is still held for the org sorting config (cold cache). */
+  const listBusy = listLoading || !sortingConfigResolved
+
   const applyAllocationTarget = useCallback(
     (lineId: string, targetKey: string) => {
       setAllocLines((rows) => {
@@ -323,8 +334,17 @@ export default function BankPaymentsModal({
       .sort((a, b) => a.remaining - b.remaining)
   }, [selected, targets])
 
+  /**
+   * Monotonic id of the newest list request. A refetch (config landing, filter
+   * toggle) bumps it; older in-flight responses then discard themselves instead
+   * of overwriting the newer list — the unfiltered cold-cache query is the slow
+   * one, and last-resolve-wins is how it used to stomp the filtered result.
+   */
+  const listRequestSeqRef = useRef(0)
+
   const refreshList = useCallback(async () => {
     if (!open) return
+    const seq = ++listRequestSeqRef.current
     setListLoading(true)
     setListError(null)
     try {
@@ -346,6 +366,7 @@ export default function BankPaymentsModal({
           }),
         'list_mercury_transactions_for_bank_payments',
       )
+      if (seq !== listRequestSeqRef.current) return
       const rows = (data ?? []) as MercuryCandidate[]
       setCandidates(rows)
       setSelectedId((prev) => {
@@ -354,10 +375,11 @@ export default function BankPaymentsModal({
         return first?.mercury_transaction_id ?? null
       })
     } catch (e: unknown) {
+      if (seq !== listRequestSeqRef.current) return
       setListError(e instanceof Error ? e.message : 'Failed to load bank transactions')
       setCandidates([])
     } finally {
-      setListLoading(false)
+      if (seq === listRequestSeqRef.current) setListLoading(false)
     }
   }, [open, sortingConfig, includeHiddenArDeposits])
 
@@ -405,20 +427,23 @@ export default function BankPaymentsModal({
     if (!open) return
     let cancelled = false
     void (async () => {
-      const { config, rowExists } = await fetchBankPaymentsSortingConfigFromAppSettings()
+      const { config, outcome } = await fetchBankPaymentsSortingConfigFromAppSettings()
       if (cancelled) return
-      if (rowExists) {
-        setSortingConfig((prev) => (bankSortingConfigsFilterEqual(prev, config) ? prev : config))
-        saveBankPaymentsSortingConfigToLocalCache(config)
-        return
+      const resolution = resolveSortingConfigAfterFetch({
+        outcome,
+        fetched: config,
+        legacyLocal: loadBankPaymentsSortingConfig(authUserId),
+        orgCachePresent: loadBankPaymentsSortingConfigFromLocalCache() != null,
+      })
+      const next = resolution.config
+      if (next) {
+        setSortingConfig((prev) => (bankSortingConfigsFilterEqual(prev, next) ? prev : next))
+        if (resolution.saveCache) saveBankPaymentsSortingConfigToLocalCache(next)
       }
-      const local = loadBankPaymentsSortingConfig(authUserId)
-      setSortingConfig((prev) => (bankSortingConfigsFilterEqual(prev, local) ? prev : local))
-      saveBankPaymentsSortingConfigToLocalCache(local)
-      if (authRole === 'dev') {
+      setSortingConfigResolved(true)
+      if (resolution.migrateUpsert && next && authRole === 'dev') {
         try {
-          await upsertBankPaymentsSortingConfigToAppSettings(local)
-          saveBankPaymentsSortingConfigToLocalCache(local)
+          await upsertBankPaymentsSortingConfigToAppSettings(next)
         } catch {
           /* RLS or network; keep legacy/local-derived filters for this browser */
         }
@@ -457,9 +482,9 @@ export default function BankPaymentsModal({
   }, [open, authRole])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !sortingConfigResolved) return
     void refreshList()
-  }, [open, refreshList])
+  }, [open, sortingConfigResolved, refreshList])
 
   useEffect(() => {
     if (open) return
@@ -853,7 +878,7 @@ export default function BankPaymentsModal({
       aria-labelledby="accounts-receivable-modal-title"
     >
       <div
-        aria-busy={listLoading}
+        aria-busy={listBusy}
         style={{
           background: 'var(--surface)',
           borderRadius: 8,
@@ -951,7 +976,7 @@ export default function BankPaymentsModal({
         )}
 
         <div style={{ position: 'relative', display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0 }}>
-          {listLoading ? (
+          {listBusy ? (
             <div
               role="status"
               aria-live="polite"
@@ -994,10 +1019,10 @@ export default function BankPaymentsModal({
               display: 'flex',
               flex: 1,
               minHeight: 0,
-              opacity: listLoading ? 0.35 : 1,
-              pointerEvents: listLoading ? 'none' : 'auto',
+              opacity: listBusy ? 0.35 : 1,
+              pointerEvents: listBusy ? 'none' : 'auto',
             }}
-            aria-hidden={listLoading}
+            aria-hidden={listBusy}
           >
           <div
             style={{
@@ -1084,10 +1109,10 @@ export default function BankPaymentsModal({
               {listError && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{listError}</p>
               )}
-              {!listLoading && !listError && candidates.length === 0 && (
+              {!listBusy && !listError && candidates.length === 0 && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No matching transactions.</p>
               )}
-              {!listLoading && !listError && candidates.length > 0 && filteredCandidates.length === 0 && (
+              {!listBusy && !listError && candidates.length > 0 && filteredCandidates.length === 0 && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   No bank transactions match this search.
                 </p>
