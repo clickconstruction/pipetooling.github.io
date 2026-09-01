@@ -256,6 +256,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
                         onChange={(v) => setPicked((p) => ({ ...p, [row.fixture]: v }))}
                         options={sectionOptions}
                         placeholder="pick a section…"
+                        portalZIndex={MODAL_Z + 10}
                       />
                       <button
                         type="button"
