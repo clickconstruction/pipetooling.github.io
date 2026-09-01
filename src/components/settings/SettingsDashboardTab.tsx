@@ -1630,7 +1630,7 @@ function QuickEstimateToggleSection({
           style={{ marginTop: 3 }}
         />
         <span>
-          <span style={{ fontWeight: 600 }}>Quick Estimate button</span>
+          <span style={{ fontWeight: 600 }}>Estimate/Change Order button</span>
           <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Write up a change order (or estimate) from the field and send it to Dispatch to finish. Adds a button to
             the top of your Dashboard. Off by default.
