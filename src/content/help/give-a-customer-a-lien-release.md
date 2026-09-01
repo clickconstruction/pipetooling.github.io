@@ -43,7 +43,8 @@ The document is designed to be signed by hand: if you leave the signer fields bl
 Once a release is saved, the app keeps it in sight:
 
 - The release button on the job's Pipeline row wears a **blue box** when the job has an issued release.
-- The **Bill Customer** window shows a **Lien releases** panel for the job: each release with its amount, issue date, and — for conditional releases — whether the check behind it has cleared. From there you can **View** the exact document again, **Void** a mistaken record, or start a **+ New release**.
+- The release window itself lists everything **issued on this job** — View the exact document again or Void a mistaken record, from any Pipeline section.
+- The **Bill Customer** window shows a **Lien releases** panel for the job: each release with its amount, issue date, and — for conditional releases — whether the check behind it has cleared. From there you can **View**, **Void**, or start a **+ New release**.
 
 :::example The follow-through
 A conditional release only takes effect when the check clears — and once it does, the customer is owed the **unconditional** version. When a payment recorded on the job covers a conditional release, an **Issue unconditional** button appears next to it in Bill Customer, prefilled from the original. A {{chip:blue|Needs you}} card on your Dashboard counts any that are waiting, so none get forgotten.
