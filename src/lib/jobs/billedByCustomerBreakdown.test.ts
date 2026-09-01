@@ -92,6 +92,22 @@ describe('buildBilledByCustomerBreakdown', () => {
     expect(plainBill.sentAtIso).toBeNull()
   })
 
+  it('carries the physical-resend wiring: send channel + bill-to override (v2.2605)', () => {
+    const j = job({ customer_email: 'gc@acme.com' } as Partial<JobWithDetails>)
+    const rows = [
+      invRow(j, { id: 'i1', amount: 1000, external_send_channel: 'physical', bill_to_email: ' owner@site.com ' }),
+      invRow(j, { id: 'i2', amount: 500, external_send_channel: 'housecallpro' }),
+      invRow(j, { id: 'i3', amount: 250 }),
+    ]
+    const bills = buildBilledByCustomerBreakdown(rows, NOW)[0]!.bills
+    const byId = new Map(bills.map((b) => [b.invoiceId, b]))
+    expect(byId.get('i1')!.externalSendChannel).toBe('physical')
+    expect(byId.get('i1')!.billToEmail).toBe('owner@site.com')
+    expect(byId.get('i2')!.externalSendChannel).toBe('housecallpro')
+    expect(byId.get('i2')!.billToEmail).toBeNull()
+    expect(byId.get('i3')!.externalSendChannel).toBeNull()
+  })
+
   it('bill amounts net payments applied to that invoice; fully-applied rows drop out', () => {
     const j = job({
       id: 'jp',

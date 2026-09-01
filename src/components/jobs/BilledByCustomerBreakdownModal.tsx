@@ -10,6 +10,7 @@ import { formatCurrency } from '../../lib/format'
 import { stripTrailingZip } from '../../lib/displayAddress'
 import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
+import PhysicalInvoiceResendButton from './PhysicalInvoiceResendButton'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import { addPaymentChaseTouch } from '../../lib/jobs/paymentChaseIo'
 import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
@@ -236,6 +237,11 @@ function BillCard({
 }) {
   const address = stripTrailingZip(b.jobAddress)
   const canStripeResend = b.invoiceId != null && b.stripeInvoiceId != null && !b.stripePaid
+  const isPhysical = b.stripeInvoiceId == null && b.externalSendChannel === 'physical'
+  const isHcp = b.stripeInvoiceId == null && b.externalSendChannel === 'housecallpro'
+  const physicalRecipient = b.billToEmail ?? b.customerEmail
+  const canPhysicalResend = b.invoiceId != null && isPhysical && physicalRecipient != null
+  const sentLabel = b.sentAtIso ? `✉ Email sent ${formatDenverCalendarDayShort(new Date(b.sentAtIso).getTime())}` : null
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.625rem 0.75rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -286,13 +292,15 @@ function BillCard({
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {b.stripeInvoiceId ? (
             <>
-              {b.sentAtIso
-                ? `✉ Email sent ${formatDenverCalendarDayShort(new Date(b.sentAtIso).getTime())}`
-                : '✉ Not emailed yet'}
+              {sentLabel ?? '✉ Not emailed yet'}
               {' · '}
               {/* Stripe brand indigo — saturated brand color, intentionally literal (matches STRIPE_TAG_BG). */}
               <span style={{ color: '#635bff', fontWeight: 600 }}>stripe</span>
             </>
+          ) : isPhysical ? (
+            <>{sentLabel ? `${sentLabel.replace('Email sent', 'Emailed with PDF')} · physical` : '✉ Recorded as physical send'}</>
+          ) : isHcp ? (
+            <>Billed in HouseCall Pro — HCP sends its own invoice</>
           ) : null}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -314,6 +322,18 @@ function BillCard({
             unboxed
             recordedLastSendAt={b.sentAtIso}
             buttonLabel="Never got it? Resend"
+          />
+        ) : null}
+        {canPhysicalResend && b.invoiceId ? (
+          <PhysicalInvoiceResendButton
+            invoice={{ id: b.invoiceId, job_id: b.jobId }}
+            recipientEmail={physicalRecipient}
+            onSent={() => {
+              // Same best-effort chase-touch pairing as the Stripe resend.
+              if (b.customerId) {
+                void addPaymentChaseTouch({ customerId: b.customerId, jobId: b.jobId, outcome: 'resend' }).catch(() => {})
+              }
+            }}
           />
         ) : null}
         {b.invoiceId ? (

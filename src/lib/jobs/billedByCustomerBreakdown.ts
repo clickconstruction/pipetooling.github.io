@@ -46,6 +46,10 @@ export type BilledBreakdownBill = {
   stripePaid: boolean
   /** When the bill's email went out (`sent_to_customer_at`) — the card's evidence line. */
   sentAtIso: string | null
+  /** Non-Stripe billing channel (`external_send_channel`): 'physical' | 'housecallpro' | null. */
+  externalSendChannel: string | null
+  /** The invoice's bill-to email override (alternate recipient), when set. */
+  billToEmail: string | null
 }
 
 /** Board fixtures arrive sequence-sorted (enrichJobsLedgerPrimaryRows); scoping preserves that order. */
@@ -111,6 +115,8 @@ export function buildBilledByCustomerBreakdown(
       stripeInvoiceId: (inv?.stripe_invoice_id ?? '').trim() || null,
       stripePaid: inv?.stripe_invoice_status === 'paid',
       sentAtIso: inv?.sent_to_customer_at ?? null,
+      externalSendChannel: (inv?.external_send_channel ?? '').trim() || null,
+      billToEmail: (inv?.bill_to_email ?? '').trim() || null,
     }
     const g = groups.get(key)
     if (g) {
