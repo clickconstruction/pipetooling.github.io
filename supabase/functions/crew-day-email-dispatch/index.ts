@@ -2,9 +2,8 @@
  * crew-day-email-dispatch — end-of-day "what everyone did today" email
  * (v2.2603). Skeleton mirrors money-waiting-email-dispatch; the differences:
  * the payload is PER-RECIPIENT (get_crew_day_payload_for_user computes the
- * recipient's role scope — superintendents get only their assigned projects'
- * crews), the emailed day is the send's Chicago calendar day, and
- * superintendents may schedule sends (to eligible recipients).
+ * recipient's role scope) and the emailed day is the send's Chicago calendar
+ * day. Office roles only on both sides since v2.2615 (see SENDER_ROLES).
  *
  * Modes on POST JSON body:
  * - { mode: 'preview' } — caller JWT, eligible role; returns { html } for the caller's own scope.
@@ -37,10 +36,15 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
-/** Who can open the share modal / trigger sends (superintendents included — the stream exists for them). */
-const SENDER_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller', 'superintendent'])
-/** Who may RECEIVE the email — mirrors isCrewDayRole / the payload RPC's role gate. */
-const RECIPIENT_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller', 'superintendent'])
+/**
+ * OFFICE ROLES ONLY on both sides since v2.2615 — superintendents were
+ * removed as senders AND recipients by owner decision ("I want them to come
+ * back to the app"): the dashboard Crew Day section is their only window.
+ * Keep in sync with isCrewDayEmailRole (src/lib/crewDay.ts) and the
+ * crew_day_email_requests INSERT policy.
+ */
+const SENDER_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
+const RECIPIENT_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 const MAX_QUEUE_BATCH = 10
 const MAX_ATTEMPTS = 5
 

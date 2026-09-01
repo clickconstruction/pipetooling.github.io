@@ -9,7 +9,7 @@ import { salaryZonedWallClockToUtcMs } from '../../lib/salaryZonedWallClock'
 import {
   cancelCrewDaySend,
   fetchCrewDayPreview,
-  isCrewDayEmailRecipientRole,
+  isCrewDayEmailRole,
   listMyPendingCrewDaySends,
   openHtmlInNewTab,
   scheduleCrewDaySend,
@@ -24,9 +24,10 @@ import {
  * five rows). A verbatim sibling of MoneyWaitingShareModal; the same
  * five-piece Report Subscriptions stream shape (docs/REPORT_SUBSCRIPTIONS.md).
  *
- * Each email is rebuilt for the RECIPIENT's own scope at send time —
- * superintendents get their assigned projects' crews, office roles the whole
- * company. Hours only, never wages.
+ * Office roles only on both sides since v2.2615 — superintendents neither
+ * send nor receive (owner decision: the dashboard Crew Day section is their
+ * window). Each email is rebuilt fresh at send time, company-wide for these
+ * recipients. Hours only, never wages.
  */
 
 type RecipientUser = { id: string; name: string; role: string | null; email: string | null }
@@ -74,7 +75,7 @@ export default function CrewDayEmailModal({ onClose }: { onClose: () => void }) 
         if (cancelled) return
         setUsers(
           ((rows ?? []) as Array<RecipientUser & { archived_at: string | null }>)
-            .filter((u) => isCrewDayEmailRecipientRole(u.role))
+            .filter((u) => isCrewDayEmailRole(u.role))
             .map((u) => ({ id: u.id, name: (u.name ?? '').trim() || 'Unknown', role: u.role, email: u.email })),
         )
       } catch (e) {

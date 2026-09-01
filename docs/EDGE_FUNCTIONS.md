@@ -2505,7 +2505,7 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Endpoint**: `POST /functions/v1/crew-day-email-dispatch`
 
-**Modes** (money-waiting skeleton): `preview` / `test_send` (caller JWT; the caller's own scope) / `send_now` with `recipient_user_id` (recipient's scope) — sender AND recipient roles are the crew-day set (dev/master_technician/assistant/controller/**superintendent**; superintendents can schedule their own copies) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `crew_day_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard).
+**Modes** (money-waiting skeleton): `preview` / `test_send` (caller JWT; the caller's own scope) / `send_now` with `recipient_user_id` (recipient's scope) — sender AND recipient roles are **office-only since v2.2615** (dev/master_technician/assistant/controller; superintendents were removed from both sides — the Dashboard Crew Day section is their window, and the INSERT policy matches: migration `20260901232549`) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `crew_day_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard; superintendent-addressed stragglers stamp "ineligible role" and never send).
 
 **Deploy**: `supabase functions deploy crew-day-email-dispatch --no-verify-jwt`. Requires migrations `20260901215024` (section payload) + `20260901220804` (table + per-user payload RPC + pg_cron + schedule-surface branches).
 

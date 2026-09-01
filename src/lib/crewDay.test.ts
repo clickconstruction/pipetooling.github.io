@@ -6,6 +6,7 @@ import {
   crewDaySessionMs,
   formatCrewDayBlockTime,
   formatCrewDayHours,
+  isCrewDayEmailRole,
   isCrewDayRole,
   type CrewDayPayload,
 } from './crewDay'
@@ -175,6 +176,17 @@ describe('isCrewDayRole', () => {
     }
     for (const r of ['subcontractor', 'helpers', 'estimator', 'primary', null, undefined]) {
       expect(isCrewDayRole(r)).toBe(false)
+    }
+  })
+})
+
+describe('isCrewDayEmailRole', () => {
+  it('is office-only — superintendents see the section but never the email (v2.2615)', () => {
+    for (const r of ['dev', 'master_technician', 'assistant', 'controller']) {
+      expect(isCrewDayEmailRole(r)).toBe(true)
+    }
+    for (const r of ['superintendent', 'subcontractor', 'helpers', 'estimator', 'primary', null, undefined]) {
+      expect(isCrewDayEmailRole(r)).toBe(false)
     }
   })
 })
