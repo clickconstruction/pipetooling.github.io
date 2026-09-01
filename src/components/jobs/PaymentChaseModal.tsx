@@ -5,6 +5,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { extractContactFromCustomer } from '../../lib/customerContactDisplay'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
+import { addPaymentChaseTouch, recordPromiseForJobs } from '../../lib/jobs/paymentChaseIo'
 import {
   CHASE_COLLECTIONS_SUGGESTION_THRESHOLD,
   DEFAULT_SNOOZE_DAYS,
@@ -161,15 +162,15 @@ export default function PaymentChaseModal({
     outcome: 'promised' | 'cant_reach' | 'resend' | 'dispute' | 'note',
     opts?: { promisedYmd?: string; snoozeDays?: number },
   ) => {
-    const { error } = await supabase.rpc('add_payment_chase_touch' as never, {
-      p_customer_id: customerId,
-      p_job_id: jobId,
-      p_outcome: outcome,
-      p_note: note.trim() || null,
-      p_promised_date: opts?.promisedYmd ?? null,
-      p_snooze_days: opts?.snoozeDays ?? null,
-    } as never)
-    if (error) throw error
+    // Shared chase write path (v2.2572) — the AR call card writes through the same helper.
+    await addPaymentChaseTouch({
+      customerId,
+      jobId,
+      outcome,
+      note: note.trim() || null,
+      promisedYmd: opts?.promisedYmd ?? null,
+      snoozeDays: opts?.snoozeDays ?? null,
+    })
   }
 
   const applyPromise = async () => {
@@ -192,14 +193,11 @@ export default function PaymentChaseModal({
     }
     setSaving(true)
     try {
-      for (const [jobId, ymd] of resolved.byJob) {
-        const { error } = await supabase.rpc('set_job_promised_pay_date' as never, {
-          p_job_id: jobId,
-          p_date: ymd,
-        } as never)
-        if (error) throw error
-        await recordTouch(current.customerId, jobId, 'promised', { promisedYmd: ymd })
-      }
+      await recordPromiseForJobs({
+        customerId: current.customerId,
+        jobYmds: [...resolved.byJob].map(([jobId, ymd]) => [jobId, ymd] as const),
+        note: note.trim() || null,
+      })
       setBillState((prev) => {
         const next = { ...prev }
         for (const b of bills) {
