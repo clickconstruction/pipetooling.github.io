@@ -1340,19 +1340,29 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const w = window as unknown as { __rtbFocusArmedAt?: number }
     if (w.__rtbFocusArmedAt != null && Date.now() - w.__rtbFocusArmedAt < 5000) return
     w.__rtbFocusArmedAt = Date.now()
+    // Stillness alone can't tell "loaded" from "not loaded yet" — the page is
+    // perfectly still while the board query is in flight, so a single scroll
+    // fires early and the sections above then grow and push the target back
+    // down. Keep polling after the first scroll and re-pin whenever layout
+    // settles with the section away from the top; stop once it holds there.
     let lastTop: number | null = null
     let tries = 0
+    let focused = false
     const tick = () => {
       const el = document.getElementById('stages-ready-to-bill')
       if (el) {
         const top = Math.round(el.getBoundingClientRect().top)
         if (lastTop != null && Math.abs(top - lastTop) < 2) {
-          focusStagesSection('readyToBill')
-          return
+          if (!focused || Math.abs(top) > 40) {
+            focusStagesSection('readyToBill')
+            focused = true
+          } else {
+            return
+          }
         }
         lastTop = top
       }
-      if (++tries < 50) window.setTimeout(tick, 300)
+      if (++tries < 100) window.setTimeout(tick, 300)
     }
     window.setTimeout(tick, 400)
   }, [searchParams, navigate, focusStagesSection])
@@ -2301,47 +2311,52 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             >
               {shortNewJobButtonLabel ? 'New' : 'New Job'}
             </button>
-            <button
-              type="button"
-              onClick={() => setFollowupOpen(true)}
-              aria-label={
-                followupQueueCount != null && followupQueueCount > 0
-                  ? `Open job follow-ups — ${followupQueueCount} outstanding`
-                  : 'Open job follow-ups'
-              }
-              style={{
-                padding: '0.5rem 0.9rem',
-                background: 'var(--bg-amber-tint)',
-                color: 'var(--text-amber-800)',
-                border: '1px solid var(--border-amber-soft)',
-                borderRadius: 4,
-                cursor: 'pointer',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-              }}
-            >
-              Follow-ups
+            <span style={{ position: 'relative', display: 'inline-flex' }}>
+              <button
+                type="button"
+                onClick={() => setFollowupOpen(true)}
+                aria-label={
+                  followupQueueCount != null && followupQueueCount > 0
+                    ? `Open job follow-ups — ${followupQueueCount} outstanding`
+                    : 'Open job follow-ups'
+                }
+                style={{
+                  padding: '0.5rem 0.9rem',
+                  background: 'var(--bg-amber-tint)',
+                  color: 'var(--text-amber-800)',
+                  border: '1px solid var(--border-amber-soft)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Follow-ups
+              </button>
               {followupQueueCount != null && followupQueueCount > 0 ? (
                 <span
+                  aria-hidden="true"
                   style={{
-                    fontSize: '0.72rem',
+                    position: 'absolute',
+                    top: '-0.5rem',
+                    right: '-0.5rem',
+                    fontSize: '0.68rem',
                     fontWeight: 800,
                     background: '#f59e0b',
                     color: '#241a05',
                     borderRadius: 999,
-                    padding: '0.1rem 0.45rem',
-                    minWidth: '1.3em',
+                    padding: '0.1rem 0.4rem',
+                    minWidth: '1.4em',
                     textAlign: 'center',
                     lineHeight: 1.4,
+                    border: '2px solid var(--bg-page)',
+                    pointerEvents: 'none',
                   }}
                 >
                   {followupQueueCount}
                 </span>
               ) : null}
-            </button>
+            </span>
             {followupOpen ? (
               <JobsFollowupModal
                 open
