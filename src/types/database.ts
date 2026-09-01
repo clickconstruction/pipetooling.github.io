@@ -3573,28 +3573,52 @@ export type Database = {
       customer_addresses: {
         Row: {
           address: string
+          county: string
           created_at: string | null
           customer_id: string
+          homestead: boolean
           id: string
+          legal_description: string
           note: string | null
+          owner_company: string
+          owner_mailing_address: string
+          owner_mode: string
+          owner_name: string
+          property_kind: string
           sequence_order: number
           updated_at: string | null
         }
         Insert: {
           address: string
+          county?: string
           created_at?: string | null
           customer_id: string
+          homestead?: boolean
           id?: string
+          legal_description?: string
           note?: string | null
+          owner_company?: string
+          owner_mailing_address?: string
+          owner_mode?: string
+          owner_name?: string
+          property_kind?: string
           sequence_order?: number
           updated_at?: string | null
         }
         Update: {
           address?: string
+          county?: string
           created_at?: string | null
           customer_id?: string
+          homestead?: boolean
           id?: string
+          legal_description?: string
           note?: string | null
+          owner_company?: string
+          owner_mailing_address?: string
+          owner_mode?: string
+          owner_name?: string
+          property_kind?: string
           sequence_order?: number
           updated_at?: string | null
         }
@@ -6674,6 +6698,7 @@ export type Database = {
           completeness_marked_by: string | null
           completeness_pct: number | null
           created_at: string | null
+          customer_address_id: string | null
           customer_email: string | null
           customer_id: string | null
           customer_name: string | null
@@ -6715,6 +6740,7 @@ export type Database = {
           completeness_marked_by?: string | null
           completeness_pct?: number | null
           created_at?: string | null
+          customer_address_id?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
@@ -6756,6 +6782,7 @@ export type Database = {
           completeness_marked_by?: string | null
           completeness_pct?: number | null
           created_at?: string | null
+          customer_address_id?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
@@ -6805,6 +6832,13 @@ export type Database = {
             columns: ["completeness_marked_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_customer_address_id_fkey"
+            columns: ["customer_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
             referencedColumns: ["id"]
           },
           {

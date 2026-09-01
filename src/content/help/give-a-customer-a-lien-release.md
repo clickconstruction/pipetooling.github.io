@@ -38,6 +38,14 @@ If the job has more than one bill line, green chips at the top let you pick whic
 
 The document is designed to be signed by hand: if you leave the signer fields blank, the printed copy carries fill-in lines.
 
+## Save the property's legal info once
+
+On **Customers → Edit → Additional addresses**, every address now has a **Property legal info** panel: the county the paperwork files in (the app suggests it from the city — confirm it), the legal description from the county appraisal district (there's a direct **CAD ↗** link), residential/homestead classification, and the **owner of record with their mailing address** — where lien notices legally go, which is often not the job site.
+
+:::example Why bother?
+An address showing {{chip:green|✓ lien-ready}} has everything a lien filing needs, entered once and reused by every job at that property. In the Release of Lien window, link the job to its property record (the app suggests the match by address) and the owner of record fills in automatically.
+:::
+
 ## Track what you issued
 
 Once a release is saved, the app keeps it in sight:
