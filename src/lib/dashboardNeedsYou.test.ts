@@ -26,6 +26,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     bulkDeleteAlerts: null,
     claimDevRefusedCount: null,
     claimDevLookbackDays: 7,
+    robotAuditsEnabled: true,
+    robotAuditsPending: 0,
     ...overrides,
   }
 }
@@ -241,6 +243,32 @@ describe('buildNeedsYouItems', () => {
     expect(cd?.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
     expect(buildNeedsYouItems(inputs({ claimDevRefusedCount: 0 }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ claimDevRefusedCount: null }))).toEqual([])
+  })
+
+  it('robot-audits (v2.2573): amber work-queue item for the auditing roles, gone at zero or when disabled', () => {
+    expect(buildNeedsYouItems(inputs({ robotAuditsPending: 0 }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ robotAuditsEnabled: false, robotAuditsPending: 23 }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ robotAuditsPending: 1 }))
+    expect(one[0]?.key).toBe('robot-audits')
+    expect(one[0]?.severity).toBe('amber')
+    expect(one[0]?.title).toBe('One robot bid is waiting on your audit')
+    expect(one[0]?.actionLabel).toBe('Open Audits')
+    const many = buildNeedsYouItems(inputs({ robotAuditsPending: 23 }))
+    expect(many[0]?.title).toBe('23 robot bids are waiting on your audit')
+    expect(many[0]?.figure).toBe('23')
+    expect(buildNeedsYouItems(inputs({ robotAuditsPending: 120 }))[0]?.figure).toBe('99+')
+  })
+
+  it('robot-audits shares the people/planning tier: below revenue chasing, above hygiene', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        jobFollowupCount: 3,
+        jobFollowupStageCounts: null,
+        robotAuditsPending: 23,
+        lostBidNudge: { count: 60, value: 8_700_000 },
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['job-followups', 'robot-audits', 'lost-bids'])
   })
 
   it('worst-first: a full house ranks alerts, money, deadline, billing, chasing, people, hygiene', () => {
