@@ -257,6 +257,8 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
                         options={sectionOptions}
                         placeholder="pick a section…"
                         portalZIndex={MODAL_Z + 10}
+                        fillViewportHeight
+                        listMinWidthPx={470}
                       />
                       <button
                         type="button"
