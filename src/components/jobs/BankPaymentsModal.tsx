@@ -51,6 +51,7 @@ import {
   arStripeAutoCloseCandidates,
   type ArStripeAutoCloseCandidate,
 } from '../../lib/arStripeAutoClose'
+import { matchArDepositToPayer } from '../../lib/jobs/arDepositCustomerMatch'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 
 type MercuryCandidate =
@@ -332,6 +333,62 @@ export default function BankPaymentsModal({
       )
       .slice()
       .sort((a, b) => a.remaining - b.remaining)
+  }, [selected, targets])
+
+  /**
+   * The payer this deposit most plausibly came from (counterparty → note →
+   * memo vs customer/GC names on the open billed lines). Leads the chip UI
+   * with that payer's bills; never auto-applies.
+   */
+  const depositPayerMatch = useMemo(() => {
+    if (!selected || targets.length === 0) return null
+    return matchArDepositToPayer(
+      {
+        counterparty_name: selected.counterparty_name,
+        note: selected.note,
+        external_memo: selected.external_memo,
+      },
+      targets,
+    )
+  }, [selected, targets])
+
+  /** The matched payer's open billed lines: deposit-amount matches first, then largest remaining. */
+  const depositPayerTargets = useMemo(() => {
+    if (!depositPayerMatch || !selected) return []
+    const remAvail = Number(selected.remaining_available)
+    const matchesDeposit = (rem: number) =>
+      rem >= remAvail - 0.01 && rem <= remAvail + AR_BANK_PAYMENT_QUICK_MATCH_MAX_OVER
+    const keys = new Set(depositPayerMatch.targetKeys)
+    return targets
+      .filter((t) => keys.has(t.key))
+      .slice()
+      .sort((a, b) => {
+        const am = matchesDeposit(a.remaining)
+        const bm = matchesDeposit(b.remaining)
+        if (am !== bm) return am ? -1 : 1
+        return b.remaining - a.remaining
+      })
+      .slice(0, 8)
+  }, [depositPayerMatch, selected, targets])
+
+  /** Amount-only quick picks not already shown in the payer section. */
+  const quickMatchTargetsOutsidePayer = useMemo(() => {
+    if (depositPayerTargets.length === 0) return bankPaymentQuickMatchTargets
+    const shown = new Set(depositPayerTargets.map((t) => t.key))
+    return bankPaymentQuickMatchTargets.filter((t) => !shown.has(t.key))
+  }, [bankPaymentQuickMatchTargets, depositPayerTargets])
+
+  /** Targets whose remaining equals this deposit's remaining (same tolerance as the quick picks) — accents payer chips. */
+  const depositAmountMatchKeys = useMemo(() => {
+    if (!selected) return new Set<string>()
+    const remAvail = Number(selected.remaining_available)
+    return new Set(
+      targets
+        .filter(
+          (t) => t.remaining >= remAvail - 0.01 && t.remaining <= remAvail + AR_BANK_PAYMENT_QUICK_MATCH_MAX_OVER,
+        )
+        .map((t) => t.key),
+    )
   }, [selected, targets])
 
   /**
@@ -1530,7 +1587,84 @@ export default function BankPaymentsModal({
                               ) : null}
                               {line.kind === 'billed' &&
                               allocLines[0]?.id === line.id &&
-                              bankPaymentQuickMatchTargets.length > 0 &&
+                              !line.targetKey.trim() &&
+                              depositPayerTargets.length > 0 &&
+                              depositPayerMatch ? (
+                                <div style={{ marginTop: 8 }}>
+                                  <div
+                                    style={{
+                                      fontSize: '0.75rem',
+                                      color: 'var(--text-muted)',
+                                      marginBottom: 6,
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    {depositPayerMatch.source === 'counterparty' ? (
+                                      <>
+                                        From{' '}
+                                        <strong style={{ color: 'var(--text-700)' }}>{depositPayerMatch.name}</strong>
+                                        {' — their open bills'}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {depositPayerMatch.source === 'note' ? 'Note mentions ' : 'Memo mentions '}
+                                        <strong style={{ color: 'var(--text-700)' }}>{depositPayerMatch.name}</strong>
+                                        {' — their open bills'}
+                                      </>
+                                    )}
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      flexWrap: 'wrap',
+                                      gap: '0.35rem',
+                                      alignItems: 'stretch',
+                                    }}
+                                  >
+                                    {depositPayerTargets.map((t) => {
+                                      const isAmountMatch = depositAmountMatchKeys.has(t.key)
+                                      const chipLabel = `${formatBankPaymentTargetDollars(t.remaining)} · ${bankPaymentTargetPrimaryLabel(t)}`
+                                      return (
+                                        <button
+                                          key={t.key}
+                                          type="button"
+                                          disabled={!canApply}
+                                          onClick={() => applyAllocationTarget(line.id, t.key)}
+                                          aria-label={`Apply allocation: ${chipLabel}`}
+                                          style={{
+                                            display: 'inline-flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start',
+                                            gap: 1,
+                                            padding: '0.3rem 0.55rem',
+                                            fontSize: '0.75rem',
+                                            border: isAmountMatch
+                                              ? '1px solid var(--border-green)'
+                                              : '1px solid var(--border-strong)',
+                                            borderRadius: 4,
+                                            background: isAmountMatch ? 'var(--bg-green-tint)' : 'var(--surface)',
+                                            color: 'var(--text-700)',
+                                            cursor: !canApply ? 'not-allowed' : 'pointer',
+                                            textAlign: 'left',
+                                            maxWidth: '100%',
+                                            lineHeight: 1.35,
+                                          }}
+                                        >
+                                          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{chipLabel}</span>
+                                          {isAmountMatch ? (
+                                            <span style={{ fontSize: '0.66rem', color: 'var(--text-green-700)' }}>
+                                              matches this deposit
+                                            </span>
+                                          ) : null}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {line.kind === 'billed' &&
+                              allocLines[0]?.id === line.id &&
+                              quickMatchTargetsOutsidePayer.length > 0 &&
                               !line.targetKey.trim() ? (
                                 <div style={{ marginTop: 8 }}>
                                   <div
@@ -1551,7 +1685,7 @@ export default function BankPaymentsModal({
                                       alignItems: 'center',
                                     }}
                                   >
-                                    {bankPaymentQuickMatchTargets.map((t) => {
+                                    {quickMatchTargetsOutsidePayer.map((t) => {
                                       const chipLabel = `${bankPaymentTargetPrimaryLabel(t)} · ${formatBankPaymentTargetDollars(t.remaining)}`
                                       return (
                                         <button
