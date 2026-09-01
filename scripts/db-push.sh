@@ -18,6 +18,19 @@ set +a
 export SUPABASE_ACCESS_TOKEN="$SUPABASE_MGMT_TOKEN"
 
 supabase link --project-ref yewfzhbofbbyvkvtaatw >/dev/null 2>&1 || true
-echo Y | supabase db push --linked
+
+# Plain push first; when a parallel session applied a migration stamped between
+# our pending ones, the CLI refuses with "Rerun the command with --include-all"
+# (the out-of-order case in AGENTS.md) — retry with the flag it asks for.
+push_out=$(echo Y | supabase db push --linked 2>&1) && push_ok=true || push_ok=false
+printf '%s\n' "$push_out"
+if [ "$push_ok" != true ]; then
+  if printf '%s' "$push_out" | grep -q -- '--include-all'; then
+    echo "retrying with --include-all (out-of-order pending migrations)"
+    echo Y | supabase db push --linked --include-all
+  else
+    exit 1
+  fi
+fi
 npm run gen-types:linked
 npm run check:migration-drift
