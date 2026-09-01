@@ -18,7 +18,7 @@ Stripe's pay page takes one card for the full amount — it can't split a single
 The original Stripe bill is voided so its old pay link can't be paid. Two new bills replace it, each a normal Stripe bill with its own pay link and invoice number (part 1 of 2, part 2 of 2 on the memo). The job stays in **Billed Awaiting Payment** until every part is paid.
 :::
 
-5. Send each part like any bill — {{button:blue|Send Email invoice from Stripe}}, or copy each pay link into a text.
+5. Send each part like any bill — {{button:purple|stripe}}{{button:amber|Send Email invoice}} (the purple tag means Stripe sends the email, not ClickTooling), or copy each pay link into a text.
 
 ## Good to know
 

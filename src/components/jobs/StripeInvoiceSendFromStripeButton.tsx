@@ -23,7 +23,7 @@ export type StripeInvoiceSendFromStripeButtonProps = {
   /** After Stripe accepts send (e.g. refetch invoice details). */
   onSent?: () => void
   compact?: boolean
-  /** Default: "Send Email invoice from Stripe" */
+  /** Default: "Send Email invoice". The chip's indigo "stripe" tag already says who sends — don't repeat "from Stripe" here. */
   buttonLabel?: string
   /** Omit bordered panel chrome (e.g. Stages Last activity cell). */
   unboxed?: boolean
@@ -39,7 +39,10 @@ export type StripeInvoiceSendFromStripeButtonProps = {
   recordedLastSendAt?: string | null
 }
 
-const DEFAULT_BUTTON_LABEL = 'Send Email invoice from Stripe'
+const DEFAULT_BUTTON_LABEL = 'Send Email invoice'
+
+/** Stripe brand indigo — saturated brand color, intentionally literal (not a theme token). */
+const STRIPE_TAG_BG = '#635bff'
 
 export function StripeInvoiceSendFromStripeButton({
   jobsLedgerInvoiceId,
@@ -218,21 +221,41 @@ export function StripeInvoiceSendFromStripeButton({
   const padY = micro ? '0.0625rem' : compact ? '0.35rem' : '0.5rem'
   const padX = micro ? '0.35rem' : '0.75rem'
   const btnLooksDisabled = !canTry || sending || sendDisabled
+  // Two-segment chip: indigo "stripe" tag + yellow action, so provenance reads at every size.
   const btnStyle: CSSProperties = {
-    padding: `${padY} ${padX}`,
+    padding: 0,
+    display: 'inline-flex',
+    alignItems: 'stretch',
+    overflow: 'hidden',
     fontSize: micro ? '0.625rem' : compact ? '0.75rem' : '0.8125rem',
     lineHeight: micro ? 1.2 : undefined,
     textAlign: 'center',
     borderRadius: micro ? 3 : 4,
     border: btnLooksDisabled ? '1px solid #a8a29e' : '1px solid #000000',
-    background: btnLooksDisabled ? '#e7de9a' : '#ffdf00',
-    color: btnLooksDisabled ? '#57534e' : '#1c1917',
+    background: 'none',
     cursor: btnLooksDisabled ? 'not-allowed' : 'pointer',
     fontWeight: 600,
+    maxWidth: '100%',
+  }
+  const tagStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: micro ? '0 0.3rem' : '0 0.5rem',
+    background: STRIPE_TAG_BG,
+    color: '#ffffff',
+    fontWeight: 700,
+    fontSize: micro ? '0.5625rem' : compact ? '0.6875rem' : '0.75rem',
+    letterSpacing: '0.01em',
+    opacity: btnLooksDisabled ? 0.55 : 1,
+  }
+  const actStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: `${padY} ${padX}`,
+    background: btnLooksDisabled ? '#e7de9a' : '#ffdf00',
+    color: btnLooksDisabled ? '#57534e' : '#1c1917',
     whiteSpace: micro ? 'nowrap' : undefined,
-    ...(micro
-      ? { display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }
-      : null),
   }
 
   const wrapStyle: CSSProperties =
@@ -317,12 +340,49 @@ export function StripeInvoiceSendFromStripeButton({
                   lineHeight: 1.4,
                 }}
               >
-                Send Email invoice from Stripe?
+                Have Stripe email this invoice?
               </h2>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.55rem',
+                  background: 'var(--bg-indigo-100)',
+                  border: '1px solid var(--border-indigo-soft)',
+                  borderRadius: 6,
+                  padding: '0.55rem 0.7rem',
+                  margin: '0 0 0.85rem',
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-indigo-800)',
+                  lineHeight: 1.45,
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 5,
+                    background: STRIPE_TAG_BG,
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.8125rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flex: 'none',
+                  }}
+                >
+                  S
+                </span>
+                <span>
+                  Sent by <strong>Stripe</strong> to <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong> —
+                  not from ClickTooling.
+                </span>
+              </div>
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-                Have Stripe email this invoice to{' '}
-                <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong>? ClickTooling will not send the
-                email — Stripe will.
+                It&rsquo;s the invoice email with the payment link — sending it again doesn&rsquo;t create a new
+                bill or charge anything.
               </p>
               <div
                 style={{
@@ -436,7 +496,8 @@ export function StripeInvoiceSendFromStripeButton({
         title={sendDisabled ? sendDisabledTitle : undefined}
         style={btnStyle}
       >
-        {sending ? 'Sending…' : buttonLabel}
+        <span style={tagStyle}>stripe</span>
+        <span style={actStyle}>{sending ? 'Sending…' : buttonLabel}</span>
       </button>
       {showGreen ? (
         <p
