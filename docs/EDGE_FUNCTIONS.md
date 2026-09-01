@@ -2351,6 +2351,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ### send-physical-invoice-email
 
+> **v2.2605 — Resend mode**: `resend: true` re-emails an already-**billed** invoice (the Who-owes-what cards' "Email again — PDF attached", client helper [`resendPhysicalInvoiceEmail.ts`](../src/lib/resendPhysicalInvoiceEmail.ts)): the status gate flips to require `status = 'billed'` and the function **writes nothing** — no status change, no `sent_to_customer_at` bump (the bill keeps its first-send evidence; the send is still captured by the shared email log). Without the flag, first-send behavior is unchanged.
+
 > **v2.1085 — Bill-to override**: when the invoice row has `bill_to_email`, the target `customer_email` may match **either** that address or `jobs_ledger.customer_email` (a blank job customer email is fine in that case). Without the override, the job-customer-email match requirement is unchanged.
 
 > **v2.940**: accepts optional `additional_emails: string[]` (≤10, validated, deduped against `customer_email`) — extra recipients ride on the same Resend send (`to` array), so one email and one recorded send event regardless of recipient count.
@@ -2385,6 +2387,8 @@ interface SendPhysicalInvoiceEmailBody {
    * Max 2; each ≤ 6M base64 chars; combined with the invoice ≤ 9M.
    */
   extra_attachments?: Array<{ filename?: string; content_base64: string }>
+  /** v2.2605: re-email a billed invoice — requires `status = 'billed'`, records nothing on the row. */
+  resend?: boolean
 }
 ```
 
