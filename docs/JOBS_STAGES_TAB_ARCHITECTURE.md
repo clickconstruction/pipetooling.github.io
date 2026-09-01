@@ -109,6 +109,7 @@ Single-opener state → component pairs, all opened only from this surface:
 | `combineSeparateModalOpen` | `JobsCombineSeparateModal` (extracted) | `onAfterSuccess` → `runJobsStagesSerializedPipeline(() => loadJobs())` |
 | `viewBillInvoice` | `BilledBillViewModal` (extracted) | `onAfterStripeDetailsLoaded` re-runs `runFetchJobs` (retry-once on coalesced undefined) and re-merges via `findInvoiceWithJobFromJobs`; void-success → `scheduleLoadJobsAfterMutation` |
 | `lienToolingPrefillModal` | `LienToolingPrefillModal` (extracted) | `senderNameFallback` = `lienToolingSenderFallback` memo over `users` |
+| `lienReleaseModal` | `LienReleaseModal` (extracted, v2.2579) | in-app waiver-and-release (3 forms; kernel `lib/jobsDocuments/lienWaiverRelease.ts`); opened via `onOpenLienRelease` on the unified sections (gate = `canCreateHazmatFee` office set); `signerNameFallback` = `lienReleaseSignerFallback` memo over `users` |
 | `aiaG702StagesJob` | `AiaG702G703Modal` (extracted) | |
 | `hazmatFeeJob` | `HazmatFeeModal` (extracted) | `onCreated` → `loadJobs` + `loadHazmatFeeJobIds` |
 | `markPaidJob` / `markPaidInvoice` | `BilledPaymentConfirmationModal` ×2 (extracted) | `stripeModeForBillingFromRole(authRole)` |
