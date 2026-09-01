@@ -64,6 +64,34 @@ describe('buildBilledByCustomerBreakdown', () => {
     expect(billedBreakdownTotal(groups)).toBe(8000)
   })
 
+  it('carries the resend wiring: customer id/email, stripe identity, paid flag, sent date (v2.2604)', () => {
+    const j = job({ customer_email: '  gc@acme.com  ' } as Partial<JobWithDetails>)
+    const rows = [
+      invRow(j, {
+        id: 'i1',
+        amount: 1000,
+        stripe_invoice_id: ' in_123 ',
+        stripe_invoice_status: 'open',
+        sent_to_customer_at: '2026-08-10T15:00:00Z',
+      }),
+      invRow(j, { id: 'i2', amount: 500, stripe_invoice_id: 'in_456', stripe_invoice_status: 'paid' }),
+      invRow(j, { id: 'i3', amount: 250 }),
+    ]
+    const bills = buildBilledByCustomerBreakdown(rows, NOW)[0]!.bills
+    const byId = new Map(bills.map((b) => [b.invoiceId, b]))
+    const stripeBill = byId.get('i1')!
+    expect(stripeBill.customerId).toBe('c1')
+    expect(stripeBill.customerEmail).toBe('gc@acme.com')
+    expect(stripeBill.stripeInvoiceId).toBe('in_123')
+    expect(stripeBill.stripePaid).toBe(false)
+    expect(stripeBill.sentAtIso).toBe('2026-08-10T15:00:00Z')
+    expect(byId.get('i2')!.stripePaid).toBe(true)
+    const plainBill = byId.get('i3')!
+    expect(plainBill.stripeInvoiceId).toBeNull()
+    expect(plainBill.stripePaid).toBe(false)
+    expect(plainBill.sentAtIso).toBeNull()
+  })
+
   it('bill amounts net payments applied to that invoice; fully-applied rows drop out', () => {
     const j = job({
       id: 'jp',

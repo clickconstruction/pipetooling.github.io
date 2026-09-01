@@ -36,6 +36,16 @@ export type BilledBreakdownBill = {
    * asks for.
    */
   lineItems: ArLineItem[]
+  /** Job's customer id (`jobs_ledger.customer_id`) — chase-touch target; null when the job has none linked. */
+  customerId: string | null
+  /** Job's customer email — the resend confirm shows who receives it. */
+  customerEmail: string | null
+  /** Stripe invoice behind this bill, when it was billed through Stripe. */
+  stripeInvoiceId: string | null
+  /** Stripe reports the invoice paid — a resend would only confuse. */
+  stripePaid: boolean
+  /** When the bill's email went out (`sent_to_customer_at`) — the card's evidence line. */
+  sentAtIso: string | null
 }
 
 /** Board fixtures arrive sequence-sorted (enrichJobsLedgerPrimaryRows); scoping preserves that order. */
@@ -85,8 +95,9 @@ export function buildBilledByCustomerBreakdown(
     const job = row.job
     const name = (job.customer_name ?? '').trim() || 'No customer'
     const key = (job.customer_id ?? '').trim() || `name:${name.toLowerCase()}`
+    const inv = row.kind === 'job' ? null : row.inv
     const bill: BilledBreakdownBill = {
-      invoiceId: row.kind === 'job' ? null : row.inv.id,
+      invoiceId: inv?.id ?? null,
       jobId: job.id,
       jobName: (job.job_name ?? '').trim() || '—',
       jobNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
@@ -95,6 +106,11 @@ export function buildBilledByCustomerBreakdown(
       lineItems: billLineItems(row),
       ageDays: stageRowBilledAgeDays(row, now),
       ageHandSet: stageRowBilledAgeReference(row)?.handSet ?? false,
+      customerId: (job.customer_id ?? '').trim() || null,
+      customerEmail: (job.customer_email ?? '').trim() || null,
+      stripeInvoiceId: (inv?.stripe_invoice_id ?? '').trim() || null,
+      stripePaid: inv?.stripe_invoice_status === 'paid',
+      sentAtIso: inv?.sent_to_customer_at ?? null,
     }
     const g = groups.get(key)
     if (g) {

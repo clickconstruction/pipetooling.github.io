@@ -9,6 +9,11 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatCurrency } from '../../lib/format'
 import { stripTrailingZip } from '../../lib/displayAddress'
 import ViewBillWithPdfTail from './ViewBillWithPdfTail'
+import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
+import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
+import { addPaymentChaseTouch } from '../../lib/jobs/paymentChaseIo'
+import { formatDenverCalendarDayShort } from '../../utils/dateUtils'
+import type { UserRole } from '../../hooks/useAuth'
 
 /**
  * WAITING ON CUSTOMERS → "Who owes what" (v2.1929): the Billed Awaiting
@@ -22,6 +27,7 @@ export default function BilledByCustomerBreakdownModal({
   rows,
   loading,
   canSeeCharts,
+  authRole,
   onClose,
   onOpenBill,
   onOpenAgingChart,
@@ -32,6 +38,8 @@ export default function BilledByCustomerBreakdownModal({
   /** True while any non-paid scope is still fetching — totals can still grow. */
   loading?: boolean
   canSeeCharts: boolean
+  /** Gates the Stripe resend mode (dev may use test mode) — PaymentChaseModal pattern. */
+  authRole: UserRole | null
   onClose: () => void
   /** Jump the board to this bill (invoice row when invoiceId set, else the job shell row). */
   onOpenBill: (bill: BilledBreakdownBill) => void
@@ -124,6 +132,7 @@ export default function BilledByCustomerBreakdownModal({
                     ageChip={ageChip}
                     cellStyle={cellStyle}
                     onOpenBill={onOpenBill}
+                    authRole={authRole}
                   />
                 )
               })}
@@ -170,6 +179,7 @@ function FragmentRows({
   ageChip,
   cellStyle,
   onOpenBill,
+  authRole,
 }: {
   group: ReturnType<typeof buildBilledByCustomerBreakdown>[number]
   open: boolean
@@ -177,6 +187,7 @@ function FragmentRows({
   ageChip: (days: number | null, handSet?: boolean) => React.ReactNode
   cellStyle: React.CSSProperties
   onOpenBill: (bill: BilledBreakdownBill) => void
+  authRole: UserRole | null
 }) {
   return (
     <>
@@ -202,7 +213,7 @@ function FragmentRows({
           <td colSpan={4} style={{ padding: '0.625rem 0.75rem 0.75rem 2rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {g.bills.map((b) => (
-                <BillCard key={`${g.key}-${b.invoiceId ?? b.jobId}`} bill={b} ageChip={ageChip} onOpenBill={onOpenBill} />
+                <BillCard key={`${g.key}-${b.invoiceId ?? b.jobId}`} bill={b} ageChip={ageChip} onOpenBill={onOpenBill} authRole={authRole} />
               ))}
             </div>
           </td>
@@ -216,12 +227,15 @@ function BillCard({
   bill: b,
   ageChip,
   onOpenBill,
+  authRole,
 }: {
   bill: BilledBreakdownBill
   ageChip: (days: number | null, handSet?: boolean) => React.ReactNode
   onOpenBill: (bill: BilledBreakdownBill) => void
+  authRole: UserRole | null
 }) {
   const address = stripTrailingZip(b.jobAddress)
+  const canStripeResend = b.invoiceId != null && b.stripeInvoiceId != null && !b.stripePaid
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.625rem 0.75rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
@@ -268,7 +282,40 @@ function BillCard({
           ))}
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {b.stripeInvoiceId ? (
+            <>
+              {b.sentAtIso
+                ? `✉ Email sent ${formatDenverCalendarDayShort(new Date(b.sentAtIso).getTime())}`
+                : '✉ Not emailed yet'}
+              {' · '}
+              {/* Stripe brand indigo — saturated brand color, intentionally literal (matches STRIPE_TAG_BG). */}
+              <span style={{ color: '#635bff', fontWeight: 600 }}>stripe</span>
+            </>
+          ) : null}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {canStripeResend && b.invoiceId && b.stripeInvoiceId ? (
+          <StripeInvoiceSendFromStripeButton
+            jobsLedgerInvoiceId={b.invoiceId}
+            stripeInvoiceId={b.stripeInvoiceId}
+            customerEmail={b.customerEmail}
+            stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
+            onSent={() => {
+              // The send succeeded; the chase touch is best-effort bookkeeping
+              // (same pairing as PaymentChaseModal's "Never got it? Resend").
+              if (b.customerId) {
+                void addPaymentChaseTouch({ customerId: b.customerId, jobId: b.jobId, outcome: 'resend' }).catch(() => {})
+              }
+            }}
+            compact
+            micro
+            unboxed
+            recordedLastSendAt={b.sentAtIso}
+            buttonLabel="Never got it? Resend"
+          />
+        ) : null}
         {b.invoiceId ? (
           // Invoice-backed bill: split control — View on board | fresh PDF tail
           // (the v2.2329 Stages control, reused; job-shell bills have no
@@ -288,6 +335,7 @@ function BillCard({
             View on board
           </button>
         )}
+        </span>
       </div>
     </div>
   )
