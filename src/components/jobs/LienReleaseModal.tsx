@@ -11,6 +11,7 @@ import {
   buildLienWaiverPrefill,
   buildLienWaiverPrintHtml,
   buildLienWaiverSignatureLines,
+  lienWaiverDate,
   lienWaiverInvoiceOpenRemaining,
   lienWaiverPdfFilename,
   lienWaiverTitle,
@@ -18,7 +19,14 @@ import {
   type LienWaiverFields,
   type LienWaiverFormType,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import {
+  isLienWaiverFormType,
+  lienReleaseFieldsFromSnapshot,
+  lienReleaseFormLabel,
+  liveLienReleases,
+  type JobLienReleaseRow,
+} from '../../lib/jobs/lienReleaseTracking'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -98,6 +106,37 @@ export default function LienReleaseModal({
   const [pdfBusy, setPdfBusy] = useState(false)
   const [saveBusy, setSaveBusy] = useState(false)
   const [savedReleaseId, setSavedReleaseId] = useState<string | null>(null)
+  // Issued-on-this-job history (v2.2588): reachable from every row with the
+  // release button — billed rows have no Bill Customer, so the strip alone
+  // couldn't view/void there. Fail-soft like the strip.
+  const [historyRows, setHistoryRows] = useState<JobLienReleaseRow[]>([])
+  const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
+
+  const loadHistory = useCallback(async () => {
+    if (!job?.id) {
+      setHistoryRows([])
+      return
+    }
+    try {
+      const { data } = await supabase
+        .from('job_lien_releases')
+        .select('*')
+        .eq('job_id', job.id)
+        .order('created_at', { ascending: false })
+      setHistoryRows((data ?? []) as JobLienReleaseRow[])
+    } catch {
+      setHistoryRows([])
+    }
+  }, [job?.id])
+
+  useEffect(() => {
+    if (!open) {
+      setHistoryRows([])
+      setVoidPendingId(null)
+      return
+    }
+    void loadHistory()
+  }, [open, loadHistory])
 
   const issuer = useMemo(() => (open ? getPhysicalInvoiceIssuerDraft() : null), [open, issuerGen])
 
@@ -249,13 +288,52 @@ export default function LienReleaseModal({
       )
       setSavedReleaseId(data?.id ?? 'saved')
       showToast('Release recorded on the job.', 'success')
+      void loadHistory()
       onIssued?.()
     } catch {
       showToast('Could not record the release — it can still be copied, printed, or downloaded.', 'error')
     } finally {
       setSaveBusy(false)
     }
-  }, [fields, job, formType, selectedInvoiceIds, authUser?.id, saveBusy, savedReleaseId, showToast, onIssued])
+  }, [fields, job, formType, selectedInvoiceIds, authUser?.id, saveBusy, savedReleaseId, showToast, onIssued, loadHistory])
+
+  const viewHistoryRelease = useCallback(
+    (r: JobLienReleaseRow) => {
+      const snapshot = lienReleaseFieldsFromSnapshot(r.fields)
+      const historyForm: LienWaiverFormType = isLienWaiverFormType(r.form_type) ? r.form_type : 'conditional_progress'
+      const historyFields: LienWaiverFields = {
+        companyName: snapshot.companyName ?? '',
+        checkFrom: snapshot.checkFrom ?? '',
+        amount: snapshot.amount ?? String(r.amount ?? ''),
+        projectDescription: snapshot.projectDescription ?? '',
+        throughDate: snapshot.throughDate ?? r.through_date ?? '',
+        signedDate: snapshot.signedDate ?? r.signed_date ?? '',
+        signerName: snapshot.signerName ?? '',
+        signerTitle: snapshot.signerTitle ?? '',
+      }
+      const ok = openHtmlPreviewWindow(buildLienWaiverPrintHtml(historyForm, historyFields, jobNumber))
+      if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+    },
+    [jobNumber, showToast],
+  )
+
+  const voidHistoryRelease = useCallback(
+    async (r: JobLienReleaseRow) => {
+      try {
+        await withSupabaseRetry(
+          () => supabase.from('job_lien_releases').update({ voided_at: new Date().toISOString() }).eq('id', r.id),
+          'void lien release',
+        )
+        showToast('Release voided.', 'success')
+        setVoidPendingId(null)
+        void loadHistory()
+        onIssued?.()
+      } catch {
+        showToast('Could not void the release.', 'error')
+      }
+    },
+    [showToast, loadHistory, onIssued],
+  )
 
   const downloadPdf = useCallback(async () => {
     if (!fields || pdfBusy) return
@@ -345,6 +423,70 @@ export default function LienReleaseModal({
 
         <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
           <div style={{ flex: '1 1 18rem', minWidth: '17rem', padding: '1rem 1.25rem' }}>
+            {liveLienReleases(historyRows).length > 0 && (
+              <div
+                style={{
+                  marginBottom: '0.9rem',
+                  padding: '0.5rem 0.6rem',
+                  borderRadius: 8,
+                  background: 'var(--bg-blue-tint)',
+                  border: '1px solid var(--border-strong)',
+                }}
+              >
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.35rem' }}>Issued on this job</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                  {liveLienReleases(historyRows).map((r) => (
+                    <div
+                      key={r.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '0.4rem',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        padding: '0.3rem 0.45rem',
+                        fontSize: '0.72rem',
+                      }}
+                    >
+                      <span style={{ fontWeight: 700 }}>{lienReleaseFormLabel(r.form_type)}</span>
+                      <span style={{ fontWeight: 700 }}>
+                        {Number(r.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                      </span>
+                      <span style={{ color: 'var(--text-muted)' }}>{lienWaiverDate((r.created_at ?? '').slice(0, 10))}</span>
+                      <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => viewHistoryRelease(r)}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}
+                        >
+                          View
+                        </button>
+                        {voidPendingId === r.id ? (
+                          <button
+                            type="button"
+                            onClick={() => void voidHistoryRelease(r)}
+                            style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}
+                          >
+                            Confirm void
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setVoidPendingId(r.id)}
+                            title="Void this release record (the document itself is unaffected)"
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}
+                          >
+                            Void
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {invoices.length > 0 && (
               <div style={{ marginBottom: '0.9rem' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
