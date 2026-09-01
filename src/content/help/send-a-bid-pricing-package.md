@@ -35,6 +35,18 @@ Need a supply house to price the job? Don't send them the package — it has you
 
 The list arrives grouped by Division 22 spec section (22 11 16 Domestic Water Piping, 22 42 13 Water Closets &amp; Urinals, …) in spec-book order, so the counter can work it section by section. Fixtures the ledger doesn't recognize yet land in a "No code yet" tail at the bottom — the copy always works, and the toast tells you how many names still need a code.
 
+## Teach the ledger the missing codes
+
+When the toast says some names have no code, open the same {{button:green|▾}} menu and pick **Division 22 codes**. The audit shows every fixture name you've ever counted, run through the ledger — uncoded names on top, sorted by how many bids they appear on:
+
+- Pick a section for a name and tap {{button:green|Pin it}} — that name is coded everywhere, instantly: past bids and every future one.
+- Some things aren't Division 22 buyout items at all (DEMO, safety line items). Tap {{button:gray|No code}} and they stop counting as gaps.
+- The coverage bar shows how close the ledger is to knowing everything. Pin the top few names and it jumps.
+
+:::example Clearing the gas rows
+Wendi copies BP339's fixtures and the toast says 36 names have no code. She opens **Division 22 codes**, sees "11/2IN 90 GAS" at the top (17 bids), picks the section the specs use for gas piping, and pins it. Every gas fitting on every bid now files under that section — one pin, done forever.
+:::
+
 It works as soon as the bid has Counts, even before you've set up a price book or labor.
 
 :::example Getting cost pricing before the bid is priced

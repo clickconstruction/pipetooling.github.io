@@ -1295,6 +1295,7 @@ export type Database = {
           address: string | null
           adopted_into_bid_id: string | null
           agreed_value: number | null
+          backtest_axis: string | null
           bid_date_sent: string | null
           bid_date_sent_ack_email_at: string | null
           bid_date_sent_ack_email_by: string | null
@@ -1360,6 +1361,7 @@ export type Database = {
           address?: string | null
           adopted_into_bid_id?: string | null
           agreed_value?: number | null
+          backtest_axis?: string | null
           bid_date_sent?: string | null
           bid_date_sent_ack_email_at?: string | null
           bid_date_sent_ack_email_by?: string | null
@@ -1425,6 +1427,7 @@ export type Database = {
           address?: string | null
           adopted_into_bid_id?: string | null
           agreed_value?: number | null
+          backtest_axis?: string | null
           bid_date_sent?: string | null
           bid_date_sent_ack_email_at?: string | null
           bid_date_sent_ack_email_by?: string | null
@@ -18006,6 +18009,13 @@ export type Database = {
       settle_step_commitment: {
         Args: { p_commitment_id: string; p_dry_run?: boolean }
         Returns: Json
+      }
+      spec_section_fixture_name_audit: {
+        Args: never
+        Returns: {
+          bid_count: number
+          fixture: string
+        }[]
       }
       split_bid_into_versions: {
         Args: {
