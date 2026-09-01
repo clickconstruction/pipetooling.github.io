@@ -273,7 +273,7 @@ function estimateListOptionsCount(raw: unknown): number {
   let n = 0
   for (const x of raw) {
     if (x && typeof x === 'object' && typeof (x as { key?: unknown }).key === 'string' && ((x as { key: string }).key.trim())) n++
-    if (n === 4) break
+    if (n === MAX_ESTIMATE_OPTIONS) break
   }
   return n
 }
