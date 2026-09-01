@@ -185,6 +185,8 @@ export default function DashboardArCustomersView({
   const customerRow = (row: ArCustomerRow, idx: number) => {
     const key = row.customerId ?? '∅'
     const isOpen = expanded.has(key)
+    const seg = segTag(row.segment)
+    const badge = rowBadge?.(row) ?? null
     const worst = row.oldestWaitDays != null && row.baselineDays != null
       ? BILL_TONE[row.pastPace ? (row.oldestWaitDays >= row.baselineDays * 2 ? 'late' : 'warn') : 'ok']
       : BILL_TONE.undated
@@ -216,10 +218,16 @@ export default function DashboardArCustomersView({
           <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: '0.6rem', width: '0.7em', display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'none' }}>
             ▶
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0, fontSize: '0.8125rem' }}>
-            {segTag(row.segment)}
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{row.name}</span>
-            {rowBadge?.(row)}
+          <span style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0, fontSize: '0.8125rem' }}>
+            <span title={row.name} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+              {row.name}
+            </span>
+            {seg != null || badge != null ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+                {seg}
+                {badge}
+              </span>
+            ) : null}
           </span>
           {!isMobile ? (
             <span style={{ display: 'flex', gap: 3, alignItems: 'center', height: 14, minWidth: 0 }}>
