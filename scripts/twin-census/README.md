@@ -70,3 +70,13 @@ reference takeoff priced the tenant fit-out (BT-15 reclassified).
 **Protocol rule that fall-out bought: at unseal, line-compare the
 reference takeoff's tags against the fetched set — a reference fixture
 absent from the set means scope mismatch, stop scoring.**
+
+## T4 — scorecard.ts (auto-scorecard)
+
+`npx vite-node scripts/twin-census/scorecard.ts -- ref-rows.json
+twin-items.json [set-tags.json]` — the unseal line-compare, mechanized.
+Kernel: `src/lib/twinScorecard.ts` (unit-tested). Emits the JSON scorecard
+(per-tag count deltas, fixture accuracy, per-system footage ratios) plus a
+stderr summary; exits 2 on a scope-match FAIL — that run must not be
+scored, flag the reference instead (PLACEMENT.md "Reference protocol at
+unseal").
