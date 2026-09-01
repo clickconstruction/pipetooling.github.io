@@ -42,6 +42,7 @@ import type { Database } from '../../types/database'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   arRecordedPaymentAmountStr,
+  arRecordedPaymentMatchesForQuery,
   arRecordedPaymentOptions,
   arRecordedPaymentSearchLabel,
   type ArRecordedPaymentCandidate,
@@ -1900,6 +1901,26 @@ export default function BankPaymentsModal({
                                 placeholder="— Select billed line —"
                                 listAriaLabel="Billed line for allocation"
                                 portalZIndex={1200}
+                                // v2.2597: a fully-paid line (Mark Paid before the deposit was
+                                // allocated) has no billed-line row — steer the dead-ended
+                                // search to the recorded payment it should link instead.
+                                noMatchesAction={
+                                  recordedPayments.length > 0
+                                    ? {
+                                        label: (q) => {
+                                          const n = arRecordedPaymentMatchesForQuery(recordedPayments, takenPaymentIds, q).length
+                                          return n > 0
+                                            ? `No billed line — but ${n} recorded payment${n === 1 ? '' : 's'} match${n === 1 ? 'es' : ''} “${q}”. Link it instead`
+                                            : 'Nothing billed matches — search recorded payments instead'
+                                        },
+                                        onSelect: (q) => {
+                                          const matches = arRecordedPaymentMatchesForQuery(recordedPayments, takenPaymentIds, q)
+                                          setAllocLineKind(line.id, 'payment')
+                                          if (matches.length === 1) applyRecordedPaymentTarget(line.id, matches[0]!.payment_id)
+                                        },
+                                      }
+                                    : undefined
+                                }
                               />
                               )}
                               {pickedPayment ? (

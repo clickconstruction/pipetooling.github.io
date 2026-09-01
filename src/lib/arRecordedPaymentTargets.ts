@@ -66,3 +66,24 @@ export function arRecordedPaymentOptions(
 export function arRecordedPaymentAmountStr(c: Pick<ArRecordedPaymentCandidate, 'amount'>): string {
   return (Math.abs(Number(c.amount) || 0)).toFixed(2)
 }
+
+/**
+ * v2.2597: the billed-line search dead-ends at "No matches" when a job's line
+ * is fully covered by an already-recorded payment (Mark Paid before the bank
+ * deposit was allocated — Taunya, J989: job sent back to Billed, invoice paid,
+ * $250 check recorded, nothing left for the billed-line picker to show). The
+ * recorded payments the same query WOULD match, so the no-matches action can
+ * steer the line to the Payment-received kind. Mirrors SearchableSelect's
+ * filter exactly: case-insensitive substring on the option label.
+ */
+export function arRecordedPaymentMatchesForQuery(
+  candidates: ArRecordedPaymentCandidate[],
+  takenPaymentIds: ReadonlySet<string>,
+  query: string,
+): ArRecordedPaymentCandidate[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return []
+  return candidates.filter(
+    (c) => !takenPaymentIds.has(c.payment_id) && arRecordedPaymentSearchLabel(c).toLowerCase().includes(q),
+  )
+}

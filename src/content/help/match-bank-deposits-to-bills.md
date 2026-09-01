@@ -60,3 +60,11 @@ When you point a deposit at a bill whose job already has a same-amount payment r
 :::
 
 **Link that payment instead** switches the line to **Payment received** with that payment picked and the amount locked — the deposit links to the existing record and no duplicate is created. If it really is a separate payment, **It's a different payment** keeps your pick. You can always switch a line to **Payment received** yourself, too.
+
+## If the job doesn't come up in the billed-line search
+
+A job that was already marked paid has **no balance left to bill**, so its line doesn't appear under **Billed line** at all — that's the tell that the money is recorded and just needs the bank deposit linked to it. When your search finds nothing there but a recorded payment matches, the list offers **Link it instead** — one press switches the line to **Payment received**, and if exactly one payment matches your search it's picked for you.
+
+:::example marked paid before the deposit arrived
+The checks were deposited, you marked J989 paid, and the bank deposit shows up a day later. Searching "989" under Billed line finds nothing — press **Link it instead** and the deposit ties to the $250 check payment already on the job.
+:::
