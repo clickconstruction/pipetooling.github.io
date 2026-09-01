@@ -56,6 +56,12 @@ import {
   userTimeOffCellKey,
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
+import {
+  computeLatenessByCell,
+  fetchClockInsForUsersInRange,
+  fetchScheduleBlocksForRange,
+  type PersonDayLateness,
+} from '../../lib/scheduleLateness'
 
 const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 function readScheduleDispatchHideWeekend(): boolean {
@@ -156,6 +162,12 @@ export function ScheduleDispatchJobWeek() {
   const [jobTitle, setJobTitle] = useState('')
   const [teamMembers, setTeamMembers] = useState<ScheduleTeamMember[]>([])
   const [blocks, setBlocks] = useState<JobScheduleBlockRow[]>([])
+  /** Derived Late chips (v2.2557): GLOBAL lateness — the person's earliest block
+   * across ALL jobs that day (fetched separately; this view's own blocks are
+   * job-scoped and would miscall anyone whose day started elsewhere). */
+  const [latenessByCell, setLatenessByCell] = useState<Map<string, PersonDayLateness>>(
+    () => new Map(),
+  )
   const [userTimeOffByCell, setUserTimeOffByCell] = useState<Map<string, UserTimeOffCellInfo>>(
     () => new Map(),
   )
@@ -289,6 +301,29 @@ export function ScheduleDispatchJobWeek() {
     for (const b of blocks) ids.add(b.assignee_user_id)
     return [...ids].sort().join('|')
   }, [teamMembers, blocks])
+
+  const refreshLateness = useCallback(async () => {
+    const ids = visibleUserIdsForTimeOffSerialized
+      ? visibleUserIdsForTimeOffSerialized.split('|').filter(Boolean)
+      : []
+    if (ids.length === 0 || !weekStart || !weekEnd) {
+      setLatenessByCell(new Map())
+      return
+    }
+    const [blk, ses] = await Promise.all([
+      fetchScheduleBlocksForRange(weekStart, weekEnd),
+      fetchClockInsForUsersInRange(ids, weekStart, weekEnd),
+    ])
+    if (blk.error || ses.error) return
+    const idSet = new Set(ids)
+    setLatenessByCell(
+      computeLatenessByCell(blk.data.filter((b) => idSet.has(b.assignee_user_id)), ses.data),
+    )
+  }, [visibleUserIdsForTimeOffSerialized, weekStart, weekEnd])
+
+  useEffect(() => {
+    void refreshLateness()
+  }, [refreshLateness])
 
   const refreshUserTimeOff = useCallback(async () => {
     const ids = visibleUserIdsForTimeOffSerialized
@@ -1030,6 +1065,7 @@ export function ScheduleDispatchJobWeek() {
           onAddUserToJobRoster={canAddToJobRoster ? (uid) => void addUserToJobRoster(uid) : undefined}
           addToJobBusyUserId={addToJobBusyUserId}
           userTimeOffByCell={userTimeOffByCell}
+          latenessByCell={latenessByCell}
           onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
         />
       </DndContext>

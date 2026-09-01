@@ -23,6 +23,8 @@ import {
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
+import { ScheduleDispatchLateChip } from './ScheduleDispatchLateChip'
+import { latenessCellKey, type PersonDayLateness } from '../../lib/scheduleLateness'
 import { scheduleBlockActionTextButtonStyle } from '../../lib/scheduleBlockActionChromeStyle'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
@@ -366,6 +368,7 @@ function ScheduleDispatchCell({
   onDeleteBlock,
   onRequestEditBlockNote,
   timeOffInfo,
+  lateInfo,
   onRequestUndoNotComingIn,
 }: {
   assigneeUserId: string
@@ -386,6 +389,8 @@ function ScheduleDispatchCell({
   onDeleteBlock: (id: string) => void
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
   timeOffInfo?: UserTimeOffCellInfo | null
+  /** Derived lateness for this person-day (v2.2557); suppressed while a time-off chip shows. */
+  lateInfo?: PersonDayLateness | null
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
 }) {
   const cellHasTimeOff = timeOffInfo != null
@@ -484,6 +489,10 @@ function ScheduleDispatchCell({
                   : 'Click to mark as coming in'
               }
             />
+          </div>
+        ) : lateInfo ? (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+            <ScheduleDispatchLateChip info={lateInfo} />
           </div>
         ) : null}
         {emptyCellFullHeightAdd ? (
@@ -595,6 +604,8 @@ export type ScheduleDispatchGridProps = {
   addToJobBusyUserId?: string | null
   /** Map keyed by `userTimeOffCellKey(userId, workDate)` → time-off info to render as a chip on the cell. */
   userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
+  /** Derived per-cell lateness (v2.2557) — informational amber Late chip, suppressed under time-off chips. */
+  latenessByCell?: ReadonlyMap<string, PersonDayLateness>
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
 }
@@ -630,6 +641,7 @@ export function ScheduleDispatchGrid({
   onAddUserToJobRoster,
   addToJobBusyUserId = null,
   userTimeOffByCell,
+  latenessByCell,
   onRequestUndoNotComingIn,
 }: ScheduleDispatchGridProps) {
   const isMobile = useIsMobile()
@@ -830,6 +842,11 @@ export function ScheduleDispatchGrid({
                     onRequestEditBlockNote={onRequestEditBlockNote}
                     timeOffInfo={
                       userTimeOffByCell?.get(userTimeOffCellKey(m.user_id, dk)) ?? null
+                    }
+                    lateInfo={
+                      userTimeOffByCell?.get(userTimeOffCellKey(m.user_id, dk))
+                        ? null
+                        : latenessByCell?.get(latenessCellKey(m.user_id, dk)) ?? null
                     }
                     onRequestUndoNotComingIn={onRequestUndoNotComingIn}
                   />
