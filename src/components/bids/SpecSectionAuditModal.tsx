@@ -226,12 +226,12 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
               <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
                 <span style={{ fontWeight: 700, color: '#15803d' }}>{audit.codedCount} coded</span>
                 {' · '}
-                <span style={{ fontWeight: 700, color: '#b45309' }}>{audit.uncodedCount} uncoded</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-amber-700)' }}>{audit.uncodedCount} uncoded</span>
                 {' · '}
                 {audit.coveragePct}%
               </span>
             </div>
-            {pinError ? <p style={{ margin: 0, fontSize: '0.8125rem', color: '#dc2626' }}>{pinError}</p> : null}
+            {pinError ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{pinError}</p> : null}
 
             <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
               <div style={{ ...rowGrid, background: 'var(--bg-subtle)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
@@ -248,7 +248,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
                   </p>
                 ) : (
                   audit.uncoded.slice(0, uncodedShown).map((row) => (
-                    <div key={row.fixture} style={{ ...rowGrid, background: '#fefce8' }}>
+                    <div key={row.fixture} style={{ ...rowGrid, background: 'var(--bg-yellow-tint)' }}>
                       <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{row.fixture}</span>
                       <span style={smallMuted}>{row.bidCount} bid{row.bidCount === 1 ? '' : 's'}</span>
                       <SearchableSelect
