@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   arRecordedPaymentAmountStr,
   arRecordedPaymentJobNumber,
+  arRecordedPaymentMatchesForQuery,
   arRecordedPaymentOptions,
   arRecordedPaymentSearchLabel,
   type ArRecordedPaymentCandidate,
@@ -58,5 +59,32 @@ describe('arRecordedPaymentAmountStr', () => {
   it('locks to the absolute row amount with two decimals', () => {
     expect(arRecordedPaymentAmountStr({ amount: 2500 })).toBe('2500.00')
     expect(arRecordedPaymentAmountStr({ amount: -1175.5 })).toBe('1175.50')
+  })
+})
+
+describe('arRecordedPaymentMatchesForQuery (v2.2597 — billed-line dead-end steer)', () => {
+  it('matches the same way SearchableSelect filters: case-insensitive substring on the label', () => {
+    // Taunya's J989: Mark Paid recorded the check, the billed line has no
+    // balance and vanished from the picker — but "989" matches the payment.
+    const j989 = cand({
+      payment_id: 'p989',
+      hcp_number: '',
+      click_number: '989',
+      job_name: 'Montolongo- Pretest',
+      amount: 250,
+      payment_type: 'Check',
+      note: null,
+      reference_number: '3403',
+    })
+    const rows = [cand(), j989]
+    expect(arRecordedPaymentMatchesForQuery(rows, new Set(), '989').map((c) => c.payment_id)).toEqual(['p989'])
+    expect(arRecordedPaymentMatchesForQuery(rows, new Set(), 'montolongo').map((c) => c.payment_id)).toEqual(['p989'])
+    expect(arRecordedPaymentMatchesForQuery(rows, new Set(), 'zzz')).toEqual([])
+  })
+
+  it('excludes payments taken by other lines and blank queries', () => {
+    const rows = [cand(), cand({ payment_id: 'p2', hcp_number: '798' })]
+    expect(arRecordedPaymentMatchesForQuery(rows, new Set(['p1']), '941')).toEqual([])
+    expect(arRecordedPaymentMatchesForQuery(rows, new Set(), '   ')).toEqual([])
   })
 })
