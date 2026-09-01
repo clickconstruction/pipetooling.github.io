@@ -119,6 +119,48 @@ export type Database = {
           },
         ]
       }
+      attendance_annotations: {
+        Row: {
+          author_id: string | null
+          created_at: string
+          id: string
+          note: string
+          subject_user_id: string
+          work_date: string
+        }
+        Insert: {
+          author_id?: string | null
+          created_at?: string
+          id?: string
+          note: string
+          subject_user_id: string
+          work_date: string
+        }
+        Update: {
+          author_id?: string | null
+          created_at?: string
+          id?: string
+          note?: string
+          subject_user_id?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_annotations_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_annotations_subject_user_id_fkey"
+            columns: ["subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_incidents: {
         Row: {
           created_at: string
@@ -230,6 +272,153 @@ export type Database = {
             foreignKeyName: "banking_user_prefs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_audit_notes: {
+        Row: {
+          audit_id: string
+          author_id: string | null
+          bid_id: string
+          body: string
+          context: string | null
+          created_at: string
+          digest_outcome: string | null
+          digested_at: string | null
+          id: string
+          kind: string
+          parent_id: string | null
+          section: string
+          sheet_ref: string | null
+        }
+        Insert: {
+          audit_id: string
+          author_id?: string | null
+          bid_id: string
+          body: string
+          context?: string | null
+          created_at?: string
+          digest_outcome?: string | null
+          digested_at?: string | null
+          id?: string
+          kind?: string
+          parent_id?: string | null
+          section?: string
+          sheet_ref?: string | null
+        }
+        Update: {
+          audit_id?: string
+          author_id?: string | null
+          bid_id?: string
+          body?: string
+          context?: string | null
+          created_at?: string
+          digest_outcome?: string | null
+          digested_at?: string | null
+          id?: string
+          kind?: string
+          parent_id?: string | null
+          section?: string
+          sheet_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_audit_notes_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "bid_audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_audit_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_audit_notes_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_audit_notes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "bid_audit_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_audits: {
+        Row: {
+          bid_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          ct_project_id: string | null
+          ct_view_url: string | null
+          digested_at: string | null
+          id: string
+          requested_at: string
+          self_assessment: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          ct_project_id?: string | null
+          ct_view_url?: string | null
+          digested_at?: string | null
+          id?: string
+          requested_at?: string
+          self_assessment?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          ct_project_id?: string | null
+          ct_view_url?: string | null
+          digested_at?: string | null
+          id?: string
+          requested_at?: string
+          self_assessment?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_audits_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_audits_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_audits_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1153,13 +1342,13 @@ export type Database = {
           profit: number | null
           project_id: string | null
           project_name: string | null
+          robot_requested_at: string | null
+          robot_requested_by: string | null
           selected_bid_version_id: string | null
           selected_labor_book_version_id: string | null
           selected_price_book_version_id: string | null
           selected_takeoff_book_version_id: string | null
           service_type_id: string
-          robot_requested_at: string | null
-          robot_requested_by: string | null
           submitted_to: string | null
           twin_source_bid_id: string | null
           updated_at: string | null
@@ -1218,13 +1407,13 @@ export type Database = {
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
+          robot_requested_at?: string | null
+          robot_requested_by?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id: string
-          robot_requested_at?: string | null
-          robot_requested_by?: string | null
           submitted_to?: string | null
           twin_source_bid_id?: string | null
           updated_at?: string | null
@@ -1283,13 +1472,13 @@ export type Database = {
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
+          robot_requested_at?: string | null
+          robot_requested_by?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id?: string
-          robot_requested_at?: string | null
-          robot_requested_by?: string | null
           submitted_to?: string | null
           twin_source_bid_id?: string | null
           updated_at?: string | null
@@ -1309,20 +1498,6 @@ export type Database = {
             columns: ["adopted_into_bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bids_twin_source_bid_id_fkey"
-            columns: ["twin_source_bid_id"]
-            isOneToOne: false
-            referencedRelation: "bids"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bids_robot_requested_by_fkey"
-            columns: ["robot_requested_by"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -1389,6 +1564,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bids_robot_requested_by_fkey"
+            columns: ["robot_requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bids_selected_bid_version_id_fkey"
             columns: ["selected_bid_version_id"]
             isOneToOne: false
@@ -1421,6 +1603,13 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_twin_source_bid_id_fkey"
+            columns: ["twin_source_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
           {
@@ -7218,18 +7407,21 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_robot: boolean
           name: string
           service_type_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          is_robot?: boolean
           name: string
           service_type_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          is_robot?: boolean
           name?: string
           service_type_id?: string
         }
@@ -7488,6 +7680,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_robot: boolean
           link: string | null
           manufacturer: string | null
           name: string
@@ -7499,6 +7692,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          is_robot?: boolean
           link?: string | null
           manufacturer?: string | null
           name: string
@@ -7510,6 +7704,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          is_robot?: boolean
           link?: string | null
           manufacturer?: string | null
           name?: string
@@ -7709,6 +7904,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          is_robot: boolean
           name: string
           service_type_id: string
           updated_at: string | null
@@ -7718,6 +7914,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_robot?: boolean
           name: string
           service_type_id: string
           updated_at?: string | null
@@ -7727,6 +7924,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_robot?: boolean
           name?: string
           service_type_id?: string
           updated_at?: string | null
@@ -8575,6 +8773,57 @@ export type Database = {
           resource_type?: string | null
         }
         Relationships: []
+      }
+      money_waiting_email_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          recipient_user_id: string
+          repeat_weekly: boolean
+          requested_by: string
+          send_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id: string
+          repeat_weekly?: boolean
+          requested_by: string
+          send_at: string
+          sent_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id?: string
+          repeat_weekly?: boolean
+          requested_by?: string
+          send_at?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "money_waiting_email_requests_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "money_waiting_email_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_history: {
         Row: {
@@ -10519,6 +10768,7 @@ export type Database = {
           created_at: string | null
           id: string
           include_in_submission: boolean
+          is_robot: boolean
           name: string
           service_type_id: string
           sort_order: number
@@ -10530,6 +10780,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           include_in_submission?: boolean
+          is_robot?: boolean
           name: string
           service_type_id: string
           sort_order?: number
@@ -10541,6 +10792,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           include_in_submission?: boolean
+          is_robot?: boolean
           name?: string
           service_type_id?: string
           sort_order?: number
@@ -12411,6 +12663,75 @@ export type Database = {
         }
         Relationships: []
       }
+      spec_section_match_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          match_kind: string
+          pattern: string
+          priority: number
+          section_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_kind: string
+          pattern: string
+          priority?: number
+          section_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          match_kind?: string
+          pattern?: string
+          priority?: number
+          section_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spec_section_match_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spec_section_match_rules_section_code_fkey"
+            columns: ["section_code"]
+            isOneToOne: false
+            referencedRelation: "spec_sections"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      spec_sections: {
+        Row: {
+          code: string
+          created_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       statement_acknowledgments: {
         Row: {
           acknowledged_at: string
@@ -12976,18 +13297,21 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          is_robot: boolean
           name: string
           service_type_id: string
         }
         Insert: {
           created_at?: string | null
           id?: string
+          is_robot?: boolean
           name: string
           service_type_id: string
         }
         Update: {
           created_at?: string | null
           id?: string
+          is_robot?: boolean
           name?: string
           service_type_id?: string
         }
@@ -13770,6 +14094,63 @@ export type Database = {
           },
         ]
       }
+      twin_run_scores: {
+        Row: {
+          axis: string | null
+          counts_note: string | null
+          created_at: string
+          delta_pct: number | null
+          gate_eligible: boolean
+          id: string
+          kind: string
+          locked_total: number | null
+          note: string | null
+          project_name: string | null
+          reference_bid_number: string | null
+          reference_value: number | null
+          run_label: string
+          scope_verdict: string | null
+          scored_at: string | null
+          twin_bid_number: string | null
+        }
+        Insert: {
+          axis?: string | null
+          counts_note?: string | null
+          created_at?: string
+          delta_pct?: number | null
+          gate_eligible?: boolean
+          id?: string
+          kind?: string
+          locked_total?: number | null
+          note?: string | null
+          project_name?: string | null
+          reference_bid_number?: string | null
+          reference_value?: number | null
+          run_label: string
+          scope_verdict?: string | null
+          scored_at?: string | null
+          twin_bid_number?: string | null
+        }
+        Update: {
+          axis?: string | null
+          counts_note?: string | null
+          created_at?: string
+          delta_pct?: number | null
+          gate_eligible?: boolean
+          id?: string
+          kind?: string
+          locked_total?: number | null
+          note?: string | null
+          project_name?: string | null
+          reference_bid_number?: string | null
+          reference_value?: number | null
+          run_label?: string
+          scope_verdict?: string | null
+          scored_at?: string | null
+          twin_bid_number?: string | null
+        }
+        Relationships: []
+      }
       twin_runs: {
         Row: {
           bid_id: string | null
@@ -13817,6 +14198,66 @@ export type Database = {
             columns: ["twin_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      twin_shadow_runs: {
+        Row: {
+          axis: string | null
+          created_at: string
+          delta_pct: number | null
+          id: string
+          locked_at: string | null
+          locked_total: number | null
+          reference_bid_id: string
+          reference_value: number | null
+          scored_at: string | null
+          shadow_bid_id: string
+          status: string
+          twin_user_id: string
+        }
+        Insert: {
+          axis?: string | null
+          created_at?: string
+          delta_pct?: number | null
+          id?: string
+          locked_at?: string | null
+          locked_total?: number | null
+          reference_bid_id: string
+          reference_value?: number | null
+          scored_at?: string | null
+          shadow_bid_id: string
+          status?: string
+          twin_user_id: string
+        }
+        Update: {
+          axis?: string | null
+          created_at?: string
+          delta_pct?: number | null
+          id?: string
+          locked_at?: string | null
+          locked_total?: number | null
+          reference_bid_id?: string
+          reference_value?: number | null
+          scored_at?: string | null
+          shadow_bid_id?: string
+          status?: string
+          twin_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "twin_shadow_runs_reference_bid_id_fkey"
+            columns: ["reference_bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_shadow_runs_shadow_bid_id_fkey"
+            columns: ["shadow_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
         ]
@@ -16089,6 +16530,7 @@ export type Database = {
           person_name: string
         }[]
       }
+      get_money_waiting_email_payload: { Args: never; Returns: Json }
       get_my_email_schedule: { Args: never; Returns: Json }
       get_my_partner_job_costing: { Args: { p_job_id: string }; Returns: Json }
       get_my_partner_jobs: { Args: never; Returns: Json }
@@ -16711,6 +17153,14 @@ export type Database = {
           status: string
         }[]
       }
+      list_reference_presence: {
+        Args: never
+        Returns: {
+          bid_id: string
+          has_counts: boolean
+          has_pricing: boolean
+        }[]
+      }
       list_reports_for_bid: {
         Args: { p_bid_id: string }
         Returns: {
@@ -16785,6 +17235,25 @@ export type Database = {
           time_end: string
           time_start: string
           work_date: string
+        }[]
+      }
+      list_shadow_runs: {
+        Args: never
+        Returns: {
+          axis: string
+          created_at: string
+          delta_pct: number
+          id: string
+          locked_at: string
+          locked_total: number
+          project_name: string
+          reference_bid_number: string
+          reference_sent_at: string
+          reference_value: number
+          requested_by_name: string
+          scored_at: string
+          shadow_bid_number: string
+          status: string
         }[]
       }
       list_stale_unlinked_mercury_transactions_for_tally_staff: {
