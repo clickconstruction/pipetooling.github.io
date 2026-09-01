@@ -4275,6 +4275,7 @@ export default function People() {
           userOptions={writeupUserSelectOptions}
           authUserId={authUser.id}
           isDev={isDev}
+          myRole={authRole}
         />
       ) : null}
 

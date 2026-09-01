@@ -21,6 +21,8 @@ export type LateTimelineEntry = {
   label: string
   title: string
   minutesLate: number
+  /** Latest excuse annotation for this day (v2.2556) — dims the row and drops it from pattern counts. */
+  excuse: { note: string; authorName: string | null } | null
 }
 
 export type WriteupsTimelineRow =

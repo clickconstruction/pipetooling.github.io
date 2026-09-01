@@ -41,11 +41,16 @@ type Props = {
   row: WriteupListRow | null
   templates: TemplateOption[]
   userOptions: SearchableSelectOption[]
+  /** Create-mode prefill (v2.2556, escalation banner): subject + template preselected. */
+  initialSubjectUserId?: string | null
+  initialTemplateId?: string | null
+  /** Read-only context strip above the form (derived attendance facts — the author edits the write-up, not this). */
+  contextNote?: string | null
   authUserId: string
   onAfterSave: () => void | Promise<void>
 }
 
-export function WriteupEditorModal({ open, onClose, mode, row, templates, userOptions, authUserId, onAfterSave }: Props) {
+export function WriteupEditorModal({ open, onClose, mode, row, templates, userOptions, authUserId, onAfterSave, initialSubjectUserId, initialTemplateId, contextNote }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [templateId, setTemplateId] = useState('')
@@ -78,8 +83,8 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
       return
     }
     if (mode === 'create') {
-      setTemplateId('')
-      setSubjectUserId('')
+      setTemplateId(initialTemplateId ?? '')
+      setSubjectUserId(initialSubjectUserId ?? '')
       setAnswers({})
       setDisclosure('')
       setLocalId(null)
@@ -95,7 +100,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
       setAnswers(merged)
       setDisclosure(row.disclosure ?? '')
     }
-  }, [open, mode, row, templates])
+  }, [open, mode, row, templates, initialSubjectUserId, initialTemplateId])
 
   useEffect(() => {
     if (!open || mode !== 'create' || localId) return
@@ -288,6 +293,22 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
           />
         </div>
 
+        {mode === 'create' && contextNote ? (
+          <div
+            style={{
+              marginBottom: '1rem',
+              background: 'var(--bg-amber-tint)',
+              border: '1px solid var(--border-amber)',
+              borderRadius: 6,
+              padding: '0.5rem 0.75rem',
+              fontSize: '0.8125rem',
+              color: 'var(--text-amber-800)',
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>From clock records:</strong> {contextNote}
+          </div>
+        ) : null}
         {schemaBlocks.length > 0 && (
           <div style={{ marginBottom: '1rem' }}>
             <WriteupFormFields schema={schemaBlocks} answers={answers} onChange={setAnswers} readOnly={readOnly} disabled={saving} />
