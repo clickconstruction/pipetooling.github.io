@@ -40,6 +40,14 @@ The bill picker searches by amount, job number, job name, address — and now th
 
 ## When a check covers several bills
 
-Use {{button:outline|Add Additional Allocation}} to split one deposit across bills — the matched customer's chips make it easy to pick their bills one at a time until the remaining hits zero.
+If a set of the matched customer's bills adds up to the deposit exactly, the panel offers it as one chip:
+
+:::example a $4,091.50 check, no single bill matches
+{{chip:green|2 bills = $4,091.50 — $2,711.50 · 915 + $1,380.00 · 880 — fills 2 allocation lines}}
+:::
+
+Tapping it fills one allocation line per bill for you to review, then {{button:blue|Apply}} as usual. The chip only appears when exactly one combination works — if several could, nothing is suggested and you pick by hand.
+
+You can always split a deposit yourself: {{button:outline|Add Additional Allocation}} adds lines, and the matched customer's chips make it easy to pick their bills one at a time until the remaining hits zero.
 
 If someone already recorded the payment by hand in Edit Job, switch the line to **Payment received** and link the deposit to that recorded payment instead — that avoids counting the same money twice.

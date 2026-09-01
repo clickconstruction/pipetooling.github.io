@@ -53,6 +53,7 @@ import {
 } from '../../lib/arStripeAutoClose'
 import { matchArDepositToPayer } from '../../lib/jobs/arDepositCustomerMatch'
 import { buildArExactMatchSweep } from '../../lib/jobs/arExactMatchSweep'
+import { findExactBillCombos } from '../../lib/jobs/arPayerBillCombos'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 
 type MercuryCandidate =
@@ -490,6 +491,34 @@ export default function BankPaymentsModal({
         .map((t) => t.key),
     )
   }, [selected, targets])
+
+  /**
+   * One-check-several-bills suggestion: when none of the matched payer's bills
+   * equals the deposit but exactly ONE set of 2–4 of them sums to it
+   * cents-exactly, offer that set as a single chip that fills the allocation
+   * lines. More than one exact combo → too ambiguous, no suggestion.
+   */
+  const payerBillCombo = useMemo(() => {
+    if (!depositPayerMatch || !selected || depositPayerTargets.length < 2) return null
+    if (depositPayerTargets.some((t) => depositAmountMatchKeys.has(t.key))) return null
+    const combos = findExactBillCombos(Number(selected.remaining_available), depositPayerTargets)
+    if (combos.length !== 1) return null
+    const comboTargets = combos[0]!.map((k) => targetByKey.get(k))
+    if (comboTargets.some((t) => t == null)) return null
+    return comboTargets as BankPaymentTarget[]
+  }, [depositPayerMatch, selected, depositPayerTargets, depositAmountMatchKeys, targetByKey])
+
+  /** Fill one allocation line per combo bill (replaces the single untouched line the chip renders next to). */
+  const applyComboAllocation = useCallback((comboTargets: BankPaymentTarget[]) => {
+    setAllocLines(
+      comboTargets.map((t) => ({
+        id: crypto.randomUUID(),
+        kind: 'billed' as const,
+        targetKey: t.key,
+        amountStr: formatMoney(t.remaining),
+      })),
+    )
+  }, [])
 
   /**
    * Monotonic id of the newest list request. A refetch (config landing, filter
@@ -1909,6 +1938,45 @@ export default function BankPaymentsModal({
                                       alignItems: 'stretch',
                                     }}
                                   >
+                                    {payerBillCombo && allocLines.length === 1 ? (
+                                      <button
+                                        type="button"
+                                        disabled={!canApply}
+                                        onClick={() => applyComboAllocation(payerBillCombo)}
+                                        aria-label={`Fill ${payerBillCombo.length} allocations: ${payerBillCombo
+                                          .map((t) => `${formatBankPaymentTargetDollars(t.remaining)} ${t.hcpNumber}`)
+                                          .join(' + ')}`}
+                                        style={{
+                                          display: 'inline-flex',
+                                          flexDirection: 'column',
+                                          alignItems: 'flex-start',
+                                          gap: 1,
+                                          padding: '0.3rem 0.55rem',
+                                          fontSize: '0.75rem',
+                                          border: '1px dashed var(--border-green)',
+                                          borderRadius: 4,
+                                          background: 'var(--bg-green-tint)',
+                                          color: 'var(--text-700)',
+                                          cursor: !canApply ? 'not-allowed' : 'pointer',
+                                          textAlign: 'left',
+                                          maxWidth: '100%',
+                                          lineHeight: 1.35,
+                                        }}
+                                      >
+                                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                                          {payerBillCombo.length} bills ={' '}
+                                          {formatBankPaymentTargetDollars(Number(selected.remaining_available))}
+                                        </span>
+                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                          {payerBillCombo
+                                            .map((t) => `${formatBankPaymentTargetDollars(t.remaining)} · ${t.hcpNumber || '—'}`)
+                                            .join('  +  ')}
+                                        </span>
+                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-green-700)' }}>
+                                          fills {payerBillCombo.length} allocation lines
+                                        </span>
+                                      </button>
+                                    ) : null}
                                     {depositPayerTargets.map((t) => {
                                       const isAmountMatch = depositAmountMatchKeys.has(t.key)
                                       const chipLabel = `${formatBankPaymentTargetDollars(t.remaining)} · ${bankPaymentTargetPrimaryLabel(t)}`

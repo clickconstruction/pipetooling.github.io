@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bankPaymentTargetCuesAfterAmount,
   bankPaymentTargetsFromStageRows,
   stagesSectionKeyForJobStatus,
   buildCapableToBillBreakdownRows,
@@ -1304,6 +1305,26 @@ describe('bankPaymentTargetsFromStageRows — payer names in targets and search'
     expect(t?.gcName).toBe('TF Harper Associates')
     expect(t?.searchLabel).toContain('Weiss Services LLC')
     expect(t?.searchLabel).toContain('TF Harper Associates')
+    // The visible option line carries the payers too.
+    const cues = bankPaymentTargetCuesAfterAmount(t!)
+    expect(cues).toContain('Weiss Services LLC')
+    expect(cues).toContain('TF Harper Associates')
+  })
+
+  it('customer identical to the GC appears once, not twice', () => {
+    const inv = billedInvoiceStub({ id: 'inv-k', job_id: 'job-k', amount: 1980 })
+    const job = jobStub({
+      id: 'job-k',
+      status: 'billed',
+      job_name: 'Springtown- HVAC',
+      customer_name: 'Knight Contracting',
+      gcCustomer: { id: 'gc-k', name: 'Knight Contracting' },
+      invoices: [inv] as JobWithDetails['invoices'],
+    })
+    const rows = buildBilledStageRows([job], [])
+    const t = bankPaymentTargetsFromStageRows(rows).find((x) => x.invoiceId === 'inv-k')
+    expect(t?.searchLabel.match(/Knight Contracting/g)?.length).toBe(1)
+    expect(bankPaymentTargetCuesAfterAmount(t!).match(/Knight Contracting/g)?.length).toBe(1)
   })
 
   it('skips a payer name already contained in the job name and blanks stay empty', () => {
