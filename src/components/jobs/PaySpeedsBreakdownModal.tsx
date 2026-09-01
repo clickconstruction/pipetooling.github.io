@@ -12,6 +12,7 @@ import { buildMoneyWaiting, openBillsForCustomers, billWaitTone, type MoneyWaiti
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import PaySpeedDataHealthModal from './PaySpeedDataHealthModal'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
+import MoneyWaitingShareModal from './MoneyWaitingShareModal'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
@@ -288,6 +289,7 @@ export default function PaySpeedsBreakdownModal({
   onOpenJobDetail,
   canExcludePayments = false,
   isDev = false,
+  canEmailMoneyWaiting = false,
   onOpenJobStacked,
   onSpeedsChanged,
 }: {
@@ -304,6 +306,8 @@ export default function PaySpeedsBreakdownModal({
   canExcludePayments?: boolean
   /** Devs only: the drill-down's ⚙ No Count Date setting (v2.2303). */
   isDev?: boolean
+  /** Staff senders (forecast-email gate): shows "✉ Email this weekly…" on Money waiting (v2.2565). */
+  canEmailMoneyWaiting?: boolean
   /** Open a drill-down row's job STACKED above the modals, with a refresh-on-save callback (v2.2311). */
   onOpenJobStacked?: (jobId: string, onSaved: () => void) => void
   /** Refetch the pay-speeds RPC after an exclusion toggles, so medians update live. */
@@ -328,6 +332,7 @@ export default function PaySpeedsBreakdownModal({
   // Per-customer receipts toggle (row click) — the payments behind each median.
   const [openReceipts, setOpenReceipts] = useState<Record<string, boolean>>({})
   const [dataHealthOpen, setDataHealthOpen] = useState(false)
+  const [moneyWaitingShareOpen, setMoneyWaitingShareOpen] = useState(false)
   const toggleReceipts = (customerId: string) =>
     setOpenReceipts((prev) => ({ ...prev, [customerId]: !prev[customerId] }))
   const companyMedian = paySpeeds?.company?.medianDays ?? null
@@ -490,6 +495,8 @@ export default function PaySpeedsBreakdownModal({
           />
         )}
 
+        {moneyWaitingShareOpen && <MoneyWaitingShareModal onClose={() => setMoneyWaitingShareOpen(false)} />}
+
         {money && (money.rows.length > 0 || money.onPaceCount > 0) ? (
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.8rem 0.8rem 0.6rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
@@ -497,6 +504,27 @@ export default function PaySpeedsBreakdownModal({
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                 slowest first · the bar is their open bills, sized by dollars · click a row for each job they owe
               </span>
+              {canEmailMoneyWaiting && (
+                <button
+                  type="button"
+                  onClick={() => setMoneyWaitingShareOpen(true)}
+                  title="Email this list — now, or on a weekly chain (the Payment forecast email's rails)"
+                  style={{
+                    marginLeft: 'auto',
+                    border: '1px solid var(--border)',
+                    background: 'transparent',
+                    borderRadius: 7,
+                    padding: '0.18rem 0.6rem',
+                    cursor: 'pointer',
+                    color: 'var(--text-link)',
+                    fontSize: '0.72rem',
+                    fontWeight: 650,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ✉ Email this weekly…
+                </button>
+              )}
             </div>
             <div style={isMobile ? { overflowX: 'auto', WebkitOverflowScrolling: 'touch' } : undefined}>
               <div style={isMobile ? { minWidth: 560 } : undefined}>
