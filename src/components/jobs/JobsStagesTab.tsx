@@ -23,6 +23,13 @@ import { JobsGcReviewModal } from './JobsGcReviewModal'
 import SendBackReasonField from './SendBackReasonField'
 import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
+import {
+  SEND_BACK_REWORK_REASON,
+  SEND_BACK_STAGE_BILLED_REASON,
+  sendBackJobBillingContext,
+  sendBackRequiresVoidAttestation,
+  type SendBackJobBillingContext,
+} from '../../lib/jobs/jobSendBackContext'
 import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
 import { JobsWeeklyMoneyModal } from './JobsWeeklyMoneyModal'
@@ -908,6 +915,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     jobName: string
     toStatus: 'working' | 'ready_to_bill'
     rtbDraftCount: number
+    /** v2.2601: set on RTB → Working send-backs; drives the stage-billed framing. */
+    billing?: SendBackJobBillingContext
   } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceWithJob; action: 'delete' | 'revert' } | null>(null)
   const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
@@ -916,6 +925,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [sendBackReason, setSendBackReason] = useState('')
   const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
   const sendBackCollectPaymentNotice = useSendBackCollectPaymentFlowNotice(sendBackJob)
+  /**
+   * v2.2601: the "voiding this bill / call the Subcontractor" attestation gates
+   * the send-back only when it actually voids something — Billed → RTB always
+   * does; RTB → Working only when a deliberate draft carve is deleted. Missing
+   * billing context (never expected for RTB → Working) fails safe: required.
+   */
+  const sendBackNeedsAttestation =
+    sendBackJob != null &&
+    (sendBackJob.toStatus === 'ready_to_bill' ||
+      (sendBackJob.billing ? sendBackRequiresVoidAttestation(sendBackJob.billing) : true))
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'waiting' | 'ready_to_bill' | 'billed' } | null>(null)
   // Collections flag confirm: 'to' = Billed → Collections (optional note), 'from' = Collections → Billed.
   const [collectionsConfirm, setCollectionsConfirm] = useState<{ job: JobWithDetails; direction: 'to' | 'from' } | null>(null)
@@ -2189,7 +2208,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                   jobName: j.job_name ?? '—',
                   toStatus: 'working',
-                  rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
+                  rtbDraftCount: sendBackJobBillingContext(j.invoices).rtbDraftCount,
+                  billing: sendBackJobBillingContext(j.invoices),
                 }))}
           onInvoiceSendBack={(inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' }))}
           showRemaining={true}
@@ -3686,7 +3706,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                             jobName: j.job_name ?? '—',
                             toStatus: 'working',
-                            rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
+                            rtbDraftCount: sendBackJobBillingContext(j.invoices).rtbDraftCount,
+                            billing: sendBackJobBillingContext(j.invoices),
                           }))}
                     onInvoiceSendBack={(inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' }))}
                     showRemaining={true}
@@ -5177,7 +5198,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
               {sendBackJob.toStatus === 'ready_to_bill'
                 ? 'This will move the job back to Ready to Bill.'
-                : sendBackJob.rtbDraftCount > 0
+                : sendBackJob.billing?.stageBilledContinues
+                  ? `The job returns to Working. ${
+                      sendBackJob.billing.billedCount === 1
+                        ? 'Its billed line stays billed'
+                        : `Its ${sendBackJob.billing.billedCount} billed lines stay billed`
+                    } ($${formatCurrency(sendBackJob.billing.billedTotalDollars)}).${
+                      sendBackJob.rtbDraftCount > 0
+                        ? ' The unsent remainder draft is removed and comes back automatically the next time the job is ready to bill.'
+                        : ''
+                    }`
+                  : sendBackJob.rtbDraftCount > 0
                   ? `This will move the job back to Assigned Jobs (Working). ${
                       sendBackJob.rtbDraftCount === 1
                         ? `This will also remove 1 Ready to Bill draft bill (same as ${DELETE_DRAFT_BILL_LABEL.replace('\u00A0', ' ')}).`
@@ -5201,17 +5232,43 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 Billed lines on this job will be removed (Stripe invoices voided first where applicable). Lines with recorded payments block send back until adjusted. Paid Stripe invoices block until resolved in Stripe.
               </p>
             )}
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={sendBackChecked}
-                  onChange={(e) => setSendBackChecked(e.target.checked)}
-                  style={{ marginTop: 4 }}
-                />
-                <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
-              </label>
-            </div>
+            {sendBackNeedsAttestation && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={sendBackChecked}
+                    onChange={(e) => setSendBackChecked(e.target.checked)}
+                    style={{ marginTop: 4 }}
+                  />
+                  <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
+                </label>
+              </div>
+            )}
+            {sendBackJob.toStatus === 'working' && sendBackJob.billing?.stageBilledContinues && (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                {[SEND_BACK_STAGE_BILLED_REASON, SEND_BACK_REWORK_REASON].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setSendBackReason(r)}
+                    aria-pressed={sendBackReason === r}
+                    style={{
+                      font: 'inherit',
+                      fontSize: '0.8rem',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: 999,
+                      border: sendBackReason === r ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+                      background: sendBackReason === r ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                      color: 'var(--text-strong)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            )}
             {sendBackJob.toStatus === 'working' && (
               <SendBackReasonField
                 value={sendBackReason}
@@ -5234,7 +5291,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               <button
                 type="button"
                 disabled={
-                  !sendBackChecked ||
+                  (sendBackNeedsAttestation && !sendBackChecked) ||
                   (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) ||
                   stagesStatusUpdatingId === sendBackJob.id
                 }
@@ -5269,11 +5326,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: sendBackChecked && stagesStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : '#9ca3af',
+                  background:
+                    (!sendBackNeedsAttestation || sendBackChecked) && stagesStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : '#9ca3af',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: sendBackChecked && stagesStatusUpdatingId !== sendBackJob.id ? 'pointer' : 'not-allowed',
+                  cursor:
+                    (!sendBackNeedsAttestation || sendBackChecked) && stagesStatusUpdatingId !== sendBackJob.id
+                      ? 'pointer'
+                      : 'not-allowed',
                 }}
               >
                 {stagesStatusUpdatingId === sendBackJob.id ? '…' : sendBackJob.toStatus === 'working' ? 'Send Job Back' : 'Send back'}
