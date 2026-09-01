@@ -20,8 +20,10 @@ export type JobFixtureForStripe = {
  * their real prices WHEN they sum exactly to the target cents — it exists to
  * bill "whatever isn't on another invoice", and the cents-exact equality
  * guarantees that reading is true (any payment, dollar carve, rider, or
- * extra_line_item breaks it). Everything else keeps the historical whole-job
- * proration. Mirrored client-side in src/lib/invoiceScopedFixtures.ts.
+ * extra_line_item breaks it). Everything else prorates over the still-unlinked
+ * rows (v2.2589 — rows on other bills never re-list; the whole-job proration
+ * survives only on jobs with no links at all, where the sets are identical).
+ * Mirrored client-side in src/lib/invoiceScopedFixtures.ts.
  */
 export function scopeFixturesToInvoice<
   T extends { invoice_id?: string | null; name?: string | null; count?: number | null; line_unit_price?: number | null },
@@ -32,12 +34,16 @@ export function scopeFixturesToInvoice<
 ): T[] {
   const linked = rows.filter((r) => (r.invoice_id ?? null) === invoiceId)
   if (linked.length > 0) return linked
+  const unlinked = rows.filter((r) => (r.invoice_id ?? null) === null)
   if (invoice?.isPrimaryRtbBundle === true && Number.isFinite(invoice.targetAmountCents) && invoice.targetAmountCents > 0) {
-    const unlinked = rows.filter((r) => (r.invoice_id ?? null) === null && scopeLineCents(r) > 0)
-    const sumCents = unlinked.reduce((s, r) => s + scopeLineCents(r), 0)
-    if (unlinked.length > 0 && sumCents === invoice.targetAmountCents) return unlinked
+    const unlinkedBillable = unlinked.filter((r) => scopeLineCents(r) > 0)
+    const sumCents = unlinkedBillable.reduce((s, r) => s + scopeLineCents(r), 0)
+    if (unlinkedBillable.length > 0 && sumCents === invoice.targetAmountCents) return unlinkedBillable
   }
-  return rows
+  // v2.2589: a row linked to ANOTHER invoice is already listed on that bill —
+  // never re-list it here. Proration happens over the unlinked rows only; when
+  // every row is linked elsewhere the caller's single-line fallback applies.
+  return unlinked
 }
 
 /** Cents for one row in the scoping equality — same math as lineExtendedCents below. */
@@ -102,7 +108,9 @@ function allocateProportionalCents(rawCents: number[], target: number): number[]
   frac.sort((a, b) => (b.f !== a.f ? b.f - a.f : a.i - b.i))
   const out = [...floors]
   for (let k = 0; k < rem && k < n; k++) {
-    out[frac[k].i]++
+    const f = frac[k]
+    if (!f) break
+    out[f.i] = (out[f.i] ?? 0) + 1
   }
   return out
 }
@@ -197,19 +205,22 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
 
   const items: StripeInvoiceLineItem[] = []
   for (let i = 0; i < billable.length; i++) {
+    const row = billable[i]
+    if (!row) continue
     const amt = allocated[i] ?? 0
     if (amt <= 0) continue
     items.push({
       amount: amt,
-      description: fixtureStripeDescription(billable[i]),
-      source: { kind: 'fixture', jobs_ledger_fixture_id: billable[i].id },
+      description: fixtureStripeDescription(row),
+      source: { kind: 'fixture', jobs_ledger_fixture_id: row.id },
     })
   }
 
   let sumItems = items.reduce((s, it) => s + it.amount, 0)
   const drift = targetAmountCents - sumItems
-  if (drift !== 0 && items.length > 0) {
-    items[items.length - 1].amount += drift
+  const lastItem = items[items.length - 1]
+  if (drift !== 0 && lastItem) {
+    lastItem.amount += drift
     sumItems = items.reduce((s, it) => s + it.amount, 0)
   }
 
