@@ -111,6 +111,7 @@ import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienToolingPrefillModal from './LienToolingPrefillModal'
+import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { HazmatFeeModal, type HazmatFeeModalJob } from './HazmatFeeModal'
 import { ScheduleJobModal } from './ScheduleJobModal'
@@ -711,10 +712,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     invoice: JobsLedgerInvoice | null
   } | null>(null)
   const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
+  /** Release of lien (v2.2579): in-app waiver-and-release modal — same office set as the hazmat gate. */
+  const [lienReleaseModal, setLienReleaseModal] = useState<{
+    job: JobWithDetails
+    invoice: JobsLedgerInvoice | null
+  } | null>(null)
   const [hazmatFeeJob, setHazmatFeeJob] = useState<HazmatFeeModalJob | null>(null)
   /** Same office set as the create_hazmat_fee_incident RPC gate. */
   const canCreateHazmatFee =
     authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const openLienReleaseFromRow = canCreateHazmatFee
+    ? (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => setLienReleaseModal(ctx)
+    : undefined
   const openHazmatFee = (j: JobWithDetails) =>
     setHazmatFeeJob({
       id: j.id,
@@ -871,6 +880,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const masterRow = users.find((u) => u.id === job.master_user_id)
     return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
   }, [users, lienToolingPrefillModal?.job?.id, lienToolingPrefillModal?.job?.master_user_id, authProfileName])
+  const lienReleaseSignerFallback = useMemo(() => {
+    const job = lienReleaseModal?.job
+    const sessionName = authProfileName?.trim() ?? ''
+    if (!job?.master_user_id) return sessionName
+    const masterRow = users.find((u) => u.id === job.master_user_id)
+    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
+  }, [users, lienReleaseModal?.job?.id, lienReleaseModal?.job?.master_user_id, authProfileName])
   const [sendBackJob, setSendBackJob] = useState<{
     id: string
     hcpNumber: string
@@ -2050,6 +2066,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
     const unifiedShared = {
       ...shared,
+      onOpenLienRelease: openLienReleaseFromRow,
       stagesHamMode,
       flashInvoiceId: stagesInvoiceFlashId,
       stagesInvoiceUpdatingId,
@@ -3596,6 +3613,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     rows={readyToBillRows}
                     stagesSortMode={stagesSortMode}
                     actionLabel={'Bill Customer'}
+                    onOpenLienRelease={openLienReleaseFromRow}
                     onJobAction={(j) => {
                       if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
                         showToast('Link this job to a customer before billing.', 'error')
@@ -3952,6 +3970,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     showClickTooling={false}
                     onOpenLienTooling={(ctx) =>
                       setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+                    onOpenLienRelease={openLienReleaseFromRow}
                     onJobSendBack={(j) =>
                       stagesHamMode
                         ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
@@ -4067,6 +4086,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     showClickTooling={false}
                     onOpenLienTooling={(ctx) =>
                       setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+                    onOpenLienRelease={openLienReleaseFromRow}
                     onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
                     onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
                     showRemaining={true}
@@ -5002,6 +5022,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienToolingPrefillModal?.invoice ?? null}
         senderNameFallback={lienToolingSenderFallback}
         authEmail={authUser?.email?.trim() ?? ''}
+      />
+      <LienReleaseModal
+        open={lienReleaseModal != null}
+        onClose={() => setLienReleaseModal(null)}
+        job={lienReleaseModal?.job ?? null}
+        invoice={lienReleaseModal?.invoice ?? null}
+        signerNameFallback={lienReleaseSignerFallback}
       />
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}

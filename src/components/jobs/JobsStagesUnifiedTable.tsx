@@ -2,7 +2,7 @@ import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
-import { FileSpreadsheet } from 'lucide-react'
+import { FileCheck2, FileSpreadsheet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
   formatCurrency,
@@ -99,6 +99,8 @@ export type JobsStagesUnifiedTableProps = {
   showClickTooling?: boolean
   /** Billed Awaiting Payment: open Lien Tooling prefill modal. */
   onOpenLienTooling?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
+  /** Release of lien (v2.2579): open the in-app waiver-and-release modal. */
+  onOpenLienRelease?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
   /** Billed Awaiting Payment: flag the row's job as difficult-to-collect (Collections section). */
   onJobMoveToCollections?: (j: JobWithDetails) => void
   /** Collections: short muted note line under the amounts (e.g. the stored collections reason). */
@@ -186,6 +188,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     flashInvoiceId = null,
     showClickTooling = true,
     onOpenLienTooling,
+    onOpenLienRelease,
     onJobMoveToCollections,
     jobNoteLine,
     stagesJobFlashId,
@@ -718,6 +721,17 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             Edit
                           </button>
                           <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                              {onOpenLienRelease ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenLienRelease({ job: j, invoice: bundleInv ?? null })}
+                                  title="Release of lien — generate a conditional or unconditional waiver and release"
+                                  aria-label="Release of lien"
+                                  style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <FileCheck2 size={16} aria-hidden />
+                                </button>
+                              ) : null}
                               <ShareJobButton
                                 jobId={j.id}
                                 fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
@@ -1114,6 +1128,17 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             Edit
                           </button>
                           <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {onOpenLienRelease ? (
+                            <button
+                              type="button"
+                              onClick={() => onOpenLienRelease({ job, invoice: inv })}
+                              title="Release of lien — generate a conditional or unconditional waiver and release"
+                              aria-label="Release of lien"
+                              style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <FileCheck2 size={16} aria-hidden />
+                            </button>
+                          ) : null}
                           <ShareJobButton
                             jobId={job.id}
                             fields={{ hcpNumber: job.hcp_number, jobName: job.job_name, jobAddress: job.job_address }}
