@@ -40,6 +40,7 @@ import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { maybePromoteJobToBilledAfterCustomerInvoice } from '../../lib/promoteJobToBilledIfFullyInvoiced'
+import BillCustomerLienReleaseStrip from './BillCustomerLienReleaseStrip'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
@@ -2069,6 +2070,14 @@ export default function SendRecordInvoiceModal({
             remove this on Edit Job → Invoices → Bill to…
           </div>
         ) : null}
+
+        {/* Lien releases for this job (v2.2582) — issued list + clearance + new/unconditional follow-up. */}
+        <BillCustomerLienReleaseStrip
+          open={open}
+          jobId={jobRaw?.id ?? null}
+          jobDetails={billCustomerJobDetails}
+          jobNumber={effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}
+        />
 
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" onClick={() => setTab('stripe')} style={billCustomerTopTabButtonStyle(tab === 'stripe')}>

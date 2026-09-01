@@ -23,6 +23,7 @@ import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -72,6 +73,8 @@ export default function LienReleaseModal({
   job,
   invoice,
   signerNameFallback,
+  onIssued,
+  initialFormType,
 }: {
   open: boolean
   onClose: () => void
@@ -80,8 +83,12 @@ export default function LienReleaseModal({
   invoice: JobsLedgerInvoice | null
   /** Job master's People "Full name and title" with session-name fallback (same line the lien prefill uses). */
   signerNameFallback: string
+  /** Fired after a release row is recorded (v2.2582) so openers can refresh badges/strips. */
+  onIssued?: () => void
+  /** Open on this form type instead of conditional-progress (e.g. the unconditional follow-up). */
+  initialFormType?: LienWaiverFormType
 }) {
-  const { role: authRole } = useAuth()
+  const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [formType, setFormType] = useState<LienWaiverFormType>('conditional_progress')
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<ReadonlySet<string>>(() => new Set())
@@ -89,6 +96,8 @@ export default function LienReleaseModal({
   const [ownerName, setOwnerName] = useState<string | null>(null)
   const [issuerGen, setIssuerGen] = useState(0)
   const [pdfBusy, setPdfBusy] = useState(false)
+  const [saveBusy, setSaveBusy] = useState(false)
+  const [savedReleaseId, setSavedReleaseId] = useState<string | null>(null)
 
   const issuer = useMemo(() => (open ? getPhysicalInvoiceIssuerDraft() : null), [open, issuerGen])
 
@@ -137,7 +146,8 @@ export default function LienReleaseModal({
   // Open-reset: default the selection to the row's invoice, else billed lines, else everything selectable.
   useEffect(() => {
     if (!open || !job) return
-    setFormType('conditional_progress')
+    setFormType(initialFormType ?? 'conditional_progress')
+    setSavedReleaseId(null)
     const selectable = selectableInvoices(job)
     if (invoice && selectable.some((i) => i.id === invoice.id)) {
       setSelectedInvoiceIds(new Set([invoice.id]))
@@ -145,7 +155,7 @@ export default function LienReleaseModal({
     }
     const billed = selectable.filter((i) => i.status === 'billed')
     setSelectedInvoiceIds(new Set((billed.length > 0 ? billed : selectable).map((i) => i.id)))
-  }, [open, job?.id, invoice?.id])
+  }, [open, job?.id, invoice?.id, initialFormType])
 
   const selectedInvoices = useMemo(
     () => invoices.filter((i) => selectedInvoiceIds.has(i.id)),
@@ -158,6 +168,7 @@ export default function LienReleaseModal({
       setFields(null)
       return
     }
+    setSavedReleaseId(null)
     setFields((prev) => {
       const next = buildLienWaiverPrefill(formType, {
         job,
@@ -208,6 +219,43 @@ export default function LienReleaseModal({
     const ok = openHtmlPrintWindow(buildLienWaiverPrintHtml(formType, fields, jobNumber))
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
   }, [fields, formType, jobNumber, showToast])
+
+  // Record the issued release (v2.2582) — powers the board badge, the Bill
+  // Customer strip, and the cleared-payment → unconditional follow-through.
+  const saveIssued = useCallback(async () => {
+    if (!fields || !job || saveBusy || savedReleaseId) return
+    setSaveBusy(true)
+    try {
+      const amountNum = Number((fields.amount ?? '').replace(/[$,\s]/g, ''))
+      const usesThrough = lienWaiverUsesField(formType, 'throughDate')
+      const fieldsSnapshot: Record<string, string> = { ...fields }
+      const data = await withSupabaseRetry<{ id: string }>(
+        () =>
+          supabase
+            .from('job_lien_releases')
+            .insert({
+              job_id: job.id,
+              invoice_ids: [...selectedInvoiceIds],
+              form_type: formType,
+              amount: Number.isFinite(amountNum) ? Math.max(0, Math.round(amountNum * 100) / 100) : 0,
+              through_date: usesThrough && fields.throughDate ? fields.throughDate : null,
+              signed_date: fields.signedDate || null,
+              fields: fieldsSnapshot,
+              created_by: authUser?.id ?? null,
+            })
+            .select('id')
+            .single(),
+        'record lien release',
+      )
+      setSavedReleaseId(data?.id ?? 'saved')
+      showToast('Release recorded on the job.', 'success')
+      onIssued?.()
+    } catch {
+      showToast('Could not record the release — it can still be copied, printed, or downloaded.', 'error')
+    } finally {
+      setSaveBusy(false)
+    }
+  }, [fields, job, formType, selectedInvoiceIds, authUser?.id, saveBusy, savedReleaseId, showToast, onIssued])
 
   const downloadPdf = useCallback(async () => {
     if (!fields || pdfBusy) return
@@ -431,15 +479,31 @@ export default function LienReleaseModal({
             style={{
               padding: '0.5rem 1rem',
               fontSize: '0.875rem',
-              background: '#2563eb',
-              color: 'white',
-              border: 'none',
+              background: 'var(--surface)',
+              border: '1px solid #2563eb',
+              color: 'var(--text-link)',
               borderRadius: 4,
               cursor: pdfBusy ? 'wait' : 'pointer',
-              fontWeight: 500,
             }}
           >
             {pdfBusy ? 'Building…' : 'Download PDF'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void saveIssued()}
+            disabled={saveBusy || savedReleaseId != null}
+            style={{
+              padding: '0.5rem 1rem',
+              fontSize: '0.875rem',
+              background: savedReleaseId ? '#16a34a' : '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: saveBusy ? 'wait' : savedReleaseId ? 'default' : 'pointer',
+              fontWeight: 500,
+            }}
+          >
+            {savedReleaseId ? 'Issued ✓' : saveBusy ? 'Saving…' : 'Save & mark issued'}
           </button>
         </div>
       </div>

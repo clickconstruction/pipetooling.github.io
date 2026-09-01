@@ -931,7 +931,12 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
       })
     }
     if (onOpenLienRelease) {
-      items.push({ key: 'lien-release', label: 'Release of lien', onClick: () => onOpenLienRelease({ job: j, invoice: inv }) })
+      items.push({
+        key: 'lien-release',
+        label: 'Release of lien',
+        onClick: () => onOpenLienRelease({ job: j, invoice: inv }),
+        badge: props.lienReleaseJobIds?.has(j.id) ? 'live' : undefined,
+      })
     }
     if (onOpenLienTooling) {
       items.push({ key: 'lien', label: 'Lien Tooling', onClick: () => onOpenLienTooling({ job: j, invoice: inv }) })

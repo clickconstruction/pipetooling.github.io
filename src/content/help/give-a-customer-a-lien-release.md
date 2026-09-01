@@ -33,6 +33,18 @@ If the job has more than one bill line, green chips at the top let you pick whic
 
 - {{button:outline-blue|Copy for email}} puts the formatted release on your clipboard — paste it straight into an email to the GC.
 - {{button:outline-blue|Print}} opens a clean letter for wet signing.
-- {{button:blue|Download PDF}} saves a letter-format PDF to attach anywhere.
+- {{button:outline-blue|Download PDF}} saves a letter-format PDF to attach anywhere.
+- {{button:blue|Save & mark issued}} records the release on the job — do this whenever you actually send one.
 
 The document is designed to be signed by hand: if you leave the signer fields blank, the printed copy carries fill-in lines.
+
+## Track what you issued
+
+Once a release is saved, the app keeps it in sight:
+
+- The release button on the job's Pipeline row wears a **blue box** when the job has an issued release.
+- The **Bill Customer** window shows a **Lien releases** panel for the job: each release with its amount, issue date, and — for conditional releases — whether the check behind it has cleared. From there you can **View** the exact document again, **Void** a mistaken record, or start a **+ New release**.
+
+:::example The follow-through
+A conditional release only takes effect when the check clears — and once it does, the customer is owed the **unconditional** version. When a payment recorded on the job covers a conditional release, an **Issue unconditional** button appears next to it in Bill Customer, prefilled from the original. A {{chip:blue|Needs you}} card on your Dashboard counts any that are waiting, so none get forgotten.
+:::

@@ -748,6 +748,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadHazmatFeeJobIds()
   }, [loadHazmatFeeJobIds])
+  // Jobs with a live (non-voided) lien release — their release button wears a
+  // blue box (v2.2582). Same fail-soft posture as the hazmat lookup.
+  const [lienReleaseJobIds, setLienReleaseJobIds] = useState<ReadonlySet<string>>(() => new Set())
+  const loadLienReleaseJobIds = useCallback(async () => {
+    if (!canCreateHazmatFee) return
+    try {
+      const { data } = await supabase.from('job_lien_releases').select('job_id').is('voided_at', null)
+      setLienReleaseJobIds(new Set(((data ?? []) as { job_id: string }[]).map((r) => r.job_id)))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [canCreateHazmatFee])
+  useEffect(() => {
+    void loadLienReleaseJobIds()
+  }, [loadLienReleaseJobIds])
   // Customer pay speeds for the Billed Awaiting Payment expected-payment
   // chips (bill date + customer's median billed→paid gap, company-wide
   // fallback for thin history). Same fail-soft posture as the hazmat lookup:
@@ -2067,6 +2082,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const unifiedShared = {
       ...shared,
       onOpenLienRelease: openLienReleaseFromRow,
+      lienReleaseJobIds,
       stagesHamMode,
       flashInvoiceId: stagesInvoiceFlashId,
       stagesInvoiceUpdatingId,
@@ -3614,6 +3630,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     stagesSortMode={stagesSortMode}
                     actionLabel={'Bill Customer'}
                     onOpenLienRelease={openLienReleaseFromRow}
+                    lienReleaseJobIds={lienReleaseJobIds}
                     onJobAction={(j) => {
                       if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
                         showToast('Link this job to a customer before billing.', 'error')
@@ -3971,6 +3988,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onOpenLienTooling={(ctx) =>
                       setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
                     onOpenLienRelease={openLienReleaseFromRow}
+                    lienReleaseJobIds={lienReleaseJobIds}
                     onJobSendBack={(j) =>
                       stagesHamMode
                         ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
@@ -4087,6 +4105,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onOpenLienTooling={(ctx) =>
                       setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
                     onOpenLienRelease={openLienReleaseFromRow}
+                    lienReleaseJobIds={lienReleaseJobIds}
                     onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
                     onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
                     showRemaining={true}
@@ -5029,6 +5048,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         job={lienReleaseModal?.job ?? null}
         invoice={lienReleaseModal?.invoice ?? null}
         signerNameFallback={lienReleaseSignerFallback}
+        onIssued={() => void loadLienReleaseJobIds()}
       />
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}
