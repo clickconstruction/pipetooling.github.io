@@ -8,6 +8,7 @@ import {
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatCurrency } from '../../lib/format'
 import { stripTrailingZip } from '../../lib/displayAddress'
+import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 
 /**
  * WAITING ON CUSTOMERS → "Who owes what" (v2.1929): the Billed Awaiting
@@ -268,13 +269,25 @@ function BillCard({
         </div>
       )}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-        <button
-          type="button"
-          onClick={() => onOpenBill(b)}
-          style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-        >
-          View on board
-        </button>
+        {b.invoiceId ? (
+          // Invoice-backed bill: split control — View on board | fresh PDF tail
+          // (the v2.2329 Stages control, reused; job-shell bills have no
+          // invoice document to render, so they keep the plain jump button).
+          <ViewBillWithPdfTail
+            label="View on board"
+            compact
+            invoice={{ id: b.invoiceId, job_id: b.jobId }}
+            onViewBill={() => onOpenBill(b)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => onOpenBill(b)}
+            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+          >
+            View on board
+          </button>
+        )}
       </div>
     </div>
   )

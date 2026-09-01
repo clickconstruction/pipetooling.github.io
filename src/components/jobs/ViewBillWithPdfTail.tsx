@@ -11,9 +11,15 @@ import { openBilledInvoicePdfInNewTab } from '../../lib/openBilledInvoicePdf'
 export default function ViewBillWithPdfTail({
   onViewBill,
   invoice,
+  label = 'View Bill',
+  compact = false,
 }: {
   onViewBill: () => void
   invoice: { id: string; job_id: string }
+  /** Head-button label — e.g. "View on board" where the head jumps rather than opens the modal. */
+  label?: string
+  /** Card-sized paddings (Who-owes-what bill cards) instead of the Stages-table default. */
+  compact?: boolean
 }) {
   const { showToast } = useToastContext()
   const [opening, setOpening] = useState(false)
@@ -23,7 +29,7 @@ export default function ViewBillWithPdfTail({
         type="button"
         onClick={onViewBill}
         style={{
-          padding: '0.35rem 0.75rem',
+          padding: compact ? '0.25rem 0.5rem' : '0.35rem 0.75rem',
           fontSize: '0.8125rem',
           background: 'var(--surface)',
           color: 'var(--text-link)',
@@ -33,7 +39,7 @@ export default function ViewBillWithPdfTail({
           fontWeight: 500,
         }}
       >
-        View Bill
+        {label}
       </button>
       <button
         type="button"
@@ -51,7 +57,7 @@ export default function ViewBillWithPdfTail({
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          padding: '0.35rem 0.5rem',
+          padding: compact ? '0.25rem 0.4rem' : '0.35rem 0.5rem',
           background: 'var(--surface)',
           color: 'var(--text-link)',
           border: '1px solid #2563eb',

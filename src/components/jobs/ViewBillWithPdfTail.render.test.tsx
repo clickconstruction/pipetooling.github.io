@@ -27,4 +27,16 @@ describe('ViewBillWithPdfTail', () => {
     expect(openPdf.mock.calls[0]?.[0]).toEqual({ id: 'inv-1', job_id: 'job-1' })
     expect(onViewBill).toHaveBeenCalledTimes(1)
   })
+
+  it('label prop relabels the head button and keeps both actions wired (Who-owes-what cards)', async () => {
+    const onViewBill = vi.fn()
+    render(
+      <ViewBillWithPdfTail label="View on board" compact onViewBill={onViewBill} invoice={{ id: 'inv-2', job_id: 'job-2' }} />,
+    )
+    expect(screen.queryByText('View Bill')).toBeNull()
+    fireEvent.click(screen.getByText('View on board'))
+    expect(onViewBill).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByLabelText('Open invoice PDF in a new tab'))
+    await waitFor(() => expect(openPdf).toHaveBeenLastCalledWith({ id: 'inv-2', job_id: 'job-2' }, expect.anything()))
+  })
 })
