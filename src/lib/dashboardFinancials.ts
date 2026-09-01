@@ -41,6 +41,9 @@ export type FinancialItem = {
   jobTotal?: number | null
   /** Not-billed rows: 100% done with the entire job total still unbilled — the "done — nothing billed" flag (v2.1597). */
   fullyUnbilledDone?: boolean
+  /** Job's customer (AR rows, v2.2571) — powers the AR modal's Customers view; null on AP rows and customer-less jobs. */
+  customerId?: string | null
+  customerName?: string | null
 }
 
 export type FinancialBucket = {
@@ -65,6 +68,9 @@ export type FinancialJobRow = {
   collections_at?: string | null
   /** Stages % complete (0–100), manually set on the Jobs Stages table. */
   pct_complete?: number | null
+  /** Customer identity for the AR modal's Customers view (v2.2571). */
+  customer_id?: string | null
+  customer_name?: string | null
 }
 
 export type FinancialInvoiceRow = {
@@ -164,6 +170,8 @@ export function buildArBuckets(
       jobId: inv.job_id,
       address: (job?.job_address ?? '').trim() || null,
       pctComplete: job ? effectivePctComplete(job.pct_complete, job.status) : null,
+      customerId: job?.customer_id ?? null,
+      customerName: (job?.customer_name ?? '').trim() || null,
     })
   }
   for (const job of jobs) {
@@ -181,6 +189,8 @@ export function buildArBuckets(
       jobId: job.id,
       address: (job.job_address ?? '').trim() || null,
       pctComplete: effectivePctComplete(job.pct_complete, job.status),
+      customerId: job.customer_id ?? null,
+      customerName: (job.customer_name ?? '').trim() || null,
     })
   }
   return { ar: finishBucket(arItems), collections: finishBucket(collectionsItems) }

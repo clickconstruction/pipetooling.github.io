@@ -21,6 +21,22 @@ The aging strip above the list totals each band: {{chip:green|0–14d $12k}} {{c
 
 Accounts Receivable rows also carry the **job address** right after the name and an expandable {{chip:gray|3 line items ▾}} chip — tap it to unfold the job's billed work with a dollar amount per line, so you can see what the money is owed for without opening the job.
 
+## Accounts Receivable groups by customer
+
+The Accounts Receivable drill-down opens on a **Customers** view — one row per customer, because a collections call is about everything they owe, not one invoice. The {{button:blue|Customers}} / {{button:outline|Bills}} buttons switch between this view and the classic flat list.
+
+Each customer row shows their open bills as a small **bar** (one segment per bill, sized by dollars) and how long they've kept you waiting **against their own pay speed** — the same 12-month median the Payment forecast uses:
+
+:::example A customer row
+{{chip:red|169d waiting}} **RMC- Dudley Mason** — usually ~35d · `$56,021` on 14 jobs
+:::
+
+- Bill colors read against **that customer's** usual speed: {{chip:green|on pace}} at or under it, {{chip:yellow|over}} past it, {{chip:red|late}} at twice it or more. A customer with too little history reads against the company median and says so.
+- The two pace totals above the list — {{chip:red|Past their pace $161k · 18}} {{chip:green|On pace $9.2k · 6}} — are click-to-filter, and on-pace customers fold into one quiet row so the list is only as long as the problem.
+- {{button:blue|Slowest first}} is the call order (most overdue vs their own pace on top); {{button:outline|Biggest}} sorts by open dollars.
+- Tap a row to unfold **every bill they owe** — wait chip, job link, billed date, amount, and the line items already unfolded — and the globe on the row opens their customer portal.
+- Search matches the customer name **or any of their jobs** — typing a job number surfaces the whole customer.
+
 Not Billed Out rows get the same address + line-items treatment, and each amount carries context — *of $33,500 job total · 80% done* — so a job that's mostly billed reads differently from one that's untouched. Jobs **100% done with nothing billed at all** wear an amber {{chip:yellow|done — nothing billed}} flag: that money is one Bill Customer away.
 
 In Accounts Payable, team payroll and sub labor each have their **own section** with their own count and subtotal. A person several weeks behind shows as **one row with their total owed**, aged by their oldest unpaid week — tap {{chip:gray|8 open weeks ▾}} to unfold the individual weeks, or tap the person's name to open the People → Payroll ledger with their name already searched.
