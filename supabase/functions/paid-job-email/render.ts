@@ -713,8 +713,8 @@ export function renderPaidJobEmailSummary(p: PaidJobEmailPayload, manualNote?: s
 
 function footerLine(p: PaidJobEmailPayload): string {
   return paymentState(p).kind === 'paid'
-    ? 'PipeTooling &mdash; sent when a job reaches Paid in Full.'
-    : 'PipeTooling &mdash; payment progress for this job.'
+    ? 'ClickTooling &mdash; sent when a job reaches Paid in Full.'
+    : 'ClickTooling &mdash; payment progress for this job.'
 }
 
 /** One-line status for subject/plain-text: "PAID IN FULL" / "$X (Y%) of $Z paid" / "NOT PAID". */

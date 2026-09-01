@@ -248,7 +248,7 @@ serve(async (req) => {
         return jsonResponse(
           {
             error:
-              'Stripe customer is missing or invalid for this mode. Ask office to fix the customer link in Stripe or PipeTooling.',
+              'Stripe customer is missing or invalid for this mode. Ask office to fix the customer link in Stripe or ClickTooling.',
           },
           400,
         )

@@ -275,7 +275,7 @@ serve(async (req) => {
       return jsonResponse(
         {
           error:
-            'Stripe may have emailed the customer, but PipeTooling could not record the send time. Check Stripe before sending again.',
+            'Stripe may have emailed the customer, but ClickTooling could not record the send time. Check Stripe before sending again.',
           stripe_may_have_sent: true,
           stripe_invoice_status: stripeStatus,
           customer_email: email,

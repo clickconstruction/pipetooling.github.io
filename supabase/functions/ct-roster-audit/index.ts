@@ -40,7 +40,7 @@ function renderEmail(diff: CtRosterDiff, ptCount: number, ctCount: number): { su
     `${esc(pt.name || pt.email)} — PT <code>${esc(pt.email)}</code> ↔ CT <code>${esc(ct.email ?? ct.ct_user_id)}</code>`
   const html = `<div style="font-family:sans-serif;max-width:640px">
 <h2 style="font-size:17px;margin:0 0 4px">CT↔PT roster audit</h2>
-<p style="margin:0 0 10px;color:#444;font-size:13px">${ptCount} PipeTooling people · ${ctCount} CountTooling accounts · ${diff.clean ? 'no drift — all clear ✅' : 'drift found:'}</p>
+<p style="margin:0 0 10px;color:#444;font-size:13px">${ptCount} ClickTooling people · ${ctCount} CountTooling accounts · ${diff.clean ? 'no drift — all clear ✅' : 'drift found:'}</p>
 ${section('Only on CountTooling', diff.onlyInCt.map((c) => `<code>${esc(c.email ?? c.ct_user_id)}</code>${c.active ? '' : ' (banned)'}${c.is_admin ? ' — CT admin' : ''}`), 'CT accounts no PT person links to and no PT email matches. Unmanaged seats — link, archive on CT via the bridge, or leave deliberately.')}
 ${section('Linked but gone from CT', diff.linkedButGone.map((p) => `${esc(p.name || p.email)} — join key <code>${esc(p.counttooling_user_id ?? '')}</code>`), 'The PT join key points at a CT account that no longer exists. Clear the key or recreate the seat.')}
 ${section('Active mismatch', diff.activeMismatch.map(pair), 'One side is retired, the other still active — the exact offboarding hole the bridge exists to close. Usually fixed by re-running archive/restore.')}

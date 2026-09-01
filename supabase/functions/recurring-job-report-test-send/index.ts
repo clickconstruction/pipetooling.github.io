@@ -177,7 +177,7 @@ serve(async (req) => {
 
     const html = buildRecurringJobReportHtml(
       payload,
-      '<strong>Test email</strong> — This message was triggered from PipeTooling. Recipients normally receive summaries like this.',
+      '<strong>Test email</strong> — This message was triggered from ClickTooling. Recipients normally receive summaries like this.',
       includeCosts,
     )
     const subject = `[TEST] ${recurringJobReportEmailSubject(payload)}`

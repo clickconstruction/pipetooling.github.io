@@ -191,10 +191,10 @@ export function renderBilledReportEmail(p: BilledReportPayload, senderName?: str
         Grand total due: <b>${money(t.grand_total)}</b>
       </div>
       <p style="margin:14px 0 0;text-align:center;">
-        <a href="${APP_URL}/jobs?tab=stages" style="display:inline-block;background:#2563eb;color:#ffffff;border-radius:6px;padding:8px 16px;font-weight:bold;text-decoration:none;font-size:13px;">Open the board in PipeTooling</a>
+        <a href="${APP_URL}/jobs?tab=stages" style="display:inline-block;background:#2563eb;color:#ffffff;border-radius:6px;padding:8px 16px;font-weight:bold;text-decoration:none;font-size:13px;">Open the board in ClickTooling</a>
       </p>
       <p style="margin:12px 0 0;font-size:10.5px;color:#a8a29e;text-align:center;">${
-        senderName ? `Sent by ${esc(senderName)} from PipeTooling &middot; ` : 'PipeTooling &middot; '
+        senderName ? `Sent by ${esc(senderName)} from ClickTooling &middot; ` : 'ClickTooling &middot; '
       }numbers as of send time &middot; click any job to open its detail in the app</p>
     </div>
   </div>`

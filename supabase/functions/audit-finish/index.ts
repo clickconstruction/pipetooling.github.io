@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
           verb: 'set_twin_project_review',
           project_id: audit.ct_project_id,
           status: action === 'finish' ? 'reviewed' : 'ready',
-          note: action === 'finish' ? `Audited in PipeTooling by ${caller.email ?? 'staff'}` : undefined,
+          note: action === 'finish' ? `Audited in ClickTooling by ${caller.email ?? 'staff'}` : undefined,
         })
         ctBridge = status === 200 ? 'ok' : `failed: CT ${status} ${String(json.error ?? '')}`.trim()
       } catch (e) {

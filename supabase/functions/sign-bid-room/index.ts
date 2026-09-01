@@ -361,7 +361,7 @@ async function notifyStaff(
     const { data: users } = await admin.from('users').select('email').in('id', ids)
     const origin = Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'
     const subject = `Bid room — ${projectName || 'proposal'}`
-    const text = `${projectName || 'A proposal'}: the GC ${what}\n\nOpen PipeTooling: ${origin}/bids\n`
+    const text = `${projectName || 'A proposal'}: the GC ${what}\n\nOpen ClickTooling: ${origin}/bids\n`
     for (const u of (users ?? []) as Array<{ email: string | null }>) {
       const em = (u.email ?? '').trim()
       if (em) await sendEmailViaResend(em, subject, text, text.replace(/\n/g, '<br>'), key)

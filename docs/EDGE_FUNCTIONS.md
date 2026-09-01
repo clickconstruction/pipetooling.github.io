@@ -367,9 +367,9 @@ interface InviteUserRequest {
   email: string             // Invitee's email address
   role: string              // One of the 8 modern roles (same list as create-user)
   name?: string             // Optional display name
-  redirectTo?: string       // Where the invite link lands; must match https://pipetooling.com/*
-                            // or http://localhost:5173|5175/*; defaults to
-                            // https://pipetooling.com/accept-invite
+  redirectTo?: string       // Where the invite link lands; must match https://pipetooling.com/*,
+                            // https://clicktooling.com/*, or http://localhost:5173|5175/*;
+                            // defaults to APP_ORIGIN (else https://pipetooling.com) + /accept-invite
   service_type_ids?: string[] // Optional restriction for estimator/subcontractor/helpers/superintendent
 }
 ```
@@ -415,8 +415,9 @@ The emailed link verifies through Supabase Auth and redirects to **`/accept-invi
 ```typescript
 interface SendSignInEmailRequest {
   email: string        // Must belong to an existing public.users row (never creates users)
-  redirectTo?: string  // Where the link lands; must match https://pipetooling.com/* or
-                       // http://localhost:5173|5175/*; defaults to https://pipetooling.com/dashboard
+  redirectTo?: string  // Where the link lands; must match https://pipetooling.com/*,
+                       // https://clicktooling.com/*, or http://localhost:5173|5175/*;
+                       // defaults to APP_ORIGIN (else https://pipetooling.com) + /dashboard
 }
 ```
 
@@ -2702,7 +2703,7 @@ interface ReverseStripeInvoiceOobBody {
 
 #### Errors
 
-- **400** — Invoice not **Paid** in PipeTooling, missing OOB metadata, invoice has a **charge**, Stripe invoice not **paid**, or neither **`amount_paid`** nor **`total`** yields a positive credit amount (**`Stripe invoice has no amount paid`**).
+- **400** — Invoice not **Paid** in ClickTooling, missing OOB metadata, invoice has a **charge**, Stripe invoice not **paid**, or neither **`amount_paid`** nor **`total`** yields a positive credit amount (**`Stripe invoice has no amount paid`**).
 - **409** — Stripe credit note may have succeeded but RPC returned a business error (check both systems).
 - **502** — Stripe API or RPC failure after credit note (partial state possible; message includes warning).
 

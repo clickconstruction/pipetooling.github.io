@@ -160,10 +160,10 @@ export function renderPaymentForecastEmail(p: ForecastEmailPayload, senderName?:
       ${f.buckets.map(renderBucket).join('')}`
       }
       <p style="margin:18px 0 0;text-align:center;">
-        <a href="${APP_URL}/jobs?tab=stages&amp;forecast=1" style="display:inline-block;background:#2563eb;color:#ffffff;border-radius:6px;padding:9px 18px;font-weight:bold;text-decoration:none;font-size:13px;">Open the forecast in PipeTooling</a>
+        <a href="${APP_URL}/jobs?tab=stages&amp;forecast=1" style="display:inline-block;background:#2563eb;color:#ffffff;border-radius:6px;padding:9px 18px;font-weight:bold;text-decoration:none;font-size:13px;">Open the forecast in ClickTooling</a>
       </p>
       <p style="margin:12px 0 0;font-size:10.5px;color:#a8a29e;text-align:center;">${
-        senderName ? `Sent by ${esc(senderName)} from PipeTooling &middot; ` : 'PipeTooling &middot; '
+        senderName ? `Sent by ${esc(senderName)} from ClickTooling &middot; ` : 'ClickTooling &middot; '
       }numbers as of send time${f.skippedNoMoney > 0 ? ` &middot; ${f.skippedNoMoney} paid-to-zero row${f.skippedNoMoney === 1 ? '' : 's'} not shown` : ''}${
         p.pay_speeds == null ? ' &middot; pay speeds unavailable' : ''
       } &middot; click any job to open it in the app</p>

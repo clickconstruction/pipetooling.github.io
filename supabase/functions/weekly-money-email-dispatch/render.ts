@@ -151,7 +151,7 @@ export function renderWeeklyMoneyHtml(payload: WeeklyMoneyPayload, weekLabel: st
     ${table('Made money this week', '#15803d', v.made)}
     ${table('Lost money this week', '#b91c1c', v.lost)}
     <p style="font-size:12.5px;color:#475569;margin:14px 0 0"><b>Not on jobs:</b> office + bid labor ${money(num(payload.overhead?.office_labor_cost) + num(payload.overhead?.bid_labor_cost))} · office job charges ${money(num(payload.overhead?.office_job_charges))}</p>
-    <p style="font-size:11.5px;color:#94a3b8;margin:14px 0 0">Rebuilt fresh at send time from live data. Open PipeTooling → Jobs → Pipeline → Weekly money movement for lenses, printing, and the live week.</p>
+    <p style="font-size:11.5px;color:#94a3b8;margin:14px 0 0">Rebuilt fresh at send time from live data. Open ClickTooling → Jobs → Pipeline → Weekly money movement for lenses, printing, and the live week.</p>
   </div>`
 }
 

@@ -190,7 +190,7 @@ serve(async (req) => {
             plansLink ? `Plans: ${plansLink}` : null,
             jobLedgerId ? 'Linked to one of their jobs (see the dispatch item).' : null,
             '',
-            'The request is in the dispatch inbox in PipeTooling.',
+            'The request is in the dispatch inbox in ClickTooling.',
           ].filter((l): l is string => l != null)
           const subject = `Portal ${kindLabel} — ${customerName}`
           const html = `<p>${lines.map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;')).join('</p><p>')}</p>`
