@@ -28,10 +28,12 @@ The Accounts Receivable drill-down opens on a **Customers** view — one row per
 Each customer row shows their open bills as a small **bar** (one segment per bill, sized by dollars) and how long they've kept you waiting **against their own pay speed** — the same 12-month median the Payment forecast uses:
 
 :::example A customer row
-{{chip:red|169d waiting}} **RMC- Dudley Mason** — usually ~35d · `$56,021` on 14 jobs
+**RMC- Dudley Mason** · {{chip:red|169d}} 35d avg · `$56,021` 14 jobs
 :::
 
-- Bill colors read against **that customer's** usual speed: {{chip:green|on pace}} at or under it, {{chip:yellow|over}} past it, {{chip:red|late}} at twice it or more. A customer with too little history reads against the company median and says so.
+The right side is two tight columns — days waiting over their average pay speed ("35d avg" is their own 12-month median, or the company average when they have no history), and open dollars over the job count. Hover either column for the full story (exact cents, where the average comes from).
+
+- Bill colors read against **that customer's** usual speed: {{chip:green|on pace}} at or under it, {{chip:yellow|past their avg}} over it, {{chip:red|2× their avg}} at twice it or more — the legend at the top of the list spells this out. A customer with too little history reads against the company average instead.
 - The two pace totals above the list — {{chip:red|Past their pace $161k · 18}} {{chip:green|On pace $9.2k · 6}} — are click-to-filter, and on-pace customers fold into one quiet row so the list is only as long as the problem.
 - {{button:blue|Slowest first}} is the call order (most overdue vs their own pace on top); {{button:outline|Biggest}} sorts by open dollars.
 - Tap a row to unfold **every bill they owe** — wait chip, job link, billed date, amount, and the line items already unfolded — and the globe on the row opens their customer portal.

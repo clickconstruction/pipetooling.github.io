@@ -1,8 +1,10 @@
 /**
  * Dashboard AR modal — "Customers" view (v2.2571, mockup Variant A): the AR
  * bucket regrouped by the customer you'd call. Each row wears the Money
- * waiting visual language (per-bill tone bar, "Nd waiting · usually ~Nd",
- * portal globe); expanding a row lists its bills — the Bills view's rows,
+ * waiting visual language (per-bill tone bar, fixed days/money mini-columns
+ * with the pace as "Nd avg" beneath the wait, portal globe; full pace + exact
+ * cents live in the hover titles); expanding a row lists its bills — the
+ * Bills view's rows,
  * line items included — against that customer's own pace.
  */
 import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
@@ -191,6 +193,13 @@ export default function DashboardArCustomersView({
       ? BILL_TONE[row.pastPace ? (row.oldestWaitDays >= row.baselineDays * 2 ? 'late' : 'warn') : 'ok']
       : BILL_TONE.undated
     const jobs = new Set(row.bills.map((b) => b.item.jobId ?? b.item.key)).size
+    const avgDays = row.ownMedianDays ?? row.baselineDays
+    const paceTitle =
+      row.ownMedianDays != null
+        ? `Waiting ${row.oldestWaitDays ?? '—'}d — usually pays in ~${row.ownMedianDays}d (their own median)`
+        : row.baselineDays != null
+          ? `Waiting ${row.oldestWaitDays ?? '—'}d — no payment history, company average ~${row.baselineDays}d`
+          : 'No bill date on these rows'
     return (
       <Fragment key={key}>
         <div
@@ -206,7 +215,7 @@ export default function DashboardArCustomersView({
           }}
           style={{
             display: 'grid',
-            gridTemplateColumns: isMobile ? 'auto minmax(0, 1fr) auto auto' : 'auto minmax(140px, 190px) 1fr auto auto',
+            gridTemplateColumns: isMobile ? 'auto minmax(0, 1fr) 52px 80px auto' : 'auto minmax(140px, 190px) 1fr 58px 88px auto',
             gap: '0.6rem',
             alignItems: 'center',
             padding: '0.5rem 0.45rem',
@@ -247,15 +256,19 @@ export default function DashboardArCustomersView({
               ))}
             </span>
           ) : null}
-          <span style={{ textAlign: 'right', fontSize: '0.76rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-            <b style={{ color: worst.fg }}>{row.oldestWaitDays != null ? `${row.oldestWaitDays}d waiting` : 'undated'}</b>
-            <span style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              {row.baselineDays == null
-                ? ''
-                : row.ownMedianDays != null
-                  ? `usually ~${row.ownMedianDays}d · `
-                  : `no history — vs company ~${row.baselineDays}d · `}
-              <b style={{ color: 'var(--text-700)' }}>${formatCurrency(row.open)}</b> on {jobs} {jobs === 1 ? 'job' : 'jobs'}
+          <span title={paceTitle} style={{ textAlign: 'right', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            <b style={{ color: worst.fg }}>{row.oldestWaitDays != null ? `${row.oldestWaitDays}d` : '—'}</b>
+            <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+              {row.oldestWaitDays == null ? 'undated' : avgDays != null ? `${avgDays}d avg` : ''}
+            </span>
+          </span>
+          <span
+            title={`$${formatCurrency(row.open)} open on ${jobs} ${jobs === 1 ? 'job' : 'jobs'}`}
+            style={{ textAlign: 'right', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+          >
+            <b style={{ color: 'var(--text-700)' }}>${Math.round(row.open).toLocaleString('en-US')}</b>
+            <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+              {jobs} {jobs === 1 ? 'job' : 'jobs'}
             </span>
           </span>
           <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
@@ -290,6 +303,32 @@ export default function DashboardArCustomersView({
         ) : (
           <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>Pay speeds unavailable — no pace lens</span>
         )}
+        <span
+          title="Bill colors read against each customer's own average pay speed (company average when they have no history)"
+          style={{
+            marginLeft: isMobile ? 0 : 'auto',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.55rem',
+            fontSize: '0.68rem',
+            color: 'var(--text-muted)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {(
+            [
+              ['ok', 'on pace'],
+              ['warn', 'past their avg'],
+              ['late', '2× their avg'],
+              ['undated', 'no bill date'],
+            ] as const
+          ).map(([tone, label]) => (
+            <span key={tone} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+              <span aria-hidden style={{ width: 8, height: 8, borderRadius: 2, background: BILL_TONE[tone].bar, opacity: tone === 'undated' ? 0.7 : 0.85 }} />
+              {label}
+            </span>
+          ))}
+        </span>
       </div>
 
       {sorted.length === 0 ? (
