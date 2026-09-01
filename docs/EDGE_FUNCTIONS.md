@@ -144,6 +144,7 @@ when_to_read:
    - [weekly-money-email-dispatch](#weekly-money-email-dispatch)
    - [payment-forecast-email-dispatch](#payment-forecast-email-dispatch)
    - [money-waiting-email-dispatch](#money-waiting-email-dispatch)
+   - [crew-day-email-dispatch](#crew-day-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -2491,6 +2492,22 @@ interface SendPhysicalInvoiceEmailBody {
 **Deploy**: `supabase functions deploy money-waiting-email-dispatch --no-verify-jwt`. Requires migration `20260901120000` (table + payload RPC + pg_cron).
 
 **Cron**: pg_cron **`payment-forecast-email-dispatch`** at **`4-59/5 * * * *`** — co-rides the weekly-money lane (all five */5 lanes were taken by the v2.1919 stagger; both co-tenants no-op cheaply), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
+---
+
+### crew-day-email-dispatch
+
+**Purpose** (v2.2603): The **Crew Day** end-of-day email — the `crew_day` stream. The Dashboard Crew Day section's day (v2.2602) regrouped **by job** so it reads like a site diary: each job with the people who worked it (clock spans + hours), field-report excerpts, % movement, and the section's three attention flags (no-report, scheduled-never-clocked, unscheduled work). The payload is **per-recipient**: `get_crew_day_payload_for_user(p_user_id, p_day)` (migration `20260901220804`, service-role only) computes the RECIPIENT's role scope — office roles company-wide, superintendents only their `project_superintendents` assignments (+ team-membership jobs) — rebuilt **at send time** for the send's Chicago calendar day. A quiet day still sends (a silent skip reads as a broken subscription). **Hours only, never wages.**
+
+**Endpoint**: `POST /functions/v1/crew-day-email-dispatch`
+
+**Modes** (money-waiting skeleton): `preview` / `test_send` (caller JWT; the caller's own scope) / `send_now` with `recipient_user_id` (recipient's scope) — sender AND recipient roles are the crew-day set (dev/master_technician/assistant/controller/**superintendent**; superintendents can schedule their own copies) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `crew_day_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard).
+
+**Deploy**: `supabase functions deploy crew-day-email-dispatch --no-verify-jwt`. Requires migrations `20260901215024` (section payload) + `20260901220804` (table + per-user payload RPC + pg_cron + schedule-surface branches).
+
+**Cron**: pg_cron **`crew-day-email-dispatch`** at **`4-59/5 * * * *`** — co-rides the :04 lane (v2.1919 stagger; co-tenants no-op cheaply on empty ticks), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`.
 
 ---
 
