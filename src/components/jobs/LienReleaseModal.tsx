@@ -28,6 +28,15 @@ import {
   type JobLienReleaseRow,
 } from '../../lib/jobs/lienReleaseTracking'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
+import {
+  customerAddressLienGaps,
+  customerAddressLienReady,
+  lienPropertyOwnerDisplayName,
+  resolveLienProperty,
+  suggestCustomerAddressForJob,
+  type CustomerAddressRow,
+  type JobPropertyOwnerLike,
+} from '../../lib/jobs/lienProperty'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
@@ -101,7 +110,6 @@ export default function LienReleaseModal({
   const [formType, setFormType] = useState<LienWaiverFormType>('conditional_progress')
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<ReadonlySet<string>>(() => new Set())
   const [fields, setFields] = useState<LienWaiverFields | null>(null)
-  const [ownerName, setOwnerName] = useState<string | null>(null)
   const [issuerGen, setIssuerGen] = useState(0)
   const [pdfBusy, setPdfBusy] = useState(false)
   const [saveBusy, setSaveBusy] = useState(false)
@@ -154,10 +162,12 @@ export default function LienReleaseModal({
     }
   }, [open, authRole])
 
-  // Owner block: a saved job_property_owners row wins over the job's customer.
+  // Owner precedence (v2.2614): per-job job_property_owners override → the
+  // linked property record's owner → (blank → GC/customer fallback downstream).
+  const [jobOwnerRow, setJobOwnerRow] = useState<JobPropertyOwnerLike>(null)
   useEffect(() => {
     if (!open || !job) {
-      setOwnerName(null)
+      setJobOwnerRow(null)
       return
     }
     let cancelled = false
@@ -165,12 +175,11 @@ export default function LienReleaseModal({
       try {
         const { data } = await supabase
           .from('job_property_owners')
-          .select('owner_name, company_name')
+          .select('owner_mode, owner_name, company_name, mailing_address')
           .eq('job_id', job.id)
           .maybeSingle()
         if (cancelled) return
-        const name = (data?.owner_name ?? '').trim() || (data?.company_name ?? '').trim()
-        setOwnerName(name || null)
+        setJobOwnerRow((data as JobPropertyOwnerLike) ?? null)
       } catch {
         // prefill nicety — the field stays editable either way
       }
@@ -179,6 +188,79 @@ export default function LienReleaseModal({
       cancelled = true
     }
   }, [open, job?.id])
+
+  // Property record (v2.2614): the job's linked customer_addresses row, plus
+  // link candidates (the job customer's + GC's addresses) when unlinked.
+  const [linkedAddress, setLinkedAddress] = useState<CustomerAddressRow | null>(null)
+  const [candidateAddresses, setCandidateAddresses] = useState<CustomerAddressRow[]>([])
+  const [linkChoiceId, setLinkChoiceId] = useState<string>('')
+  const [linkBusy, setLinkBusy] = useState(false)
+
+  const loadPropertyRecord = useCallback(async () => {
+    if (!job?.id) {
+      setLinkedAddress(null)
+      setCandidateAddresses([])
+      return
+    }
+    try {
+      const linkedId = job.customer_address_id ?? null
+      if (linkedId) {
+        const { data } = await supabase.from('customer_addresses').select('*').eq('id', linkedId).maybeSingle()
+        setLinkedAddress((data as CustomerAddressRow) ?? null)
+        setCandidateAddresses([])
+        return
+      }
+      setLinkedAddress(null)
+      const customerIds = [job.customer_id, job.gc_customer_id].filter((v): v is string => Boolean(v))
+      if (customerIds.length === 0) {
+        setCandidateAddresses([])
+        return
+      }
+      const { data } = await supabase
+        .from('customer_addresses')
+        .select('*')
+        .in('customer_id', customerIds)
+        .order('sequence_order', { ascending: true })
+      const rows = (data ?? []) as CustomerAddressRow[]
+      setCandidateAddresses(rows)
+      setLinkChoiceId(suggestCustomerAddressForJob(job.job_address ?? '', rows)?.id ?? '')
+    } catch {
+      setLinkedAddress(null)
+      setCandidateAddresses([])
+    }
+  }, [job])
+
+  useEffect(() => {
+    if (!open) {
+      setLinkedAddress(null)
+      setCandidateAddresses([])
+      setLinkChoiceId('')
+      return
+    }
+    void loadPropertyRecord()
+  }, [open, loadPropertyRecord])
+
+  const linkPropertyRecord = useCallback(async () => {
+    if (!job?.id || !linkChoiceId || linkBusy) return
+    setLinkBusy(true)
+    try {
+      await withSupabaseRetry(
+        () => supabase.from('jobs_ledger').update({ customer_address_id: linkChoiceId }).eq('id', job.id),
+        'link job to property record',
+      )
+      const chosen = candidateAddresses.find((r) => r.id === linkChoiceId) ?? null
+      setLinkedAddress(chosen)
+      setCandidateAddresses([])
+      showToast('Property record linked to the job.', 'success')
+    } catch {
+      showToast('Could not link the property record.', 'error')
+    } finally {
+      setLinkBusy(false)
+    }
+  }, [job?.id, linkChoiceId, linkBusy, candidateAddresses, showToast])
+
+  const resolvedProperty = useMemo(() => resolveLienProperty(linkedAddress, jobOwnerRow), [linkedAddress, jobOwnerRow])
+  const ownerName = useMemo(() => lienPropertyOwnerDisplayName(resolvedProperty.owner) || null, [resolvedProperty])
 
   const invoices = useMemo(() => (job ? selectableInvoices(job) : []), [job])
 
@@ -487,6 +569,36 @@ export default function LienReleaseModal({
                 </div>
               </div>
             )}
+            {/* Property record (v2.2614): the job's link into the customer's
+                address book — county / legal description / owner of record. */}
+            {linkedAddress ? (
+              <div style={{ marginBottom: '0.9rem', padding: '0.45rem 0.55rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', fontSize: '0.75rem' }}>
+                <span style={{ fontWeight: 700 }}>Property record:</span> {linkedAddress.address}
+                {customerAddressLienReady(linkedAddress) ? (
+                  <span style={{ marginLeft: '0.4rem', fontWeight: 700, color: 'var(--text-green-700)' }}>✓ lien-ready</span>
+                ) : (
+                  <span style={{ marginLeft: '0.4rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
+                    missing {customerAddressLienGaps(linkedAddress).join(', ')} — add on the customer's addresses
+                  </span>
+                )}
+              </div>
+            ) : candidateAddresses.length > 0 ? (
+              <div style={{ marginBottom: '0.9rem', padding: '0.45rem 0.55rem', borderRadius: 8, border: '1px dashed var(--border-strong)', fontSize: '0.75rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 700 }}>Property record:</span>
+                <select value={linkChoiceId} onChange={(e) => setLinkChoiceId(e.target.value)} aria-label="Link a property record" style={{ flex: '1 1 10rem', padding: '0.25rem 0.35rem', fontSize: '0.75rem' }}>
+                  <option value="">— pick the property —</option>
+                  {candidateAddresses.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.address}
+                      {suggestCustomerAddressForJob(job.job_address ?? '', [r]) ? ' (matches job address)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => void linkPropertyRecord()} disabled={!linkChoiceId || linkBusy} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 6, border: '1px solid #2563eb', background: 'var(--surface)', color: 'var(--text-link)', cursor: linkChoiceId ? 'pointer' : 'not-allowed', fontWeight: 600 }}>
+                  {linkBusy ? 'Linking…' : 'Link'}
+                </button>
+              </div>
+            ) : null}
             {invoices.length > 0 && (
               <div style={{ marginBottom: '0.9rem' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
