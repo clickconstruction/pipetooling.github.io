@@ -9,6 +9,10 @@ import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
 
 // The Data health drill-down (v2.2290) fetches + writes through supabase and
 // reads useAuth; stub both so the strip-click test can mount it in jsdom.
+// The portal globe (v2.2564) needs Toast/Confirm/Router providers — it has
+// its own surface; stub it so this smoke stays provider-free.
+vi.mock('../customers/CustomerPortalGlobeButton', () => ({ default: () => null }))
+
 vi.mock('../../lib/supabase', () => ({
   supabase: { rpc: vi.fn(async () => ({ data: null })), from: vi.fn() },
 }))
