@@ -8,8 +8,9 @@
  * to bill "whatever isn't on another invoice" — so when the still-unlinked
  * segments sum EXACTLY to its amount (cents), the bill lists those segments
  * at their real prices. Any payment, dollar carve, or rider breaks the
- * equality, and the bill falls back to the historical whole-job proration —
- * composition never guesses at partial coverage.
+ * equality, and the bill falls back to prorating over the still-unlinked rows
+ * (v2.2589 — rows on other bills never re-list; before this it prorated the
+ * whole job) — composition never guesses at partial coverage.
  *
  * Mirrored in supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts
  * (scopeFixturesToInvoice) — the edge functions are authoritative for what
@@ -50,13 +51,19 @@ export function fixturesForInvoiceBill<T extends InvoiceScopeFixtureRow>(
   if (!invoiceId) return all
   const linked = all.filter((f) => (f.invoice_id ?? null) === invoiceId)
   if (linked.length > 0) return linked
+  const unlinked = all.filter((f) => (f.invoice_id ?? null) === null)
   if (invoice?.is_primary_rtb_bundle === true) {
     const amountCents = Math.round(Number(invoice.amount) * 100)
     if (Number.isFinite(amountCents) && amountCents > 0) {
-      const unlinked = all.filter((f) => (f.invoice_id ?? null) === null && billableLineCents(f) > 0)
-      const sumCents = unlinked.reduce((s, f) => s + billableLineCents(f), 0)
-      if (unlinked.length > 0 && sumCents === amountCents) return unlinked
+      const unlinkedBillable = unlinked.filter((f) => billableLineCents(f) > 0)
+      const sumCents = unlinkedBillable.reduce((s, f) => s + billableLineCents(f), 0)
+      if (unlinkedBillable.length > 0 && sumCents === amountCents) return unlinkedBillable
     }
   }
-  return all
+  // v2.2589: a row linked to ANOTHER invoice is already listed on that bill —
+  // re-listing it here (Taunya, job 978: the remainder bundle prorated across
+  // an already-billed change order) misstates what the customer is paying for.
+  // Proration happens over the unlinked rows only; when every row is linked
+  // elsewhere the builders fall back to their single-line modes.
+  return unlinked
 }
