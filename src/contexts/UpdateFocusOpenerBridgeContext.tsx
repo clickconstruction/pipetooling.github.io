@@ -27,6 +27,10 @@ type UpdateFocusOpenerBridgeContextValue = {
   requestOpenUpdateFocus: () => void
   registerUpdateFocusApplyDirect: (apply: UpdateFocusApplyDirectFn | null) => void
   applyUpdateFocusDirect: UpdateFocusApplyDirectFn
+  /** ClockInOutButton registers its guarded clock-out entry (tally gate + review modal) here so Job Mode can offer Clock Out (v2.2558). */
+  registerClockOutOpener: (opener: (() => void) | null) => void
+  /** Returns false when no clock-out opener is mounted (e.g. salaried users). */
+  requestClockOut: () => boolean
 }
 
 const UpdateFocusOpenerBridgeContext =
@@ -35,6 +39,7 @@ const UpdateFocusOpenerBridgeContext =
 export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactNode }) {
   const openerRef = useRef<(() => void) | null>(null)
   const applyDirectRef = useRef<UpdateFocusApplyDirectFn | null>(null)
+  const clockOutOpenerRef = useRef<(() => void) | null>(null)
 
   const registerUpdateFocusOpener = useCallback((opener: (() => void) | null) => {
     openerRef.current = opener
@@ -59,18 +64,33 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
     return fn(opts)
   }, [])
 
+  const registerClockOutOpener = useCallback((opener: (() => void) | null) => {
+    clockOutOpenerRef.current = opener
+  }, [])
+
+  const requestClockOut = useCallback(() => {
+    const fn = clockOutOpenerRef.current
+    if (!fn) return false
+    fn()
+    return true
+  }, [])
+
   const value = useMemo(
     (): UpdateFocusOpenerBridgeContextValue => ({
       registerUpdateFocusOpener,
       requestOpenUpdateFocus,
       registerUpdateFocusApplyDirect,
       applyUpdateFocusDirect,
+      registerClockOutOpener,
+      requestClockOut,
     }),
     [
       registerUpdateFocusOpener,
       requestOpenUpdateFocus,
       registerUpdateFocusApplyDirect,
       applyUpdateFocusDirect,
+      registerClockOutOpener,
+      requestClockOut,
     ],
   )
 

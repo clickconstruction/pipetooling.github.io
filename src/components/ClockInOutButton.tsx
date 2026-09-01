@@ -168,7 +168,7 @@ export default function ClockInOutButton({
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
-  const { registerUpdateFocusOpener, registerUpdateFocusApplyDirect } = useUpdateFocusOpenerBridge()
+  const { registerUpdateFocusOpener, registerUpdateFocusApplyDirect, registerClockOutOpener } = useUpdateFocusOpenerBridge()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([])
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
@@ -1076,6 +1076,17 @@ export default function ClockInOutButton({
     registerUpdateFocusOpener(handleOpenUpdateFocusModal)
     return () => registerUpdateFocusOpener(null)
   }, [registerUpdateFocusOpener, handleOpenUpdateFocusModal])
+
+  // Job Mode's Clock Out / Wrap Up Day run the same guarded flow as the visible
+  // button (tally gate → review modal). Salaried users have no manual clock-out,
+  // so nothing is registered and the bridge reports it unavailable (v2.2558).
+  useEffect(() => {
+    if (salaryUiActive) return
+    registerClockOutOpener(() => {
+      void handleClockOutClick()
+    })
+    return () => registerClockOutOpener(null)
+  }, [registerClockOutOpener, handleClockOutClick, salaryUiActive])
 
   // Direct (no-modal) variant for Job Mode card: clocks in if no open session,
   // updates in place for salaried, or closes-and-inserts for hourly. Mirrors

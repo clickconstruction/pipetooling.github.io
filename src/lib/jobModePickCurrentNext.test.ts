@@ -96,7 +96,22 @@ describe('pickCurrentAndNextScheduleBlock', () => {
     expect(result.nextBlock?.id).toBe('b2')
   })
 
-  it('clocked on the last scheduled job → on-scheduled-job-last', () => {
+  it('clocked on the last scheduled job with earlier jobs visited → on-scheduled-job-last', () => {
+    const blocks = [
+      block({ id: 'b1', job_id: JOB_A, time_start: '08:00', time_end: '12:00' }),
+      block({ id: 'b2', job_id: JOB_B, time_start: '13:00', time_end: '17:00' }),
+    ]
+    const result = pickCurrentAndNextScheduleBlock({
+      blocks,
+      openSession: { jobLedgerId: JOB_B, bidId: null },
+      visitedJobIds: new Set([JOB_A]),
+    })
+    expect(result.state).toBe('on-scheduled-job-last')
+    expect(result.currentBlock?.id).toBe('b2')
+    expect(result.nextBlock).toBeNull()
+  })
+
+  it('clocked on a later job with an earlier job skipped → wraps back to the skipped job', () => {
     const blocks = [
       block({ id: 'b1', job_id: JOB_A, time_start: '08:00', time_end: '12:00' }),
       block({ id: 'b2', job_id: JOB_B, time_start: '13:00', time_end: '17:00' }),
@@ -105,9 +120,85 @@ describe('pickCurrentAndNextScheduleBlock', () => {
       blocks,
       openSession: { jobLedgerId: JOB_B, bidId: null },
     })
-    expect(result.state).toBe('on-scheduled-job-last')
+    expect(result.state).toBe('on-scheduled-job-not-last')
     expect(result.currentBlock?.id).toBe('b2')
+    expect(result.nextBlock?.id).toBe('b1')
+  })
+
+  it('prefers the next unvisited job ahead over an earlier skipped one', () => {
+    // Skipped B, currently on C, D still ahead → next is D (roll forward), not B.
+    const JOB_D = '00000000-0000-0000-0000-00000000dddd'
+    const blocks = [
+      block({ id: 'b1', job_id: JOB_A, time_start: '08:00', time_end: '09:30' }),
+      block({ id: 'b2', job_id: JOB_B, time_start: '10:00', time_end: '12:00' }),
+      block({ id: 'b3', job_id: JOB_C, time_start: '13:00', time_end: '15:00' }),
+      block({ id: 'b4', job_id: JOB_D, time_start: '15:30', time_end: '17:00' }),
+    ]
+    const result = pickCurrentAndNextScheduleBlock({
+      blocks,
+      openSession: { jobLedgerId: JOB_C, bidId: null },
+      visitedJobIds: new Set([JOB_A]),
+    })
+    expect(result.state).toBe('on-scheduled-job-not-last')
+    expect(result.nextBlock?.id).toBe('b4')
+  })
+
+  it('skips visited jobs when picking the next block ahead', () => {
+    const blocks = [
+      block({ id: 'b1', job_id: JOB_A, time_start: '08:00', time_end: '10:00' }),
+      block({ id: 'b2', job_id: JOB_B, time_start: '10:30', time_end: '13:00' }),
+      block({ id: 'b3', job_id: JOB_C, time_start: '14:00', time_end: '17:00' }),
+    ]
+    // Did C first (out of order), now on A → next should be B, not C again.
+    const result = pickCurrentAndNextScheduleBlock({
+      blocks,
+      openSession: { jobLedgerId: JOB_A, bidId: null },
+      visitedJobIds: new Set([JOB_C]),
+    })
+    expect(result.state).toBe('on-scheduled-job-not-last')
+    expect(result.nextBlock?.id).toBe('b2')
+  })
+
+  it('all other jobs visited → on-scheduled-job-last even mid-list', () => {
+    const blocks = [
+      block({ id: 'b1', job_id: JOB_A, time_start: '08:00', time_end: '10:00' }),
+      block({ id: 'b2', job_id: JOB_B, time_start: '10:30', time_end: '13:00' }),
+      block({ id: 'b3', job_id: JOB_C, time_start: '14:00', time_end: '17:00' }),
+    ]
+    const result = pickCurrentAndNextScheduleBlock({
+      blocks,
+      openSession: { jobLedgerId: JOB_B, bidId: null },
+      visitedJobIds: new Set([JOB_A, JOB_C]),
+    })
+    expect(result.state).toBe('on-scheduled-job-last')
     expect(result.nextBlock).toBeNull()
+  })
+
+  it('not clocked in mid-day → next is the first unvisited block, not the first block', () => {
+    const blocks = [
+      block({ id: 'b1', job_id: JOB_A, time_start: '08:00', time_end: '12:00' }),
+      block({ id: 'b2', job_id: JOB_B, time_start: '13:00', time_end: '17:00' }),
+    ]
+    const result = pickCurrentAndNextScheduleBlock({
+      blocks,
+      openSession: null,
+      visitedJobIds: new Set([JOB_A]),
+    })
+    expect(result.state).toBe('not-clocked-in-with-schedule')
+    expect(result.nextBlock?.id).toBe('b2')
+  })
+
+  it('not clocked in with every job visited → falls back to the first block', () => {
+    const blocks = [
+      block({ id: 'b1', job_id: JOB_A, time_start: '08:00', time_end: '12:00' }),
+    ]
+    const result = pickCurrentAndNextScheduleBlock({
+      blocks,
+      openSession: null,
+      visitedJobIds: new Set([JOB_A]),
+    })
+    expect(result.state).toBe('not-clocked-in-with-schedule')
+    expect(result.nextBlock?.id).toBe('b1')
   })
 
   it('clocked on a job NOT on schedule → on-off-schedule-job; next = first block', () => {

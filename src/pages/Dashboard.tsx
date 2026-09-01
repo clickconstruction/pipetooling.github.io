@@ -1118,6 +1118,7 @@ export default function Dashboard() {
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
           onTurnaway={(j) => setTurnawayJob(j)}
+          canClockOut={!dashboardSelfIsSalary}
         />
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
