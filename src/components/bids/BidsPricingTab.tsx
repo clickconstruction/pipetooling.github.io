@@ -49,6 +49,7 @@ import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } fro
 import { bidPackageLabel } from '../../lib/bidPackageLabel'
 import { buildBidFixtureCountsText, buildBidFixtureCountsTextGrouped } from '../../lib/buildBidFixtureCountsText'
 import { classifySpecSection, type SpecSectionMatchKind, type SpecSectionMatchRule } from '../../lib/classifySpecSection'
+import { SpecSectionAuditModal } from './SpecSectionAuditModal'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -746,6 +747,7 @@ export function BidsPricingTab({
   const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
   // Package and send (Pricing tab → "Package and send" modal — left of CSV)
   const [packageSendOpen, setPackageSendOpen] = useState(false)
+  const [d22AuditOpen, setD22AuditOpen] = useState(false)
   // F2 (v2.2120): Share / Print / CSV honor the ★. When the scenario you're viewing isn't the
   // customer's, a chooser asks which price to use; picking ★ loads that scenario's prices on
   // the fly (no view switch), so "the ★ is what the customer sees — Cover Letter, Share, Print,
@@ -2773,6 +2775,7 @@ export function BidsPricingTab({
                   onCsv={() => downloadPricingCsv()}
                   onReview={() => void printAllPricingPages()}
                   onCopyFixtures={() => void copyFixtureCountsForText()}
+                  onOpenD22Audit={canPackageAndSendBidPricing ? () => setD22AuditOpen(true) : undefined}
                 />
                 {!narrowViewport640 ? (
                   <button
@@ -6331,6 +6334,8 @@ export function BidsPricingTab({
           </div>
         )
       })() : null}
+
+      <SpecSectionAuditModal open={d22AuditOpen} onClose={() => setD22AuditOpen(false)} />
 
       {packageSendOpen && selectedBidForPricing && selectedPricingVersionId && pricingPackageSource ? (
         <PackageAndSendBidPricingModal

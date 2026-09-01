@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 type Item = {
-  key: 'print' | 'csv' | 'review' | 'fixtures'
+  key: 'print' | 'csv' | 'review' | 'fixtures' | 'd22audit'
   label: string
   hint?: string
   disabled?: boolean
@@ -30,6 +30,7 @@ export function PricingShareMenu({
   onCsv,
   onReview,
   onCopyFixtures,
+  onOpenD22Audit,
 }: {
   canShare: boolean
   shareDisabled: boolean
@@ -43,6 +44,8 @@ export function PricingShareMenu({
   onCsv: () => void
   onReview: () => void
   onCopyFixtures: () => void
+  /** Ledger-writer roles only — omit to hide the "Division 22 codes" item. */
+  onOpenD22Audit?: () => void
 }) {
   const [open, setOpen] = useState(false)
   // Phone fix: the menu hangs right-aligned off the button; near the screen's left edge that clips,
@@ -84,6 +87,9 @@ export function PricingShareMenu({
     { key: 'csv', label: 'Download CSV', disabled: csvDisabled, title: csvDisabled ? csvTitle : undefined, onPick: onCsv },
     { key: 'review', label: 'Print all prices — review', hint: 'every price option in one document', dividerBefore: true, onPick: onReview },
     { key: 'fixtures', label: 'Copy fixtures for text', hint: 'names + counts only, no prices — for parts houses', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
+    ...(onOpenD22Audit
+      ? [{ key: 'd22audit', label: 'Division 22 codes', hint: 'audit every fixture name — pin the missing codes', onPick: onOpenD22Audit } satisfies Item]
+      : []),
   ]
 
   const caretStyle: React.CSSProperties = canShare
