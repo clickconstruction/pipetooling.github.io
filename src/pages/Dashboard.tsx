@@ -84,6 +84,8 @@ import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
 import { resolveReadyToBillBillCustomerTarget } from '../lib/buildReadyToBillDashboardUnits'
 import { isDashboardTeamReadyToBillRole } from '../lib/dashboardTeamAssignedJobRow'
+import { isCrewDayRole } from '../lib/crewDay'
+import { DashboardCrewDaySection } from '../components/dashboard/DashboardCrewDaySection'
 import {
   dashboardJobHasCustomerForBilling,
   jobBillingFromDashboardInvoice,
@@ -1088,6 +1090,9 @@ export default function Dashboard() {
     />
   )
 
+  /** Crew Day (v2.2602): mounted directly above each myInboxCard position; self-gates on isCrewDayRole. */
+  const crewDaySection = <DashboardCrewDaySection authUserId={authUser?.id} role={role} />
+
   // Job Mode focused view: replaces top of Dashboard with one big card; rest of
   // Dashboard is hidden until user taps "Show full dashboard" (component-local;
   // resets every page load). Toggle lives in the header gear menu (Layout.tsx).
@@ -1183,6 +1188,7 @@ export default function Dashboard() {
     { id: 'dash-my-schedule', label: 'My Schedule', visible: Boolean(authUser?.id) },
     { id: 'dash-notifications', label: 'Notifications', visible: showFinancials },
     { id: 'dash-clocked-in', label: 'ClockedIn', visible: Boolean(authUser?.id && showClockActivityStrip) },
+    { id: 'dash-crew-day', label: 'Crew Day', visible: Boolean(authUser?.id) && isCrewDayRole(role) },
     { id: 'dash-my-inbox', label: 'My Inbox', visible: myInboxDockVisible },
     {
       id: 'dash-teams-inbox',
@@ -1385,6 +1391,7 @@ export default function Dashboard() {
       )}
       {isAssistantLike(role) && (
         <>
+          {crewDaySection}
           {myInboxCard}
           {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
             <DashboardTeamsInboxCard
@@ -1464,7 +1471,12 @@ export default function Dashboard() {
           }}
         />
       )}
-      {(role === 'dev' || role === 'master_technician') && myInboxCard}
+      {(role === 'dev' || role === 'master_technician') && (
+        <>
+          {crewDaySection}
+          {myInboxCard}
+        </>
+      )}
       {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && !isAssistantLike(role) && (
         <DashboardTeamsInboxCard
           dispatchInbox={dispatchInbox}
@@ -1489,7 +1501,12 @@ export default function Dashboard() {
         />
       )}
 
-      {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myInboxCard}
+      {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && (
+        <>
+          {crewDaySection}
+          {myInboxCard}
+        </>
+      )}
       <DashboardMyBidsSection
         authUserId={authUser?.id}
         role={role}
