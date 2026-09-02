@@ -7,7 +7,13 @@ import {
   suggestCustomerAddressForJob,
   type CustomerAddressRow,
 } from './lienProperty'
-import { suggestTxCountyForCity, txCountyCadSearchUrl } from '../txCountyLookup'
+import {
+  formatExtraTxCountyMappingsText,
+  parseExtraTxCountyMappingsText,
+  setExtraTxCountyMappings,
+  suggestTxCountyForCity,
+  txCountyCadSearchUrl,
+} from '../txCountyLookup'
 
 function addressRow(overrides: Partial<CustomerAddressRow>): CustomerAddressRow {
   return {
@@ -127,5 +133,24 @@ describe('txCountyLookup', () => {
     expect(txCountyCadSearchUrl('Hays')).toContain('hayscad')
     expect(txCountyCadSearchUrl('bexar')).toContain('bexar')
     expect(txCountyCadSearchUrl('Unknown County')).toBe('')
+  })
+
+  it('org extras (v2.2638): parse "City = County" lines, extras override built-ins', () => {
+    expect(parseExtraTxCountyMappingsText('Devine = Medina\n\njunk line\nPoteet=Atascosa\n San Marcos = Comal ')).toEqual({
+      devine: 'Medina',
+      poteet: 'Atascosa',
+      'san marcos': 'Comal',
+    })
+    try {
+      setExtraTxCountyMappings(parseExtraTxCountyMappingsText('Devine = Medina\nSan Marcos = Comal'))
+      expect(suggestTxCountyForCity('Devine')).toBe('Medina')
+      expect(suggestTxCountyForCity('San Marcos')).toBe('Comal') // override wins
+      expect(suggestTxCountyForCity('Boerne')).toBe('Kendall') // built-ins untouched
+    } finally {
+      setExtraTxCountyMappings({})
+    }
+    expect(formatExtraTxCountyMappingsText({ devine: 'Medina', 'san marcos': 'Comal' })).toBe(
+      'Devine = Medina\nSan Marcos = Comal',
+    )
   })
 })

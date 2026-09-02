@@ -67,6 +67,8 @@ export interface JobIdentityFormFields {
   serviceTypeId: string
   /** Account Man (v2.1466) — a users row id; must be one of the job's team members. */
   accountManagerUserId: string | null
+  /** Property record link (v2.2638) — a customer_addresses row id (the job customer's or GC's); feeds lien documents. */
+  customerAddressId: string | null
   /** primary | preferred | only; only meaningful while accountManagerUserId is set. */
   accountManagerRelationship: string | null
 }
@@ -90,6 +92,7 @@ export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
     bi: fields.bidId,
     st: fields.serviceTypeId.trim(),
     am: fields.accountManagerUserId,
+    ca: fields.customerAddressId,
     ar: fields.accountManagerUserId ? fields.accountManagerRelationship : null,
   })
 }
@@ -207,6 +210,9 @@ export function buildEditJobIdentityUpdatePayload(params: {
     service_type_id: fields.serviceTypeId.trim(),
     master_user_id: masterUserId,
     account_manager_user_id: fields.accountManagerUserId || null,
+    // The modal clears this when the customer/GC changes away from the row's
+    // owner; the FK (ON DELETE SET NULL) backstops deleted rows.
+    customer_address_id: fields.customerAddressId || null,
     // Relationship defaults to primary while a manager is set; both clear together.
     account_manager_relationship: fields.accountManagerUserId ? fields.accountManagerRelationship || 'primary' : null,
   }

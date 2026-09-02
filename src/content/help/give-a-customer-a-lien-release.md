@@ -43,7 +43,7 @@ The document is designed to be signed by hand: if you leave the signer fields bl
 On **Customers → Edit → Additional addresses**, every address now has a **Property legal info** panel: the county the paperwork files in (the app suggests it from the city — confirm it), the legal description from the county appraisal district (there's a direct **CAD ↗** link), residential/homestead classification, and the **owner of record with their mailing address** — where lien notices legally go, which is often not the job site.
 
 :::example Why bother?
-An address showing {{chip:green|✓ lien-ready}} has everything a lien filing needs, entered once and reused by every job at that property. In the Release of Lien window, link the job to its property record (the app suggests the match by address) and the owner of record fills in automatically.
+An address showing {{chip:green|✓ lien-ready}} has everything a lien filing needs, entered once and reused by every job at that property. Link a job to its property record from **Edit Job → Property record** or right in the Release of Lien window — the app suggests the match by address — and the owner of record, filing county, and legal description fill into the lien paperwork automatically.
 :::
 
 ## Track what you issued

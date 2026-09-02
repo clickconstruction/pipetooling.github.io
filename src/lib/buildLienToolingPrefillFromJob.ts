@@ -31,6 +31,13 @@ export type LienToolingPrefillContext = {
    * absentee.
    */
   ownerRecord?: LienToolingOwnerRecord | null
+  /**
+   * The job's linked property record (v2.2638 — customer_addresses legal
+   * columns via jobs_ledger.customer_address_id): fills the filing county and
+   * the appraisal-district legal description on the mechanic's-lien and
+   * release forms, which were always blank before the property ledger.
+   */
+  property?: { county: string; legalDescription: string } | null
 }
 
 /** Display name for the owner of record: company-first for building owners, person-first for homeowners. */
@@ -191,6 +198,7 @@ function buildMechanicsLien(
   issuer: PhysicalInvoiceIssuer | null,
   senderNameFallback: string,
   ownerRecord: LienToolingOwnerRecord | null,
+  property: { county: string; legalDescription: string } | null,
 ): LienToolingPrefillState {
   const claimAddr = issuer ? parseIssuerAddressLines(issuer) : { street: '', city: '', state: 'Texas', zip: '' }
   const prop = splitJobAddressForPrefill(job.job_address ?? '')
@@ -223,8 +231,8 @@ function buildMechanicsLien(
     'property-city': prop.city || '—',
     'property-state': prop.state || 'Texas',
     'property-zip': prop.zip || '—',
-    'property-county': '',
-    'legal-description': '',
+    'property-county': (property?.county ?? '').trim(),
+    'legal-description': (property?.legalDescription ?? '').trim(),
     'work-description': workDesc,
     'work-start': workYmd,
     'work-end': workYmd,
@@ -245,6 +253,7 @@ function buildReleaseLien(
   issuer: PhysicalInvoiceIssuer | null,
   senderNameFallback: string,
   ownerRecord: LienToolingOwnerRecord | null,
+  property: { county: string; legalDescription: string } | null,
 ): LienToolingPrefillState {
   const claimAddr = issuer ? parseIssuerAddressLines(issuer) : { street: '', city: '', state: 'Texas', zip: '' }
   const prop = splitJobAddressForPrefill(job.job_address ?? '')
@@ -263,9 +272,9 @@ function buildReleaseLien(
     'claimant-state': claimAddr.state || 'Texas',
     'claimant-zip': claimAddr.zip || '—',
     'filing-date': filingYmd,
-    'property-description': (job.job_name ?? '').trim() || (job.job_address ?? '').trim(),
+    'property-description': (property?.legalDescription ?? '').trim() || (job.job_name ?? '').trim() || (job.job_address ?? '').trim(),
     'owner-name': ownerName,
-    'property-county': '',
+    'property-county': (property?.county ?? '').trim(),
     'property-address': prop.street || (job.job_address ?? '').trim(),
     'property-city': prop.city || '—',
     'property-state': prop.state || 'Texas',
@@ -288,9 +297,9 @@ export function buildLienToolingPrefillState(
         ctx.senderEmailFallback,
       )
     case 'mechanics-lien':
-      return buildMechanicsLien(ctx.job, inv, ctx.issuer, ctx.senderNameFallback, ctx.ownerRecord ?? null)
+      return buildMechanicsLien(ctx.job, inv, ctx.issuer, ctx.senderNameFallback, ctx.ownerRecord ?? null, ctx.property ?? null)
     case 'release-lien':
-      return buildReleaseLien(ctx.job, inv, ctx.issuer, ctx.senderNameFallback, ctx.ownerRecord ?? null)
+      return buildReleaseLien(ctx.job, inv, ctx.issuer, ctx.senderNameFallback, ctx.ownerRecord ?? null, ctx.property ?? null)
     default: {
       const _exhaustive: never = form
       return _exhaustive

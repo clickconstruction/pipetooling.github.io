@@ -13,6 +13,13 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
 import { titleCaseAddress } from '../../lib/addressTitleCase'
+import { type CustomerAddressRow } from '../../lib/jobs/lienProperty'
+
+/** Slim customer_addresses row for the property-record picker (v2.2638). */
+type PropertyCandidateRow = Pick<
+  CustomerAddressRow,
+  'id' | 'customer_id' | 'address' | 'county' | 'legal_description' | 'owner_name' | 'owner_company' | 'owner_mailing_address'
+>
 import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNames'
 import { billsAheadRemedyHint } from '../../lib/jobs/editJobInvoiceSendBack'
 import { useAuth } from '../../hooks/useAuth'
@@ -375,6 +382,9 @@ export default function JobFormModal({
   const [customerId, setCustomerId] = useState<string | null>(null)
   /** Optional GC (General Contractor) — a second customers link, like bids' GC/Builder (v2.1176). */
   const [gcCustomerId, setGcCustomerId] = useState<string | null>(null)
+  /** Property record link (v2.2638): customer_addresses row this job sits at — feeds lien documents. */
+  const [customerAddressId, setCustomerAddressId] = useState<string | null>(null)
+  const [propertyCandidates, setPropertyCandidates] = useState<PropertyCandidateRow[]>([])
   /** Optional development (group of jobs) — a developments row id (v2.1199). */
   const [developmentId, setDevelopmentId] = useState<string | null>(null)
   const [developments, setDevelopments] = useState<JobFormDevelopmentRow[]>([])
@@ -722,6 +732,7 @@ export default function JobFormModal({
     serviceTypeId: formServiceTypeId,
     accountManagerUserId,
     accountManagerRelationship,
+    customerAddressId,
   }
   const identityFieldsRef = useRef(identityFields)
   identityFieldsRef.current = identityFields
@@ -736,6 +747,40 @@ export default function JobFormModal({
   editingMasterUserIdRef.current = editing?.master_user_id ?? null
   /** Last PERSISTED pictures link — drives the blank→set dispatch auto-close. */
   const persistedPicturesLinkRef = useRef('')
+
+  // Property-record candidates (v2.2638): the job customer's + GC's saved
+  // addresses. Fail-soft; a stale link (customer changed away from the row's
+  // owner) is cleared only after a SUCCESSFUL load proves it foreign.
+  useEffect(() => {
+    const ids = [customerId, gcCustomerId].filter((v): v is string => Boolean(v))
+    if (ids.length === 0) {
+      setPropertyCandidates([])
+      if (customerAddressId) setCustomerAddressId(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('customer_addresses')
+          .select('id, customer_id, address, county, legal_description, owner_name, owner_company, owner_mailing_address')
+          .in('customer_id', ids)
+          .order('sequence_order', { ascending: true })
+        if (error || cancelled) return
+        const rows = (data ?? []) as PropertyCandidateRow[]
+        setPropertyCandidates(rows)
+        if (customerAddressId && !rows.some((r) => r.id === customerAddressId)) {
+          setCustomerAddressId(null)
+        }
+      } catch {
+        // keep the current link; candidates just stay empty
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId, gcCustomerId, open])
 
   /** Same auto-close saveJob performs when the pictures link goes blank→set. */
   async function autoClosePicturesDispatchRequests(jobId: string): Promise<void> {
@@ -960,6 +1005,7 @@ export default function JobFormModal({
     setFormServiceTypeId(s.identity.serviceTypeId)
     setAccountManagerUserId(s.identity.accountManagerUserId)
     setAccountManagerRelationship(s.identity.accountManagerRelationship)
+    setCustomerAddressId(s.identity.customerAddressId)
     setSelectedSegmentIds(new Set())
     setUndoConfirmOpen(false)
     showToast('Reverted to how the job looked when you opened it — the revert auto-saves.', 'success')
@@ -1419,6 +1465,7 @@ export default function JobFormModal({
     setCustomerPhone(job.customer_phone ?? '')
     setCustomerId(job.customer_id ?? null)
     setGcCustomerId(job.gc_customer_id ?? null)
+    setCustomerAddressId(job.customer_address_id ?? null)
     setDevelopmentId(job.development_id ?? null)
     setLinkedBidGc(
       job.linkedBid?.customer_id && job.linkedBid.customers
@@ -1486,6 +1533,7 @@ export default function JobFormModal({
     setCustomerPhone('')
     setCustomerId(null)
     setGcCustomerId(null)
+    setCustomerAddressId(null)
     setDevelopmentId(null)
     setLinkedBidGc(null)
     setProjectId(projectPrefill)
@@ -3024,6 +3072,7 @@ export default function JobFormModal({
           job_address: titleCaseAddress(jobAddress.trim()),
           customer_id: resolvedCustomerIdNew,
           gc_customer_id: resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers),
+          customer_address_id: customerAddressId,
           development_id: resolveDevelopmentIdForJobPayload(developmentId, effectiveMasterId, developments),
           customer_name: customerName.trim() || null,
           customer_email: customerEmail.trim() || null,
@@ -3364,6 +3413,9 @@ export default function JobFormModal({
               jobPicturesLink={jobPicturesLink}
               setJobPicturesLink={setJobPicturesLink}
               jobAddress={jobAddress}
+              customerAddressId={customerAddressId}
+              setCustomerAddressId={setCustomerAddressId}
+              propertyCandidates={propertyCandidates}
               setJobAddress={setJobAddress}
               customers={customers}
               customersLoading={customersLoading}

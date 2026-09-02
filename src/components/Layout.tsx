@@ -19,6 +19,7 @@ import { RouteChunkBoundary } from './RouteChunkBoundary'
 import { RouteLoadingFallback } from './RouteLoadingFallback'
 import { consumePendingOpenAddTask } from '../lib/iosPwa'
 import { loadAndApplyExtraJobAddressLocalities } from '../lib/jobAddressLocalitySettings'
+import { loadAndApplyExtraTxCountyMappings } from '../lib/txCountySettings'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import ChecklistAddModal from './ChecklistAddModal'
@@ -142,10 +143,12 @@ export default function Layout() {
   const dispatchModeMenuEligible = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible && !farmModeActive
 
-  // Org-added address-split cities (Stages/Billing rows, lien prefill) — hydrate once per session.
+  // Org-added address-split cities (Stages/Billing rows, lien prefill) and
+  // city→county extras (property legal panels) — hydrate once per session.
   useEffect(() => {
     if (!authUser?.id) return
     void loadAndApplyExtraJobAddressLocalities()
+    void loadAndApplyExtraTxCountyMappings()
   }, [authUser?.id])
 
   /**
