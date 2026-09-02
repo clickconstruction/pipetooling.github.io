@@ -51,6 +51,16 @@ On **Customers → Edit → Additional addresses**, every address now has a **Pr
 An address showing {{chip:green|✓ lien-ready}} has everything a lien filing needs, entered once and reused by every job at that property. In the Release of Lien window, link the job to its property record (the app suggests the match by address) and the owner of record fills in automatically.
 :::
 
+## The signed release comes back to you
+
+The moment the master signs, the release lands in the **Teams Inbox** (on the Dashboard, and under Checklist → Review) in a **Signed — ready to send** lane for whoever requested the signature:
+
+- {{button:blue|Email to customer — PDF attached}} sends the signed document to the job's customer email — you confirm the address first, and the release is marked {{chip:green|sent ✓}} on the job.
+- {{button:outline-blue|Download PDF}} grabs the signed PDF to attach in your own email.
+- **Mark sent without emailing** covers a printed or hand-delivered copy.
+
+The master sees his own lane the same way — **Awaiting your signature** — and signs right from the row.
+
 ## Track what you issued
 
 Once a release is minted, the app keeps it in sight:

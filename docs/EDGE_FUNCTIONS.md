@@ -146,6 +146,7 @@ when_to_read:
    - [money-waiting-email-dispatch](#money-waiting-email-dispatch)
    - [crew-day-email-dispatch](#crew-day-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
+   - [send-lien-release-email](#send-lien-release-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
@@ -2348,6 +2349,14 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 **Service address** (v2.998): the invoice is created with a `custom_fields` entry `Service address` from `jobs_ledger.job_address` (trimmed, capped 140 chars; omitted when blank) — renders in the header of the hosted page and PDF. Not shown by `preview-stripe-invoice` (`createPreview` lacks `custom_fields`).
 
 ---
+
+### send-lien-release-email
+
+**Purpose** (v2.2621, the lien-signing loop's send leg): email a **signed** lien release to the job's customer with the PDF attached, then stamp the release row **sent** (`sent_to_customer_at`, `sent_channel: 'email'`, `sent_by`). The PDF arrives from the client — the stored `signed.pdf` bytes from the `lien-release-documents` bucket when present, else a regeneration from the row snapshot with the typed signature. Client helper: [`sendLienReleaseEmail.ts`](../src/lib/sendLienReleaseEmail.ts); the send surface is the "Signed — ready to send" inbox lane ([`LienSignatureInboxSection`](../src/components/jobs/LienSignatureInboxSection.tsx)).
+
+**Endpoint**: `POST /functions/v1/send-lien-release-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client (RLS applies), `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
+
+Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?, pdf_base64, pdf_filename? }`. Guards: release must belong to the job, be `status = 'signed'`, and not voided; `customer_email` must match `jobs_ledger.customer_email` (case-insensitive); PDF ≤ 6M base64 chars. Success: `{ success: true }`; if the Resend send succeeds but the sent-stamp UPDATE fails, returns 500 with "mark it sent manually" (email already went out).
 
 ### send-physical-invoice-email
 
