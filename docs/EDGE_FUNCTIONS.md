@@ -2632,7 +2632,7 @@ If the DB persist fails, the function may return **502** with **`stripe_may_have
 
 **Endpoint**: `POST /functions/v1/update-collect-payment-stripe-customer-email`
 
-**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Subcontractor only** (v1): same **service-role** gate as **`send-stripe-invoice`** — **`jobs_ledger_team_members`** for the invoice’s job **and** **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request. Non-subcontractors receive **403**.
+**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Field roles only** (subcontractor/helpers; +superintendent v2.2637): same **service-role** gate as **`send-stripe-invoice`** — **`jobs_ledger_team_members`** for the invoice’s job **and** **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request. Non-subcontractors receive **403**.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`SUPABASE_SERVICE_ROLE_KEY`**, Stripe secret for the chosen mode.
 
@@ -2656,7 +2656,7 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 
 - **400** — Missing invoice id, invalid/empty email, invoice not **billed**, no **`stripe_invoice_id`**, job has no **`customer_id`**, customer **`master_user_id`** mismatch vs job, missing **`stripe_customer_id`**, Stripe **`customers.update`** failure (including **missing Stripe customer** — contact office; v1 does not auto-create customers).
 - **401** — Missing or invalid JWT.
-- **403** — Not a subcontractor, or collect-payment gate failed (not on job team / flow not approved for this invoice).
+- **403** — Not a field role (subcontractor/helpers/superintendent since v2.2637), or collect-payment gate failed (not on job team / flow not approved for this invoice).
 - **502** — Stripe error (other than handled missing customer), **`invoices.update`** failure after **`customers.update`** (customer may be updated on Stripe; invoice email not synced — contact office), or partial DB failure after both Stripe updates.
 
 **Client**: [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx) step 3 **Change email**.
@@ -2673,7 +2673,7 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 
 **Endpoint**: `POST /functions/v1/get-stripe-invoice-details`
 
-**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Staff** (non–`subcontractor`): invoice row loaded with the user-scoped client (**RLS** **`SELECT`**). **`subcontractor`**: invoice row loaded with **service role** only after **`jobs_ledger_team_members`** and **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request (same gate as **`send-stripe-invoice`** for field email); memo/footer backfill uses **service role** for subs.
+**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Staff** (non–`subcontractor`): invoice row loaded with the user-scoped client (**RLS** **`SELECT`**). **field roles** (`subcontractor`/`helpers`; +`superintendent` v2.2637): invoice row loaded with **service role** only after **`jobs_ledger_team_members`** and **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request (same gate as **`send-stripe-invoice`** for field email); memo/footer backfill uses **service role** on that path.
 
 **Success body** (partial): includes **`memo`** (Stripe **`description`**) and **`footer`** (Stripe **`footer`**) as separate strings when present. May service-backfill **`stripe_invoice_memo`** / **`stripe_invoice_footer`** on the ledger row when empty. **v2.1641**: also returns **`oob_paid_on`** (YYYY-MM-DD | null) — the effective out-of-band pay date from invoice metadata `pt_paid_on`; the Hosted bill panel prefers it over `paid_at` for OOB-paid invoices (`amount_paid === 0`), since Stripe stamps `status_transitions.paid_at` at the API call and it cannot be backdated. Redeployed 2026-08-14.
 

@@ -111,7 +111,11 @@ serve(async (req) => {
     }
 
     const callerRole = roleRow.role
-    const isSubcontractor = callerRole === 'subcontractor' || callerRole === 'helpers'
+    // Field-collect path (strict: team member + approved flow). Superintendent
+    // added v2.2637 — supers ride the same guarded path as subs, never the
+    // office RLS path.
+    const isSubcontractor =
+      callerRole === 'subcontractor' || callerRole === 'helpers' || callerRole === 'superintendent'
 
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!serviceKey?.trim()) {

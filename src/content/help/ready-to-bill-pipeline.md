@@ -47,7 +47,7 @@ Know the job's number? The small **#** chip left of the Pipeline search bar is t
 
 ## The Dashboard card explains itself
 
-The Dashboard's **Billing Pipeline** card has a round **i** button next to its title — tap it for a compact map of the whole flow: the upstream Waiting/Working stages, the card's three numbered stages, who taps what at each one (including the subcontractor's {{button:blue|Collect Payment}} → office {{button:green|Approve}} handshake at stage 1), and where paid jobs go. Its "Full guide in Help" link lands right here.
+The Dashboard's **Billing Pipeline** card has a round **i** button next to its title — tap it for a compact map of the whole flow: the upstream Waiting/Working stages, the card's three numbered stages, who taps what at each one (including the field crew's — subcontractor, helper, or superintendent — {{button:blue|Collect Payment}} → office {{button:green|Approve}} handshake at stage 1), and where paid jobs go. Its "Full guide in Help" link lands right here.
 
 ## Section tools in one dropdown
 

@@ -90,9 +90,9 @@ describe('DashboardTeamReadyToBillSection', () => {
     expect(screen.queryByText('View Reports')).toBeNull() // office-only button absent for subs
   })
 
-  it('superintendents get the single-line View Reports button', () => {
+  it('superintendents get View Reports AND the Collect button (v2.2637)', () => {
     renderWithProviders(<DashboardTeamReadyToBillSection {...makeProps({ role: 'superintendent' })} />)
     expect(screen.getByText('View Reports')).toBeTruthy()
-    expect(screen.queryByText('Collect')).toBeNull()
+    expect(screen.getByText('Collect')).toBeTruthy() // field collect flow opened to supers
   })
 })
