@@ -659,7 +659,13 @@ export function DashboardMyScheduleSection({
                               block's end time passes (finishing early still works). */}
                           {(() => {
                             const canReport = canLeaveJobFieldReport(role) && blockJobId != null
-                            const canUpdate = which === 'today' && blockJobId != null && isSubcontractorLikeRole(role)
+                            // Superintendents included since v2.2635 — set_job_pct_from_field
+                            // already authorizes schedule-block assignees, so a super can move
+                            // % done from their own scheduled cards like sub-like roles.
+                            const canUpdate =
+                              which === 'today' &&
+                              blockJobId != null &&
+                              (isSubcontractorLikeRole(role) || role === 'superintendent')
                             if (!canReport && !canUpdate) return null
                             const ended = canUpdate
                               ? isScheduleBlockEnded(b.work_date, b.time_end, subScheduleDayPartition.todayYmd, nowHm)
