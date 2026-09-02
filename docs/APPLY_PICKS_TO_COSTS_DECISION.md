@@ -1,5 +1,11 @@
 # Apply Picks to Bid Costs — decision doc (RFQ Round 2, Rung G)
 
+> DECIDED + SHIPPED v2.2655 (owner approved option (a) 2026-09-02).
+> BUILD CORRECTION: the per-row workbench cost blends labor + materials
+> (lineCostForRow), so the override replaces the MATERIALS component
+> only — exactly the risk this doc's open question flagged; caught at
+> build time, confirmed by kernel tests.
+>
 > One page for one owner decision. Mockup: "RFQ Desk" canvas artboard 10
 > (artifact b731a34b…). Nothing here is built; the `picked` flag
 > (v2.2630) and the lot design below are the shaped-and-waiting inputs.

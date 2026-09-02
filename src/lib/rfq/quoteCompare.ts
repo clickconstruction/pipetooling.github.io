@@ -18,6 +18,9 @@ export type CompareQuoteLine = {
   cantSupply: boolean
   alternateNote?: string | null
   picked?: boolean
+  /** Rung G (v2.2655): lines priced together as one package share a lotId + one total. */
+  lotId?: string | null
+  lotTotalCents?: number | null
 }
 
 export type CompareQuote = {
@@ -38,6 +41,8 @@ export type CompareRowCell = {
   alternateNote?: string | null
   expired: boolean
   picked: boolean
+  lotId?: string | null
+  lotTotalCents?: number | null
 }
 
 export type CompareRow = {
@@ -124,6 +129,8 @@ export function buildQuoteComparison(args: {
         alternateNote: line.alternateNote ?? null,
         expired,
         picked: Boolean(line.picked),
+        lotId: line.lotId ?? null,
+        lotTotalCents: line.lotTotalCents ?? null,
       }
       if (!expired && !line.cantSupply && line.unitPriceEachCents != null && line.unitPriceEachCents < best) {
         best = line.unitPriceEachCents
@@ -185,9 +192,18 @@ export function buildQuoteComparison(args: {
 
   let pickedTotal = 0
   const pickedHouseIds = new Set<string>()
+  // A picked lot counts its total ONCE no matter how many lines it spans.
+  const pickedLotIds = new Set<string>()
   for (const r of rows) {
     for (const [houseId, cell] of Object.entries(r.perHouse)) {
-      if (cell.picked && cell.unitPriceEachCents != null && !cell.cantSupply) {
+      if (!cell.picked || cell.cantSupply) continue
+      if (cell.lotId != null && cell.lotTotalCents != null) {
+        if (!pickedLotIds.has(cell.lotId)) {
+          pickedLotIds.add(cell.lotId)
+          pickedTotal += cell.lotTotalCents
+        }
+        pickedHouseIds.add(houseId)
+      } else if (cell.unitPriceEachCents != null) {
         pickedTotal += cell.unitPriceEachCents * r.qtyNow
         pickedHouseIds.add(houseId)
       }

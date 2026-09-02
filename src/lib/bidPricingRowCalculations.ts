@@ -53,11 +53,20 @@ export type ComputeBidPricingRowsInput = {
   materialsFromTakeoffByCountRowId: Record<string, number>
   /** Count rows omitted from Cover Letter / Approval fixture lists (revenue unchanged) */
   hiddenSubmissionCountRowIds: ReadonlySet<string>
+  /**
+   * Rung G (v2.2655): applied supply-house quotes — count_row_id → unit
+   * materials $ (pre-tax, per unit). Replaces the row's MATERIALS component
+   * only (labor untouched); recomputed against the live count, so a count
+   * change flows through; taxed like takeoff materials.
+   */
+  materialsOverrideUnitByCountRowId?: ReadonlyMap<string, number>
 }
 
 export type ComputedBidPricingRow = {
   countRow: BidCountRowCalc
   count: number
+  /** True when materials came from an applied quote (Rung G) rather than takeoff/allocation. */
+  materialsFromQuote: boolean
   assignment: BidPricingAssignmentCalc | undefined
   entry: PriceBookEntryCalc | undefined
   unitPrice: number
@@ -147,7 +156,10 @@ export function computeBidPricingRows(input: ComputeBidPricingRowsInput): Comput
         (l) => (l.fixture ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase(),
       )
     const laborHrs = laborRow ? costEstimateLaborRowHours(laborRow) : 0
-    const takeoffMat = input.materialsFromTakeoffByCountRowId[countRow.id]
+    const overrideUnit = input.materialsOverrideUnitByCountRowId?.get(countRow.id)
+    const overrideTotal =
+      overrideUnit != null && Number.isFinite(count) && count > 0 ? overrideUnit * count : overrideUnit
+    const takeoffMat = overrideTotal ?? input.materialsFromTakeoffByCountRowId[countRow.id]
     const { laborCost, materialsBeforeTax, materialsWithTax, cost } = lineCostForRow(
       laborHrs,
       input.laborRate,
@@ -160,6 +172,7 @@ export function computeBidPricingRows(input: ComputeBidPricingRowsInput): Comput
     rows.push({
       countRow,
       count,
+      materialsFromQuote: overrideUnit != null,
       assignment,
       entry,
       unitPrice,
