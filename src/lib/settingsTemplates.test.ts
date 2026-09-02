@@ -97,7 +97,8 @@ describe('settings templates constants', () => {
 
 describe('EMAIL_TEMPLATE_DEFAULTS', () => {
   it('covers all 25 email template types with non-empty subject and body', () => {
-    // 14 original + 2 customer cover notes (v2.2658) + 9 digests (v2.2659).
+    // 14 original − login_as (dead, removed v2.2660) + 2 customer cover notes
+    // (v2.2658) + 9 digests (v2.2659) + gc_statement_scheduled (v2.2660).
     const types = Object.keys(EMAIL_TEMPLATE_DEFAULTS)
     expect(types).toHaveLength(25)
     for (const [type, def] of Object.entries(EMAIL_TEMPLATE_DEFAULTS)) {
@@ -107,7 +108,7 @@ describe('EMAIL_TEMPLATE_DEFAULTS', () => {
   })
 
   it('link-bearing transactional defaults include the {{link}} placeholder', () => {
-    for (const type of ['invitation', 'sign_in', 'login_as'] as const) {
+    for (const type of ['invitation', 'sign_in'] as const) {
       expect(EMAIL_TEMPLATE_DEFAULTS[type].body).toContain('{{link}}')
     }
   })

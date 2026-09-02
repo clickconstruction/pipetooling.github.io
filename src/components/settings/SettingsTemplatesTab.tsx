@@ -516,7 +516,6 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
             {[
               { type: 'invitation' as const, label: 'Invitation Email', description: 'Sent when inviting a new user' },
               { type: 'sign_in' as const, label: 'Sign-In Email', description: 'Sent when requesting a sign-in link' },
-              { type: 'login_as' as const, label: 'Login As Email', description: 'Sent when dev logs in as another user' },
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)
               return (
@@ -578,6 +577,11 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                 label: 'Biohazard remediation fee notice',
                 description: 'Cover note for the notice PDF. Variables: {{job_number}}, {{invoice_reference}}',
               },
+              {
+                type: 'gc_statement_scheduled' as const,
+                label: 'GC statement (scheduled)',
+                description: 'Subject + intro for the scheduled statement email. Variables: {{date}}, {{default_subject}}',
+              },
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)
               return (
@@ -588,6 +592,16 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                       <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {template && (
+                        <button
+                          type="button"
+                          onClick={() => openTestEmail(template)}
+                          disabled={!templateTestTargetUserId}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
+                        >
+                          Test
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openEditTemplate(template, type)}
@@ -633,6 +647,16 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                       <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {template && (
+                        <button
+                          type="button"
+                          onClick={() => openTestEmail(template)}
+                          disabled={!templateTestTargetUserId}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
+                        >
+                          Test
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openEditTemplate(template, type)}
@@ -868,7 +892,6 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                 <h2 style={{ marginTop: 0 }}>
                   Edit {editingTemplate.template_type === 'invitation' ? 'Invitation' : 
                     editingTemplate.template_type === 'sign_in' ? 'Sign-In' : 
-                    editingTemplate.template_type === 'login_as' ? 'Login As' :
                     editingTemplate.template_type === 'stage_assigned_started' ? 'Stage Started (Assigned)' :
                     editingTemplate.template_type === 'stage_assigned_complete' ? 'Stage Complete (Assigned)' :
                     editingTemplate.template_type === 'stage_assigned_reopened' ? 'Stage Re-opened (Assigned)' :

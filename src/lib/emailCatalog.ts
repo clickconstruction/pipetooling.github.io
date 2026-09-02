@@ -89,7 +89,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'customer',
     builtWhere: 'server',
     sender: 'gc-statement-email-dispatch',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['gc_statement_scheduled'] },
     subjectExample: 'Click Plumbing open balances: {{gc_name}}',
   },
   {
