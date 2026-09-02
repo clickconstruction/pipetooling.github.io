@@ -17,6 +17,12 @@ Texting a parts list works — but then the rep texts prices back and someone re
 
 The link is addressed to that one house — send a separate link to each vendor you're pricing against.
 
+## Or let ClickTooling send the emails
+
+Next to the copy buttons, **Send by email…** opens the request composer: tick the houses (emails remembered from last time), set needed-by, add a one-line note — and **preview every email exactly as it will send** before anything goes out. Each house gets its own email with the parts list right in the body and its own link; replies come straight to your inbox.
+
+The **RFQs chip** by Share then becomes your desk: every request as a trail — {{chip:green|Sent}} → {{chip:green|Delivered}} → {{chip:yellow|Viewed}} → {{chip:gray|Quoted}} — with bounced addresses in red (fix them right on the row and resend), a one-tap **Nudge** that rests 24 hours between sends and shows you the reminder before it goes, a coverage bar for "which items does nobody have priced yet?", and **Close link** when you're done asking.
+
 {{gif:send-a-supply-house-a-quote-link.gif|Pick the house, set needed-by, Copy with quote link — the toast confirms and an RFQ sent chip appears by Share}}
 
 ## What the vendor sees

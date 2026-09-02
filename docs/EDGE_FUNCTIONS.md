@@ -102,6 +102,7 @@ when_to_read:
    - [sign-bid-room](#sign-bid-room)
    - [get-rfq-quote-page](#get-rfq-quote-page)
    - [submit-rfq-quote](#submit-rfq-quote)
+   - [send-rfq-email](#send-rfq-email)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
    - [get-estimate-public-terms](#get-estimate-public-terms)
@@ -1068,6 +1069,20 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false`; the RFQ token is the credential.
 
 **Behavior**: 404 unknown token, 410 when closed (or the bid is lost). Lines are validated against the RFQ's **own scope snapshot** — fixture names the RFQ never asked about are dropped (the token can't write arbitrary rows), prices sanity-capped, notes/name length-capped. Inserts `bid_quotes` (source `link`, `rfq_id`, the RFQ's supply house/bid version) + `bid_quote_lines`, flips the RFQ to `quoted`, and upserts the `supply_house_fixture_prices` memory (deduped by generated `fixture_key`). Re-submits allowed until closed — compare shows the latest per house; earlier quotes stay as history. Requires migration `20260902030531`.
+
+---
+
+### send-rfq-email
+
+**Purpose**: The **RFQ Desk** sender (lane B, v2.2636) — system-sent supply-house price requests with tracking, nudges, and previews (`docs/SUPPLY_HOUSE_RFQ_PLAN.md`).
+
+**Endpoint**: `POST /functions/v1/send-rfq-email` — `{ mode: 'send'|'remind'|'resend'|'preview', … }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+
+**Gateway**: `verify_jwt = false`; JWT + Pricing-staff role validated in-function (send-bid-pricing-package pattern).
+
+**Behavior**: `send` takes `{bidId, bidVersionId?, neededBy?, vendorNote?, scope: {lines, text}, requests: [{supplyHouseId, email}]}` (≤10 houses) and mints one `bid_rfqs` row + token + email per house — the grouped no-prices list in the body, the `/q/<token>` button, `reply_to` = the sender, Resend message id stored on the rfq so the existing [resend-webhook](#resend-webhook) rail reports delivered/bounced. `remind` re-sends with a 24h server-side throttle (429 inside it) and an opener that varies by `viewed_at`; bumps `reminder_count`. `resend` fixes a bounced address on the same token. **`preview` returns the exact email any of those would produce — same builder, no writes, nothing sent** — and the UI requires it before every send and every nudge. Requires migration `20260902151658`.
 
 ---
 

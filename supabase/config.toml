@@ -711,3 +711,9 @@ verify_jwt = false
 
 [functions.submit-rfq-quote]
 verify_jwt = false
+
+# RFQ Desk sender (lane B) — JWT + Pricing-staff role validated in-function
+# (send-bid-pricing-package pattern); gateway verify_jwt caused 401s for
+# legitimate browser sessions elsewhere, so keep it off here too.
+[functions.send-rfq-email]
+verify_jwt = false
