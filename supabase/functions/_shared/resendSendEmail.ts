@@ -11,7 +11,8 @@ export async function sendEmailViaResend(
   textPlain: string,
   htmlBody: string,
   resendApiKey: string,
-): Promise<{ success: boolean; error?: string }> {
+  options?: { replyTo?: string },
+): Promise<{ success: boolean; error?: string; resendEmailId?: string }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -24,6 +25,7 @@ export async function sendEmailViaResend(
       subject,
       html: htmlBody,
       text: textPlain,
+      ...(options?.replyTo ? { reply_to: options.replyTo } : {}),
     }),
   })
   if (!resendResponse.ok) {
@@ -32,5 +34,5 @@ export async function sendEmailViaResend(
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
   await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: PIPETOOLING_FROM, subject })
-  return { success: true }
+  return { success: true, resendEmailId: sent.id }
 }

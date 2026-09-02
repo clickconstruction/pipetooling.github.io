@@ -1172,13 +1172,19 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          last_reminded_at: string | null
           needed_by: string | null
+          reminder_count: number
+          resend_email_id: string | null
           scope: Json
+          sent_email: string | null
           sent_to: string | null
           status: string
           supply_house_id: string | null
           token: string | null
           updated_at: string
+          vendor_note: string | null
+          viewed_at: string | null
         }
         Insert: {
           bid_id: string
@@ -1186,13 +1192,19 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          last_reminded_at?: string | null
           needed_by?: string | null
+          reminder_count?: number
+          resend_email_id?: string | null
           scope?: Json
+          sent_email?: string | null
           sent_to?: string | null
           status?: string
           supply_house_id?: string | null
           token?: string | null
           updated_at?: string
+          vendor_note?: string | null
+          viewed_at?: string | null
         }
         Update: {
           bid_id?: string
@@ -1200,13 +1212,19 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          last_reminded_at?: string | null
           needed_by?: string | null
+          reminder_count?: number
+          resend_email_id?: string | null
           scope?: Json
+          sent_email?: string | null
           sent_to?: string | null
           status?: string
           supply_house_id?: string | null
           token?: string | null
           updated_at?: string
+          vendor_note?: string | null
+          viewed_at?: string | null
         }
         Relationships: [
           {

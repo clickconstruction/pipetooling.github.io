@@ -50,6 +50,9 @@ import { SpecSectionAuditModal } from './SpecSectionAuditModal'
 import { PrepareFixtureCopyModal } from './PrepareFixtureCopyModal'
 import { PlugInQuotesModal } from './PlugInQuotesModal'
 import { QuoteCompareModal } from './QuoteCompareModal'
+import { RfqDeskModal } from './RfqDeskModal'
+import { RfqComposeModal } from './RfqComposeModal'
+import { deriveRfqChip, type DeskRfq } from '../../lib/rfq/rfqDesk'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -755,33 +758,63 @@ export function BidsPricingTab({
   const [quotesCompareOpen, setQuotesCompareOpen] = useState(false)
   const [quoteCount, setQuoteCount] = useState(0)
   const [quoteNonce, setQuoteNonce] = useState(0)
-  // Phase 2 (v2.2631): the outstanding-RFQ signal — Sent (link out, waiting) →
-  // Quoted (a link quote landed; the chip turns green).
-  const [rfqStatus, setRfqStatus] = useState<'sent' | 'quoted' | null>(null)
+  // Lane B (v2.2636): the header chip is derived from the bid's requests +
+  // their email delivery state (deriveRfqChip — none / quotes-only / waiting /
+  // bounced / all-in). The desk and compose modals hang off it.
+  const [deskRfqs, setDeskRfqs] = useState<DeskRfq[]>([])
+  const [rfqDeskOpen, setRfqDeskOpen] = useState(false)
+  const [composeScope, setComposeScope] = useState<{ lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string } | null>(null)
   useEffect(() => {
     const bidId = selectedBidForPricing?.id
     if (!bidId || !canPackageAndSendBidPricing) {
       setQuoteCount(0)
-      setRfqStatus(null)
+      setDeskRfqs([])
       return
     }
     let cancelled = false
     void (async () => {
       const [{ count, error }, { data: rfqs, error: rErr }] = await Promise.all([
         supabase.from('bid_quotes').select('id', { count: 'exact', head: true }).eq('bid_id', bidId),
-        supabase.from('bid_rfqs').select('status').eq('bid_id', bidId).in('status', ['sent', 'quoted']),
+        supabase
+          .from('bid_rfqs')
+          .select('id, status, supply_house_id, sent_to, sent_email, resend_email_id, created_at, viewed_at, last_reminded_at, reminder_count, needed_by')
+          .eq('bid_id', bidId)
+          .neq('status', 'draft'),
       ])
       if (cancelled) return
       if (!error) setQuoteCount(count ?? 0)
       if (!rErr) {
-        const statuses = new Set((rfqs ?? []).map((r) => r.status))
-        setRfqStatus(statuses.has('quoted') ? 'quoted' : statuses.has('sent') ? 'sent' : null)
+        const resendIds = (rfqs ?? []).map((r) => r.resend_email_id).filter((x): x is string => !!x)
+        const eventById = new Map<string, string>()
+        if (resendIds.length > 0) {
+          const { data: logs } = await supabase.from('email_send_log').select('resend_email_id, last_event').in('resend_email_id', resendIds)
+          for (const l of logs ?? []) if (l.resend_email_id && l.last_event) eventById.set(l.resend_email_id, l.last_event)
+        }
+        if (cancelled) return
+        setOpenRfqHouseIds(new Set((rfqs ?? []).filter((r) => r.status === 'sent' && r.supply_house_id).map((r) => r.supply_house_id as string)))
+        setDeskRfqs(
+          (rfqs ?? []).map((r) => ({
+            id: r.id,
+            houseName: r.sent_to,
+            sentEmail: r.sent_email,
+            status: (r.status ?? 'sent') as DeskRfq['status'],
+            createdAt: r.created_at,
+            viewedAt: r.viewed_at,
+            lastRemindedAt: r.last_reminded_at,
+            reminderCount: r.reminder_count ?? 0,
+            neededBy: r.needed_by,
+            emailLastEvent: r.resend_email_id ? (eventById.get(r.resend_email_id) ?? null) : null,
+            scopeLines: [],
+          })),
+        )
       }
     })()
     return () => {
       cancelled = true
     }
   }, [selectedBidForPricing?.id, canPackageAndSendBidPricing, quoteNonce])
+  const [openRfqHouseIds, setOpenRfqHouseIds] = useState<Set<string>>(new Set())
+  const rfqChip = deriveRfqChip(deskRfqs, quoteCount)
 
   // Deep link from the dashboard's Division 22 Needs You item (v2.2627):
   // /bids?tab=pricing&d22audit=1 opens the audit, then strips the param so a
@@ -2741,26 +2774,34 @@ export function BidsPricingTab({
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
-                {/* v2.2630: quotes chip appears once a supply house reply is saved.
-                    v2.2631: an outstanding quote link shows Sent (amber) until a
-                    vendor submits, then the chip goes green. */}
-                {canPackageAndSendBidPricing && rfqStatus === 'sent' && quoteCount === 0 ? (
-                  <span title="A quote link is out — waiting on the vendor" style={{ padding: '0.45rem 0.8rem', background: 'var(--bg-yellow-tint)', color: 'var(--text-amber-700)', border: '1px solid #f59e0b', borderRadius: 999, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                    RFQ sent
-                  </span>
-                ) : null}
-                {canPackageAndSendBidPricing && quoteCount > 0 ? (
+                {/* v2.2630/31/36: one chip, five states (deriveRfqChip) — quotes-only
+                    opens compare (as shipped); any request opens the RFQ desk. */}
+                {canPackageAndSendBidPricing && rfqChip.kind !== 'none' ? (
                   <button
                     type="button"
-                    onClick={() => setQuotesCompareOpen(true)}
-                    title="Compare supply house quotes on this bid"
-                    style={
-                      rfqStatus === 'quoted'
-                        ? { padding: '0.45rem 0.8rem', background: 'var(--surface)', color: '#15803d', border: '1px solid #16a34a', borderRadius: 999, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }
-                        : { padding: '0.45rem 0.8rem', background: 'var(--surface)', color: 'var(--text-blue-500)', border: '1px solid #3b82f6', borderRadius: 999, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }
-                    }
+                    onClick={() => (rfqChip.kind === 'desk' ? setRfqDeskOpen(true) : setQuotesCompareOpen(true))}
+                    title={rfqChip.kind === 'desk' ? 'Open the price-request desk' : 'Compare supply house quotes on this bid'}
+                    style={{
+                      padding: '0.45rem 0.8rem',
+                      background: rfqChip.kind === 'desk' && rfqChip.tone === 'amber' ? 'var(--bg-yellow-tint)' : 'var(--surface)',
+                      color:
+                        rfqChip.kind === 'quotes'
+                          ? 'var(--text-blue-500)'
+                          : rfqChip.tone === 'red'
+                            ? '#ef4444'
+                            : rfqChip.tone === 'amber'
+                              ? 'var(--text-amber-700)'
+                              : '#15803d',
+                      border: `1px solid ${rfqChip.kind === 'quotes' ? '#3b82f6' : rfqChip.tone === 'red' ? '#ef4444' : rfqChip.tone === 'amber' ? '#f59e0b' : '#16a34a'}`,
+                      borderRadius: 999,
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    Quotes ({quoteCount})
+                    {rfqChip.label}
                   </button>
                 ) : null}
                 {/* v2.2198 (option A, artifact df8daa33): Share keeps one click; Print / CSV / review live in the ▾ menu. */}
@@ -6356,6 +6397,49 @@ export function BidsPricingTab({
               : undefined
           }
           onRfqMinted={() => setQuoteNonce((n) => n + 1)}
+          onSendByEmail={
+            canPackageAndSendBidPricing
+              ? (scope) => {
+                  setPrepareCopyOpen(false)
+                  setComposeScope(scope)
+                }
+              : undefined
+          }
+        />
+      ) : null}
+
+      {selectedBidForPricing ? (
+        <RfqDeskModal
+          open={rfqDeskOpen}
+          onClose={() => setRfqDeskOpen(false)}
+          onCompare={() => {
+            setRfqDeskOpen(false)
+            setQuotesCompareOpen(true)
+          }}
+          onNewRequest={() => {
+            setRfqDeskOpen(false)
+            setPrepareCopyOpen(true)
+          }}
+          onChanged={() => setQuoteNonce((n) => n + 1)}
+          bidId={selectedBidForPricing.id}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
+        />
+      ) : null}
+
+      {selectedBidForPricing && composeScope ? (
+        <RfqComposeModal
+          open={composeScope != null}
+          onClose={() => setComposeScope(null)}
+          onSent={() => {
+            setQuoteNonce((n) => n + 1)
+            setRfqDeskOpen(true)
+          }}
+          bidId={selectedBidForPricing.id}
+          bidVersionId={selectedPricingVersionId ?? null}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          scope={composeScope}
+          openRfqHouseIds={openRfqHouseIds}
         />
       ) : null}
 

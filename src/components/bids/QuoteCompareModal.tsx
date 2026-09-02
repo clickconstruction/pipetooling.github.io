@@ -72,6 +72,7 @@ export function QuoteCompareModal({
   // Phase 3 (v2.2632): the bid's nearest RFQ needed-by — quotes that expire
   // before it get called out in the header.
   const [neededBy, setNeededBy] = useState<string | null>(null)
+  const [snapshotQty, setSnapshotQty] = useState<Map<string, number> | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -93,13 +94,31 @@ export function QuoteCompareModal({
       ])
       try {
         const rfqs = await withSupabaseRetry(
-          () => supabase.from('bid_rfqs').select('needed_by').eq('bid_id', bidId).not('needed_by', 'is', null),
-          'load rfq needed-by',
+          () =>
+            supabase
+              .from('bid_rfqs')
+              .select('needed_by, scope, created_at')
+              .eq('bid_id', bidId)
+              .neq('status', 'draft')
+              .order('created_at', { ascending: false })
+              .limit(20),
+          'load rfqs for needed-by + drift snapshot',
         )
-        const dates = (rfqs ?? []).map((r) => r.needed_by as string).sort()
+        const dates = (rfqs ?? []).map((r) => r.needed_by as string | null).filter((d): d is string => !!d).sort()
         setNeededBy(dates[0] ?? null)
+        // Lane B (v2.2636): the newest request's scope snapshot feeds the
+        // quantity-drift badge — "quoted at 752 ft, now 1,100".
+        const newest = (rfqs ?? [])[0]?.scope as { lines?: Array<{ fixture?: string; count?: number }> } | null
+        const snap = new Map<string, number>()
+        for (const l of newest?.lines ?? []) {
+          if (typeof l.fixture === 'string' && Number.isFinite(Number(l.count))) {
+            snap.set(l.fixture.trim().toLowerCase(), Number(l.count))
+          }
+        }
+        setSnapshotQty(snap.size > 0 ? snap : null)
       } catch {
         setNeededBy(null)
+        setSnapshotQty(null)
       }
       const cellIds = new Map<string, string>()
       const mapped: CompareQuote[] = (quoteRows ?? [])
@@ -181,11 +200,12 @@ export function QuoteCompareModal({
       buildQuoteComparison({
         quotes,
         currentQtyByName,
+        snapshotQtyByName: snapshotQty ?? undefined,
         lastQuotedEachCentsByName: lastQuoted,
         rules,
         today: new Date().toISOString().slice(0, 10),
       }),
-    [quotes, currentQtyByName, lastQuoted, rules],
+    [quotes, currentQtyByName, snapshotQty, lastQuoted, rules],
   )
 
   async function pick(fixtureKey: string, houseId: string) {

@@ -130,9 +130,13 @@ ends with all three fence appliers. Names snapshot as text.
 
 ## Deferred (deliberate, revisit on demand)
 
-- **Lane B, the RFQ desk**: system-sent emails (Resend), Sent/Viewed
-  chips, one-tap reminders, multi-house blast. Build only if lane-A links
-  get real vendor click-through.
+- ~~**Lane B, the RFQ desk**~~ — SHIPPED v2.2636 on owner request
+  (2026-09-02): send-rfq-email edge function + RfqDeskModal/RfqComposeModal,
+  Sent→Delivered→Viewed→Quoted trails on the existing resend-webhook rail,
+  page-open Viewed stamps, previewed sends AND nudges (owner requirement),
+  24h nudge throttle, inline bounce fix, manual Close, coverage strip,
+  drift badges finally fed from request snapshots. Mockup: artifact
+  b731a34b-0ba5-4e82-a450-8f2aec1f64e1.
 - **Apply picks to bid costs**: needs a fixture-name→cost-input bridge
   (fixture costs derive from takeoff-book parts); scoping TBD.
 - **PO Generator handoff**: picked lines → per-house PO lists in

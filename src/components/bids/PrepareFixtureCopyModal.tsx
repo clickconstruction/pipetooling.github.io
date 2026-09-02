@@ -76,6 +76,7 @@ export function PrepareFixtureCopyModal({
   rows,
   quoteLink,
   onRfqMinted,
+  onSendByEmail,
 }: {
   open: boolean
   onClose: () => void
@@ -89,6 +90,11 @@ export function PrepareFixtureCopyModal({
   quoteLink?: { bidId: string; bidVersionId: string | null }
   /** Fires after a quote link is minted (so the caller can refresh its RFQ chip). */
   onRfqMinted?: () => void
+  /**
+   * Lane B (v2.2636): hand the current selection to the RFQ compose — the
+   * desk emails it with per-house links. Scope stays decided HERE.
+   */
+  onSendByEmail?: (scope: { lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string }) => void
 }) {
   const { showToast } = useToastContext()
   const [loading, setLoading] = useState(true)
@@ -525,6 +531,25 @@ export function PrepareFixtureCopyModal({
                 >
                   {minting ? 'Minting link…' : 'Copy with quote link'}
                 </button>
+                {onSendByEmail ? (
+                  <button
+                    type="button"
+                    disabled={selected.size === 0}
+                    title="Email this scope to supply houses — you preview every email before it sends"
+                    onClick={() =>
+                      onSendByEmail({
+                        lines: rows
+                          .filter((r) => selected.has(r.id) && Number.isFinite(r.count) && r.count > 0)
+                          .map((r) => ({ fixture: r.fixture ?? '', count: r.count, unit: r.unit ?? null }))
+                          .filter((l) => l.fixture),
+                        text: copyText,
+                      })
+                    }
+                    style={{ padding: '0.4rem 0.9rem', background: 'var(--bg-muted)', color: selected.size === 0 ? 'var(--text-faint)' : 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: selected.size === 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600 }}
+                  >
+                    Send by email…
+                  </button>
+                ) : null}
                 {houseMemory && linkHouseId ? (() => {
                   const selectedNames = rows.filter((r) => selected.has(r.id))
                   const known = selectedNames.filter((r) => houseMemory.keys.has((r.fixture ?? '').trim().toLowerCase())).length

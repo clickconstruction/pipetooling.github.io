@@ -34,10 +34,20 @@ serve(async (req) => {
 
     const { data: rfq } = await admin
       .from('bid_rfqs')
-      .select('id, bid_id, status, needed_by, created_at, scope, supply_house_id, supply_houses(name), bids(bid_number, project_name, outcome)')
+      .select('id, bid_id, status, needed_by, created_at, scope, supply_house_id, viewed_at, supply_houses(name), bids(bid_number, project_name, outcome)')
       .eq('token', token)
       .maybeSingle()
     if (!rfq) return json({ error: 'Not found' }, 404)
+
+    // Lane B's "Viewed" signal (v2.2636): the vendor opening this page is the
+    // real thing — stamp once, fire-and-forget.
+    if (!rfq.viewed_at) {
+      admin
+        .from('bid_rfqs')
+        .update({ viewed_at: new Date().toISOString() })
+        .eq('id', rfq.id)
+        .then(() => {}, (e: unknown) => console.error('viewed_at stamp failed', e))
+    }
 
     const bid = rfq.bids as unknown as { bid_number: string | null; project_name: string | null; outcome: string | null } | null
     const house = rfq.supply_houses as unknown as { name: string } | null
