@@ -5,6 +5,8 @@ import {
   buildLienWaiverParagraphs,
   buildLienWaiverPdfModel,
   buildLienWaiverPrefill,
+  buildLienWaiverPrintHtml,
+  buildLienWaiverSignatureHtml,
   buildLienWaiverSignatureLines,
   lienWaiverDate,
   lienWaiverInvoiceOpenRemaining,
@@ -213,5 +215,50 @@ describe('pdf model + filename', () => {
   it('filename slugs the form type and job number', () => {
     expect(lienWaiverPdfFilename('conditional_progress', 'JP650')).toBe('lien-release-conditional-progress-JP650.pdf')
     expect(lienWaiverPdfFilename('unconditional_final', '')).toBe('lien-release-unconditional-final-job.pdf')
+  })
+})
+
+describe('electronic signature rendering (v2.2619)', () => {
+  const SIG_TYPED = {
+    mode: 'type' as const,
+    printedName: 'Malachi Whites, Master Plumber (#RMP41130)',
+    auditLine: 'Signed electronically in ClickTooling · Sep 1, 2026, 3:41 PM CT · consent recorded',
+  }
+
+  it('typed signature renders the cursive name, printed-name rule, and audit line', () => {
+    const html = buildLienWaiverSignatureHtml(SIG_TYPED)
+    expect(html).toContain('Great Vibes')
+    expect(html).toContain('Malachi Whites, Master Plumber (#RMP41130)')
+    expect(html).toContain('Signed electronically in ClickTooling')
+    expect(html).not.toContain('<img')
+  })
+
+  it('drawn signature embeds the PNG and never the cursive block', () => {
+    const html = buildLienWaiverSignatureHtml({ ...SIG_TYPED, mode: 'draw', pngDataUrl: 'data:image/png;base64,AAAA' })
+    expect(html).toContain('<img src="data:image/png;base64,AAAA"')
+    expect(html).not.toContain('Great Vibes')
+  })
+
+  it('print HTML carries the signature block and the webfont only when typed', () => {
+    const signed = buildLienWaiverPrintHtml('unconditional_final', FIELDS, '1003', SIG_TYPED)
+    expect(signed).toContain('fonts.googleapis.com')
+    expect(signed).toContain('Signed electronically in ClickTooling')
+    const unsigned = buildLienWaiverPrintHtml('unconditional_final', FIELDS, '1003')
+    expect(unsigned).not.toContain('fonts.googleapis.com')
+    expect(unsigned).not.toContain('Signed electronically')
+    const drawn = buildLienWaiverPrintHtml('unconditional_final', FIELDS, '1003', {
+      ...SIG_TYPED,
+      mode: 'draw',
+      pngDataUrl: 'data:image/png;base64,AAAA',
+    })
+    expect(drawn).not.toContain('fonts.googleapis.com')
+    expect(drawn).toContain('<img src="data:image/png;base64,AAAA"')
+  })
+
+  it('escapes markup in the printed name and audit line', () => {
+    const html = buildLienWaiverSignatureHtml({ ...SIG_TYPED, printedName: 'A <b>bold</b> & co', auditLine: 'x < y' })
+    expect(html).not.toContain('<b>bold</b>')
+    expect(html).toContain('&lt;b&gt;')
+    expect(html).toContain('x &lt; y')
   })
 })
