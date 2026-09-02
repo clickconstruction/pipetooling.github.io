@@ -1026,6 +1026,212 @@ export type Database = {
           },
         ]
       }
+      bid_quote_lines: {
+        Row: {
+          alternate_note: string | null
+          basis_price_cents: number | null
+          basis_qty: number | null
+          cant_supply: boolean
+          created_at: string
+          fixture: string
+          id: string
+          match_confidence: string
+          matched_from: string | null
+          picked: boolean
+          price_basis: string
+          quote_id: string
+          unit_price_each_cents: number | null
+        }
+        Insert: {
+          alternate_note?: string | null
+          basis_price_cents?: number | null
+          basis_qty?: number | null
+          cant_supply?: boolean
+          created_at?: string
+          fixture: string
+          id?: string
+          match_confidence?: string
+          matched_from?: string | null
+          picked?: boolean
+          price_basis?: string
+          quote_id: string
+          unit_price_each_cents?: number | null
+        }
+        Update: {
+          alternate_note?: string | null
+          basis_price_cents?: number | null
+          basis_qty?: number | null
+          cant_supply?: boolean
+          created_at?: string
+          fixture?: string
+          id?: string
+          match_confidence?: string
+          matched_from?: string | null
+          picked?: boolean
+          price_basis?: string
+          quote_id?: string
+          unit_price_each_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_quote_lines_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "bid_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_quotes: {
+        Row: {
+          adders_note: string | null
+          bid_id: string
+          bid_version_id: string | null
+          created_at: string
+          created_by: string | null
+          freight_cents: number | null
+          id: string
+          note: string | null
+          quoted_by: string | null
+          raw_paste: string | null
+          received_at: string
+          rfq_id: string | null
+          source: string
+          supply_house_id: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          adders_note?: string | null
+          bid_id: string
+          bid_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          freight_cents?: number | null
+          id?: string
+          note?: string | null
+          quoted_by?: string | null
+          raw_paste?: string | null
+          received_at?: string
+          rfq_id?: string | null
+          source?: string
+          supply_house_id?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          adders_note?: string | null
+          bid_id?: string
+          bid_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          freight_cents?: number | null
+          id?: string
+          note?: string | null
+          quoted_by?: string | null
+          raw_paste?: string | null
+          received_at?: string
+          rfq_id?: string | null
+          source?: string
+          supply_house_id?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_quotes_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_quotes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_quotes_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "bid_rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_quotes_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_rfqs: {
+        Row: {
+          bid_id: string
+          bid_version_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          needed_by: string | null
+          scope: Json
+          sent_to: string | null
+          status: string
+          supply_house_id: string | null
+          token: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          bid_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          needed_by?: string | null
+          scope?: Json
+          sent_to?: string | null
+          status?: string
+          supply_house_id?: string | null
+          token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          bid_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          needed_by?: string | null
+          scope?: Json
+          sent_to?: string | null
+          status?: string
+          supply_house_id?: string | null
+          token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_rfqs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_rfqs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_rfqs_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_tab_entries: {
         Row: {
           alternate_amount: number | null
@@ -13174,6 +13380,51 @@ export type Database = {
           label?: string
         }
         Relationships: []
+      }
+      supply_house_fixture_prices: {
+        Row: {
+          fixture: string
+          fixture_key: string | null
+          id: string
+          quoted_at: string
+          source_bid_id: string | null
+          supply_house_id: string
+          unit_price_each_cents: number
+        }
+        Insert: {
+          fixture: string
+          fixture_key?: string | null
+          id?: string
+          quoted_at?: string
+          source_bid_id?: string | null
+          supply_house_id: string
+          unit_price_each_cents: number
+        }
+        Update: {
+          fixture?: string
+          fixture_key?: string | null
+          id?: string
+          quoted_at?: string
+          source_bid_id?: string | null
+          supply_house_id?: string
+          unit_price_each_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_fixture_prices_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_fixture_prices_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supply_house_invoice_bid_allocations: {
         Row: {
