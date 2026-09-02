@@ -19,10 +19,12 @@ type PageData = {
   supplyHouse?: string | null
   neededBy?: string | null
   plansLink?: string | null
+  /** Rung C (v2.2646): this house's own last prices, keyed lower(fixture); filled only on an explicit tap. */
+  prior?: { newestAt: string; prices: Record<string, number> } | null
   lines?: Array<{ fixture: string; count: number; unit?: string | null }>
 }
 
-type DraftLine = { price: string; cantSupply: boolean; note: string }
+type DraftLine = { price: string; cantSupply: boolean; note: string; fromPrior?: boolean }
 type Draft = { quotedBy: string; validUntil: string; freight: string; lines: Record<string, DraftLine> }
 
 const EMPTY_LINE: DraftLine = { price: '', cantSupply: false, note: '' }
@@ -95,8 +97,29 @@ export default function SupplyHouseQuotePage() {
   }, [draft, token, done])
 
   function patchLine(fixture: string, patch: Partial<DraftLine>) {
-    setDraft((d) => ({ ...d, lines: { ...d.lines, [fixture]: { ...(d.lines[fixture] ?? EMPTY_LINE), ...patch } } }))
+    // Any hand edit clears the "from last time" tag — the vendor owns it now.
+    setDraft((d) => ({ ...d, lines: { ...d.lines, [fixture]: { ...(d.lines[fixture] ?? EMPTY_LINE), fromPrior: false, ...patch, ...(patch.fromPrior === undefined ? { fromPrior: false } : {}) } } }))
   }
+
+  /** One deliberate tap: fill empty lines with this house's own last prices. */
+  function fillFromPrior() {
+    const prices = page?.prior?.prices
+    if (!prices || !page?.lines) return
+    setDraft((d) => {
+      const next = { ...d.lines }
+      for (const l of page.lines ?? []) {
+        const cents = prices[l.fixture.trim().toLowerCase()]
+        const existing = next[l.fixture]
+        if (cents != null && (!existing || (!existing.cantSupply && existing.price.trim() === ''))) {
+          next[l.fixture] = { price: (cents / 100).toFixed(2), cantSupply: false, note: existing?.note ?? '', fromPrior: true }
+        }
+      }
+      return { ...d, lines: next }
+    })
+  }
+
+  const priorAgeDays = page?.prior?.newestAt ? Math.max(0, Math.floor((Date.now() - new Date(page.prior.newestAt).getTime()) / 86_400_000)) : null
+  const priorCount = page?.prior ? (page.lines ?? []).filter((l) => page.prior?.prices[l.fixture.trim().toLowerCase()] != null).length : 0
 
   const answered = useMemo(
     () =>
@@ -200,6 +223,18 @@ export default function SupplyHouseQuotePage() {
                   Job plans (cut sheets, details) ↗
                 </a>
               ) : null}
+              {priorCount > 0 ? (
+                <div style={{ marginTop: '0.7rem', background: '#eef4ff', border: '1px solid #c7d8f8', borderRadius: 8, padding: '0.6rem 0.85rem' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>You priced {priorCount} of these for us before</span>
+                  {priorAgeDays != null ? <span style={{ color: '#5b6577', fontSize: '0.8rem' }}> (newest {priorAgeDays === 0 ? 'today' : `${priorAgeDays} day${priorAgeDays === 1 ? '' : 's'} ago`})</span> : null}
+                  <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button type="button" onClick={fillFromPrior} style={{ background: '#2563eb', color: '#fff', fontWeight: 700, padding: '0.45rem 1rem', borderRadius: 7, fontSize: '0.85rem', border: 'none', cursor: 'pointer', font: 'inherit' }}>
+                      Fill with last time’s prices
+                    </button>
+                    <span style={{ color: '#5b6577', fontSize: '0.78rem' }}>then just change what moved</span>
+                  </div>
+                </div>
+              ) : null}
             </header>
 
             <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1rem' }}>
@@ -228,7 +263,7 @@ export default function SupplyHouseQuotePage() {
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
                       <input
-                        style={{ ...input, width: '7.5rem', textAlign: 'right' }}
+                        style={{ ...input, width: '7.5rem', textAlign: 'right', ...(dl.fromPrior ? { borderColor: '#2563eb' } : {}) }}
                         inputMode="decimal"
                         placeholder="$"
                         aria-label={`Price for ${l.fixture}`}
@@ -236,6 +271,7 @@ export default function SupplyHouseQuotePage() {
                         value={dl.price}
                         onChange={(e) => patchLine(l.fixture, { price: e.target.value })}
                       />
+                      {dl.fromPrior ? <span style={{ fontSize: '0.7rem', color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>from last time</span> : null}
                       <button
                         type="button"
                         onClick={() => patchLine(l.fixture, { cantSupply: !dl.cantSupply })}
