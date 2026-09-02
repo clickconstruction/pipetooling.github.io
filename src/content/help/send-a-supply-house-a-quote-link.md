@@ -19,7 +19,7 @@ The link is addressed to that one house — send a separate link to each vendor 
 
 ## Or let ClickTooling send the emails
 
-Next to the copy buttons, **Send by email…** opens the request composer: tick the houses (emails remembered from last time), set needed-by, add a one-line note — and **preview every email exactly as it will send** before anything goes out. Each house gets its own email with the parts list right in the body and its own link; replies come straight to your inbox.
+Next to the copy buttons, **Send by email…** opens the request composer. Each house shows its **contacts as chips** — tap one to CC it, tap again to make it the To (exactly one To per house; tapping the To un-sets it so a typed address can take over). A typed address offers to be **remembered as that house's contact**, and contacts are managed on the supply house form itself. Set needed-by, add a one-line note, optionally **include the job plans link** (cut sheets sell fixtures) — and **preview every email exactly as it will send** before anything goes out. Each house gets one email, one link; CCs ride the same message; replies come straight to your inbox.
 
 The **RFQs chip** by Share then becomes your desk: every request as a trail — {{chip:green|Sent}} → {{chip:green|Delivered}} → {{chip:yellow|Viewed}} → {{chip:gray|Quoted}} — with bounced addresses in red (fix them right on the row and resend), a one-tap **Nudge** that rests 24 hours between sends and shows you the reminder before it goes, a coverage bar for "which items does nobody have priced yet?", and **Close link** when you're done asking.
 
@@ -31,7 +31,8 @@ A plain page, no login, built for a phone at the counter:
 
 {{gif:supply-house-quote-page.gif|The vendor types prices, taps can't supply where they don't carry it, and hits Send quote}}
 
-- Every part with its count. A price box, a **can't supply** button, and a note field per line.
+- Every part with its count. A price box, a **can't supply** button, and a note field per line — plus the job plans link when you included one.
+- If they've priced these parts for us before, the page offers **"Fill with last time's prices"** — one tap, then they change what moved. A repeat quote takes about ninety seconds.
 - Their entries **save on their phone as they type** — getting interrupted ten lines in loses nothing.
 - Partial answers are fine. They add their name, how long prices are good, freight if any, and hit **Send quote**.
 - They only ever see names and counts — **no prices of yours are on that page**.
@@ -42,7 +43,8 @@ Wendi texts Moore Supply the pipe scope with a quote link. Danny at the counter 
 
 ## Watching for the answer
 
-- While a link is out with nothing back yet, an amber {{chip:yellow|RFQ sent}} chip sits by Share.
+- While a link is out with nothing back yet, an amber {{chip:yellow|RFQs · 1 waiting}} chip sits by Share.
+- The desk sorts by **what needs you**: bounced addresses first (fix them right on the row and resend), then requests whose needed-by is closing in, then ones nobody has opened in two days — each with a plain-words reason chip. A coverage bar answers "which items does nobody have priced yet?".
 - The moment a vendor submits, the {{chip:blue|Quotes (1)}} chip turns **green** — open it to compare (see *get supply house prices on a bid* for the compare view).
 - Vendors can reopen the link to send a **revised quote** — the newest one is what compare shows.
 
