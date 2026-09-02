@@ -563,6 +563,52 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
               )
             })}
             
+            <h3 style={{ margin: '1.5rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Customer Emails</h3>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Cover-note wording only — the attached PDFs are generated separately and never change here. No template saved = the built-in wording sends.
+            </p>
+            {[
+              {
+                type: 'lien_release_to_customer' as const,
+                label: 'Signed lien release to customer',
+                description: 'Cover note for the signed release PDF. Variables: {{project}}, {{form_label}}, {{amount}}, {{signer}}',
+              },
+              {
+                type: 'hazmat_notice' as const,
+                label: 'Biohazard remediation fee notice',
+                description: 'Cover note for the notice PDF. Variables: {{job_number}}, {{invoice_reference}}',
+              },
+            ].map(({ type, label, description }) => {
+              const template = emailTemplates.find(t => t.template_type === type)
+              return (
+                <div key={type} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplate(template, type)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                      >
+                        {template ? 'Edit' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                  {template && (
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                      <div><strong>Subject:</strong> {template.subject}</div>
+                      <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
+                        <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
             <h3 style={{ margin: '1.5rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Workflow Stage Notifications</h3>
             <h4 style={{ margin: '0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>Notify Assigned Person</h4>
             {[

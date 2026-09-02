@@ -36,6 +36,8 @@ export type EmailTemplate = {
     | 'work_order_offered'
     | 'work_order_accepted'
     | 'work_order_declined'
+    | 'lien_release_to_customer'
+    | 'hazmat_notice'
   subject: string
   body: string
   updated_at: string | null
@@ -182,6 +184,17 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { s
   work_order_declined: {
     subject: '{{responder}} declined: {{stage_name}} at {{project_name}}',
     body: '{{responder}} declined the work order for {{stage_name}} at {{project_name}} ({{amount}}).\n\nReason: {{reason}}\n\nRe-price or offer someone else: {{workflow_link}}',
+  },
+  // Customer cover notes (v2.2658) — defaults mirror the built-in wording in
+  // sendLienReleaseEmail.ts / sendHazmatNoticeEmail.ts; the sender falls back
+  // to those builders when no row is saved.
+  lien_release_to_customer: {
+    subject: 'Release of lien — {{project}}',
+    body: 'Attached is the signed release of lien ({{form_label}}, {{amount}}) for {{project}}.\n\nThe attached PDF is the complete, signed document for your records.',
+  },
+  hazmat_notice: {
+    subject: 'Biohazard Remediation Fee Notice — Job {{job_number}}',
+    body: 'Please find the Biohazard Remediation Fee Notice for job {{job_number}} attached as a PDF. It documents the biohazard remediation fee on the {{invoice_reference}}. The notice includes the incident summary, photographic evidence, technician statements, and the contractual basis for the fee.',
   },
 }
 

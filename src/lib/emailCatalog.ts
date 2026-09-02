@@ -69,8 +69,8 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     attachment: 'notice PDF',
     builtWhere: 'client',
     sender: 'send-hazmat-notice-email',
-    editable: { kind: 'hardcoded' },
-    subjectExample: 'Biohazard remediation fee notice — job #1006',
+    editable: { kind: 'templates', templateTypes: ['hazmat_notice'] },
+    subjectExample: 'Biohazard Remediation Fee Notice — Job {{job_number}}',
   },
   {
     id: 'gc_statement_manual',
@@ -112,7 +112,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     attachment: 'signed release PDF',
     builtWhere: 'client',
     sender: 'send-lien-release-email',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['lien_release_to_customer'] },
     subjectExample: 'Release of lien — {{project}}',
   },
 

@@ -96,9 +96,10 @@ describe('settings templates constants', () => {
 })
 
 describe('EMAIL_TEMPLATE_DEFAULTS', () => {
-  it('covers all 14 email template types with non-empty subject and body', () => {
+  it('covers all 16 email template types with non-empty subject and body', () => {
+    // 14 original + the two customer cover notes (v2.2658).
     const types = Object.keys(EMAIL_TEMPLATE_DEFAULTS)
-    expect(types).toHaveLength(14)
+    expect(types).toHaveLength(16)
     for (const [type, def] of Object.entries(EMAIL_TEMPLATE_DEFAULTS)) {
       expect(def.subject.length, type).toBeGreaterThan(0)
       expect(def.body.length, type).toBeGreaterThan(0)
