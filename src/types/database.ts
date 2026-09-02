@@ -424,6 +424,67 @@ export type Database = {
           },
         ]
       }
+      bid_count_row_custom_costs: {
+        Row: {
+          applied_at: string
+          applied_by: string | null
+          bid_id: string
+          count_row_id: string
+          house_name: string | null
+          id: string
+          lot_group_id: string | null
+          quote_line_id: string | null
+          source: string
+          unit_materials_cents: number
+        }
+        Insert: {
+          applied_at?: string
+          applied_by?: string | null
+          bid_id: string
+          count_row_id: string
+          house_name?: string | null
+          id?: string
+          lot_group_id?: string | null
+          quote_line_id?: string | null
+          source?: string
+          unit_materials_cents: number
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string | null
+          bid_id?: string
+          count_row_id?: string
+          house_name?: string | null
+          id?: string
+          lot_group_id?: string | null
+          quote_line_id?: string | null
+          source?: string
+          unit_materials_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_count_row_custom_costs_applied_by_fkey"
+            columns: ["applied_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_row_custom_costs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_row_custom_costs_quote_line_id_fkey"
+            columns: ["quote_line_id"]
+            isOneToOne: false
+            referencedRelation: "bid_quote_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_count_row_custom_prices: {
         Row: {
           bid_id: string
@@ -1035,6 +1096,8 @@ export type Database = {
           created_at: string
           fixture: string
           id: string
+          lot_id: string | null
+          lot_total_cents: number | null
           match_confidence: string
           matched_from: string | null
           picked: boolean
@@ -1050,6 +1113,8 @@ export type Database = {
           created_at?: string
           fixture: string
           id?: string
+          lot_id?: string | null
+          lot_total_cents?: number | null
           match_confidence?: string
           matched_from?: string | null
           picked?: boolean
@@ -1065,6 +1130,8 @@ export type Database = {
           created_at?: string
           fixture?: string
           id?: string
+          lot_id?: string | null
+          lot_total_cents?: number | null
           match_confidence?: string
           matched_from?: string | null
           picked?: boolean
@@ -18689,6 +18756,10 @@ export type Database = {
       }
       superintendent_can_access_estimate: {
         Args: { e: Database["public"]["Tables"]["estimates"]["Row"] }
+        Returns: boolean
+      }
+      superintendent_can_touch_job_thread: {
+        Args: { p_job_id: string }
         Returns: boolean
       }
       superintendent_report_job_anchor_allowed: {

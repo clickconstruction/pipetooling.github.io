@@ -57,6 +57,9 @@ type DraftLine = {
   confidence: 'exact' | 'fuzzy' | 'manual'
   raw: string | null
   outlier: boolean
+  /** Rung G (v2.2655): checked for lot grouping / assigned lot. */
+  lotCheck?: boolean
+  lotKey?: string | null
 }
 
 function centsToStr(cents: number | null): string {
@@ -97,6 +100,9 @@ export function PlugInQuotesModal({
   const [saving, setSaving] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  // Lots: package prices — one total spanning several lines, no per-line unit.
+  const [lots, setLots] = useState<Record<string, { totalCents: number }>>({})
+  const [lotTotalInput, setLotTotalInput] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -119,6 +125,8 @@ export function PlugInQuotesModal({
     setRaw('')
     setLines([])
     setUnassigned([])
+    setLots({})
+    setLotTotalInput('')
     void load()
   }, [open, load])
 
@@ -198,7 +206,24 @@ export function PlugInQuotesModal({
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
   }
 
-  const savableLines = lines.filter((l) => l.fixture && (l.cantSupply || strToCents(l.unitPriceEach) != null))
+  const savableLines = lines.filter((l) => l.fixture && (l.cantSupply || strToCents(l.unitPriceEach) != null || (l.lotKey && lots[l.lotKey])))
+
+  const lotChecked = lines.filter((l) => l.lotCheck && l.fixture && !l.lotKey)
+
+  /** Group the checked lines into a lot with one total; per-line prices clear. */
+  function groupLot() {
+    const cents = strToCents(lotTotalInput)
+    if (!cents || lotChecked.length < 2) return
+    const key = crypto.randomUUID()
+    setLots((m) => ({ ...m, [key]: { totalCents: cents } }))
+    setLines((prev) => prev.map((l) => (l.lotCheck && l.fixture && !l.lotKey ? { ...l, lotKey: key, lotCheck: false, unitPriceEach: '', cantSupply: false } : l)))
+    setLotTotalInput('')
+  }
+
+  function ungroupLot(key: string) {
+    setLots((m) => { const n = { ...m }; delete n[key]; return n })
+    setLines((prev) => prev.map((l) => (l.lotKey === key ? { ...l, lotKey: null } : l)))
+  }
 
   async function save() {
     if (!houseId || savableLines.length === 0) return
@@ -222,12 +247,14 @@ export function PlugInQuotesModal({
       const lineRows = savableLines.map((l) => ({
         quote_id: quote.id,
         fixture: l.fixture!,
-        unit_price_each_cents: l.cantSupply ? null : strToCents(l.unitPriceEach),
+        unit_price_each_cents: l.cantSupply || l.lotKey ? null : strToCents(l.unitPriceEach),
         price_basis: l.basis,
         basis_qty: l.basisQty,
         cant_supply: l.cantSupply,
         match_confidence: l.confidence,
         matched_from: l.raw,
+        lot_id: l.lotKey ?? null,
+        lot_total_cents: l.lotKey ? (lots[l.lotKey]?.totalCents ?? null) : null,
       }))
       const { error: lErr } = await supabase.from('bid_quote_lines').insert(lineRows)
       if (lErr) throw lErr
@@ -332,6 +359,17 @@ export function PlugInQuotesModal({
               <button type="button" onClick={addManualLine} style={{ padding: '0.4rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
                 + Add a line by hand
               </button>
+            {lotChecked.length >= 2 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #f59e0b', background: 'var(--bg-yellow-tint)', borderRadius: 6, padding: '0.4rem 0.7rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
+                  These {lotChecked.length} lines were priced together — total $
+                </span>
+                <input value={lotTotalInput} onChange={(e) => setLotTotalInput(e.target.value)} placeholder="18,400.00" inputMode="decimal" style={{ ...input, width: '7rem', textAlign: 'right' }} />
+                <button type="button" disabled={!strToCents(lotTotalInput)} onClick={groupLot} style={{ padding: '0.3rem 0.8rem', background: strToCents(lotTotalInput) ? '#2563eb' : 'var(--bg-200)', color: strToCents(lotTotalInput) ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: strToCents(lotTotalInput) ? 'pointer' : 'not-allowed' }}>
+                  Group as a lot
+                </button>
+              </div>
+            ) : null}
             </div>
             {unassigned.length > 0 ? (
               <div style={{ border: '1px solid var(--border-amber)', background: 'var(--bg-yellow-tint)', borderRadius: 6, padding: '0.5rem 0.7rem', fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
@@ -351,6 +389,17 @@ export function PlugInQuotesModal({
               ) : (
                 lines.map((l) => (
                   <div key={l.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr) 5.5rem 4.5rem 2rem', gap: '0.5rem', padding: '0.3rem 0.6rem', borderBottom: '1px solid var(--bg-muted)', alignItems: 'center', background: l.fixture ? undefined : 'var(--bg-yellow-tint)' }}>
+                    {l.fixture && !l.cantSupply ? (
+                      <input
+                        type="checkbox"
+                        checked={!!l.lotCheck}
+                        disabled={!!l.lotKey}
+                        title={l.lotKey ? 'In a lot' : 'Check lines priced together as one package'}
+                        aria-label={`Group ${l.fixture} into a lot`}
+                        onChange={(e) => patchLine(l.key, { lotCheck: e.target.checked })}
+                        style={{ marginRight: 4 }}
+                      />
+                    ) : null}
                     <SearchableSelect value={l.fixture ?? ''} onChange={(v) => patchLine(l.key, { fixture: v || null, confidence: 'manual' })} options={fixtureOptions} placeholder="assign a fixture…" portalZIndex={MODAL_Z + 10} listMinWidthPx={340} fillViewportHeight />
                     <span style={{ fontSize: '0.72rem', color: l.confidence === 'exact' ? '#15803d' : l.confidence === 'fuzzy' ? 'var(--text-amber-700)' : 'var(--text-muted)', overflowWrap: 'anywhere' }}>
                       {l.raw ? `${l.confidence === 'exact' ? '✓' : l.confidence === 'fuzzy' ? '?' : '·'} “${l.raw}”` : 'typed'}
@@ -360,7 +409,18 @@ export function PlugInQuotesModal({
                       {l.outlier ? <strong style={{ color: 'var(--text-red-600)' }}> · price looks off</strong> : null}
                       {l.cantSupply ? <em> · can’t supply</em> : null}
                     </span>
-                    <input value={l.unitPriceEach} onChange={(e) => patchLine(l.key, { unitPriceEach: e.target.value })} disabled={l.cantSupply} placeholder={l.cantSupply ? 'n/a' : '0.00'} style={{ ...input, textAlign: 'right', fontFamily: 'ui-monospace, Menlo, monospace' }} />
+                    {l.lotKey ? (
+                      <button
+                        type="button"
+                        onClick={() => ungroupLot(l.lotKey!)}
+                        title={`In a lot — $${((lots[l.lotKey]?.totalCents ?? 0) / 100).toFixed(2)} total for the group · click to ungroup`}
+                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-yellow-tint)', border: '1px solid #f59e0b', borderRadius: 999, padding: '0.2rem 0.6rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        lot ${((lots[l.lotKey]?.totalCents ?? 0) / 100).toLocaleString('en-US')} ×
+                      </button>
+                    ) : (
+                      <input value={l.unitPriceEach} onChange={(e) => patchLine(l.key, { unitPriceEach: e.target.value })} disabled={l.cantSupply} placeholder={l.cantSupply ? 'n/a' : '0.00'} style={{ ...input, textAlign: 'right', fontFamily: 'ui-monospace, Menlo, monospace' }} />
+                    )}
                     <span style={{ ...smallMuted, fontFamily: 'ui-monospace, Menlo, monospace' }}>{BASIS_LABEL[l.basis]}{l.basis === 'box' ? `(${l.basisQty})` : ''}</span>
                     <button type="button" onClick={() => setLines((prev) => prev.filter((x) => x.key !== l.key))} aria-label="Remove line" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', font: 'inherit' }}>×</button>
                   </div>

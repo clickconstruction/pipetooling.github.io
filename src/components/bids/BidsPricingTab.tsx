@@ -143,6 +143,8 @@ type BidsPricingTabProps = {
   selectedPricingVersionId: string | null
   setSelectedPricingVersionId: Dispatch<SetStateAction<string | null>>
   pricingCountRows: BidCountRow[]
+  bidCountRowCustomCosts: Array<{ id: string; count_row_id: string; unit_materials_cents: number; house_name: string | null; lot_group_id: string | null; applied_at: string }>
+  reloadBidCustomCosts: () => Promise<void>
   pricingCostEstimate: CostEstimate | null
   pricingLaborRows: CostEstimateLaborRow[]
   pricingEquipmentRows: CostEstimateEquipmentRow[]
@@ -246,6 +248,8 @@ export function BidsPricingTab({
   selectedPricingVersionId,
   setSelectedPricingVersionId,
   pricingCountRows,
+  bidCountRowCustomCosts,
+  reloadBidCustomCosts,
   pricingCostEstimate,
   pricingLaborRows,
   pricingEquipmentRows,
@@ -2615,6 +2619,20 @@ export function BidsPricingTab({
   /** Shared derive for BOTH pricing views (Old grid + New Workbench): totals,
       decorated rows, and the row-breakdown opener. Null until a Pricing,
       Counts, and cost estimate exist. */
+  /** Rung G: revert an applied quote cost — lot groups revert together. */
+  async function revertCustomCost(cc: { id: string; lot_group_id: string | null; house_name: string | null }) {
+    const q = cc.lot_group_id
+      ? supabase.from('bid_count_row_custom_costs').delete().eq('lot_group_id', cc.lot_group_id)
+      : supabase.from('bid_count_row_custom_costs').delete().eq('id', cc.id)
+    const { error } = await q
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    showToast(cc.lot_group_id ? 'Package costs reverted to takeoff.' : 'Cost reverted to takeoff.', 'success')
+    await reloadBidCustomCosts()
+  }
+
   function derivePricingWorkbench() {
     if (!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate) return null
                 const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
@@ -4997,8 +5015,22 @@ export function BidsPricingTab({
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.countRow.fixture ?? '—'}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }}>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }} onClick={(e) => e.stopPropagation()}>
                                   {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}
+                                  {(() => {
+                                    const cc = bidCountRowCustomCosts.find((c) => c.count_row_id === r.countRow.id)
+                                    if (!cc) return null
+                                    return (
+                                      <button
+                                        type="button"
+                                        title={`Materials from ${cc.house_name ?? 'a quote'} (${cc.applied_at.slice(5, 10)})${cc.lot_group_id ? ' — part of a package; reverting reverts the whole package' : ''} — click to revert to takeoff`}
+                                        onClick={() => void revertCustomCost(cc)}
+                                        style={{ display: 'block', marginLeft: 'auto', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, color: '#15803d', background: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                      >
+                                        {cc.house_name ?? 'quote'} ↩
+                                      </button>
+                                    )
+                                  })()}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', minWidth: '9rem' }} onClick={(e) => e.stopPropagation()}>
                                   {r.entry ? (
@@ -6481,6 +6513,15 @@ export function BidsPricingTab({
           bidId={selectedBidForPricing.id}
           bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
           rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
+          takeoffMaterialsByCountRowId={pricingFixtureMaterialsFromTakeoff}
+          taxPercent={parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0}
+          currentTotals={(() => {
+            const d = derivePricingWorkbench()
+            return d ? { totalRevenue: d.totalRevenue, totalCost: d.totalCost } : null
+          })()}
+          onCostsApplied={() => {
+            void reloadBidCustomCosts()
+          }}
         />
       ) : null}
 

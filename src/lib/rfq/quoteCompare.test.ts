@@ -137,3 +137,41 @@ describe('freight (Rung B, v2.2643)', () => {
     expect(c.pickedTotalWithFreightCents).toBe(28500)
   })
 })
+
+describe('lots (Rung G, v2.2655)', () => {
+  it('a picked lot adds its total once across all member lines', () => {
+    const q = {
+      id: 'q1',
+      supplyHouseId: 'ferguson',
+      houseName: 'Ferguson',
+      receivedAt: '2026-09-01T00:00:00Z',
+      lines: [
+        { fixture: 'WC-1', unitPriceEachCents: null, cantSupply: false, picked: true, lotId: 'L1', lotTotalCents: 1840000 },
+        { fixture: 'WC-2', unitPriceEachCents: null, cantSupply: false, picked: true, lotId: 'L1', lotTotalCents: 1840000 },
+        { fixture: 'FCO', unitPriceEachCents: 11600, cantSupply: false, picked: true },
+      ],
+    }
+    const c = buildQuoteComparison({
+      quotes: [q],
+      currentQtyByName: new Map([
+        ['wc-1', 4],
+        ['wc-2', 4],
+        ['fco', 5],
+      ]),
+    })
+    expect(c.pickedTotalCents).toBe(1840000 + 11600 * 5)
+    expect(c.pickedFreight.map((f) => f.supplyHouseId)).toEqual(['ferguson'])
+  })
+  it('lot lines never win per-line stars (no unit price)', () => {
+    const q = {
+      id: 'q1',
+      supplyHouseId: 'ferguson',
+      houseName: 'Ferguson',
+      receivedAt: '2026-09-01T00:00:00Z',
+      lines: [{ fixture: 'WC-1', unitPriceEachCents: null, cantSupply: false, lotId: 'L1', lotTotalCents: 1000 }],
+    }
+    const c = buildQuoteComparison({ quotes: [q], currentQtyByName: new Map([['wc-1', 4]]) })
+    expect(c.rows[0]?.bestHouseId).toBeNull()
+    expect(c.rows[0]?.perHouse['ferguson']?.lotTotalCents).toBe(1000)
+  })
+})

@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { buildQuoteComparison, type CompareQuote } from '../../lib/rfq/quoteCompare'
+import { ApplyPicksToCostsModal, type ApplyPickItem } from './ApplyPicksToCostsModal'
 import { type SpecSectionMatchKind, type SpecSectionMatchRule } from '../../lib/classifySpecSection'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -54,6 +55,10 @@ export function QuoteCompareModal({
   bidId,
   bidLabel,
   rows,
+  takeoffMaterialsByCountRowId,
+  taxPercent,
+  currentTotals,
+  onCostsApplied,
 }: {
   open: boolean
   onClose: () => void
@@ -62,6 +67,11 @@ export function QuoteCompareModal({
   bidId: string
   bidLabel: string
   rows: Array<{ id: string; fixture: string; count: number }>
+  /** Rung G (v2.2655): inputs for Apply picks to costs. */
+  takeoffMaterialsByCountRowId: Record<string, number>
+  taxPercent: number
+  currentTotals: { totalRevenue: number; totalCost: number } | null
+  onCostsApplied: () => void
 }) {
   const { showToast } = useToastContext()
   const [loading, setLoading] = useState(true)
@@ -73,6 +83,7 @@ export function QuoteCompareModal({
   // before it get called out in the header.
   const [neededBy, setNeededBy] = useState<string | null>(null)
   const [snapshotQty, setSnapshotQty] = useState<Map<string, number> | null>(null)
+  const [applyOpen, setApplyOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -82,7 +93,7 @@ export function QuoteCompareModal({
           () =>
             supabase
               .from('bid_quotes')
-              .select('id, supply_house_id, received_at, valid_until, freight_cents, supply_house:supply_houses(name), bid_quote_lines(id, fixture, unit_price_each_cents, cant_supply, alternate_note, picked)')
+              .select('id, supply_house_id, received_at, valid_until, freight_cents, supply_house:supply_houses(name), bid_quote_lines(id, fixture, unit_price_each_cents, cant_supply, alternate_note, picked, lot_id, lot_total_cents)')
               .eq('bid_id', bidId)
               .order('received_at'),
           'load bid quotes',
@@ -140,6 +151,8 @@ export function QuoteCompareModal({
               cantSupply: l.cant_supply,
               alternateNote: l.alternate_note,
               picked: l.picked,
+              lotId: l.lot_id,
+              lotTotalCents: l.lot_total_cents,
             })),
           }
         })
@@ -213,6 +226,17 @@ export function QuoteCompareModal({
     const row = comparison.rows.find((r) => r.fixture.trim().toLowerCase() === fixtureKey)
     if (!row) return
     try {
+      const target = row.perHouse[houseId]
+      // Lots pick atomically: toggling any member toggles every line in the lot.
+      if (target?.lotId != null) {
+        const { error } = await supabase
+          .from('bid_quote_lines')
+          .update({ picked: !target.picked })
+          .eq('lot_id', target.lotId)
+        if (error) throw error
+        await load()
+        return
+      }
       for (const [hid, cell] of Object.entries(row.perHouse)) {
         const lineId = lineIdByCell.get(`${cell.quoteId}|${fixtureKey}`)
         if (!lineId) continue
@@ -227,6 +251,33 @@ export function QuoteCompareModal({
       showToast(err instanceof Error ? err.message : 'Could not save the pick.', 'error')
     }
   }
+
+  /** The picked selections, shaped for Apply picks to costs. */
+  const applyItems: ApplyPickItem[] = useMemo(() => {
+    const items: ApplyPickItem[] = []
+    const lotsSeen = new Map<string, { houseName: string; totalCents: number; fixtures: string[] }>()
+    const houseNameById = new Map(comparison.houses.map((h) => [h.supplyHouseId, h.houseName]))
+    for (const r of comparison.rows) {
+      for (const [houseId, cell] of Object.entries(r.perHouse)) {
+        if (!cell.picked || cell.cantSupply) continue
+        if (cell.lotId != null && cell.lotTotalCents != null) {
+          const lot = lotsSeen.get(cell.lotId) ?? { houseName: houseNameById.get(houseId) ?? '—', totalCents: cell.lotTotalCents, fixtures: [] }
+          lot.fixtures.push(r.fixture)
+          lotsSeen.set(cell.lotId, lot)
+        } else if (cell.unitPriceEachCents != null) {
+          items.push({
+            kind: 'line',
+            fixture: r.fixture,
+            houseName: houseNameById.get(houseId) ?? '—',
+            unitCents: cell.unitPriceEachCents,
+            quoteLineId: lineIdByCell.get(`${cell.quoteId}|${r.fixture.trim().toLowerCase()}`) ?? null,
+          })
+        }
+      }
+    }
+    for (const [lotId, lot] of lotsSeen) items.push({ kind: 'lot', lotId, ...lot })
+    return items
+  }, [comparison, lineIdByCell])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -322,7 +373,7 @@ export function QuoteCompareModal({
                               key={h.supplyHouseId}
                               type="button"
                               onClick={() => void pick(key, h.supplyHouseId)}
-                              disabled={cell.cantSupply || cell.unitPriceEachCents == null}
+                              disabled={cell.cantSupply || (cell.unitPriceEachCents == null && cell.lotId == null)}
                               title={cell.expired ? 'Quote expired' : cell.picked ? 'Picked — tap to unpick' : 'Tap to pick'}
                               style={{
                                 textAlign: 'right',
@@ -339,7 +390,11 @@ export function QuoteCompareModal({
                                 textDecoration: cell.expired ? 'line-through' : undefined,
                               }}
                             >
-                              {cell.cantSupply ? 'n/a' : money(cell.unitPriceEachCents)}
+                              {cell.cantSupply
+                                ? 'n/a'
+                                : cell.lotId != null && cell.lotTotalCents != null
+                                  ? `in lot · ${money(cell.lotTotalCents)}`
+                                  : money(cell.unitPriceEachCents)}
                               {best && !cell.expired ? ' ★' : ''}
                             </button>
                           )
@@ -375,11 +430,35 @@ export function QuoteCompareModal({
                 )}{' '}
                 at today’s counts · picks are saved and ready for a future PO handoff.
               </span>
-              <button type="button" onClick={onClose} style={{ padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>Close</button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  disabled={applyItems.length === 0}
+                  title={applyItems.length === 0 ? 'Pick some prices first' : 'Write the picked prices onto this bid\u2019s row costs (materials only, with revert tags)'}
+                  onClick={() => setApplyOpen(true)}
+                  style={{ padding: '0.5rem 0.9rem', background: applyItems.length === 0 ? 'var(--bg-200)' : '#16a34a', color: applyItems.length === 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: applyItems.length === 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+                >
+                  Apply picks to costs
+                </button>
+                <button type="button" onClick={onClose} style={{ padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>Close</button>
+              </div>
             </div>
           </>
         )}
       </div>
+      <ApplyPicksToCostsModal
+        open={applyOpen}
+        onClose={() => setApplyOpen(false)}
+        onApplied={() => {
+          onCostsApplied()
+        }}
+        bidId={bidId}
+        items={applyItems}
+        countRows={rows}
+        takeoffMaterialsByCountRowId={takeoffMaterialsByCountRowId}
+        taxPercent={taxPercent}
+        currentTotals={currentTotals}
+      />
     </div>,
     document.body,
   )

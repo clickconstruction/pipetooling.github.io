@@ -29,6 +29,8 @@ export type UseBidPricingRowsInput = {
   costEstimatePOModalTaxPercent: string
   bidPricingAssignments: BidPricingAssignment[]
   bidCountRowCustomPrices: BidCountRowCustomPrice[]
+  /** Rung G (v2.2655): applied-quote materials overrides (cents/unit, bid-level). */
+  bidCountRowCustomCosts?: Array<{ count_row_id: string; unit_materials_cents: number }>
   bidCountRowSubmissionHides: BidCountRowSubmissionHide[]
   priceBookEntries: PriceBookEntryWithFixture[]
   pricingLaborRows: CostEstimateLaborRow[]
@@ -59,11 +61,18 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
     costEstimatePOModalTaxPercent,
     bidPricingAssignments,
     bidCountRowCustomPrices,
+    bidCountRowCustomCosts,
     bidCountRowSubmissionHides,
     priceBookEntries,
     pricingLaborRows,
     pricingFixtureMaterialsFromTakeoff,
   } = input
+
+  // cents/unit → $/unit for the kernel; recomputed against live counts there.
+  const materialsOverrideUnitByCountRowId = new Map<string, number>()
+  for (const cc of bidCountRowCustomCosts ?? []) {
+    materialsOverrideUnitByCountRowId.set(cc.count_row_id, cc.unit_materials_cents / 100)
+  }
 
   /**
    * Shared package source: external rows + total revenue used by the "Package and send"
@@ -111,6 +120,7 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
       taxPercent,
       materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
       hiddenSubmissionCountRowIds: hidden,
+      materialsOverrideUnitByCountRowId,
     })
     return {
       rows: result.rows.map((r) => ({
@@ -134,6 +144,7 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
     costEstimatePOModalTaxPercent,
     bidPricingAssignments,
     bidCountRowCustomPrices,
+    bidCountRowCustomCosts,
     bidCountRowSubmissionHides,
     priceBookEntries,
     pricingLaborRows,
@@ -174,7 +185,9 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
       taxPercent,
       materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
       hiddenSubmissionCountRowIds: hidden,
+      materialsOverrideUnitByCountRowId,
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the override map is rebuilt each render from bidCountRowCustomCosts (dep below)
   }, [
     selectedBidForPricing,
     selectedPricingVersionId,
@@ -187,6 +200,7 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
     costEstimatePOModalTaxPercent,
     bidPricingAssignments,
     bidCountRowCustomPrices,
+    bidCountRowCustomCosts,
     bidCountRowSubmissionHides,
     priceBookEntries,
     pricingLaborRows,

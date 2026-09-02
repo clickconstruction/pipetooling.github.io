@@ -42,6 +42,11 @@ Once any quote is saved, a {{chip:blue|Quotes (1)}} chip sits beside Share — i
 - **Tap a price to pick it** for that part — split the order across houses line by line. The picked total at the bottom recomputes at today's counts, and picks are saved for a future PO handoff.
 - A **Last quoted** column shows what each house said the last time anyone asked about that part name, on any bid — a high number smells wrong before you commit.
 
+## Package deals and landing prices on costs
+
+- A vendor's best number is often a package — "carriers + bowls, $18,400 all in." Check those lines in Plug in quotes and **Group as a lot** with the one total; the compare shows them as a package, picks them together, and never lets a fake per-line price sneak in.
+- **Apply picks to costs** (in the compare footer) writes your picked prices onto the bid's row costs — materials only, labor untouched, with the margin change shown first. Package totals split across their rows proportionally (editable, and the total must hold). Applied rows wear a {{chip:green|Ferguson ↩}} tag on the workbench — one click reverts to the takeoff number, and package rows revert together.
+
 ## The honesty rules
 
 The comparison won't quietly mislead you:
