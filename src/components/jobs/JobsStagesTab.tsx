@@ -118,6 +118,7 @@ import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienToolingPrefillModal from './LienToolingPrefillModal'
+import LienInstrumentsModal from './LienInstrumentsModal'
 import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { HazmatFeeModal, type HazmatFeeModalJob } from './HazmatFeeModal'
@@ -718,6 +719,28 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     job: JobWithDetails
     invoice: JobsLedgerInvoice | null
   } | null>(null)
+  /** Lien instruments (v2.2640): the orange lien icon's new home — in-app demand letter; external prefill kept as fallback. */
+  const [lienInstrumentsModal, setLienInstrumentsModal] = useState<{
+    job: JobWithDetails
+    invoice: JobsLedgerInvoice | null
+  } | null>(null)
+  // Jobs with a live SENT demand letter — the lien icon wears an amber box.
+  const [demandOutJobIds, setDemandOutJobIds] = useState<ReadonlySet<string>>(() => new Set())
+  const loadDemandOutJobIds = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('job_demand_letters')
+        .select('job_id')
+        .is('voided_at', null)
+        .not('sent_at', 'is', null)
+      setDemandOutJobIds(new Set(((data ?? []) as { job_id: string }[]).map((r) => r.job_id)))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [])
+  useEffect(() => {
+    void loadDemandOutJobIds()
+  }, [loadDemandOutJobIds])
   const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
   /** Release of lien (v2.2579): in-app waiver-and-release modal — same office set as the hazmat gate. */
   const [lienReleaseModal, setLienReleaseModal] = useState<{
@@ -2102,6 +2125,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ...shared,
       onOpenLienRelease: openLienReleaseFromRow,
       lienReleaseJobIds,
+      demandOutJobIds,
       stagesHamMode,
       flashInvoiceId: stagesInvoiceFlashId,
       stagesInvoiceUpdatingId,
@@ -2235,7 +2259,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onViewBill={(inv) => setViewBillInvoice(inv)}
           showClickTooling={false}
           onOpenLienTooling={(ctx) =>
-            setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+            setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
           onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
           onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
           showRemaining={true}
@@ -2263,7 +2287,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onViewBill={(inv) => setViewBillInvoice(inv)}
           showClickTooling={false}
           onOpenLienTooling={(ctx) =>
-            setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+            setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
           onJobSendBack={(j) =>
             stagesHamMode
               ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
@@ -3651,6 +3675,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     actionLabel={'Bill Customer'}
                     onOpenLienRelease={openLienReleaseFromRow}
                     lienReleaseJobIds={lienReleaseJobIds}
+                    demandOutJobIds={demandOutJobIds}
                     onJobAction={(j) => {
                       if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
                         showToast('Link this job to a customer before billing.', 'error')
@@ -4007,9 +4032,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onViewBill={(inv) => setViewBillInvoice(inv)}
                     showClickTooling={false}
                     onOpenLienTooling={(ctx) =>
-                      setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+                      setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
                     onOpenLienRelease={openLienReleaseFromRow}
                     lienReleaseJobIds={lienReleaseJobIds}
+                    demandOutJobIds={demandOutJobIds}
                     onJobSendBack={(j) =>
                       stagesHamMode
                         ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
@@ -4124,9 +4150,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onViewBill={(inv) => setViewBillInvoice(inv)}
                     showClickTooling={false}
                     onOpenLienTooling={(ctx) =>
-                      setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+                      setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
                     onOpenLienRelease={openLienReleaseFromRow}
                     lienReleaseJobIds={lienReleaseJobIds}
+                    demandOutJobIds={demandOutJobIds}
                     onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
                     onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
                     showRemaining={true}
@@ -5055,6 +5082,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             })
           })()
         }}
+      />
+      <LienInstrumentsModal
+        open={lienInstrumentsModal != null}
+        onClose={() => setLienInstrumentsModal(null)}
+        job={lienInstrumentsModal?.job ?? null}
+        invoice={lienInstrumentsModal?.invoice ?? null}
+        signerNameFallback={lienReleaseSignerFallback}
+        authEmail={authUser?.email?.trim() ?? ''}
+        onOpenExternalPrefill={() => {
+          const ctx = lienInstrumentsModal
+          setLienInstrumentsModal(null)
+          if (ctx) setLienToolingPrefillModal(ctx)
+        }}
+        onRecorded={() => void loadDemandOutJobIds()}
       />
       <LienToolingPrefillModal
         open={lienToolingPrefillModal != null}

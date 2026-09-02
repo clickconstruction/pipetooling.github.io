@@ -32,6 +32,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     d22UncodedCount: 0,
     lienUnconditionalEnabled: true,
     lienUnconditionalOwed: null,
+    demandDeadlineEnabled: true,
+    demandDeadlineOverdue: null,
     ...overrides,
   }
 }
@@ -292,6 +294,18 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.title).toBe('3 payments cleared behind conditional releases')
     expect(many[0]?.figure).toBe('3')
     expect(many[0]?.actionLabel).toBe('Issue releases')
+  })
+
+  it('demand-deadline (v2.2640): red follow-through item, quiet at zero/disabled/loading', () => {
+    expect(buildNeedsYouItems(inputs({ demandDeadlineOverdue: { count: 0, total: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ demandDeadlineEnabled: false, demandDeadlineOverdue: { count: 2, total: 5000 } }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ demandDeadlineOverdue: { count: 1, total: 2711.5 } }))
+    expect(one[0]?.key).toBe('demand-deadline')
+    expect(one[0]?.severity).toBe('red')
+    expect(one[0]?.title).toBe('A demand-letter deadline passed unpaid')
+    expect(one[0]?.detail).toContain('$2,712')
+    const many = buildNeedsYouItems(inputs({ demandDeadlineOverdue: { count: 3, total: 9000 } }))
+    expect(many[0]?.title).toBe('3 demand-letter deadlines passed unpaid')
   })
 
   it('lien-unconditional sits in the received-money tier: below ar-deposits, above billing accuracy', () => {
