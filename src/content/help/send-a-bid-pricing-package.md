@@ -39,6 +39,8 @@ A prepare screen opens first so you're never copying blind:
 - **Fix codes on the spot** — names the ledger doesn't recognize sit at the top with a section picker and {{button:green|Pin it}}; a pin codes that name on every bid, forever.
 - **See the paste** — the preview pane shows the exact text, updating as you toggle. {{button:green|Copy}} puts precisely that on your clipboard.
 
+{{gif:supply-house-list-prepare.gif|Scope with one tap — the preview updates live and Copy puts exactly that on the clipboard}}
+
 The list arrives grouped by Division 22 spec section (22 11 16 Domestic Water Piping, 22 42 13 Water Closets &amp; Urinals, …) in spec-book order, so the counter can work it section by section. Anything still uncoded rides in a "No code yet" tail — the copy never blocks on an incomplete ledger.
 
 :::example Sending just the pipe to the supply house

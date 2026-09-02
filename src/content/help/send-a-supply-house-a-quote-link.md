@@ -17,9 +17,13 @@ Texting a parts list works — but then the rep texts prices back and someone re
 
 The link is addressed to that one house — send a separate link to each vendor you're pricing against.
 
+{{gif:send-a-supply-house-a-quote-link.gif|Pick the house, set needed-by, Copy with quote link — the toast confirms and an RFQ sent chip appears by Share}}
+
 ## What the vendor sees
 
 A plain page, no login, built for a phone at the counter:
+
+{{gif:supply-house-quote-page.gif|The vendor types prices, taps can't supply where they don't carry it, and hits Send quote}}
 
 - Every part with its count. A price box, a **can't supply** button, and a note field per line.
 - Their entries **save on their phone as they type** — getting interrupted ten lines in loses nothing.
