@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   LIEN_WAIVER_FORM_SHORT_LABELS,
   LIEN_WAIVER_FORM_TYPES,
-  buildLienWaiverEmailHtml,
-  buildLienWaiverEmailText,
   buildLienWaiverParagraphs,
   buildLienWaiverPdfBlob,
   buildLienWaiverPrefill,
@@ -18,6 +16,7 @@ import {
   lienWaiverUsesField,
   type LienWaiverFields,
   type LienWaiverFormType,
+  type LienWaiverSignature,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import {
@@ -27,7 +26,17 @@ import {
   liveLienReleases,
   type JobLienReleaseRow,
 } from '../../lib/jobs/lienReleaseTracking'
-import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
+import {
+  canRequestLienSignature,
+  lienReleaseChips,
+  lienReleaseIsEditable,
+  lienReleaseIsMinted,
+  lienReleaseSignatureAuditLine,
+  lienReleaseStatus,
+  type LienReleaseChip,
+} from '../../lib/jobs/lienReleaseLifecycle'
+import { LIEN_RELEASE_DOCUMENTS_BUCKET, lienReleaseMintedPdfPath } from '../../lib/jobs/lienReleaseDocuments'
+import LienReleaseSignModal from './LienReleaseSignModal'
 import {
   customerAddressLienGaps,
   customerAddressLienReady,
@@ -76,6 +85,28 @@ const FIELD_ORDER: (keyof LienWaiverFields)[] = [
   'signerTitle',
 ]
 
+/** Chip styles for the lifecycle states (matches the age-chip idiom). */
+function lienChipStyle(c: LienReleaseChip): React.CSSProperties {
+  const base: React.CSSProperties = {
+    fontSize: '0.68rem',
+    fontWeight: 700,
+    padding: '0.05rem 0.4rem',
+    borderRadius: 9999,
+    whiteSpace: 'nowrap',
+  }
+  switch (c.tone) {
+    case 'awaiting':
+      return { ...base, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+    case 'signed':
+    case 'sent':
+      return { ...base, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }
+    case 'voided':
+      return { ...base, background: 'var(--bg-red-100)', color: 'var(--text-red-700)' }
+    default:
+      return { ...base, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+  }
+}
+
 /** Bill lines the release can cover — anything already minted for billing. */
 function selectableInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
   return (job.invoices ?? [])
@@ -112,8 +143,16 @@ export default function LienReleaseModal({
   const [fields, setFields] = useState<LienWaiverFields | null>(null)
   const [issuerGen, setIssuerGen] = useState(0)
   const [pdfBusy, setPdfBusy] = useState(false)
-  const [saveBusy, setSaveBusy] = useState(false)
-  const [savedReleaseId, setSavedReleaseId] = useState<string | null>(null)
+  // The row this modal session works on: an autosaving draft until an output
+  // action mints it (v2.2619 — the mint gate), then the locked minted row.
+  const [releaseRow, setReleaseRow] = useState<JobLienReleaseRow | null>(null)
+  const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [mintBusy, setMintBusy] = useState(false)
+  const [signOpen, setSignOpen] = useState(false)
+  // True once the user actually edits — mere open/close never mints a draft.
+  const userTouchedRef = useRef(false)
+  // Resumed drafts keep their saved fields — the prefill rebuild stays off.
+  const hydratedDraftRef = useRef(false)
   // Issued-on-this-job history (v2.2588): reachable from every row with the
   // release button — billed rows have no Bill Customer, so the strip alone
   // couldn't view/void there. Fail-soft like the strip.
@@ -268,7 +307,11 @@ export default function LienReleaseModal({
   useEffect(() => {
     if (!open || !job) return
     setFormType(initialFormType ?? 'conditional_progress')
-    setSavedReleaseId(null)
+    setReleaseRow(null)
+    setAutosaveState('idle')
+    setSignOpen(false)
+    userTouchedRef.current = false
+    hydratedDraftRef.current = false
     const selectable = selectableInvoices(job)
     if (invoice && selectable.some((i) => i.id === invoice.id)) {
       setSelectedInvoiceIds(new Set([invoice.id]))
@@ -278,18 +321,44 @@ export default function LienReleaseModal({
     setSelectedInvoiceIds(new Set((billed.length > 0 ? billed : selectable).map((i) => i.id)))
   }, [open, job?.id, invoice?.id, initialFormType])
 
+  // Resume the newest live draft (v2.2619): the autosaving modal picks up
+  // exactly where it was closed — the whole point of dropping Save/Cancel.
+  useEffect(() => {
+    if (!open || releaseRow) return
+    const draft = historyRows.find((r) => lienReleaseStatus(r) === 'draft' && !r.voided_at)
+    if (!draft) return
+    hydratedDraftRef.current = true
+    setReleaseRow(draft)
+    if (isLienWaiverFormType(draft.form_type)) setFormType(draft.form_type)
+    setSelectedInvoiceIds(new Set(draft.invoice_ids ?? []))
+    const s = lienReleaseFieldsFromSnapshot(draft.fields)
+    setFields({
+      companyName: s.companyName ?? '',
+      checkFrom: s.checkFrom ?? '',
+      amount: s.amount ?? String(draft.amount ?? ''),
+      projectDescription: s.projectDescription ?? '',
+      throughDate: s.throughDate ?? draft.through_date ?? '',
+      signedDate: s.signedDate ?? draft.signed_date ?? '',
+      signerName: s.signerName ?? '',
+      signerTitle: s.signerTitle ?? '',
+    })
+    setAutosaveState('saved')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, historyRows])
+
   const selectedInvoices = useMemo(
     () => invoices.filter((i) => selectedInvoiceIds.has(i.id)),
     [invoices, selectedInvoiceIds],
   )
 
   // Rebuild the prefill whenever its inputs change; keep user-typed signer lines.
+  // A resumed draft opts out entirely — its saved fields ARE the document.
   useEffect(() => {
     if (!open || !job) {
       setFields(null)
       return
     }
-    setSavedReleaseId(null)
+    if (hydratedDraftRef.current) return
     setFields((prev) => {
       const next = buildLienWaiverPrefill(formType, {
         job,
@@ -310,10 +379,12 @@ export default function LienReleaseModal({
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
 
   const setField = (key: keyof LienWaiverFields, value: string) => {
+    userTouchedRef.current = true
     setFields((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
   const toggleInvoice = (id: string) => {
+    userTouchedRef.current = true
     setSelectedInvoiceIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -322,62 +393,214 @@ export default function LienReleaseModal({
     })
   }
 
-  const copyForEmail = useCallback(async () => {
-    if (!fields) return
-    try {
-      await copyRichHtmlToClipboard(
-        buildLienWaiverEmailHtml(formType, fields),
-        buildLienWaiverEmailText(formType, fields),
-      )
-      showToast('Release copied — paste into an email.', 'success')
-    } catch {
-      showToast('Could not copy the release.', 'error')
+  const editable = lienReleaseIsEditable(releaseRow)
+  const rowStatus = releaseRow ? lienReleaseStatus(releaseRow) : null
+
+  /** The exact row payload for the current document state (draft and mint share it). */
+  const buildRowPayload = useCallback(() => {
+    if (!fields || !job) return null
+    const amountNum = Number((fields.amount ?? '').replace(/[$,\s]/g, ''))
+    const usesThrough = lienWaiverUsesField(formType, 'throughDate')
+    return {
+      job_id: job.id,
+      invoice_ids: [...selectedInvoiceIds],
+      form_type: formType,
+      amount: Number.isFinite(amountNum) ? Math.max(0, Math.round(amountNum * 100) / 100) : 0,
+      through_date: usesThrough && fields.throughDate ? fields.throughDate : null,
+      signed_date: fields.signedDate || null,
+      fields: { ...fields } as Record<string, string>,
     }
-  }, [fields, formType, showToast])
+  }, [fields, job, formType, selectedInvoiceIds])
 
-  const printRelease = useCallback(() => {
-    if (!fields) return
-    const ok = openHtmlPrintWindow(buildLienWaiverPrintHtml(formType, fields, jobNumber))
-    if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [fields, formType, jobNumber, showToast])
+  // Autosave (v2.2619): the draft writes itself, debounced, from the first
+  // real edit — no Save button, ✕ just closes. Stops the moment the row mints.
+  useEffect(() => {
+    if (!open || !fields || !job || !editable || !userTouchedRef.current) return
+    const t = window.setTimeout(() => {
+      void (async () => {
+        const payload = buildRowPayload()
+        if (!payload) return
+        setAutosaveState('saving')
+        try {
+          if (releaseRow && lienReleaseStatus(releaseRow) === 'draft') {
+            await withSupabaseRetry(
+              () => supabase.from('job_lien_releases').update(payload).eq('id', releaseRow.id).eq('status', 'draft'),
+              'autosave lien release draft',
+            )
+          } else if (!releaseRow) {
+            const data = await withSupabaseRetry<JobLienReleaseRow>(
+              () =>
+                supabase
+                  .from('job_lien_releases')
+                  .insert({ ...payload, status: 'draft', created_by: authUser?.id ?? null })
+                  .select('*')
+                  .single(),
+              'create lien release draft',
+            )
+            if (data) setReleaseRow(data)
+          }
+          setAutosaveState('saved')
+        } catch {
+          setAutosaveState('error')
+        }
+      })()
+    }, 800)
+    return () => window.clearTimeout(t)
+  }, [open, fields, job, editable, formType, selectedInvoiceIds, releaseRow, buildRowPayload, authUser?.id])
 
-  // Record the issued release (v2.2582) — powers the board badge, the Bill
-  // Customer strip, and the cleared-payment → unconditional follow-through.
-  const saveIssued = useCallback(async () => {
-    if (!fields || !job || saveBusy || savedReleaseId) return
-    setSaveBusy(true)
+  /**
+   * The mint gate (owner decision): no paper without the record. Flushes the
+   * draft with the current fields and locks it at `target`; blocking on
+   * failure. The stored minted PDF is best-effort — the row is the document
+   * of record and every rendering regenerates from its snapshot.
+   */
+  const ensureMinted = useCallback(
+    async (target: 'issued' | 'awaiting_signature'): Promise<JobLienReleaseRow | null> => {
+      if (!fields || !job || mintBusy) return null
+      if (releaseRow && lienReleaseIsMinted(releaseRow)) return releaseRow
+      const payload = buildRowPayload()
+      if (!payload) return null
+      setMintBusy(true)
+      try {
+        const nowIso = new Date().toISOString()
+        const mintFields = {
+          status: target,
+          minted_at: nowIso,
+          ...(target === 'awaiting_signature'
+            ? {
+                signature_requested_at: nowIso,
+                signature_requested_by: authUser?.id ?? null,
+                signer_user_id: job.master_user_id ?? null,
+              }
+            : {}),
+        }
+        let row: JobLienReleaseRow | null = null
+        if (releaseRow) {
+          row = await withSupabaseRetry<JobLienReleaseRow>(
+            () =>
+              supabase
+                .from('job_lien_releases')
+                .update({ ...payload, ...mintFields })
+                .eq('id', releaseRow.id)
+                .eq('status', 'draft')
+                .select('*')
+                .single(),
+            'mint lien release',
+          )
+        } else {
+          row = await withSupabaseRetry<JobLienReleaseRow>(
+            () =>
+              supabase
+                .from('job_lien_releases')
+                .insert({ ...payload, ...mintFields, created_by: authUser?.id ?? null })
+                .select('*')
+                .single(),
+            'mint lien release',
+          )
+        }
+        if (!row) throw new Error('mint returned no row')
+        setReleaseRow(row)
+        setAutosaveState('saved')
+        void loadHistory()
+        onIssued?.()
+        // Audit copy of the minted (unsigned) document — best-effort.
+        void (async () => {
+          try {
+            const pdf = await buildLienWaiverPdfBlob(formType, fields)
+            const path = lienReleaseMintedPdfPath(row.id)
+            const { error } = await supabase.storage
+              .from(LIEN_RELEASE_DOCUMENTS_BUCKET)
+              .upload(path, pdf, { contentType: 'application/pdf', upsert: true })
+            if (!error) await supabase.from('job_lien_releases').update({ minted_pdf_path: path }).eq('id', row.id)
+          } catch {
+            /* regenerable from the snapshot */
+          }
+        })()
+        return row
+      } catch {
+        showToast('Could not record the release — nothing was produced. Try again.', 'error')
+        return null
+      } finally {
+        setMintBusy(false)
+      }
+    },
+    [fields, job, mintBusy, releaseRow, buildRowPayload, authUser?.id, formType, loadHistory, onIssued, showToast],
+  )
+
+  const requestSignature = useCallback(async () => {
+    if (!job) return
+    if (releaseRow && lienReleaseIsMinted(releaseRow)) {
+      if (lienReleaseStatus(releaseRow) !== 'issued') return
+      try {
+        const data = await withSupabaseRetry<JobLienReleaseRow>(
+          () =>
+            supabase
+              .from('job_lien_releases')
+              .update({
+                status: 'awaiting_signature',
+                signature_requested_at: new Date().toISOString(),
+                signature_requested_by: authUser?.id ?? null,
+                signer_user_id: job.master_user_id ?? null,
+              })
+              .eq('id', releaseRow.id)
+              .eq('status', 'issued')
+              .select('*')
+              .single(),
+          'request lien release signature',
+        )
+        if (data) setReleaseRow(data)
+        void loadHistory()
+        onIssued?.()
+      } catch {
+        showToast('Could not request the signature.', 'error')
+      }
+      return
+    }
+    const row = await ensureMinted('awaiting_signature')
+    if (row) showToast('Signature requested.', 'success')
+  }, [job, releaseRow, authUser?.id, ensureMinted, loadHistory, onIssued, showToast])
+
+  const cancelSignatureRequest = useCallback(async () => {
+    if (!releaseRow || lienReleaseStatus(releaseRow) !== 'awaiting_signature') return
     try {
-      const amountNum = Number((fields.amount ?? '').replace(/[$,\s]/g, ''))
-      const usesThrough = lienWaiverUsesField(formType, 'throughDate')
-      const fieldsSnapshot: Record<string, string> = { ...fields }
-      const data = await withSupabaseRetry<{ id: string }>(
+      const data = await withSupabaseRetry<JobLienReleaseRow>(
         () =>
           supabase
             .from('job_lien_releases')
-            .insert({
-              job_id: job.id,
-              invoice_ids: [...selectedInvoiceIds],
-              form_type: formType,
-              amount: Number.isFinite(amountNum) ? Math.max(0, Math.round(amountNum * 100) / 100) : 0,
-              through_date: usesThrough && fields.throughDate ? fields.throughDate : null,
-              signed_date: fields.signedDate || null,
-              fields: fieldsSnapshot,
-              created_by: authUser?.id ?? null,
-            })
-            .select('id')
+            .update({ status: 'issued' })
+            .eq('id', releaseRow.id)
+            .eq('status', 'awaiting_signature')
+            .select('*')
             .single(),
-        'record lien release',
+        'cancel lien signature request',
       )
-      setSavedReleaseId(data?.id ?? 'saved')
-      showToast('Release recorded on the job.', 'success')
+      if (data) setReleaseRow(data)
       void loadHistory()
-      onIssued?.()
     } catch {
-      showToast('Could not record the release — it can still be copied, printed, or downloaded.', 'error')
-    } finally {
-      setSaveBusy(false)
+      showToast('Could not cancel the request.', 'error')
     }
-  }, [fields, job, formType, selectedInvoiceIds, authUser?.id, saveBusy, savedReleaseId, showToast, onIssued, loadHistory])
+  }, [releaseRow, loadHistory, showToast])
+
+  /** Signature for renders of the live row (typed renders inline; drawn falls back to the printed name — the stored signed PDF carries the ink). */
+  const renderSignature = useCallback((row: JobLienReleaseRow | null): LienWaiverSignature | null => {
+    if (!row || lienReleaseStatus(row) !== 'signed' || !row.signer_printed_name) return null
+    return {
+      mode: 'type',
+      printedName: row.signer_printed_name,
+      auditLine:
+        lienReleaseSignatureAuditLine({ signed_at: row.signed_at, signer_consented_at: row.signer_consented_at }) ?? '',
+    }
+  }, [])
+
+  // Every output action mints first (no paper without the record) and renders
+  // the signature once one exists.
+  const printRelease = useCallback(async () => {
+    if (!fields) return
+    const row = await ensureMinted('issued')
+    if (!row) return
+    const ok = openHtmlPrintWindow(buildLienWaiverPrintHtml(formType, fields, jobNumber, renderSignature(row)))
+    if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
+  }, [fields, formType, jobNumber, ensureMinted, renderSignature, showToast])
 
   const viewHistoryRelease = useCallback(
     (r: JobLienReleaseRow) => {
@@ -393,17 +616,21 @@ export default function LienReleaseModal({
         signerName: snapshot.signerName ?? '',
         signerTitle: snapshot.signerTitle ?? '',
       }
-      const ok = openHtmlPreviewWindow(buildLienWaiverPrintHtml(historyForm, historyFields, jobNumber))
+      const ok = openHtmlPreviewWindow(buildLienWaiverPrintHtml(historyForm, historyFields, jobNumber, renderSignature(r)))
       if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
     },
-    [jobNumber, showToast],
+    [jobNumber, renderSignature, showToast],
   )
 
   const voidHistoryRelease = useCallback(
     async (r: JobLienReleaseRow) => {
       try {
         await withSupabaseRetry(
-          () => supabase.from('job_lien_releases').update({ voided_at: new Date().toISOString() }).eq('id', r.id),
+          () =>
+            supabase
+              .from('job_lien_releases')
+              .update({ voided_at: new Date().toISOString(), voided_by: authUser?.id ?? null })
+              .eq('id', r.id),
           'void lien release',
         )
         showToast('Release voided.', 'success')
@@ -414,14 +641,16 @@ export default function LienReleaseModal({
         showToast('Could not void the release.', 'error')
       }
     },
-    [showToast, loadHistory, onIssued],
+    [showToast, loadHistory, onIssued, authUser?.id],
   )
 
   const downloadPdf = useCallback(async () => {
     if (!fields || pdfBusy) return
+    const row = await ensureMinted('issued')
+    if (!row) return
     setPdfBusy(true)
     try {
-      const blob = await buildLienWaiverPdfBlob(formType, fields)
+      const blob = await buildLienWaiverPdfBlob(formType, fields, renderSignature(row))
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -435,7 +664,7 @@ export default function LienReleaseModal({
     } finally {
       setPdfBusy(false)
     }
-  }, [fields, formType, jobNumber, pdfBusy, showToast])
+  }, [fields, formType, jobNumber, pdfBusy, ensureMinted, renderSignature, showToast])
 
   if (!open || !job || !fields) return null
 
@@ -473,13 +702,24 @@ export default function LienReleaseModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
-          <h2 id="lien-release-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
-            Release of Lien
-          </h2>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} — prefilled from the job; every field stays editable.
-          </p>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+          <div>
+            <h2 id="lien-release-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
+              Release of Lien
+            </h2>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} —{' '}
+              {editable ? 'prefilled from the job; edits save themselves.' : 'issued — the document is locked as rendered.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.25rem', lineHeight: 1, cursor: 'pointer', padding: '0.1rem 0.35rem' }}
+          >
+            ✕
+          </button>
         </div>
 
         <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -487,14 +727,19 @@ export default function LienReleaseModal({
             <button
               key={t}
               type="button"
-              onClick={() => setFormType(t)}
+              disabled={!editable}
+              onClick={() => {
+                userTouchedRef.current = true
+                setFormType(t)
+              }}
               style={{
                 padding: '0.4rem 0.75rem',
                 fontSize: '0.8125rem',
                 borderRadius: 6,
                 border: formType === t ? '2px solid #2563eb' : '1px solid var(--border-strong)',
                 background: formType === t ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                cursor: 'pointer',
+                cursor: editable ? 'pointer' : 'default',
+                opacity: editable || formType === t ? 1 : 0.5,
                 fontWeight: formType === t ? 600 : 400,
               }}
             >
@@ -537,6 +782,11 @@ export default function LienReleaseModal({
                         {Number(r.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                       </span>
                       <span style={{ color: 'var(--text-muted)' }}>{lienWaiverDate((r.created_at ?? '').slice(0, 10))}</span>
+                      {lienReleaseChips(r).map((c) => (
+                        <span key={c.label} style={lienChipStyle(c)}>
+                          {c.label}
+                        </span>
+                      ))}
                       <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
                         <button
                           type="button"
@@ -612,6 +862,7 @@ export default function LienReleaseModal({
                       <button
                         key={i.id}
                         type="button"
+                        disabled={!editable}
                         onClick={() => toggleInvoice(i.id)}
                         title={`${i.status === 'billed' ? 'Billed' : 'Ready to bill'} — $${Number(i.amount ?? 0).toLocaleString('en-US')} (open $${openRem.toLocaleString('en-US')})`}
                         style={{
@@ -640,6 +891,7 @@ export default function LienReleaseModal({
                 <input
                   type={key === 'throughDate' || key === 'signedDate' ? 'date' : 'text'}
                   value={fields[key]}
+                  disabled={!editable}
                   onChange={(e) => setField(key, e.target.value)}
                   style={{
                     width: '100%',
@@ -648,10 +900,48 @@ export default function LienReleaseModal({
                     border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     fontSize: '0.875rem',
+                    opacity: editable ? 1 : 0.7,
                   }}
                 />
               </label>
             ))}
+            {rowStatus === 'awaiting_signature' && releaseRow ? (
+              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-amber-100)', border: '1px solid var(--border-strong)', fontSize: '0.75rem' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>
+                  ✍ Awaiting {fields.signerName.trim() || 'the signer'}
+                </div>
+                <div style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                  Requested {lienWaiverDate((releaseRow.signature_requested_at ?? '').slice(0, 10))} — until it's signed, the release stays locked.
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.35rem' }}>
+                  {authUser?.id && releaseRow.signer_user_id === authUser.id ? (
+                    <button
+                      type="button"
+                      onClick={() => setSignOpen(true)}
+                      style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                    >
+                      Sign now
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => void cancelSignatureRequest()}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.75rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                  >
+                    Cancel request
+                  </button>
+                </div>
+              </div>
+            ) : rowStatus === 'signed' && releaseRow ? (
+              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.6rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border-strong)', fontSize: '0.75rem' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>
+                  ✓ Signed by {releaseRow.signer_printed_name ?? fields.signerName}
+                </div>
+                <div style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                  {lienReleaseSignatureAuditLine(releaseRow) ?? ''}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {/* Live preview — pinned light like the printed document. */}
@@ -702,65 +992,110 @@ export default function LienReleaseModal({
             display: 'flex',
             flexWrap: 'wrap',
             gap: '0.5rem',
-            justifyContent: 'flex-end',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void copyForEmail()}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}
-          >
-            Copy for email
-          </button>
-          <button
-            type="button"
-            onClick={printRelease}
-            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}
-          >
-            Print
-          </button>
-          <button
-            type="button"
-            onClick={() => void downloadPdf()}
-            disabled={pdfBusy}
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '0.875rem',
-              background: 'var(--surface)',
-              border: '1px solid #2563eb',
-              color: 'var(--text-link)',
-              borderRadius: 4,
-              cursor: pdfBusy ? 'wait' : 'pointer',
-            }}
-          >
-            {pdfBusy ? 'Building…' : 'Download PDF'}
-          </button>
-          <button
-            type="button"
-            onClick={() => void saveIssued()}
-            disabled={saveBusy || savedReleaseId != null}
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '0.875rem',
-              background: savedReleaseId ? '#16a34a' : '#2563eb',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: saveBusy ? 'wait' : savedReleaseId ? 'default' : 'pointer',
-              fontWeight: 500,
-            }}
-          >
-            {savedReleaseId ? 'Issued ✓' : saveBusy ? 'Saving…' : 'Save & mark issued'}
-          </button>
+          <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+            {!editable
+              ? ''
+              : autosaveState === 'saving'
+                ? 'Saving…'
+                : autosaveState === 'saved'
+                  ? 'All changes saved'
+                  : autosaveState === 'error'
+                    ? 'Draft not saved — check your connection'
+                    : ''}
+          </span>
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => void printRelease()}
+              disabled={mintBusy}
+              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: mintBusy ? 'wait' : 'pointer' }}
+            >
+              {rowStatus === 'signed' ? 'Print' : 'Print for signature'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void downloadPdf()}
+              disabled={pdfBusy || mintBusy}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.875rem',
+                background: 'var(--surface)',
+                border: '1px solid #2563eb',
+                color: 'var(--text-link)',
+                borderRadius: 4,
+                cursor: pdfBusy || mintBusy ? 'wait' : 'pointer',
+              }}
+            >
+              {pdfBusy ? 'Building…' : 'Download PDF'}
+            </button>
+            {rowStatus === 'awaiting_signature' ? (
+              <button
+                type="button"
+                disabled
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)', borderRadius: 4, cursor: 'default' }}
+              >
+                ✍ Signature requested ✓
+              </button>
+            ) : canRequestLienSignature(releaseRow) ? (
+              <button
+                type="button"
+                onClick={() => void requestSignature()}
+                disabled={mintBusy}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: mintBusy ? 'wait' : 'pointer', fontWeight: 600 }}
+              >
+                ✍ Request signature
+              </button>
+            ) : null}
+            {rowStatus == null || rowStatus === 'draft' ? (
+              <button
+                type="button"
+                onClick={() => void ensureMinted('issued')}
+                disabled={mintBusy}
+                style={{
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.875rem',
+                  background: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: mintBusy ? 'wait' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {mintBusy ? 'Recording…' : 'Mark issued'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: 'default', fontWeight: 500 }}
+              >
+                Issued ✓
+              </button>
+            )}
+          </span>
         </div>
       </div>
+      <LienReleaseSignModal
+        open={signOpen}
+        onClose={() => setSignOpen(false)}
+        release={releaseRow}
+        jobNumber={jobNumber}
+        onSigned={() => {
+          void loadHistory()
+          onIssued?.()
+          // Pull the fresh row (signed stamps) so the strip and footer flip.
+          void (async () => {
+            if (!releaseRow) return
+            const { data } = await supabase.from('job_lien_releases').select('*').eq('id', releaseRow.id).maybeSingle()
+            if (data) setReleaseRow(data as JobLienReleaseRow)
+          })()
+        }}
+      />
     </div>
   )
 }

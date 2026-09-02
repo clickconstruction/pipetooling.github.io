@@ -246,13 +246,47 @@ export function buildLienWaiverEmailText(formType: LienWaiverFormType, f: LienWa
   return [lienWaiverTitle(formType).toUpperCase(), '', ...buildLienWaiverParagraphs(formType, f), '', sig].join('\n\n')
 }
 
-/** Full standalone print document — pinned light like all customer-facing paper. */
-export function buildLienWaiverPrintHtml(formType: LienWaiverFormType, f: LienWaiverFields, jobNumber: string): string {
-  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(lienWaiverTitle(formType))} — Job ${esc(jobNumber)}</title>
+// ---------- electronic signature (v2.2619, the signing loop) ----------
+
+export type LienWaiverSignature = {
+  mode: 'type' | 'draw'
+  printedName: string
+  /** PNG data URL for draw-mode signatures; ignored for typed. */
+  pngDataUrl?: string | null
+  /** The one-line audit stamp (see lienReleaseSignatureAuditLine) rendered under the signature. */
+  auditLine: string
+}
+
+/** The signature block appended to every rendering of a signed release. */
+export function buildLienWaiverSignatureHtml(sig: LienWaiverSignature): string {
+  const name =
+    sig.mode === 'draw' && sig.pngDataUrl
+      ? `<img src="${sig.pngDataUrl}" alt="Signature of ${esc(sig.printedName)}" style="display:block;max-width:280px;max-height:110px" />`
+      : `<div style="font-family:'Great Vibes', cursive; font-size:2.1em; line-height:1.15">${esc(sig.printedName)}</div>`
+  return (
+    `<div style="margin-top:1.4em">${name}` +
+    `<div style="border-top:1px solid #1a1a1a; width:280px; margin-top:0.2em; padding-top:0.2em; font-size:0.85em">${esc(sig.printedName)}</div>` +
+    `<p style="margin:0.5em 0 0; font-family:system-ui,sans-serif; font-size:0.7em; color:#6b7280">${esc(sig.auditLine)}</p></div>`
+  )
+}
+
+/** Full standalone print document — pinned light like all customer-facing paper. Signed releases carry the signature block. */
+export function buildLienWaiverPrintHtml(
+  formType: LienWaiverFormType,
+  f: LienWaiverFields,
+  jobNumber: string,
+  signature?: LienWaiverSignature | null,
+): string {
+  const fontLink =
+    signature && signature.mode === 'type'
+      ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap">`
+      : ''
+  const sigHtml = signature ? buildLienWaiverSignatureHtml(signature) : ''
+  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(lienWaiverTitle(formType))} — Job ${esc(jobNumber)}</title>${fontLink}
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 42rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   @media print { body { margin: 0.5in auto; } }
-</style></head><body>${buildLienWaiverEmailHtml(formType, f)}</body></html>`
+</style></head><body>${buildLienWaiverEmailHtml(formType, f)}${sigHtml}</body></html>`
 }
 
 // ---------- PDF ----------
@@ -279,7 +313,11 @@ const PAGE_MARGIN = 22
 const MAX_TEXT_WIDTH_MM = 172
 const PAGE_CONTENT_MAX_Y = 265
 
-export async function buildLienWaiverPdfBlob(formType: LienWaiverFormType, f: LienWaiverFields): Promise<Blob> {
+export async function buildLienWaiverPdfBlob(
+  formType: LienWaiverFormType,
+  f: LienWaiverFields,
+  signature?: LienWaiverSignature | null,
+): Promise<Blob> {
   const JsPDF = await loadJsPDF()
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
   let y = PAGE_MARGIN + 8
@@ -334,6 +372,43 @@ export async function buildLienWaiverPdfBlob(formType: LienWaiverFormType, f: Li
         break
       }
     }
+  }
+
+  if (signature) {
+    y += 10
+    // Draw-mode embeds the captured PNG; typed renders the name in italic
+    // serif (jsPDF has no webfont — the cursive face is a screen nicety, the
+    // printed name + audit line are what carry legal weight).
+    if (signature.mode === 'draw' && signature.pngDataUrl) {
+      ensureRoom(30)
+      try {
+        doc.addImage(signature.pngDataUrl, 'PNG', PAGE_MARGIN, y, 62, 24)
+        y += 26
+      } catch {
+        // Bad image data — fall through to the typed rendering below.
+        doc.setFont('times', 'italic')
+        doc.setFontSize(19)
+        writeWrapped(signature.printedName, 9)
+      }
+    } else {
+      ensureRoom(12)
+      doc.setFont('times', 'italic')
+      doc.setFontSize(19)
+      writeWrapped(signature.printedName, 9)
+    }
+    ensureRoom(12)
+    doc.setDrawColor(26, 26, 26)
+    doc.line(PAGE_MARGIN, y, PAGE_MARGIN + 70, y)
+    y += 5
+    doc.setFont('times', 'normal')
+    doc.setFontSize(10)
+    doc.text(signature.printedName, PAGE_MARGIN, y)
+    y += 5.5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(107, 114, 128)
+    doc.text(signature.auditLine, PAGE_MARGIN, y)
+    doc.setTextColor(26, 26, 26)
   }
 
   return doc.output('blob')

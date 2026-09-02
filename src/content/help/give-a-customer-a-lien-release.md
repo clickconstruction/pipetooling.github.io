@@ -29,14 +29,19 @@ If the job has more than one bill line, green chips at the top let you pick whic
 - **Contractor / releasing party** — your company block from Settings → Physical invoice issuer.
 - **Signed by** — the job master's name and title; add the signer title if it's blank.
 
-## Send it
+## It saves itself
 
-- {{button:outline-blue|Copy for email}} puts the formatted release on your clipboard — paste it straight into an email to the GC.
-- {{button:outline-blue|Print}} opens a clean letter for wet signing.
+There's no Save button and nothing to cancel: from your first edit the release keeps itself as a **draft** on the job ("All changes saved" in the corner), and the ✕ just closes the window. Open the release again later and the draft picks up exactly where you left it.
+
+## Get it signed — in the app
+
+- {{button:outline-blue|✍ Request signature}} sends the release to the **master plumber** to sign right in the app. The window shows {{chip:yellow|✍ Awaiting signature}} until it's signed, and the document locks so nobody edits what he's signing. When he opens the release, a **Sign now** button lets him sign by typing his name (rendered in a signature script) or drawing with a finger — and his signature then prints on every copy: preview, print, and PDF, with a "signed electronically" stamp under it.
+- Prefer wet ink? {{button:outline-blue|Print for signature}} opens the clean letter with fill-in lines, exactly as before.
+
+## Issue it
+
 - {{button:outline-blue|Download PDF}} saves a letter-format PDF to attach anywhere.
-- {{button:blue|Save & mark issued}} records the release on the job — do this whenever you actually send one.
-
-The document is designed to be signed by hand: if you leave the signer fields blank, the printed copy carries fill-in lines.
+- {{button:blue|Mark issued}} records the release on the job explicitly — and printing, downloading, or requesting a signature records it too. **You can't produce the paper without the record**, which is what keeps every release findable on the job forever.
 
 ## Save the property's legal info once
 
