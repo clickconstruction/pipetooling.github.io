@@ -6239,9 +6239,25 @@ export type Database = {
           id: string
           invoice_ids: string[]
           job_id: string
+          minted_at: string | null
+          minted_pdf_path: string | null
+          sent_by: string | null
+          sent_channel: string | null
+          sent_to_customer_at: string | null
+          signature_requested_at: string | null
+          signature_requested_by: string | null
+          signed_at: string | null
           signed_date: string | null
+          signed_pdf_path: string | null
+          signer_consented_at: string | null
+          signer_printed_name: string | null
+          signer_signature_mode: string | null
+          signer_signature_storage_path: string | null
+          signer_user_id: string | null
+          status: string
           through_date: string | null
           voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount: number
@@ -6252,9 +6268,25 @@ export type Database = {
           id?: string
           invoice_ids?: string[]
           job_id: string
+          minted_at?: string | null
+          minted_pdf_path?: string | null
+          sent_by?: string | null
+          sent_channel?: string | null
+          sent_to_customer_at?: string | null
+          signature_requested_at?: string | null
+          signature_requested_by?: string | null
+          signed_at?: string | null
           signed_date?: string | null
+          signed_pdf_path?: string | null
+          signer_consented_at?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_id?: string | null
+          status?: string
           through_date?: string | null
           voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount?: number
@@ -6265,9 +6297,25 @@ export type Database = {
           id?: string
           invoice_ids?: string[]
           job_id?: string
+          minted_at?: string | null
+          minted_pdf_path?: string | null
+          sent_by?: string | null
+          sent_channel?: string | null
+          sent_to_customer_at?: string | null
+          signature_requested_at?: string | null
+          signature_requested_by?: string | null
+          signed_at?: string | null
           signed_date?: string | null
+          signed_pdf_path?: string | null
+          signer_consented_at?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_id?: string | null
+          status?: string
           through_date?: string | null
           voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -6282,6 +6330,34 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_releases_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_releases_signature_requested_by_fkey"
+            columns: ["signature_requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_releases_signer_user_id_fkey"
+            columns: ["signer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_releases_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -18107,6 +18183,7 @@ export type Database = {
           fixture: string
         }[]
       }
+      spec_section_uncoded_name_count: { Args: never; Returns: number }
       split_bid_into_versions: {
         Args: {
           p_bid_id: string

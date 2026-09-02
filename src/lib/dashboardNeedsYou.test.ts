@@ -28,6 +28,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     claimDevLookbackDays: 7,
     robotAuditsEnabled: true,
     robotAuditsPending: 0,
+    d22UncodedEnabled: true,
+    d22UncodedCount: 0,
     lienUnconditionalEnabled: true,
     lienUnconditionalOwed: null,
     ...overrides,
@@ -259,6 +261,21 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.title).toBe('23 robot bids are waiting on your audit')
     expect(many[0]?.figure).toBe('23')
     expect(buildNeedsYouItems(inputs({ robotAuditsPending: 120 }))[0]?.figure).toBe('99+')
+  })
+
+  it('d22-uncoded (v2.2627): amber hygiene item for the ledger-teaching roles, gone at zero or when disabled', () => {
+    expect(buildNeedsYouItems(inputs({ d22UncodedCount: 0 }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ d22UncodedEnabled: false, d22UncodedCount: 40 }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ d22UncodedCount: 1 }))
+    expect(one[0]?.key).toBe('d22-uncoded')
+    expect(one[0]?.severity).toBe('amber')
+    expect(one[0]?.kicker).toBe('Division 22')
+    expect(one[0]?.title).toBe('One fixture name has no Division 22 code')
+    expect(one[0]?.actionLabel).toBe('Pin codes')
+    const many = buildNeedsYouItems(inputs({ d22UncodedCount: 1182 }))
+    expect(many[0]?.title).toBe('1182 fixture names have no Division 22 code')
+    expect(many[0]?.figure).toBe('99+')
+    expect(many[0]?.detail).toContain('pin a name once and every bid is fixed')
   })
 
   it('lien-unconditional (v2.2582): blue money item, gone at zero, disabled, or while loading', () => {

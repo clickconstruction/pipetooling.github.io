@@ -22,6 +22,7 @@ import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcRevie
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
+import { useSpecSectionUncodedCount } from '../../hooks/useSpecSectionUncodedCount'
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
@@ -320,6 +321,10 @@ export function DashboardPinnedQuickRow({
   const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
   const { pending: robotAuditsPending } = useBidAuditsPendingCount(robotAuditsEnabled)
 
+  // Division 22 uncoded names (v2.2627) — the ledger-teaching roles only.
+  const d22UncodedEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
+  const { uncoded: d22UncodedCount } = useSpecSectionUncodedCount(d22UncodedEnabled)
+
   // Cleared payments behind conditional lien releases (v2.2582) — office set.
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
@@ -350,6 +355,8 @@ export function DashboardPinnedQuickRow({
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
     robotAuditsEnabled,
     robotAuditsPending,
+    d22UncodedEnabled,
+    d22UncodedCount,
     lienUnconditionalEnabled,
     lienUnconditionalOwed,
   })
@@ -549,6 +556,8 @@ export function DashboardPinnedQuickRow({
               navigate('/settings?tab=settings-people')
             } else if (item.key === 'robot-audits') {
               navigate('/bids?tab=audits')
+            } else if (item.key === 'd22-uncoded') {
+              navigate('/bids?tab=pricing&d22audit=1')
             } else if (item.key === 'lien-unconditional') {
               navigate('/jobs?tab=stages')
             }

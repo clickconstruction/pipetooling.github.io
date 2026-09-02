@@ -747,6 +747,19 @@ export function BidsPricingTab({
   const [packageSendOpen, setPackageSendOpen] = useState(false)
   const [d22AuditOpen, setD22AuditOpen] = useState(false)
   const [prepareCopyOpen, setPrepareCopyOpen] = useState(false)
+
+  // Deep link from the dashboard's Division 22 Needs You item (v2.2627):
+  // /bids?tab=pricing&d22audit=1 opens the audit, then strips the param so a
+  // reload or back-nav doesn't reopen it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('d22audit') !== '1') return
+    if (canPackageAndSendBidPricing) setD22AuditOpen(true)
+    params.delete('d22audit')
+    const qs = params.toString()
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; the param is a one-shot door
+  }, [])
   // F2 (v2.2120): Share / Print / CSV honor the ★. When the scenario you're viewing isn't the
   // customer's, a chooser asks which price to use; picking ★ loads that scenario's prices on
   // the fly (no view switch), so "the ★ is what the customer sees — Cover Letter, Share, Print,

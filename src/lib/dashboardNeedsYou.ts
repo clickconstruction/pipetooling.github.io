@@ -42,6 +42,7 @@ export type NeedsYouItem = {
     | 'claim-dev'
     | 'robot-audits'
     | 'lien-unconditional'
+    | 'd22-uncoded'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -76,6 +77,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'roadmap-needs-person': 50,
   'robot-audits': 50,
   'lost-bids': 60,
+  'd22-uncoded': 60,
 }
 
 /** "99+" reads as 100 so a capped figure still outranks anything two-digit. */
@@ -156,6 +158,9 @@ export type NeedsYouInputs = {
    * audit isn't workable yet). Enabled for the auditing roles only.
    */
   robotAuditsEnabled: boolean
+  /** Division 22 (v2.2627): dev + estimator only — the ledger-teaching roles. */
+  d22UncodedEnabled: boolean
+  d22UncodedCount: number
   robotAuditsPending: number
   /**
    * Cleared payments behind conditional lien releases (v2.2582) — the GC is
@@ -350,6 +355,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: 'The card shows where the robot and our bid differ — judge each difference with one tap, and it learns from every verdict.',
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Open Audits',
+    })
+  }
+
+  if (inputs.d22UncodedEnabled && inputs.d22UncodedCount > 0) {
+    const n = inputs.d22UncodedCount
+    items.push({
+      key: 'd22-uncoded',
+      severity: 'amber',
+      kicker: 'Division 22',
+      title: n === 1 ? 'One fixture name has no Division 22 code' : `${n} fixture names have no Division 22 code`,
+      detail:
+        'Supply house lists file them under "No code yet" — pin a name once and every bid is fixed, past and future.',
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Pin codes',
     })
   }
 
