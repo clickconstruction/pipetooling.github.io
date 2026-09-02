@@ -12,6 +12,7 @@ Texting a parts list works — but then the rep texts prices back and someone re
 1. On **Bids → Pricing**, open the {{button:green|▾}} menu and pick **Supply house list**.
 2. Scope the list like always — {{chip:blue|Whole job}}, {{chip:blue|Pipe &amp; fittings}}, or hand-picked rows.
 3. In the strip above the footer, **pick the supply house** the link is for, set a **needed by** date if there's a deadline, and tap {{button:blue|Copy with quote link}}.
+   - Picking the house also shows what they've quoted before — "Moore Supply has last-quoted prices for 12 of these 63 items · newest 3 days ago" — so you know which vendor already knows this scope.
 4. Paste into your text or email like always. The list now ends with a `Price it here:` link.
 
 The link is addressed to that one house — send a separate link to each vendor you're pricing against.

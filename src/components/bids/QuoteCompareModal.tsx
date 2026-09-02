@@ -69,6 +69,9 @@ export function QuoteCompareModal({
   const [rules, setRules] = useState<SpecSectionMatchRule[]>([])
   const [lastQuoted, setLastQuoted] = useState<Map<string, number>>(new Map())
   const [lineIdByCell, setLineIdByCell] = useState<Map<string, string>>(new Map())
+  // Phase 3 (v2.2632): the bid's nearest RFQ needed-by — quotes that expire
+  // before it get called out in the header.
+  const [neededBy, setNeededBy] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -88,6 +91,16 @@ export function QuoteCompareModal({
           'load spec rules',
         ),
       ])
+      try {
+        const rfqs = await withSupabaseRetry(
+          () => supabase.from('bid_rfqs').select('needed_by').eq('bid_id', bidId).not('needed_by', 'is', null),
+          'load rfq needed-by',
+        )
+        const dates = (rfqs ?? []).map((r) => r.needed_by as string).sort()
+        setNeededBy(dates[0] ?? null)
+      } catch {
+        setNeededBy(null)
+      }
       const cellIds = new Map<string, string>()
       const mapped: CompareQuote[] = (quoteRows ?? [])
         .filter((q) => q.supply_house_id)
@@ -231,6 +244,20 @@ export function QuoteCompareModal({
           <p style={{ margin: 0, color: 'var(--text-muted)' }}>No quotes on this bid yet — plug in the first one.</p>
         ) : (
           <>
+            {(() => {
+              if (!neededBy) return null
+              // Latest quote per house (matching the kernel's latest-wins rule).
+              const atRisk = comparison.houses.filter((h) => {
+                const q = [...quotes].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt)).find((x) => x.supplyHouseId === h.supplyHouseId)
+                return q?.validUntil != null && q.validUntil < neededBy
+              })
+              if (atRisk.length === 0) return null
+              return (
+                <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)', background: 'var(--bg-yellow-tint)', border: '1px solid #f59e0b', borderRadius: 6, padding: '0.35rem 0.7rem' }}>
+                  {atRisk.length === 1 ? `${atRisk[0]?.houseName}’s quote expires` : `${atRisk.length} quotes expire`} before the needed-by ({neededBy}) — worth re-asking before ordering.
+                </p>
+              )
+            })()}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {houseCols.map((h) => (
                 <span key={h.supplyHouseId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${h.expired ? 'var(--border-strong)' : '#bbf7d0'}`, background: h.expired ? 'var(--bg-muted)' : 'var(--bg-green-tint)', color: h.expired ? 'var(--text-muted)' : '#15803d', borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.75rem', fontWeight: 600 }}>
