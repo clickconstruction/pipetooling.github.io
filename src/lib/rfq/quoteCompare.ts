@@ -26,6 +26,8 @@ export type CompareQuote = {
   houseName: string
   receivedAt: string
   validUntil?: string | null
+  /** Order-level freight from the quote; null = the vendor never stated it (NOT free). */
+  freightCents?: number | null
   lines: CompareQuoteLine[]
 }
 
@@ -60,14 +62,25 @@ export type HouseSummary = {
   expired: boolean
   /** Sum over apples-to-apples lines (priced by EVERY compared house), cents. */
   commonLinesTotalCents: number | null
+  /** Rung B (v2.2643): the latest quote's freight. null = not stated — ranked as 0 but labeled. */
+  freightCents: number | null
+  /** commonLinesTotalCents + (freight ?? 0) — the number that ranks houses honestly. */
+  commonWithFreightCents: number | null
 }
+
+export type PickedFreight = { supplyHouseId: string; houseName: string; freightCents: number | null }
 
 export type QuoteComparison = {
   rows: CompareRow[]
   houses: HouseSummary[]
   /** Fixture names priced by every house — the apples-to-apples basis. */
   commonLineCount: number
+  /** Parts only, at CURRENT quantities. */
   pickedTotalCents: number
+  /** Rung B: one freight entry per house with ≥1 pick (null freight = not stated). */
+  pickedFreight: PickedFreight[]
+  /** pickedTotalCents + every picked house's stated freight. */
+  pickedTotalWithFreightCents: number
 }
 
 const keyOf = (name: string) => name.trim().toLowerCase()
@@ -156,29 +169,43 @@ export function buildQuoteComparison(args: {
       common.length === 0
         ? null
         : common.reduce((s, r) => s + (r.perHouse[q.supplyHouseId]?.unitPriceEachCents ?? 0) * r.qtyNow, 0)
+    const freight = q.freightCents ?? null
+    const commonCents = total == null ? null : Math.round(total)
     return {
       supplyHouseId: q.supplyHouseId,
       houseName: q.houseName,
       quotedLines: priced.length,
       totalLines: rows.length,
       expired: isExpired(q),
-      commonLinesTotalCents: total == null ? null : Math.round(total),
+      commonLinesTotalCents: commonCents,
+      freightCents: freight,
+      commonWithFreightCents: commonCents == null ? null : commonCents + (freight ?? 0),
     }
   })
 
   let pickedTotal = 0
+  const pickedHouseIds = new Set<string>()
   for (const r of rows) {
-    for (const cell of Object.values(r.perHouse)) {
+    for (const [houseId, cell] of Object.entries(r.perHouse)) {
       if (cell.picked && cell.unitPriceEachCents != null && !cell.cantSupply) {
         pickedTotal += cell.unitPriceEachCents * r.qtyNow
+        pickedHouseIds.add(houseId)
       }
     }
   }
+  // Freight counts ONCE per house you picked anything from; null stays null
+  // (not stated ≠ free) but adds 0 to the arithmetic.
+  const pickedFreight = houses
+    .filter((q) => pickedHouseIds.has(q.supplyHouseId))
+    .map((q) => ({ supplyHouseId: q.supplyHouseId, houseName: q.houseName, freightCents: q.freightCents ?? null }))
+  const freightSum = pickedFreight.reduce((s, f) => s + (f.freightCents ?? 0), 0)
 
   return {
     rows,
     houses: houseSummaries,
     commonLineCount: houses.length > 1 ? pricedByAll.length : 0,
     pickedTotalCents: Math.round(pickedTotal),
+    pickedFreight,
+    pickedTotalWithFreightCents: Math.round(pickedTotal) + freightSum,
   }
 }

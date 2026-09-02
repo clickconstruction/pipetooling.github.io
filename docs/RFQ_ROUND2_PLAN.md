@@ -42,7 +42,7 @@ Ground truth already verified in code:
   bound the toggle to `bids.plans_link` alone — the CountTooling link is
   internal and never reaches a vendor.
 
-## Rung B — freight into compare (owner item 3; 1 PR, mockup cycle)
+## Rung B — freight into compare (owner item 3) — SHIPPED v2.2643
 
 Design questions the mockup must answer before code:
 - Freight is **quote-level**; compare totals are line sums. Proposal:
@@ -57,6 +57,10 @@ Design questions the mockup must answer before code:
 - The vendor page already captures freight; the Plug-in modal already
   captures freight; nothing new is stored — this is display + totals
   math (kernel change in `quoteCompare.ts` + tests).
+- Review revision (artboard 6): **null ≠ free** — "free freight" is an
+  affirmative $0; "freight not stated" ranks as 0 but wears an amber
+  caveat so silence can't quietly win; picked-total split names every
+  picked house's freight.
 
 ## Rung C — vendor page prefill (owner item 4; 1 PR, mockup cycle)
 

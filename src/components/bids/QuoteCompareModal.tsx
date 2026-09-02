@@ -82,7 +82,7 @@ export function QuoteCompareModal({
           () =>
             supabase
               .from('bid_quotes')
-              .select('id, supply_house_id, received_at, valid_until, supply_house:supply_houses(name), bid_quote_lines(id, fixture, unit_price_each_cents, cant_supply, alternate_note, picked)')
+              .select('id, supply_house_id, received_at, valid_until, freight_cents, supply_house:supply_houses(name), bid_quote_lines(id, fixture, unit_price_each_cents, cant_supply, alternate_note, picked)')
               .eq('bid_id', bidId)
               .order('received_at'),
           'load bid quotes',
@@ -133,6 +133,7 @@ export function QuoteCompareModal({
             houseName,
             receivedAt: q.received_at,
             validUntil: q.valid_until,
+            freightCents: q.freight_cents,
             lines: (q.bid_quote_lines ?? []).map((l) => ({
               fixture: l.fixture,
               unitPriceEachCents: l.unit_price_each_cents,
@@ -283,6 +284,9 @@ export function QuoteCompareModal({
                 <span key={h.supplyHouseId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${h.expired ? 'var(--border-strong)' : '#bbf7d0'}`, background: h.expired ? 'var(--bg-muted)' : 'var(--bg-green-tint)', color: h.expired ? 'var(--text-muted)' : '#15803d', borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.75rem', fontWeight: 600 }}>
                   {h.houseName} · {h.quotedLines} of {h.totalLines} lines{h.expired ? ' · expired' : ''}
                   {h.commonLinesTotalCents != null ? ` · ${money(h.commonLinesTotalCents)}${comparison.commonLineCount > 0 ? ` on ${comparison.commonLineCount} common` : ''}` : ''}
+                  {h.freightCents != null && h.freightCents > 0 ? ` + ${money(h.freightCents)} freight${h.commonWithFreightCents != null ? ` = ${money(h.commonWithFreightCents)}` : ''}` : ''}
+                  {h.freightCents === 0 ? ' · free freight' : ''}
+                  {h.freightCents == null ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · freight not stated</span> : null}
                 </span>
               ))}
             </div>
@@ -352,7 +356,24 @@ export function QuoteCompareModal({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
               <span style={smallMuted}>
-                Picked total <strong style={{ color: 'var(--text-strong)' }}>{money(comparison.pickedTotalCents)}</strong> at today’s counts · picks are saved and ready for a future PO handoff.
+                Picked total{' '}
+                {comparison.pickedFreight.length > 0 ? (
+                  <>
+                    parts <strong style={{ color: 'var(--text-strong)' }}>{money(comparison.pickedTotalCents)}</strong>
+                    {comparison.pickedFreight.map((f) => (
+                      <span key={f.supplyHouseId}>
+                        {' + '}
+                        {f.houseName} freight{' '}
+                        {f.freightCents != null ? <strong style={{ color: 'var(--text-strong)' }}>{money(f.freightCents)}</strong> : <span style={{ color: 'var(--text-amber-700)' }}>not stated</span>}
+                      </span>
+                    ))}
+                    {' = '}
+                    <strong style={{ color: 'var(--text-strong)' }}>{money(comparison.pickedTotalWithFreightCents)}</strong>
+                  </>
+                ) : (
+                  <strong style={{ color: 'var(--text-strong)' }}>{money(comparison.pickedTotalCents)}</strong>
+                )}{' '}
+                at today’s counts · picks are saved and ready for a future PO handoff.
               </span>
               <button type="button" onClick={onClose} style={{ padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>Close</button>
             </div>

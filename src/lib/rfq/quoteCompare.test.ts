@@ -99,3 +99,41 @@ describe('buildQuoteComparison', () => {
     expect(waste.bestHouseId).toBe('h-win')
   })
 })
+
+describe('freight (Rung B, v2.2643)', () => {
+  const mk = (id: string, houseId: string, freight: number | null | undefined, picked = false) => ({
+    id,
+    supplyHouseId: houseId,
+    houseName: houseId,
+    receivedAt: '2026-09-01T00:00:00Z',
+    freightCents: freight,
+    lines: [{ fixture: 'WC-1', unitPriceEachCents: 10000, cantSupply: false, picked }],
+  })
+  const qty = new Map([['wc-1', 2]])
+
+  it('house summaries carry freight and the freight-in common total', () => {
+    const c = buildQuoteComparison({ quotes: [mk('a', 'ferguson', 8500), mk('b', 'moore', 0)], currentQtyByName: qty })
+    const ferguson = c.houses.find((h) => h.supplyHouseId === 'ferguson')!
+    const moore = c.houses.find((h) => h.supplyHouseId === 'moore')!
+    expect(ferguson.freightCents).toBe(8500)
+    expect(ferguson.commonWithFreightCents).toBe(20000 + 8500)
+    expect(moore.freightCents).toBe(0)
+    expect(moore.commonWithFreightCents).toBe(20000)
+  })
+
+  it('unstated freight stays null (not free) but ranks as zero', () => {
+    const c = buildQuoteComparison({ quotes: [mk('a', 'winn', null)], currentQtyByName: qty })
+    expect(c.houses[0]?.freightCents).toBeNull()
+    expect(c.houses[0]?.commonWithFreightCents).toBe(20000)
+  })
+
+  it('picked totals add freight once per picked house only', () => {
+    const c = buildQuoteComparison({
+      quotes: [mk('a', 'ferguson', 8500, true), mk('b', 'moore', 4000, false)],
+      currentQtyByName: qty,
+    })
+    expect(c.pickedTotalCents).toBe(20000)
+    expect(c.pickedFreight).toEqual([{ supplyHouseId: 'ferguson', houseName: 'ferguson', freightCents: 8500 }])
+    expect(c.pickedTotalWithFreightCents).toBe(28500)
+  })
+})
