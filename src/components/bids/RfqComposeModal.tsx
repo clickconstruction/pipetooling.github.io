@@ -50,6 +50,7 @@ export function RfqComposeModal({
   bidLabel,
   scope,
   openRfqHouseIds,
+  plansLink,
 }: {
   open: boolean
   onClose: () => void
@@ -60,6 +61,8 @@ export function RfqComposeModal({
   scope: { lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string }
   /** Houses that already have an open (sent) request on this bid. */
   openRfqHouseIds: ReadonlySet<string>
+  /** Rung A (v2.2642): the bid's shareable plans link (bids.plans_link ONLY — never internal tooling links). */
+  plansLink?: string | null
 }) {
   const { showToast } = useToastContext()
   const [houses, setHouses] = useState<Array<{ id: string; name: string }>>([])
@@ -67,6 +70,7 @@ export function RfqComposeModal({
   const [emails, setEmails] = useState<Record<string, string>>({})
   const [neededBy, setNeededBy] = useState('')
   const [note, setNote] = useState('')
+  const [includePlans, setIncludePlans] = useState(true)
   const [filter, setFilter] = useState('')
   const [sending, setSending] = useState(false)
   // Preview-before-send: the edge function's `preview` mode returns the EXACT
@@ -83,6 +87,7 @@ export function RfqComposeModal({
     setNeededBy('')
     setNote('')
     setFilter('')
+    setIncludePlans(true)
     setStep('edit')
     setPreviews([])
     setPreviewIdx(0)
@@ -144,6 +149,7 @@ export function RfqComposeModal({
           bidId,
           neededBy: neededBy || null,
           vendorNote: note.trim() || null,
+          plansLink: includePlans && plansLink ? plansLink : null,
           scope,
           requests: ready.map((id) => ({ supplyHouseId: id, email: (emails[id] ?? '').trim() })),
         },
@@ -171,6 +177,7 @@ export function RfqComposeModal({
           bidVersionId,
           neededBy: neededBy || null,
           vendorNote: note.trim() || null,
+          plansLink: includePlans && plansLink ? plansLink : null,
           scope,
           requests: ready.map((id) => ({ supplyHouseId: id, email: (emails[id] ?? '').trim() })),
         },
@@ -275,6 +282,16 @@ export function RfqComposeModal({
           </label>
           <input style={{ ...input, flex: 1, minWidth: '14rem' }} placeholder="note to vendors (optional) — e.g. bid due Friday, even a partial list helps" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
         </div>
+
+        {plansLink ? (
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.7rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={includePlans} onChange={(e) => setIncludePlans(e.target.checked)} />
+            <span>
+              Include the <strong>job plans link</strong> — vendors can open cut sheets before pricing fixtures
+              <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-faint)' }}>rides the request, its reminders, and the quote page · make sure the link itself is shareable</span>
+            </span>
+          </label>
+        ) : null}
           </>
         )}
 

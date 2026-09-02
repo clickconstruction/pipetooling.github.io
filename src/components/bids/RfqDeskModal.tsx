@@ -14,7 +14,9 @@ import {
   canNudge,
   coverageFromCompareRows,
   deriveRfqTrail,
+  rfqUrgency,
   scopeDriftCount,
+  sortRfqsByUrgency,
   type DeskRfq,
   type TrailStep,
 } from '../../lib/rfq/rfqDesk'
@@ -267,7 +269,9 @@ export function RfqDeskModal({
   const ghostBtn: CSSProperties = { padding: '0.28rem 0.6rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }
   const blueBtn: CSSProperties = { ...ghostBtn, background: '#2563eb', color: 'white', border: 'none' }
   const now = Date.now()
-  const openRows = rfqs.filter((r) => r.status !== 'closed')
+  // Rung A (v2.2642): urgency order — bounced → needed-by at risk →
+  // unviewed-stale → viewed-silent → fresh → quoted; oldest first in a tier.
+  const openRows = sortRfqsByUrgency(rfqs.filter((r) => r.status !== 'closed'), now)
   const closedRows = rfqs.filter((r) => r.status === 'closed')
 
   return createPortal(
@@ -318,6 +322,7 @@ export function RfqDeskModal({
               const bounced = trail.some((s) => s.state === 'bad')
               const nudge = canNudge(r, now)
               const drift = scopeDriftCount(r.scopeLines, currentQtyByName)
+              const urgency = rfqUrgency(r, now)
               return (
                 <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.6rem 0.8rem', borderBottom: '1px solid var(--bg-muted)', flexWrap: 'wrap' }}>
                   <div style={{ minWidth: '15rem', flex: '1 1 15rem' }}>
@@ -342,7 +347,14 @@ export function RfqDeskModal({
                       </div>
                     )}
                   </div>
-                  <Trail steps={trail} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                    <Trail steps={trail} />
+                    {urgency.reason && !bounced ? (
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, color: urgency.tier <= 1 ? 'var(--text-amber-700)' : 'var(--text-muted)', background: urgency.tier <= 1 ? 'var(--bg-yellow-tint)' : 'var(--bg-subtle)', border: `1px solid ${urgency.tier <= 1 ? '#f59e0b' : 'var(--border-strong)'}` }}>
+                        {urgency.reason}
+                      </span>
+                    ) : null}
+                  </div>
                   <div style={{ display: 'flex', gap: '0.4rem', marginLeft: 'auto' }}>
                     {bounced ? (
                       <button type="button" style={blueBtn} disabled={busy === r.id} onClick={() => void act(r, 'resend')}>Resend</button>

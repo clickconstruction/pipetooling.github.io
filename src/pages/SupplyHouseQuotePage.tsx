@@ -18,6 +18,7 @@ type PageData = {
   bidName?: string
   supplyHouse?: string | null
   neededBy?: string | null
+  plansLink?: string | null
   lines?: Array<{ fixture: string; count: number; unit?: string | null }>
 }
 
@@ -194,6 +195,11 @@ export default function SupplyHouseQuotePage() {
               <p style={{ color: 'var(--text-muted)', margin: '0.3rem 0 0', fontSize: '0.8rem' }}>
                 Price what you can — $ each (or per ft where the line is footage). Skip what you don’t carry, or tap “can’t supply”. Your entries save on this phone as you go.
               </p>
+              {page.plansLink ? (
+                <a href={page.plansLink} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-link)' }}>
+                  Job plans (cut sheets, details) ↗
+                </a>
+              ) : null}
             </header>
 
             <div style={{ display: 'grid', gap: '0.6rem', marginBottom: '1rem' }}>

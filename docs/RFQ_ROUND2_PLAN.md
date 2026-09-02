@@ -26,10 +26,10 @@ Ground truth already verified in code:
   yet — assign a part or assembly"), i.e. derived from assigned
   parts/assemblies — the thing a quoted price would override.
 
-## Rung A — plans link + urgency sort (owner items 5 + 6; 1 small PR)
+## Rung A — plans link + urgency sort (owner items 5 + 6) — SHIPPED v2.2642
 
 - **Attach the plans**: compose gains "include plans link" (default ON
-  when the bid has one; `plans_link` first, else `count_tooling_plans_link`),
+  when the bid has one; `bids.plans_link` ONLY — see the revision note),
   rendered in the email under the CTA and on the `/q` page header. Scope
   snapshot carries it so reminders/resends stay consistent.
 - **Urgency sort**: kernel `rfqUrgency(rfq, now)` → tier + reason label
@@ -37,8 +37,10 @@ Ground truth already verified in code:
   days", …); desk sorts by tier then age; reason chip on the row.
   Bounced > needed-by-at-risk > unviewed-stale > viewed-silent > fresh >
   quoted.
-- Mockup: one revised desk/compose artboard on the RFQ Desk canvas
-  (artifact b731a34b…), then the review question, then build.
+- Mockup: artboard 5 on the RFQ Desk canvas; the review pass kept the
+  trail on every row (reason chips ONLY on rows needing attention) and
+  bound the toggle to `bids.plans_link` alone — the CountTooling link is
+  internal and never reaches a vendor.
 
 ## Rung B — freight into compare (owner item 3; 1 PR, mockup cycle)
 
@@ -125,6 +127,17 @@ fixture *names* with one $/each number and no part breakdown. There is no
 bridge from "WC-1 (name)" to "the takeoff part rows behind WC-1", so a
 picked quote price has nothing to write to — writing into part prices
 would corrupt shared book data with one bid's negotiated number.
+
+**Owner decision 2026-09-02 — packages/lots**: vendors' best prices are
+often package prices (one price spanning several rows). Resolution, in
+three layers: (1) **capture lots** — `lot_id` + `lot_total_cents` on
+quote lines, grouped by a human tap (parser flags "all in/package/lot"
+candidates); (2) **compare lots as lots** — bracketed group at the house
+total level, excluded from per-line stars, picked atomically; (3)
+**apply with a visible, adjustable split** — default allocation
+proportional to takeoff-derived cost (fallback per-unit), editable
+before writing, group provenance ("Ferguson · carrier package · 9/2"),
+group-level revert only. Rung E's parser must surface lot keywords.
 
 **Bridge options to put in front of the owner**:
 - **(a) Fixture-level cost override** (recommended shape): a
