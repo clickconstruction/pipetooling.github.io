@@ -33,10 +33,11 @@ A flagged person's card gets an amber (or red) left edge so it stands out while 
 
 ## Move between days
 
-Use the {{button:outline|◀}} and {{button:outline|▶}} arrows next to the date to step back through previous days — yesterday's flags are often the morning's first calls. You can't go past today.
+The {{button:outline|◀}} {{button:outline|▶}} arrows sit together in the card's corner, with the day floating beneath them. Today and yesterday keep their names; older days read like **3 days ago** with the date alongside. Step back through previous days — yesterday's flags are often the morning's first calls. You can't go past today.
 
 ## Who sees what
 
 - **Office roles** (dev, master, assistant, controller) see the whole company.
 - **Superintendents** see the crews on jobs tied to their assigned projects — the card says "Scoped to your assigned projects."
+- **Superintendents see field crews first**: office staff fold behind a *Show office staff* link at the bottom of the card, with a {{chip:gray|+N office hidden}} chip keeping the totals honest. Your choice is remembered on that device; *Hide office staff* puts the fold back.
 - The card shows **hours only** — no wages or billing amounts.

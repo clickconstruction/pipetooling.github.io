@@ -37,7 +37,8 @@ export type CrewDayReportRow = {
 }
 
 export type CrewDayPctNoteRow = { job_id: string; body: string; created_at: string }
-export type CrewDayUserRow = { id: string; name: string | null }
+/** `role` is present since migration 20260902001331 (v2.2617) — optional so pre-push payloads still parse. */
+export type CrewDayUserRow = { id: string; name: string | null; role?: string | null }
 export type CrewDayJobRow = {
   id: string
   hcp_number: string | null
@@ -83,14 +84,61 @@ export type CrewDayPerson = {
   open: boolean
   reportCount: number
   flags: CrewDayFlag[]
+  /** Office-role user (v2.2617) — folded by default for superintendent viewers. False when the payload predates roles. */
+  office: boolean
 }
+
+export type CrewDaySummary = { people: number; jobs: number; totalMs: number; reports: number; flags: number }
 
 export type CrewDayView = {
   day: string
   people: CrewDayPerson[]
-  summary: { people: number; jobs: number; totalMs: number; reports: number; flags: number }
+  summary: CrewDaySummary
   /** Per job: first "% complete" note number → current jobs_ledger.pct_complete (when they differ). */
   pctMovement: Map<string, { from: number; to: number }>
+}
+
+/**
+ * The office fold set (v2.2617): superintendent viewers see field crews first;
+ * people with these roles fold behind "Show office staff". Same list as
+ * isCrewDayEmailRole today, but a distinct predicate — the fold and the email
+ * gate are separate decisions that could diverge.
+ */
+export function isCrewDayOfficeRole(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller'
+}
+
+/** Summary chips over any subset of people (the office fold recomputes them for the visible set). */
+export function crewDaySummaryFor(people: readonly CrewDayPerson[]): CrewDaySummary {
+  const jobIds = new Set<string>()
+  for (const p of people) for (const j of p.jobs) if (j.jobId != null) jobIds.add(j.jobId)
+  return {
+    people: people.length,
+    jobs: jobIds.size,
+    totalMs: people.reduce((a, p) => a + p.totalMs, 0),
+    reports: people.reduce((a, p) => a + p.reportCount, 0),
+    flags: people.reduce((a, p) => a + p.flags.length, 0),
+  }
+}
+
+/**
+ * Day-nav word for the restacked navigation (v2.2617): 'Today', 'Yesterday',
+ * or "N days ago" for anything older. '' for invalid or future days (the UI
+ * disables forward navigation past today anyway).
+ */
+export function crewDayNavWord(ymd: string, todayYmd: string): string {
+  const parse = (s: string): number | null => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s)
+    if (!m) return null
+    return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  }
+  const a = parse(ymd)
+  const b = parse(todayYmd)
+  if (a == null || b == null || a > b) return ''
+  const days = Math.round((b - a) / 86_400_000)
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  return `${days} days ago`
 }
 
 /** First "N% complete" number in a thread-note body, or null. */
@@ -166,6 +214,7 @@ const jobGroupKey = (jobId: string | null) => jobId ?? '∅'
 export function buildCrewDayView(payload: CrewDayPayload, nowMs: number): CrewDayView {
   const jobsById = new Map(payload.jobs.map((j) => [j.id, j]))
   const namesById = new Map(payload.users.map((u) => [u.id, (u.name ?? '').trim()]))
+  const rolesById = new Map(payload.users.map((u) => [u.id, u.role ?? null]))
 
   type Bucket = { jobs: Map<string, CrewDayPersonJob>; order: string[] }
   const byPerson = new Map<string, Bucket>()
@@ -253,6 +302,7 @@ export function buildCrewDayView(payload: CrewDayPayload, nowMs: number): CrewDa
       open,
       reportCount,
       flags,
+      office: isCrewDayOfficeRole(rolesById.get(userId)),
     })
   }
   people.sort((a, b) => b.totalMs - a.totalMs || a.name.localeCompare(b.name))
@@ -269,19 +319,10 @@ export function buildCrewDayView(payload: CrewDayPayload, nowMs: number): CrewDa
     if (to != null && to !== from) pctMovement.set(jobId, { from, to })
   }
 
-  const jobIds = new Set<string>()
-  for (const p of people) for (const j of p.jobs) if (j.jobId != null) jobIds.add(j.jobId)
-
   return {
     day: payload.day,
     people,
-    summary: {
-      people: people.length,
-      jobs: jobIds.size,
-      totalMs: people.reduce((a, p) => a + p.totalMs, 0),
-      reports: people.reduce((a, p) => a + p.reportCount, 0),
-      flags: people.reduce((a, p) => a + p.flags.length, 0),
-    },
+    summary: crewDaySummaryFor(people),
     pctMovement,
   }
 }

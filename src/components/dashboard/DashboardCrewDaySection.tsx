@@ -6,6 +6,8 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import {
   buildCrewDayView,
+  crewDayNavWord,
+  crewDaySummaryFor,
   formatCrewDayBlockTime,
   formatCrewDayHours,
   isCrewDayEmailRole,
@@ -52,11 +54,23 @@ function shiftYmd(ymd: string, deltaDays: number): string {
   const dt = new Date(Date.UTC(y, m - 1, d + deltaDays))
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`
 }
-function dayTitle(ymd: string, todayYmd: string): string {
-  const label = dayTitleFmt.format(new Date(`${ymd}T12:00:00Z`))
-  if (ymd === todayYmd) return `Today · ${label}`
-  if (ymd === shiftYmd(todayYmd, -1)) return `Yesterday · ${label}`
-  return label
+const dayDateSuffix = (ymd: string): string => dayTitleFmt.format(new Date(`${ymd}T12:00:00Z`))
+
+/** Per-device "Show office staff" preference for the superintendent fold (v2.2617). */
+const SHOW_OFFICE_STORAGE_KEY = 'pipetooling_crew_day_show_office'
+function readShowOfficePref(): boolean {
+  try {
+    return localStorage.getItem(SHOW_OFFICE_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+function writeShowOfficePref(v: boolean): void {
+  try {
+    localStorage.setItem(SHOW_OFFICE_STORAGE_KEY, v ? '1' : '0')
+  } catch {
+    /* per-device convenience only */
+  }
 }
 
 const FLAG_COPY: Record<CrewDayFlag, { text: string; tone: 'amber' | 'red' }> = {
@@ -152,6 +166,24 @@ export function DashboardCrewDaySection({
     [payload, loadedAtMs],
   )
 
+  /**
+   * Office fold (v2.2617): superintendent viewers see field crews first —
+   * office-role people collapse behind "Show office staff" (remembered per
+   * device). Office viewers always see everyone. A pre-roles payload marks
+   * nobody office, so the fold is silently inert until the migration lands.
+   */
+  const [showOffice, setShowOffice] = useState(readShowOfficePref)
+  const officeFoldActive = role === 'superintendent' && !showOffice
+  const visiblePeople = useMemo(
+    () => (view ? (officeFoldActive ? view.people.filter((p) => !p.office) : view.people) : []),
+    [view, officeFoldActive],
+  )
+  const hiddenOffice = useMemo(
+    () => (view && officeFoldActive ? view.people.filter((p) => p.office) : []),
+    [view, officeFoldActive],
+  )
+  const displaySummary = useMemo(() => crewDaySummaryFor(visiblePeople), [visiblePeople])
+
   if (!visible) return null
 
   return (
@@ -195,20 +227,27 @@ export function DashboardCrewDaySection({
             </button>
           ) : null}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <button type="button" style={navBtnStyle} aria-label="Previous day" onClick={() => setYmd((d) => shiftYmd(d, -1))}>
-            ◀
-          </button>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{dayTitle(ymd, todayYmd)}</span>
-          <button
-            type="button"
-            style={{ ...navBtnStyle, ...(ymd === todayYmd ? { opacity: 0.35, cursor: 'default' } : null) }}
-            aria-label="Next day"
-            disabled={ymd === todayYmd}
-            onClick={() => setYmd((d) => (d === todayYmd ? d : shiftYmd(d, 1)))}
-          >
-            ▶
-          </button>
+        {/* Restacked day nav (v2.2617): arrows together, label floating beneath;
+            Today / Yesterday keep their names, older days read "N days ago". */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+          <div style={{ display: 'flex', gap: '0.25rem' }}>
+            <button type="button" style={navBtnStyle} aria-label="Previous day" onClick={() => setYmd((d) => shiftYmd(d, -1))}>
+              ◀
+            </button>
+            <button
+              type="button"
+              style={{ ...navBtnStyle, ...(ymd === todayYmd ? { opacity: 0.35, cursor: 'default' } : null) }}
+              aria-label="Next day"
+              disabled={ymd === todayYmd}
+              onClick={() => setYmd((d) => (d === todayYmd ? d : shiftYmd(d, 1)))}
+            >
+              ▶
+            </button>
+          </div>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+            {crewDayNavWord(ymd, todayYmd)}
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {dayDateSuffix(ymd)}</span>
+          </span>
         </div>
       </div>
 
@@ -229,13 +268,13 @@ export function DashboardCrewDaySection({
       ) : (
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.65rem' }}>
-            <span style={statChipStyle}>{view.summary.people} people</span>
-            <span style={statChipStyle}>{view.summary.jobs} jobs</span>
-            <span style={statChipStyle}>{formatCrewDayHours(view.summary.totalMs)}</span>
+            <span style={statChipStyle}>{displaySummary.people} people</span>
+            <span style={statChipStyle}>{displaySummary.jobs} jobs</span>
+            <span style={statChipStyle}>{formatCrewDayHours(displaySummary.totalMs)}</span>
             <span style={statChipStyle}>
-              {view.summary.reports} report{view.summary.reports === 1 ? '' : 's'}
+              {displaySummary.reports} report{displaySummary.reports === 1 ? '' : 's'}
             </span>
-            {view.summary.flags > 0 ? (
+            {displaySummary.flags > 0 ? (
               <span
                 style={{
                   ...statChipStyle,
@@ -244,13 +283,23 @@ export function DashboardCrewDaySection({
                   border: '1px solid var(--text-amber-700)',
                 }}
               >
-                {view.summary.flags} flag{view.summary.flags === 1 ? '' : 's'}
+                {displaySummary.flags} flag{displaySummary.flags === 1 ? '' : 's'}
+              </span>
+            ) : null}
+            {hiddenOffice.length > 0 ? (
+              <span style={{ ...statChipStyle, borderStyle: 'dashed', fontWeight: 500, color: 'var(--text-muted)' }}>
+                +{hiddenOffice.length} office hidden
               </span>
             ) : null}
           </div>
 
+          {visiblePeople.length === 0 ? (
+            <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.875rem' }}>
+              No field crew activity for this day.
+            </p>
+          ) : null}
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {(showAllPeople ? view.people : view.people.slice(0, COLLAPSED_PEOPLE)).map((p) => {
+            {(showAllPeople ? visiblePeople : visiblePeople.slice(0, COLLAPSED_PEOPLE)).map((p) => {
               const worstTone: 'amber' | 'red' | null = p.flags.some((f) => FLAG_COPY[f].tone === 'red')
                 ? 'red'
                 : p.flags.length > 0
@@ -345,7 +394,7 @@ export function DashboardCrewDaySection({
               )
             })}
           </ul>
-          {view.people.length > COLLAPSED_PEOPLE && !showAllPeople ? (
+          {visiblePeople.length > COLLAPSED_PEOPLE && !showAllPeople ? (
             <button
               type="button"
               onClick={() => setShowAllPeople(true)}
@@ -358,7 +407,46 @@ export function DashboardCrewDaySection({
                 padding: 0,
               }}
             >
-              Show all {view.people.length} people
+              Show all {visiblePeople.length} people
+            </button>
+          ) : null}
+          {hiddenOffice.length > 0 ? (
+            <div
+              style={{
+                border: '1px dashed var(--border-strong)',
+                borderRadius: 8,
+                padding: '0.45rem 0.7rem',
+                marginTop: '0.5rem',
+                textAlign: 'center',
+                fontSize: '0.8125rem',
+                color: 'var(--text-muted)',
+              }}
+            >
+              {hiddenOffice.length} office staff hidden (
+              {hiddenOffice.slice(0, 3).map((p) => p.name).join(' · ')}
+              {hiddenOffice.length > 3 ? ' …' : ''}) —{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOffice(true)
+                  writeShowOfficePref(true)
+                }}
+                style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', fontWeight: 600, fontSize: '0.8125rem', padding: 0 }}
+              >
+                Show office staff
+              </button>
+            </div>
+          ) : null}
+          {role === 'superintendent' && showOffice ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowOffice(false)
+                writeShowOfficePref(false)
+              }}
+              style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', padding: 0, marginTop: '0.4rem' }}
+            >
+              Hide office staff
             </button>
           ) : null}
         </>
