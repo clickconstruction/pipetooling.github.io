@@ -2410,7 +2410,7 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 
 **Endpoint**: `POST /functions/v1/send-lien-filing-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client — the access check is an RLS read of the `jobs_ledger` row (office/master only). `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
 
-Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename? }`. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record.
+Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename? }`. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record. Sends are logged with `email_type: 'lien_filing_notice'` (v2.2664), the row's id in the Settings email catalog.
 
 ### send-physical-invoice-email
 

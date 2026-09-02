@@ -39,7 +39,7 @@ export type EmailCatalogEntry = {
 
 export const EMAIL_CATALOG_GROUP_LABELS: Record<EmailCatalogGroup, string> = {
   billing: 'Billing & money',
-  lien: 'Lien releases',
+  lien: 'Lien paperwork',
   estimates_contracts: 'Estimates & contracts',
   bids: 'Bids & RFQs',
   digests: 'Digests & reports',
@@ -103,7 +103,19 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Job account — {{job_label}}',
   },
 
-  // ---- Lien releases ----
+  // ---- Lien paperwork ----
+  {
+    id: 'lien_filing_notice',
+    name: '§ 53.056 notice of claim (email channel)',
+    group: 'lien',
+    audience: 'customer',
+    attachment: '§ 53.056 notice PDF',
+    builtWhere: 'server',
+    sender: 'send-lien-filing-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Notice of claim for unpaid labor or materials — {{job_name}}',
+    variants: ['owner-of-record and original-contractor recipients'],
+  },
   {
     id: 'lien_release_to_customer',
     name: 'Signed lien release to customer',
