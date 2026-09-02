@@ -27,6 +27,11 @@ export type JobActivityEventType =
   | 'collections_change'
   | 'completeness_marked'
   | 'progress_updated'
+  | 'lien_release_issued'
+  | 'lien_release_signature_requested'
+  | 'lien_release_signed'
+  | 'lien_release_sent'
+  | 'lien_release_voided'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -87,6 +92,13 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   collections_change: { tag: 'Collections', ...DANGER_RED, bucket: 'billing' },
   completeness_marked: { tag: 'Progress', ...WORK_TEAL, bucket: 'status' },
   progress_updated: { tag: 'Progress', ...WORK_TEAL, bucket: 'status' },
+  // Lien-release lifecycle (v2.2620) — written by the job_lien_releases
+  // bridge trigger since 20260902001517; all financial.
+  lien_release_issued: { tag: 'Release', ...BILLING_BLUE, bucket: 'billing' },
+  lien_release_signature_requested: { tag: 'Release', ...STATUS_AMBER, bucket: 'billing' },
+  lien_release_signed: { tag: 'Release', ...MONEY_GREEN, bucket: 'billing' },
+  lien_release_sent: { tag: 'Release', ...MONEY_GREEN, bucket: 'billing' },
+  lien_release_voided: { tag: 'Release', ...DANGER_RED, bucket: 'billing' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {

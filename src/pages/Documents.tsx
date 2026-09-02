@@ -22,6 +22,15 @@ import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/documentsPageTab'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
+import {
+  isLienWaiverFormType,
+  lienReleaseFormLabel,
+  lienReleaseSnapshotToWaiverFields,
+  type JobLienReleaseRow,
+} from '../lib/jobs/lienReleaseTracking'
+import { lienReleaseChipColors, lienReleaseChips, lienReleaseSignatureAuditLine, lienReleaseStatus } from '../lib/jobs/lienReleaseLifecycle'
+import { buildLienWaiverPrintHtml, type LienWaiverSignature } from '../lib/jobsDocuments/lienWaiverRelease'
+import { openHtmlPreviewWindow } from '../lib/jobsDocuments/printWindow'
 import { billingTypeLabel } from '../components/jobs/HostedStripeBillPanel'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber, formatJobLedgerDocTitle } from '../lib/ledgerDisplayPrefixes'
@@ -622,6 +631,9 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<LedgerJobRow[]>([])
   const [invoicesByJobId, setInvoicesByJobId] = useState<Map<string, DocumentsJobLedgerInvoiceRow[]>>(() => new Map())
+  // Minted lien releases as document child rows (v2.2620) — drafts stay off
+  // the page (not yet documents); voided ones stay listed, chipped.
+  const [lienReleasesByJobId, setLienReleasesByJobId] = useState<Map<string, JobLienReleaseRow[]>>(() => new Map())
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [addDriveLinkJob, setAddDriveLinkJob] = useState<{ id: string; title: string } | null>(null)
@@ -702,10 +714,35 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
         showToast(formatErrorMessage(invErr, 'Could not load job invoices'), 'error')
         setInvoicesByJobId(new Map())
       }
+
+      // Lien releases (v2.2620) — fail-soft; RLS scopes them to office roles,
+      // so other roles simply see none.
+      try {
+        const relData = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('job_lien_releases')
+              .select('*')
+              .in('job_id', jobIds)
+              .neq('status', 'draft')
+              .order('created_at', { ascending: true }),
+          'load documents lien releases',
+        )
+        const relByJob = new Map<string, JobLienReleaseRow[]>()
+        for (const row of (relData ?? []) as JobLienReleaseRow[]) {
+          const arr = relByJob.get(row.job_id) ?? []
+          arr.push(row)
+          relByJob.set(row.job_id, arr)
+        }
+        setLienReleasesByJobId(relByJob)
+      } catch {
+        setLienReleasesByJobId(new Map())
+      }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not load jobs'), 'error')
       setRows([])
       setInvoicesByJobId(new Map())
+      setLienReleasesByJobId(new Map())
     } finally {
       setLoading(false)
     }
@@ -794,6 +831,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                 const filesLink = (r.google_drive_link ?? '').trim()
                 const hasJobFiles = !!filesLink
                 const jobInvoices = invoicesByJobId.get(r.id) ?? []
+                const jobLienReleases = lienReleasesByJobId.get(r.id) ?? []
                 return (
                   <Fragment key={r.id}>
                     <tr>
@@ -909,6 +947,76 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                             {sent ? (
                               <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {sent}</span>
                             ) : null}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {jobLienReleases.map((rel) => {
+                      const relForm = isLienWaiverFormType(rel.form_type) ? rel.form_type : 'conditional_progress'
+                      const signature: LienWaiverSignature | null =
+                        lienReleaseStatus(rel) === 'signed' && rel.signer_printed_name
+                          ? {
+                              mode: 'type',
+                              printedName: rel.signer_printed_name,
+                              auditLine:
+                                lienReleaseSignatureAuditLine({
+                                  signed_at: rel.signed_at,
+                                  signer_consented_at: rel.signer_consented_at,
+                                }) ?? '',
+                            }
+                          : null
+                      return (
+                        <tr key={rel.id}>
+                          <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const ok = openHtmlPreviewWindow(
+                                  buildLienWaiverPrintHtml(
+                                    relForm,
+                                    lienReleaseSnapshotToWaiverFields(rel),
+                                    jobNum || '—',
+                                    signature,
+                                  ),
+                                )
+                                if (!ok) showToast('Popup blocked — allow popups to view the release.', 'error')
+                              }}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                padding: 0,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                font: 'inherit',
+                                color: 'var(--text-blue-700)',
+                                textDecoration: 'underline',
+                              }}
+                            >
+                              Release of lien
+                            </button>
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{lienReleaseFormLabel(rel.form_type)}</span>
+                            <span style={{ marginLeft: '0.5rem' }}>{formatJobRevenueUsd(rel.amount)}</span>
+                            {lienReleaseChips(rel).map((c) => {
+                              const colors = lienReleaseChipColors(c.tone)
+                              return (
+                                <span
+                                  key={c.label}
+                                  style={{
+                                    marginLeft: '0.5rem',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    padding: '0.05rem 0.4rem',
+                                    borderRadius: 9999,
+                                    whiteSpace: 'nowrap',
+                                    background: colors.background,
+                                    color: colors.color,
+                                    border: colors.border,
+                                  }}
+                                >
+                                  {c.label}
+                                </span>
+                              )
+                            })}
                           </td>
                         </tr>
                       )

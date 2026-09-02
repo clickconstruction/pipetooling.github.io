@@ -138,3 +138,18 @@ export function lienReleasesOwingUnconditional(
     )
   })
 }
+
+/** The full snapshot rebuilt into renderable fields (row-level fallbacks for amount/dates) — one mapping, used by every re-render surface (v2.2620). */
+export function lienReleaseSnapshotToWaiverFields(row: JobLienReleaseRow): LienWaiverFields {
+  const s = lienReleaseFieldsFromSnapshot(row.fields)
+  return {
+    companyName: s.companyName ?? '',
+    checkFrom: s.checkFrom ?? '',
+    amount: s.amount ?? String(row.amount ?? ''),
+    projectDescription: s.projectDescription ?? '',
+    throughDate: s.throughDate ?? row.through_date ?? '',
+    signedDate: s.signedDate ?? row.signed_date ?? '',
+    signerName: s.signerName ?? '',
+    signerTitle: s.signerTitle ?? '',
+  }
+}

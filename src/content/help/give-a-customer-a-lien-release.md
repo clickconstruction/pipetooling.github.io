@@ -53,7 +53,10 @@ An address showing {{chip:green|✓ lien-ready}} has everything a lien filing ne
 
 ## Track what you issued
 
-Once a release is saved, the app keeps it in sight:
+Once a release is minted, the app keeps it in sight:
+
+- **Documents → Jobs** lists every release under its job, right beside the billed invoices — with its lifecycle chips ({{chip:yellow|awaiting signature}}, {{chip:green|signed ✓}}) and a click to reopen the exact document, signature included. Voided releases stay listed with a {{chip:red|voided}} chip — nothing ever disappears.
+- The job's **activity feed** logs every step — issued, signature requested, signed, voided — under a **Release** tag alongside billing events.
 
 - The release button on the job's Pipeline row wears a **blue box** when the job has an issued release.
 - The release window itself lists everything **issued on this job** — View the exact document again or Void a mistaken record, from any Pipeline section.
