@@ -7,6 +7,8 @@ keywords: supply house, quotes, vendor prices, compare quotes, plug in a quote, 
 
 Getting parts priced used to mean texting a list, getting prices back in three different shapes, and retyping them into a spreadsheet. Now the whole loop lives on **Bids → Pricing**: send the list, get the reply in whatever form the vendor likes, and compare houses part by part. Your sale prices never leave the building — vendors only ever see names and counts.
 
+{{gif:get-supply-house-prices-on-a-bid.gif|Plug in a quote: paste the vendor's reply, Match to fixtures, save — then compare by Division 22 section and tap a price to pick it}}
+
 ## Step 1 — Send the list
 
 Open the {{button:green|▾}} menu beside Share and pick **Supply house list**. Scope it to what that vendor actually prices ({{chip:blue|Whole job}}, {{chip:blue|Pipe &amp; fittings}}, or hand-picked rows), then either:
