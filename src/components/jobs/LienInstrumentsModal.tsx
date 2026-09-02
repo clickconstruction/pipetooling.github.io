@@ -680,14 +680,20 @@ export default function LienInstrumentsModal({
                 switch (b.kind) {
                   case 'senderBlock':
                     return (
-                      <p key={i} style={{ textAlign: 'right', margin: '0 0 0.9em' }}>
-                        {b.lines.map((l, j) => (
-                          <span key={j}>
-                            {l}
-                            <br />
-                          </span>
-                        ))}
-                      </p>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem', margin: '0 0 0.9em', paddingBottom: '0.6em', borderBottom: '1px solid #cfcbc2' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '1.12em' }}>{b.company}</div>
+                          {b.licenseLine ? <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '0.72em', color: '#7a756c', marginTop: '0.15em' }}>{b.licenseLine}</div> : null}
+                        </div>
+                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", textAlign: 'right', fontSize: '0.74em', color: '#7a756c', lineHeight: 1.5 }}>
+                          {b.contactLines.map((l, j) => (
+                            <span key={j}>
+                              {l}
+                              <br />
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     )
                   case 'meta':
                     return (

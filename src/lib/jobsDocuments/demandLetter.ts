@@ -24,6 +24,8 @@ export type DemandLetterFields = {
   businessAddress: string
   businessPhone: string
   businessEmail: string
+  /** License line from the invoice-issuer settings (v2.2663 letterhead). */
+  businessLicense?: string
   recipientName: string
   recipientEmail: string
   recipientAddress: string
@@ -99,7 +101,7 @@ export function lienFilingDeadlineForMonth(furnishYmd: string, propertyKind: str
 // ---------- document model ----------
 
 export type DemandLetterBlock =
-  | { kind: 'senderBlock'; lines: string[] }
+  | { kind: 'senderBlock'; company: string; licenseLine: string; contactLines: string[] }
   | { kind: 'meta'; text: string }
   | { kind: 'reLine'; text: string }
   | { kind: 'paragraph'; text: string }
@@ -113,9 +115,13 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
   const blocks: DemandLetterBlock[] = []
   blocks.push({
     kind: 'senderBlock',
-    lines: [f.businessName, f.senderName, ...f.businessAddress.split(/\r?\n/), f.businessPhone, f.businessEmail].filter(
-      (l) => l.trim(),
-    ),
+    company: f.businessName.trim() || f.senderName.trim(),
+    licenseLine: (f.businessLicense ?? '').trim(),
+    contactLines: [
+      f.businessName.trim() ? f.senderName.trim() : '',
+      f.businessAddress.replace(/\r?\n/g, ', ').trim(),
+      [f.businessPhone.trim(), f.businessEmail.trim()].filter((l) => l).join(' · '),
+    ].filter((l) => l),
   })
   blocks.push({ kind: 'meta', text: `Date: ${demandDate(todayYmd)}` })
   blocks.push({
@@ -204,7 +210,14 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
   for (const b of buildDemandLetterModel(f, todayYmd)) {
     switch (b.kind) {
       case 'senderBlock':
-        parts.push(`<p style="text-align:right;margin:0 0 1em 0">${b.lines.map(esc).join('<br/>')}</p>`)
+        parts.push(
+          `<div style="display:flex;justify-content:space-between;gap:1.5rem;margin:0 0 1em 0;padding-bottom:0.6em;border-bottom:1px solid #cfcbc2">` +
+            `<div><div style="font-weight:700;font-size:1.12em">${esc(b.company)}</div>` +
+            (b.licenseLine ? `<div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.72em;color:#7a756c;margin-top:0.15em">${esc(b.licenseLine)}</div>` : '') +
+            `</div>` +
+            `<div style="font-family:'Helvetica Neue',Arial,sans-serif;text-align:right;font-size:0.74em;color:#7a756c;line-height:1.5">${b.contactLines.map(esc).join('<br/>')}</div>` +
+            `</div>`,
+        )
         break
       case 'meta':
         parts.push(`<p style="margin:0 0 0.5em 0">${esc(b.text)}</p>`)
@@ -237,6 +250,8 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): 
   for (const b of buildDemandLetterModel(f, todayYmd)) {
     switch (b.kind) {
       case 'senderBlock':
+        lines.push([b.company, b.licenseLine, ...b.contactLines].filter((l) => l).join('\n'))
+        break
       case 'signature':
         lines.push(b.lines.join('\n'))
         break
@@ -298,12 +313,35 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
 
   for (const b of buildDemandLetterModel(f, todayYmd)) {
     switch (b.kind) {
-      case 'senderBlock':
-        doc.setFont('times', 'normal')
-        doc.setFontSize(10)
-        for (const l of b.lines) writeWrapped(l, 4.8, { align: 'right' })
-        y += 3
+      case 'senderBlock': {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(13)
+        doc.setTextColor(28, 26, 23)
+        doc.text(b.company, PAGE_MARGIN, y + 4.5)
+        let leftY = y + 4.5
+        if (b.licenseLine) {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(7.5)
+          doc.setTextColor(122, 117, 108)
+          leftY += 4
+          doc.text(b.licenseLine, PAGE_MARGIN, leftY)
+        }
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7.5)
+        doc.setTextColor(122, 117, 108)
+        let rightY = y + 3
+        for (const l of b.contactLines) {
+          doc.text(l, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, rightY, { align: 'right' })
+          rightY += 3.6
+        }
+        y = Math.max(leftY, rightY - 3.6) + 4
+        doc.setDrawColor(207, 203, 194)
+        doc.setLineWidth(0.25)
+        doc.line(PAGE_MARGIN, y, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, y)
+        doc.setTextColor(28, 26, 23)
+        y += 7
         break
+      }
       case 'meta':
         doc.setFont('times', 'normal')
         doc.setFontSize(11)
@@ -346,6 +384,20 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         for (const l of NOTARIAL_TEXT_LINES) writeWrapped(l, 5.4)
         break
     }
+  }
+  // Page footer (v2.2663): sender identity left, page number right, every page.
+  const pages = doc.getNumberOfPages()
+  const footerLeft = [f.businessName.trim(), f.businessPhone.trim()].filter((l) => l).join(' · ')
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p)
+    doc.setDrawColor(207, 203, 194)
+    doc.setLineWidth(0.25)
+    doc.line(PAGE_MARGIN, 270, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, 270)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(122, 117, 108)
+    if (footerLeft) doc.text(footerLeft, PAGE_MARGIN, 274)
+    doc.text(`Page ${p} of ${pages}`, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, 274, { align: 'right' })
   }
   return doc.output('blob')
 }
@@ -393,6 +445,7 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
     businessAddress: (issuer?.addressText ?? '').trim(),
     businessPhone: (issuer?.phone ?? '').trim(),
     businessEmail: (issuer?.email ?? '').trim() || senderEmailFallback.trim(),
+    businessLicense: (issuer?.licenseLine ?? '').trim(),
     recipientName: recipient.name.trim(),
     recipientEmail: recipient.email.trim(),
     recipientAddress: recipient.address.trim(),

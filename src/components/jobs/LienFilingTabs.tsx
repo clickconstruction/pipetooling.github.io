@@ -5,11 +5,14 @@ import {
   buildLienAffidavitBlocks,
   buildLienNoticeBlocks,
   buildReleaseOfRecordBlocks,
+  filingDocFooter,
+  filingDocHtml,
   filingDocPdfBlob,
   filingDocPrintHtml,
-  filingDocText,
+  filingLetterheadFromIssuer,
   filingPdfFilename,
   type FilingDocBlock,
+  type FilingDocExtras,
   type LienAffidavitFields,
   type LienNoticeFields,
   type ReleaseOfRecordFields,
@@ -40,6 +43,13 @@ import { useAuth } from '../../hooks/useAuth'
  */
 
 const SEND_METHODS = ['certified_mail', 'traceable_courier', 'email', 'hand'] as const
+
+const SEND_METHOD_LABELS: Record<string, string> = {
+  certified_mail: 'certified mail, return receipt',
+  traceable_courier: 'traceable courier',
+  email: 'email',
+  hand: 'hand delivery',
+}
 
 type SendDraft = { method: string; tracking: string; sentOn: string }
 
@@ -168,12 +178,25 @@ export default function LienFilingTabs({
     [filedAffidavit, property, issuer, signerNameFallback, job, ownerName, releasePaymentDate],
   )
 
-  const currentDoc: { blocks: FilingDocBlock[]; title: string; kind: string } | null = useMemo(() => {
-    if (activeTab === 'notice') return { blocks: buildLienNoticeBlocks(noticeFields), title: `§ 53.056 Notice — Job ${jobNumber}`, kind: 'notice_53_056' }
-    if (activeTab === 'affidavit') return { blocks: buildLienAffidavitBlocks(affidavitFields), title: `Lien Affidavit — Job ${jobNumber}`, kind: 'affidavit' }
-    if (activeTab === 'release_record' && filedAffidavit) return { blocks: buildReleaseOfRecordBlocks(releaseFields), title: `Release of Recorded Lien — Job ${jobNumber}`, kind: 'release_of_record' }
+  // Letterhead + reference strip (v2.2663): the same issuer block invoices use.
+  const docExtras: FilingDocExtras = useMemo(
+    () => ({
+      letterhead: filingLetterheadFromIssuer(issuer),
+      refItems: [
+        `Job #${jobNumber}`,
+        ...(clock.workMonth ? [`Work month ${clock.workMonth}`] : []),
+        demandDate(todayYmd()),
+      ],
+    }),
+    [issuer, jobNumber, clock.workMonth],
+  )
+
+  const currentDoc: { blocks: FilingDocBlock[]; title: string; kind: 'notice_53_056' | 'affidavit' | 'release_of_record' } | null = useMemo(() => {
+    if (activeTab === 'notice') return { blocks: buildLienNoticeBlocks(noticeFields, docExtras), title: `§ 53.056 Notice — Job ${jobNumber}`, kind: 'notice_53_056' }
+    if (activeTab === 'affidavit') return { blocks: buildLienAffidavitBlocks(affidavitFields, docExtras), title: `Lien Affidavit — Job ${jobNumber}`, kind: 'affidavit' }
+    if (activeTab === 'release_record' && filedAffidavit) return { blocks: buildReleaseOfRecordBlocks(releaseFields, docExtras), title: `Release of Recorded Lien — Job ${jobNumber}`, kind: 'release_of_record' }
     return null
-  }, [activeTab, noticeFields, affidavitFields, releaseFields, filedAffidavit, jobNumber])
+  }, [activeTab, noticeFields, affidavitFields, releaseFields, filedAffidavit, jobNumber, docExtras])
 
   // ---------- gates ----------
 
@@ -196,7 +219,7 @@ export default function LienFilingTabs({
 
   const printDoc = useCallback(() => {
     if (!currentDoc) return
-    const ok = openHtmlPrintWindow(filingDocPrintHtml(currentDoc.blocks, currentDoc.title))
+    const ok = openHtmlPrintWindow(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind)))
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
   }, [currentDoc, showToast])
 
@@ -204,7 +227,7 @@ export default function LienFilingTabs({
     if (!currentDoc || pdfBusy) return
     setPdfBusy(true)
     try {
-      const blob = await filingDocPdfBlob(currentDoc.blocks)
+      const blob = await filingDocPdfBlob(currentDoc.blocks, { footer: filingDocFooter(currentDoc.kind) })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -249,7 +272,7 @@ export default function LienFilingTabs({
   /** Email a recipient the notice PDF via the send-lien-filing-email edge fn; returns the resend id. */
   const emailNoticeTo = useCallback(
     async (toEmail: string, recipientLabel: string): Promise<string> => {
-      const blob = await filingDocPdfBlob(buildLienNoticeBlocks(noticeFields))
+      const blob = await filingDocPdfBlob(buildLienNoticeBlocks(noticeFields, docExtras), { footer: filingDocFooter('notice_53_056') })
       const buf = new Uint8Array(await blob.arrayBuffer())
       let binary = ''
       for (let i = 0; i < buf.length; i += 0x8000) binary += String.fromCharCode(...buf.subarray(i, i + 0x8000))
@@ -268,7 +291,7 @@ export default function LienFilingTabs({
       }
       return ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '') || 'sent'
     },
-    [noticeFields, job.id, jobNumber],
+    [noticeFields, docExtras, job.id, jobNumber],
   )
 
   const recordNoticeSends = useCallback(async () => {
@@ -361,17 +384,32 @@ export default function LienFilingTabs({
 
   const viewFiling = (f: JobLienFilingRow) => {
     const snap = f.fields as unknown
+    // Recorded rows re-render with the delivery record their sends captured.
+    const sends = Array.isArray(f.sends) ? (f.sends as { recipient?: string; method?: string; tracking?: string; sent_on?: string }[]) : []
+    const snapExtras: FilingDocExtras = {
+      ...docExtras,
+      refItems: [`Job #${jobNumber}`, ...((f.months_covered ?? []).length > 0 ? [`Work month ${(f.months_covered ?? []).join(', ')}`] : []), demandDate(f.created_at?.slice(0, 10) ?? '')],
+      deliveryLines: sends.map(
+        (s) => `${s.recipient === 'owner' ? 'Owner of record' : 'Original contractor'} — ${SEND_METHOD_LABELS[s.method ?? ''] ?? s.method ?? '—'}${s.tracking ? ` · ${s.tracking}` : ''}${s.sent_on ? ` · ${demandDate(s.sent_on)}` : ''}`,
+      ),
+    }
     let blocks: FilingDocBlock[] | null = null
+    let kind: 'notice_53_056' | 'affidavit' | 'release_of_record' = 'notice_53_056'
     if (snap && typeof snap === 'object') {
-      if (f.kind === 'notice_53_056') blocks = buildLienNoticeBlocks(snap as LienNoticeFields)
-      else if (f.kind === 'affidavit') blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields)
-      else if (f.kind === 'release_of_record') blocks = buildReleaseOfRecordBlocks(snap as ReleaseOfRecordFields)
+      if (f.kind === 'notice_53_056') blocks = buildLienNoticeBlocks(snap as LienNoticeFields, snapExtras)
+      else if (f.kind === 'affidavit') {
+        blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, snapExtras)
+        kind = 'affidavit'
+      } else if (f.kind === 'release_of_record') {
+        blocks = buildReleaseOfRecordBlocks(snap as ReleaseOfRecordFields, snapExtras)
+        kind = 'release_of_record'
+      }
     }
     if (!blocks) {
       showToast('This record has no stored document snapshot.', 'error')
       return
     }
-    const ok = openHtmlPreviewWindow(filingDocPrintHtml(blocks, `Lien filing — Job ${jobNumber}`))
+    const ok = openHtmlPreviewWindow(filingDocPrintHtml(blocks, `Lien filing — Job ${jobNumber}`, filingDocFooter(kind)))
     if (!ok) showToast('Popup blocked — allow popups to view the document.', 'error')
   }
 
@@ -448,9 +486,11 @@ export default function LienFilingTabs({
 
   const preview = currentDoc && (
     <div data-theme="light" style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1.1rem', background: 'var(--bg-subtle)', borderLeft: '1px solid var(--border)' }}>
-      <div style={{ background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4, padding: '1.1rem 1.25rem', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '0.75rem', lineHeight: 1.65, boxShadow: '0 4px 14px rgba(0,0,0,0.08)', whiteSpace: 'pre-wrap' }}>
-        {filingDocText(currentDoc.blocks)}
-      </div>
+      <div
+        style={{ background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4, padding: '1.1rem 1.25rem', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '0.75rem', lineHeight: 1.65, boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}
+        // Rendered from the same block walker as print/PDF — no user HTML.
+        dangerouslySetInnerHTML={{ __html: filingDocHtml(currentDoc.blocks) }}
+      />
     </div>
   )
 
