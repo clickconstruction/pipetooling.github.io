@@ -19,6 +19,7 @@ import {
   type FixtureNameAuditRow,
 } from '../../lib/specSectionAudit'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
+import { fetchAllRows } from '../../lib/supabasePaging'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 
@@ -84,14 +85,27 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
     setLoadError(null)
     try {
       const [auditRows, rules, sectionRows] = await Promise.all([
-        withSupabaseRetry(() => supabase.rpc('spec_section_fixture_name_audit'), 'load fixture name audit'),
+        // The audit spans every distinct name ever counted — thousands of rows,
+        // past PostgREST's silent 1000-row cap, so an un-ranged read computes
+        // coverage against an arbitrary top slice. The RPC's ORDER BY is
+        // deterministic (bid_count DESC, fixture ASC), so .range() pages are stable.
+        fetchAllRows(
+          async (from, to) => ({
+            data: await withSupabaseRetry(
+              () => supabase.rpc('spec_section_fixture_name_audit').range(from, to),
+              'load fixture name audit',
+            ),
+            error: null,
+          }),
+          'load fixture name audit',
+        ),
         withSupabaseRetry(
           () => supabase.from('spec_section_match_rules').select('id, pattern, match_kind, section_code, priority'),
           'load spec section match rules',
         ),
         withSupabaseRetry(() => supabase.from('spec_sections').select('code, title').order('code'), 'load spec sections'),
       ])
-      setNames((auditRows ?? []).map((r) => ({ fixture: r.fixture, bidCount: Number(r.bid_count) })))
+      setNames(auditRows.map((r) => ({ fixture: r.fixture, bidCount: Number(r.bid_count) })))
       setRuleRows(rules ?? [])
       setSections(sectionRows ?? [])
     } catch (err) {
