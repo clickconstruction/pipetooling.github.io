@@ -301,6 +301,9 @@ export function BidsPricingTab({
   const [pricingEntryTopOut, setPricingEntryTopOut] = useState('')
   const [pricingEntryTrimSet, setPricingEntryTrimSet] = useState('')
   const [pricingEntryTotal, setPricingEntryTotal] = useState('')
+  // Combined-mode Price input keeps the raw string the user types; binding it to the
+  // auto-toFixed(2) total reformatted the field on every keystroke ("21.00" → "2.01").
+  const [pricingEntryCombinedPrice, setPricingEntryCombinedPrice] = useState('')
   const [savingPricingEntry, setSavingPricingEntry] = useState(false)
   const [savingPricingAssignment, setSavingPricingAssignment] = useState<string | null>(null)
   const [deletePricingVersionModalOpen, setDeletePricingVersionModalOpen] = useState(false)
@@ -948,6 +951,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setPricingEntryCombinedPrice('')
     setDeletePricingVersionNameInput('')
     setDeletePricingVersionError(null)
   }, [selectedServiceTypeId])
@@ -1468,6 +1472,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setPricingEntryCombinedPrice('')
     setError(null)
     setPricingEntryFormOpen(true)
   }
@@ -1486,6 +1491,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setPricingEntryCombinedPrice('')
     setEntryFormTargetPricing(true)
     setError(null)
     setPricingEntryFormOpen(true)
@@ -1499,6 +1505,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut(String(entry.top_out_price))
     setPricingEntryTrimSet(String(entry.trim_set_price))
     setPricingEntryTotal(String(entry.total_price))
+    setPricingEntryCombinedPrice(String(entry.total_price))
     setError(null)
     setPricingEntryFormOpen(true)
   }
@@ -1511,6 +1518,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setPricingEntryCombinedPrice('')
     setEntryFormTargetPricing(false)
     setError(null)
   }
@@ -6233,8 +6241,11 @@ export function BidsPricingTab({
                       inputMode="decimal"
                       min={0}
                       step={0.01}
-                      value={pricingEntryTotal}
+                      value={pricingEntryCombinedPrice}
                       onChange={(e) => {
+                        // Keep the raw string in the field — reformatting mid-typing moved the
+                        // cursor and mangled entries like 21.00 → 2.01 (Wendi, v2.2644).
+                        setPricingEntryCombinedPrice(e.target.value)
                         // Combined edits land in Rough In: RI absorbs the change so the total matches.
                         const v = parseFloat(e.target.value) || 0
                         const top = parseFloat(pricingEntryTopOut) || 0
