@@ -8,10 +8,11 @@ When a robot estimator finishes a draft bid, it asks for your audit. Everything 
 
 ## Find your pending audits
 
-1. Go to **Bids**. When a robot bid is waiting on you, an {{chip:yellow|Audits · 1}} tab appears near the Bid Board — the number is how many are waiting.
-2. Open it. Audits show as one-line rows — bid, status, draft total, how far the robot landed from our number, question count, and age. **One card is open at a time**; tap any row to open it (finishing an audit opens the next one for you).
-3. The open card starts with the robot's own confession — 🤖 **Where I'm least sure** — so you can check its suspicions first, then a comparison strip (its draft, our number, the difference) and a **system scoreboard**: waste + vent, water, gas, med-gas, and fixtures, robot vs ours with a ratio, so you see *where* the money diverges before touching a row.
-4. A shadow bid shows a {{chip:gray|🔒}} row instead of a card: the whole audit stays locked until our own bid goes out — even seeing the robot's takeoff early could sway your number. It opens by itself once we send.
+1. Your Dashboard tells you first: while robot bids are waiting, the **Needs you** card carries a {{chip:yellow|Robot training}} item with the count remaining — {{button:amber|Open Audits}} takes you straight to the tab. It stays until the queue is empty (locked shadow audits don't count — they aren't workable yet).
+2. Or go to **Bids** yourself. When a robot bid is waiting on you, an {{chip:yellow|Audits · 1}} tab appears near the Bid Board — the number is how many are waiting.
+3. Open it. Audits show as one-line rows — bid, status, draft total, how far the robot landed from our number, question count, and age. **One card is open at a time**; tap any row to open it (finishing an audit opens the next one for you).
+4. The open card starts with the robot's own confession — 🤖 **Where I'm least sure** — so you can check its suspicions first, then a comparison strip (its draft, our number, the difference) and a **system scoreboard**: waste + vent, water, gas, med-gas, and fixtures, robot vs ours with a ratio, so you see *where* the money diverges before touching a row.
+5. A shadow bid shows a {{chip:gray|🔒}} row instead of a card: the whole audit stays locked until our own bid goes out — even seeing the robot's takeoff early could sway your number. It opens by itself once we send.
 
 ## Look the bid over (two quick links)
 

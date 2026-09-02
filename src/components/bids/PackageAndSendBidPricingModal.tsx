@@ -11,6 +11,7 @@ import {
   type PackageRowInput,
 } from '../../lib/buildBidPricingPackageHtml'
 import { buildBidPricingPackageSmsText } from '../../lib/buildBidPricingPackageSmsText'
+import { bidPackageLabel } from '../../lib/bidPackageLabel'
 import { buildBidPackageMailtoUrl } from '../../lib/bidPackageMailto'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { pickMasterTechRecipients } from '../../lib/packageSendMasterTechRecipients'
@@ -18,11 +19,7 @@ import { SearchableSelect, type SearchableSelectOption } from '../SearchableSele
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
-import {
-  type LedgerPrefixMap,
-  formatBidLedgerNumberLabel,
-  resolveBidLedgerPrefix,
-} from '../../lib/ledgerDisplayPrefixes'
+import { type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 
 const MODAL_Z = 10050
 
@@ -97,19 +94,6 @@ type SendState =
   | { kind: 'mailto'; running: boolean }
   | { kind: 'resend'; running: boolean }
   | { kind: 'sms'; running: boolean }
-
-function bidPackageLabel(bid: BidWithBuilder, prefixMap: LedgerPrefixMap): string {
-  const name = (bid.project_name ?? '').trim() || 'Bid'
-  const num = bid.bid_number?.trim()
-  if (num) {
-    const numbered = formatBidLedgerNumberLabel(
-      resolveBidLedgerPrefix(bid.service_type_id, prefixMap),
-      num,
-    )
-    return `${numbered} ${name}`
-  }
-  return name
-}
 
 function recipientOptionLabel(u: EstimatorUser): string {
   const name = (u.name ?? '').trim()

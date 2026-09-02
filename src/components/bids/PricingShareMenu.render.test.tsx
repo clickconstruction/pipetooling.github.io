@@ -6,7 +6,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { PricingShareMenu } from './PricingShareMenu'
 
 function setup(over: Partial<Parameters<typeof PricingShareMenu>[0]> = {}) {
-  const handlers = { onShare: vi.fn(), onPrint: vi.fn(), onCsv: vi.fn(), onReview: vi.fn() }
+  const handlers = { onShare: vi.fn(), onPrint: vi.fn(), onCsv: vi.fn(), onReview: vi.fn(), onCopyFixtures: vi.fn() }
   render(
     <PricingShareMenu
       canShare
@@ -14,6 +14,8 @@ function setup(over: Partial<Parameters<typeof PricingShareMenu>[0]> = {}) {
       shareTitle="Share pricing"
       csvDisabled={false}
       csvTitle=""
+      fixturesDisabled={false}
+      fixturesTitle=""
       {...handlers}
       {...over}
     />,
@@ -51,11 +53,38 @@ describe('PricingShareMenu', () => {
     fireEvent.click(row)
     expect(h.onCsv).not.toHaveBeenCalled()
   })
+  it('Supply house list fires, and disables with its own tooltip', () => {
+    const h = setup()
+    fireEvent.click(screen.getByLabelText(/More ways/))
+    fireEvent.click(screen.getByText('Supply house list'))
+    expect(h.onCopyFixtures).toHaveBeenCalledTimes(1)
+  })
+  it('a disabled fixtures row keeps its tooltip and does not fire', () => {
+    const h = setup({ fixturesDisabled: true, fixturesTitle: 'Add Counts first — nothing to copy yet' })
+    fireEvent.click(screen.getByLabelText(/More ways/))
+    const row = screen.getByText('Supply house list').closest('button')!
+    expect(row.disabled).toBe(true)
+    expect(row.title).toMatch(/Add Counts first/)
+    fireEvent.click(row)
+    expect(h.onCopyFixtures).not.toHaveBeenCalled()
+  })
   it('without the share role it renders as a single Export ▾ over the same menu', () => {
     setup({ canShare: false })
     expect(screen.queryByText('Share')).toBeNull()
     fireEvent.click(screen.getByText('Export ▾'))
     expect(screen.getByRole('menu')).toBeTruthy()
     expect(screen.getByText('Print all prices — review')).toBeTruthy()
+  })
+  it('Division 22 codes item shows only when a handler is provided, and fires', () => {
+    const h = setup()
+    fireEvent.click(screen.getByLabelText(/More ways/))
+    expect(screen.queryByText('Division 22 codes')).toBeNull()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    const onOpenD22Audit = vi.fn()
+    setup({ onOpenD22Audit })
+    fireEvent.click(screen.getAllByLabelText(/More ways/)[1]!)
+    fireEvent.click(screen.getByText('Division 22 codes'))
+    expect(onOpenD22Audit).toHaveBeenCalledTimes(1)
+    expect(h.onCopyFixtures).not.toHaveBeenCalled()
   })
 })

@@ -16,6 +16,7 @@ import {
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
 import { autoApplyInvoiceId, paymentDateBeforeBilled, paymentRowNeedsInvoiceLink } from '../../lib/jobs/paymentInvoiceLinking'
+import { billChoicesForPayment } from '../../lib/jobs/paymentBillMatching'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 
 const DATE_MINI_LABEL_STYLE: CSSProperties = {
@@ -131,6 +132,61 @@ function PaymentDetailsToggle({ open, onToggle, controlsId }: { open: boolean; o
   )
 }
 
+/**
+ * Tappable bill choices for an unapplied payment (v2.2570) — one tap applies.
+ * A bill whose open balance equals the payment gets the green "matches"
+ * treatment and sorts first (highlight only; applying always takes the tap).
+ */
+function BillApplyChips({
+  payment,
+  editing,
+  payments,
+  onApply,
+}: {
+  payment: PaymentRow
+  editing: JobWithDetails | null
+  payments: PaymentRow[]
+  onApply: (invoiceId: string) => void
+}) {
+  const choices = billChoicesForPayment(payment, editing?.invoices ?? [], payments)
+  if (choices.length === 0) return null
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'stretch', marginTop: '0.35rem' }}>
+      {choices.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onApply(c.id)}
+          title={`Apply this payment to the $${formatCurrency(c.amount)} bill`}
+          style={{
+            display: 'inline-flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: 1,
+            padding: '0.3rem 0.6rem',
+            borderRadius: 8,
+            cursor: 'pointer',
+            border: c.matchesAmount ? '1px solid var(--border-green)' : '1px solid var(--border-amber)',
+            background: c.matchesAmount ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)',
+            textAlign: 'left',
+            lineHeight: 1.3,
+            font: 'inherit',
+          }}
+        >
+          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>
+            ${formatCurrency(c.amount)} bill{c.sentYmd ? ` · sent ${formatPaymentDateForDisplay(c.sentYmd)}` : ''}
+          </span>
+          <span style={{ fontSize: '0.66rem', color: c.matchesAmount ? 'var(--text-green-700)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+            {c.remaining < 0
+              ? `over-applied by $${formatCurrency(Math.abs(c.remaining))}`
+              : `$${formatCurrency(c.remaining)} left${c.matchesAmount ? ' · matches this payment' : ''}`}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 type JobFormPaymentsTableProps = {
   editing: JobWithDetails | null
   payments: PaymentRow[]
@@ -201,10 +257,16 @@ export function JobFormPaymentsTable({
   // persistedLedgerPaymentIds only changes on refetch, never mid-typing).
   const [explainerOpen, setExplainerOpen] = useState(false)
   const [detailsOpenById, setDetailsOpenById] = useState<Record<string, boolean>>({})
+  // A+C (v2.2570): "Keep as job payment" collapses a row's bill chips for this
+  // session only — the payment stays unapplied and flagged on the next open.
+  const [keepAsJobById, setKeepAsJobById] = useState<Record<string, boolean>>({})
+  const [matchPanelOpen, setMatchPanelOpen] = useState(false)
   useEffect(() => {
     setManualEntryOpen(false)
     setExplainerOpen(false)
     setDetailsOpenById({})
+    setKeepAsJobById({})
+    setMatchPanelOpen(false)
   }, [editing?.id])
   const isBlankManualRow = useCallback(
     // paid_on is deliberately NOT part of blankness: newEmptyPaymentRow() seeds
@@ -226,6 +288,17 @@ export function JobFormPaymentsTable({
     if (!payments.some((r) => isBlankManualRow(r))) addPaymentRow()
     setManualEntryOpen(true)
   }
+
+  // The rows the office still has to place. Two or more moves the explanation
+  // up into the section-level match bar and shrinks each row's warning to a
+  // compact chip, so a legacy backlog doesn't drown the table in amber.
+  const unappliedPayments = visiblePayments.filter(
+    (r) =>
+      !stripeBillInvoiceForPaymentRow(r, editing) &&
+      !mercuryLinkedPaymentRow(r) &&
+      paymentRowNeedsInvoiceLink(r, editing?.invoices ?? []),
+  )
+  const showMatchBar = unappliedPayments.length >= 2
 
   return (
     /* marginTop: the air above ③ matches the address → ① Line Items rhythm
@@ -254,6 +327,87 @@ export function JobFormPaymentsTable({
       </div>
       {explainerOpen && (
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Updates automatically when customer pays through Stripe.</div>
+      )}
+      {showMatchBar && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            flexWrap: 'wrap',
+            background: 'var(--bg-amber-tint)',
+            border: '1px solid var(--border-amber)',
+            borderRadius: 8,
+            padding: '0.5rem 0.75rem',
+            margin: '0 0 0.5rem',
+            fontSize: '0.8125rem',
+            color: 'var(--text-amber-800)',
+          }}
+        >
+          <span>
+            ⚠ {unappliedPayments.length} payments aren&rsquo;t applied to a bill — they don&rsquo;t count toward pay
+            speed yet.
+          </span>
+          <button
+            type="button"
+            onClick={() => setMatchPanelOpen((v) => !v)}
+            aria-expanded={matchPanelOpen}
+            style={{
+              marginLeft: 'auto',
+              background: 'var(--surface)',
+              border: '1px solid var(--border-amber)',
+              color: 'var(--text-amber-800)',
+              borderRadius: 6,
+              padding: '0.25rem 0.65rem',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {matchPanelOpen ? 'Close' : 'Match payments…'}
+          </button>
+        </div>
+      )}
+      {showMatchBar && matchPanelOpen && (
+        <div
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '0.25rem 0.75rem',
+            margin: '0 0 0.6rem',
+            background: 'var(--surface)',
+          }}
+        >
+          {unappliedPayments.map((p, i) => (
+            <div
+              key={p.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.8rem',
+                flexWrap: 'wrap',
+                padding: '0.5rem 0',
+                borderBottom: i < unappliedPayments.length - 1 ? '1px solid var(--border)' : 'none',
+              }}
+            >
+              <div style={{ minWidth: '6.5rem' }}>
+                <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', fontSize: '0.875rem', color: 'var(--text-strong)' }}>
+                  ${formatCurrency(Number(p.amount) || 0)}
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+                  received {formatPaymentDateForDisplay(p.paid_on)}
+                </div>
+              </div>
+              <BillApplyChips
+                payment={p}
+                editing={editing}
+                payments={payments}
+                onApply={(invoiceId) => updatePaymentRow(p.id, { invoice_id: invoiceId })}
+              />
+            </div>
+          ))}
+        </div>
       )}
       {visiblePayments.length > 0 && (
       <div style={{ overflowX: 'auto' }}>
@@ -301,7 +455,13 @@ export function JobFormPaymentsTable({
               refTrim ? `ref ${refTrim}` : '',
               noteTrim,
               row.invoice_id
-                ? `applies to ${appliedInvoice ? `$${formatCurrency(Number(appliedInvoice.amount ?? 0))} bill` : 'a bill'}`
+                ? appliedInvoice
+                  ? `✓ pays the $${formatCurrency(Number(appliedInvoice.amount ?? 0))} bill${
+                      appliedInvoice.sent_to_customer_at
+                        ? ` · sent ${formatPaymentDateForDisplay(String(appliedInvoice.sent_to_customer_at).slice(0, 10))}`
+                        : ''
+                    }`
+                  : '✓ pays a bill'
                 : '',
             ]
               .filter(Boolean)
@@ -812,19 +972,69 @@ export function JobFormPaymentsTable({
                           ) : null}
                         </div>
                       )}
-                      {needsInvoiceLink && (
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-800)', marginTop: '0.25rem' }}>
-                          ⚠ Not applied to a bill — pick which bill this pays under{' '}
-                          <button
-                            type="button"
-                            onClick={() => setDetailsOpenById((prev) => ({ ...prev, [row.id]: true }))}
-                            style={{ padding: 0, border: 'none', background: 'none', font: 'inherit', color: 'var(--text-link)', cursor: 'pointer' }}
-                          >
-                            Applies to
-                          </button>
-                          , so it counts toward that bill and the customer’s pay speed.
-                        </div>
-                      )}
+                      {needsInvoiceLink &&
+                        (showMatchBar || keepAsJobById[row.id] ? (
+                          /* The match bar (or a deliberate "keep") carries the
+                             explanation — the row shrinks to a compact chip. */
+                          <div style={{ marginTop: '0.25rem' }}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                showMatchBar
+                                  ? setMatchPanelOpen(true)
+                                  : setKeepAsJobById((prev) => ({ ...prev, [row.id]: false }))
+                              }
+                              title="This payment isn't applied to a bill yet — click to pick one"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                border: '1px solid var(--border-amber)',
+                                background: 'var(--bg-amber-tint)',
+                                color: 'var(--text-amber-800)',
+                                borderRadius: 999,
+                                padding: '0.15rem 0.55rem',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                font: 'inherit',
+                              }}
+                            >
+                              ⚠ Not applied — pick bill
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ marginTop: '0.25rem' }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
+                              ⚠ Which bill does this ${formatCurrency(Number(row.amount) || 0)} pay? It won&rsquo;t count
+                              toward the customer&rsquo;s pay speed until it&rsquo;s applied.
+                            </div>
+                            <BillApplyChips
+                              payment={row}
+                              editing={editing}
+                              payments={payments}
+                              onApply={(invoiceId) => updatePaymentRow(row.id, { invoice_id: invoiceId })}
+                            />
+                            <div style={{ marginTop: '0.3rem' }}>
+                              <button
+                                type="button"
+                                onClick={() => setKeepAsJobById((prev) => ({ ...prev, [row.id]: true }))}
+                                title="Leave this as a general job payment (it stays flagged until it's applied to a bill)"
+                                style={{
+                                  padding: 0,
+                                  border: 'none',
+                                  background: 'none',
+                                  font: 'inherit',
+                                  fontSize: '0.72rem',
+                                  color: 'var(--text-link)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Keep as job payment
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       {paidBeforeBilled && (
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-red-600)', marginTop: '0.25rem' }}>
                           ⚠ Paid date is earlier than this bill’s billed date — money can’t arrive before the bill goes

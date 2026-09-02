@@ -64,6 +64,50 @@ describe('buildBilledByCustomerBreakdown', () => {
     expect(billedBreakdownTotal(groups)).toBe(8000)
   })
 
+  it('carries the resend wiring: customer id/email, stripe identity, paid flag, sent date (v2.2604)', () => {
+    const j = job({ customer_email: '  gc@acme.com  ' } as Partial<JobWithDetails>)
+    const rows = [
+      invRow(j, {
+        id: 'i1',
+        amount: 1000,
+        stripe_invoice_id: ' in_123 ',
+        stripe_invoice_status: 'open',
+        sent_to_customer_at: '2026-08-10T15:00:00Z',
+      }),
+      invRow(j, { id: 'i2', amount: 500, stripe_invoice_id: 'in_456', stripe_invoice_status: 'paid' }),
+      invRow(j, { id: 'i3', amount: 250 }),
+    ]
+    const bills = buildBilledByCustomerBreakdown(rows, NOW)[0]!.bills
+    const byId = new Map(bills.map((b) => [b.invoiceId, b]))
+    const stripeBill = byId.get('i1')!
+    expect(stripeBill.customerId).toBe('c1')
+    expect(stripeBill.customerEmail).toBe('gc@acme.com')
+    expect(stripeBill.stripeInvoiceId).toBe('in_123')
+    expect(stripeBill.stripePaid).toBe(false)
+    expect(stripeBill.sentAtIso).toBe('2026-08-10T15:00:00Z')
+    expect(byId.get('i2')!.stripePaid).toBe(true)
+    const plainBill = byId.get('i3')!
+    expect(plainBill.stripeInvoiceId).toBeNull()
+    expect(plainBill.stripePaid).toBe(false)
+    expect(plainBill.sentAtIso).toBeNull()
+  })
+
+  it('carries the physical-resend wiring: send channel + bill-to override (v2.2605)', () => {
+    const j = job({ customer_email: 'gc@acme.com' } as Partial<JobWithDetails>)
+    const rows = [
+      invRow(j, { id: 'i1', amount: 1000, external_send_channel: 'physical', bill_to_email: ' owner@site.com ' }),
+      invRow(j, { id: 'i2', amount: 500, external_send_channel: 'housecallpro' }),
+      invRow(j, { id: 'i3', amount: 250 }),
+    ]
+    const bills = buildBilledByCustomerBreakdown(rows, NOW)[0]!.bills
+    const byId = new Map(bills.map((b) => [b.invoiceId, b]))
+    expect(byId.get('i1')!.externalSendChannel).toBe('physical')
+    expect(byId.get('i1')!.billToEmail).toBe('owner@site.com')
+    expect(byId.get('i2')!.externalSendChannel).toBe('housecallpro')
+    expect(byId.get('i2')!.billToEmail).toBeNull()
+    expect(byId.get('i3')!.externalSendChannel).toBeNull()
+  })
+
   it('bill amounts net payments applied to that invoice; fully-applied rows drop out', () => {
     const j = job({
       id: 'jp',
@@ -109,6 +153,65 @@ describe('buildBilledByCustomerBreakdown', () => {
     ])
     expect(g.worstAgeDays).toBe(172)
     expect(g.worstAgeHandSet).toBe(true)
+  })
+
+  it('carries the trimmed job address onto each bill (v2.NNNN)', () => {
+    const j = job({ id: 'ja', job_address: '  9703 Lenox Hl, Schertz TX 78154  ' })
+    const bare = job({ id: 'jb' }) // no job_address on the row → blank
+    const rows = [invRow(j, { id: 'i1', amount: 100 }), invRow(bare, { id: 'i2', amount: 100 })]
+    const bills = buildBilledByCustomerBreakdown(rows, NOW)[0]!.bills
+    expect(bills.find((b) => b.invoiceId === 'i1')!.jobAddress).toBe('9703 Lenox Hl, Schertz TX 78154')
+    expect(bills.find((b) => b.invoiceId === 'i2')!.jobAddress).toBe('')
+  })
+
+  it('scopes line items to the bill: linked fixtures only, ×count labels, non-billable rows dropped', () => {
+    const j = job({
+      id: 'jf',
+      fixtures: [
+        { job_id: 'jf', invoice_id: 'i1', name: 'Water heater — 50 gal gas', count: 1, line_unit_price: 1850 },
+        { job_id: 'jf', invoice_id: 'i1', name: 'Service call', count: 2, line_unit_price: 1085 },
+        { job_id: 'jf', invoice_id: 'i1', name: '', count: 1, line_unit_price: 500 }, // unnamed → dropped
+        { job_id: 'jf', invoice_id: 'i1', name: 'Zero line', count: 0, line_unit_price: 500 }, // 0 × unit → dropped
+        { job_id: 'jf', invoice_id: 'other', name: 'Someone else’s segment', count: 1, line_unit_price: 999 },
+      ] as unknown as JobWithDetails['fixtures'],
+    })
+    const bills = buildBilledByCustomerBreakdown([invRow(j, { id: 'i1', amount: 4020 })], NOW)[0]!.bills
+    expect(bills[0]!.lineItems).toEqual([
+      { label: 'Water heater — 50 gal gas', amount: 1850 },
+      { label: 'Service call ×2', amount: 2170 },
+    ])
+  })
+
+  it('primary bundle with no linked fixtures lists the exact-sum unlinked segments; job-shell rows list all billable lines', () => {
+    const j = job({
+      id: 'jp',
+      revenue: 700,
+      fixtures: [
+        { job_id: 'jp', invoice_id: null, name: 'Rough-in', count: 1, line_unit_price: 400 },
+        { job_id: 'jp', invoice_id: null, name: 'Trim set', count: 1, line_unit_price: 300 },
+        { job_id: 'jp', invoice_id: 'i-linked', name: 'Change order', count: 1, line_unit_price: 250 },
+      ] as unknown as JobWithDetails['fixtures'],
+    })
+    const bundleBills = buildBilledByCustomerBreakdown(
+      [invRow(j, { id: 'i-bundle', amount: 700, is_primary_rtb_bundle: true })],
+      NOW,
+    )[0]!.bills
+    expect(bundleBills[0]!.lineItems.map((l) => l.label)).toEqual(['Rough-in', 'Trim set'])
+
+    const shellBills = buildBilledByCustomerBreakdown([{ kind: 'job', job: j } as unknown as StageRow], NOW)[0]!.bills
+    expect(shellBills[0]!.lineItems.map((l) => l.label)).toEqual(['Rough-in', 'Trim set', 'Change order'])
+  })
+
+  it('suppresses the whole-job-proration fallback: an invoice with no linked fixtures lists no lines', () => {
+    const j = job({
+      id: 'jw',
+      fixtures: [
+        { job_id: 'jw', invoice_id: null, name: 'Job total (migrated)', count: 1, line_unit_price: 52_200 },
+        { job_id: 'jw', invoice_id: 'i-other', name: 'Change order', count: 1, line_unit_price: 3500 },
+      ] as unknown as JobWithDetails['fixtures'],
+    })
+    const bills = buildBilledByCustomerBreakdown([invRow(j, { id: 'i-partial', amount: 13_420 })], NOW)[0]!.bills
+    expect(bills[0]!.lineItems).toEqual([])
   })
 
   it('missing customer groups under "No customer" keyed by name; blank name jobs merge there', () => {

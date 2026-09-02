@@ -15,6 +15,9 @@ import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
+import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
+import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
+import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -52,6 +55,10 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(authUser?.id, role)
   const bulkDelete = useBulkDeleteNudge(authUser?.id)
   const claimDev = useClaimDevAttemptsNudge(authUser?.id)
+  const lienUnconditionalEnabled = Boolean(authUser?.id) && tallyStaffEligible
+  const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -75,6 +82,9 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
 
   const items = buildNeedsYouItems({
     role,
+    // Division 22 is an estimator/dev dashboard item — Quickfill is the billing station.
+    d22UncodedEnabled: false,
+    d22UncodedCount: 0,
     arBankUnallocatedCount,
     arBankEnabled,
     tallyStaleUnlinkedCount,
@@ -100,6 +110,16 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     bulkDeleteAlerts: bulkDelete.visibleAlerts,
     claimDevRefusedCount: claimDev.visibleCount,
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
+    // Robot audits stay a Dashboard concern — Quickfill is the billing desk.
+    robotAuditsEnabled: false,
+    robotAuditsPending: 0,
+    // Unconditional follow-ups ARE billing-desk work (v2.2582).
+    lienUnconditionalEnabled,
+    lienUnconditionalOwed,
+    demandDeadlineEnabled: lienUnconditionalEnabled,
+    demandDeadlineOverdue,
+    lienWatchEnabled: lienUnconditionalEnabled,
+    lienWatch,
   })
 
   useEffect(() => {
@@ -137,6 +157,12 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
             navigate('/settings?tab=settings-data#settings-recently-deleted')
           } else if (item.key === 'claim-dev') {
             navigate('/settings?tab=settings-people')
+          } else if (item.key === 'lien-unconditional') {
+            navigate('/jobs?tab=stages')
+          } else if (item.key === 'demand-deadline') {
+            navigate('/jobs?tab=stages')
+          } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
+            navigate('/jobs?tab=stages')
           }
         }}
         onSecondary={(item, key) => {

@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-08-30
+last_updated: 2026-09-01
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -77,6 +77,24 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   estimator or creator is a digital twin — YOUR bids live here, not on `bid-board`. Same
   sections, rollups, and actions; the human board and its counts exclude these rows. The
   tab renders only when robot bids exist.
+- `?tab=audits` — **🤖 Audits** (v2.2516–v2.2553): robot bids awaiting a human audit,
+  one open cockpit card at a time — the twin's self-assessment, robot-vs-ours system
+  scoreboard, name-matched diff rows with one-tap verdicts (`[verdict:teach|record|ok]`),
+  question threads with inline answers, Finish audit. Twins: open audits, seed anchored
+  questions, post receipts, close as `digested`; setting `done` is human-only (RLS).
+  A pending audit whose reference bid hasn't sent shows sealed (🔒). Tab label carries
+  the pending count.
+- `?tab=robot-shadows` — **🤖 Shadows** (v2.2544): the sealed-envelope story per shadow
+  run — picked up → estimated blind → 🔒 sealed → waiting on our bid → scored with delta
+  chip; per-axis Gate-B pips. Roles: all staff (sealed totals are API-nulled pre-score).
+- `?tab=robot-queue` — **🤖 Queue** (v2.2542, dev only): every robot-able live bid,
+  requested (green, oldest ask first) above ready (yellow), each with a copyable kickoff
+  prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
+  by confidence axis with demand chips, starvation cards, `assign axis ▾` on unclassified
+  rows, and blind backtest prompts.
+- `?tab=robot-scoreboard` — **🤖 Scoreboard** (v2.2560, dev only): per-axis Gate-B cards
+  (5-slot bar, scored deltas + in-flight shadows), pipeline pills (audits pending /
+  awaiting score / scored), unified backtest+shadow run ledger (VOID runs struck-through).
 - `?tab=builder-review` — per-customer review: section counts, estimating/job hours.
 - `?tab=call-queue` — **Followup, By builder**: call-mode queue grouped by builder; log
   calls, outcomes, next-followup promises.

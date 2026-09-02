@@ -220,7 +220,7 @@ export function DashboardTeamReadyToBillSection({
                   </div>
                   {/* ONE muted meta line, all roles and widths: Open · % done · last
                       activity (the activity part stays clickable → job-activity
-                      modal, subcontractor-like roles only — same data as before). */}
+                      modal, sub-like + superintendent since v2.2635). */}
                   {(() => {
                     const staticText = [
                       j.created_at ? `Open ${formatTimeSince(j.created_at)}` : null,
@@ -230,7 +230,10 @@ export function DashboardTeamReadyToBillSection({
                     ]
                       .filter(Boolean)
                       .join(' · ')
-                    const m = isSubcontractorLikeRole(role)
+                    // Superintendents included since v2.2635 — the row data and the
+                    // activity modal's RPC (team-membership gate) already work for
+                    // them; only this render gate hid the clickable line.
+                    const m = isSubcontractorLikeRole(role) || role === 'superintendent'
                       ? subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
                       : null
                     const hasStatic = staticText.length > 0
@@ -293,8 +296,10 @@ export function DashboardTeamReadyToBillSection({
                         </button>
                       )}
                       {/* Collect Payment before Leave Report (v2.994): the money action
-                          leads on these subcontractor cards. */}
-                      {isSubcontractorLikeRole(role) && (
+                          leads on these cards. Superintendent added v2.2637 — the
+                          collect RPCs + edge fns widened their role gates while keeping
+                          the team-membership + office-approval safeguards. */}
+                      {(isSubcontractorLikeRole(role) || role === 'superintendent') && (
                         <button
                           type="button"
                           title="Collect payment"

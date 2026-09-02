@@ -491,6 +491,14 @@ verify_jwt = false
 [functions.send-hazmat-notice-email]
 verify_jwt = false
 
+# Signed lien release to the customer, PDF attached (v2.2621): Resend email; JWT + RLS in function (send-physical-invoice-email pattern).
+[functions.send-lien-release-email]
+verify_jwt = false
+
+[functions.send-lien-filing-email]
+verify_jwt = false
+
+
 # GC Review statement email: Resend send + gc_statement_emails audit; JWT + role check in function (v2.1416).
 [functions.send-gc-statement-email]
 verify_jwt = false
@@ -702,4 +710,18 @@ verify_jwt = false
 # plan-fetch: X-Twin-Token calls carry no JWT; auth is validated in-function
 # (per-twin credential or staff getUser) — same model as drive-intake.
 [functions.plan-fetch]
+verify_jwt = false
+
+# Public supply house quote page (RFQ Phase 2) — the RFQ token IS the credential
+# (match get-bid-proposal-room); service role in-function, scope-validated writes.
+[functions.get-rfq-quote-page]
+verify_jwt = false
+
+[functions.submit-rfq-quote]
+verify_jwt = false
+
+# RFQ Desk sender (lane B) — JWT + Pricing-staff role validated in-function
+# (send-bid-pricing-package pattern); gateway verify_jwt caused 401s for
+# legitimate browser sessions elsewhere, so keep it off here too.
+[functions.send-rfq-email]
 verify_jwt = false

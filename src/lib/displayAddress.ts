@@ -7,7 +7,11 @@
 export function stripTrailingZip(address: string | null | undefined): string {
   const a = (address ?? '').trim()
   if (a === '') return ''
-  const stripped = a.replace(/[\s,]+\d{5}(-\d{4})?\s*$/, '').trim()
+  // Old imports wrote a literal "Null" where the zip belongs ("…, TX Null") —
+  // same junk position, same treatment as a zip (v2.2609).
+  const noNull = a.replace(/[\s,]+null\s*$/i, '').trim()
+  const base = noNull === '' ? a : noNull
+  const stripped = base.replace(/[\s,]+\d{5}(-\d{4})?\s*$/, '').trim()
   // Never strip the whole string (an address that IS just digits stays as-is).
-  return stripped === '' ? a : stripped
+  return stripped === '' ? base : stripped
 }

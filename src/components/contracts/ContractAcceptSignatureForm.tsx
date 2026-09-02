@@ -28,6 +28,14 @@ export type ContractAcceptSignatureFormProps = {
   formError: string | null
   submitting: boolean
   onSubmit: (payload: EstimateAcceptSubmitPayload) => void
+  /** Section heading (default "Accept document") — e.g. "Sign release" on the lien surface (v2.2619). */
+  heading?: string
+  /** Disclosure paragraph above the agree checkbox (default: the contract wording). */
+  disclosure?: string
+  /** Agree-checkbox label (default "I have read and agree to this contract."). */
+  agreeLabel?: string
+  /** Submit button label (default "Submit signature"). */
+  submitLabel?: string
 }
 
 export function ContractAcceptSignatureForm({
@@ -38,6 +46,10 @@ export function ContractAcceptSignatureForm({
   formError,
   submitting,
   onSubmit,
+  heading = 'Accept document',
+  disclosure = SIGNATURE_DISCLOSURE,
+  agreeLabel = 'I have read and agree to this contract.',
+  submitLabel = 'Submit signature',
 }: ContractAcceptSignatureFormProps) {
   const [acceptMode, setAcceptMode] = useState<'type' | 'draw'>('type')
   const [fieldHint, setFieldHint] = useState<string | null>(null)
@@ -123,7 +135,7 @@ export function ContractAcceptSignatureForm({
         id={headingId}
         style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 1rem', textAlign: 'center' }}
       >
-        Accept document
+        {heading}
       </h2>
 
       <div
@@ -264,7 +276,7 @@ export function ContractAcceptSignatureForm({
           marginBottom: '0.5rem',
         }}
       >
-        {SIGNATURE_DISCLOSURE}
+        {disclosure}
       </p>
       <div
         style={{
@@ -288,7 +300,7 @@ export function ContractAcceptSignatureForm({
             onChange={(e) => onAgreedChange(e.target.checked)}
             disabled={submitting}
           />
-          <span>I have read and agree to this contract.</span>
+          <span>{agreeLabel}</span>
         </label>
       </div>
 
@@ -302,7 +314,7 @@ export function ContractAcceptSignatureForm({
         disabled={submitting}
         style={primaryBtnStyle}
       >
-        {submitting ? 'Submitting…' : 'Submit signature'}
+        {submitting ? 'Submitting…' : submitLabel}
       </button>
     </section>
   )

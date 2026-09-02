@@ -23,6 +23,13 @@ import { JobsGcReviewModal } from './JobsGcReviewModal'
 import SendBackReasonField from './SendBackReasonField'
 import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
+import {
+  SEND_BACK_REWORK_REASON,
+  SEND_BACK_STAGE_BILLED_REASON,
+  sendBackJobBillingContext,
+  sendBackRequiresVoidAttestation,
+  type SendBackJobBillingContext,
+} from '../../lib/jobs/jobSendBackContext'
 import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
 import { JobsWeeklyMoneyModal } from './JobsWeeklyMoneyModal'
@@ -111,6 +118,8 @@ import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienToolingPrefillModal from './LienToolingPrefillModal'
+import LienInstrumentsModal from './LienInstrumentsModal'
+import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { HazmatFeeModal, type HazmatFeeModalJob } from './HazmatFeeModal'
 import { ScheduleJobModal } from './ScheduleJobModal'
@@ -710,11 +719,41 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     job: JobWithDetails
     invoice: JobsLedgerInvoice | null
   } | null>(null)
+  /** Lien instruments (v2.2640): the orange lien icon's new home — in-app demand letter; external prefill kept as fallback. */
+  const [lienInstrumentsModal, setLienInstrumentsModal] = useState<{
+    job: JobWithDetails
+    invoice: JobsLedgerInvoice | null
+  } | null>(null)
+  // Jobs with a live SENT demand letter — the lien icon wears an amber box.
+  const [demandOutJobIds, setDemandOutJobIds] = useState<ReadonlySet<string>>(() => new Set())
+  const loadDemandOutJobIds = useCallback(async () => {
+    try {
+      const { data } = await supabase
+        .from('job_demand_letters')
+        .select('job_id')
+        .is('voided_at', null)
+        .not('sent_at', 'is', null)
+      setDemandOutJobIds(new Set(((data ?? []) as { job_id: string }[]).map((r) => r.job_id)))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [])
+  useEffect(() => {
+    void loadDemandOutJobIds()
+  }, [loadDemandOutJobIds])
   const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
+  /** Release of lien (v2.2579): in-app waiver-and-release modal — same office set as the hazmat gate. */
+  const [lienReleaseModal, setLienReleaseModal] = useState<{
+    job: JobWithDetails
+    invoice: JobsLedgerInvoice | null
+  } | null>(null)
   const [hazmatFeeJob, setHazmatFeeJob] = useState<HazmatFeeModalJob | null>(null)
   /** Same office set as the create_hazmat_fee_incident RPC gate. */
   const canCreateHazmatFee =
     authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const openLienReleaseFromRow = canCreateHazmatFee
+    ? (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => setLienReleaseModal(ctx)
+    : undefined
   const openHazmatFee = (j: JobWithDetails) =>
     setHazmatFeeJob({
       id: j.id,
@@ -739,6 +778,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadHazmatFeeJobIds()
   }, [loadHazmatFeeJobIds])
+  // Jobs with a live (non-voided) lien release — their release button wears a
+  // blue box (v2.2582). Same fail-soft posture as the hazmat lookup.
+  const [lienReleaseJobIds, setLienReleaseJobIds] = useState<ReadonlySet<string>>(() => new Set())
+  const loadLienReleaseJobIds = useCallback(async () => {
+    if (!canCreateHazmatFee) return
+    try {
+      const { data } = await supabase.from('job_lien_releases').select('job_id').is('voided_at', null)
+      setLienReleaseJobIds(new Set(((data ?? []) as { job_id: string }[]).map((r) => r.job_id)))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [canCreateHazmatFee])
+  useEffect(() => {
+    void loadLienReleaseJobIds()
+  }, [loadLienReleaseJobIds])
   // Customer pay speeds for the Billed Awaiting Payment expected-payment
   // chips (bill date + customer's median billed→paid gap, company-wide
   // fallback for thin history). Same fail-soft posture as the hazmat lookup:
@@ -871,12 +925,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const masterRow = users.find((u) => u.id === job.master_user_id)
     return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
   }, [users, lienToolingPrefillModal?.job?.id, lienToolingPrefillModal?.job?.master_user_id, authProfileName])
+  const lienReleaseSignerFallback = useMemo(() => {
+    const job = lienReleaseModal?.job
+    const sessionName = authProfileName?.trim() ?? ''
+    if (!job?.master_user_id) return sessionName
+    const masterRow = users.find((u) => u.id === job.master_user_id)
+    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
+  }, [users, lienReleaseModal?.job?.id, lienReleaseModal?.job?.master_user_id, authProfileName])
   const [sendBackJob, setSendBackJob] = useState<{
     id: string
     hcpNumber: string
     jobName: string
     toStatus: 'working' | 'ready_to_bill'
     rtbDraftCount: number
+    /** v2.2601: set on RTB → Working send-backs; drives the stage-billed framing. */
+    billing?: SendBackJobBillingContext
   } | null>(null)
   const [sendBackInvoice, setSendBackInvoice] = useState<{ inv: InvoiceWithJob; action: 'delete' | 'revert' } | null>(null)
   const [sendBackInvoiceStripeExplainerAfterFailure, setSendBackInvoiceStripeExplainerAfterFailure] = useState(false)
@@ -885,6 +948,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [sendBackReason, setSendBackReason] = useState('')
   const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
   const sendBackCollectPaymentNotice = useSendBackCollectPaymentFlowNotice(sendBackJob)
+  /**
+   * v2.2601: the "voiding this bill / call the Subcontractor" attestation gates
+   * the send-back only when it actually voids something — Billed → RTB always
+   * does; RTB → Working only when a deliberate draft carve is deleted. Missing
+   * billing context (never expected for RTB → Working) fails safe: required.
+   */
+  const sendBackNeedsAttestation =
+    sendBackJob != null &&
+    (sendBackJob.toStatus === 'ready_to_bill' ||
+      (sendBackJob.billing ? sendBackRequiresVoidAttestation(sendBackJob.billing) : true))
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'waiting' | 'ready_to_bill' | 'billed' } | null>(null)
   // Collections flag confirm: 'to' = Billed → Collections (optional note), 'from' = Collections → Billed.
   const [collectionsConfirm, setCollectionsConfirm] = useState<{ job: JobWithDetails; direction: 'to' | 'from' } | null>(null)
@@ -2050,6 +2123,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
     const unifiedShared = {
       ...shared,
+      onOpenLienRelease: openLienReleaseFromRow,
+      lienReleaseJobIds,
+      demandOutJobIds,
       stagesHamMode,
       flashInvoiceId: stagesInvoiceFlashId,
       stagesInvoiceUpdatingId,
@@ -2156,7 +2232,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                   jobName: j.job_name ?? '—',
                   toStatus: 'working',
-                  rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
+                  rtbDraftCount: sendBackJobBillingContext(j.invoices).rtbDraftCount,
+                  billing: sendBackJobBillingContext(j.invoices),
                 }))}
           onInvoiceSendBack={(inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' }))}
           showRemaining={true}
@@ -2182,7 +2259,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onViewBill={(inv) => setViewBillInvoice(inv)}
           showClickTooling={false}
           onOpenLienTooling={(ctx) =>
-            setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+            setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
           onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
           onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
           showRemaining={true}
@@ -2210,7 +2287,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onViewBill={(inv) => setViewBillInvoice(inv)}
           showClickTooling={false}
           onOpenLienTooling={(ctx) =>
-            setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+            setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
           onJobSendBack={(j) =>
             stagesHamMode
               ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
@@ -3596,6 +3673,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     rows={readyToBillRows}
                     stagesSortMode={stagesSortMode}
                     actionLabel={'Bill Customer'}
+                    onOpenLienRelease={openLienReleaseFromRow}
+                    lienReleaseJobIds={lienReleaseJobIds}
+                    demandOutJobIds={demandOutJobIds}
                     onJobAction={(j) => {
                       if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
                         showToast('Link this job to a customer before billing.', 'error')
@@ -3651,7 +3731,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                             jobName: j.job_name ?? '—',
                             toStatus: 'working',
-                            rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
+                            rtbDraftCount: sendBackJobBillingContext(j.invoices).rtbDraftCount,
+                            billing: sendBackJobBillingContext(j.invoices),
                           }))}
                     onInvoiceSendBack={(inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' }))}
                     showRemaining={true}
@@ -3951,7 +4032,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onViewBill={(inv) => setViewBillInvoice(inv)}
                     showClickTooling={false}
                     onOpenLienTooling={(ctx) =>
-                      setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+                      setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
+                    onOpenLienRelease={openLienReleaseFromRow}
+                    lienReleaseJobIds={lienReleaseJobIds}
+                    demandOutJobIds={demandOutJobIds}
                     onJobSendBack={(j) =>
                       stagesHamMode
                         ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
@@ -4066,7 +4150,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onViewBill={(inv) => setViewBillInvoice(inv)}
                     showClickTooling={false}
                     onOpenLienTooling={(ctx) =>
-                      setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+                      setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
+                    onOpenLienRelease={openLienReleaseFromRow}
+                    lienReleaseJobIds={lienReleaseJobIds}
+                    demandOutJobIds={demandOutJobIds}
                     onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
                     onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
                     showRemaining={true}
@@ -4821,6 +4908,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           rows={unfilteredBoardLists.billedActiveRows}
           loading={!nonPaidScopesMerged}
           canSeeCharts={authRole === 'dev' || authRole === 'controller'}
+          authRole={authRole}
           onClose={() => setBilledBreakdownOpen(false)}
           onOpenBill={(bill) => {
             setBilledBreakdownOpen(false)
@@ -4995,6 +5083,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           })()
         }}
       />
+      <LienInstrumentsModal
+        open={lienInstrumentsModal != null}
+        onClose={() => setLienInstrumentsModal(null)}
+        job={lienInstrumentsModal?.job ?? null}
+        invoice={lienInstrumentsModal?.invoice ?? null}
+        signerNameFallback={lienReleaseSignerFallback}
+        authEmail={authUser?.email?.trim() ?? ''}
+        onOpenExternalPrefill={() => {
+          const ctx = lienInstrumentsModal
+          setLienInstrumentsModal(null)
+          if (ctx) setLienToolingPrefillModal(ctx)
+        }}
+        onRecorded={() => void loadDemandOutJobIds()}
+      />
       <LienToolingPrefillModal
         open={lienToolingPrefillModal != null}
         onClose={() => setLienToolingPrefillModal(null)}
@@ -5002,6 +5104,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienToolingPrefillModal?.invoice ?? null}
         senderNameFallback={lienToolingSenderFallback}
         authEmail={authUser?.email?.trim() ?? ''}
+      />
+      <LienReleaseModal
+        open={lienReleaseModal != null}
+        onClose={() => setLienReleaseModal(null)}
+        job={lienReleaseModal?.job ?? null}
+        invoice={lienReleaseModal?.invoice ?? null}
+        signerNameFallback={lienReleaseSignerFallback}
+        onIssued={() => void loadLienReleaseJobIds()}
       />
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}
@@ -5130,7 +5240,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
               {sendBackJob.toStatus === 'ready_to_bill'
                 ? 'This will move the job back to Ready to Bill.'
-                : sendBackJob.rtbDraftCount > 0
+                : sendBackJob.billing?.stageBilledContinues
+                  ? `The job returns to Working. ${
+                      sendBackJob.billing.billedCount === 1
+                        ? 'Its billed line stays billed'
+                        : `Its ${sendBackJob.billing.billedCount} billed lines stay billed`
+                    } ($${formatCurrency(sendBackJob.billing.billedTotalDollars)}).${
+                      sendBackJob.rtbDraftCount > 0
+                        ? ' The unsent remainder draft is removed and comes back automatically the next time the job is ready to bill.'
+                        : ''
+                    }`
+                  : sendBackJob.rtbDraftCount > 0
                   ? `This will move the job back to Assigned Jobs (Working). ${
                       sendBackJob.rtbDraftCount === 1
                         ? `This will also remove 1 Ready to Bill draft bill (same as ${DELETE_DRAFT_BILL_LABEL.replace('\u00A0', ' ')}).`
@@ -5154,17 +5274,43 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 Billed lines on this job will be removed (Stripe invoices voided first where applicable). Lines with recorded payments block send back until adjusted. Paid Stripe invoices block until resolved in Stripe.
               </p>
             )}
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={sendBackChecked}
-                  onChange={(e) => setSendBackChecked(e.target.checked)}
-                  style={{ marginTop: 4 }}
-                />
-                <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
-              </label>
-            </div>
+            {sendBackNeedsAttestation && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={sendBackChecked}
+                    onChange={(e) => setSendBackChecked(e.target.checked)}
+                    style={{ marginTop: 4 }}
+                  />
+                  <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
+                </label>
+              </div>
+            )}
+            {sendBackJob.toStatus === 'working' && sendBackJob.billing?.stageBilledContinues && (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                {[SEND_BACK_STAGE_BILLED_REASON, SEND_BACK_REWORK_REASON].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setSendBackReason(r)}
+                    aria-pressed={sendBackReason === r}
+                    style={{
+                      font: 'inherit',
+                      fontSize: '0.8rem',
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: 999,
+                      border: sendBackReason === r ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+                      background: sendBackReason === r ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                      color: 'var(--text-strong)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            )}
             {sendBackJob.toStatus === 'working' && (
               <SendBackReasonField
                 value={sendBackReason}
@@ -5187,7 +5333,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               <button
                 type="button"
                 disabled={
-                  !sendBackChecked ||
+                  (sendBackNeedsAttestation && !sendBackChecked) ||
                   (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) ||
                   stagesStatusUpdatingId === sendBackJob.id
                 }
@@ -5222,11 +5368,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: sendBackChecked && stagesStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : '#9ca3af',
+                  background:
+                    (!sendBackNeedsAttestation || sendBackChecked) && stagesStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : '#9ca3af',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: sendBackChecked && stagesStatusUpdatingId !== sendBackJob.id ? 'pointer' : 'not-allowed',
+                  cursor:
+                    (!sendBackNeedsAttestation || sendBackChecked) && stagesStatusUpdatingId !== sendBackJob.id
+                      ? 'pointer'
+                      : 'not-allowed',
                 }}
               >
                 {stagesStatusUpdatingId === sendBackJob.id ? '…' : sendBackJob.toStatus === 'working' ? 'Send Job Back' : 'Send back'}

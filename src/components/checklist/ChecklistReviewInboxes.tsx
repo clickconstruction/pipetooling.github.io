@@ -8,6 +8,7 @@ import { DispatchDismissedItemsModal } from '../DispatchDismissedItemsModal'
 import { EstimatorInboxSection } from '../EstimatorInboxSection'
 import { HelpFeedbackInboxSection } from '../HelpFeedbackInboxSection'
 import { ChecklistReviewInboxSection } from './ChecklistReviewInboxSection'
+import LienSignatureInboxSection from '../jobs/LienSignatureInboxSection'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /**
@@ -89,6 +90,7 @@ export function ChecklistReviewInboxes({
     <div style={{ marginBottom: '1.5rem' }}>
       <OpenCountReporter count={openRequestCount} onOpenRequestCount={onOpenRequestCount} />
       <HelpFeedbackInboxSection />
+      <LienSignatureInboxSection />
       {hideChecklistReviewSection ? null : <ChecklistReviewInboxSection />}
       {dispatchInboxEligible ? (
         <DispatchInboxSection

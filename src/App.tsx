@@ -45,6 +45,7 @@ import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import HazmatNoticePublic from './pages/HazmatNoticePublic'
 import CustomerPortal from './pages/CustomerPortal'
+import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
 import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
 import ContractBookPreview from './pages/ContractBookPreview'
@@ -207,6 +208,7 @@ function AppContent() {
         <Route path="/task" element={<TaskShortcut />} />
         <Route path="/estimate/accept" element={<EstimateAccept />} />
         <Route path="/bid-room" element={<BidRoom />} />
+        <Route path="/q/:token" element={<SupplyHouseQuotePage />} />
         <Route path="/contract/accept" element={<ContractAccept />} />
         <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
         <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />

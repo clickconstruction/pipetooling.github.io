@@ -55,6 +55,7 @@ Each section lists: render location (state gate + line range **as of v2.1087 —
 | Edit-dates dialog | `editDueDateOpen` (~3180–3269) | ~90 | inline | 3 (`editDueDateOpen`, `draftDueYmd`, `draftServiceYmd`) | opened from Stripe AND Physical; writes shared `sentDate`/`stripeDueDate` | low | **Stays in parent** (playbook: modal opened from 2+ tabs) |
 | Line-edit modal wiring | `BillCustomerPreviewLineEditModal` (~3270–3283) | ~14 + `lineEditSession` + 3 openers | **extracted** (component) | 1 (`lineEditSession`) | opened from Stripe preview AND Physical preview | — | Wiring **stays in parent** |
 | Missing-email fix banner + bill-to banner | pre-tab JSX (~1855–1927) | ~75 + `saveMissingCustomerEmail` (~40) | inline | 5 (`emailFix*`) + `emailOverride` | overlays feed `job` for every tab | med | Stays in parent (part of the engine) |
+| Lien releases strip (v2.2582) | pre-tab JSX, after the bill-to banner | ~10 (mount only) | **extracted** (`BillCustomerLienReleaseStrip`) | none in parent | reads `jobRaw?.id` + `billCustomerJobDetails`; owns its `job_lien_releases` I/O and nests its own `LienReleaseModal` | low | Already self-contained — fail-soft (hides on load error) |
 
 ---
 

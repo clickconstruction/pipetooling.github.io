@@ -17,6 +17,7 @@ import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import TeamCrewIcon from '../icons/TeamCrewIcon'
+import { customerAddressLienReady, suggestCustomerAddressForJob } from '../../lib/jobs/lienProperty'
 import { JobFormFactRow } from './JobFormFactRow'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
@@ -44,6 +45,7 @@ type RowKey =
   | 'customer'
   | 'phone'
   | 'email'
+  | 'property-record'
   | 'gc'
   | 'dateMet'
   | 'folders'
@@ -97,6 +99,19 @@ type JobFormEditFactRowsProps = {
   setJobPicturesLink: (v: string) => void
   jobAddress: string
   setJobAddress: (v: string) => void
+  /** Property record link (v2.2638): the customer_addresses row this job sits at. */
+  customerAddressId: string | null
+  setCustomerAddressId: (v: string | null) => void
+  propertyCandidates: Array<{
+    id: string
+    customer_id: string | null
+    address: string
+    county: string
+    legal_description: string
+    owner_name: string
+    owner_company: string
+    owner_mailing_address: string
+  }>
   customers: CustomerRow[]
   customersLoading: boolean
   masterForFormCustomer: string
@@ -169,6 +184,9 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     setJobPicturesLink,
     jobAddress,
     setJobAddress,
+    customerAddressId,
+    setCustomerAddressId,
+    propertyCandidates,
     customers,
     customersLoading,
     masterForFormCustomer,
@@ -512,6 +530,76 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         </label>
         <input type="email" aria-label="Customer Email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={fieldInputStyle} />
       </JobFormFactRow>
+      {/* Property record (v2.2638): which of the customer's/GC's saved
+          addresses this job sits at — county / legal description / owner of
+          record for lien documents. Collapsed shows the linked address (or
+          "not linked"); the editor is a picker over the loaded candidates. */}
+      {(() => {
+        const linked = propertyCandidates.find((r) => r.id === customerAddressId) ?? null
+        const linkedReady = linked ? customerAddressLienReady(linked) : false
+        const suggested = customerAddressId
+          ? null
+          : suggestCustomerAddressForJob(
+              jobAddress,
+              propertyCandidates as never,
+            )
+        return (
+          <JobFormFactRow
+            label="Property record"
+            labelIcon={CUSTOMER_SUBROW_INDENT}
+            value={
+              linked ? (
+                <span>
+                  {linked.address}
+                  {linkedReady ? <span style={{ color: 'var(--text-green-700)', fontWeight: 700 }}> ✓ lien-ready</span> : null}
+                </span>
+              ) : customerAddressId ? (
+                '…'
+              ) : propertyCandidates.length > 0 ? (
+                <span style={{ color: 'var(--text-muted)' }}>not linked</span>
+              ) : null
+            }
+            expanded={openRows.has('property-record')}
+            onToggle={() => toggleRow('property-record')}
+          >
+            <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>
+              Property record (feeds lien paperwork — county, legal description, owner of record)
+            </label>
+            {propertyCandidates.length === 0 ? (
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                No saved addresses on this job's customer or GC yet — add one (with its Property legal
+                info) on the customer's Edit form.
+              </p>
+            ) : (
+              <>
+                <select
+                  aria-label="Property record"
+                  value={customerAddressId ?? ''}
+                  onChange={(e) => setCustomerAddressId(e.target.value || null)}
+                  style={{ ...fieldInputStyle, maxWidth: '100%' }}
+                >
+                  <option value="">— not linked —</option>
+                  {propertyCandidates.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.address}
+                      {suggested?.id === r.id ? ' (matches job address)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {suggested ? (
+                  <button
+                    type="button"
+                    onClick={() => setCustomerAddressId(suggested.id)}
+                    style={{ marginTop: '0.4rem', background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                  >
+                    Link {suggested.address} — matches the job address
+                  </button>
+                ) : null}
+              </>
+            )}
+          </JobFormFactRow>
+        )
+      })()}
       {/* Date met rides with the customer-contact sub-rows — it lives on the
           customers record like phone/email (owner call, v2.1697). Collapsed it
           reads "06/09/26 (2 months ago)" (owner call, v2.1700); the lock and

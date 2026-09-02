@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildLienToolingPrefillState,
   invoiceOpenRemainingOnJobForPrefill,
+  lienOwnerNameFromRecord,
   splitJobAddressForPrefill,
 } from './buildLienToolingPrefillFromJob'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -159,5 +160,87 @@ describe('buildLienToolingPrefillState demand-letter', () => {
     expect(state['include-late-fees']).toBe(false)
 
     vi.useRealTimers()
+  })
+})
+
+describe('owner of record on the lien forms (v2.2611)', () => {
+  const job = {
+    id: 'job-1',
+    hcp_number: '501',
+    job_name: 'Replace WH',
+    job_address: '9 Elm St, Dallas, TX 75201',
+    customer_name: 'Knight Contracting',
+    revenue: 5000,
+    payments_made: 0,
+    last_work_date: '2026-01-18',
+    invoices: [],
+    payments: [],
+    fixtures: [],
+    materials: [],
+    team_members: [],
+  } as unknown as JobWithDetails
+  const baseCtx = {
+    job,
+    invoice: null,
+    issuer: null,
+    senderNameFallback: 'Pat Master',
+    senderEmailFallback: 'pat@example.com',
+  }
+
+  it('lienOwnerNameFromRecord: company-first for building owners, person-first for homeowners', () => {
+    expect(
+      lienOwnerNameFromRecord({ ownerMode: 'building_owner', ownerName: 'Ann Agent', companyName: 'Sonterra Holdings', mailingAddress: '' }),
+    ).toBe('Sonterra Holdings')
+    expect(
+      lienOwnerNameFromRecord({ ownerMode: 'homeowner', ownerName: 'Jo Home', companyName: '', mailingAddress: '' }),
+    ).toBe('Jo Home')
+    expect(lienOwnerNameFromRecord(null)).toBe('')
+  })
+
+  it("mechanics lien uses the owner record's name and MAILING address, not the customer at the property", () => {
+    const state = buildLienToolingPrefillState('mechanics-lien', {
+      ...baseCtx,
+      ownerRecord: {
+        ownerMode: 'building_owner',
+        ownerName: '',
+        companyName: 'Sonterra Holdings LLC',
+        mailingAddress: 'PO Box 1420, San Marcos, TX 78667',
+      },
+    })
+    expect(state['owner-name']).toBe('Sonterra Holdings LLC')
+    expect(state['owner-address']).toBe('PO Box 1420')
+    expect(state['owner-city']).toBe('San Marcos')
+    expect(state['owner-zip']).toBe('78667')
+    // The property block still describes the job site, untouched.
+    expect(state['property-address']).toBe('9 Elm St')
+  })
+
+  it('release form prefers the owner record name', () => {
+    const state = buildLienToolingPrefillState('release-lien', {
+      ...baseCtx,
+      ownerRecord: { ownerMode: 'homeowner', ownerName: 'Jo Home', companyName: '', mailingAddress: '' },
+    })
+    expect(state['owner-name']).toBe('Jo Home')
+  })
+
+  it('linked property record fills county + legal description on the lien forms (v2.2638)', () => {
+    const property = { county: 'Hays', legalDescription: 'Lot 3, Block A, Springtown Commercial Park' }
+    const lien = buildLienToolingPrefillState('mechanics-lien', { ...baseCtx, property })
+    expect(lien['property-county']).toBe('Hays')
+    expect(lien['legal-description']).toContain('Lot 3')
+    const release = buildLienToolingPrefillState('release-lien', { ...baseCtx, property })
+    expect(release['property-county']).toBe('Hays')
+    expect(release['property-description']).toContain('Lot 3')
+    // No property → county blank and release falls back to the job name.
+    const bare = buildLienToolingPrefillState('release-lien', baseCtx)
+    expect(bare['property-county']).toBe('')
+    expect(bare['property-description']).toBe('Replace WH')
+  })
+
+  it('without an owner record, behavior is unchanged (customer at the property address)', () => {
+    const state = buildLienToolingPrefillState('mechanics-lien', baseCtx)
+    expect(state['owner-name']).toBe('Knight Contracting')
+    expect(state['owner-address']).toBe('9 Elm St')
+    expect(state['owner-city']).toBe('Dallas')
   })
 })

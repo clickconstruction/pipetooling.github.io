@@ -8,6 +8,14 @@ export { splitJobAddressForPrefill }
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
+/** Office-verified owner of record (job_property_owners) — lien-notice material. */
+export type LienToolingOwnerRecord = {
+  ownerMode: string
+  ownerName: string
+  companyName: string
+  mailingAddress: string
+}
+
 export type LienToolingPrefillContext = {
   job: JobWithDetails
   /** Billed invoice for this row when known; otherwise first billed line on job is used. */
@@ -15,6 +23,29 @@ export type LienToolingPrefillContext = {
   issuer: PhysicalInvoiceIssuer | null
   senderNameFallback: string
   senderEmailFallback: string
+  /**
+   * Saved job_property_owners row (v2.2611). When present it supplies the
+   * owner name and MAILING address on the mechanic's lien / release forms —
+   * before this fix those fell back to the job customer + the property
+   * address, which is wrong whenever the customer is a GC or the owner is
+   * absentee.
+   */
+  ownerRecord?: LienToolingOwnerRecord | null
+  /**
+   * The job's linked property record (v2.2638 — customer_addresses legal
+   * columns via jobs_ledger.customer_address_id): fills the filing county and
+   * the appraisal-district legal description on the mechanic's-lien and
+   * release forms, which were always blank before the property ledger.
+   */
+  property?: { county: string; legalDescription: string } | null
+}
+
+/** Display name for the owner of record: company-first for building owners, person-first for homeowners. */
+export function lienOwnerNameFromRecord(rec: LienToolingOwnerRecord | null | undefined): string {
+  if (!rec) return ''
+  const person = (rec.ownerName ?? '').trim()
+  const company = (rec.companyName ?? '').trim()
+  return rec.ownerMode === 'building_owner' ? company || person : person || company
 }
 
 function sumInvoiceAppliedFromJobPayments(job: JobWithDetails, invoiceId: string): number {
@@ -166,10 +197,14 @@ function buildMechanicsLien(
   inv: JobsLedgerInvoice | null,
   issuer: PhysicalInvoiceIssuer | null,
   senderNameFallback: string,
+  ownerRecord: LienToolingOwnerRecord | null,
+  property: { county: string; legalDescription: string } | null,
 ): LienToolingPrefillState {
   const claimAddr = issuer ? parseIssuerAddressLines(issuer) : { street: '', city: '', state: 'Texas', zip: '' }
   const prop = splitJobAddressForPrefill(job.job_address ?? '')
-  const ownerName = (job.customer_name ?? '').trim()
+  const ownerName = lienOwnerNameFromRecord(ownerRecord) || (job.customer_name ?? '').trim()
+  const ownerMailing = (ownerRecord?.mailingAddress ?? '').trim()
+  const ownerAddr = ownerMailing ? splitJobAddressForPrefill(ownerMailing) : prop
   const unpaid =
     inv != null
       ? invoiceOpenRemainingOnJobForPrefill(inv, job)
@@ -188,16 +223,16 @@ function buildMechanicsLien(
     'claimant-state': claimAddr.state || 'Texas',
     'claimant-zip': claimAddr.zip,
     'owner-name': ownerName,
-    'owner-address': prop.street || (job.job_address ?? '').trim(),
-    'owner-city': prop.city,
-    'owner-state': prop.state || 'Texas',
-    'owner-zip': prop.zip,
+    'owner-address': ownerMailing ? ownerAddr.street || ownerMailing : prop.street || (job.job_address ?? '').trim(),
+    'owner-city': ownerAddr.city,
+    'owner-state': ownerAddr.state || 'Texas',
+    'owner-zip': ownerAddr.zip,
     'property-address': prop.street || (job.job_address ?? '').trim(),
     'property-city': prop.city || '—',
     'property-state': prop.state || 'Texas',
     'property-zip': prop.zip || '—',
-    'property-county': '',
-    'legal-description': '',
+    'property-county': (property?.county ?? '').trim(),
+    'legal-description': (property?.legalDescription ?? '').trim(),
     'work-description': workDesc,
     'work-start': workYmd,
     'work-end': workYmd,
@@ -217,11 +252,13 @@ function buildReleaseLien(
   inv: JobsLedgerInvoice | null,
   issuer: PhysicalInvoiceIssuer | null,
   senderNameFallback: string,
+  ownerRecord: LienToolingOwnerRecord | null,
+  property: { county: string; legalDescription: string } | null,
 ): LienToolingPrefillState {
   const claimAddr = issuer ? parseIssuerAddressLines(issuer) : { street: '', city: '', state: 'Texas', zip: '' }
   const prop = splitJobAddressForPrefill(job.job_address ?? '')
   const hcp = (job.hcp_number ?? '').trim()
-  const ownerName = (job.customer_name ?? '').trim()
+  const ownerName = lienOwnerNameFromRecord(ownerRecord) || (job.customer_name ?? '').trim()
   const payYmd = todayYmd()
   const filingYmd = ymdFromIso(inv?.billed_at) || ymdFromIso(inv?.created_at) || todayYmd()
 
@@ -235,9 +272,9 @@ function buildReleaseLien(
     'claimant-state': claimAddr.state || 'Texas',
     'claimant-zip': claimAddr.zip || '—',
     'filing-date': filingYmd,
-    'property-description': (job.job_name ?? '').trim() || (job.job_address ?? '').trim(),
+    'property-description': (property?.legalDescription ?? '').trim() || (job.job_name ?? '').trim() || (job.job_address ?? '').trim(),
     'owner-name': ownerName,
-    'property-county': '',
+    'property-county': (property?.county ?? '').trim(),
     'property-address': prop.street || (job.job_address ?? '').trim(),
     'property-city': prop.city || '—',
     'property-state': prop.state || 'Texas',
@@ -260,9 +297,9 @@ export function buildLienToolingPrefillState(
         ctx.senderEmailFallback,
       )
     case 'mechanics-lien':
-      return buildMechanicsLien(ctx.job, inv, ctx.issuer, ctx.senderNameFallback)
+      return buildMechanicsLien(ctx.job, inv, ctx.issuer, ctx.senderNameFallback, ctx.ownerRecord ?? null, ctx.property ?? null)
     case 'release-lien':
-      return buildReleaseLien(ctx.job, inv, ctx.issuer, ctx.senderNameFallback)
+      return buildReleaseLien(ctx.job, inv, ctx.issuer, ctx.senderNameFallback, ctx.ownerRecord ?? null, ctx.property ?? null)
     default: {
       const _exhaustive: never = form
       return _exhaustive

@@ -47,6 +47,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `gc_statement` | scheduled report | `gc_statement_email_requests` (v2.1426; free-text `sent_to`; scheduling UI v2.1427) | `gc-statement-email-dispatch` | ✅ requester-scoped (v2.1428) | — (scheduled report, not an event stream) |
 | `payment_forecast` | scheduled report | `payment_forecast_email_requests` (v2.2223; internal `recipient_user_id`; share UI v2.2226) | `payment-forecast-email-dispatch` | ✅ recipient-scoped (v2.2223) | — (scheduled report) |
 | `ct_roster_audit` | fixed weekly audit | none — fixed dev stream, no request table or share UI (v2.2438) | `ct-roster-audit` (weekly cron, Mon 13:00 UTC) | — | — (dev infra audit; always sends, all-clear = heartbeat) |
+| `crew_day` | scheduled report | `crew_day_email_requests` (v2.2603; internal `recipient_user_id`; **per-recipient payload** — `get_crew_day_payload_for_user` rebuilds for the recipient; **office-only on both sides since v2.2615** — superintendents neither schedule nor receive (owner decision: the dashboard Crew Day section is their window); emailed day = the send's Chicago day) | `crew-day-email-dispatch` | ✅ recipient-scoped | — (scheduled report) |
 
 ## Design rules
 

@@ -37,6 +37,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import {
   paidJobEmailSubject,
   paidJobEmailText,
@@ -404,12 +405,14 @@ async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response
         const emailErrors: string[] = []
         const emailRecipients = rtbRecipients.filter((r) => r.emailOn && (r.email ?? '').trim() !== '')
         if (emailRecipients.length > 0) {
-          const subject = readyToBillSubject(rtbPayload)
-          const text = readyToBillText(rtbPayload)
+          // Dev-saved wording (Settings → Email templates, v2.2659).
+          const rtbWording = await resolveServerEmailWording('ready_to_bill', {}, readyToBillSubject(rtbPayload))
+          const subject = rtbWording.subject
+          const text = (rtbWording.introText ? rtbWording.introText + '\n\n' : '') + readyToBillText(rtbPayload)
           const detailedHtml = renderReadyToBillDetailed(rtbPayload)
           const summaryHtml = renderReadyToBillSummary(rtbPayload)
           for (const r of emailRecipients) {
-            const html = DETAILED_ROLES.has(String(r.role)) ? detailedHtml : summaryHtml
+            const html = (rtbWording.introHtml ?? '') + (DETAILED_ROLES.has(String(r.role)) ? detailedHtml : summaryHtml)
             const mail = await sendEmailViaResend((r.email ?? '').trim(), subject, text, html, resendApiKey)
             if (!mail.success) emailErrors.push(`${r.id}: ${mail.error ?? 'resend'}`)
           }
@@ -457,14 +460,16 @@ async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response
       }
 
       const payload = await fetchPayload(admin, row.job_ledger_id)
-      const subject = paidJobEmailSubject(payload)
-      const text = paidJobEmailText(payload)
+      // Dev-saved wording (Settings -> Email templates, v2.2659).
+      const wording = await resolveServerEmailWording('paid_job', {}, paidJobEmailSubject(payload))
+      const subject = wording.subject
+      const text = (wording.introText ? wording.introText + '\n\n' : '') + paidJobEmailText(payload)
       const detailedHtml = renderPaidJobEmailDetailed(payload)
       const summaryHtml = renderPaidJobEmailSummary(payload)
 
       const sendErrors: string[] = []
       for (const r of recipients) {
-        const html = DETAILED_ROLES.has(String(r.role)) ? detailedHtml : summaryHtml
+        const html = (wording.introHtml ?? '') + (DETAILED_ROLES.has(String(r.role)) ? detailedHtml : summaryHtml)
         const mail = await sendEmailViaResend((r.email ?? '').trim(), subject, text, html, resendApiKey)
         if (!mail.success) sendErrors.push(`${r.id}: ${mail.error ?? 'resend'}`)
       }

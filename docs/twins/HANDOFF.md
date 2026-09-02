@@ -3,117 +3,164 @@
 ---
 file: HANDOFF.md
 type: Handoff / State of the program
-purpose: Everything a new operator needs to take over the digital-twins program — what is live, how to run it day-to-day, where the secrets live, and the prioritized open threads (including the agent-dashboard/RFI roadmap that previously existed only in a chat session)
+purpose: Everything a new operator needs to take over the digital-twins program — what is live, the fleet roadmap and its gates, how to run it day-to-day, where the secrets live, and the prioritized open threads
 audience: The incoming twins operator (a dev), AI agents
-last_updated: 2026-08-28
+last_updated: 2026-09-01
 key_sections:
   - name: "What is live today"
+  - name: "The fleet roadmap & gates"
+  - name: "Where the program stands (2026-09-01)"
   - name: "Day-to-day operation"
   - name: "Secrets & access"
   - name: "Open threads, prioritized"
   - name: "Gotchas that will bite"
 ---
 
-Written 2026-08-28, the day the program shipped end to end. Read
-`DIGITAL_TWINS_PLAN.md` first for the locked owner decisions (estimator-only,
-one-directional fence, assignment-is-the-grant, drift caught not prevented); this doc
-is the *current state* on top of that plan.
+Read `DIGITAL_TWINS_PLAN.md` first for the locked owner decisions (estimator-only,
+one-directional fence, assignment-is-the-grant) and `ESTIMATOR_TWIN_PIPELINE_PLAN.md`
+for the plans-to-proposal build (every wave-table engineering item is BUILT as of
+2026-08-30); this doc is the *current state* on top of both.
 
 ## What is live today (all in prod)
 
-- **Twin identity**: `users.is_digital_twin` (PT) / `profiles.is_digital_twin` (CT);
-  🤖 banner in the app; `?as=twin:<role>[:n]` dev-login alias.
-- **Write fence** (migration `20260828070000`): RESTRICTIVE policies on every RLS
-  table — a twin writes only its own bids (creator or assigned estimator — assignment
-  IS the grant), bid-child tables, and help_feedback. Rung 1 = `read_only` flag (the
-  training-mode block); rung 2 = fenced writes; rung 3 (production) not built.
-- **Per-twin credentials** (`twin_credentials`, sha256-hashed, revocable) accepted by
-  `twin-login` v2 and required by every `twin-mcp` tools/call.
-- **twin-mcp** — the MCP server any agent vendor can hold a seat through
-  (`https://yewfzhbofbbyvkvtaatw.supabase.co/functions/v1/twin-mcp`). Six tools:
-  `mint_session` (PipeTooling by default, `app: 'counttooling'` for the takeoff tool —
-  one token opens both apps), `get_brief`, `get_directory`, `get_harness_guide`,
-  `get_mission`, `submit_report`. No business-data tools by design — work happens in
-  the app via the minted browser session.
-- **Fleet console** — Settings → System → Digital twins (dev-only): mint twins, issue
-  and revoke tokens (shown once), flip safety rungs, endpoints card, CT-seat link
-  status + backfill, recent-runs ledger (`twin_runs`).
-- **CT↔PT user bridge**: PT is the system of record; twin mints auto-create the
-  CountTooling seat; archive/restore mirror across; Monday drift-audit email to devs.
-- **Fleet**: `twin-estimator-1@twins.pipetooling.local` (rung 1), CT seat linked.
-  Mission **M1 ran and PASSED** (found a real lens bug — see
-  `missions/estimator.md` results table). M2/M3 have not run.
+- **Twin identity & fence**: `users.is_digital_twin` (PT) / `profiles.is_digital_twin`
+  (CT); 🤖 banner; RESTRICTIVE write-fence policies (a twin writes only bids it created
+  or is assigned — assignment IS the grant), the no-send trigger ("digital twins draft
+  only: sending and outcomes are human acts"), per-twin revocable credentials
+  (`twin_credentials`), `?as=twin:<role>[:n]` dev-login alias.
+- **twin-mcp** (`…/functions/v1/twin-mcp`) — ~22 tools now, in four families:
+  *session/docs* (`mint_session` — PT or CT, `get_brief`, `get_directory`,
+  `get_harness_guide`, `get_ct_guide`, `get_placement_guide`, `get_mission`,
+  `submit_report`); *work-state reads* (`get_assignments`, `get_work_state`,
+  `get_plan_brief`, `get_answers`); *pipeline writes inside the fence* (`file_plans`,
+  `add_bid_note`, `ask_question`, `heartbeat`, `ct_finish_takeoff`); *confidence runs*
+  (`open_backtest`, `get_shadow_queue`, `open_shadow`, `lock_shadow`, `score_shadows`).
+  Blindness is structural: `open_backtest`/`open_shadow` copy logistics only — counts,
+  pricing, `bid_value`, `outcome` are never selected. `docs/EDGE_FUNCTIONS.md` → twin-mcp
+  is the authoritative verb reference.
+- **The Bids robot lens group** (🤖, between Bid Board and Followup):
+  **Robot Board** (v2.2500, staff — twin bids live here, off the human board),
+  **Audits** (v2.2516–19, staff — the audit cockpit: name-matched diff, one-tap
+  verdicts, sealed-shadow hold), **Shadows** (v2.2544, staff — sealed-envelope
+  stepper per run), **Queue** (v2.2542, dev — requested/ready robot-able bids +
+  backtest candidates by axis, v2.2594), **Scoreboard** (v2.2560, dev — per-axis
+  Gate-B cards, pipeline pills, unified run ledger). Dashboard: the Needs-you card
+  carries a "robot bids waiting on your audit" item for dev+estimator (v2.2573).
+- **The audit loop** (`FEEDBACK_LOOP.md`): twin opens an audit at pipeline end →
+  human judges each difference with verdict tags (`[verdict:teach|record|ok]`) →
+  twin digests every note into doctrine/books/code/bid_only/**reference_quality**
+  (the robots file repair tasks on OUR bad records) and posts "Learned: …" receipts.
+- **Reference grading** (v2.2545, `referenceGrade.ts`): A/B/C/D/X by field presence
+  (blind-safe); quality flags (round value, weak loss, uncategorized, stale) computed
+  at unseal; only clean A/B references count in gate denominators.
+- **Census/placement toolkit** (harness-side): `scripts/twin-census/` T1 vector census +
+  T2 path census + T3 template matcher + T4 auto-scorecard kernel; `takeoffPlacement.ts`
+  coordinate kernel; PLACEMENT.md is the vision-model manual and the doctrine ledger
+  (BT-17..19 slate banked 2026-09-01).
+- **Drive intake**: `file_plans` → Shared Drive "PipeTooling Jobs" folder + plan PDF
+  upload + bid stamps (see `DRIVE_INTAKE_SETUP.md`).
+- **Fleet console**: Settings → System → Digital twins (dev-only) — mint, tokens,
+  rungs, CT-seat status, runs ledger.
+
+## The fleet roadmap & gates
+
+The trust ladder for letting robots estimate for real (previously recorded only in
+session artifacts; this is its doc home):
+
+- **Gate A — backtests** (MET 2026-08-31): re-estimate decided historical bids blind;
+  three consecutive within ±5% on distinct sets (BT-12 −2.6% / BT-13 +4.6% /
+  BT-14 +3.5%). Backtest slates keep running as doctrine reps (BT-6..BT-19 so far;
+  structured scores in `twin_run_scores`, v2.2560).
+- **Phase 1 — Shadow (current)**: live bids become the test stream. A shadow opens
+  before the human number exists, locks a sealed blind total, and auto-scores when
+  the reference sends (`twin_shadow_runs`, v2.2539). The seal is API-enforced —
+  staff cannot read a sealed total (anchoring risk).
+- **Gate B — per axis**: 5 consecutive scored runs within ±8% on a project-type axis
+  (kitchen/occupied, small TI, institutional, …). Kernel `confidenceBoard.ts`;
+  denominators take only clean grade-A/B references.
+- **After Gate B** (per axis, owner decision): the twin's number graduates from
+  practice to a draft the owner prices from — the two human gates (takeoff review;
+  price-and-send) never delegate.
+
+## Where the program stands (2026-09-01)
+
+- Fleet: `twin-estimator-1` at **rung 2** (fenced writer), CT seat linked. Missions
+  M1–M3 PASS, M4/M6 series through M6-v8 + M5/M5b run (see `missions/estimator.md`
+  results table — the M-series found real bugs every run).
+- **Phase 1 · Shadow, Gate B 0/8 axes.** Scoreboard pills: **24 audits pending (the
+  bottleneck)**, 4 shadows awaiting score, 8 scored runs. Axis states: kitchen/occupied,
+  mid-size TI, small TI at 1/5; institutional BLOCKED (district wage-tier multiplier —
+  question on the b422 audit); proto/auto-service BLOCKED (untraced-footage regression);
+  bank-branch, franchise-oil-change, vet-clinic awaiting score.
+- **Backtest supply** (v2.2594 Queue section): 108 gate-eligible A/B references exist
+  (54 more flagged), **all unclassified** — assigning `bids.backtest_axis` is how they
+  surface under the axes that need them. (Reference survey 2026-08-31: 132 Tier-A
+  of 344 decided bids.)
+- Pending owner ruling: question 836b6c22 (small-TI residual + Take 5 proto package —
+  recorded, deliberately not applied).
 
 ## Day-to-day operation
 
-Everything routine happens in **Settings → System → Digital twins** — you need the
-`dev` role in the app. Mint a twin, issue it a token, hand the token + the two
-endpoint URLs + `TWIN_HARNESS.md` to whoever runs the agent (their agent can also
-fetch the docs itself via `get_harness_guide`/`get_brief`). Revoke a token to cut off
-one partner; the runs ledger shows every sign-in and report.
+Everything routine happens in **Settings → System → Digital twins** (dev role): mint a
+twin, issue a token (shown once), hand token + endpoints + `TWIN_HARNESS.md` to whoever
+runs the agent. Revoke a token to cut one partner off; the runs ledger shows sign-ins,
+reports, and heartbeats.
 
-Running a mission: give the agent its token, say "run M2" — it fetches the mission
-verbatim via `get_mission` and files results via `submit_report`. Score independently
-against the verification sections in `missions/estimator.md` (the MCP bundle
-deliberately excludes them).
+The working loops, in the order a day usually runs:
+1. **Audits first** — the Dashboard card / Audits tab; verdicts + answers unblock
+   everything downstream. Finished audits get digested by the twin next session.
+2. **Score shadows** — `score_shadows` (any twin session) whenever reference bids have
+   gone out; the Scoreboard shows what moved.
+3. **Feed the queue** — Queue lens: paste kickoff prompts for requested/ready live bids
+   (shadows) and for backtest candidates on hungry axes; classify unclassified
+   references while you're there.
+4. **Missions** — "run M<N>": the agent fetches the mission via `get_mission` and files
+   `submit_report`; score against `missions/estimator.md` (the MCP bundle deliberately
+   excludes verification sections).
 
 ## Secrets & access
 
-- **You don't need any shared secret to operate.** Per-twin tokens are minted in the
-  panel by any dev; that is the intended day-to-day path.
-- The **master `TWIN_LOGIN_SECRET`** (mints any twin; rotating it is the fleet kill
-  switch) and the **CT bridge secret** (`CT_MANAGE_USER_SECRET`) live as function
-  secrets, with the only readable copies in the owner's main-checkout
-  `.env.twin.local` (gitignored). Ask Robert if you truly need them; rotation:
-  `supabase secrets set <NAME>=…` on the respective project. Never store secrets in
-  the CountTooling repo (it does not gitignore `*.local`).
-- CT project ref `hrqxvfydmvtvwhvefmqc`; PT `yewfzhbofbbyvkvtaatw`. CT migrations
-  apply via Supabase MCP `apply_migration` (its `db push` refuses); PT migrations only
-  via `db push` after merge — see CLAUDE.md.
+Unchanged since 2026-08-28: per-twin tokens minted in the panel are the day-to-day
+path; the master `TWIN_LOGIN_SECRET` (fleet kill switch) and CT bridge secret live as
+function secrets with readable copies only in the owner's main-checkout
+`.env.twin.local`. CT ref `hrqxvfydmvtvwhvefmqc` (migrations via Supabase MCP); PT
+`yewfzhbofbbyvkvtaatw` (migrations only via `db push` after merge — CLAUDE.md).
+Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
 
 ## Open threads, prioritized
 
-1. **Run M2** (rung 1, no schema work — just operate the panel and score it), then
-   graduate twin-estimator-1 to rung 2 and **run M3** (first fenced-write mission;
-   watch the write fence in anger).
-2. **The question/RFI primitive → agent dashboard** (owner's long-term direction,
-   roadmap agreed 2026-08-28; previously unrecorded):
-   1. `twin_questions` table (twin, bid, mission, question, status
-      open/answered/forwarded, answer, answered_by) + an `ask_question` MCP tool —
-      twins create value even read-only by asking sharp questions when blocked.
-   2. `get_answers` MCP tool — agents are stateless between runs; answers must be
-      pullable so a blocked twin resumes after the owner rules.
-   3. Heartbeat/status on `twin_runs` (current mission, bid, working/blocked/done) so
-      "see all my agents running" is a query.
-   4. "Draft RFI to GC" — compose from a twin question over the existing
-      `bid_gc_recipients` + GC email infrastructure.
-   Then the dashboard surface itself: fleet status + question inbox + a Dashboard
-   nudge when a twin blocks. Mockup teaser exists in the "Digital Twins Fleet
-   Console" artifact (last section).
-3. **CountTooling parity, deferred deliberately**: 🤖 banner on CT, CT per-twin
-   credentials (today CT trusts the PT-held secret via the two-app mint), a CT app
-   directory doc bundled into `get_directory` (today's bundle is PT-centric with a CT
-   section in the estimator brief).
-4. **Metrics hygiene**: add `AND NOT is_digital_twin` exclusions to company metrics
-   as twins start touching more surfaces (usage stats, hours rollups).
-5. **Pooled seats** (`twin:<role>:any` allocation) if the fleet grows beyond
-   hand-assigned numbers; Phase 2 of the plan (other roles) after the estimator
-   sandbox proves out.
+1. **Audit throughput** — 24 pending is the program's limiting reagent; every blocked
+   axis and undigested note waits on it. (The cockpit's one-tap verdicts exist; the
+   backlog is human hours.)
+2. **Unblock the two blocked axes** — answer the b422 wage-tier multiplier question
+   (institutional); resolve the proto/auto-service site-scope question.
+3. **Classify the 108 backtest candidates** (Queue lens, after the v2.2594 migration
+   is pushed) so backtest slates draw from demand instead of judgment.
+4. **Owner ruling on 836b6c22** (small-TI residual + Take 5 package doctrine).
+5. **Wendi's LIVSTE takeoff to CT cloud** — M4/M6's reference diff has been blocked on
+   it since 08-30; the review-gate walk needs it too.
+6. **Standing earlier threads**: metrics hygiene (`AND NOT is_digital_twin` as twins
+   touch more surfaces), pooled seats if the fleet grows, other roles (Phase 2) only
+   by explicit owner decision.
 
 ## Gotchas that will bite
 
 - **`briefs.ts` is generated.** After editing anything in `docs/twins/`, run
   `node scripts/build-twin-mcp-briefs.mjs` and redeploy `twin-mcp`, or agents keep
-  reading the old docs. Missions bundle only the verbatim mission text — never add
-  scorer sections above the results table without checking the generator.
-- **Function secrets apply on cold start.** After `supabase secrets set`, warm
-  isolates keep old values — redeploy the function to force it (bit us on cutover
-  day).
-- **Re-run the fence after bid-family DDL.** Any migration that CREATEs a table in
-  the bid family must end with `SELECT public.apply_digital_twin_write_blocks();`
-  (plus the two read-only appliers — house rule).
-- **twin_runs note formats are parsed** by `twinConsoleDisplay.ts` (the panel's
-  plain-English feed) — if you change what twin-login/twin-mcp write, update the
-  kernel and its tests.
-- **Scoring stays outside the MCP.** Never hand a twin the verification sections;
-  that separation is what makes mission results meaningful.
+  reading the old docs. Missions bundle only the verbatim mission text — scorer
+  sections stay out.
+- **Function secrets apply on cold start** — redeploy after `supabase secrets set`.
+- **Re-run the fence after bid-family DDL**: CREATE TABLE migrations in the bid family
+  end with `SELECT public.apply_digital_twin_write_blocks();` plus the two read-only
+  appliers. Fence spot-probe via `?as=twin:estimator:1` after every push. Known gap
+  (M5, question 5170bb88): `cost_estimate_labor_rows` has no `bid_id` column, so the
+  fence denies twin labor writes and the Labor tab swallows the 403 — open pipeline
+  work.
+- **twin_runs note formats are parsed** by `twinConsoleDisplay.ts` — change what
+  twin-login/twin-mcp write and you update the kernel + tests.
+- **Scoring stays outside the MCP** — never hand a twin the verification sections;
+  and the shadow seal is the same doctrine for humans: a sealed robot number visible
+  pre-send could anchor the estimate.
+- **The blind rule is structural but also behavioral**: kickoff prompts carry bid
+  number + axis only. Never paste a reference's value/outcome into a twin session
+  that will run it.

@@ -26,6 +26,16 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     bulkDeleteAlerts: null,
     claimDevRefusedCount: null,
     claimDevLookbackDays: 7,
+    robotAuditsEnabled: true,
+    robotAuditsPending: 0,
+    d22UncodedEnabled: true,
+    d22UncodedCount: 0,
+    lienUnconditionalEnabled: true,
+    lienUnconditionalOwed: null,
+    demandDeadlineEnabled: true,
+    demandDeadlineOverdue: null,
+    lienWatchEnabled: true,
+    lienWatch: null,
     ...overrides,
   }
 }
@@ -241,6 +251,109 @@ describe('buildNeedsYouItems', () => {
     expect(cd?.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
     expect(buildNeedsYouItems(inputs({ claimDevRefusedCount: 0 }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ claimDevRefusedCount: null }))).toEqual([])
+  })
+
+  it('robot-audits (v2.2573): amber work-queue item for the auditing roles, gone at zero or when disabled', () => {
+    expect(buildNeedsYouItems(inputs({ robotAuditsPending: 0 }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ robotAuditsEnabled: false, robotAuditsPending: 23 }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ robotAuditsPending: 1 }))
+    expect(one[0]?.key).toBe('robot-audits')
+    expect(one[0]?.severity).toBe('amber')
+    expect(one[0]?.title).toBe('One robot bid is waiting on your audit')
+    expect(one[0]?.actionLabel).toBe('Open Audits')
+    const many = buildNeedsYouItems(inputs({ robotAuditsPending: 23 }))
+    expect(many[0]?.title).toBe('23 robot bids are waiting on your audit')
+    expect(many[0]?.figure).toBe('23')
+    expect(buildNeedsYouItems(inputs({ robotAuditsPending: 120 }))[0]?.figure).toBe('99+')
+  })
+
+  it('d22-uncoded (v2.2627): amber hygiene item for the ledger-teaching roles, gone at zero or when disabled', () => {
+    expect(buildNeedsYouItems(inputs({ d22UncodedCount: 0 }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ d22UncodedEnabled: false, d22UncodedCount: 40 }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ d22UncodedCount: 1 }))
+    expect(one[0]?.key).toBe('d22-uncoded')
+    expect(one[0]?.severity).toBe('amber')
+    expect(one[0]?.kicker).toBe('Division 22')
+    expect(one[0]?.title).toBe('One fixture name has no Division 22 code')
+    expect(one[0]?.actionLabel).toBe('Pin codes')
+    const many = buildNeedsYouItems(inputs({ d22UncodedCount: 1182 }))
+    expect(many[0]?.title).toBe('1182 fixture names have no Division 22 code')
+    expect(many[0]?.figure).toBe('99+')
+    expect(many[0]?.detail).toContain('pin a name once and every bid is fixed')
+  })
+
+  it('lien-unconditional (v2.2582): blue money item, gone at zero, disabled, or while loading', () => {
+    expect(buildNeedsYouItems(inputs({ lienUnconditionalOwed: { count: 0, total: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienUnconditionalEnabled: false, lienUnconditionalOwed: { count: 2, total: 3000 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienUnconditionalOwed: null }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ lienUnconditionalOwed: { count: 1, total: 2200 } }))
+    expect(one[0]?.key).toBe('lien-unconditional')
+    expect(one[0]?.severity).toBe('blue')
+    expect(one[0]?.title).toBe('A payment cleared behind a conditional release')
+    expect(one[0]?.detail).toContain('$2,200')
+    expect(one[0]?.actionLabel).toBe('Issue release')
+    const many = buildNeedsYouItems(inputs({ lienUnconditionalOwed: { count: 3, total: 5400 } }))
+    expect(many[0]?.title).toBe('3 payments cleared behind conditional releases')
+    expect(many[0]?.figure).toBe('3')
+    expect(many[0]?.actionLabel).toBe('Issue releases')
+  })
+
+  it('lien watches (v2.2645): serve-copy red, notice/file windows amber, quiet at empty/disabled/loading', () => {
+    expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [] } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienWatchEnabled: false, lienWatch: { noticeDue: [], filingDue: [], serveDue: [{ serveDue: '2026-09-09' }] } }))).toEqual([])
+    const items = buildNeedsYouItems(
+      inputs({
+        lienWatch: {
+          serveDue: [{ serveDue: '2026-09-09' }],
+          noticeDue: [
+            { deadline: '2026-10-15', openBalance: 2711.5 },
+            { deadline: '2026-11-16', openBalance: 900 },
+          ],
+          filingDue: [{ deadline: '2026-11-16', openBalance: 2711.5 }],
+        },
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['lien-serve-copy', 'lien-notice-window', 'lien-file-window'])
+    expect(items[0]?.severity).toBe('red')
+    expect(items[0]?.title).toBe('A filed lien has not been served')
+    expect(items[1]?.title).toBe('2 lien notice windows close soon (first: 2026-10-15)')
+    expect(items[1]?.detail).toContain('$3,612')
+    expect(items[2]?.title).toBe('A lien filing window closes 2026-11-16')
+  })
+
+  it('demand-deadline (v2.2640): red follow-through item, quiet at zero/disabled/loading', () => {
+    expect(buildNeedsYouItems(inputs({ demandDeadlineOverdue: { count: 0, total: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ demandDeadlineEnabled: false, demandDeadlineOverdue: { count: 2, total: 5000 } }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ demandDeadlineOverdue: { count: 1, total: 2711.5 } }))
+    expect(one[0]?.key).toBe('demand-deadline')
+    expect(one[0]?.severity).toBe('red')
+    expect(one[0]?.title).toBe('A demand-letter deadline passed unpaid')
+    expect(one[0]?.detail).toContain('$2,712')
+    const many = buildNeedsYouItems(inputs({ demandDeadlineOverdue: { count: 3, total: 9000 } }))
+    expect(many[0]?.title).toBe('3 demand-letter deadlines passed unpaid')
+  })
+
+  it('lien-unconditional sits in the received-money tier: below ar-deposits, above billing accuracy', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        arBankUnallocatedCount: 5,
+        tallyStaleUnlinkedCount: 2,
+        lienUnconditionalOwed: { count: 1, total: 2200 },
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['ar-deposits', 'lien-unconditional', 'tally-self'])
+  })
+
+  it('robot-audits shares the people/planning tier: below revenue chasing, above hygiene', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        jobFollowupCount: 3,
+        jobFollowupStageCounts: null,
+        robotAuditsPending: 23,
+        lostBidNudge: { count: 60, value: 8_700_000 },
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['job-followups', 'robot-audits', 'lost-bids'])
   })
 
   it('worst-first: a full house ranks alerts, money, deadline, billing, chasing, people, hygiene', () => {

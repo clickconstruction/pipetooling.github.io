@@ -17,6 +17,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   renderWeeklyMoneyHtml,
@@ -100,7 +101,8 @@ serve(async (req) => {
     const payload = payloadRaw as WeeklyMoneyPayload
     if (!payload || !Array.isArray(payload.jobs)) return jsonResponse({ error: 'empty payload' }, 500)
     const weekLabel = weekLabelFromMonday(payload.week_monday)
-    const subject = weeklyMoneySubject(weekLabel)
+    const wording = await resolveServerEmailWording('weekly_money', { week: weekLabel }, weeklyMoneySubject(weekLabel))
+    const subject = wording.subject
 
     let sent = 0
     const errors: string[] = []
@@ -135,8 +137,8 @@ serve(async (req) => {
             from: FROM,
             to: [recipientEmail],
             subject,
-            html: renderWeeklyMoneyHtml(payload, weekLabel, requester?.name ?? undefined),
-            text: renderWeeklyMoneyText(payload, weekLabel),
+            html: (wording.introHtml ?? '') + renderWeeklyMoneyHtml(payload, weekLabel, requester?.name ?? undefined),
+            text: (wording.introText ? wording.introText + '\n\n' : '') + renderWeeklyMoneyText(payload, weekLabel),
             ...(replyTo ? { reply_to: replyTo } : {}),
           }),
         })

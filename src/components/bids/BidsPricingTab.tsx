@@ -45,6 +45,14 @@ import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
+import { bidPackageLabel } from '../../lib/bidPackageLabel'
+import { SpecSectionAuditModal } from './SpecSectionAuditModal'
+import { PrepareFixtureCopyModal } from './PrepareFixtureCopyModal'
+import { PlugInQuotesModal } from './PlugInQuotesModal'
+import { QuoteCompareModal } from './QuoteCompareModal'
+import { RfqDeskModal } from './RfqDeskModal'
+import { RfqComposeModal } from './RfqComposeModal'
+import { deriveRfqChip, type DeskRfq } from '../../lib/rfq/rfqDesk'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -135,6 +143,8 @@ type BidsPricingTabProps = {
   selectedPricingVersionId: string | null
   setSelectedPricingVersionId: Dispatch<SetStateAction<string | null>>
   pricingCountRows: BidCountRow[]
+  bidCountRowCustomCosts: Array<{ id: string; count_row_id: string; unit_materials_cents: number; house_name: string | null; lot_group_id: string | null; applied_at: string }>
+  reloadBidCustomCosts: () => Promise<void>
   pricingCostEstimate: CostEstimate | null
   pricingLaborRows: CostEstimateLaborRow[]
   pricingEquipmentRows: CostEstimateEquipmentRow[]
@@ -238,6 +248,8 @@ export function BidsPricingTab({
   selectedPricingVersionId,
   setSelectedPricingVersionId,
   pricingCountRows,
+  bidCountRowCustomCosts,
+  reloadBidCustomCosts,
   pricingCostEstimate,
   pricingLaborRows,
   pricingEquipmentRows,
@@ -293,6 +305,9 @@ export function BidsPricingTab({
   const [pricingEntryTopOut, setPricingEntryTopOut] = useState('')
   const [pricingEntryTrimSet, setPricingEntryTrimSet] = useState('')
   const [pricingEntryTotal, setPricingEntryTotal] = useState('')
+  // Combined-mode Price input keeps the raw string the user types; binding it to the
+  // auto-toFixed(2) total reformatted the field on every keystroke ("21.00" → "2.01").
+  const [pricingEntryCombinedPrice, setPricingEntryCombinedPrice] = useState('')
   const [savingPricingEntry, setSavingPricingEntry] = useState(false)
   const [savingPricingAssignment, setSavingPricingAssignment] = useState<string | null>(null)
   const [deletePricingVersionModalOpen, setDeletePricingVersionModalOpen] = useState(false)
@@ -742,6 +757,84 @@ export function BidsPricingTab({
   const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
   // Package and send (Pricing tab → "Package and send" modal — left of CSV)
   const [packageSendOpen, setPackageSendOpen] = useState(false)
+  const [d22AuditOpen, setD22AuditOpen] = useState(false)
+  const [prepareCopyOpen, setPrepareCopyOpen] = useState(false)
+  // RFQ Phase 1 (v2.2630, docs/SUPPLY_HOUSE_RFQ_PLAN.md): plug in supply house
+  // replies and compare them. Cost-side data — the same roles that can Share.
+  const [plugInQuoteOpen, setPlugInQuoteOpen] = useState(false)
+  const [quotesCompareOpen, setQuotesCompareOpen] = useState(false)
+  const [quoteCount, setQuoteCount] = useState(0)
+  const [quoteNonce, setQuoteNonce] = useState(0)
+  // Lane B (v2.2636): the header chip is derived from the bid's requests +
+  // their email delivery state (deriveRfqChip — none / quotes-only / waiting /
+  // bounced / all-in). The desk and compose modals hang off it.
+  const [deskRfqs, setDeskRfqs] = useState<DeskRfq[]>([])
+  const [rfqDeskOpen, setRfqDeskOpen] = useState(false)
+  const [composeScope, setComposeScope] = useState<{ lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string } | null>(null)
+  useEffect(() => {
+    const bidId = selectedBidForPricing?.id
+    if (!bidId || !canPackageAndSendBidPricing) {
+      setQuoteCount(0)
+      setDeskRfqs([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const [{ count, error }, { data: rfqs, error: rErr }] = await Promise.all([
+        supabase.from('bid_quotes').select('id', { count: 'exact', head: true }).eq('bid_id', bidId),
+        supabase
+          .from('bid_rfqs')
+          .select('id, status, supply_house_id, sent_to, sent_email, resend_email_id, created_at, viewed_at, last_reminded_at, reminder_count, needed_by')
+          .eq('bid_id', bidId)
+          .neq('status', 'draft'),
+      ])
+      if (cancelled) return
+      if (!error) setQuoteCount(count ?? 0)
+      if (!rErr) {
+        const resendIds = (rfqs ?? []).map((r) => r.resend_email_id).filter((x): x is string => !!x)
+        const eventById = new Map<string, string>()
+        if (resendIds.length > 0) {
+          const { data: logs } = await supabase.from('email_send_log').select('resend_email_id, last_event').in('resend_email_id', resendIds)
+          for (const l of logs ?? []) if (l.resend_email_id && l.last_event) eventById.set(l.resend_email_id, l.last_event)
+        }
+        if (cancelled) return
+        setOpenRfqHouseIds(new Set((rfqs ?? []).filter((r) => r.status === 'sent' && r.supply_house_id).map((r) => r.supply_house_id as string)))
+        setDeskRfqs(
+          (rfqs ?? []).map((r) => ({
+            id: r.id,
+            houseName: r.sent_to,
+            sentEmail: r.sent_email,
+            status: (r.status ?? 'sent') as DeskRfq['status'],
+            createdAt: r.created_at,
+            viewedAt: r.viewed_at,
+            lastRemindedAt: r.last_reminded_at,
+            reminderCount: r.reminder_count ?? 0,
+            neededBy: r.needed_by,
+            emailLastEvent: r.resend_email_id ? (eventById.get(r.resend_email_id) ?? null) : null,
+            scopeLines: [],
+          })),
+        )
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBidForPricing?.id, canPackageAndSendBidPricing, quoteNonce])
+  const [openRfqHouseIds, setOpenRfqHouseIds] = useState<Set<string>>(new Set())
+  const rfqChip = deriveRfqChip(deskRfqs, quoteCount)
+
+  // Deep link from the dashboard's Division 22 Needs You item (v2.2627):
+  // /bids?tab=pricing&d22audit=1 opens the audit, then strips the param so a
+  // reload or back-nav doesn't reopen it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('d22audit') !== '1') return
+    if (canPackageAndSendBidPricing) setD22AuditOpen(true)
+    params.delete('d22audit')
+    const qs = params.toString()
+    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; the param is a one-shot door
+  }, [])
   // F2 (v2.2120): Share / Print / CSV honor the ★. When the scenario you're viewing isn't the
   // customer's, a chooser asks which price to use; picking ★ loads that scenario's prices on
   // the fly (no view switch), so "the ★ is what the customer sees — Cover Letter, Share, Print,
@@ -862,6 +955,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setPricingEntryCombinedPrice('')
     setDeletePricingVersionNameInput('')
     setDeletePricingVersionError(null)
   }, [selectedServiceTypeId])
@@ -1382,6 +1476,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setPricingEntryCombinedPrice('')
     setError(null)
     setPricingEntryFormOpen(true)
   }
@@ -1400,6 +1495,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setPricingEntryCombinedPrice('')
     setEntryFormTargetPricing(true)
     setError(null)
     setPricingEntryFormOpen(true)
@@ -1413,6 +1509,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut(String(entry.top_out_price))
     setPricingEntryTrimSet(String(entry.trim_set_price))
     setPricingEntryTotal(String(entry.total_price))
+    setPricingEntryCombinedPrice(String(entry.total_price))
     setError(null)
     setPricingEntryFormOpen(true)
   }
@@ -1425,6 +1522,7 @@ export function BidsPricingTab({
     setPricingEntryTopOut('')
     setPricingEntryTrimSet('')
     setPricingEntryTotal('')
+    setPricingEntryCombinedPrice('')
     setEntryFormTargetPricing(false)
     setError(null)
   }
@@ -2521,6 +2619,20 @@ export function BidsPricingTab({
   /** Shared derive for BOTH pricing views (Old grid + New Workbench): totals,
       decorated rows, and the row-breakdown opener. Null until a Pricing,
       Counts, and cost estimate exist. */
+  /** Rung G: revert an applied quote cost — lot groups revert together. */
+  async function revertCustomCost(cc: { id: string; lot_group_id: string | null; house_name: string | null }) {
+    const q = cc.lot_group_id
+      ? supabase.from('bid_count_row_custom_costs').delete().eq('lot_group_id', cc.lot_group_id)
+      : supabase.from('bid_count_row_custom_costs').delete().eq('id', cc.id)
+    const { error } = await q
+    if (error) {
+      showToast(error.message, 'error')
+      return
+    }
+    showToast(cc.lot_group_id ? 'Package costs reverted to takeoff.' : 'Cost reverted to takeoff.', 'success')
+    await reloadBidCustomCosts()
+  }
+
   function derivePricingWorkbench() {
     if (!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate) return null
                 const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
@@ -2688,6 +2800,36 @@ export function BidsPricingTab({
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+                {/* v2.2630/31/36: one chip, five states (deriveRfqChip) — quotes-only
+                    opens compare (as shipped); any request opens the RFQ desk. */}
+                {canPackageAndSendBidPricing && rfqChip.kind !== 'none' ? (
+                  <button
+                    type="button"
+                    onClick={() => (rfqChip.kind === 'desk' ? setRfqDeskOpen(true) : setQuotesCompareOpen(true))}
+                    title={rfqChip.kind === 'desk' ? 'Open the price-request desk' : 'Compare supply house quotes on this bid'}
+                    style={{
+                      padding: '0.45rem 0.8rem',
+                      background: rfqChip.kind === 'desk' && rfqChip.tone === 'amber' ? 'var(--bg-yellow-tint)' : 'var(--surface)',
+                      color:
+                        rfqChip.kind === 'quotes'
+                          ? 'var(--text-blue-500)'
+                          : rfqChip.tone === 'red'
+                            ? '#ef4444'
+                            : rfqChip.tone === 'amber'
+                              ? 'var(--text-amber-700)'
+                              : '#15803d',
+                      border: `1px solid ${rfqChip.kind === 'quotes' ? '#3b82f6' : rfqChip.tone === 'red' ? '#ef4444' : rfqChip.tone === 'amber' ? '#f59e0b' : '#16a34a'}`,
+                      borderRadius: 999,
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {rfqChip.label}
+                  </button>
+                ) : null}
                 {/* v2.2198 (option A, artifact df8daa33): Share keeps one click; Print / CSV / review live in the ▾ menu. */}
                 <PricingShareMenu
                   canShare={canPackageAndSendBidPricing}
@@ -2700,9 +2842,14 @@ export function BidsPricingTab({
                   onShare={() => requestWithStarCheck('share')}
                   csvDisabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
                   csvTitle="Select a price book and ensure Counts and Labor exist"
+                  fixturesDisabled={pricingCountRows.length === 0}
+                  fixturesTitle="Add Counts first — nothing to copy yet"
                   onPrint={() => printPricingPage()}
                   onCsv={() => downloadPricingCsv()}
                   onReview={() => void printAllPricingPages()}
+                  onCopyFixtures={() => setPrepareCopyOpen(true)}
+                  onOpenD22Audit={canPackageAndSendBidPricing ? () => setD22AuditOpen(true) : undefined}
+                  onPlugInQuote={canPackageAndSendBidPricing ? () => setPlugInQuoteOpen(true) : undefined}
                 />
                 {!narrowViewport640 ? (
                   <button
@@ -4868,8 +5015,22 @@ export function BidsPricingTab({
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>{r.countRow.fixture ?? '—'}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>{r.count}</td>
-                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }}>
+                                <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.cost > 0 ? 'var(--text-700)' : 'var(--text-muted)' }} onClick={(e) => e.stopPropagation()}>
                                   {r.cost > 0 ? `$${formatCurrency(r.cost / r.count)}` : 'no cost'}
+                                  {(() => {
+                                    const cc = bidCountRowCustomCosts.find((c) => c.count_row_id === r.countRow.id)
+                                    if (!cc) return null
+                                    return (
+                                      <button
+                                        type="button"
+                                        title={`Materials from ${cc.house_name ?? 'a quote'} (${cc.applied_at.slice(5, 10)})${cc.lot_group_id ? ' — part of a package; reverting reverts the whole package' : ''} — click to revert to takeoff`}
+                                        onClick={() => void revertCustomCost(cc)}
+                                        style={{ display: 'block', marginLeft: 'auto', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, color: '#15803d', background: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                      >
+                                        {cc.house_name ?? 'quote'} ↩
+                                      </button>
+                                    )
+                                  })()}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', minWidth: '9rem' }} onClick={(e) => e.stopPropagation()}>
                                   {r.entry ? (
@@ -6112,8 +6273,11 @@ export function BidsPricingTab({
                       inputMode="decimal"
                       min={0}
                       step={0.01}
-                      value={pricingEntryTotal}
+                      value={pricingEntryCombinedPrice}
                       onChange={(e) => {
+                        // Keep the raw string in the field — reformatting mid-typing moved the
+                        // cursor and mangled entries like 21.00 → 2.01 (Wendi, v2.2644).
+                        setPricingEntryCombinedPrice(e.target.value)
                         // Combined edits land in Rough In: RI absorbs the change so the total matches.
                         const v = parseFloat(e.target.value) || 0
                         const top = parseFloat(pricingEntryTopOut) || 0
@@ -6261,6 +6425,105 @@ export function BidsPricingTab({
           </div>
         )
       })() : null}
+
+      <SpecSectionAuditModal open={d22AuditOpen} onClose={() => setD22AuditOpen(false)} />
+
+      {selectedBidForPricing ? (
+        <PrepareFixtureCopyModal
+          open={prepareCopyOpen}
+          onClose={() => setPrepareCopyOpen(false)}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
+          quoteLink={
+            canPackageAndSendBidPricing
+              ? { bidId: selectedBidForPricing.id, bidVersionId: selectedPricingVersionId ?? null }
+              : undefined
+          }
+          onRfqMinted={() => setQuoteNonce((n) => n + 1)}
+          onSendByEmail={
+            canPackageAndSendBidPricing
+              ? (scope) => {
+                  setPrepareCopyOpen(false)
+                  setComposeScope(scope)
+                }
+              : undefined
+          }
+        />
+      ) : null}
+
+      {selectedBidForPricing ? (
+        <RfqDeskModal
+          open={rfqDeskOpen}
+          onClose={() => setRfqDeskOpen(false)}
+          onCompare={() => {
+            setRfqDeskOpen(false)
+            setQuotesCompareOpen(true)
+          }}
+          onNewRequest={() => {
+            setRfqDeskOpen(false)
+            setPrepareCopyOpen(true)
+          }}
+          onChanged={() => setQuoteNonce((n) => n + 1)}
+          bidId={selectedBidForPricing.id}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
+        />
+      ) : null}
+
+      {selectedBidForPricing && composeScope ? (
+        <RfqComposeModal
+          open={composeScope != null}
+          onClose={() => setComposeScope(null)}
+          onSent={() => {
+            setQuoteNonce((n) => n + 1)
+            setRfqDeskOpen(true)
+          }}
+          bidId={selectedBidForPricing.id}
+          bidVersionId={selectedPricingVersionId ?? null}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          scope={composeScope}
+          openRfqHouseIds={openRfqHouseIds}
+          plansLink={selectedBidForPricing.plans_link ?? null}
+        />
+      ) : null}
+
+      {selectedBidForPricing ? (
+        <PlugInQuotesModal
+          open={plugInQuoteOpen}
+          onClose={() => setPlugInQuoteOpen(false)}
+          onSaved={() => {
+            setQuoteNonce((n) => n + 1)
+            setQuotesCompareOpen(true)
+          }}
+          bidId={selectedBidForPricing.id}
+          bidVersionId={selectedPricingVersionId ?? null}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
+        />
+      ) : null}
+
+      {selectedBidForPricing ? (
+        <QuoteCompareModal
+          open={quotesCompareOpen}
+          onClose={() => setQuotesCompareOpen(false)}
+          onPlugIn={() => {
+            setQuotesCompareOpen(false)
+            setPlugInQuoteOpen(true)
+          }}
+          bidId={selectedBidForPricing.id}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
+          takeoffMaterialsByCountRowId={pricingFixtureMaterialsFromTakeoff}
+          taxPercent={parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0}
+          currentTotals={(() => {
+            const d = derivePricingWorkbench()
+            return d ? { totalRevenue: d.totalRevenue, totalCost: d.totalCost } : null
+          })()}
+          onCostsApplied={() => {
+            void reloadBidCustomCosts()
+          }}
+        />
+      ) : null}
 
       {packageSendOpen && selectedBidForPricing && selectedPricingVersionId && pricingPackageSource ? (
         <PackageAndSendBidPricingModal

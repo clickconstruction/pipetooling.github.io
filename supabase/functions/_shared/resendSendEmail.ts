@@ -11,7 +11,8 @@ export async function sendEmailViaResend(
   textPlain: string,
   htmlBody: string,
   resendApiKey: string,
-): Promise<{ success: boolean; error?: string }> {
+  options?: { replyTo?: string; cc?: string[] },
+): Promise<{ success: boolean; error?: string; resendEmailId?: string }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -24,6 +25,8 @@ export async function sendEmailViaResend(
       subject,
       html: htmlBody,
       text: textPlain,
+      ...(options?.replyTo ? { reply_to: options.replyTo } : {}),
+      ...(options?.cc && options.cc.length > 0 ? { cc: options.cc } : {}),
     }),
   })
   if (!resendResponse.ok) {
@@ -31,6 +34,6 @@ export async function sendEmailViaResend(
     return { success: false, error: errorData.message || `Resend ${resendResponse.status}` }
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: PIPETOOLING_FROM, subject })
-  return { success: true }
+  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to, ...(options?.cc ?? [])], from: PIPETOOLING_FROM, subject })
+  return { success: true, resendEmailId: sent.id }
 }

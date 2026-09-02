@@ -12,6 +12,8 @@ export async function logEmailSendBestEffort(args: {
   to: string[]
   from: string
   subject: string
+  /** EMAIL_CATALOG id (src/lib/emailCatalog.ts) — feeds per-type stats in Settings (v2.2656). */
+  emailType?: string | null
 }): Promise<void> {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -33,6 +35,7 @@ export async function logEmailSendBestEffort(args: {
         subject: args.subject,
         last_event: 'sent',
         source: 'app',
+        ...(args.emailType ? { email_type: args.emailType } : {}),
       }),
     })
   } catch {

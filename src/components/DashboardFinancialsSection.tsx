@@ -1,7 +1,19 @@
-import { Fragment, useEffect, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { stripTrailingZip } from '../lib/displayAddress'
 import { buildArLineItemsByJob, type ArLineItem } from '../lib/arModalLineItems'
+import DashboardArCustomersView from './DashboardArCustomersView'
+import DashboardArCallCard, { ArChasePillTag } from './DashboardArCallCard'
+import { buildArCustomerRollup } from '../lib/arCustomerRollup'
+import { arCustomerChasePill } from '../lib/arCustomerChase'
+import { parseChaseTouchesRpc, type ChaseTouch } from '../lib/jobs/paymentChase'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import {
+  parsePaySpeedsRpc,
+  parsePromisedPayDatesRpc,
+  type PaySpeedData,
+  type PromisedPayDate,
+} from '../lib/jobs/billedExpectedPay'
 import { Link, useNavigate } from 'react-router-dom'
 import { groupPayrollStubItems, isPayrollPersonGroup, payrollWeekLabel, type PayrollRowOrGroup } from '../lib/apPayrollGroups'
 import { formatCurrency } from '../lib/format'
@@ -475,6 +487,54 @@ function ItemsModal({
   const isMobile = useIsMobile()
   const [drillQuery, setDrillQuery] = useState('')
   const [drillSort, setDrillSort] = useState<FinanceDrillSort>('amount')
+  // AR "Customers" view (v2.2571, mockup Variant A): the default lens groups
+  // the same bucket items by customer against their pay-speed baseline; the
+  // Bills toggle keeps today's flat list one tap away.
+  const [arView, setArView] = useState<'customers' | 'bills'>('customers')
+  const [arPaySpeeds, setArPaySpeeds] = useState<PaySpeedData | null>(null)
+  useEffect(() => {
+    if (cardKey !== 'ar') return
+    let cancelled = false
+    // Fail-soft: a gated/failed RPC just means no pace lens — grouping still works.
+    void supabase
+      .rpc('get_billed_customer_pay_speeds' as never)
+      .then(({ data: raw }) => {
+        if (!cancelled) setArPaySpeeds(parsePaySpeedsRpc(raw as unknown))
+      }, () => {})
+    return () => {
+      cancelled = true
+    }
+  }, [cardKey])
+  const arCustomersActive = cardKey === 'ar' && arView === 'customers'
+  const arTodayYmd = new Date().toLocaleDateString('en-CA')
+  const arRollup = useMemo(
+    () => (cardKey === 'ar' ? buildArCustomerRollup(bucket.items, arPaySpeeds, arTodayYmd) : null),
+    [cardKey, bucket.items, arPaySpeeds, arTodayYmd],
+  )
+  // Call sheet (v2.2572): chase pills + call card need the Payment Chase inputs.
+  // Office roles only (the Pipeline chase gate); every fetch fails soft.
+  const { role: viewerRole } = useAuth()
+  const canChase = viewerRole === 'dev' || viewerRole === 'master_technician' || isAssistantLike(viewerRole)
+  const [arChaseTouches, setArChaseTouches] = useState<ChaseTouch[] | null>(null)
+  const [arPromises, setArPromises] = useState<Record<string, PromisedPayDate> | null>(null)
+  const [arChaseRefresh, setArChaseRefresh] = useState(0)
+  useEffect(() => {
+    if (cardKey !== 'ar' || !canChase) return
+    let cancelled = false
+    void supabase
+      .rpc('list_payment_chase_touches' as never)
+      .then(({ data: raw }) => {
+        if (!cancelled) setArChaseTouches(parseChaseTouchesRpc(raw as unknown))
+      }, () => {})
+    void supabase
+      .rpc('list_job_promised_pay_dates' as never)
+      .then(({ data: raw }) => {
+        if (!cancelled) setArPromises(parsePromisedPayDatesRpc(raw as unknown))
+      }, () => {})
+    return () => {
+      cancelled = true
+    }
+  }, [cardKey, canChase, arChaseRefresh])
   // AR line items (v2.1595, "Variant B"): one fixtures fetch for every AR job on
   // open. Line items start EXPANDED — a chevron beside the first line collapses
   // a stack back to the compact "N line items" chip; collapsedArLineKeys tracks
@@ -731,6 +791,68 @@ function ItemsModal({
     color: on ? 'var(--text-link)' : 'var(--text-muted)',
   })
 
+  /** AR only: Customers | Bills view pills (desktop controls row + mobile sheet). */
+  const arViewToggle =
+    cardKey === 'ar' ? (
+      <span role="group" aria-label="Group by" style={{ display: 'inline-flex', gap: '0.25rem', flexShrink: 0 }}>
+        <button type="button" aria-pressed={arView === 'customers'} onClick={() => setArView('customers')} style={pillStyle(arView === 'customers')}>
+          Customers
+        </button>
+        <button type="button" aria-pressed={arView === 'bills'} onClick={() => setArView('bills')} style={pillStyle(arView === 'bills')}>
+          Bills
+        </button>
+      </span>
+    ) : null
+  /** Customers-view bill rows reuse the Bills view's address + line-items markup. */
+  const arBillExtras = (item: FinancialItem) => {
+    const extras = arRowExtras(item)
+    if (!extras) return null
+    return (
+      <>
+        {extras.address ? (
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-faint)', marginTop: '0.1rem' }}>{extras.address}</div>
+        ) : null}
+        {arLineItemsBlock(item, extras)}
+      </>
+    )
+  }
+  const arCustomersViewEl =
+    arCustomersActive && arRollup ? (
+      <DashboardArCustomersView
+        rollup={arRollup}
+        query={drillQuery}
+        onOpenJob={onOpenJob}
+        billExtras={arBillExtras}
+        collectionsSection={arCollectionsSection}
+        isMobile={isMobile}
+        rowBadge={(row) => {
+          const pill = arCustomerChasePill({
+            customerId: row.customerId,
+            jobIds: [...new Set(row.bills.map((b) => b.item.jobId).filter((id): id is string => id != null))],
+            pastPace: row.pastPace,
+            touches: arChaseTouches,
+            promises: arPromises,
+            todayYmd: arTodayYmd,
+          })
+          return pill ? <ArChasePillTag pill={pill} /> : null
+        }}
+        expansionFooter={(row) => (
+          <DashboardArCallCard
+            row={row}
+            paySpeeds={arPaySpeeds}
+            touches={arChaseTouches}
+            todayYmd={arTodayYmd}
+            canAct={canChase}
+            linesByJob={arLinesByJob}
+            onChanged={() => setArChaseRefresh((n) => n + 1)}
+          />
+        )}
+      />
+    ) : null
+  const arCustomersCountLabel = arRollup
+    ? `${arRollup.customerCount} customer${arRollup.customerCount === 1 ? '' : 's'} · ${arRollup.billCount} bill${arRollup.billCount === 1 ? '' : 's'}`
+    : ''
+
   if (isMobile) {
     // ── Mobile: full-height sheet with card rows (v2.1483) ──────────────
     // The desktop table overflowed sideways at phone widths (AR/Not Billed
@@ -787,7 +909,7 @@ function ItemsModal({
             <div style={{ marginTop: '0.1rem' }}>
               <span style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bucket.total)}</span>{' '}
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>
-                · {bucket.count} item{bucket.count === 1 ? '' : 's'}
+                · {arCustomersActive ? arCustomersCountLabel : `${bucket.count} item${bucket.count === 1 ? '' : 's'}`}
               </span>
             </div>
           </div>
@@ -796,7 +918,7 @@ function ItemsModal({
               type="search"
               value={drillQuery}
               onChange={(e) => setDrillQuery(e.target.value)}
-              placeholder={`Search ${bucket.count} items…`}
+              placeholder={arCustomersActive && arRollup ? `Search ${arRollup.customerCount} customers…` : `Search ${bucket.count} items…`}
               aria-label="Search items"
               style={{
                 flex: 1,
@@ -810,13 +932,23 @@ function ItemsModal({
                 fontSize: '0.875rem',
               }}
             />
-            <button type="button" aria-pressed={drillSort === 'amount'} onClick={() => setDrillSort('amount')} style={pillStyle(drillSort === 'amount')}>
-              Biggest
-            </button>
-            <button type="button" aria-pressed={drillSort === 'oldest'} onClick={() => setDrillSort('oldest')} style={pillStyle(drillSort === 'oldest')}>
-              Oldest
-            </button>
+            {arViewToggle}
+            {!arCustomersActive ? (
+              <>
+                <button type="button" aria-pressed={drillSort === 'amount'} onClick={() => setDrillSort('amount')} style={pillStyle(drillSort === 'amount')}>
+                  Biggest
+                </button>
+                <button type="button" aria-pressed={drillSort === 'oldest'} onClick={() => setDrillSort('oldest')} style={pillStyle(drillSort === 'oldest')}>
+                  Oldest
+                </button>
+              </>
+            ) : null}
           </div>
+          {arCustomersActive ? (
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 1rem' }}>
+              {arCustomersViewEl}
+            </div>
+          ) : (
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
             {q !== '' && shownCount === 0 ? (
               <p style={{ padding: '1.25rem 1rem', textAlign: 'center', color: 'var(--text-faint)', fontSize: '0.875rem' }}>
@@ -1005,15 +1137,16 @@ function ItemsModal({
               })
             )}
           </div>
+          )}
           <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', gap: '0.75rem', padding: '0.6rem 1rem', borderTop: '1px solid var(--border)', fontSize: '0.8125rem' }}>
-            {q !== '' ? (
+            {q !== '' && !arCustomersActive ? (
               <span style={{ color: 'var(--text-muted)' }}>
                 Showing {shownCount} of {totalItemCount} · <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(shownTotal)}</span>
               </span>
             ) : (
               <span style={{ fontWeight: 600 }}>{footerTotalLabel}</span>
             )}
-            {q === '' ? (
+            {q === '' || arCustomersActive ? (
               <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bucket.total)}</span>
             ) : null}
           </div>
@@ -1097,7 +1230,7 @@ function ItemsModal({
             <h3 id="dashboard-financials-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1, minWidth: 200 }}>
               {meta.title} — ${formatCurrency(bucket.total)}{' '}
               <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
-                ({bucket.count} item{bucket.count === 1 ? '' : 's'})
+                ({arCustomersActive ? arCustomersCountLabel : `${bucket.count} item${bucket.count === 1 ? '' : 's'}`})
               </span>
             </h3>
             <Link to={meta.linkTo} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
@@ -1119,7 +1252,7 @@ function ItemsModal({
               type="search"
               value={drillQuery}
               onChange={(e) => setDrillQuery(e.target.value)}
-              placeholder={`Search ${bucket.count} items…`}
+              placeholder={arCustomersActive && arRollup ? `Search ${arRollup.customerCount} customers…` : `Search ${bucket.count} items…`}
               aria-label="Search items"
               style={{
                 flex: '1 1 12rem',
@@ -1134,6 +1267,9 @@ function ItemsModal({
                 fontSize: '0.875rem',
               }}
             />
+            {arViewToggle}
+            {arCustomersActive ? null : (
+            <>
             <button type="button" aria-pressed={drillSort === 'amount'} onClick={() => setDrillSort('amount')} style={pillStyle(drillSort === 'amount')}>
               Biggest
             </button>
@@ -1159,8 +1295,13 @@ function ItemsModal({
                 </button>
               )
             })}
+            </>
+            )}
           </div>
         </div>
+        {arCustomersActive ? (
+          <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '0 1.25rem' }}>{arCustomersViewEl}</div>
+        ) : (
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '0 1.25rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
@@ -1416,15 +1557,16 @@ function ItemsModal({
             </tbody>
           </table>
         </div>
+        )}
         <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', gap: '0.75rem', padding: '0.6rem 1.25rem', borderTop: '2px solid var(--border)', fontSize: '0.875rem' }}>
-          {filtersActive ? (
+          {filtersActive && !arCustomersActive ? (
             <span style={{ color: 'var(--text-muted)' }}>
               Showing {shownCount} of {totalItemCount} · <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(shownTotal)}</span>
             </span>
           ) : (
             <span style={{ fontWeight: 600 }}>{footerTotalLabel}</span>
           )}
-          {!filtersActive ? (
+          {!filtersActive || arCustomersActive ? (
             <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bucket.total)}</span>
           ) : null}
         </div>

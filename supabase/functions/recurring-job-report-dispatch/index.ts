@@ -185,6 +185,7 @@ serve(async (req) => {
             html,
             textFallback: textFallback || 'Job activity summary (see HTML)',
             resendApiKey,
+            emailType: 'recurring_job_report',
           })
           if (!send.ok) {
             errors.push(`${recipientId}: ${send.error ?? 'send'}`)

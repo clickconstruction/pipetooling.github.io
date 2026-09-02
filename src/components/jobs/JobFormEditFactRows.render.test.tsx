@@ -85,6 +85,9 @@ function Harness({
       jobPicturesLink=""
       setJobPicturesLink={() => {}}
       jobAddress="10 Cascade Gln"
+      customerAddressId={null}
+      setCustomerAddressId={() => {}}
+      propertyCandidates={[]}
       setJobAddress={() => {}}
       customers={gc ? [...CUSTOMERS, gc] : CUSTOMERS}
       customersLoading={false}

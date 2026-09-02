@@ -5,7 +5,7 @@ file: docs/MATERIALS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Map of the Materials.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — the decomposition is COMPLETE (12-PR train, v2.1275–v2.1293): every tab is an extracted component and src/pages/Materials.tsx is a ~2,123-line orchestration shell. This doc records what each tab owns (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling) and where everything landed.
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-09-02
 ---
 
 ## Overview
@@ -15,10 +15,10 @@ last_updated: 2026-08-02
 The page is tab-switched on a single `activeTab` state (search `const [activeTab, setActiveTab]`; the deep-link union is `const MATERIALS_TABS`):
 
 ```
-'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'po-generator'
+'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'job-accounts' | 'po-generator'
 ```
 
-Labels differ from keys: `parts-book` renders as **Parts Book** (the GLOSSARY's "Price Book" — the legacy `?tab=price-book` slug is rewritten to `parts-book` in the URL effect), `assemblies-po` renders as **PO Builder**, `po-generator` renders as **PO Generator**. Tab order in the UI is Supply Houses | PO Generator ‖ Parts Book | Assembly Book | PO Builder | Purchase Orders. Note: the `assemblies-po` key was `assemblies-po` until v2.1258 (a legacy redirect at `Materials.tsx` ~line 1031 rewrites old `?tab=templates-po` links), and the label was "Assemblies & Purchase Orders" until the v2.1260 rename to **PO Builder**.
+Labels differ from keys: `parts-book` renders as **Parts Book** (the GLOSSARY's "Price Book" — the legacy `?tab=price-book` slug is rewritten to `parts-book` in the URL effect), `assemblies-po` renders as **PO Builder**, `po-generator` renders as **PO Generator**. Tab order in the UI is Supply Houses | Job Accounts | PO Generator ‖ Parts Book | Assembly Book | PO Builder | Purchase Orders. Note: the `assemblies-po` key was `assemblies-po` until v2.1258 (a legacy redirect at `Materials.tsx` ~line 1031 rewrites old `?tab=templates-po` links), and the label was "Assemblies & Purchase Orders" until the v2.1260 rename to **PO Builder**.
 
 ### Key structural differences from Bids
 
@@ -44,6 +44,7 @@ Each section lists: render location (anchored by symbol/JSX comment — line num
 |---|---|---|---|---|---|---|---|---|
 | `supply-houses` | Supply Houses | `activeTab === 'supply-houses'` wrapper | ~9 | **extracted** (`SupplyHousesTab`) | 0 in parent | low (`handleNavigateToPOFromSupplyHouses` writes PO state) | — | Done; later fold the legacy Supply House modal (Parts Book) into it |
 | `po-generator` | PO Generator | always-mounted `<MaterialsPoGeneratorTab active={…}>` | ~9 | **extracted (v2.1279)** ([`MaterialsPoGeneratorTab`](../src/components/materials/MaterialsPoGeneratorTab.tsx)) | 0 in parent | low (props: `supplyHouses`, `selectedServiceTypeId`, `myRole`, `onError`) | — | Done |
+| `job-accounts` | Job Accounts | always-mounted `<MaterialsJobAccountsTab active={…}>` | ~15 | **born extracted (v2.2652)** ([`MaterialsJobAccountsTab`](../src/components/materials/MaterialsJobAccountsTab.tsx); kernel [`lib/materials/jobAccountsFlow.ts`](../src/lib/materials/jobAccountsFlow.ts)) | 0 in parent | low (`onOpenSupplyHouse` writes `supplyHouseToAutoOpen` + switches to supply-houses) | — | Done |
 | `purchase-orders` | Purchase Orders | always-mounted `<MaterialsPurchaseOrdersTab active={…}>` | ~40 | **extracted (v2.1281)** ([`MaterialsPurchaseOrdersTab`](../src/components/materials/MaterialsPurchaseOrdersTab.tsx)); engine in [`useMaterialsPurchaseOrders`](../src/hooks/useMaterialsPurchaseOrders.ts) | 0 in parent | price-edit cluster + draft SH options stay parent-owned (written by shared `updatePOItemSupplyHouse`); deep-link router + `selectedPODetailRef` parent | — | Done |
 | `parts-book` | Parts Book | always-mounted `<MaterialsPartsBookTab active={…}>` | ~35 | **extracted (v2.1286)** ([`MaterialsPartsBookTab`](../src/components/materials/MaterialsPartsBookTab.tsx)); engine in [`useMaterialsCatalog`](../src/hooks/useMaterialsCatalog.ts) (v2.1282) | 0 in parent | shared modals + openers + `expandedPartId` stay page-level as props | — | Done |
 | `assembly-book` | Assembly Book | always-mounted `<MaterialsAssemblyBookTab>` (modal renders independent of `active`) | ~65 | **extracted (v2.1290)** ([`MaterialsAssemblyBookTab`](../src/components/materials/MaterialsAssemblyBookTab.tsx)); engine in [`useMaterialsAssemblies`](../src/hooks/useMaterialsAssemblies.ts) (v2.1288) | 0 in parent (pure JSX consumer) | addItemModal* cluster + handlers stay page-owned (shared `handlePartSaved` writes them) | — | Done |
@@ -111,6 +112,15 @@ Page-level modals (stay in parent or move with a cluster): `PartFormModal` (extr
 - **Supabase tables (inside the component):** `supply_houses` (all verbs, with a legacy-column fallback SELECT), `supply_house_invoices` (CRUD), `supply_house_invoice_job_allocations`, `purchase_orders`, `purchase_order_items`, `material_part_prices`, `service_types`, and `material_po_generator_entries` — invoice **Purchase Order #** fields are parsed with [`parsePoGeneratorCodeFromPurchaseOrderName`](../src/lib/parsePoGeneratorCodeFromPurchaseOrderName.ts) and matched against the PO Generator ledger; unmatched generator-style codes render a red warning (see GLOSSARY "PO Generator ledger").
 - **Extraction status:** **Done.** Remaining cleanup (separate, optional): the Parts Book toolbar's inline Supply House Management Modal duplicates this component's CRUD + stats; folding it into `SupplyHousesTab` (or deleting it in favor of tab navigation) would remove ~250 parent lines and the 9-field `supplyHouse*` state cluster — but that is a behavior change, so it is NOT part of the behavior-preserving decomposition.
 
+### `job-accounts` — Job Accounts (born extracted, v2.2652)
+
+- **Render location:** always-mounted `<MaterialsJobAccountsTab active={activeTab === 'job-accounts'}>` (returns null when inactive or for non-office roles); tab button sits between Supply Houses and PO Generator.
+- **What it is:** per-job money flow — `jobs_ledger.revenue`/`payments_made` (customer side) against `supply_house_invoice_job_allocations` × `supply_house_invoices` (supplier side). Headline: "holding for suppliers" = unpaid supplier balances on jobs the customer has paid (held = min(owed, paidIn) per job). Statuses `owe_suppliers` / `floating` / `awaiting_customer` / `settled`; unpaid invoices allocated to neither a job nor a bid surface as an explicit "unallocated" bucket.
+- **Owned local state:** everything (`view`, `filter`, `expandedJobId`, `loading`, `error`, one-shot `loadStartedRef`); loads on first activation with `fetchAllRows`/`fetchAllRowsChunkedIn` + `withSupabaseRetry`. Nothing in the parent.
+- **Pure kernel:** [`lib/materials/jobAccountsFlow.ts`](../src/lib/materials/jobAccountsFlow.ts) (`buildJobAccountsView`, `classifyJobAccount`; tested) — reuses `agingBucketFor` from [`lib/supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts); allocation pct is 0–100.
+- **Supabase tables:** `supply_house_invoices`, `supply_house_invoice_job_allocations`, `supply_house_invoice_bid_allocations` (ids only, to exclude bid-tied invoices from "unallocated"), `supply_houses`, `jobs_ledger` (chunked `.in()` on allocated job ids). All read-only.
+- **External coupling:** `onOpenSupplyHouse(houseId | null)` → parent sets `supplyHouseToAutoOpen` and switches to `supply-houses`; `SupplyHousesTab` gained `autoOpenHouseId`/`onAutoOpenHouseHandled` (auto-opens that house's detail once the list has it). Job titles and the expanded statement's **Open job** open the global job window via `useJobFormModal().openEditJob(jobId, { onSaved: reload })` (v2.2657; `/jobs?tab=stages&edit=<id>` navigation is the no-provider fallback). Like Supply Houses, the page-level service-type filter row is hidden on this tab.
+
 ### `po-generator` — PO Generator
 
 - **Render location:** behind `activeTab === 'po-generator' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole))` (~5977–6385): a generate card (job picker, user picker, optional supply-house picker, notes) + the ledger table.
@@ -143,6 +153,7 @@ The "API surface" any extracted tab must be handed.
 | PO Builder (`assemblies-po`) | ✅ | ✅ | ❌ (button hidden + URL redirect) |
 | Purchase Orders | ✅ | ✅ | ❌ (button hidden + URL redirect) |
 | Supply Houses | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
+| Job Accounts | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
 | PO Generator | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
 
 The URL guard effect rewrites disallowed `?tab=` values to `parts-book` (`replace: true`) and rewrites the legacy `price-book` slug. `supply-houses`/`po-generator` render gates additionally re-check the role inline.

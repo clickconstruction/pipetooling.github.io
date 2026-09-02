@@ -100,6 +100,9 @@ when_to_read:
    - [get-bid-proposal-room](#get-bid-proposal-room)
    - [send-bid-room-link](#send-bid-room-link)
    - [sign-bid-room](#sign-bid-room)
+   - [get-rfq-quote-page](#get-rfq-quote-page)
+   - [submit-rfq-quote](#submit-rfq-quote)
+   - [send-rfq-email](#send-rfq-email)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
    - [get-estimate-public-terms](#get-estimate-public-terms)
@@ -144,7 +147,10 @@ when_to_read:
    - [weekly-money-email-dispatch](#weekly-money-email-dispatch)
    - [payment-forecast-email-dispatch](#payment-forecast-email-dispatch)
    - [money-waiting-email-dispatch](#money-waiting-email-dispatch)
+   - [crew-day-email-dispatch](#crew-day-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
+   - [send-lien-release-email](#send-lien-release-email)
+   - [send-lien-filing-email](#send-lien-filing-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
@@ -1037,6 +1043,48 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false`; the plaintext room token (portal-links precedent) is the credential.
 
 **Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` (always 200, invalid input dropped — browsing must never break). Requires migration `20260828215717`.
+
+---
+
+### get-rfq-quote-page
+
+**Purpose**: Public fetch for the **supply house quote page** (RFQ Phase 2, v2.2631) — the `/q/<token>` link a "Copy with quote link" paste carries (`docs/SUPPLY_HOUSE_RFQ_PLAN.md`).
+
+**Endpoint**: `GET /functions/v1/get-rfq-quote-page?t=<token>`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`; the RFQ token is the credential (Bid Room precedent).
+
+**Behavior**: Loads the `bid_rfqs` row by token; 404 unknown; returns `{ status: 'closed' }` when the RFQ is closed or its bid's outcome is `lost` (token hygiene — dead links go quiet). Otherwise returns the scope snapshot's lines (fixture, count, unit — names and counts only, prices never leave), the bid label (`bid_number · project_name`), the supply house name, and `needed_by`.
+
+---
+
+### submit-rfq-quote
+
+**Purpose**: Public submit for the supply house quote page — the vendor's typed prices become a structured quote on the bid.
+
+**Endpoint**: `POST /functions/v1/submit-rfq-quote` — `{ token, quotedBy?, validUntil?, freightCents?, note?, lines: [{ fixture, unitPriceEachCents?, cantSupply?, note? }] }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`; the RFQ token is the credential.
+
+**Behavior**: 404 unknown token, 410 when closed (or the bid is lost). Lines are validated against the RFQ's **own scope snapshot** — fixture names the RFQ never asked about are dropped (the token can't write arbitrary rows), prices sanity-capped, notes/name length-capped. Inserts `bid_quotes` (source `link`, `rfq_id`, the RFQ's supply house/bid version) + `bid_quote_lines`, flips the RFQ to `quoted`, and upserts the `supply_house_fixture_prices` memory (deduped by generated `fixture_key`). Re-submits allowed until closed — compare shows the latest per house; earlier quotes stay as history. Requires migration `20260902030531`.
+
+---
+
+### send-rfq-email
+
+**Purpose**: The **RFQ Desk** sender (lane B, v2.2636) — system-sent supply-house price requests with tracking, nudges, and previews (`docs/SUPPLY_HOUSE_RFQ_PLAN.md`).
+
+**Endpoint**: `POST /functions/v1/send-rfq-email` — `{ mode: 'send'|'remind'|'resend'|'preview', … }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+
+**Gateway**: `verify_jwt = false`; JWT + Pricing-staff role validated in-function (send-bid-pricing-package pattern).
+
+**Behavior**: `send` takes `{bidId, bidVersionId?, neededBy?, vendorNote?, scope: {lines, text}, requests: [{supplyHouseId, email}]}` (≤10 houses) and mints one `bid_rfqs` row + token + email per house — the grouped no-prices list in the body, the `/q/<token>` button, `reply_to` = the sender, Resend message id stored on the rfq so the existing [resend-webhook](#resend-webhook) rail reports delivered/bounced. `remind` re-sends with a 24h server-side throttle (429 inside it) and an opener that varies by `viewed_at`; bumps `reminder_count`. `resend` fixes a bounced address on the same token. **`preview` returns the exact email any of those would produce — same builder, no writes, nothing sent** — and the UI requires it before every send and every nudge. Requires migration `20260902151658`.
 
 ---
 
@@ -2348,7 +2396,25 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ---
 
+### send-lien-release-email
+
+**Purpose** (v2.2621, the lien-signing loop's send leg): email a **signed** lien release to the job's customer with the PDF attached, then stamp the release row **sent** (`sent_to_customer_at`, `sent_channel: 'email'`, `sent_by`). The PDF arrives from the client — the stored `signed.pdf` bytes from the `lien-release-documents` bucket when present, else a regeneration from the row snapshot with the typed signature. Client helper: [`sendLienReleaseEmail.ts`](../src/lib/sendLienReleaseEmail.ts); the send surface is the "Signed — ready to send" inbox lane ([`LienSignatureInboxSection`](../src/components/jobs/LienSignatureInboxSection.tsx)).
+
+**Endpoint**: `POST /functions/v1/send-lien-release-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client (RLS applies), `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
+
+Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?, pdf_base64, pdf_filename? }`. Guards: release must belong to the job, be `status = 'signed'`, and not voided; `customer_email` must match `jobs_ledger.customer_email` (case-insensitive); PDF ≤ 6M base64 chars. Success: `{ success: true }`; if the Resend send succeeds but the sent-stamp UPDATE fails, returns 500 with "mark it sent manually" (email already went out).
+
+### send-lien-filing-email
+
+**Purpose** (v2.2645, Lien Instruments phase 3): email a **lien-instrument PDF** — today the § 53.056 notice of claim — to a named recipient (the owner of record or the original contractor) as a **courtesy channel** beside the recorded certified-mail send. The caller records the send on its `job_lien_filings` row afterward (`sends` jsonb, method `email`, tracking `resend:<id> → <address>`); the statutory path stays traceable physical delivery. Client caller: the § 53.056 tab of [`LienFilingTabs`](../src/components/jobs/LienFilingTabs.tsx).
+
+**Endpoint**: `POST /functions/v1/send-lien-filing-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client — the access check is an RLS read of the `jobs_ledger` row (office/master only). `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
+
+Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename? }`. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record.
+
 ### send-physical-invoice-email
+
+> **v2.2605 — Resend mode**: `resend: true` re-emails an already-**billed** invoice (the Who-owes-what cards' "Email again — PDF attached", client helper [`resendPhysicalInvoiceEmail.ts`](../src/lib/resendPhysicalInvoiceEmail.ts)): the status gate flips to require `status = 'billed'` and the function **writes nothing** — no status change, no `sent_to_customer_at` bump (the bill keeps its first-send evidence; the send is still captured by the shared email log). Without the flag, first-send behavior is unchanged.
 
 > **v2.1085 — Bill-to override**: when the invoice row has `bill_to_email`, the target `customer_email` may match **either** that address or `jobs_ledger.customer_email` (a blank job customer email is fine in that case). Without the override, the job-customer-email match requirement is unchanged.
 
@@ -2384,6 +2450,8 @@ interface SendPhysicalInvoiceEmailBody {
    * Max 2; each ≤ 6M base64 chars; combined with the invoice ≤ 9M.
    */
   extra_attachments?: Array<{ filename?: string; content_base64: string }>
+  /** v2.2605: re-email a billed invoice — requires `status = 'billed'`, records nothing on the row. */
+  resend?: boolean
 }
 ```
 
@@ -2494,6 +2562,22 @@ interface SendPhysicalInvoiceEmailBody {
 
 ---
 
+### crew-day-email-dispatch
+
+**Purpose** (v2.2603): The **Crew Day** end-of-day email — the `crew_day` stream. The Dashboard Crew Day section's day (v2.2602) regrouped **by job** so it reads like a site diary: each job with the people who worked it (clock spans + hours), field-report excerpts, % movement, and the section's three attention flags (no-report, scheduled-never-clocked, unscheduled work). The payload is **per-recipient**: `get_crew_day_payload_for_user(p_user_id, p_day)` (migration `20260901220804`, service-role only) computes the RECIPIENT's role scope — office roles company-wide, superintendents only their `project_superintendents` assignments (+ team-membership jobs) — rebuilt **at send time** for the send's Chicago calendar day. A quiet day still sends (a silent skip reads as a broken subscription). **Hours only, never wages.**
+
+**Endpoint**: `POST /functions/v1/crew-day-email-dispatch`
+
+**Modes** (money-waiting skeleton): `preview` / `test_send` (caller JWT; the caller's own scope) / `send_now` with `recipient_user_id` (recipient's scope) — sender AND recipient roles are **office-only since v2.2615** (dev/master_technician/assistant/controller; superintendents were removed from both sides — the Dashboard Crew Day section is their window, and the INSERT policy matches: migration `20260901232549`) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `crew_day_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard; superintendent-addressed stragglers stamp "ineligible role" and never send).
+
+**Deploy**: `supabase functions deploy crew-day-email-dispatch --no-verify-jwt`. Requires migrations `20260901215024` (section payload) + `20260901220804` (table + per-user payload RPC + pg_cron + schedule-surface branches).
+
+**Cron**: pg_cron **`crew-day-email-dispatch`** at **`4-59/5 * * * *`** — co-rides the :04 lane (v2.1919 stagger; co-tenants no-op cheaply on empty ticks), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`.
+
+---
+
 ### send-hazmat-notice-email
 
 > **v2.1085 — Bill-to override**: when the incident's linked fee invoice (`job_hazmat_incidents.invoice_id` → `jobs_ledger_invoices.bill_to_email`) bills an alternate recipient, the notice `customer_email` may match **either** that address or the job customer email — the payer of the fee should receive the notice.
@@ -2581,7 +2665,7 @@ If the DB persist fails, the function may return **502** with **`stripe_may_have
 
 **Endpoint**: `POST /functions/v1/update-collect-payment-stripe-customer-email`
 
-**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Subcontractor only** (v1): same **service-role** gate as **`send-stripe-invoice`** — **`jobs_ledger_team_members`** for the invoice’s job **and** **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request. Non-subcontractors receive **403**.
+**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Field roles only** (subcontractor/helpers; +superintendent v2.2637): same **service-role** gate as **`send-stripe-invoice`** — **`jobs_ledger_team_members`** for the invoice’s job **and** **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request. Non-subcontractors receive **403**.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`SUPABASE_SERVICE_ROLE_KEY`**, Stripe secret for the chosen mode.
 
@@ -2605,7 +2689,7 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 
 - **400** — Missing invoice id, invalid/empty email, invoice not **billed**, no **`stripe_invoice_id`**, job has no **`customer_id`**, customer **`master_user_id`** mismatch vs job, missing **`stripe_customer_id`**, Stripe **`customers.update`** failure (including **missing Stripe customer** — contact office; v1 does not auto-create customers).
 - **401** — Missing or invalid JWT.
-- **403** — Not a subcontractor, or collect-payment gate failed (not on job team / flow not approved for this invoice).
+- **403** — Not a field role (subcontractor/helpers/superintendent since v2.2637), or collect-payment gate failed (not on job team / flow not approved for this invoice).
 - **502** — Stripe error (other than handled missing customer), **`invoices.update`** failure after **`customers.update`** (customer may be updated on Stripe; invoice email not synced — contact office), or partial DB failure after both Stripe updates.
 
 **Client**: [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx) step 3 **Change email**.
@@ -2622,7 +2706,7 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 
 **Endpoint**: `POST /functions/v1/get-stripe-invoice-details`
 
-**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Staff** (non–`subcontractor`): invoice row loaded with the user-scoped client (**RLS** **`SELECT`**). **`subcontractor`**: invoice row loaded with **service role** only after **`jobs_ledger_team_members`** and **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request (same gate as **`send-stripe-invoice`** for field email); memo/footer backfill uses **service role** for subs.
+**Authentication**: Bearer JWT (**`verify_jwt = false`** on the gateway). **Staff** (non–`subcontractor`): invoice row loaded with the user-scoped client (**RLS** **`SELECT`**). **field roles** (`subcontractor`/`helpers`; +`superintendent` v2.2637): invoice row loaded with **service role** only after **`jobs_ledger_team_members`** and **`job_collect_payment_flows`** **`approved_for_terminal`** with **`jobs_ledger_invoice_id`** matching the request (same gate as **`send-stripe-invoice`** for field email); memo/footer backfill uses **service role** on that path.
 
 **Success body** (partial): includes **`memo`** (Stripe **`description`**) and **`footer`** (Stripe **`footer`**) as separate strings when present. May service-backfill **`stripe_invoice_memo`** / **`stripe_invoice_footer`** on the ledger row when empty. **v2.1641**: also returns **`oob_paid_on`** (YYYY-MM-DD | null) — the effective out-of-band pay date from invoice metadata `pt_paid_on`; the Hosted bill panel prefers it over `paid_at` for OOB-paid invoices (`amount_paid === 0`), since Stripe stamps `status_transitions.paid_at` at the API call and it cannot be backdated. Redeployed 2026-08-14.
 

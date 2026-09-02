@@ -152,3 +152,41 @@ describe('computeBidPricingRows', () => {
     expect(res.rows[0]!.isFixedPrice).toBe(true)
   })
 })
+
+describe('materials override from applied quotes (Rung G, v2.2655)', () => {
+  const base = {
+    countRows: [{ id: 'r1', fixture: 'WC-1', count: 4 }],
+    assignments: [],
+    entries: [],
+    customUnitPriceByCountRowId: new Map<string, number>(),
+    laborRows: [{ fixture: 'WC-1', count: 4, rough_in_hrs_per_unit: 1, top_out_hrs_per_unit: 0, trim_set_hrs_per_unit: 0, is_fixed: false }],
+    totalMaterials: 1000,
+    laborRate: 50,
+    taxPercent: 10,
+    materialsFromTakeoffByCountRowId: { r1: 400 },
+    hiddenSubmissionCountRowIds: new Set<string>(),
+  }
+  it('replaces the materials component only — labor survives, tax applies like takeoff', () => {
+    const withOverride = computeBidPricingRows({ ...base, materialsOverrideUnitByCountRowId: new Map([['r1', 80]]) })
+    const row = withOverride.rows[0]!
+    expect(row.materialsFromQuote).toBe(true)
+    expect(row.materialsBeforeTax).toBe(320) // 80/unit × 4, not the takeoff 400
+    expect(row.materialsWithTax).toBeCloseTo(352) // taxed like takeoff materials
+    expect(row.laborCost).toBe(200) // 4 units × 1hr × $50 — untouched
+    expect(row.cost).toBeCloseTo(552)
+  })
+  it('without an override the takeoff branch is unchanged', () => {
+    const row = computeBidPricingRows(base).rows[0]!
+    expect(row.materialsFromQuote).toBe(false)
+    expect(row.materialsBeforeTax).toBe(400)
+    expect(row.cost).toBeCloseTo(200 + 440)
+  })
+  it('the override recomputes against the live count (drift-safe)', () => {
+    const grown = computeBidPricingRows({
+      ...base,
+      countRows: [{ id: 'r1', fixture: 'WC-1', count: 6 }],
+      materialsOverrideUnitByCountRowId: new Map([['r1', 80]]),
+    })
+    expect(grown.rows[0]!.materialsBeforeTax).toBe(480)
+  })
+})

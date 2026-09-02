@@ -40,6 +40,13 @@ export type NeedsYouItem = {
     | 'gc-review-weekly'
     | 'bulk-delete'
     | 'claim-dev'
+    | 'robot-audits'
+    | 'lien-unconditional'
+    | 'demand-deadline'
+    | 'lien-serve-copy'
+    | 'lien-notice-window'
+    | 'lien-file-window'
+    | 'd22-uncoded'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -65,13 +72,20 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'bulk-delete': 0,
   'claim-dev': 0,
   'ar-deposits': 10,
+  'lien-unconditional': 20,
   'gc-review-weekly': 20,
   'tally-self': 30,
   'tally-team': 30,
   'job-followups': 40,
+  'demand-deadline': 40,
+  'lien-serve-copy': 10,
+  'lien-notice-window': 40,
+  'lien-file-window': 40,
   'team-reviews': 50,
   'roadmap-needs-person': 50,
+  'robot-audits': 50,
   'lost-bids': 60,
+  'd22-uncoded': 60,
 }
 
 /** "99+" reads as 100 so a capped figure still outranks anything two-digit. */
@@ -145,10 +159,130 @@ export type NeedsYouInputs = {
    */
   claimDevRefusedCount: number | null
   claimDevLookbackDays: number
+  /**
+   * Robot bids awaiting a human audit (v2.2573) — the twin program's
+   * bottleneck. The count comes from useBidAuditsPendingCount, which already
+   * holds back sealed shadows (their reference bid hasn't gone out, so the
+   * audit isn't workable yet). Enabled for the auditing roles only.
+   */
+  robotAuditsEnabled: boolean
+  /** Division 22 (v2.2627): dev + estimator only — the ledger-teaching roles. */
+  d22UncodedEnabled: boolean
+  d22UncodedCount: number
+  robotAuditsPending: number
+  /**
+   * Cleared payments behind conditional lien releases (v2.2582) — the GC is
+   * owed the unconditional follow-up. Null while loading; the hook reports
+   * zero on error so the card stays quiet.
+   */
+  lienUnconditionalEnabled: boolean
+  lienUnconditionalOwed: { count: number; total: number } | null
+  /**
+   * Demand letters past their named deadline with money still open (v2.2640).
+   * Null while loading; the hook reports zero on error so the card stays quiet.
+   */
+  demandDeadlineEnabled: boolean
+  demandDeadlineOverdue: { count: number; total: number } | null
+  /**
+   * Chapter 53 deadline watches (v2.2645) — serve-by (red, tier with received
+   * money: rights actively at risk), notice windows, filing windows. Null
+   * while loading; the hook reports empties on error.
+   */
+  lienWatchEnabled: boolean
+  lienWatch: {
+    noticeDue: { deadline: string; openBalance: number }[]
+    filingDue: { deadline: string; openBalance: number }[]
+    serveDue: { serveDue: string }[]
+  } | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   const items: NeedsYouItem[] = []
+
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.serveDue.length ?? 0) > 0) {
+    const rows = inputs.lienWatch?.serveDue ?? []
+    const n = rows.length
+    const worst = rows.map((r) => r.serveDue).sort()[0] ?? ''
+    items.push({
+      key: 'lien-serve-copy',
+      severity: 'red',
+      kicker: 'Lien filings',
+      title: n === 1 ? 'A filed lien has not been served' : `${n} filed liens have not been served`,
+      detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Record the service on the job's lien instruments.`,
+      figure: String(n),
+      actionLabel: 'Record service',
+    })
+  }
+
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.noticeDue.length ?? 0) > 0) {
+    const rows = inputs.lienWatch?.noticeDue ?? []
+    const n = rows.length
+    const total = rows.reduce((s, r) => s + r.openBalance, 0)
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const worst = rows.map((r) => r.deadline).sort()[0] ?? ''
+    items.push({
+      key: 'lien-notice-window',
+      severity: 'amber',
+      kicker: 'Lien deadlines',
+      title: n === 1 ? `A lien notice window closes ${worst}` : `${n} lien notice windows close soon (first: ${worst})`,
+      detail: `${money} open on unpaid sub job${n === 1 ? '' : 's'} with no § 53.056 notice recorded for the work month — after the 15th, lien rights on that month weaken. Send the notice from the job's lien instruments.`,
+      figure: String(n),
+      actionLabel: n === 1 ? 'Open the job' : 'Review them',
+    })
+  }
+
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.filingDue.length ?? 0) > 0) {
+    const rows = inputs.lienWatch?.filingDue ?? []
+    const n = rows.length
+    const total = rows.reduce((s, r) => s + r.openBalance, 0)
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const worst = rows.map((r) => r.deadline).sort()[0] ?? ''
+    items.push({
+      key: 'lien-file-window',
+      severity: 'amber',
+      kicker: 'Lien deadlines',
+      title: n === 1 ? `A lien filing window closes ${worst}` : `${n} lien filing windows close soon (first: ${worst})`,
+      detail: `${money} is still open and the § 53.052 affidavit window is closing — after it, the lien right on this work is gone. The affidavit is ready behind its gate on the job's lien instruments.`,
+      figure: String(n),
+      actionLabel: n === 1 ? 'Open the job' : 'Review them',
+    })
+  }
+
+  if (inputs.demandDeadlineEnabled && (inputs.demandDeadlineOverdue?.count ?? 0) > 0) {
+    const { count: n, total } = inputs.demandDeadlineOverdue as { count: number; total: number }
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'demand-deadline',
+      severity: 'red',
+      kicker: 'Demand letters',
+      title:
+        n === 1 ? 'A demand-letter deadline passed unpaid' : `${n} demand-letter deadlines passed unpaid`,
+      detail:
+        `${money} is still open past the payment deadline${n === 1 ? '' : 's'} you set in writing. ` +
+        "Follow through on the letter's next step — open the lien instruments on each job's Pipeline row.",
+      figure: String(n),
+      actionLabel: 'Open the jobs',
+    })
+  }
+
+  if (inputs.lienUnconditionalEnabled && (inputs.lienUnconditionalOwed?.count ?? 0) > 0) {
+    const { count: n, total } = inputs.lienUnconditionalOwed as { count: number; total: number }
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'lien-unconditional',
+      severity: 'blue',
+      kicker: 'Lien releases',
+      title:
+        n === 1
+          ? 'A payment cleared behind a conditional release'
+          : `${n} payments cleared behind conditional releases`,
+      detail:
+        (n === 1 ? `A check (${money}) has cleared since its` : `${money} in checks have cleared since their`) +
+        " conditional lien release was issued — the customer is owed the unconditional version. Open the release button on each job's Pipeline row and switch to the unconditional form.",
+      figure: String(n),
+      actionLabel: n === 1 ? 'Issue release' : 'Issue releases',
+    })
+  }
 
   if (inputs.arBankEnabled && (inputs.arBankUnallocatedCount ?? 0) > 0) {
     const n = inputs.arBankUnallocatedCount as number
@@ -299,6 +433,33 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         { key: 'snooze', label: 'Snooze 24h' },
         { key: 'dismiss', label: 'Dismiss until count increases' },
       ],
+    })
+  }
+
+  if (inputs.robotAuditsEnabled && inputs.robotAuditsPending > 0) {
+    const n = inputs.robotAuditsPending
+    items.push({
+      key: 'robot-audits',
+      severity: 'amber',
+      kicker: 'Robot training',
+      title: n === 1 ? 'One robot bid is waiting on your audit' : `${n} robot bids are waiting on your audit`,
+      detail: 'The card shows where the robot and our bid differ — judge each difference with one tap, and it learns from every verdict.',
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Open Audits',
+    })
+  }
+
+  if (inputs.d22UncodedEnabled && inputs.d22UncodedCount > 0) {
+    const n = inputs.d22UncodedCount
+    items.push({
+      key: 'd22-uncoded',
+      severity: 'amber',
+      kicker: 'Division 22',
+      title: n === 1 ? 'One fixture name has no Division 22 code' : `${n} fixture names have no Division 22 code`,
+      detail:
+        'Supply house lists file them under "No code yet" — pin a name once and every bid is fixed, past and future.',
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Pin codes',
     })
   }
 

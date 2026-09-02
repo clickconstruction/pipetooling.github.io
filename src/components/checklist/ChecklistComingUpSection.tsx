@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { sequentialWaiting, type SequentialTaskLite } from '../../lib/checklistTechTreeGraph'
 
-type WaitingGroup = {
+export type WaitingGroup = {
   blockerId: string
   blockerTitle: string
   /** Resolved assignee names on the blocking task (unknowns filtered out). */
@@ -20,16 +20,13 @@ type WaitingGroup = {
 const VISIBLE_GROUPS = 3
 
 /**
- * "⏳ Waiting For" (v2.2264, grouped v2.2269): the viewer's roadmap tasks that
- * wait their turn in a sequential stage, grouped under the open task holding
- * them — the blocker, who's on it, and the stage said once per group, the
- * waiting tasks as one-liners beneath. Self-contained (own fetch; RLS: task
- * assignment grants roadmap read since v2.2261). Renders nothing while empty
- * or for viewers with no waiting tasks.
+ * Fetch half of "⏳ Waiting For" (extracted v2.2650 so the Dashboard's My Inbox
+ * strip can read the count without rendering the section): the viewer's roadmap
+ * tasks waiting their turn in a sequential stage, grouped under the open task
+ * holding them. Returns [] while loading, on failure, or with nothing waiting.
  */
-export function ChecklistComingUpSection({ authUserId }: { authUserId: string | null }) {
+export function useComingUpWaitingGroups(authUserId: string | null): WaitingGroup[] {
   const [groups, setGroups] = useState<WaitingGroup[]>([])
-  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     if (!authUserId) return
@@ -132,17 +129,25 @@ export function ChecklistComingUpSection({ authUserId }: { authUserId: string | 
     }
   }, [authUserId])
 
+  return groups
+}
+
+/**
+ * The grouped waiting list itself (dashed group cards + show-more), shared by
+ * the Checklist/Dashboard section and the My Inbox strip. `groupBackground`
+ * paints each dashed card (the strip sits on --bg-subtle, so its cards use
+ * --surface); the default stays transparent.
+ */
+export function ComingUpWaitingGroupList({ groups, groupBackground }: { groups: WaitingGroup[]; groupBackground?: string }) {
+  const [expanded, setExpanded] = useState(false)
+
   if (groups.length === 0) return null
 
   const visible = expanded ? groups : groups.slice(0, VISIBLE_GROUPS)
   const hiddenCount = groups.length - visible.length
 
   return (
-    <div style={{ marginTop: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>⏳ Waiting For</span>
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>yours, once the step ahead clears</span>
-      </div>
+    <>
       <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {visible.map((g) => (
           <li
@@ -153,6 +158,7 @@ export function ChecklistComingUpSection({ authUserId }: { authUserId: string | 
               padding: '0.55rem 0.75rem 0.6rem',
               marginBottom: '0.5rem',
               opacity: 0.85,
+              background: groupBackground,
             }}
           >
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
@@ -216,6 +222,28 @@ export function ChecklistComingUpSection({ authUserId }: { authUserId: string | 
           {expanded ? 'show fewer ⌃' : `…and ${hiddenCount} more step${hiddenCount === 1 ? '' : 's'} ahead ⌄`}
         </button>
       ) : null}
+    </>
+  )
+}
+
+/**
+ * "⏳ Waiting For" (v2.2264, grouped v2.2269): header + grouped waiting list as
+ * a standalone section — the Checklist Today tab's rendering. The Dashboard
+ * moved to the My Inbox footer strip in v2.2650 (same hook + list, different
+ * shell in DashboardMyInboxCard). Renders nothing while empty.
+ */
+export function ChecklistComingUpSection({ authUserId }: { authUserId: string | null }) {
+  const groups = useComingUpWaitingGroups(authUserId)
+
+  if (groups.length === 0) return null
+
+  return (
+    <div style={{ marginTop: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)' }}>⏳ Waiting For</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>yours, once the step ahead clears</span>
+      </div>
+      <ComingUpWaitingGroupList groups={groups} />
     </div>
   )
 }

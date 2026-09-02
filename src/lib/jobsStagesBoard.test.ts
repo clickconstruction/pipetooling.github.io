@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bankPaymentTargetCuesAfterAmount,
   bankPaymentTargetsFromStageRows,
   stagesSectionKeyForJobStatus,
   buildCapableToBillBreakdownRows,
@@ -1281,5 +1282,65 @@ describe('bankPaymentTargetsFromStageRows — Stripe-hosted lines (v2.1614)', ()
     const rows = buildBilledStageRows([job], [])
     const targets = bankPaymentTargetsFromStageRows(rows)
     expect(targets.find((x) => x.invoiceId === 'inv-p')).toBeUndefined()
+  })
+})
+
+describe('bankPaymentTargetsFromStageRows — payer names in targets and search', () => {
+  const billedInvoiceStub = (over: Partial<Record<string, unknown>> & { id: string; job_id: string; amount: number }) =>
+    rtbInvoiceStub({ ...over, status: 'billed' })
+
+  it('carries customer and GC names and includes them in searchLabel', () => {
+    const inv = billedInvoiceStub({ id: 'inv-c', job_id: 'job-c', amount: 1625 })
+    const job = jobStub({
+      id: 'job-c',
+      status: 'billed',
+      job_name: 'American Eagle',
+      customer_name: 'Weiss Services LLC',
+      gcCustomer: { id: 'gc-1', name: 'TF Harper Associates' },
+      invoices: [inv] as JobWithDetails['invoices'],
+    })
+    const rows = buildBilledStageRows([job], [])
+    const t = bankPaymentTargetsFromStageRows(rows).find((x) => x.invoiceId === 'inv-c')
+    expect(t?.customerName).toBe('Weiss Services LLC')
+    expect(t?.gcName).toBe('TF Harper Associates')
+    expect(t?.searchLabel).toContain('Weiss Services LLC')
+    expect(t?.searchLabel).toContain('TF Harper Associates')
+    // The visible option line carries the payers too.
+    const cues = bankPaymentTargetCuesAfterAmount(t!)
+    expect(cues).toContain('Weiss Services LLC')
+    expect(cues).toContain('TF Harper Associates')
+  })
+
+  it('customer identical to the GC appears once, not twice', () => {
+    const inv = billedInvoiceStub({ id: 'inv-k', job_id: 'job-k', amount: 1980 })
+    const job = jobStub({
+      id: 'job-k',
+      status: 'billed',
+      job_name: 'Springtown- HVAC',
+      customer_name: 'Knight Contracting',
+      gcCustomer: { id: 'gc-k', name: 'Knight Contracting' },
+      invoices: [inv] as JobWithDetails['invoices'],
+    })
+    const rows = buildBilledStageRows([job], [])
+    const t = bankPaymentTargetsFromStageRows(rows).find((x) => x.invoiceId === 'inv-k')
+    expect(t?.searchLabel.match(/Knight Contracting/g)?.length).toBe(1)
+    expect(bankPaymentTargetCuesAfterAmount(t!).match(/Knight Contracting/g)?.length).toBe(1)
+  })
+
+  it('skips a payer name already contained in the job name and blanks stay empty', () => {
+    const inv = billedInvoiceStub({ id: 'inv-d', job_id: 'job-d', amount: 500 })
+    const job = jobStub({
+      id: 'job-d',
+      status: 'billed',
+      job_name: 'Weiss Services LLC- American Eagle',
+      customer_name: 'Weiss Services LLC',
+      invoices: [inv] as JobWithDetails['invoices'],
+    })
+    const rows = buildBilledStageRows([job], [])
+    const t = bankPaymentTargetsFromStageRows(rows).find((x) => x.invoiceId === 'inv-d')
+    expect(t?.customerName).toBe('Weiss Services LLC')
+    expect(t?.gcName).toBe('')
+    // Not duplicated: the job name already carries it.
+    expect(t?.searchLabel.match(/Weiss Services LLC/g)?.length).toBe(1)
   })
 })

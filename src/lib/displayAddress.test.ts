@@ -23,4 +23,14 @@ describe('stripTrailingZip', () => {
     expect(stripTrailingZip(null)).toBe('')
     expect(stripTrailingZip('  ')).toBe('')
   })
+
+  it('drops the imported literal "Null" where the zip belongs (v2.2609)', () => {
+    expect(stripTrailingZip('9703 Lenox Hl San Antonio, TX Null')).toBe('9703 Lenox Hl San Antonio, TX')
+    expect(stripTrailingZip('628 Terrell Rd, San Antonio, TX null')).toBe('628 Terrell Rd, San Antonio, TX')
+    expect(stripTrailingZip('123 Main St Austin, TX 78751 Null')).toBe('123 Main St Austin, TX')
+    // A string that IS just the junk token stays as-is (never strip to empty).
+    expect(stripTrailingZip('Null')).toBe('Null')
+    // Mid-string "null" is untouched.
+    expect(stripTrailingZip('12 Nullarbor Way, Austin, TX')).toBe('12 Nullarbor Way, Austin, TX')
+  })
 })

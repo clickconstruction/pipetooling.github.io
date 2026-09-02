@@ -103,7 +103,10 @@ serve(async (req) => {
       email_html?: string
       email_text?: string
       extra_attachments?: Array<{ filename?: string; content_base64?: string }>
+      /** Re-email an already-billed invoice: no status flip, no row update (v2.2605). */
+      resend?: boolean
     }
+    const isResend = body.resend === true
 
     const invoiceId = typeof body.jobs_ledger_invoice_id === 'string' ? body.jobs_ledger_invoice_id.trim() : ''
     const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : ''
@@ -188,7 +191,11 @@ serve(async (req) => {
     if (inv.job_id !== jobId) {
       return jsonResponse({ error: 'Invoice does not belong to this job' }, 400)
     }
-    if (inv.status !== 'ready_to_bill') {
+    if (isResend) {
+      if (inv.status !== 'billed') {
+        return jsonResponse({ error: 'Only a billed invoice can be re-emailed' }, 400)
+      }
+    } else if (inv.status !== 'ready_to_bill') {
       return jsonResponse({ error: 'Invoice must be Ready to Bill to send a physical invoice email' }, 400)
     }
 
@@ -245,6 +252,12 @@ serve(async (req) => {
     )
     if (!sendResult.success) {
       return jsonResponse({ error: sendResult.error ?? 'Failed to send email' }, 502)
+    }
+
+    // A resend records nothing on the row: the bill already carries its first
+    // send evidence, and the email log above captured this send.
+    if (isResend) {
+      return jsonResponse({ success: true })
     }
 
     const { error: upErr } = await userClient

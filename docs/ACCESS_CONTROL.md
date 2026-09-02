@@ -277,7 +277,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Materials**:
 - Full CRUD on parts, prices, supply houses
-- **Supply Houses** and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant)
+- **Supply Houses**, **Job Accounts** (v2.2652: per-job customer-paid vs supply-house-owed rollup), and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant)
 - Create and manage templates
 - Create and manage purchase orders
 - View price history
@@ -346,7 +346,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Materials**:
 - Full access (same as master/dev)
-- Manage price book, templates, purchase orders; **Supply Houses** and **PO Generator** tabs
+- Manage price book, templates, purchase orders; **Supply Houses**, **Job Accounts**, and **PO Generator** tabs
 - Confirm prices on POs
 
 **Special Features**:
@@ -455,7 +455,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 - **Can edit existing customers** from **Customers** page or edit modal: UPDATE RLS + trigger forbid changing `master_user_id` or `stripe_customer_id`
 
 **Materials - Full Access**:
-- Same permissions as master_technician **except** the **Supply Houses** and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs)
+- Same permissions as master_technician **except** the **Supply Houses**, **Job Accounts**, and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -511,7 +511,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Materials - Full Access**:
 - Same as estimator/master_technician (subject to primary_service_type_ids if set)
-- **UI**: **Supply Houses** and **PO Generator** tabs hidden (restricted URLs redirect)
+- **UI**: **Supply Houses**, **Job Accounts**, and **PO Generator** tabs hidden (restricted URLs redirect)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -573,6 +573,14 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Permissions**:
 
+**Dashboard**:
+- Recent Reports section (v2.2599) — `list_reports_with_job_info` scopes rows to reports on their assigned projects (`can_access_project_row` / `superintendent_report_job_anchor_allowed`); no email-settings gear (office roles only)
+- Field controls parity (v2.2635): **Update % done** on their own My Schedule cards (`set_job_pct_from_field` already authorizes schedule-block assignees) and the **clickable last-activity → job-activity modal** on Team Ready to Bill rows (RPC's team-membership gate applies) — both previously sub-like-only render gates
+- Crew Day section (v2.2602) — `get_crew_day_payload` scopes the day's clock sessions / schedule blocks / field reports to jobs on their assigned projects (same predicate as reports); office roles see company-wide. Hours only, no pay data. Since v2.2617 office-role people fold behind "Show office staff" by default (per-device preference) for superintendent viewers only
+- Crew Day email — **NO access since v2.2615** (briefly allowed in v2.2603): superintendents can neither schedule nor receive the `crew_day` stream — the ✉ hides on their card, and the INSERT policy + dispatcher roles are office-only (owner decision: the dashboard is their window)
+- **Collect Payment** (v2.2637): the field collect flow's Collect button on Team Ready to Bill rows — the three collect RPCs (`get_collect_payment_certify_payload` / `add_collect_payment_fixture_from_job_book` / `submit_collect_payment_certification`, migration `20260902152109`) and the two collect edge fns widened their role gates to include superintendent, keeping the `jobs_ledger_team_members` requirement and the office approval step (`approve_collect_payment_for_terminal`, office-only) unchanged
+- **Job thread notes** (v2.2647): superintendents can SELECT and INSERT `jobs_ledger_thread_notes` (Post note / Arrived / Leaving in the job activity panel) on jobs where they have project access, are a team member, or are a dispatch schedule assignee — additive policies gated by `superintendent_can_touch_job_thread()` (migration `20260902165836`). Previously both baseline branches excluded them: the office branch's team-member check sits inside a caller-RLS `jobs_ledger` EXISTS (supers have no `jobs_ledger` SELECT policy), and the field branch is helpers/subcontractor-only
+
 **Workflow**:
 - Can see all stages in accessible workflows (like assistant)
 - Can assign people to stages (Assign button visible)
@@ -589,7 +597,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Materials**:
 - Price book and Assembly book (subject to superintendent_service_type_ids if set)
-- Supply Houses, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary)
+- Supply Houses, **Job Accounts**, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary)
 
 **What They Cannot Do**:
 - No People page (only enough access to support Workflow assignment)

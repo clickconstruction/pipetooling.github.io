@@ -236,8 +236,11 @@ button:focus-visible {
   --bg-indigo-100: #e0e7ff;
   --bg-indigo-200: #c7d2fe;
 
-  /* borders (border*/outline) — darkened 2026-08-23 (twice: v2.2192, v2.2203) (owner: light-mode lines were
-     too faint to separate sections; dark mode already reads). Old values: #e5e7eb / #d1d5db. */
+  /* borders (border-* / outline) — darkened 2026-08-23 (twice: v2.2192, v2.2203) (owner: light-mode lines were
+     too faint to separate sections; dark mode already reads). Old values: #e5e7eb / #d1d5db.
+     NOTE: never write star followed by slash inside a comment — "(border" + star-slash + "outline)"
+     here ended the comment early and ate the --border declaration below (invisible light-mode
+     borders, 2026-07-12 → 2026-09-01). */
   --border: #cfd4db; /* v2.2203: was #d8dce2 */
   --border-strong: #aab2bd; /* v2.2203: was #b9c0c9 */
   /* Section-separator rules (draft editor + customer document): visible on white. */

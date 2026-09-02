@@ -24,7 +24,6 @@ export type EmailTemplate = {
   template_type:
     | 'invitation'
     | 'sign_in'
-    | 'login_as'
     | 'stage_assigned_started'
     | 'stage_assigned_complete'
     | 'stage_assigned_reopened'
@@ -36,6 +35,18 @@ export type EmailTemplate = {
     | 'work_order_offered'
     | 'work_order_accepted'
     | 'work_order_declined'
+    | 'lien_release_to_customer'
+    | 'hazmat_notice'
+    | 'paid_job'
+    | 'ready_to_bill'
+    | 'money_waiting'
+    | 'billed_awaiting'
+    | 'payment_forecast'
+    | 'crew_day'
+    | 'weekly_money'
+    | 'weekly_movement'
+    | 'schedule_day'
+    | 'gc_statement_scheduled'
   subject: string
   body: string
   updated_at: string | null
@@ -133,10 +144,6 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { s
     subject: 'Sign in to ClickTooling',
     body: 'Hi {{name}},\n\nClick the link below to sign in to your ClickTooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
   },
-  login_as: {
-    subject: 'Sign in to ClickTooling',
-    body: 'Hi {{name}},\n\nA dev has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
-  },
   stage_assigned_started: {
     subject: 'Workflow stage started: {{stage_name}}',
     body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been started.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
@@ -182,6 +189,60 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { s
   work_order_declined: {
     subject: '{{responder}} declined: {{stage_name}} at {{project_name}}',
     body: '{{responder}} declined the work order for {{stage_name}} at {{project_name}} ({{amount}}).\n\nReason: {{reason}}\n\nRe-price or offer someone else: {{workflow_link}}',
+  },
+  // Customer cover notes (v2.2658) — defaults mirror the built-in wording in
+  // sendLienReleaseEmail.ts / sendHazmatNoticeEmail.ts; the sender falls back
+  // to those builders when no row is saved.
+  lien_release_to_customer: {
+    subject: 'Release of lien — {{project}}',
+    body: 'Attached is the signed release of lien ({{form_label}}, {{amount}}) for {{project}}.\n\nThe attached PDF is the complete, signed document for your records.',
+  },
+  hazmat_notice: {
+    subject: 'Biohazard Remediation Fee Notice — Job {{job_number}}',
+    body: 'Please find the Biohazard Remediation Fee Notice for job {{job_number}} attached as a PDF. It documents the biohazard remediation fee on the {{invoice_reference}}. The notice includes the incident summary, photographic evidence, technician statements, and the contractual basis for the fee.',
+  },
+  // Digest wording (v2.2659): subject templates the line ({{default_subject}}
+  // = the built-in, dates and labels included); body is an INTRO PARAGRAPH
+  // above the digest's data — the data itself never changes here.
+  paid_job: {
+    subject: '{{default_subject}}',
+    body: 'A payment landed — details below.',
+  },
+  ready_to_bill: {
+    subject: '{{default_subject}}',
+    body: 'A job just became ready to bill — details below.',
+  },
+  money_waiting: {
+    subject: '{{default_subject}}',
+    body: 'Your money-waiting digest is below.',
+  },
+  billed_awaiting: {
+    subject: '{{default_subject}}',
+    body: 'Your billed-awaiting-payment digest is below.',
+  },
+  payment_forecast: {
+    subject: '{{default_subject}}',
+    body: 'Your payment forecast is below.',
+  },
+  crew_day: {
+    subject: '{{default_subject}}',
+    body: 'Your crew day summary is below.',
+  },
+  weekly_money: {
+    subject: '{{default_subject}}',
+    body: 'Your weekly money movement is below.',
+  },
+  weekly_movement: {
+    subject: '{{default_subject}}',
+    body: 'Your weekly movement summary is below.',
+  },
+  schedule_day: {
+    subject: '{{default_subject}}',
+    body: 'Your dispatch schedule is below.',
+  },
+  gc_statement_scheduled: {
+    subject: '{{default_subject}}',
+    body: 'Your current statement is below.',
   },
 }
 

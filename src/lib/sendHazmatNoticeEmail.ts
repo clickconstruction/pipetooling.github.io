@@ -6,6 +6,7 @@ import {
   hazmatNoticePdfFilename,
 } from './jobsDocuments/hazmatFeeNoticePdf'
 import { physicalInvoicePdfToBase64 } from './physicalInvoicePdf'
+import { resolveEmailWording } from './emailWording'
 
 /**
  * Email the Biohazard Remediation Fee Notice PDF to the customer via the
@@ -48,14 +49,27 @@ export async function sendHazmatNoticeEmailToCustomer(args: {
       return { ok: false, error: 'Notice PDF is too large to email' }
     }
 
-    const text = hazmatNoticeEmailText(args.jobInfo.jobNumber, args.invoiceReference)
+    // Dev-saved wording override (Settings → Email templates, v2.2658);
+    // built-in copy is the fallback.
+    const wording = await resolveEmailWording(
+      'hazmat_notice',
+      {
+        job_number: args.jobInfo.jobNumber,
+        invoice_reference: args.invoiceReference?.trim() || 'invoice',
+      },
+      {
+        subject: hazmatNoticeEmailSubject(args.jobInfo.jobNumber),
+        body: hazmatNoticeEmailText(args.jobInfo.jobNumber, args.invoiceReference),
+      },
+    )
+    const text = wording.text
 
     const { data, error } = await supabase.functions.invoke('send-hazmat-notice-email', {
       body: {
         job_id: args.jobId,
         incident_id: args.incident.id,
         customer_email: args.customerEmail.trim(),
-        subject: hazmatNoticeEmailSubject(args.jobInfo.jobNumber),
+        subject: wording.subject,
         pdf_base64: pdfBase64,
         pdf_filename: hazmatNoticePdfFilename(args.jobInfo),
         email_text: text,

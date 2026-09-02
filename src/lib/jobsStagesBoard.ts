@@ -217,6 +217,10 @@ export type BankPaymentTarget = {
    * sends p_allow_stripe_hosted to the RPC.
    */
   stripeHosted: boolean
+  /** `jobs_ledger.customer_name` ('' when blank) — feeds search + deposit-payer matching. */
+  customerName: string
+  /** The job's linked GC name ('' when none) — GCs usually pay on GC jobs. */
+  gcName: string
 }
 
 function bankPaymentTargetMoneyStr(n: number): string {
@@ -230,8 +234,30 @@ function bankPaymentTargetSearchLabel(job: JobWithDetails, shortLabel: string, r
   const rem = bankPaymentTargetMoneyStr(remaining)
   /** Lead with dollar amount (plain text for SearchableSelect search); UI can bold via `labelContent`. */
   const dollars = `$${rem}`
-  const rest = [hcp, name, addr, shortLabel].filter((s) => s.length > 0).join(' · ')
+  /** Customer + GC join the search text so typing the payer's name always finds the bill (they're often absent from the job name). */
+  const payers = dedupedPayerNames(name, bankPaymentTargetCustomerName(job), bankPaymentTargetGcName(job))
+  const rest = [hcp, name, ...payers, addr, shortLabel].filter((s) => s.length > 0).join(' · ')
   return rest ? `${dollars} · ${rest}` : dollars
+}
+
+/** Payer names worth showing next to a job name: blanks, repeats, and names the job name already contains drop out. */
+function dedupedPayerNames(jobName: string, ...candidates: string[]): string[] {
+  const out: string[] = []
+  for (const p of candidates) {
+    if (p.length === 0) continue
+    if (jobName.toLowerCase().includes(p.toLowerCase())) continue
+    if (out.some((x) => x.toLowerCase() === p.toLowerCase())) continue
+    out.push(p)
+  }
+  return out
+}
+
+function bankPaymentTargetCustomerName(job: JobWithDetails): string {
+  return (job.customer_name ?? '').trim()
+}
+
+function bankPaymentTargetGcName(job: JobWithDetails): string {
+  return (job.gcCustomer?.name ?? '').trim()
 }
 
 /** Formatted dollar string for AR allocation display (e.g. `$1,234.56`). */
@@ -239,9 +265,10 @@ export function formatBankPaymentTargetDollars(remaining: number): string {
   return `$${bankPaymentTargetMoneyStr(remaining)}`
 }
 
-/** Text after the leading amount: HCP, job name, address, short line (matches `searchLabel` tail). */
+/** Text after the leading amount: HCP, job name, payer(s), address, short line (matches `searchLabel` tail). */
 export function bankPaymentTargetCuesAfterAmount(t: BankPaymentTarget): string {
-  return [t.hcpNumber, t.jobName, t.jobAddress, t.label].filter((s) => s.trim().length > 0).join(' · ')
+  const payers = dedupedPayerNames(t.jobName, t.customerName, t.gcName)
+  return [t.hcpNumber, t.jobName, ...payers, t.jobAddress, t.label].filter((s) => s.trim().length > 0).join(' · ')
 }
 
 /** Address and invoice # for the summary line under the picker (amount shown separately). */
@@ -287,6 +314,8 @@ export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTa
         lineKind,
         invoiceSequenceOrder: r.inv.sequence_order,
         stripeHosted,
+        customerName: bankPaymentTargetCustomerName(job),
+        gcName: bankPaymentTargetGcName(job),
       })
     } else if (r.kind === 'job') {
       const rem = billedStageRowRemainingAmount(r)
@@ -306,6 +335,8 @@ export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTa
         lineKind: 'job_balance',
         invoiceSequenceOrder: null,
         stripeHosted: false,
+        customerName: bankPaymentTargetCustomerName(job),
+        gcName: bankPaymentTargetGcName(job),
       })
     }
   }

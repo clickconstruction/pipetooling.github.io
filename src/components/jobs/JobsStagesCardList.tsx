@@ -811,6 +811,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     invoiceStandaloneActionLabel,
     flashInvoiceId,
     onOpenLienTooling,
+    onOpenLienRelease,
     onJobMoveToCollections,
     jobNoteLine,
     stagesJobFlashId,
@@ -927,6 +928,14 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
           const week = getDefaultWeekRange().start
           navigate(`/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`)
         },
+      })
+    }
+    if (onOpenLienRelease) {
+      items.push({
+        key: 'lien-release',
+        label: 'Release of lien',
+        onClick: () => onOpenLienRelease({ job: j, invoice: inv }),
+        badge: props.lienReleaseJobIds?.has(j.id) ? 'live' : undefined,
       })
     }
     if (onOpenLienTooling) {

@@ -42,6 +42,7 @@ import type { Database } from '../../types/database'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   arRecordedPaymentAmountStr,
+  arRecordedPaymentMatchesForQuery,
   arRecordedPaymentOptions,
   arRecordedPaymentSearchLabel,
   type ArRecordedPaymentCandidate,
@@ -51,6 +52,10 @@ import {
   arStripeAutoCloseCandidates,
   type ArStripeAutoCloseCandidate,
 } from '../../lib/arStripeAutoClose'
+import { matchArDepositToPayer } from '../../lib/jobs/arDepositCustomerMatch'
+import { buildArExactMatchSweep } from '../../lib/jobs/arExactMatchSweep'
+import { findExactBillCombos } from '../../lib/jobs/arPayerBillCombos'
+import { findRecordedPaymentCollisions } from '../../lib/jobs/arLinkCollision'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 
 type MercuryCandidate =
@@ -335,6 +340,189 @@ export default function BankPaymentsModal({
   }, [selected, targets])
 
   /**
+   * The payer this deposit most plausibly came from (counterparty → note →
+   * memo vs customer/GC names on the open billed lines). Leads the chip UI
+   * with that payer's bills; never auto-applies.
+   */
+  const depositPayerMatch = useMemo(() => {
+    if (!selected || targets.length === 0) return null
+    return matchArDepositToPayer(
+      {
+        counterparty_name: selected.counterparty_name,
+        note: selected.note,
+        external_memo: selected.external_memo,
+      },
+      targets,
+    )
+  }, [selected, targets])
+
+  /** The matched payer's open billed lines: deposit-amount matches first, then largest remaining. */
+  const depositPayerTargets = useMemo(() => {
+    if (!depositPayerMatch || !selected) return []
+    const remAvail = Number(selected.remaining_available)
+    const matchesDeposit = (rem: number) =>
+      rem >= remAvail - 0.01 && rem <= remAvail + AR_BANK_PAYMENT_QUICK_MATCH_MAX_OVER
+    const keys = new Set(depositPayerMatch.targetKeys)
+    return targets
+      .filter((t) => keys.has(t.key))
+      .slice()
+      .sort((a, b) => {
+        const am = matchesDeposit(a.remaining)
+        const bm = matchesDeposit(b.remaining)
+        if (am !== bm) return am ? -1 : 1
+        return b.remaining - a.remaining
+      })
+      .slice(0, 8)
+  }, [depositPayerMatch, selected, targets])
+
+  /** Amount-only quick picks not already shown in the payer section. */
+  const quickMatchTargetsOutsidePayer = useMemo(() => {
+    if (depositPayerTargets.length === 0) return bankPaymentQuickMatchTargets
+    const shown = new Set(depositPayerTargets.map((t) => t.key))
+    return bankPaymentQuickMatchTargets.filter((t) => !shown.has(t.key))
+  }, [bankPaymentQuickMatchTargets, depositPayerTargets])
+
+  /**
+   * Exact-match sweep (batch pass): deposits where exactly one open non-Stripe
+   * bill shares the cents-exact amount, and no other deposit claims it.
+   */
+  const exactMatchSweep = useMemo(
+    () => buildArExactMatchSweep(candidates, targets),
+    [candidates, targets],
+  )
+  const [sweepOpen, setSweepOpen] = useState(false)
+  /** Deposit ids the user un-ticked in the review panel. */
+  const [sweepExcluded, setSweepExcluded] = useState<Set<string>>(() => new Set())
+  const [sweepApplying, setSweepApplying] = useState(false)
+  const [sweepProgress, setSweepProgress] = useState(0)
+  const [sweepResults, setSweepResults] = useState<Array<{ depositId: string; ok: boolean; error?: string }> | null>(
+    null,
+  )
+
+  useEffect(() => {
+    if (!open) {
+      setSweepOpen(false)
+      setSweepExcluded(new Set())
+      setSweepResults(null)
+      setSweepProgress(0)
+    }
+  }, [open])
+
+  const candidateById = useMemo(
+    () => new Map(candidates.map((c) => [c.mercury_transaction_id, c] as const)),
+    [candidates],
+  )
+
+  /** Ticked pairs not already applied in this panel session (guards Retry from double-applying successes before the list refreshes). */
+  const sweepPairsPending = exactMatchSweep.pairs.filter(
+    (p) => !sweepExcluded.has(p.depositId) && sweepResults?.find((r) => r.depositId === p.depositId)?.ok !== true,
+  )
+
+  async function applyExactMatchSweep() {
+    const toApply = sweepPairsPending
+    if (toApply.length === 0 || !canApply) return
+    setSweepApplying(true)
+    /** Successes from a prior pass stay recorded so Retry can't double-apply them before the list refreshes. */
+    const priorOk = (sweepResults ?? []).filter((r) => r.ok)
+    setSweepResults(null)
+    setSweepProgress(0)
+    const results: Array<{ depositId: string; ok: boolean; error?: string }> = [...priorOk]
+    for (const pair of toApply) {
+      const d = candidateById.get(pair.depositId)
+      const t = targetByKey.get(pair.targetKey)
+      let outcome: { ok: boolean; error?: string }
+      if (!d || !t) {
+        outcome = { ok: false, error: 'Deposit or bill no longer listed — refresh and retry.' }
+      } else {
+        const postedMs = d.posted_at ? new Date(d.posted_at).getTime() : Number.NaN
+        const paidOn = Number.isNaN(postedMs) ? null : denverCalendarDayKey(postedMs)
+        if (!paidOn) {
+          outcome = { ok: false, error: 'Missing Mercury posted date.' }
+        } else {
+          try {
+            const data = await withSupabaseRetry(
+              async () =>
+                supabase.rpc('apply_mercury_bank_payment_allocations', {
+                  p_mercury_transaction_id: d.mercury_transaction_id,
+                  p_paid_on: paidOn,
+                  p_payment_type: mercuryKindPaymentTypeLabel(d.kind, kindBadges),
+                  p_note: '',
+                  p_allocations: [
+                    t.invoiceId
+                      ? { invoice_id: t.invoiceId, amount: pair.amountCents / 100 }
+                      : { job_id: t.jobId, amount: pair.amountCents / 100 },
+                  ],
+                  p_allow_stripe_hosted: false,
+                }),
+              'apply_mercury_bank_payment_allocations',
+            )
+            const payload = data as { error?: string } | null
+            if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
+              outcome = { ok: false, error: payload.error }
+            } else {
+              outcome = { ok: true }
+            }
+          } catch (e: unknown) {
+            outcome = { ok: false, error: e instanceof Error ? e.message : 'Apply failed' }
+          }
+        }
+      }
+      results.push({ depositId: pair.depositId, ...outcome })
+      setSweepProgress((n) => n + 1)
+    }
+    setSweepResults(results)
+    setSweepApplying(false)
+    await onApplied()
+    void refreshList()
+    if (results.every((r) => r.ok)) {
+      setSweepOpen(false)
+      setSweepExcluded(new Set())
+      setSweepResults(null)
+    }
+  }
+
+  /** Targets whose remaining equals this deposit's remaining (same tolerance as the quick picks) — accents payer chips. */
+  const depositAmountMatchKeys = useMemo(() => {
+    if (!selected) return new Set<string>()
+    const remAvail = Number(selected.remaining_available)
+    return new Set(
+      targets
+        .filter(
+          (t) => t.remaining >= remAvail - 0.01 && t.remaining <= remAvail + AR_BANK_PAYMENT_QUICK_MATCH_MAX_OVER,
+        )
+        .map((t) => t.key),
+    )
+  }, [selected, targets])
+
+  /**
+   * One-check-several-bills suggestion: when none of the matched payer's bills
+   * equals the deposit but exactly ONE set of 2–4 of them sums to it
+   * cents-exactly, offer that set as a single chip that fills the allocation
+   * lines. More than one exact combo → too ambiguous, no suggestion.
+   */
+  const payerBillCombo = useMemo(() => {
+    if (!depositPayerMatch || !selected || depositPayerTargets.length < 2) return null
+    if (depositPayerTargets.some((t) => depositAmountMatchKeys.has(t.key))) return null
+    const combos = findExactBillCombos(Number(selected.remaining_available), depositPayerTargets)
+    if (combos.length !== 1) return null
+    const comboTargets = combos[0]!.map((k) => targetByKey.get(k))
+    if (comboTargets.some((t) => t == null)) return null
+    return comboTargets as BankPaymentTarget[]
+  }, [depositPayerMatch, selected, depositPayerTargets, depositAmountMatchKeys, targetByKey])
+
+  /** Fill one allocation line per combo bill (replaces the single untouched line the chip renders next to). */
+  const applyComboAllocation = useCallback((comboTargets: BankPaymentTarget[]) => {
+    setAllocLines(
+      comboTargets.map((t) => ({
+        id: crypto.randomUUID(),
+        kind: 'billed' as const,
+        targetKey: t.key,
+        amountStr: formatMoney(t.remaining),
+      })),
+    )
+  }, [])
+
+  /**
    * Monotonic id of the newest list request. A refetch (config landing, filter
    * toggle) bumps it; older in-flight responses then discard themselves instead
    * of overwriting the newer list — the unfiltered cold-cache query is the slow
@@ -491,12 +679,16 @@ export default function BankPaymentsModal({
     setArBankReturnedMarkMode(false)
   }, [open])
 
+  /** Allocation-line ids whose "link that payment instead" steer was waved off ("It's a different payment"). */
+  const [linkSteerDismissedLineIds, setLinkSteerDismissedLineIds] = useState<Set<string>>(() => new Set())
+
   useEffect(() => {
     if (!open || !selectedId) return
     setAllocLines([{ id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' }])
     setApplyError(null)
     setStripeOutOfBandConfirmed(false)
     setStripeCloseResults(null)
+    setLinkSteerDismissedLineIds(new Set())
   }, [open, selectedId])
 
   // Recorded-payment candidates for the "Payment received" allocation kind
@@ -1014,6 +1206,151 @@ export default function BankPaymentsModal({
               </div>
             </div>
           ) : null}
+          {sweepOpen ? (
+            <div
+              role="dialog"
+              aria-label="Review exact deposit matches"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 3,
+                background: 'var(--surface)',
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0,
+              }}
+            >
+              <div style={{ padding: '0.85rem 1.25rem 0.5rem', flexShrink: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>Exact deposit matches</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Each deposit below matches exactly one open bill to the cent. Un-tick any pair you're not sure
+                  about, then apply the rest in one pass. Ambiguous amounts are skipped, never guessed.
+                </div>
+              </div>
+              <div style={{ flex: 1, overflow: 'auto', padding: '0 1.25rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <tbody>
+                    {exactMatchSweep.pairs.map((p) => {
+                      const d = candidateById.get(p.depositId)
+                      const t = targetByKey.get(p.targetKey)
+                      const result = sweepResults?.find((r) => r.depositId === p.depositId)
+                      const posted = d?.posted_at
+                        ? new Date(d.posted_at).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ })
+                        : '—'
+                      return (
+                        <tr key={p.depositId} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '0.5rem 0.5rem 0.5rem 0', width: 24, verticalAlign: 'top' }}>
+                            <input
+                              type="checkbox"
+                              checked={!sweepExcluded.has(p.depositId)}
+                              disabled={sweepApplying}
+                              onChange={(e) => {
+                                const checked = e.target.checked
+                                setSweepExcluded((prev) => {
+                                  const next = new Set(prev)
+                                  if (checked) next.delete(p.depositId)
+                                  else next.add(p.depositId)
+                                  return next
+                                })
+                              }}
+                              aria-label={`Include ${formatMoney(p.amountCents / 100)} from ${d?.counterparty_name ?? '—'}`}
+                            />
+                          </td>
+                          <td style={{ padding: '0.5rem 0.5rem 0.5rem 0', verticalAlign: 'top' }}>
+                            <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
+                              {formatMoney(p.amountCents / 100)}
+                            </strong>
+                            <span style={{ color: 'var(--text-muted)' }}>
+                              {' '}
+                              · {(d?.counterparty_name ?? '').trim() || '—'} · {posted}
+                            </span>
+                          </td>
+                          <td style={{ padding: '0.5rem 0', verticalAlign: 'top' }}>
+                            <span style={{ color: 'var(--text-faint)' }}>→ </span>
+                            {t ? bankPaymentTargetPrimaryLabel(t) : '—'}
+                            {result ? (
+                              <div
+                                style={{
+                                  fontSize: '0.75rem',
+                                  color: result.ok ? 'var(--text-green-700)' : 'var(--text-red-700)',
+                                  marginTop: 2,
+                                }}
+                              >
+                                {result.ok ? '✓ applied' : `✗ ${result.error ?? 'failed'}`}
+                              </div>
+                            ) : null}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {exactMatchSweep.skipped.length > 0 ? (
+                  <div style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Skipped as ambiguous:{' '}
+                    {exactMatchSweep.skipped
+                      .map(
+                        (s) =>
+                          `$${formatMoney(s.amountCents / 100)} (${s.depositCount} deposit${s.depositCount === 1 ? '' : 's'} / ${s.targetCount} bill${s.targetCount === 1 ? '' : 's'})`,
+                      )
+                      .join(' · ')}{' '}
+                    — pick those by hand.
+                  </div>
+                ) : null}
+              </div>
+              <div
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  borderTop: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flexShrink: 0,
+                }}
+              >
+                {sweepApplying ? (
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginRight: 'auto' }}>
+                    Applying {sweepProgress} of {sweepPairsPending.length}…
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={sweepApplying}
+                  onClick={() => {
+                    setSweepOpen(false)
+                    setSweepResults(null)
+                  }}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: 4,
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
+                    cursor: sweepApplying ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {sweepResults?.some((r) => !r.ok) ? 'Close' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  disabled={sweepApplying || sweepPairsPending.length === 0}
+                  onClick={() => void applyExactMatchSweep()}
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: 4,
+                    border: 'none',
+                    background: sweepApplying ? '#9ca3af' : '#2563eb',
+                    color: 'white',
+                    cursor: sweepApplying ? 'not-allowed' : 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  {sweepResults?.some((r) => !r.ok) ? 'Retry failed' : 'Apply'} {sweepPairsPending.length} deposit
+                  {sweepPairsPending.length === 1 ? '' : 's'}
+                </button>
+              </div>
+            </div>
+          ) : null}
           <div
             style={{
               display: 'flex',
@@ -1105,6 +1442,49 @@ export default function BankPaymentsModal({
               />
               Show fully applied and returned deposits
             </label>
+            {canApply && exactMatchSweep.pairs.length > 0 ? (
+              <div
+                style={{
+                  margin: '0 0.5rem 0.5rem',
+                  padding: '0.45rem 0.6rem',
+                  border: '1px solid var(--border-green)',
+                  background: 'var(--bg-green-tint)',
+                  borderRadius: 6,
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ color: 'var(--text-700)' }}>
+                  <strong>{exactMatchSweep.pairs.length}</strong>
+                  {exactMatchSweep.pairs.length === 1 ? ' deposit matches' : ' deposits each match'} exactly one open
+                  bill — <strong>${formatMoney(exactMatchSweep.totalCents / 100)}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSweepOpen(true)
+                    setSweepResults(null)
+                  }}
+                  style={{
+                    padding: '0.3rem 0.6rem',
+                    borderRadius: 4,
+                    border: 'none',
+                    background: '#2563eb',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}
+                >
+                  Review &amp; apply…
+                </button>
+              </div>
+            ) : null}
             <div style={{ flex: 1, overflow: 'auto' }}>
               {listError && (
                 <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{listError}</p>
@@ -1433,6 +1813,16 @@ export default function BankPaymentsModal({
                             .filter((r) => r.id !== line.id && r.kind === 'payment' && r.targetKey.trim())
                             .map((r) => r.targetKey),
                         )
+                        /** v2.2591 link guard: a same-amount unlinked recorded payment on the picked job usually means LINK, not create. */
+                        const linkCollisions =
+                          line.kind === 'billed' && picked && !linkSteerDismissedLineIds.has(line.id)
+                            ? findRecordedPaymentCollisions(
+                                picked.jobId,
+                                parseBankPaymentAllocationAmount(line.amountStr),
+                                recordedPayments,
+                              ).filter((p) => !takenPaymentIds.has(p.payment_id))
+                            : []
+                        const linkCollision = linkCollisions[0]
                         const kindToggleSegStyle = (active: boolean): CSSProperties => ({
                           padding: '0.25rem 0.6rem',
                           fontSize: '0.75rem',
@@ -1511,6 +1901,26 @@ export default function BankPaymentsModal({
                                 placeholder="— Select billed line —"
                                 listAriaLabel="Billed line for allocation"
                                 portalZIndex={1200}
+                                // v2.2597: a fully-paid line (Mark Paid before the deposit was
+                                // allocated) has no billed-line row — steer the dead-ended
+                                // search to the recorded payment it should link instead.
+                                noMatchesAction={
+                                  recordedPayments.length > 0
+                                    ? {
+                                        label: (q) => {
+                                          const n = arRecordedPaymentMatchesForQuery(recordedPayments, takenPaymentIds, q).length
+                                          return n > 0
+                                            ? `No billed line — but ${n} recorded payment${n === 1 ? '' : 's'} match${n === 1 ? 'es' : ''} “${q}”. Link it instead`
+                                            : 'Nothing billed matches — search recorded payments instead'
+                                        },
+                                        onSelect: (q) => {
+                                          const matches = arRecordedPaymentMatchesForQuery(recordedPayments, takenPaymentIds, q)
+                                          setAllocLineKind(line.id, 'payment')
+                                          if (matches.length === 1) applyRecordedPaymentTarget(line.id, matches[0]!.payment_id)
+                                        },
+                                      }
+                                    : undefined
+                                }
                               />
                               )}
                               {pickedPayment ? (
@@ -1530,7 +1940,123 @@ export default function BankPaymentsModal({
                               ) : null}
                               {line.kind === 'billed' &&
                               allocLines[0]?.id === line.id &&
-                              bankPaymentQuickMatchTargets.length > 0 &&
+                              !line.targetKey.trim() &&
+                              depositPayerTargets.length > 0 &&
+                              depositPayerMatch ? (
+                                <div style={{ marginTop: 8 }}>
+                                  <div
+                                    style={{
+                                      fontSize: '0.75rem',
+                                      color: 'var(--text-muted)',
+                                      marginBottom: 6,
+                                      fontWeight: 500,
+                                    }}
+                                  >
+                                    {depositPayerMatch.source === 'counterparty' ? (
+                                      <>
+                                        From{' '}
+                                        <strong style={{ color: 'var(--text-700)' }}>{depositPayerMatch.name}</strong>
+                                        {' — their open bills'}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {depositPayerMatch.source === 'note' ? 'Note mentions ' : 'Memo mentions '}
+                                        <strong style={{ color: 'var(--text-700)' }}>{depositPayerMatch.name}</strong>
+                                        {' — their open bills'}
+                                      </>
+                                    )}
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      flexWrap: 'wrap',
+                                      gap: '0.35rem',
+                                      alignItems: 'stretch',
+                                    }}
+                                  >
+                                    {payerBillCombo && allocLines.length === 1 ? (
+                                      <button
+                                        type="button"
+                                        disabled={!canApply}
+                                        onClick={() => applyComboAllocation(payerBillCombo)}
+                                        aria-label={`Fill ${payerBillCombo.length} allocations: ${payerBillCombo
+                                          .map((t) => `${formatBankPaymentTargetDollars(t.remaining)} ${t.hcpNumber}`)
+                                          .join(' + ')}`}
+                                        style={{
+                                          display: 'inline-flex',
+                                          flexDirection: 'column',
+                                          alignItems: 'flex-start',
+                                          gap: 1,
+                                          padding: '0.3rem 0.55rem',
+                                          fontSize: '0.75rem',
+                                          border: '1px dashed var(--border-green)',
+                                          borderRadius: 4,
+                                          background: 'var(--bg-green-tint)',
+                                          color: 'var(--text-700)',
+                                          cursor: !canApply ? 'not-allowed' : 'pointer',
+                                          textAlign: 'left',
+                                          maxWidth: '100%',
+                                          lineHeight: 1.35,
+                                        }}
+                                      >
+                                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+                                          {payerBillCombo.length} bills ={' '}
+                                          {formatBankPaymentTargetDollars(Number(selected.remaining_available))}
+                                        </span>
+                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                          {payerBillCombo
+                                            .map((t) => `${formatBankPaymentTargetDollars(t.remaining)} · ${t.hcpNumber || '—'}`)
+                                            .join('  +  ')}
+                                        </span>
+                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-green-700)' }}>
+                                          fills {payerBillCombo.length} allocation lines
+                                        </span>
+                                      </button>
+                                    ) : null}
+                                    {depositPayerTargets.map((t) => {
+                                      const isAmountMatch = depositAmountMatchKeys.has(t.key)
+                                      const chipLabel = `${formatBankPaymentTargetDollars(t.remaining)} · ${bankPaymentTargetPrimaryLabel(t)}`
+                                      return (
+                                        <button
+                                          key={t.key}
+                                          type="button"
+                                          disabled={!canApply}
+                                          onClick={() => applyAllocationTarget(line.id, t.key)}
+                                          aria-label={`Apply allocation: ${chipLabel}`}
+                                          style={{
+                                            display: 'inline-flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start',
+                                            gap: 1,
+                                            padding: '0.3rem 0.55rem',
+                                            fontSize: '0.75rem',
+                                            border: isAmountMatch
+                                              ? '1px solid var(--border-green)'
+                                              : '1px solid var(--border-strong)',
+                                            borderRadius: 4,
+                                            background: isAmountMatch ? 'var(--bg-green-tint)' : 'var(--surface)',
+                                            color: 'var(--text-700)',
+                                            cursor: !canApply ? 'not-allowed' : 'pointer',
+                                            textAlign: 'left',
+                                            maxWidth: '100%',
+                                            lineHeight: 1.35,
+                                          }}
+                                        >
+                                          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{chipLabel}</span>
+                                          {isAmountMatch ? (
+                                            <span style={{ fontSize: '0.66rem', color: 'var(--text-green-700)' }}>
+                                              matches this deposit
+                                            </span>
+                                          ) : null}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {line.kind === 'billed' &&
+                              allocLines[0]?.id === line.id &&
+                              quickMatchTargetsOutsidePayer.length > 0 &&
                               !line.targetKey.trim() ? (
                                 <div style={{ marginTop: 8 }}>
                                   <div
@@ -1551,7 +2077,7 @@ export default function BankPaymentsModal({
                                       alignItems: 'center',
                                     }}
                                   >
-                                    {bankPaymentQuickMatchTargets.map((t) => {
+                                    {quickMatchTargetsOutsidePayer.map((t) => {
                                       const chipLabel = `${bankPaymentTargetPrimaryLabel(t)} · ${formatBankPaymentTargetDollars(t.remaining)}`
                                       return (
                                         <button
@@ -1599,6 +2125,74 @@ export default function BankPaymentsModal({
                                     <strong style={{ fontWeight: 600, color: 'var(--text-700)' }}>
                                       {formatBankPaymentTargetDollars(picked.remaining)}
                                     </strong>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {linkCollision ? (
+                                <div
+                                  role="note"
+                                  aria-label="This payment may already be recorded"
+                                  style={{
+                                    marginTop: 8,
+                                    padding: '0.55rem 0.7rem',
+                                    border: '1px solid #f59e0b',
+                                    borderRadius: 6,
+                                    background: 'var(--bg-amber-tint)',
+                                    fontSize: '0.78rem',
+                                    lineHeight: 1.45,
+                                    color: 'var(--text-amber-800)',
+                                  }}
+                                >
+                                  <strong>This payment may already be recorded.</strong> A{' '}
+                                  {formatMoney(Math.abs(Number(linkCollision.amount) || 0))} payment
+                                  {linkCollision.paid_on && /^\d{4}-\d{2}-\d{2}$/.test(linkCollision.paid_on.trim())
+                                    ? ` dated ${formatWorkDateYmdFriendly(linkCollision.paid_on.trim())}`
+                                    : ''}{' '}
+                                  is on this job with no bank deposit linked
+                                  {linkCollisions.length > 1 ? ` (${linkCollisions.length} such payments)` : ''}.
+                                  Linking it avoids counting the money twice.
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: 6 }}>
+                                    <button
+                                      type="button"
+                                      disabled={!canApply}
+                                      onClick={() => {
+                                        setAllocLineKind(line.id, 'payment')
+                                        applyRecordedPaymentTarget(line.id, linkCollision.payment_id)
+                                      }}
+                                      style={{
+                                        padding: '0.3rem 0.6rem',
+                                        borderRadius: 4,
+                                        border: 'none',
+                                        background: '#2563eb',
+                                        color: 'white',
+                                        cursor: !canApply ? 'not-allowed' : 'pointer',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                      }}
+                                    >
+                                      Link that payment instead
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setLinkSteerDismissedLineIds((prev) => {
+                                          const next = new Set(prev)
+                                          next.add(line.id)
+                                          return next
+                                        })
+                                      }
+                                      style={{
+                                        padding: '0.3rem 0.6rem',
+                                        borderRadius: 4,
+                                        border: '1px solid var(--border-strong)',
+                                        background: 'var(--surface)',
+                                        color: 'var(--text-700)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.75rem',
+                                      }}
+                                    >
+                                      It&apos;s a different payment
+                                    </button>
                                   </div>
                                 </div>
                               ) : null}

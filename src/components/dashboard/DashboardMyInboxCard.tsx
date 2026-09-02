@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChecklistComingUpSection } from '../checklist/ChecklistComingUpSection'
+import { ComingUpWaitingGroupList, useComingUpWaitingGroups } from '../checklist/ChecklistComingUpSection'
+import { buildWaitingForStripSummary } from '../../lib/dashboardWaitingForStrip'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { UserRole } from '../../hooks/useAuth'
@@ -109,6 +110,10 @@ export function DashboardMyInboxCard({
   const [muteModalItemId, setMuteModalItemId] = useState<string | null>(null)
   const [muteModalTitle, setMuteModalTitle] = useState('')
   const [completedItemsOpen, setCompletedItemsOpen] = useState(false)
+  /** "Waiting For" footer strip (v2.2650): collapsed by default, like Recently Completed. */
+  const [waitingForOpen, setWaitingForOpen] = useState(false)
+  const waitingGroups = useComingUpWaitingGroups(authUserId ?? null)
+  const waitingSummary = buildWaitingForStripSummary(waitingGroups)
   const [completedItems, setCompletedItems] = useState<ChecklistInstance[]>([])
   const [completedItemsLoading, setCompletedItemsLoading] = useState(false)
   const [readInstanceIds, setReadInstanceIds] = useState<Set<string>>(new Set())
@@ -620,8 +625,9 @@ export function DashboardMyInboxCard({
   const showChecklist = checklistLoading || todayChecklist.length > 0
   /** Recently Completed only earns its corner link when something was actually completed (dev-only feature). */
   const showRecentlyCompleted = isDev && completedItems.length > 0
-  /** My Inbox card: Due Today / Overdue / Recently Completed Tasks (dev) grouped as one unit. */
-  const showMyInboxCard = userLoading || showChecklist || outstandingLoading || outstandingItems.length > 0 || showRecentlyCompleted
+  /** My Inbox card: Due Today / Overdue / Waiting For / Recently Completed Tasks (dev) grouped as one unit. */
+  const showMyInboxCard =
+    userLoading || showChecklist || outstandingLoading || outstandingItems.length > 0 || showRecentlyCompleted || waitingGroups.length > 0
 
   useEffect(() => {
     onVisibleChange(showMyInboxCard)
@@ -1129,6 +1135,51 @@ export function DashboardMyInboxCard({
           )}
         </div>
       )}
+        {waitingSummary && (
+          <div
+            style={{
+              background: 'var(--bg-subtle)',
+              border: '1px dashed var(--border)',
+              borderRadius: 8,
+              padding: waitingForOpen ? '0.5rem 0.75rem 0.65rem' : 0,
+              marginTop: '0.5rem',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setWaitingForOpen((o) => !o)}
+              aria-expanded={waitingForOpen}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.65rem',
+                width: '100%',
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                font: 'inherit',
+                padding: waitingForOpen ? '0 0 0.5rem' : '0.5rem 0.75rem',
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', minWidth: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                <span aria-hidden style={{ flexShrink: 0 }}>⏳</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-700)', flexShrink: 0 }}>Waiting For</span>
+                <span style={{ background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 999, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
+                  {waitingSummary.count}
+                </span>
+                {waitingForOpen ? (
+                  <span>yours, once the step ahead clears</span>
+                ) : (
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>· {waitingSummary.peek}</span>
+                )}
+              </span>
+              <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-faint)', flexShrink: 0 }}>{waitingForOpen ? '⌃' : '⌄'}</span>
+            </button>
+            {waitingForOpen ? <ComingUpWaitingGroupList groups={waitingGroups} groupBackground="var(--surface)" /> : null}
+          </div>
+        )}
         </DashboardGroupCard>
       )}
       {fwdInstance && (
@@ -1209,7 +1260,6 @@ export function DashboardMyInboxCard({
           </div>
         </div>
       )}
-      <ChecklistComingUpSection authUserId={authUserId ?? null} />
       <ChecklistItemMuteModal
         open={!!muteModalItemId}
         checklistItemId={muteModalItemId}

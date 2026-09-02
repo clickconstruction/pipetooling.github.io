@@ -5,7 +5,7 @@ file: docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md
 type: Engineering / Program plan
 purpose: The umbrella plan for the plans-to-proposal estimator-twin pipeline — every build across PipeTooling, CountTooling, twin-mcp, and the agent harness, sequenced into waves that each end in a live test gate. Sub-plan for the RFI loop lives in RFI_LOOP_PLAN.md. Owner-facing narrative in the "Estimator Twin Pipeline" artifact (2026-08-28).
 audience: Developers, AI Agents
-last_updated: 2026-08-30
+last_updated: 2026-09-01
 sections:
   - The thesis
   - The pipeline being built
@@ -324,6 +324,20 @@ The exit criteria — when these hold, the environment is stable and Wave 5 (fle
   its 3.1 calibration run, extractor automation (1.2), then M4/M5. Residue: CT project
   "ZZ Twin LIVSTE takeoff" sits in the review lane as `ready` (a probe — a reviewer
   can exercise Request changes on it).
+- 2026-08-31 → 09-01 (the confidence era — catch-up entry, 2026-09-01) — With the wave
+  tables built, the program pivoted from *can the robot estimate* to *how do we know to
+  trust it*. M4/M6-v1..v8/M5/M5b ran on LIVSTE (results table in `missions/estimator.md`
+  — registration gates, branch-sweep doctrine, robot labor book; reference diff still
+  blocked on Wendi's cloud takeoff). Backtest slates BT-2..BT-19 produced **Gate A: MET
+  2026-08-31** (BT-12 −2.6 / BT-13 +4.6 / BT-14 +3.5) and a doctrine ledger in
+  PLACEMENT.md. Shipped around them: the audit loop + Audits cockpit (v2.2516–19,
+  v2.2549/2553, FEEDBACK_LOOP.md v2), reference grading (v2.2545/2547), shadow-bidding
+  machinery + Shadows lens (v2.2539/2543/2544), robot request queue + Queue lens
+  (v2.2531/2542), census toolkit T1–T4 (v2.2548/2552/2554/2555), the confidence
+  Scoreboard + `twin_run_scores` (v2.2560), the Dashboard audit nudge (v2.2573), and
+  backtest candidates by axis + `bids.backtest_axis` (v2.2594). **Current state and the
+  fleet roadmap/gates now live in `docs/twins/HANDOFF.md`** — Phase 1 · Shadow, Gate B
+  0/8 axes, audit throughput the bottleneck.
 - 2026-08-30 (placement train, v2.2504) — **Waves 3.4 (engine v0), 3.1 (calibration),
   and 1.2 (extractor automation) BUILT; every wave-table engineering item is now done.**
   Placement engine v0: coordinate kernel `src/lib/takeoffPlacement.ts` (tested — base

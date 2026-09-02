@@ -78,11 +78,14 @@ import { submitLinkJobPicturesDispatchRequestForJob } from '../lib/linkJobPictur
 import { readEdgeFunctionErrorBody } from '../lib/readEdgeFunctionErrorBody'
 import { useDashboardBoot } from '../hooks/useDashboardBoot'
 import { formatDatetime } from '../lib/dashboardProjectsCard'
+import { isDashboardRecentReportsRole } from '../lib/dashboardRecentReports'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
 import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
 import { resolveReadyToBillBillCustomerTarget } from '../lib/buildReadyToBillDashboardUnits'
 import { isDashboardTeamReadyToBillRole } from '../lib/dashboardTeamAssignedJobRow'
+import { isCrewDayRole } from '../lib/crewDay'
+import { DashboardCrewDaySection } from '../components/dashboard/DashboardCrewDaySection'
 import {
   dashboardJobHasCustomerForBilling,
   jobBillingFromDashboardInvoice,
@@ -1010,7 +1013,7 @@ export default function Dashboard() {
   /** Projects card wraps Assigned + Subscribed stages; visible if either sub-section would show. */
   const projectsCardVisible =
     userLoading || showAssigned || (showSubscribed && (subscribedLoading || subscribedSteps.length > 0))
-  const showRecent = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
+  const showRecent = isDashboardRecentReportsRole(role)
   const showFinancials = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 
   const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
@@ -1086,6 +1089,9 @@ export default function Dashboard() {
       reloadSubSchedule={reloadSubSchedule}
     />
   )
+
+  /** Crew Day (v2.2602): mounted directly above each myInboxCard position; self-gates on isCrewDayRole. */
+  const crewDaySection = <DashboardCrewDaySection authUserId={authUser?.id} role={role} />
 
   // Job Mode focused view: replaces top of Dashboard with one big card; rest of
   // Dashboard is hidden until user taps "Show full dashboard" (component-local;
@@ -1182,6 +1188,7 @@ export default function Dashboard() {
     { id: 'dash-my-schedule', label: 'My Schedule', visible: Boolean(authUser?.id) },
     { id: 'dash-notifications', label: 'Notifications', visible: showFinancials },
     { id: 'dash-clocked-in', label: 'ClockedIn', visible: Boolean(authUser?.id && showClockActivityStrip) },
+    { id: 'dash-crew-day', label: 'Crew Day', visible: Boolean(authUser?.id) && isCrewDayRole(role) },
     { id: 'dash-my-inbox', label: 'My Inbox', visible: myInboxDockVisible },
     {
       id: 'dash-teams-inbox',
@@ -1384,6 +1391,7 @@ export default function Dashboard() {
       )}
       {isAssistantLike(role) && (
         <>
+          {crewDaySection}
           {myInboxCard}
           {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
             <DashboardTeamsInboxCard
@@ -1463,7 +1471,12 @@ export default function Dashboard() {
           }}
         />
       )}
-      {(role === 'dev' || role === 'master_technician') && myInboxCard}
+      {(role === 'dev' || role === 'master_technician') && (
+        <>
+          {crewDaySection}
+          {myInboxCard}
+        </>
+      )}
       {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && !isAssistantLike(role) && (
         <DashboardTeamsInboxCard
           dispatchInbox={dispatchInbox}
@@ -1488,7 +1501,12 @@ export default function Dashboard() {
         />
       )}
 
-      {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myInboxCard}
+      {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && (
+        <>
+          {crewDaySection}
+          {myInboxCard}
+        </>
+      )}
       <DashboardMyBidsSection
         authUserId={authUser?.id}
         role={role}

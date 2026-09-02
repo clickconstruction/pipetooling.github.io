@@ -7,11 +7,11 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-08-25
+last_updated: 2026-09-01
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-categories: 9
+categories: 10
 
 key_sections:
   - name: "User Roles"
@@ -26,6 +26,8 @@ key_sections:
     anchor: "#bids-system"
   - name: "Materials System"
     anchor: "#materials-system"
+  - name: "Digital Twins & Robots"
+    anchor: "#digital-twins--robots"
   - name: "Database Concepts"
     anchor: "#database-concepts"
   - name: "Technical Terms"
@@ -60,7 +62,9 @@ when_to_read:
 - [Recurring job report emails (Jobs)](#recurring-job-report-emails-jobs)
 - [Bids System](#bids-system)
 - [Materials System](#materials-system)
+- [Job Accounts (Materials tab)](#job-accounts-materials-tab)
 - [PO Generator ledger](#po-generator-ledger)
+- [Digital Twins & Robots](#digital-twins--robots)
 - [Database Concepts](#database-concepts)
 - [Technical Terms](#technical-terms)
 - [UI/UX Terms](#uiux-terms)
@@ -891,6 +895,9 @@ Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plu
 
 **Fields**: name, contact info, address, notes, monthly_payment_day (day 1–31 when payment is typically due; used for Due column in supply house list)
 
+### Job Accounts (Materials tab)
+Per-job money-flow rollup (v2.2652): **Materials → Job Accounts** joins **`supply_house_invoice_job_allocations`** × **`supply_house_invoices`** against **`jobs_ledger.revenue`** / **`payments_made`** to show, per job, what the customer has paid vs what is paid/owed to supply houses. Headline "holding for suppliers" = unpaid supplier balances on jobs the customer has paid (per job: min(owed, payments_made)). Statuses: **Owe suppliers**, **Floating** (houses paid, customer not), **Awaiting customer**, **Settled**; unpaid invoices allocated to neither a job nor a bid surface as an **unallocated** bucket. Office roles only (dev/master/assistant-like). Kernel: **[`src/lib/materials/jobAccountsFlow.ts`](../src/lib/materials/jobAccountsFlow.ts)**.
+
 ### PO Generator ledger
 Shop PO / reference codes (10000–99999) generated from **Materials → PO Generator** and stored in **`material_po_generator_entries`** with **`job_ledger_id`**, **`for_user_id`**, optional **`supply_house_id`**, and unique **`po_code`**. **Supply Houses** → expanded house → **Invoices** **Purchase Order #** can show a red warning when that field contains a parsed generator-style code not present on visible ledger rows for this supply house or with **null** **`supply_house_id`**. Parser: **[`parsePoGeneratorCodeFromPurchaseOrderName`](../src/lib/parsePoGeneratorCodeFromPurchaseOrderName.ts)** — treats strings like **`40326-1`** as shop refs, not **`40326`**.
 
@@ -1048,6 +1055,43 @@ Sorting by price count that queries database for global sort order (not just cur
 ## System of record (billing)
 
 Since the migration off HouseCall Pro, **the app is the system of record for all billing** — open money, bill dates, payment dates. HCP-era history is repaired only through **Settings → Jobs & billing → HCP reconcile** (dev-only, v2.2255) from HCP's own exports; open HCP invoices are never imported and money is never auto-added. Date provenance ranks Mercury (bank) > Stripe > HCP payments report > hand-entered > jobs-export import, and the pay-speed math quarantines unverified import same-day pairs (v2.2248). Full policy: [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) → "System of record".
+
+## Digital Twins & Robots
+
+The estimator-twin program's vocabulary (plans: [`DIGITAL_TWINS_PLAN.md`](./DIGITAL_TWINS_PLAN.md), [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md); current state: [`twins/HANDOFF.md`](./twins/HANDOFF.md)).
+
+### Digital twin / robot
+A role-scoped AI agent account flagged `users.is_digital_twin` (🤖 banner everywhere it appears; "robot" in user-facing copy). Estimator-only by owner decision. Twins impersonate roles, not people; their work is visible on the shared board and reviewable by any human.
+
+### Twin write fence / assignment-is-the-grant
+RESTRICTIVE RLS policies binding twins only: a twin writes only bids it **created or is assigned as estimator** (plus bid-child tables and help feedback) — setting a bid's Estimator to a twin is simultaneously the permission and the job. A DB trigger makes sending structurally impossible ("digital twins draft only: sending and outcomes are human acts"). Safety rungs per twin: read-only tester → fenced writer → working estimator.
+
+### Robot bid
+A bid drafted by a twin end to end (substrate → CountTooling takeoff → counts → materials/labor → Workbench draft prices → unsent letter). Lives on the **🤖 Robot Board** (`?tab=robot-board`), excluded from the human board and its rollups. Naming convention `ZZ Twin …` / `ZZ Shadow …`.
+
+### Backtest
+A blind re-estimate of a **decided historical bid**: `open_backtest` copies logistics only (never counts/pricing/value/outcome), the twin produces its number from the plans alone, and the scorecard unseals the reference at the end. Labeled BT-N; structured scores in `twin_run_scores` (v2.2560).
+
+### Shadow bid
+The live-stream variant (v2.2539): opens on an **unsent** human bid, the twin locks a sealed blind total before our number exists, and `score_shadows` computes the delta automatically once the reference carries `bid_value` + `bid_date_sent`. The seal is API-enforced — staff can't read a sealed total (anchoring risk). Ledger: `twin_shadow_runs`; story view: `?tab=robot-shadows`.
+
+### Gate A / Gate B / axis
+The fleet roadmap's trust gates. **Gate A** (met 2026-08-31): three consecutive backtests within ±5%. **Gate B**: per **axis** (project-type lane — `small TI`, `kitchen/occupied`, `institutional`, …), 5 consecutive scored runs within ±8% (`confidenceBoard.ts`; dev **Scoreboard** lens, `?tab=robot-scoreboard`). Denominators take only clean grade-A/B references. `bids.backtest_axis` (v2.2594) assigns an axis to a reference before any run.
+
+### Reference grade / quality flags
+How much a decided bid can teach a backtest (v2.2545, `referenceGrade.ts`): **A** plans+value+counts+pricing (full scorecard) · **B** plans+value (dollars only) · **C** plans+counts · **D** plans only · **X** no plans. Grade uses field *presence* only (blind-safe); **quality flags** — round value, weak loss (`no_bid`/`project_died`), uncategorized loss, stale (>6 mo) — read the sealed side and make a reference **gate-ineligible** without excluding it from doctrine work.
+
+### Audit (robot) / digest / receipt / verdict tags
+The feedback loop (`twins/FEEDBACK_LOOP.md`): a twin opens a `bid_audits` row at pipeline end; the human reviews in the **Audits** tab (`?tab=audits`) — cockpit card with a name-matched robot-vs-ours diff and one-tap **verdict tags**: `[verdict:teach]` (robot's wrong → doctrine/books), `[verdict:record]` (OUR record's wrong → repair task), `[verdict:ok]` (judgment call). The twin then **digests** every note into exactly one bucket (doctrine / books / code / bid_only / reference_quality) and posts a **receipt** ("🤖 Learned: …"); all receipts → audit `digested`. Twins can never set an audit `done` (RLS).
+
+### Robot books
+The twin-owned 🤖 Robot Default takeoff/labor/price books — every entry grounded in a named in-app source. The master price book is never twin-writable; book corrections are suggestions for a human.
+
+### twin-mcp
+The MCP server agent vendors hold a seat through (per-twin revocable tokens; verb reference in [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md)). No business-logic tools by design — `mint_session` opens a signed-in browser and work happens in the app; composite reads (`get_work_state`) + the bid-note ledger are a stateless agent's memory.
+
+### ZZ convention
+Twin-created records prefix their names with `ZZ` (`ZZ Twin …`, `ZZ Shadow …`) so they sort last and read as robot residue at a glance; the write fence, not the naming, is what holds.
 
 ## Database Concepts
 

@@ -16,6 +16,7 @@ import { useWorkingBoardInboxCount } from '../hooks/useWorkingBoardInboxCount'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useBidPricingEngine } from '../hooks/useBidPricingEngine'
 import { useBidPricingRows } from '../hooks/useBidPricingRows'
+import { useBidCustomCosts } from '../hooks/useBidCustomCosts'
 import { useToastContext } from '../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import {
@@ -2778,6 +2779,8 @@ export default function Bids() {
     </ScrollableTabStrip>
   )
 
+  const { customCosts: bidCountRowCustomCosts, reloadCustomCosts: reloadBidCustomCosts } = useBidCustomCosts(selectedBidForPricing?.id ?? null)
+
   const { pricingRowsForGrid, pricingPackageSource, coverLetterPricingRows } = useBidPricingRows({
     selectedBidForPricing,
     selectedPricingVersionId,
@@ -2790,6 +2793,7 @@ export default function Bids() {
     costEstimatePOModalTaxPercent,
     bidPricingAssignments,
     bidCountRowCustomPrices,
+    bidCountRowCustomCosts,
     bidCountRowSubmissionHides,
     priceBookEntries,
     pricingLaborRows,
@@ -3267,7 +3271,7 @@ export default function Bids() {
 
       {/* Robot Queue lens (v2.2542, dev only) — requested above ready; prompts live here. */}
       {activeTab === 'robot-queue' && myRole === 'dev' && (
-        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} onOpenBid={openEditBid} />
+        <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} referencePresence={referencePresence} onOpenBid={openEditBid} />
       )}
 
       {/* Confidence scoreboard (v2.2560, dev only) — per-axis Gate-B cards + run ledger. */}
@@ -3854,6 +3858,8 @@ export default function Bids() {
           setPriceBookEntries={setPriceBookEntries}
           bidPricingAssignments={bidPricingAssignments}
           bidCountRowCustomPrices={bidCountRowCustomPrices}
+          bidCountRowCustomCosts={bidCountRowCustomCosts}
+          reloadBidCustomCosts={reloadBidCustomCosts}
           bidCountRowSubmissionHides={bidCountRowSubmissionHides}
           selectedBidVersionId={selectedBidVersionId}
           selectedPricingVersionId={selectedPricingVersionId}

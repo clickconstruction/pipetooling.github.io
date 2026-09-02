@@ -18,6 +18,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import {
   moneyWaitingEmailSubject,
   moneyWaitingEmailText,
@@ -110,12 +111,15 @@ async function sendMoneyWaiting(
   senderName: string | null,
   subjectPrefix = '',
 ): Promise<{ success: boolean; error?: string }> {
-  const subject = `${subjectPrefix}${moneyWaitingEmailSubject(payload)}`
+  // Dev-saved wording (Settings -> Email templates, v2.2659): subject template
+  // + optional intro paragraph above the built digest; built-in copy otherwise.
+  const wording = await resolveServerEmailWording('money_waiting', {}, moneyWaitingEmailSubject(payload))
+  const subject = `${subjectPrefix}${wording.subject}`
   return await sendEmailViaResend(
     recipientEmail,
     subject,
-    moneyWaitingEmailText(payload),
-    renderMoneyWaitingEmail(payload, senderName ?? undefined),
+    (wording.introText ? wording.introText + '\n\n' : '') + moneyWaitingEmailText(payload),
+    (wording.introHtml ?? '') + renderMoneyWaitingEmail(payload, senderName ?? undefined),
     resendApiKey,
   )
 }

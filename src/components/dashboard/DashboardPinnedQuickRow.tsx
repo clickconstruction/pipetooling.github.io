@@ -21,6 +21,11 @@ import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
+import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
+import { useSpecSectionUncodedCount } from '../../hooks/useSpecSectionUncodedCount'
+import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
+import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
+import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import NewReportModal from '../NewReportModal'
@@ -313,6 +318,21 @@ export function DashboardPinnedQuickRow({
   const bulkDelete = useBulkDeleteNudge(hideBanners ? undefined : authUserId)
   const claimDev = useClaimDevAttemptsNudge(hideBanners ? undefined : authUserId)
 
+  // Robot audits (v2.2573): the auditing roles — estimators do the work, dev
+  // sees everything. The hook's sealed-shadow hold keeps unworkable audits out.
+  const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
+  const { pending: robotAuditsPending } = useBidAuditsPendingCount(robotAuditsEnabled)
+
+  // Division 22 uncoded names (v2.2627) — the ledger-teaching roles only.
+  const d22UncodedEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
+  const { uncoded: d22UncodedCount } = useSpecSectionUncodedCount(d22UncodedEnabled)
+
+  // Cleared payments behind conditional lien releases (v2.2582) — office set.
+  const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+
   const needsYouItems = buildNeedsYouItems({
     role,
     arBankUnallocatedCount,
@@ -337,6 +357,16 @@ export function DashboardPinnedQuickRow({
     bulkDeleteAlerts: bulkDelete.visibleAlerts,
     claimDevRefusedCount: claimDev.visibleCount,
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
+    robotAuditsEnabled,
+    robotAuditsPending,
+    d22UncodedEnabled,
+    d22UncodedCount,
+    lienUnconditionalEnabled,
+    lienUnconditionalOwed,
+    demandDeadlineEnabled: lienUnconditionalEnabled,
+    demandDeadlineOverdue,
+    lienWatchEnabled: lienUnconditionalEnabled,
+    lienWatch,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -532,6 +562,16 @@ export function DashboardPinnedQuickRow({
               navigate('/settings?tab=settings-data#settings-recently-deleted')
             } else if (item.key === 'claim-dev') {
               navigate('/settings?tab=settings-people')
+            } else if (item.key === 'robot-audits') {
+              navigate('/bids?tab=audits')
+            } else if (item.key === 'd22-uncoded') {
+              navigate('/bids?tab=pricing&d22audit=1')
+            } else if (item.key === 'lien-unconditional') {
+              navigate('/jobs?tab=stages')
+            } else if (item.key === 'demand-deadline') {
+              navigate('/jobs?tab=stages')
+            } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
+              navigate('/jobs?tab=stages')
             }
           }}
           onSecondary={(item, key) => {

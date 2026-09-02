@@ -7,11 +7,15 @@
 import { useEffect, useRef, useState } from 'react'
 
 type Item = {
-  key: 'print' | 'csv' | 'review'
+  key: 'print' | 'csv' | 'review' | 'fixtures' | 'd22audit' | 'plugquote'
   label: string
   hint?: string
   disabled?: boolean
   title?: string
+  /** Draw a separator above this item. */
+  dividerBefore?: boolean
+  /** Render as an indented child of the item above (elbow connector, smaller type). */
+  childOfPrevious?: boolean
   onPick: () => void
 }
 
@@ -22,9 +26,14 @@ export function PricingShareMenu({
   onShare,
   csvDisabled,
   csvTitle,
+  fixturesDisabled,
+  fixturesTitle,
   onPrint,
   onCsv,
   onReview,
+  onCopyFixtures,
+  onOpenD22Audit,
+  onPlugInQuote,
 }: {
   canShare: boolean
   shareDisabled: boolean
@@ -32,9 +41,16 @@ export function PricingShareMenu({
   onShare: () => void
   csvDisabled: boolean
   csvTitle: string
+  fixturesDisabled: boolean
+  fixturesTitle: string
   onPrint: () => void
   onCsv: () => void
   onReview: () => void
+  onCopyFixtures: () => void
+  /** Ledger-writer roles only — omit to hide the "Division 22 codes" item. */
+  onOpenD22Audit?: () => void
+  /** Cost-side roles only — omit to hide the "Plug in a quote" item (RFQ v2.2630). */
+  onPlugInQuote?: () => void
 }) {
   const [open, setOpen] = useState(false)
   // Phone fix: the menu hangs right-aligned off the button; near the screen's left edge that clips,
@@ -74,7 +90,14 @@ export function PricingShareMenu({
   const items: Item[] = [
     { key: 'print', label: 'Print', hint: 'the price you’re viewing', onPick: onPrint },
     { key: 'csv', label: 'Download CSV', disabled: csvDisabled, title: csvDisabled ? csvTitle : undefined, onPick: onCsv },
-    { key: 'review', label: 'Print all prices — review', hint: 'every price option in one document', onPick: onReview },
+    { key: 'review', label: 'Print all prices — review', hint: 'every price option in one document', dividerBefore: true, onPick: onReview },
+    { key: 'fixtures', label: 'Supply house list', hint: 'names + counts by Division 22, no prices — scope it, then copy', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
+    ...(onOpenD22Audit
+      ? [{ key: 'd22audit', label: 'Division 22 codes', hint: 'audit every fixture name — pin the missing codes', childOfPrevious: true, onPick: onOpenD22Audit } satisfies Item]
+      : []),
+    ...(onPlugInQuote
+      ? [{ key: 'plugquote', label: 'Plug in a quote', hint: 'paste a supply house reply — prices land on each part', childOfPrevious: true, onPick: onPlugInQuote } satisfies Item]
+      : []),
   ]
 
   const caretStyle: React.CSSProperties = canShare
@@ -111,8 +134,8 @@ export function PricingShareMenu({
         }}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={canShare ? 'More ways to get this pricing out — Print, CSV, review' : 'Export — Print, CSV, review'}
-        title={canShare ? 'Print · Download CSV · Print all prices' : 'Print · Download CSV · Print all prices'}
+        aria-label={canShare ? 'More ways to get this pricing out — Print, CSV, review, supply house list' : 'Export — Print, CSV, review, supply house list'}
+        title={'Print · Download CSV · Print all prices · Supply house list'}
         style={caretStyle}
       >
         {canShare ? '▾' : 'Export ▾'}
@@ -124,9 +147,9 @@ export function PricingShareMenu({
           aria-label="Get this pricing out"
           style={{ position: 'absolute', ...(alignLeft ? { left: 0 } : { right: 0 }), top: 'calc(100% + 0.3rem)', minWidth: '15.5rem', maxWidth: 'calc(100vw - 1rem)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 6px 24px rgba(15, 23, 42, 0.14)', padding: '0.3rem', zIndex: 40 }}
         >
-          {items.map((it, i) => (
+          {items.map((it) => (
             <span key={it.key}>
-              {i === 2 ? <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0.4rem' }} /> : null}
+              {it.dividerBefore ? <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0.4rem' }} /> : null}
               <button
                 type="button"
                 role="menuitem"
@@ -138,10 +161,29 @@ export function PricingShareMenu({
                 }}
                 onMouseEnter={(e) => { if (!it.disabled) e.currentTarget.style.background = 'var(--bg-subtle)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
-                style={{ display: 'block', width: '100%', padding: '0.45rem 0.55rem', border: 'none', background: 'none', borderRadius: 6, font: 'inherit', textAlign: 'left', cursor: it.disabled ? 'not-allowed' : 'pointer', color: it.disabled ? 'var(--text-faint)' : 'var(--text-strong)' }}
+                style={{
+                  display: it.childOfPrevious ? 'flex' : 'block',
+                  ...(it.childOfPrevious ? { gap: '0.45rem', alignItems: 'flex-start', paddingLeft: '0.9rem' } : null),
+                  width: '100%',
+                  padding: it.childOfPrevious ? '0.3rem 0.55rem 0.4rem 0.9rem' : '0.45rem 0.55rem',
+                  border: 'none',
+                  background: 'none',
+                  borderRadius: 6,
+                  font: 'inherit',
+                  textAlign: 'left',
+                  cursor: it.disabled ? 'not-allowed' : 'pointer',
+                  color: it.disabled ? 'var(--text-faint)' : 'var(--text-strong)',
+                }}
               >
-                {it.label}
-                {it.hint ? <span style={{ display: 'block', color: it.disabled ? 'var(--text-faint)' : 'var(--text-muted)', fontSize: '0.74rem' }}>{it.hint}</span> : null}
+                {it.childOfPrevious ? (
+                  <svg width="14" height="26" viewBox="0 0 14 26" fill="none" stroke="var(--border-strong)" strokeWidth="1.5" style={{ flex: '0 0 auto' }} aria-hidden="true">
+                    <path d="M4 0v12a6 6 0 0 0 6 6h4" />
+                  </svg>
+                ) : null}
+                <span style={it.childOfPrevious ? { display: 'block', fontSize: '0.875rem' } : undefined}>
+                  {it.label}
+                  {it.hint ? <span style={{ display: 'block', color: it.disabled ? 'var(--text-faint)' : 'var(--text-muted)', fontSize: '0.74rem' }}>{it.hint}</span> : null}
+                </span>
               </button>
             </span>
           ))}
