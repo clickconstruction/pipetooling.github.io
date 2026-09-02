@@ -124,8 +124,9 @@ serve(async (req) => {
       return jsonResponse({ error: 'Could not resolve user role' }, 403)
     }
 
-    if (roleRow.role !== 'subcontractor' && roleRow.role !== 'helpers') {
-      return jsonResponse({ error: 'Only subcontractors and helpers can update email from collect payment' }, 403)
+    // Superintendent added v2.2637 — same team-member + active-flow checks below apply.
+    if (roleRow.role !== 'subcontractor' && roleRow.role !== 'helpers' && roleRow.role !== 'superintendent') {
+      return jsonResponse({ error: 'Only field roles in a collect payment flow can update this email' }, 403)
     }
 
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')

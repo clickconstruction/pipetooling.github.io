@@ -293,8 +293,10 @@ export function DashboardTeamReadyToBillSection({
                         </button>
                       )}
                       {/* Collect Payment before Leave Report (v2.994): the money action
-                          leads on these subcontractor cards. */}
-                      {isSubcontractorLikeRole(role) && (
+                          leads on these cards. Superintendent added v2.2637 — the
+                          collect RPCs + edge fns widened their role gates while keeping
+                          the team-membership + office-approval safeguards. */}
+                      {(isSubcontractorLikeRole(role) || role === 'superintendent') && (
                         <button
                           type="button"
                           title="Collect payment"
