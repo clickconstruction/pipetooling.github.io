@@ -48,6 +48,8 @@ import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } fro
 import { bidPackageLabel } from '../../lib/bidPackageLabel'
 import { SpecSectionAuditModal } from './SpecSectionAuditModal'
 import { PrepareFixtureCopyModal } from './PrepareFixtureCopyModal'
+import { PlugInQuotesModal } from './PlugInQuotesModal'
+import { QuoteCompareModal } from './QuoteCompareModal'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -747,6 +749,30 @@ export function BidsPricingTab({
   const [packageSendOpen, setPackageSendOpen] = useState(false)
   const [d22AuditOpen, setD22AuditOpen] = useState(false)
   const [prepareCopyOpen, setPrepareCopyOpen] = useState(false)
+  // RFQ Phase 1 (v2.2630, docs/SUPPLY_HOUSE_RFQ_PLAN.md): plug in supply house
+  // replies and compare them. Cost-side data — the same roles that can Share.
+  const [plugInQuoteOpen, setPlugInQuoteOpen] = useState(false)
+  const [quotesCompareOpen, setQuotesCompareOpen] = useState(false)
+  const [quoteCount, setQuoteCount] = useState(0)
+  const [quoteNonce, setQuoteNonce] = useState(0)
+  useEffect(() => {
+    const bidId = selectedBidForPricing?.id
+    if (!bidId || !canPackageAndSendBidPricing) {
+      setQuoteCount(0)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { count, error } = await supabase
+        .from('bid_quotes')
+        .select('id', { count: 'exact', head: true })
+        .eq('bid_id', bidId)
+      if (!cancelled && !error) setQuoteCount(count ?? 0)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBidForPricing?.id, canPackageAndSendBidPricing, quoteNonce])
 
   // Deep link from the dashboard's Division 22 Needs You item (v2.2627):
   // /bids?tab=pricing&d22audit=1 opens the audit, then strips the param so a
@@ -2706,6 +2732,17 @@ export function BidsPricingTab({
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+                {/* v2.2630: quotes chip appears once a supply house reply is saved. */}
+                {canPackageAndSendBidPricing && quoteCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuotesCompareOpen(true)}
+                    title="Compare supply house quotes on this bid"
+                    style={{ padding: '0.45rem 0.8rem', background: 'var(--surface)', color: 'var(--text-blue-500)', border: '1px solid #3b82f6', borderRadius: 999, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                  >
+                    Quotes ({quoteCount})
+                  </button>
+                ) : null}
                 {/* v2.2198 (option A, artifact df8daa33): Share keeps one click; Print / CSV / review live in the ▾ menu. */}
                 <PricingShareMenu
                   canShare={canPackageAndSendBidPricing}
@@ -2725,6 +2762,7 @@ export function BidsPricingTab({
                   onReview={() => void printAllPricingPages()}
                   onCopyFixtures={() => setPrepareCopyOpen(true)}
                   onOpenD22Audit={canPackageAndSendBidPricing ? () => setD22AuditOpen(true) : undefined}
+                  onPlugInQuote={canPackageAndSendBidPricing ? () => setPlugInQuoteOpen(true) : undefined}
                 />
                 {!narrowViewport640 ? (
                   <button
@@ -6292,6 +6330,35 @@ export function BidsPricingTab({
           onClose={() => setPrepareCopyOpen(false)}
           bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
           rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
+        />
+      ) : null}
+
+      {selectedBidForPricing ? (
+        <PlugInQuotesModal
+          open={plugInQuoteOpen}
+          onClose={() => setPlugInQuoteOpen(false)}
+          onSaved={() => {
+            setQuoteNonce((n) => n + 1)
+            setQuotesCompareOpen(true)
+          }}
+          bidId={selectedBidForPricing.id}
+          bidVersionId={selectedPricingVersionId ?? null}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
+        />
+      ) : null}
+
+      {selectedBidForPricing ? (
+        <QuoteCompareModal
+          open={quotesCompareOpen}
+          onClose={() => setQuotesCompareOpen(false)}
+          onPlugIn={() => {
+            setQuotesCompareOpen(false)
+            setPlugInQuoteOpen(true)
+          }}
+          bidId={selectedBidForPricing.id}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
         />
       ) : null}
 

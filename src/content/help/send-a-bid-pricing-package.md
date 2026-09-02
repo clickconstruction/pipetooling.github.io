@@ -62,3 +62,27 @@ It works as soon as the bid has Counts, even before you've set up a price book o
 :::example Getting cost pricing before the bid is priced
 Wendi finishes the takeoff on BP375, opens the {{button:green|▾}} menu, taps **Supply house list**, and pastes the list into a text to her Ferguson rep. The rep prices from names and counts — Wendi's numbers stay in the building.
 :::
+
+## Plug the vendor's reply back in
+
+When the supply house answers — a text, an email, notes from a phone call — you don't retype it into a spreadsheet. Open the same {{button:green|▾}} menu and pick **Plug in a quote**:
+
+1. Pick the supply house, the rep if you want, and the **good until** date from the quote.
+2. Paste the reply into the left pane exactly as it came — "4" cast iron 18.90/ft", "wc carriers no stock til Oct", any shape — and tap {{button:blue|Match to fixtures}}.
+3. Each line lands on the fixture it names, with the original text beside it so you can check the guess: a green ✓ means it matched cleanly, a **?** means confirm it. "No stock" phrasing marks the part **can't supply** automatically. Fix a fixture with the dropdown, fix a price by typing over it, drop a line with the ×.
+4. {{button:green|Save quote → compare}} keeps the raw paste with the quote, so you can always see what the vendor actually said.
+
+Box and per-foot pricing is handled — "$368/box of 50" is stored as $7.36 each — so every house ends up in the same units.
+
+## Compare quotes and pick the winners
+
+Once a quote is saved, a {{chip:blue|Quotes (1)}} chip sits beside Share. It opens the comparison:
+
+- Parts run down the left, **grouped by Division 22 section**; one column per supply house; the best live price wears a ★.
+- A quote past its good-until date stays visible but goes gray and crossed out, and loses its ★ — stale prices can't win quietly.
+- **Tap a price to pick it** for that part. The picked total at the bottom recomputes at today's counts.
+- The **Last quoted** column remembers what each house said the last time anyone asked about that same part name — on any bid — so you can smell a high number before you commit.
+
+:::example Two houses, one order
+Wendi plugs in Ferguson's reply, then Moore Supply's. The compare shows Ferguson better on cast iron, Moore better on copper. She taps her picks line by line, and the picked total shows what the split order costs at today's counts.
+:::
