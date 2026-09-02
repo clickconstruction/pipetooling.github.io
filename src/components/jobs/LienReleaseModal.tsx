@@ -321,11 +321,17 @@ export default function LienReleaseModal({
     setSelectedInvoiceIds(new Set((billed.length > 0 ? billed : selectable).map((i) => i.id)))
   }, [open, job?.id, invoice?.id, initialFormType])
 
-  // Resume the newest live draft (v2.2619): the autosaving modal picks up
-  // exactly where it was closed — the whole point of dropping Save/Cancel.
+  // Resume the newest live draft (v2.2619) — and, since v2.2641, a pending
+  // awaiting-signature release too: while a request is out, reopening the
+  // modal must show the amber strip (Cancel request / Sign now) instead of a
+  // fresh form, or the request becomes uncancelable once the modal closes.
+  // Signed/sent/issued rows do NOT resume — the modal is then for the next
+  // release, and those live in the history box.
   useEffect(() => {
     if (!open || releaseRow) return
-    const draft = historyRows.find((r) => lienReleaseStatus(r) === 'draft' && !r.voided_at)
+    const draft =
+      historyRows.find((r) => lienReleaseStatus(r) === 'draft' && !r.voided_at) ??
+      historyRows.find((r) => lienReleaseStatus(r) === 'awaiting_signature' && !r.voided_at)
     if (!draft) return
     hydratedDraftRef.current = true
     setReleaseRow(draft)
