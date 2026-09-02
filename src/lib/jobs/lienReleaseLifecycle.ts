@@ -6,6 +6,7 @@
  * signature audit line every rendering carries.
  */
 import type { JobLienReleaseRow } from './lienReleaseTracking'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 export type LienReleaseStatus = 'draft' | 'issued' | 'awaiting_signature' | 'signed'
 
@@ -62,7 +63,7 @@ export function lienReleaseSignatureAuditLine(row: {
   if (!row.signed_at) return null
   const when = new Date(row.signed_at)
   const stamp = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
