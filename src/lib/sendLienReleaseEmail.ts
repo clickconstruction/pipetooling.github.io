@@ -22,6 +22,7 @@ import { lienReleaseSignatureAuditLine, lienReleaseStatus } from './jobs/lienRel
 import { LIEN_RELEASE_DOCUMENTS_BUCKET } from './jobs/lienReleaseDocuments'
 import { readEdgeFunctionErrorBody } from './readEdgeFunctionErrorBody'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { resolveEmailWording } from './emailWording'
 
 const MAX_PDF_BASE64_CHARS = 5_500_000
 
@@ -100,11 +101,25 @@ export async function sendLienReleaseEmailToCustomer(
     if (pdfBase64.length > MAX_PDF_BASE64_CHARS) return { ok: false, message: 'The signed PDF is too large to email.' }
 
     const amountLabel = Number(release.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-    const bodies = buildLienReleaseEmailBodies({
-      formLabel: lienReleaseFormLabel(release.form_type),
+    const formLabel = lienReleaseFormLabel(release.form_type)
+    const builtin = buildLienReleaseEmailBodies({
+      formLabel,
       projectDescription: fields.projectDescription,
       amountLabel,
     })
+    // Dev-saved wording override (Settings → Email templates, v2.2658);
+    // built-in copy is the fallback and keeps its richer HTML.
+    const wording = await resolveEmailWording(
+      'lien_release_to_customer',
+      {
+        project: fields.projectDescription || 'your project',
+        form_label: formLabel,
+        amount: amountLabel,
+        signer: (release.signer_printed_name ?? '').trim() || fields.signerName,
+      },
+      { subject: builtin.subject, body: builtin.text },
+    )
+    const bodies = wording.overridden ? { subject: wording.subject, text: wording.text, html: wording.html } : builtin
     const jobNumber = [job.hcp_number, job.click_number].map((v) => (v ?? '').trim()).find(Boolean) ?? 'job'
 
     const { data: raw, error: fnErr } = await supabase.functions.invoke('send-lien-release-email', {
