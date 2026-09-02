@@ -2,7 +2,7 @@
 title: work my inbox on the dashboard
 category: Getting Started
 roles: all
-keywords: my inbox, checklist, due today, overdue, outstanding, recently completed, tasks, dashboard
+keywords: my inbox, checklist, due today, overdue, outstanding, recently completed, waiting for, tasks, dashboard
 order: 12
 ---
 The **My Inbox** card on the Dashboard is your personal task inbox — everything in it is waiting on you. Treat it like email: work it down to empty.
@@ -21,6 +21,7 @@ Order the water heater for 813 · Reliant Health {{chip:gray|(T+17)}}
   `T+17` means it's 17 days past due — the higher the number, the louder it's asking.
 
 - **Recently Completed** — a small link in the card's top-right corner (only when your team finished something in the last 7 days; unread count in parentheses). Click it to unfold the list, grouped by who completed it, with unread markers so you can skim what happened while you were out.
+- **⏳ Waiting For** — a quiet strip at the foot of the card (only when roadmap tasks of yours are queued behind a step someone else is on). Collapsed it shows the count and a peek at the first blocker — *after "get the measurements" — Robert* — and tapping it unfolds the full grouped list right there. These aren't actionable yet, which is why they sit folded below your real work; the moment the step ahead clears, the task moves onto your list on its own.
 
 ## Working it
 
