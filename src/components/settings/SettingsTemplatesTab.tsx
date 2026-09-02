@@ -20,6 +20,7 @@ import {
   WORKFLOW_FN_EMAIL_TEST_OPTIONS,
   type WorkflowFnEmailTemplateType,
 } from '../../lib/settingsTemplates'
+import { buildEmailPreviewHtml, isDigestPreviewType } from '../../lib/emailPreviewHtml'
 
 type TemplatesTabUserRow = { id: string; name: string; email: string; role: string }
 
@@ -115,6 +116,21 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
     onSharedError: setError,
   })
   const { showToast } = useToastContext()
+
+  // "Open as email" (v2.2662): render the CURRENT (possibly unsaved) wording
+  // into a light standalone email document in a new tab. Digest previews carry
+  // a labeled sample-data section — their tables only exist server-side.
+  const openEmailPreviewTab = () => {
+    if (!editingTemplate) return
+    const html = buildEmailPreviewHtml(editingTemplate.template_type, templateSubject, templateBody)
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
+    // No 'noopener' feature string — it makes window.open return null even on
+    // success, which would false-positive the blocked check. Sever manually.
+    const win = window.open(url, '_blank')
+    if (win) win.opener = null
+    else showToast('Pop-up blocked — allow pop-ups for this site to open the preview.', 'error')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
   return (
     <>
           {/* v2.2088: invoice/bid/company/map blocks moved to their page tabs (Jobs & billing, Bids & materials, Company). */}
@@ -962,6 +978,16 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                       style={{ background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
                     >
                       Test Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openEmailPreviewTab}
+                      disabled={templateSaving || !templateSubject.trim() || !templateBody.trim()}
+                      title={isDigestPreviewType(editingTemplate.template_type)
+                        ? 'Opens a new tab showing your subject + intro above SAMPLE digest data — the real tables are built at send time.'
+                        : 'Opens a new tab showing this wording as the email, with sample data in the variables.'}
+                    >
+                      Open as email ↗
                     </button>
                     <button type="button" onClick={closeEditTemplate} disabled={templateSaving}>Cancel</button>
                   </div>
