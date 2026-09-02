@@ -6275,6 +6275,75 @@ export type Database = {
           },
         ]
       }
+      job_demand_letters: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          deadline_date: string | null
+          fields: Json
+          id: string
+          invoice_ids: string[]
+          job_id: string
+          recipient_address: string
+          recipient_email: string
+          recipient_name: string
+          sent_at: string | null
+          sent_method: string
+          tracking_number: string
+          voided_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          deadline_date?: string | null
+          fields?: Json
+          id?: string
+          invoice_ids?: string[]
+          job_id: string
+          recipient_address?: string
+          recipient_email?: string
+          recipient_name?: string
+          sent_at?: string | null
+          sent_method?: string
+          tracking_number?: string
+          voided_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          deadline_date?: string | null
+          fields?: Json
+          id?: string
+          invoice_ids?: string[]
+          job_id?: string
+          recipient_address?: string
+          recipient_email?: string
+          recipient_name?: string
+          sent_at?: string | null
+          sent_method?: string
+          tracking_number?: string
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_demand_letters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_demand_letters_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_followup_reviews: {
         Row: {
           id: string

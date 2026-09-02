@@ -24,6 +24,7 @@ import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
 import { useSpecSectionUncodedCount } from '../../hooks/useSpecSectionUncodedCount'
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
+import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import NewReportModal from '../NewReportModal'
@@ -328,6 +329,7 @@ export function DashboardPinnedQuickRow({
   // Cleared payments behind conditional lien releases (v2.2582) — office set.
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -359,6 +361,8 @@ export function DashboardPinnedQuickRow({
     d22UncodedCount,
     lienUnconditionalEnabled,
     lienUnconditionalOwed,
+    demandDeadlineEnabled: lienUnconditionalEnabled,
+    demandDeadlineOverdue,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -559,6 +563,8 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'd22-uncoded') {
               navigate('/bids?tab=pricing&d22audit=1')
             } else if (item.key === 'lien-unconditional') {
+              navigate('/jobs?tab=stages')
+            } else if (item.key === 'demand-deadline') {
               navigate('/jobs?tab=stages')
             }
           }}

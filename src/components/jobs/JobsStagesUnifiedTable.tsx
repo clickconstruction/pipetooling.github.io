@@ -103,6 +103,8 @@ export type JobsStagesUnifiedTableProps = {
   onOpenLienRelease?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
   /** Jobs with a live (non-voided) release — their release button wears a blue box (v2.2582). */
   lienReleaseJobIds?: ReadonlySet<string>
+  /** Jobs with a live SENT demand letter (v2.2640) — the lien icon wears an amber box. */
+  demandOutJobIds?: ReadonlySet<string>
   /** Billed Awaiting Payment: flag the row's job as difficult-to-collect (Collections section). */
   onJobMoveToCollections?: (j: JobWithDetails) => void
   /** Collections: short muted note line under the amounts (e.g. the stored collections reason). */
@@ -192,6 +194,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     onOpenLienTooling,
     onOpenLienRelease,
     lienReleaseJobIds,
+    demandOutJobIds,
     onJobMoveToCollections,
     jobNoteLine,
     stagesJobFlashId,
@@ -763,12 +766,13 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                     <button
                                       type="button"
                                       onClick={() => onOpenLienTooling({ job: j, invoice: invForLien })}
-                                      title="Lien Tooling — review and open demand / lien forms"
-                                      aria-label="Lien Tooling prefill"
+                                      title={demandOutJobIds?.has(j.id) ? 'Lien instruments — a demand letter is out on this job' : 'Lien instruments — demand letter and lien forms'}
+                                      aria-label="Lien instruments"
                                       style={{
                                         padding: '0.25rem',
-                                        background: 'none',
-                                        border: 'none',
+                                        background: demandOutJobIds?.has(j.id) ? 'var(--bg-amber-tint)' : 'none',
+                                        border: demandOutJobIds?.has(j.id) ? '2px solid #b45309' : 'none',
+                                        borderRadius: 6,
                                         cursor: 'pointer',
                                         color: '#FF6600',
                                         display: 'inline-flex',
@@ -1163,12 +1167,13 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             <button
                               type="button"
                               onClick={() => onOpenLienTooling({ job, invoice: inv })}
-                              title="Lien Tooling — review and open demand / lien forms"
-                              aria-label="Lien Tooling prefill"
+                              title={demandOutJobIds?.has(job.id) ? 'Lien instruments — a demand letter is out on this job' : 'Lien instruments — demand letter and lien forms'}
+                              aria-label="Lien instruments"
                               style={{
                                 padding: '0.25rem',
-                                background: 'none',
-                                border: 'none',
+                                background: demandOutJobIds?.has(job.id) ? 'var(--bg-amber-tint)' : 'none',
+                                border: demandOutJobIds?.has(job.id) ? '2px solid #b45309' : 'none',
+                                borderRadius: 6,
                                 cursor: 'pointer',
                                 color: '#FF6600',
                                 display: 'inline-flex',

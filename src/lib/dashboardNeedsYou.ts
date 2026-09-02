@@ -42,6 +42,7 @@ export type NeedsYouItem = {
     | 'claim-dev'
     | 'robot-audits'
     | 'lien-unconditional'
+    | 'demand-deadline'
     | 'd22-uncoded'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
@@ -73,6 +74,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'tally-self': 30,
   'tally-team': 30,
   'job-followups': 40,
+  'demand-deadline': 40,
   'team-reviews': 50,
   'roadmap-needs-person': 50,
   'robot-audits': 50,
@@ -169,10 +171,33 @@ export type NeedsYouInputs = {
    */
   lienUnconditionalEnabled: boolean
   lienUnconditionalOwed: { count: number; total: number } | null
+  /**
+   * Demand letters past their named deadline with money still open (v2.2640).
+   * Null while loading; the hook reports zero on error so the card stays quiet.
+   */
+  demandDeadlineEnabled: boolean
+  demandDeadlineOverdue: { count: number; total: number } | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   const items: NeedsYouItem[] = []
+
+  if (inputs.demandDeadlineEnabled && (inputs.demandDeadlineOverdue?.count ?? 0) > 0) {
+    const { count: n, total } = inputs.demandDeadlineOverdue as { count: number; total: number }
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'demand-deadline',
+      severity: 'red',
+      kicker: 'Demand letters',
+      title:
+        n === 1 ? 'A demand-letter deadline passed unpaid' : `${n} demand-letter deadlines passed unpaid`,
+      detail:
+        `${money} is still open past the payment deadline${n === 1 ? '' : 's'} you set in writing. ` +
+        "Follow through on the letter's next step — open the lien instruments on each job's Pipeline row.",
+      figure: String(n),
+      actionLabel: 'Open the jobs',
+    })
+  }
 
   if (inputs.lienUnconditionalEnabled && (inputs.lienUnconditionalOwed?.count ?? 0) > 0) {
     const { count: n, total } = inputs.lienUnconditionalOwed as { count: number; total: number }
