@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 84 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-08-29
+last_updated: 2026-09-03
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -168,8 +168,9 @@ when_to_read:
    - [mercury-reconcile](#mercury-reconcile)
    - [import-manual-transactions](#import-manual-transactions)
    - [manage-manual-account](#manage-manual-account)
-4. [Error Handling](#error-handling)
-5. [Deployment](#deployment)
+4. [Email Wording Overrides](#email-wording-overrides)
+5. [Error Handling](#error-handling)
+6. [Deployment](#deployment)
 
 ---
 
@@ -3231,6 +3232,25 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ```
 
 **Used by**: Banking → [`ManualAccountsModal.tsx`](../src/components/banking/ManualAccountsModal.tsx).
+
+---
+
+## Email Wording Overrides
+
+**Since v2.2658–v2.2660** (email plan PRs 2–4; catalog + send-log typing in v2.2656): outbound-email *wording* is runtime-editable from **Settings → Email templates & testing** via the `email_templates` table — no deploy needed. Server-side senders resolve overrides through [`_shared/emailWordingServer.ts`](../supabase/functions/_shared/emailWordingServer.ts) (`resolveServerEmailWording(templateType, vars, fallbackSubject)`), which:
+
+- fetches the row via PostgREST with the service key, **fail-soft** — an unreadable table or missing row means the built-in wording sends;
+- substitutes only provided `{{var}}` keys (unknown tokens stay visible, so typos show themselves);
+- offers `{{default_subject}}` as a free variable resolving to the built-in subject (dates/labels included);
+- returns `{ subject, introText, introHtml, overridden }` — for digest-style senders the override edits **subject + an intro paragraph above the data**; the data tables themselves are still built here, in code.
+
+**Adopters (digest style — subject + intro only)**: `paid-job-email` (types `paid_job` and `ready_to_bill`), `money-waiting-email-dispatch`, `billed-report-email`, `payment-forecast-email-dispatch`, `crew-day-email-dispatch`, `weekly-money-email-dispatch` (`{{week}}`), `weekly-movement-email-dispatch`, `schedule-day-email-dispatch` (`{{date}}`), `gc-statement-email-dispatch` (`{{date}}`).
+
+**Client-composed customer emails** (`send-lien-release-email`, `send-hazmat-notice-email`) receive their subject/body pre-resolved by the browser via `src/lib/emailWording.ts` — same semantics, reading `email_templates` under the `email_templates_authenticated_read` policy (migration `20260902184612`). Wording only: attached documents (invoices, releases, notices) are never edited through this system.
+
+**Send-log typing** (migration `20260902183356`): [`_shared/logEmailSend.ts`](../supabase/functions/_shared/logEmailSend.ts) accepts an optional `emailType` stamped into `email_send_log.email_type` — the id joins each row to its catalog entry in `src/lib/emailCatalog.ts`, powering the catalog's 30-day send counts. `sendResendHtmlEmail` in [`_shared/recurringJobReportCore.ts`](../supabase/functions/_shared/recurringJobReportCore.ts) logs best-effort after every successful send.
+
+The full outbound-email registry (id, audience, attachment, sender, editability) lives in `src/lib/emailCatalog.ts` and renders in the same Settings section.
 
 ---
 

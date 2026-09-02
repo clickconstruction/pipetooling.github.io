@@ -904,15 +904,15 @@ WHERE proname IN (
   - Total calculation at bottom
 
 #### `public.email_templates`
-- **Purpose**: Customizable email templates for notifications
+- **Purpose**: Runtime-editable wording for outbound emails (transactional, workflow/work-order, customer cover notes, digest subject+intro)
 - **Key Fields**:
   - `id` (uuid, PK)
-  - `template_type` (text, unique) - One of 11 template types
+  - `template_type` (text, unique) - 25 types as of v2.2660 (`EMAIL_TEMPLATE_DEFAULTS` in `src/lib/settingsTemplates.ts` is the authoritative list)
   - `subject` (text, required) - Email subject line
-  - `body` (text, required) - Email body with variable support
+  - `body` (text, required) - Email body with `{{var}}` support
   - `created_at`, `updated_at` (timestamptz)
-- **RLS**: Only devs can read/write (uses `is_dev()` function)
-- **Template Types**: see the `template_type` value list in [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) (send-workflow-email section)
+- **RLS**: dev/owner write; **all authenticated users read** since v2.2658 (`email_templates_authenticated_read` — assistants' browsers compose the lien-release/hazmat customer emails; see [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md))
+- **UI**: Settings → Email templates & testing — the **Outbound email catalog** (`SettingsEmailCatalogSection`, registry in `src/lib/emailCatalog.ts`, 30-day send counts from `email_send_log.email_type`) sits above the template card groups (transactional / workflow / work-order / Customer Emails / Digest Emails); the editor has Test Email + **Open as email ↗** preview (v2.2662, `src/lib/emailPreviewHtml.ts`). Wording only — attached documents are never edited here. Wording resolution: `src/lib/emailWording.ts` (client) / `supabase/functions/_shared/emailWordingServer.ts` (server), both fail-soft to built-in copy; see [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) → Email Wording Overrides.
 
 #### `public.project_workflow_step_actions`
 - **Purpose**: Action history ledger for workflow steps

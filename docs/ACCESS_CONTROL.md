@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-08-20
+last_updated: 2026-09-03
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -105,6 +105,12 @@ on top of the normal role permissions:
 - **Backend**: Row Level Security (RLS) policies on all tables
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
+
+### `email_templates` readable by all authenticated users (v2.2658, `20260902184612_email_templates_authenticated_read.sql`)
+
+- **What changed**: `email_templates` was dev/owner-read only (baseline). The email-wording system (v2.2656–v2.2660) has *browsers* compose two customer emails — the signed lien release and the hazmat fee notice — and any assistant can trigger those sends, so their clients must read wording overrides before composing. New policy `email_templates_authenticated_read` grants **SELECT to all authenticated users**.
+- **Unchanged**: writes stay dev/owner-only, and the read-only training fences + digital-twin write fences remain attached. The table holds wording only (subject/body text with `{{var}}` tokens) — no secrets, no customer data — which is why the broad read is safe.
+- Server-side senders never needed the policy (service-role reads via `_shared/emailWordingServer.ts`).
 
 ### Subcontractors can author estimates — Quick Estimate groundwork (v2.2292, `20260825190000_quick_estimate_groundwork.sql`)
 
