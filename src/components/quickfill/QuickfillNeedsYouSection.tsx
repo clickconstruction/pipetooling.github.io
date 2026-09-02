@@ -78,6 +78,9 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
 
   const items = buildNeedsYouItems({
     role,
+    // Division 22 is an estimator/dev dashboard item — Quickfill is the billing station.
+    d22UncodedEnabled: false,
+    d22UncodedCount: 0,
     arBankUnallocatedCount,
     arBankEnabled,
     tallyStaleUnlinkedCount,
