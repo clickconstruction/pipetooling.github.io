@@ -86,7 +86,7 @@ export function PricingShareMenu({
     { key: 'print', label: 'Print', hint: 'the price you’re viewing', onPick: onPrint },
     { key: 'csv', label: 'Download CSV', disabled: csvDisabled, title: csvDisabled ? csvTitle : undefined, onPick: onCsv },
     { key: 'review', label: 'Print all prices — review', hint: 'every price option in one document', dividerBefore: true, onPick: onReview },
-    { key: 'fixtures', label: 'Copy fixtures for text', hint: 'names + counts only, no prices — for parts houses', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
+    { key: 'fixtures', label: 'Supply house list', hint: 'names + counts by Division 22, no prices — scope it, then copy', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
     ...(onOpenD22Audit
       ? [{ key: 'd22audit', label: 'Division 22 codes', hint: 'audit every fixture name — pin the missing codes', onPick: onOpenD22Audit } satisfies Item]
       : []),
@@ -126,8 +126,8 @@ export function PricingShareMenu({
         }}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={canShare ? 'More ways to get this pricing out — Print, CSV, review, copy fixtures' : 'Export — Print, CSV, review, copy fixtures'}
-        title={'Print · Download CSV · Print all prices · Copy fixtures for text'}
+        aria-label={canShare ? 'More ways to get this pricing out — Print, CSV, review, supply house list' : 'Export — Print, CSV, review, supply house list'}
+        title={'Print · Download CSV · Print all prices · Supply house list'}
         style={caretStyle}
       >
         {canShare ? '▾' : 'Export ▾'}

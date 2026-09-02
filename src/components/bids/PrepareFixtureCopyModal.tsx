@@ -1,6 +1,8 @@
 /**
- * Prepare-before-copy modal (v2.2612) — "Copy fixtures for text" now opens this
- * instead of copying blind (design: "Division 22 Ledger" canvas, artboards 6–7):
+ * "Supply house list" modal (v2.2612; renamed from "Copy fixtures for text" in
+ * v2.2618 — named for the document it produces, like Release of Lien). Opens
+ * from the Share ▾ menu instead of copying blind (design: "Division 22 Ledger"
+ * canvas, artboards 6–7):
  *
  *   - Vendor scope presets (Whole job · Pipe & fittings · Fixtures & equipment ·
  *     Custom) tick whole sections; any checkbox click flips to Custom.
@@ -256,10 +258,10 @@ export function PrepareFixtureCopyModal({
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-label="Copy fixtures for text" style={panel} onMouseDown={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label="Supply house list" style={panel} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Copy fixtures for text</h2>
+            <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Supply house list</h2>
             <p style={{ margin: '0.15rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {bidLabel} · scope it to the vendor, fix codes, and the preview is exactly what you’ll paste.
             </p>
