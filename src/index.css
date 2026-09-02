@@ -164,12 +164,16 @@ button:focus-visible {
   --text-700: #374151;
   --text-600: #4b5563;
   --text-muted: #6b7280;
-  --text-faint: #9ca3af;
+  /* v2.2661: #9ca3af failed contrast wherever it carried real text (timestamps, "No blocks
+     scheduled", day numbers) — 2.26:1 on the page ground, below even AA-large. Darkened to
+     clear 3:1 on every common ground while staying a visible step under --text-muted. */
+  --text-faint: #767f8d;
   --text-faint-300: #d1d5db;
   --text-slate-900: #0f172a;
   --text-slate-600: #475569;
   --text-slate-500: #64748b;
-  --text-slate-400: #94a3b8;
+  /* v2.2661: carried Banking's posted/bank metadata at 2.56:1 on white. */
+  --text-slate-400: #6b7c91;
   --text-link: #2563eb;
   --text-blue-500: #3b82f6;
   --text-blue-700: #1d4ed8;
@@ -276,7 +280,9 @@ button:focus-visible {
   --text-700: #d1d5db;
   --text-600: #d1d5db;
   --text-muted: #9ca3af;
-  --text-faint: #6b7280;
+  /* v2.2661: the mirror failure — #6b7280 sat at 2.13:1 on raised dark cards. Lightened to
+     clear 3:1 on cards while staying a step under --text-muted. */
+  --text-faint: #8892a3;
   --text-faint-300: #4b5563;
   --text-slate-900: #f1f5f9;
   --text-slate-600: #cbd5e1;
