@@ -8,7 +8,9 @@
 > 2026-09-01: ship lanes **A** (quote link rides the existing Supply house
 > list text) and **C** (paste-back) on one shared store; lane **B** (system-
 > sent RFQ desk with tracking/reminders) only if vendors prove they click.
-> Status: **planned, not started**. Foundations already shipped: Supply
+> Status: **Phases 1–2 SHIPPED** (1a store v2.2629, 1b screens v2.2630,
+> 2 link lane v2.2631 — migration `20260902030531`, edge functions
+> `get-rfq-quote-page`/`submit-rfq-quote` deployed). Phase 3 in progress. Foundations already shipped: Supply
 > house list prepare screen (v2.2612/2618), Division 22 ledger + audit
 > (v2.2580–v2.2627), `supply_houses` directory, Bid Room token pattern.
 
@@ -58,7 +60,7 @@ ends with all three fence appliers. Names snapshot as text.
   upserted on quote save; unique (house, lower(fixture)). Feeds "last
   quoted" columns in compare and (Phase 3) the prepare screen.
 
-## Phase 1 — store, Plug in quotes, compare (2 PRs)
+## Phase 1 — store, Plug in quotes, compare (2 PRs) — SHIPPED v2.2629/v2.2630
 
 **PR 1a — migration + kernels** (no UI):
 - Migration above (idempotent, lock_timeout, fence appliers).
@@ -94,7 +96,7 @@ ends with all three fence appliers. Names snapshot as text.
   shows Ferguson vs baseline; drift badge by editing a count; expiry
   graying by backdating `valid_until`.
 
-## Phase 2 — the quote link lane (1 PR + 1 migration + 2 edge functions)
+## Phase 2 — the quote link lane — SHIPPED v2.2631 (no new migration needed; the Phase 1 store carried the token column)
 
 - Prepare screen (`PrepareFixtureCopyModal`) grows **Copy with quote
   link**: mints a `bid_rfqs` row (scope = current selection snapshot,
@@ -155,4 +157,4 @@ ends with all three fence appliers. Names snapshot as text.
   baseline column relabeled (cost/last-quoted, not "book price");
   unit-basis column on the Plug-in artboard.
 
-last_updated: 2026-09-01
+last_updated: 2026-09-01 (phases 1–2 shipped)

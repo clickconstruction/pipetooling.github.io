@@ -703,3 +703,11 @@ verify_jwt = false
 # (per-twin credential or staff getUser) — same model as drive-intake.
 [functions.plan-fetch]
 verify_jwt = false
+
+# Public supply house quote page (RFQ Phase 2) — the RFQ token IS the credential
+# (match get-bid-proposal-room); service role in-function, scope-validated writes.
+[functions.get-rfq-quote-page]
+verify_jwt = false
+
+[functions.submit-rfq-quote]
+verify_jwt = false

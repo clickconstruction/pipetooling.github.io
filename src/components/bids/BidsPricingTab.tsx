@@ -755,19 +755,28 @@ export function BidsPricingTab({
   const [quotesCompareOpen, setQuotesCompareOpen] = useState(false)
   const [quoteCount, setQuoteCount] = useState(0)
   const [quoteNonce, setQuoteNonce] = useState(0)
+  // Phase 2 (v2.2631): the outstanding-RFQ signal — Sent (link out, waiting) →
+  // Quoted (a link quote landed; the chip turns green).
+  const [rfqStatus, setRfqStatus] = useState<'sent' | 'quoted' | null>(null)
   useEffect(() => {
     const bidId = selectedBidForPricing?.id
     if (!bidId || !canPackageAndSendBidPricing) {
       setQuoteCount(0)
+      setRfqStatus(null)
       return
     }
     let cancelled = false
     void (async () => {
-      const { count, error } = await supabase
-        .from('bid_quotes')
-        .select('id', { count: 'exact', head: true })
-        .eq('bid_id', bidId)
-      if (!cancelled && !error) setQuoteCount(count ?? 0)
+      const [{ count, error }, { data: rfqs, error: rErr }] = await Promise.all([
+        supabase.from('bid_quotes').select('id', { count: 'exact', head: true }).eq('bid_id', bidId),
+        supabase.from('bid_rfqs').select('status').eq('bid_id', bidId).in('status', ['sent', 'quoted']),
+      ])
+      if (cancelled) return
+      if (!error) setQuoteCount(count ?? 0)
+      if (!rErr) {
+        const statuses = new Set((rfqs ?? []).map((r) => r.status))
+        setRfqStatus(statuses.has('quoted') ? 'quoted' : statuses.has('sent') ? 'sent' : null)
+      }
     })()
     return () => {
       cancelled = true
@@ -2732,13 +2741,24 @@ export function BidsPricingTab({
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
-                {/* v2.2630: quotes chip appears once a supply house reply is saved. */}
+                {/* v2.2630: quotes chip appears once a supply house reply is saved.
+                    v2.2631: an outstanding quote link shows Sent (amber) until a
+                    vendor submits, then the chip goes green. */}
+                {canPackageAndSendBidPricing && rfqStatus === 'sent' && quoteCount === 0 ? (
+                  <span title="A quote link is out — waiting on the vendor" style={{ padding: '0.45rem 0.8rem', background: 'var(--bg-yellow-tint)', color: 'var(--text-amber-700)', border: '1px solid #f59e0b', borderRadius: 999, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    RFQ sent
+                  </span>
+                ) : null}
                 {canPackageAndSendBidPricing && quoteCount > 0 ? (
                   <button
                     type="button"
                     onClick={() => setQuotesCompareOpen(true)}
                     title="Compare supply house quotes on this bid"
-                    style={{ padding: '0.45rem 0.8rem', background: 'var(--surface)', color: 'var(--text-blue-500)', border: '1px solid #3b82f6', borderRadius: 999, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                    style={
+                      rfqStatus === 'quoted'
+                        ? { padding: '0.45rem 0.8rem', background: 'var(--surface)', color: '#15803d', border: '1px solid #16a34a', borderRadius: 999, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }
+                        : { padding: '0.45rem 0.8rem', background: 'var(--surface)', color: 'var(--text-blue-500)', border: '1px solid #3b82f6', borderRadius: 999, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }
+                    }
                   >
                     Quotes ({quoteCount})
                   </button>
@@ -6330,6 +6350,12 @@ export function BidsPricingTab({
           onClose={() => setPrepareCopyOpen(false)}
           bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
           rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
+          quoteLink={
+            canPackageAndSendBidPricing
+              ? { bidId: selectedBidForPricing.id, bidVersionId: selectedPricingVersionId ?? null }
+              : undefined
+          }
+          onRfqMinted={() => setQuoteNonce((n) => n + 1)}
         />
       ) : null}
 

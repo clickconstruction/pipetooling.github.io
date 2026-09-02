@@ -208,16 +208,22 @@ export function PlugInQuotesModal({
       }))
       const { error: lErr } = await supabase.from('bid_quote_lines').insert(lineRows)
       if (lErr) throw lErr
-      // Name-keyed price memory — the compounding output.
-      const memory = savableLines
-        .filter((l) => !l.cantSupply && strToCents(l.unitPriceEach) != null)
-        .map((l) => ({
+      // Name-keyed price memory — the compounding output. Dedupe by the
+      // generated fixture_key: two lines on the same fixture in one upsert
+      // batch would error ("cannot affect row a second time").
+      const memoryByKey = new Map<string, { supply_house_id: string; fixture: string; unit_price_each_cents: number; quoted_at: string; source_bid_id: string }>()
+      for (const l of savableLines) {
+        const cents = l.cantSupply ? null : strToCents(l.unitPriceEach)
+        if (cents == null) continue
+        memoryByKey.set(l.fixture!.trim().toLowerCase(), {
           supply_house_id: houseId,
           fixture: l.fixture!,
-          unit_price_each_cents: strToCents(l.unitPriceEach)!,
+          unit_price_each_cents: cents,
           quoted_at: new Date().toISOString(),
           source_bid_id: bidId,
-        }))
+        })
+      }
+      const memory = [...memoryByKey.values()]
       if (memory.length > 0) {
         const { error: mErr } = await supabase
           .from('supply_house_fixture_prices')

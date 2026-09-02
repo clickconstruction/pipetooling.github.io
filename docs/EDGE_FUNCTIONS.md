@@ -100,6 +100,8 @@ when_to_read:
    - [get-bid-proposal-room](#get-bid-proposal-room)
    - [send-bid-room-link](#send-bid-room-link)
    - [sign-bid-room](#sign-bid-room)
+   - [get-rfq-quote-page](#get-rfq-quote-page)
+   - [submit-rfq-quote](#submit-rfq-quote)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
    - [get-estimate-public-terms](#get-estimate-public-terms)
@@ -1038,6 +1040,34 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false`; the plaintext room token (portal-links precedent) is the credential.
 
 **Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` (always 200, invalid input dropped — browsing must never break). Requires migration `20260828215717`.
+
+---
+
+### get-rfq-quote-page
+
+**Purpose**: Public fetch for the **supply house quote page** (RFQ Phase 2, v2.2631) — the `/q/<token>` link a "Copy with quote link" paste carries (`docs/SUPPLY_HOUSE_RFQ_PLAN.md`).
+
+**Endpoint**: `GET /functions/v1/get-rfq-quote-page?t=<token>`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`; the RFQ token is the credential (Bid Room precedent).
+
+**Behavior**: Loads the `bid_rfqs` row by token; 404 unknown; returns `{ status: 'closed' }` when the RFQ is closed or its bid's outcome is `lost` (token hygiene — dead links go quiet). Otherwise returns the scope snapshot's lines (fixture, count, unit — names and counts only, prices never leave), the bid label (`bid_number · project_name`), the supply house name, and `needed_by`.
+
+---
+
+### submit-rfq-quote
+
+**Purpose**: Public submit for the supply house quote page — the vendor's typed prices become a structured quote on the bid.
+
+**Endpoint**: `POST /functions/v1/submit-rfq-quote` — `{ token, quotedBy?, validUntil?, freightCents?, note?, lines: [{ fixture, unitPriceEachCents?, cantSupply?, note? }] }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`; the RFQ token is the credential.
+
+**Behavior**: 404 unknown token, 410 when closed (or the bid is lost). Lines are validated against the RFQ's **own scope snapshot** — fixture names the RFQ never asked about are dropped (the token can't write arbitrary rows), prices sanity-capped, notes/name length-capped. Inserts `bid_quotes` (source `link`, `rfq_id`, the RFQ's supply house/bid version) + `bid_quote_lines`, flips the RFQ to `quoted`, and upserts the `supply_house_fixture_prices` memory (deduped by generated `fixture_key`). Re-submits allowed until closed — compare shows the latest per house; earlier quotes stay as history. Requires migration `20260902030531`.
 
 ---
 
