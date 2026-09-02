@@ -725,3 +725,13 @@ verify_jwt = false
 # legitimate browser sessions elsewhere, so keep it off here too.
 [functions.send-rfq-email]
 verify_jwt = false
+
+# Sub portal — public no-login page; the link token IS the capability
+# (customer-portal pattern).
+[functions.sub-portal]
+verify_jwt = false
+
+# Sub portal intake (availability, sign-to-accept, sign links) —
+# token-authenticated like submit-portal-request.
+[functions.submit-sub-portal]
+verify_jwt = false

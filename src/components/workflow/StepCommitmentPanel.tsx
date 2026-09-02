@@ -66,7 +66,7 @@ export function StepCommitmentPanel({
   const [addAmount, setAddAmount] = useState('')
   const [saving, setSaving] = useState(false)
   const [settlePreview, setSettlePreview] = useState<{ commitmentId: string; report: SettleReport } | null>(null)
-  const [offerEditor, setOfferEditor] = useState<{ commitmentId: string; start: string; end: string; amount: string; isReoffer: boolean } | null>(null)
+  const [offerEditor, setOfferEditor] = useState<{ commitmentId: string; start: string; end: string; amount: string; scope: string; expires: string; isReoffer: boolean } | null>(null)
   const [complianceByPerson, setComplianceByPerson] = useState<Record<string, ComplianceDocInput[]>>({})
 
   /** Load a person's compliance docs once (fail-soft — chips just don't render pre-migration). */
@@ -181,11 +181,23 @@ export function StepCommitmentPanel({
 
   function openOfferEditor(commitment: StepCommitmentRow, isReoffer: boolean) {
     void loadCompliance(commitment.person_id)
+    // Sub-portal columns (offer_scope_snapshot / offer_expires_at) land with
+    // the sub-portal migration; cast until types regenerate.
+    const extra = commitment as StepCommitmentRow & {
+      offer_scope_snapshot?: { lines?: Array<{ label?: string }> } | null
+      offer_expires_at?: string | null
+    }
+    const scopeLines = (extra.offer_scope_snapshot?.lines ?? [])
+      .map((l) => (l?.label ?? '').trim())
+      .filter(Boolean)
+    const defaultExpires = new Date(Date.now() + 7 * 86400000).toLocaleDateString('en-CA')
     setOfferEditor({
       commitmentId: commitment.id,
       start: commitment.proposed_start ?? stepScheduledStart ?? '',
       end: commitment.proposed_end ?? stepScheduledEnd ?? '',
       amount: String(commitment.amount ?? ''),
+      scope: scopeLines.join('\n'),
+      expires: extra.offer_expires_at ?? defaultExpires,
       isReoffer,
     })
   }
@@ -195,6 +207,13 @@ export function StepCommitmentPanel({
     const amount = Number(offerEditor.amount)
     if (!Number.isFinite(amount) || amount < 0) return
     setSaving(true)
+    // Freeze what the sub signs (sub-portal train): the scope lines + window
+    // label at offer time. Re-pricing after an offer = withdraw + re-offer.
+    const scopeLines = offerEditor.scope
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+    const windowLabel = formatWorkOrderWindow(offerEditor.start || null, offerEditor.end || null)
     const update: Record<string, unknown> = {
       status: 'offered',
       offered_at: new Date().toISOString(),
@@ -203,6 +222,14 @@ export function StepCommitmentPanel({
       amount,
       declined_at: null,
       decline_reason: null,
+      offer_scope_snapshot:
+        scopeLines.length > 0 || windowLabel
+          ? {
+              lines: scopeLines.map((label) => ({ label, amount: null })),
+              startsLabel: offerEditor.start ? `Starts ${windowLabel}` : null,
+            }
+          : null,
+      offer_expires_at: offerEditor.expires || null,
     }
     const { error } = await supabase.from('step_commitments').update(update).eq('id', commitment.id)
     setSaving(false)
@@ -357,6 +384,27 @@ export function StepCommitmentPanel({
               </div>
             )}
 
+            {(() => {
+              // Portal sign-to-accept audit line (sub-portal train) — cast
+              // until types regenerate with the signer columns.
+              const signed = c as StepCommitmentRow & {
+                signed_at?: string | null
+                signer_printed_name?: string | null
+                signer_signature_mode?: string | null
+              }
+              if (!signed.signed_at || (c.status !== 'accepted' && c.status !== 'approved' && c.status !== 'settled')) {
+                return null
+              }
+              return (
+                <div style={{ fontSize: '0.8125rem', background: 'var(--bg-green-tint, var(--bg-subtle))', borderRadius: 6, padding: '0.45rem 0.6rem', marginBottom: '0.55rem' }}>
+                  ✍ Signed &amp; accepted
+                  {signed.signer_printed_name ? <> by <strong>{signed.signer_printed_name}</strong></> : null}
+                  {' '}· {new Date(signed.signed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {' '}· from their portal{signed.signer_signature_mode === 'draw' ? ' (drawn signature on file)' : ''}
+                </div>
+              )
+            })()}
+
             {c.status === 'declined' && (
               <div style={{ fontSize: '0.8125rem', background: 'var(--bg-red-tint)', borderRadius: 6, padding: '0.45rem 0.6rem', marginBottom: '0.55rem' }}>
                 Declined{c.decline_reason ? <> — <strong>“{c.decline_reason}”</strong></> : null}
@@ -461,6 +509,15 @@ export function StepCommitmentPanel({
                       style={{ padding: '0.25rem 0.4rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.8125rem' }}
                     />
                   </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    offer good through
+                    <input
+                      type="date"
+                      value={offerEditor.expires}
+                      onChange={(e) => setOfferEditor((prev) => (prev ? { ...prev, expires: e.target.value } : prev))}
+                      style={{ padding: '0.25rem 0.4rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                    />
+                  </label>
                   <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving || offerEditor.amount.trim() === ''} onClick={() => void sendOffer(c)}>
                     Send offer
                   </button>
@@ -468,9 +525,23 @@ export function StepCommitmentPanel({
                     Cancel
                   </button>
                 </div>
+                <div style={{ marginTop: '0.45rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 }}>
+                    Scope — frozen into the offer, one line each (what the sub signs)
+                  </label>
+                  <textarea
+                    value={offerEditor.scope}
+                    onChange={(e) => setOfferEditor((prev) => (prev ? { ...prev, scope: e.target.value } : prev))}
+                    rows={2}
+                    placeholder={'e.g. Rough-in — 22 fixtures per plan sheet P-2\nWater/gas stub-outs, garage'}
+                    style={{ width: '100%', boxSizing: 'border-box', padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.8125rem', fontFamily: 'inherit', resize: 'vertical' }}
+                  />
+                </div>
                 <div style={{ marginTop: '0.35rem' }}>{complianceChip(c.person_id, offerEditor.end || null)}</div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                  Dates pre-fill from the step's expected dates. The sub gets a push + email and answers from their dashboard.
+                  Dates pre-fill from the step's expected dates. The sub gets a push + email and answers from their
+                  dashboard — or signs to accept on their portal, which binds this scope and price under their Master
+                  Subcontract Agreement.
                 </div>
               </div>
             )}

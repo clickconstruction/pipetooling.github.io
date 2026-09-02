@@ -105,6 +105,8 @@ when_to_read:
    - [send-rfq-email](#send-rfq-email)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
+   - [sub-portal](#sub-portal)
+   - [submit-sub-portal](#submit-sub-portal)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
    - [send-estimate-to-customer](#send-estimate-to-customer)
@@ -998,6 +1000,24 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Endpoint**: `POST /functions/v1/submit-portal-request` — `{ token, kind: 'visit'|'bid', jobId?, description, availability?, phone?, plansLink?, website }` (`website` is the honeypot).
 
 **Auth**: none (`verify_jwt = false`) — the portal token is the capability.
+
+### sub-portal
+
+**Purpose**: Payload for the no-login subcontractor "Work & pay" portal (`/sub?t=<token>` and `/s/<slug>`, sub-portal train — the customer portal's person-keyed sibling): resolves the capability token (raw lookup + sha256 fallback in `sub_portal_links`, revoked → 404) or a custom address slug (`sub_portal_slugs`; no mint-on-demand; first public resolve locks the slug) and returns only that person's statement — Sub Labor sheets with line items and agreed/paid/backcharges/open (junction-first via `people_labor_job_assignees`; legacy multi-name sheets stay office-only), the last-90-days payment ledger (**memos are sub-visible** unless `hidden_from_sub`; the amount always shows), all-time totals (open floors per sheet), open `step_commitments` offers with the frozen `offer_scope_snapshot`, paperwork **status only** from `person_contract_documents` (signed/on-file/expiring ≤60d/expired/needs-signature — never document contents), and pay-run settings (`app_settings.sub_pay_run_day` / `sub_pay_explainer` + the computed next run date). Statement shaping lives in the shared pure module [`_shared/subPortalStatement.ts`](../supabase/functions/_shared/subPortalStatement.ts), unit-tested from `src/lib/subPortal/subPortalStatement.test.ts`. Carries `requestToken` + `slug` like the customer payload. `/p/<slug>` dual-resolves client-side (customer first, sub fallback) — one printed `my.clickplumbing.com` namespace, uniqueness enforced across both slug tables by the set RPCs.
+
+**Endpoint**: `GET /functions/v1/sub-portal?token=<opaque>` or `GET /functions/v1/sub-portal?slug=<address>`
+
+**Auth**: none (`verify_jwt = false` — the link IS the capability, minted/rotated by `mint_sub_portal_link`). Service-role reads; never returns costs beyond the sub's own money, other people's data, or document contents.
+
+**View counting**: each validated load appends a `public_page_views` row (`surface='sub_portal'`, `entity_id` = person id, `via` token/slug), fire-and-forget.
+
+### submit-sub-portal
+
+**Purpose**: Everything a sub can DO from the portal, token-authenticated like submit-portal-request. Four kinds: `availability` (rate-limited 5/hour per link → `dispatch_requests` with `pending_payload.source='sub_portal'` + `notify-dispatch-request` fan-out); `accept_offer` — **sign-to-accept**: validates the `offered` + unexpired commitment belongs to the link's person, validates/stores a drawn signature PNG (magic bytes, 512 KB cap, `contract-signer-signatures` bucket under `commitments/<id>/`, compensating delete on failure), transitions `offered → accepted` while stamping the full signature record of truth on the row (`signed_at`, `signer_printed_name`, `signer_signature_mode` type|draw, `signer_signature_storage_path`, `signer_consented_at`, `signer_ip`, `signer_user_agent`), then drops a "signed & accepted" dispatch note; `decline_offer` (`offered → declined` with the required reason + dispatch note); `sign_link` — mints a fresh 14-day `/contract/accept` token for one of the sub's own `unsent`/`sent` `person_contract_documents` (send-contract-for-signature mint pattern, no email; the newest link wins).
+
+**Endpoint**: `POST /functions/v1/submit-sub-portal` — `{ token, kind, ... }` (`website` is the honeypot on availability).
+
+**Auth**: none (`verify_jwt = false`) — the sub portal token is the capability; every kind re-validates ownership server-side.
 
 ### get-estimate-for-customer
 

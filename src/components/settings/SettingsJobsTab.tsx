@@ -6,6 +6,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
 import HideHcpFieldSettingsBlock from './HideHcpFieldSettingsBlock'
+import SubPortalPaySettingsBlock from './SubPortalPaySettingsBlock'
 import JobAddressCityListSettingsBlock from './JobAddressCityListSettingsBlock'
 import TxCountyMapSettingsBlock from './TxCountyMapSettingsBlock'
 import DevelopmentsSettingsBlock from './DevelopmentsSettingsBlock'
@@ -70,6 +71,7 @@ export default function SettingsJobsTab({
   return (
     <>
       <HideHcpFieldSettingsBlock />
+      <SubPortalPaySettingsBlock />
       {/* Job creation overrides */}
       <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
         <button

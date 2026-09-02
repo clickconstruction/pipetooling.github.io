@@ -1,7 +1,14 @@
 import { forwardRef, useImperativeHandle, useState, type ForwardedRef } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
+
+/** Memos are sub-visible on the sub portal (sub-portal train) — say so at the point of writing. */
+const MEMO_PORTAL_HINT = '👁 Shown to the sub on their portal — write it like they’ll read it.'
+
+const memoHintStyle = { margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' } as const
 
 /** The payment/backcharge row being edited (single declaration — the form modal imports it from here). */
 export type EditingPaymentTarget = {
@@ -71,6 +78,24 @@ function SubLaborPaymentModalsInner(
   const [editPaymentDate, setEditPaymentDate] = useState('')
   const [editPaymentMemo, setEditPaymentMemo] = useState('')
   const [editPaymentSaving, setEditPaymentSaving] = useState(false)
+  // Hide-memo toggle (sub-portal train): tri-state — null until the user
+  // touches it, so an unrelated edit never flips a previously chosen state.
+  const [editPaymentHideMemo, setEditPaymentHideMemo] = useState<boolean | null>(null)
+
+  async function applyMemoVisibility(paymentId: string): Promise<void> {
+    if (editPaymentHideMemo == null) return
+    try {
+      await withSupabaseRetry(
+        () => supabase.rpc('set_sub_payment_visibility' as never, {
+          p_payment_id: paymentId,
+          p_hidden: editPaymentHideMemo,
+        } as never),
+        'set sub payment visibility',
+      )
+    } catch (e) {
+      console.error('set_sub_payment_visibility failed', e)
+    }
+  }
 
   useImperativeHandle(ref, () => ({
     openMakePayment: (target, defaultAmount) => {
@@ -88,6 +113,7 @@ function SubLaborPaymentModalsInner(
       setEditPaymentAmount(amountSeed)
       setEditPaymentDate(paymentDateSeed(payment))
       setEditPaymentMemo(memoSeed)
+      setEditPaymentHideMemo(null)
       setEditingPayment(payment)
     },
     clearEditPayment: () => {
@@ -133,6 +159,7 @@ function SubLaborPaymentModalsInner(
                 rows={2}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
               />
+              <p style={memoHintStyle}>{MEMO_PORTAL_HINT}</p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setMakePaymentLaborJob(null); setMakePaymentAmount(''); setMakePaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
@@ -168,6 +195,7 @@ function SubLaborPaymentModalsInner(
                 rows={2}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
               />
+              <p style={memoHintStyle}>{MEMO_PORTAL_HINT}</p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
@@ -210,12 +238,21 @@ function SubLaborPaymentModalsInner(
                 rows={2}
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
               />
+              <p style={memoHintStyle}>{MEMO_PORTAL_HINT}</p>
+              <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginTop: 6, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                <input
+                  type="checkbox"
+                  checked={editPaymentHideMemo ?? false}
+                  onChange={(e) => setEditPaymentHideMemo(e.target.checked)}
+                />
+                Hide this memo from the sub&#8217;s portal (the amount still shows)
+              </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
               <button type="button" disabled={editPaymentSaving} onClick={async () => { if (!editingPayment || !(await confirmDialog({ message: 'Remove this payment?', confirmLabel: 'Remove', danger: true }))) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge, editPaymentDate || null); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
+                <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge, editPaymentDate || null); await applyMemoVisibility(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
               </div>
             </div>
           </div>

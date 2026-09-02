@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   formatPortalDate,
@@ -77,6 +77,13 @@ export default function CustomerPortal() {
     const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
     return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
   }, [])
+
+  // Shared printed namespace (sub-portal train): a my.clickplumbing.com slug
+  // that isn't a customer's may be a sub's — fall through to the sub portal,
+  // which renders the same friendly error when it's neither.
+  if (state.kind === 'error' && slug && !token) {
+    return <Navigate to={`/s/${slug}`} replace />
+  }
 
   return (
     <div data-theme="light" style={{ minHeight: '100vh', background: PAPER, color: INK, fontFamily: `-apple-system, 'Segoe UI', Roboto, sans-serif`, padding: '2rem 1rem 4rem' }}>

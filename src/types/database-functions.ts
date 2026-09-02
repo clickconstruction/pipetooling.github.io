@@ -253,6 +253,36 @@ export interface MintCustomerPortalLinkResult {
 }
 
 /**
+ * Result of mint_sub_portal_link (sub-portal train — the customer mint's
+ * person-keyed twin; no audiences).
+ */
+export interface MintSubPortalLinkResult {
+  token?: string
+  activeSince?: string
+  error?: string
+}
+
+/**
+ * Result of set_sub_portal_slug / mark_sub_portal_slug_shared (sub-portal
+ * train). Uniqueness spans customer_portal_slugs too — one printed namespace.
+ */
+export interface SetSubPortalSlugResult {
+  slug?: string
+  unchanged?: boolean
+  locked?: boolean
+  error?: string
+}
+
+/**
+ * Result shape shared by set_sub_sheet_portal_fields and
+ * set_sub_payment_visibility (sub-portal train office writers).
+ */
+export interface SubPortalOfficeWriteResult {
+  ok?: boolean
+  error?: string
+}
+
+/**
  * Result of set_customer_portal_slug (portal custom-links train): the saved
  * address, or a friendly error string ("That address is taken — try
  * another." / format guidance). `unchanged` when the slug already matched.
