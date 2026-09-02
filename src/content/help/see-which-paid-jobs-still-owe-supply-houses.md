@@ -30,4 +30,4 @@ The chip tells you where the job stands: {{chip:yellow|Owe suppliers}}, {{chip:b
 
 1. Click a job row to expand its statement — each supply house with its invoice count, oldest due date, and paid vs. owed totals.
 2. Click {{button:outline|Open house}} on the house you want to pay. That jumps to the **Supply Houses** tab with the house already open — its invoices and {{button:green|Make Payment}} are right there.
-3. **Open job in Jobs** on the expanded row takes you to the job itself if the customer side is the problem.
+3. If the customer side is the problem, click the **job's name** on any row (or **Open job** on the expanded statement) — the full job window opens right there with its **Job**, **Edit**, and **Bill** tabs, and the numbers refresh when you save.

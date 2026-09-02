@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
@@ -81,6 +82,7 @@ function dueChipText(group: { oldestUnpaidDueYmd: string | null }, todayYmd: str
  */
 export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: MaterialsJobAccountsTabProps) {
   const navigate = useNavigate()
+  const jobFormModal = useJobFormModal()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<JobAccountsView | null>(null)
@@ -195,6 +197,15 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
 
   const rows = view?.rows.filter((r) => matchesFilter(r, filter)) ?? []
   const awaitingCount = (view?.floatingJobs ?? 0) + (view?.awaitingJobs ?? 0)
+
+  /** Job window (Job / Edit / Bill tabs) in place; falls back to the Jobs page if the provider is absent. */
+  function openJobWindow(jobId: string) {
+    if (jobFormModal) {
+      jobFormModal.openEditJob(jobId, { onSaved: () => void load() })
+    } else {
+      navigate(`/jobs?tab=stages&edit=${encodeURIComponent(jobId)}`)
+    }
+  }
 
   return (
     <div>
@@ -344,9 +355,17 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                   const dimmed = row.status === 'settled'
                   return (
                     <div key={row.jobId} style={{ borderTop: i === 0 ? 'none' : '1px solid var(--border)' }}>
-                      <button
-                        type="button"
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={expanded}
                         onClick={() => setExpandedJobId(expanded ? null : row.jobId)}
+                        onKeyDown={(e) => {
+                          if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+                            e.preventDefault()
+                            setExpandedJobId(expanded ? null : row.jobId)
+                          }
+                        }}
                         style={{
                           display: 'grid',
                           gridTemplateColumns: 'minmax(200px, 260px) 1fr 150px 28px',
@@ -355,16 +374,37 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                           width: '100%',
                           textAlign: 'left',
                           padding: '0.875rem 1rem',
-                          background: 'none',
-                          border: 'none',
-                          borderRadius: 0,
-                          font: 'inherit',
-                          color: 'inherit',
                           cursor: 'pointer',
                         }}
                       >
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: dimmed ? 'var(--text-700)' : 'var(--text-base)', overflowWrap: 'anywhere' }}>
+                          <div
+                            role="link"
+                            tabIndex={0}
+                            title="Open the job window (details, edit, bill)"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openJobWindow(row.jobId)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                openJobWindow(row.jobId)
+                              }
+                            }}
+                            style={{
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              color: dimmed ? 'var(--text-700)' : 'var(--text-base)',
+                              overflowWrap: 'anywhere',
+                              cursor: 'pointer',
+                              width: 'fit-content',
+                              textDecoration: 'underline',
+                              textDecorationColor: 'var(--border-strong)',
+                              textUnderlineOffset: 3,
+                            }}
+                          >
                             J{row.jobNumber || '—'} · {row.jobName || '—'}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 2 }}>
@@ -467,7 +507,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ justifySelf: 'center', transform: expanded ? 'rotate(180deg)' : 'none' }} aria-hidden>
                           <path d="M4 6l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                      </button>
+                      </div>
 
                       {expanded && (
                         <div style={{ padding: '0 1rem 1rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
@@ -497,10 +537,10 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                             <div style={{ flex: 1 }} />
                             <button
                               type="button"
-                              onClick={() => navigate(`/jobs?tab=stages&edit=${encodeURIComponent(row.jobId)}`)}
+                              onClick={() => openJobWindow(row.jobId)}
                               style={{ background: 'none', border: 'none', color: 'var(--text-link)', padding: 0, fontSize: '0.8125rem' }}
                             >
-                              Open job in Jobs
+                              Open job
                             </button>
                           </div>
 
