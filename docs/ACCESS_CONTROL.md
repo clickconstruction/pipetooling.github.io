@@ -575,7 +575,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Dashboard**:
 - Recent Reports section (v2.2599) — `list_reports_with_job_info` scopes rows to reports on their assigned projects (`can_access_project_row` / `superintendent_report_job_anchor_allowed`); no email-settings gear (office roles only)
-- Crew Day section (v2.2602) — `get_crew_day_payload` scopes the day's clock sessions / schedule blocks / field reports to jobs on their assigned projects (same predicate as reports); office roles see company-wide. Hours only, no pay data
+- Crew Day section (v2.2602) — `get_crew_day_payload` scopes the day's clock sessions / schedule blocks / field reports to jobs on their assigned projects (same predicate as reports); office roles see company-wide. Hours only, no pay data. Since v2.2617 office-role people fold behind "Show office staff" by default (per-device preference) for superintendent viewers only
 - Crew Day email — **NO access since v2.2615** (briefly allowed in v2.2603): superintendents can neither schedule nor receive the `crew_day` stream — the ✉ hides on their card, and the INSERT policy + dispatcher roles are office-only (owner decision: the dashboard is their window)
 
 **Workflow**:

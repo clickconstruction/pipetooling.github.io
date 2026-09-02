@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCrewDayView,
+  crewDayNavWord,
   crewDayPctFromNoteBody,
+  crewDaySummaryFor,
+  isCrewDayOfficeRole,
   crewDayReportExcerpt,
   crewDaySessionMs,
   formatCrewDayBlockTime,
@@ -177,6 +180,63 @@ describe('isCrewDayRole', () => {
     for (const r of ['subcontractor', 'helpers', 'estimator', 'primary', null, undefined]) {
       expect(isCrewDayRole(r)).toBe(false)
     }
+  })
+})
+
+describe('office fold + nav word (v2.2617)', () => {
+  it('buckets office-role people and recomputes summaries per subset', () => {
+    const view = buildCrewDayView(
+      basePayload({
+        users: [
+          { id: 'u1', name: 'Marcus V.', role: 'subcontractor' },
+          { id: 'u2', name: 'Taunya R.', role: 'assistant' },
+        ],
+        jobs: [job('j1')],
+        sessions: [
+          { user_id: 'u1', job_id: 'j1', clocked_in_at: '2026-09-01T12:00:00Z', clocked_out_at: '2026-09-01T20:00:00Z' },
+          { user_id: 'u2', job_id: 'j1', clocked_in_at: '2026-09-01T12:00:00Z', clocked_out_at: '2026-09-01T14:00:00Z' },
+        ],
+        reports: [
+          { id: 'r1', user_id: 'u1', job_id: 'j1', created_at: '2026-09-01T20:05:00Z', template_name: 'Field', field_values: { t: 'done' } },
+          { id: 'r2', user_id: 'u2', job_id: 'j1', created_at: '2026-09-01T14:05:00Z', template_name: 'Field', field_values: { t: 'office note' } },
+        ],
+      }),
+      NOW,
+    )
+    expect(view.people.map((p) => [p.name, p.office])).toEqual([
+      ['Marcus V.', false],
+      ['Taunya R.', true],
+    ])
+    const field = view.people.filter((p) => !p.office)
+    expect(crewDaySummaryFor(field)).toEqual({ people: 1, jobs: 1, totalMs: 8 * 3_600_000, reports: 1, flags: 1 }) // unscheduled_work (no block)
+    expect(crewDaySummaryFor(view.people).people).toBe(2)
+  })
+
+  it('treats a role-less payload (pre-migration) as nobody-office', () => {
+    const view = buildCrewDayView(
+      basePayload({
+        users: [{ id: 'u1', name: 'M' }],
+        jobs: [job('j1')],
+        sessions: [{ user_id: 'u1', job_id: 'j1', clocked_in_at: '2026-09-01T12:00:00Z', clocked_out_at: '2026-09-01T13:00:00Z' }],
+        reports: [{ id: 'r1', user_id: 'u1', job_id: 'j1', created_at: '2026-09-01T13:01:00Z', template_name: 'F', field_values: {} }],
+      }),
+      NOW,
+    )
+    expect(view.people[0]?.office).toBe(false)
+  })
+
+  it('isCrewDayOfficeRole is the office set', () => {
+    for (const r of ['dev', 'master_technician', 'assistant', 'controller']) expect(isCrewDayOfficeRole(r)).toBe(true)
+    for (const r of ['superintendent', 'subcontractor', 'helpers', 'estimator', 'primary', null]) expect(isCrewDayOfficeRole(r)).toBe(false)
+  })
+
+  it('crewDayNavWord: Today / Yesterday / N days ago; blank for future or junk', () => {
+    expect(crewDayNavWord('2026-09-01', '2026-09-01')).toBe('Today')
+    expect(crewDayNavWord('2026-08-31', '2026-09-01')).toBe('Yesterday')
+    expect(crewDayNavWord('2026-08-27', '2026-09-01')).toBe('5 days ago')
+    expect(crewDayNavWord('2026-08-02', '2026-09-01')).toBe('30 days ago')
+    expect(crewDayNavWord('2026-09-02', '2026-09-01')).toBe('')
+    expect(crewDayNavWord('junk', '2026-09-01')).toBe('')
   })
 })
 

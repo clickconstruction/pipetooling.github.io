@@ -3,8 +3,8 @@
  * Render smokes for the Crew Day section (v2.2600): role self-gate, payload →
  * person rows with hours/flags/report excerpts, and the day-scoped empty state.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DashboardCrewDaySection } from './DashboardCrewDaySection'
 import type { CrewDayPayload } from '../../lib/crewDay'
 
@@ -12,6 +12,7 @@ const PAYLOAD: CrewDayPayload = {
   day: '2026-09-01',
   sessions: [
     { user_id: 'u1', job_id: 'j1', clocked_in_at: '2026-09-01T12:00:00Z', clocked_out_at: '2026-09-01T20:00:00Z' },
+    { user_id: 'u5', job_id: 'j1', clocked_in_at: '2026-09-01T13:00:00Z', clocked_out_at: '2026-09-01T15:00:00Z' },
   ],
   blocks: [
     { user_id: 'u1', job_id: 'j1', bid_id: null, time_start: '07:00:00', time_end: '15:00:00', note: null },
@@ -22,8 +23,9 @@ const PAYLOAD: CrewDayPayload = {
   ],
   pct_notes: [],
   users: [
-    { id: 'u1', name: 'Marcus V.' },
-    { id: 'u2', name: 'DeShawn K.' },
+    { id: 'u1', name: 'Marcus V.', role: 'subcontractor' },
+    { id: 'u2', name: 'DeShawn K.', role: 'helpers' },
+    { id: 'u5', name: 'Taunya R.', role: 'assistant' },
   ],
   jobs: [
     { id: 'j1', hcp_number: '4821', click_number: null, job_name: 'Maple Ridge Ph 2', job_address: null, status: 'working', pct_complete: 60 },
@@ -37,6 +39,11 @@ vi.mock('../../lib/supabase', () => ({
 vi.mock('../../utils/errorHandling', () => ({
   withSupabaseRetry: async <T,>(op: () => PromiseLike<{ data: T; error: null }>) => (await op()).data,
 }))
+
+beforeEach(() => {
+  localStorage.clear()
+  rpcMock.mockReset()
+})
 
 describe('DashboardCrewDaySection', () => {
   it('renders nothing for field roles', () => {
@@ -55,7 +62,31 @@ describe('DashboardCrewDaySection', () => {
     expect(screen.getByText(/Rough complete on 3–5/)).toBeTruthy()
     expect(screen.getByText('Scheduled — never clocked in')).toBeTruthy() // DeShawn
     expect(screen.getByText('Scoped to your assigned projects.')).toBeTruthy()
-    expect(screen.getByText('2 people')).toBeTruthy()
+    expect(screen.getByText('2 people')).toBeTruthy() // Taunya (assistant) folded out of chips + list
+    expect(screen.queryByText('Taunya R.')).toBeNull()
+    expect(screen.getByText('+1 office hidden')).toBeTruthy()
+    expect(screen.getByText('Today', { exact: false })).toBeTruthy() // restacked nav word (state defaults to today)
+  })
+
+  it('superintendent: Show office staff reveals folded people and persists per device', async () => {
+    rpcMock.mockResolvedValue({ data: PAYLOAD, error: null })
+    render(<DashboardCrewDaySection authUserId="u-1" role="superintendent" />)
+    await waitFor(() => expect(screen.getByText('Show office staff')).toBeTruthy())
+    fireEvent.click(screen.getByText('Show office staff'))
+    expect(screen.getByText('Taunya R.')).toBeTruthy()
+    expect(screen.getByText('3 people')).toBeTruthy()
+    expect(screen.queryByText('+1 office hidden')).toBeNull()
+    expect(screen.getByText('Hide office staff')).toBeTruthy()
+    expect(localStorage.getItem('pipetooling_crew_day_show_office')).toBe('1')
+  })
+
+  it('office viewers see everyone with no fold', async () => {
+    rpcMock.mockResolvedValue({ data: PAYLOAD, error: null })
+    render(<DashboardCrewDaySection authUserId="u-1" role="dev" />)
+    await waitFor(() => expect(screen.getByText('Taunya R.')).toBeTruthy())
+    expect(screen.getByText('3 people')).toBeTruthy()
+    expect(screen.queryByText('Show office staff')).toBeNull()
+    expect(screen.queryByText('+1 office hidden')).toBeNull()
   })
 
   it('shows the empty state when the day has no rows', async () => {
