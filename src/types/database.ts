@@ -1026,6 +1026,212 @@ export type Database = {
           },
         ]
       }
+      bid_quote_lines: {
+        Row: {
+          alternate_note: string | null
+          basis_price_cents: number | null
+          basis_qty: number | null
+          cant_supply: boolean
+          created_at: string
+          fixture: string
+          id: string
+          match_confidence: string
+          matched_from: string | null
+          picked: boolean
+          price_basis: string
+          quote_id: string
+          unit_price_each_cents: number | null
+        }
+        Insert: {
+          alternate_note?: string | null
+          basis_price_cents?: number | null
+          basis_qty?: number | null
+          cant_supply?: boolean
+          created_at?: string
+          fixture: string
+          id?: string
+          match_confidence?: string
+          matched_from?: string | null
+          picked?: boolean
+          price_basis?: string
+          quote_id: string
+          unit_price_each_cents?: number | null
+        }
+        Update: {
+          alternate_note?: string | null
+          basis_price_cents?: number | null
+          basis_qty?: number | null
+          cant_supply?: boolean
+          created_at?: string
+          fixture?: string
+          id?: string
+          match_confidence?: string
+          matched_from?: string | null
+          picked?: boolean
+          price_basis?: string
+          quote_id?: string
+          unit_price_each_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_quote_lines_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "bid_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_quotes: {
+        Row: {
+          adders_note: string | null
+          bid_id: string
+          bid_version_id: string | null
+          created_at: string
+          created_by: string | null
+          freight_cents: number | null
+          id: string
+          note: string | null
+          quoted_by: string | null
+          raw_paste: string | null
+          received_at: string
+          rfq_id: string | null
+          source: string
+          supply_house_id: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          adders_note?: string | null
+          bid_id: string
+          bid_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          freight_cents?: number | null
+          id?: string
+          note?: string | null
+          quoted_by?: string | null
+          raw_paste?: string | null
+          received_at?: string
+          rfq_id?: string | null
+          source?: string
+          supply_house_id?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          adders_note?: string | null
+          bid_id?: string
+          bid_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          freight_cents?: number | null
+          id?: string
+          note?: string | null
+          quoted_by?: string | null
+          raw_paste?: string | null
+          received_at?: string
+          rfq_id?: string | null
+          source?: string
+          supply_house_id?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_quotes_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_quotes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_quotes_rfq_id_fkey"
+            columns: ["rfq_id"]
+            isOneToOne: false
+            referencedRelation: "bid_rfqs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_quotes_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_rfqs: {
+        Row: {
+          bid_id: string
+          bid_version_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          needed_by: string | null
+          scope: Json
+          sent_to: string | null
+          status: string
+          supply_house_id: string | null
+          token: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          bid_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          needed_by?: string | null
+          scope?: Json
+          sent_to?: string | null
+          status?: string
+          supply_house_id?: string | null
+          token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          bid_version_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          needed_by?: string | null
+          scope?: Json
+          sent_to?: string | null
+          status?: string
+          supply_house_id?: string | null
+          token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_rfqs_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_rfqs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_rfqs_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_tab_entries: {
         Row: {
           alternate_amount: number | null
@@ -6330,6 +6536,34 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_releases_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_releases_signature_requested_by_fkey"
+            columns: ["signature_requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_releases_signer_user_id_fkey"
+            columns: ["signer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_releases_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -13147,6 +13381,51 @@ export type Database = {
         }
         Relationships: []
       }
+      supply_house_fixture_prices: {
+        Row: {
+          fixture: string
+          fixture_key: string | null
+          id: string
+          quoted_at: string
+          source_bid_id: string | null
+          supply_house_id: string
+          unit_price_each_cents: number
+        }
+        Insert: {
+          fixture: string
+          fixture_key?: string | null
+          id?: string
+          quoted_at?: string
+          source_bid_id?: string | null
+          supply_house_id: string
+          unit_price_each_cents: number
+        }
+        Update: {
+          fixture?: string
+          fixture_key?: string | null
+          id?: string
+          quoted_at?: string
+          source_bid_id?: string | null
+          supply_house_id?: string
+          unit_price_each_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_fixture_prices_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_fixture_prices_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supply_house_invoice_bid_allocations: {
         Row: {
           bid_id: string
@@ -18155,6 +18434,7 @@ export type Database = {
           fixture: string
         }[]
       }
+      spec_section_uncoded_name_count: { Args: never; Returns: number }
       split_bid_into_versions: {
         Args: {
           p_bid_id: string
@@ -18493,12 +18773,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -18522,11 +18802,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -18547,11 +18827,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -18572,11 +18852,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -18589,11 +18869,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
