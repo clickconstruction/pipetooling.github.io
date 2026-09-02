@@ -14,6 +14,8 @@ type Item = {
   title?: string
   /** Draw a separator above this item. */
   dividerBefore?: boolean
+  /** Render as an indented child of the item above (elbow connector, smaller type). */
+  childOfPrevious?: boolean
   onPick: () => void
 }
 
@@ -88,7 +90,7 @@ export function PricingShareMenu({
     { key: 'review', label: 'Print all prices — review', hint: 'every price option in one document', dividerBefore: true, onPick: onReview },
     { key: 'fixtures', label: 'Supply house list', hint: 'names + counts by Division 22, no prices — scope it, then copy', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
     ...(onOpenD22Audit
-      ? [{ key: 'd22audit', label: 'Division 22 codes', hint: 'audit every fixture name — pin the missing codes', onPick: onOpenD22Audit } satisfies Item]
+      ? [{ key: 'd22audit', label: 'Division 22 codes', hint: 'audit every fixture name — pin the missing codes', childOfPrevious: true, onPick: onOpenD22Audit } satisfies Item]
       : []),
   ]
 
@@ -153,10 +155,29 @@ export function PricingShareMenu({
                 }}
                 onMouseEnter={(e) => { if (!it.disabled) e.currentTarget.style.background = 'var(--bg-subtle)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
-                style={{ display: 'block', width: '100%', padding: '0.45rem 0.55rem', border: 'none', background: 'none', borderRadius: 6, font: 'inherit', textAlign: 'left', cursor: it.disabled ? 'not-allowed' : 'pointer', color: it.disabled ? 'var(--text-faint)' : 'var(--text-strong)' }}
+                style={{
+                  display: it.childOfPrevious ? 'flex' : 'block',
+                  ...(it.childOfPrevious ? { gap: '0.45rem', alignItems: 'flex-start', paddingLeft: '0.9rem' } : null),
+                  width: '100%',
+                  padding: it.childOfPrevious ? '0.3rem 0.55rem 0.4rem 0.9rem' : '0.45rem 0.55rem',
+                  border: 'none',
+                  background: 'none',
+                  borderRadius: 6,
+                  font: 'inherit',
+                  textAlign: 'left',
+                  cursor: it.disabled ? 'not-allowed' : 'pointer',
+                  color: it.disabled ? 'var(--text-faint)' : 'var(--text-strong)',
+                }}
               >
-                {it.label}
-                {it.hint ? <span style={{ display: 'block', color: it.disabled ? 'var(--text-faint)' : 'var(--text-muted)', fontSize: '0.74rem' }}>{it.hint}</span> : null}
+                {it.childOfPrevious ? (
+                  <svg width="14" height="26" viewBox="0 0 14 26" fill="none" stroke="var(--border-strong)" strokeWidth="1.5" style={{ flex: '0 0 auto' }} aria-hidden="true">
+                    <path d="M4 0v12a6 6 0 0 0 6 6h4" />
+                  </svg>
+                ) : null}
+                <span style={it.childOfPrevious ? { display: 'block', fontSize: '0.875rem' } : undefined}>
+                  {it.label}
+                  {it.hint ? <span style={{ display: 'block', color: it.disabled ? 'var(--text-faint)' : 'var(--text-muted)', fontSize: '0.74rem' }}>{it.hint}</span> : null}
+                </span>
               </button>
             </span>
           ))}
