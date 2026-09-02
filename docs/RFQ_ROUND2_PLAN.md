@@ -135,13 +135,13 @@ Three input classes, phased:
   what was dropped). xlsx rides the existing exceljs dep; pdf.js added
   as a lazy chunk; lot-wording lines get the amber rung-G hint.
 
-## Rung F — desk recording for the help guide (IN PROGRESS — guides updated v2.2653; recording pending Chrome)
+## Rung F — desk recording for the help guide — SHIPPED v2.2654
 
 Once A–E settle the desk's final shape: screen-record the desk +
 compose-preview flow into the quote-link guide (matching the house
 gif standard set in v2.2633).
 
-## Rung G — "apply picks to bid costs" — DECISION DOC DELIVERED (docs/APPLY_PICKS_TO_COSTS_DECISION.md + artboard 10; awaiting owner go)
+## Rung G — "apply picks to bid costs" — OWNER APPROVED option (a) 2026-09-02; next build rung (lot capture office-side first; vendor-page lots later)
 
 **The problem in plain terms**: the Workbench's COST/UNIT per fixture is
 *derived* — each fixture name maps (via Takeoffs) to an assigned part or

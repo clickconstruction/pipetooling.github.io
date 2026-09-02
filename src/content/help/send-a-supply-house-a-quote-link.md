@@ -21,6 +21,8 @@ The link is addressed to that one house — send a separate link to each vendor 
 
 Next to the copy buttons, **Send by email…** opens the request composer. Each house shows its **contacts as chips** — tap one to CC it, tap again to make it the To (exactly one To per house; tapping the To un-sets it so a typed address can take over). A typed address offers to be **remembered as that house's contact**, and contacts are managed on the supply house form itself. Set needed-by, add a one-line note, optionally **include the job plans link** (cut sheets sell fixtures) — and **preview every email exactly as it will send** before anything goes out. Each house gets one email, one link; CCs ride the same message; replies come straight to your inbox.
 
+{{gif:rfq-desk-and-compose.gif|The desk sorts by what needs you — then a new request: tick the house, the contact chip is already To, preview the exact email}}
+
 The **RFQs chip** by Share then becomes your desk: every request as a trail — {{chip:green|Sent}} → {{chip:green|Delivered}} → {{chip:yellow|Viewed}} → {{chip:gray|Quoted}} — with bounced addresses in red (fix them right on the row and resend), a one-tap **Nudge** that rests 24 hours between sends and shows you the reminder before it goes, a coverage bar for "which items does nobody have priced yet?", and **Close link** when you're done asking.
 
 {{gif:send-a-supply-house-a-quote-link.gif|Pick the house, set needed-by, Copy with quote link — the toast confirms and an RFQ sent chip appears by Share}}
