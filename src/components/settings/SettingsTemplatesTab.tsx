@@ -5,6 +5,7 @@
  * The SettingsGroup wrapper and the myRole === dev gate stay in the parent. */
 import { useToastContext } from '../../contexts/ToastContext'
 import { useSettingsTemplatesEngine } from '../../hooks/useSettingsTemplatesEngine'
+import SettingsEmailCatalogSection from './SettingsEmailCatalogSection'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import {
@@ -509,6 +510,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                 <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Customize the content of emails sent to users. Use variables like {VARIABLE_HINT} in your templates.
                 </p>
+                <SettingsEmailCatalogSection templates={emailTemplates} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>User Management</h3>
             {[

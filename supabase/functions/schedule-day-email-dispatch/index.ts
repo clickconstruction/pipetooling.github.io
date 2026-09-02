@@ -255,6 +255,7 @@ serve(async (req) => {
         html,
         textFallback: text,
         resendApiKey,
+        emailType: 'schedule_day',
       })
 
       if (!mail.ok) {

@@ -4752,6 +4752,7 @@ export type Database = {
       email_send_log: {
         Row: {
           created_at: string
+          email_type: string | null
           from_email: string | null
           id: string
           last_event: string | null
@@ -4765,6 +4766,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_type?: string | null
           from_email?: string | null
           id?: string
           last_event?: string | null
@@ -4778,6 +4780,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_type?: string | null
           from_email?: string | null
           id?: string
           last_event?: string | null

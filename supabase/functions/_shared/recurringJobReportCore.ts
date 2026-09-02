@@ -12,6 +12,7 @@ import {
 import { addDaysToYmd } from './recurringJobReportTimezone.ts'
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 import { EMAIL_FROM } from './emailFrom.ts'
+import { logEmailSendBestEffort } from './logEmailSend.ts'
 
 export type ActivityScopeMode =
   | 'calendar_yesterday'
@@ -602,6 +603,8 @@ export async function sendResendHtmlEmail(opts: {
   html: string
   textFallback: string
   resendApiKey: string
+  /** EMAIL_CATALOG id — sends through this helper were invisible to email_send_log until v2.2656. */
+  emailType?: string
 }): Promise<{ ok: boolean; error?: string; id?: string }> {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -627,5 +630,12 @@ export async function sendResendHtmlEmail(opts: {
     }
   }
   const data = (await res.json()) as { id?: string }
+  await logEmailSendBestEffort({
+    resendEmailId: data.id ?? null,
+    to: [opts.to],
+    from: EMAIL_FROM,
+    subject: opts.subject,
+    emailType: opts.emailType ?? null,
+  })
   return { ok: true, id: data.id }
 }
