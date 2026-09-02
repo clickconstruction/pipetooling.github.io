@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 type Item = {
-  key: 'print' | 'csv' | 'review' | 'fixtures' | 'd22audit'
+  key: 'print' | 'csv' | 'review' | 'fixtures' | 'd22audit' | 'plugquote'
   label: string
   hint?: string
   disabled?: boolean
@@ -33,6 +33,7 @@ export function PricingShareMenu({
   onReview,
   onCopyFixtures,
   onOpenD22Audit,
+  onPlugInQuote,
 }: {
   canShare: boolean
   shareDisabled: boolean
@@ -48,6 +49,8 @@ export function PricingShareMenu({
   onCopyFixtures: () => void
   /** Ledger-writer roles only — omit to hide the "Division 22 codes" item. */
   onOpenD22Audit?: () => void
+  /** Cost-side roles only — omit to hide the "Plug in a quote" item (RFQ v2.2630). */
+  onPlugInQuote?: () => void
 }) {
   const [open, setOpen] = useState(false)
   // Phone fix: the menu hangs right-aligned off the button; near the screen's left edge that clips,
@@ -91,6 +94,9 @@ export function PricingShareMenu({
     { key: 'fixtures', label: 'Supply house list', hint: 'names + counts by Division 22, no prices — scope it, then copy', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
     ...(onOpenD22Audit
       ? [{ key: 'd22audit', label: 'Division 22 codes', hint: 'audit every fixture name — pin the missing codes', childOfPrevious: true, onPick: onOpenD22Audit } satisfies Item]
+      : []),
+    ...(onPlugInQuote
+      ? [{ key: 'plugquote', label: 'Plug in a quote', hint: 'paste a supply house reply — prices land on each part', childOfPrevious: true, onPick: onPlugInQuote } satisfies Item]
       : []),
   ]
 
