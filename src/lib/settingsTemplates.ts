@@ -24,7 +24,6 @@ export type EmailTemplate = {
   template_type:
     | 'invitation'
     | 'sign_in'
-    | 'login_as'
     | 'stage_assigned_started'
     | 'stage_assigned_complete'
     | 'stage_assigned_reopened'
@@ -47,6 +46,7 @@ export type EmailTemplate = {
     | 'weekly_money'
     | 'weekly_movement'
     | 'schedule_day'
+    | 'gc_statement_scheduled'
   subject: string
   body: string
   updated_at: string | null
@@ -144,10 +144,6 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { s
     subject: 'Sign in to ClickTooling',
     body: 'Hi {{name}},\n\nClick the link below to sign in to your ClickTooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
   },
-  login_as: {
-    subject: 'Sign in to ClickTooling',
-    body: 'Hi {{name}},\n\nA dev has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
-  },
   stage_assigned_started: {
     subject: 'Workflow stage started: {{stage_name}}',
     body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been started.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
@@ -243,6 +239,10 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { s
   schedule_day: {
     subject: '{{default_subject}}',
     body: 'Your dispatch schedule is below.',
+  },
+  gc_statement_scheduled: {
+    subject: '{{default_subject}}',
+    body: 'Your current statement is below.',
   },
 }
 
