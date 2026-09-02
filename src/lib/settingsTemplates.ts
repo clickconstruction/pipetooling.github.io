@@ -38,6 +38,15 @@ export type EmailTemplate = {
     | 'work_order_declined'
     | 'lien_release_to_customer'
     | 'hazmat_notice'
+    | 'paid_job'
+    | 'ready_to_bill'
+    | 'money_waiting'
+    | 'billed_awaiting'
+    | 'payment_forecast'
+    | 'crew_day'
+    | 'weekly_money'
+    | 'weekly_movement'
+    | 'schedule_day'
   subject: string
   body: string
   updated_at: string | null
@@ -195,6 +204,45 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { s
   hazmat_notice: {
     subject: 'Biohazard Remediation Fee Notice — Job {{job_number}}',
     body: 'Please find the Biohazard Remediation Fee Notice for job {{job_number}} attached as a PDF. It documents the biohazard remediation fee on the {{invoice_reference}}. The notice includes the incident summary, photographic evidence, technician statements, and the contractual basis for the fee.',
+  },
+  // Digest wording (v2.2659): subject templates the line ({{default_subject}}
+  // = the built-in, dates and labels included); body is an INTRO PARAGRAPH
+  // above the digest's data — the data itself never changes here.
+  paid_job: {
+    subject: '{{default_subject}}',
+    body: 'A payment landed — details below.',
+  },
+  ready_to_bill: {
+    subject: '{{default_subject}}',
+    body: 'A job just became ready to bill — details below.',
+  },
+  money_waiting: {
+    subject: '{{default_subject}}',
+    body: 'Your money-waiting digest is below.',
+  },
+  billed_awaiting: {
+    subject: '{{default_subject}}',
+    body: 'Your billed-awaiting-payment digest is below.',
+  },
+  payment_forecast: {
+    subject: '{{default_subject}}',
+    body: 'Your payment forecast is below.',
+  },
+  crew_day: {
+    subject: '{{default_subject}}',
+    body: 'Your crew day summary is below.',
+  },
+  weekly_money: {
+    subject: '{{default_subject}}',
+    body: 'Your weekly money movement is below.',
+  },
+  weekly_movement: {
+    subject: '{{default_subject}}',
+    body: 'Your weekly movement summary is below.',
+  },
+  schedule_day: {
+    subject: '{{default_subject}}',
+    body: 'Your dispatch schedule is below.',
   },
 }
 

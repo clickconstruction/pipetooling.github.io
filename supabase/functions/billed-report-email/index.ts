@@ -27,6 +27,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import {
   billedReportEmailSubject,
   billedReportEmailText,
@@ -119,12 +120,15 @@ async function sendReport(
   senderName: string | null,
   subjectPrefix = '',
 ): Promise<{ success: boolean; error?: string }> {
-  const subject = `${subjectPrefix}${billedReportEmailSubject(payload)}`
+  // Dev-saved wording (Settings -> Email templates, v2.2659): subject template
+  // + optional intro paragraph above the built digest; built-in copy otherwise.
+  const wording = await resolveServerEmailWording('billed_awaiting', {}, billedReportEmailSubject(payload))
+  const subject = `${subjectPrefix}${wording.subject}`
   return await sendEmailViaResend(
     recipientEmail,
     subject,
-    billedReportEmailText(payload),
-    renderBilledReportEmail(payload, senderName ?? undefined),
+    (wording.introText ? wording.introText + '\n\n' : '') + billedReportEmailText(payload),
+    (wording.introHtml ?? '') + renderBilledReportEmail(payload, senderName ?? undefined),
     resendApiKey,
   )
 }

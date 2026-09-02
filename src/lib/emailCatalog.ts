@@ -200,7 +200,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'paid-job-email',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['paid_job'] },
     subjectExample: 'Payment recorded — {{job_label}}',
     variants: ['[TEST] send-now'],
   },
@@ -211,7 +211,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'paid-job-email',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['ready_to_bill'] },
     subjectExample: 'Ready to bill — {{job_label}}',
     variants: ['[TEST] send-now'],
   },
@@ -222,7 +222,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'money-waiting-email-dispatch',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['money_waiting'] },
     subjectExample: 'Money waiting — {{date}}',
   },
   {
@@ -232,7 +232,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'billed-report-email',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['billed_awaiting'] },
     subjectExample: 'Billed awaiting payment — {{date}}',
   },
   {
@@ -242,7 +242,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'payment-forecast-email-dispatch',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['payment_forecast'] },
     subjectExample: 'Payment forecast — {{date}}',
   },
   {
@@ -252,7 +252,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'crew-day-email-dispatch',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['crew_day'] },
     subjectExample: 'Crew day — {{date}}',
   },
   {
@@ -262,7 +262,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'weekly-money-email-dispatch',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['weekly_money'] },
     subjectExample: 'Weekly money movement — week of {{week_start}}',
   },
   {
@@ -272,7 +272,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'weekly-movement-email-dispatch',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['weekly_movement'] },
     subjectExample: 'Click Plumbing and Electrical — weekly movement',
   },
   {
@@ -293,7 +293,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     audience: 'internal',
     builtWhere: 'server',
     sender: 'schedule-day-email-dispatch',
-    editable: { kind: 'hardcoded' },
+    editable: { kind: 'templates', templateTypes: ['schedule_day'] },
     subjectExample: "Tomorrow's schedule — {{date}}",
   },
   {
