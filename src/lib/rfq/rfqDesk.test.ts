@@ -105,3 +105,34 @@ describe('coverageFromCompareRows', () => {
     expect(coverageFromCompareRows(rows)).toEqual({ total: 3, priced: 1, bare: ['B', 'C'] })
   })
 })
+
+describe('rfqUrgency + sortRfqsByUrgency', () => {
+  const day = 24 * 60 * 60 * 1000
+  const now = new Date('2026-09-05T12:00:00Z').getTime()
+  const fresh: DeskRfq = { ...base, createdAt: '2026-09-05T09:00:00Z', neededBy: null }
+  it('tiers: bounced < needed-by risk < unviewed-stale < viewed-silent < fresh < quoted', async () => {
+    const { rfqUrgency } = await import('./rfqDesk')
+    expect(rfqUrgency({ ...fresh, emailLastEvent: 'bounced' }, now).tier).toBe(0)
+    expect(rfqUrgency({ ...fresh, neededBy: '2026-09-07' }, now)).toEqual({ tier: 1, reason: 'needed-by in 3 days — still silent' })
+    expect(rfqUrgency({ ...fresh, neededBy: '2026-09-01' }, now).reason).toBe('needed-by has passed — still no quote')
+    expect(rfqUrgency({ ...fresh, createdAt: '2026-09-02T09:00:00Z' }, now)).toEqual({ tier: 2, reason: 'unviewed for 3 days' })
+    expect(rfqUrgency({ ...fresh, viewedAt: new Date(now - 2 * day).toISOString() }, now)).toEqual({ tier: 3, reason: 'viewed, still silent' })
+    expect(rfqUrgency(fresh, now)).toEqual({ tier: 4, reason: null })
+    expect(rfqUrgency({ ...fresh, status: 'quoted', emailLastEvent: 'bounced' }, now).tier).toBe(5)
+  })
+  it('a fresh view resets nothing but stays chip-free', async () => {
+    const { rfqUrgency } = await import('./rfqDesk')
+    expect(rfqUrgency({ ...fresh, viewedAt: new Date(now - day / 2).toISOString() }, now)).toEqual({ tier: 4, reason: null })
+  })
+  it('sorts by tier then oldest first', async () => {
+    const { sortRfqsByUrgency } = await import('./rfqDesk')
+    const rows: DeskRfq[] = [
+      { ...fresh, id: 'fresh' },
+      { ...fresh, id: 'bounce-new', createdAt: '2026-09-05T10:00:00Z', emailLastEvent: 'bounced' },
+      { ...fresh, id: 'bounce-old', createdAt: '2026-09-04T10:00:00Z', emailLastEvent: 'bounced' },
+      { ...fresh, id: 'quoted', status: 'quoted' },
+      { ...fresh, id: 'risk', neededBy: '2026-09-06' },
+    ]
+    expect(sortRfqsByUrgency(rows, now).map((r) => r.id)).toEqual(['bounce-old', 'bounce-new', 'risk', 'fresh', 'quoted'])
+  })
+})

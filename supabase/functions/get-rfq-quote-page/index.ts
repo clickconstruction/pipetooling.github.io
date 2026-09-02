@@ -55,12 +55,15 @@ serve(async (req) => {
     if (closed) return json({ status: 'closed' })
     const bidName = [bid?.bid_number, bid?.project_name].filter(Boolean).join(' · ')
 
-    const scope = (rfq.scope ?? {}) as { lines?: ScopeLine[] }
+    const scope = (rfq.scope ?? {}) as { lines?: ScopeLine[]; plansLink?: string | null }
     const lines = Array.isArray(scope.lines)
       ? scope.lines
           .filter((l) => l && typeof l.fixture === 'string' && l.fixture.trim())
           .map((l) => ({ fixture: l.fixture, count: Number(l.count) || 0, unit: l.unit ?? null }))
       : []
+
+    const plansLink =
+      typeof scope.plansLink === 'string' && /^https?:\/\//i.test(scope.plansLink) ? scope.plansLink : null
 
     return json({
       status: rfq.status,
@@ -68,6 +71,7 @@ serve(async (req) => {
       supplyHouse: house?.name ?? null,
       neededBy: rfq.needed_by,
       sentAt: rfq.created_at,
+      plansLink,
       lines,
     })
   } catch (err) {

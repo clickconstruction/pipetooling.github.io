@@ -6440,6 +6440,7 @@ export function BidsPricingTab({
           bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
           scope={composeScope}
           openRfqHouseIds={openRfqHouseIds}
+          plansLink={selectedBidForPricing.plans_link ?? null}
         />
       ) : null}
 

@@ -105,6 +105,56 @@ export function scopeDriftCount(
   return drift
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+export const URGENCY_UNVIEWED_DAYS = 2
+export const URGENCY_NEEDED_BY_DAYS = 3
+export const URGENCY_VIEWED_SILENT_DAYS = 1
+
+export type RfqUrgency = {
+  /** Lower = more urgent. 0 bounced · 1 needed-by at risk · 2 unviewed-stale · 3 viewed-silent · 4 fresh · 5 quoted. */
+  tier: number
+  /** Human reason for the attention chip; null = no chip (fresh / quoted). */
+  reason: string | null
+}
+
+/**
+ * Rung A (v2.2642): why a request floats to the top of the desk. The desk
+ * never auto-emails anyone — it just refuses to let silence look like
+ * progress. Sort by tier, oldest first inside a tier.
+ */
+export function rfqUrgency(rfq: DeskRfq, nowMs: number): RfqUrgency {
+  if (rfq.status === 'quoted') return { tier: 5, reason: null }
+  const bounced = rfq.emailLastEvent != null && BOUNCED_EVENTS.has(rfq.emailLastEvent)
+  if (bounced) return { tier: 0, reason: 'bounced — fix & resend' }
+  if (rfq.neededBy) {
+    const untilMs = new Date(`${rfq.neededBy}T23:59:59Z`).getTime() - nowMs
+    if (untilMs < 0) return { tier: 1, reason: 'needed-by has passed — still no quote' }
+    if (untilMs <= URGENCY_NEEDED_BY_DAYS * DAY_MS) {
+      const days = Math.max(1, Math.ceil(untilMs / DAY_MS))
+      return { tier: 1, reason: `needed-by in ${days} day${days === 1 ? '' : 's'} — still silent` }
+    }
+  }
+  const ageMs = nowMs - new Date(rfq.createdAt).getTime()
+  if (!rfq.viewedAt && ageMs >= URGENCY_UNVIEWED_DAYS * DAY_MS) {
+    const days = Math.floor(ageMs / DAY_MS)
+    return { tier: 2, reason: `unviewed for ${days} day${days === 1 ? '' : 's'}` }
+  }
+  if (rfq.viewedAt && nowMs - new Date(rfq.viewedAt).getTime() >= URGENCY_VIEWED_SILENT_DAYS * DAY_MS) {
+    return { tier: 3, reason: 'viewed, still silent' }
+  }
+  return { tier: 4, reason: null }
+}
+
+/** Desk order: urgency tier, then oldest first inside a tier. */
+export function sortRfqsByUrgency<T extends DeskRfq>(rfqs: ReadonlyArray<T>, nowMs: number): T[] {
+  return [...rfqs].sort((a, b) => {
+    const ta = rfqUrgency(a, nowMs).tier
+    const tb = rfqUrgency(b, nowMs).tier
+    if (ta !== tb) return ta - tb
+    return a.createdAt.localeCompare(b.createdAt)
+  })
+}
+
 export type RfqChip =
   | { kind: 'none' }
   | { kind: 'quotes'; tone: 'blue' | 'green'; label: string }

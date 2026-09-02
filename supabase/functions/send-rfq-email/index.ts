@@ -52,6 +52,7 @@ function buildEmail(args: {
   senderName: string | null
   listText: string
   token: string
+  plansLink?: string | null
 }): { subject: string; text: string; html: string } {
   const link = `${APP_ORIGIN}/q/${args.token}`
   const due = args.neededBy ? ` · needed by ${fmtDate(args.neededBy)}` : ''
@@ -73,6 +74,7 @@ function buildEmail(args: {
     noteLine,
     '',
     `Price it here (takes minutes on a phone): ${link}`,
+    ...(args.plansLink ? ['', `Job plans (cut sheets, details): ${args.plansLink}`] : []),
     '',
     'Or just reply to this email with your prices — either way works.',
     '',
@@ -86,7 +88,8 @@ function buildEmail(args: {
 <div style="font-family:-apple-system,'Segoe UI',Roboto,sans-serif;max-width:640px;margin:0 auto;color:#1c2434;line-height:1.6">
   <h2 style="font-size:18px;margin:18px 0 4px">${escapeHtml(opener)}</h2>
   <p style="color:#5b6577;font-size:14px;margin:0 0 14px">${escapeHtml(args.bidLabel)} · ${args.itemCount} items${escapeHtml(due)}.${noteLine ? ` ${escapeHtml(noteLine)}` : ''}</p>
-  <p style="margin:18px 0"><a href="${link}" style="background:#16a34a;color:#ffffff;font-weight:700;padding:12px 22px;border-radius:8px;text-decoration:none;display:inline-block">Price it here — takes minutes on your phone</a></p>
+  <p style="margin:18px 0 6px"><a href="${link}" style="background:#16a34a;color:#ffffff;font-weight:700;padding:12px 22px;border-radius:8px;text-decoration:none;display:inline-block">Price it here — takes minutes on your phone</a></p>
+  ${args.plansLink ? `<p style="margin:0 0 12px;font-size:14px"><a href="${args.plansLink}" style="color:#2563eb">Job plans (cut sheets, details) ↗</a></p>` : ''}
   <pre style="background:#eef1f6;border:1px solid #e0e5ee;border-radius:8px;padding:12px 14px;font:12px/1.6 ui-monospace,Menlo,monospace;color:#2a3550;white-space:pre-wrap">${escapeHtml(args.listText)}</pre>
   <p style="font-size:14px">Or just hit <b>Reply</b> with your prices — either way works.</p>
   <p style="color:#8b96ab;font-size:12px;margin-top:18px">Sent by ClickTooling. This link is only for ${escapeHtml(args.houseName)} and stops working when the job closes.</p>
@@ -130,13 +133,17 @@ serve(async (req) => {
           bidVersionId?: string | null
           neededBy?: string | null
           vendorNote?: string | null
-          scope?: { lines?: ScopeLine[]; text?: string }
+          plansLink?: string | null
+          scope?: { lines?: ScopeLine[]; text?: string; plansLink?: string | null }
           requests?: Array<{ supplyHouseId?: string; email?: string }>
           rfqId?: string
           email?: string
         }
       | null
     if (!body?.mode) return json({ error: 'Missing mode' }, 400)
+
+    const cleanPlansLink = (v: unknown): string | null =>
+      typeof v === 'string' && /^https?:\/\//i.test(v.trim()) && v.trim().length <= 500 ? v.trim() : null
 
     const bidLabelFor = async (bidId: string): Promise<string> => {
       const { data: bid } = await admin.from('bids').select('bid_number, project_name').eq('id', bidId).maybeSingle()
@@ -166,6 +173,7 @@ serve(async (req) => {
           senderName: (sender.name as string | null) ?? null,
           listText: scope.text ?? '',
           token: rfq.token as string,
+          plansLink: cleanPlansLink(scope.plansLink),
         })
         return json({ ok: true, previews: [{ supplyHouseId: null, subject: mail.subject, text: mail.text, html: mail.html }] })
       }
@@ -192,6 +200,7 @@ serve(async (req) => {
           senderName: (sender.name as string | null) ?? null,
           listText,
           token: 'their-own-link-minted-at-send',
+          plansLink: cleanPlansLink(body.plansLink),
         })
         previews.push({ supplyHouseId: r.supplyHouseId, houseName: house?.name ?? '—', email: r.email ?? '', subject: mail.subject, text: mail.text, html: mail.html })
       }
@@ -208,6 +217,7 @@ serve(async (req) => {
       }
       const neededBy = typeof body.neededBy === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.neededBy) ? body.neededBy : null
       const vendorNote = typeof body.vendorNote === 'string' ? body.vendorNote.trim().slice(0, 300) || null : null
+      const plansLink = cleanPlansLink(body.plansLink)
       const bidLabel = await bidLabelFor(bidId)
 
       const results: Array<{ supplyHouseId: string; ok: boolean; error?: string }> = []
@@ -227,7 +237,7 @@ serve(async (req) => {
             supply_house_id: r.supplyHouseId,
             sent_to: house?.name ?? null,
             sent_email: email,
-            scope: { lines, text: listText },
+            scope: { lines, text: listText, plansLink },
             needed_by: neededBy,
             vendor_note: vendorNote,
             token,
@@ -251,6 +261,7 @@ serve(async (req) => {
           senderName: (sender.name as string | null) ?? null,
           listText,
           token,
+          plansLink,
         })
         const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo })
         if (sent.success) {
@@ -293,6 +304,7 @@ serve(async (req) => {
         senderName: (sender.name as string | null) ?? null,
         listText,
         token: rfq.token as string,
+        plansLink: cleanPlansLink(scope.plansLink),
       })
       const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
@@ -321,6 +333,7 @@ serve(async (req) => {
         senderName: (sender.name as string | null) ?? null,
         listText,
         token: rfq.token as string,
+        plansLink: cleanPlansLink(scope.plansLink),
       })
       const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
