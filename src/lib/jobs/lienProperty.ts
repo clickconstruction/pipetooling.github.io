@@ -35,6 +35,8 @@ export type JobPropertyOwnerLike = {
   owner_name: string | null
   company_name: string | null
   mailing_address: string | null
+  /** Present when the caller selected it — used for courtesy email sends. */
+  owner_email?: string | null
 } | null
 
 const NO_OWNER: LienPropertyOwner = { ownerMode: '', ownerName: '', ownerCompany: '', mailingAddress: '', source: 'none' }

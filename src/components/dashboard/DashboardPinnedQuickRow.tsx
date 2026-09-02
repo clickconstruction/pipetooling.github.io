@@ -25,6 +25,7 @@ import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
 import { useSpecSectionUncodedCount } from '../../hooks/useSpecSectionUncodedCount'
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
+import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import NewReportModal from '../NewReportModal'
@@ -330,6 +331,7 @@ export function DashboardPinnedQuickRow({
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -363,6 +365,8 @@ export function DashboardPinnedQuickRow({
     lienUnconditionalOwed,
     demandDeadlineEnabled: lienUnconditionalEnabled,
     demandDeadlineOverdue,
+    lienWatchEnabled: lienUnconditionalEnabled,
+    lienWatch,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -565,6 +569,8 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'lien-unconditional') {
               navigate('/jobs?tab=stages')
             } else if (item.key === 'demand-deadline') {
+              navigate('/jobs?tab=stages')
+            } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
               navigate('/jobs?tab=stages')
             }
           }}

@@ -17,6 +17,7 @@ import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
+import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -57,6 +58,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   const lienUnconditionalEnabled = Boolean(authUser?.id) && tallyStaffEligible
   const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -116,6 +118,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     lienUnconditionalOwed,
     demandDeadlineEnabled: lienUnconditionalEnabled,
     demandDeadlineOverdue,
+    lienWatchEnabled: lienUnconditionalEnabled,
+    lienWatch,
   })
 
   useEffect(() => {
@@ -156,6 +160,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
           } else if (item.key === 'lien-unconditional') {
             navigate('/jobs?tab=stages')
           } else if (item.key === 'demand-deadline') {
+            navigate('/jobs?tab=stages')
+          } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
             navigate('/jobs?tab=stages')
           }
         }}

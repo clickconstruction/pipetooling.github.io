@@ -34,6 +34,8 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     lienUnconditionalOwed: null,
     demandDeadlineEnabled: true,
     demandDeadlineOverdue: null,
+    lienWatchEnabled: true,
+    lienWatch: null,
     ...overrides,
   }
 }
@@ -294,6 +296,29 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.title).toBe('3 payments cleared behind conditional releases')
     expect(many[0]?.figure).toBe('3')
     expect(many[0]?.actionLabel).toBe('Issue releases')
+  })
+
+  it('lien watches (v2.2645): serve-copy red, notice/file windows amber, quiet at empty/disabled/loading', () => {
+    expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [] } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienWatchEnabled: false, lienWatch: { noticeDue: [], filingDue: [], serveDue: [{ serveDue: '2026-09-09' }] } }))).toEqual([])
+    const items = buildNeedsYouItems(
+      inputs({
+        lienWatch: {
+          serveDue: [{ serveDue: '2026-09-09' }],
+          noticeDue: [
+            { deadline: '2026-10-15', openBalance: 2711.5 },
+            { deadline: '2026-11-16', openBalance: 900 },
+          ],
+          filingDue: [{ deadline: '2026-11-16', openBalance: 2711.5 }],
+        },
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['lien-serve-copy', 'lien-notice-window', 'lien-file-window'])
+    expect(items[0]?.severity).toBe('red')
+    expect(items[0]?.title).toBe('A filed lien has not been served')
+    expect(items[1]?.title).toBe('2 lien notice windows close soon (first: 2026-10-15)')
+    expect(items[1]?.detail).toContain('$3,612')
+    expect(items[2]?.title).toBe('A lien filing window closes 2026-11-16')
   })
 
   it('demand-deadline (v2.2640): red follow-through item, quiet at zero/disabled/loading', () => {
