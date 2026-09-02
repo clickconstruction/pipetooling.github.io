@@ -37,6 +37,7 @@ export function DashboardTeamsInboxCard({
   onLinkJobPictures,
   onOpenSupplyHouseShare,
   onCreateTripCharge,
+  hideLienSignatures = false,
 }: {
   dispatchInbox: ReturnType<typeof useDispatchInbox>
   estimatorInbox: ReturnType<typeof useEstimatorInbox>
@@ -46,6 +47,8 @@ export function DashboardTeamsInboxCard({
   /** find_property_owner requests (v2.1610): opens Job Detail + the supply house share modal. */
   onOpenSupplyHouseShare?: (jobId: string) => void
   onCreateTripCharge?: (args: CreateTripChargeTarget) => void
+  /** Dispatch Mode's inbox mounts the lien-signature lanes at the page top — avoid doubling them here (v2.2649). */
+  hideLienSignatures?: boolean
 }) {
   const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
   const [estimatorRequestsOpen, setEstimatorRequestsOpen] = useState(true)
@@ -87,7 +90,7 @@ export function DashboardTeamsInboxCard({
   return (
     <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
       {showHelpFeedback && <HelpFeedbackInboxSection />}
-      <LienSignatureInboxSection />
+      {hideLienSignatures ? null : <LienSignatureInboxSection />}
       <ChecklistReviewInboxSection />
       {dispatchInboxEligible && (
         <DispatchInboxSection

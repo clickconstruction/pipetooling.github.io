@@ -10,6 +10,7 @@ import { getCurrentUserName as getCurrentUserNameById } from '../../lib/getCurre
 import { DashboardMyInboxCard } from '../dashboard/DashboardMyInboxCard'
 import { DashboardPinnedQuickRow } from '../dashboard/DashboardPinnedQuickRow'
 import { DashboardTeamsInboxCard } from '../dashboard/DashboardTeamsInboxCard'
+import LienSignatureInboxSection from '../jobs/LienSignatureInboxSection'
 import { DispatchDismissedItemsModal } from '../DispatchDismissedItemsModal'
 import CreateTripChargeModal, { type CreateTripChargeTarget } from '../CreateTripChargeModal'
 
@@ -88,6 +89,11 @@ export default function DispatchModeInbox() {
         renderModals
         bannersOnly
       />
+      {/* Signature work rides above My Inbox (v2.2649) — a master's request to
+          sign (or a signed release to send) should be the first thing seen
+          here, not buried under the Teams Inbox fold. Renders nothing when
+          both lanes are empty. */}
+      <LienSignatureInboxSection />
       <DashboardMyInboxCard
         authUserId={authUser?.id}
         role={role}
@@ -106,6 +112,7 @@ export default function DispatchModeInbox() {
           dispatchInbox={dispatchInbox}
           estimatorInbox={estimatorInbox}
           showHelpFeedback={false}
+          hideLienSignatures
           onOpenDismissedArchive={() => setDismissedModalOpen(true)}
           onLinkJobPictures={
             jobFormModal
