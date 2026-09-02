@@ -23,6 +23,8 @@ When you pick a house for the link, a line tells you what they've quoted before 
 If the vendor used the quote link, you're done — their quote is already on the bid. If they texted, emailed, or called:
 
 1. Open the same {{button:green|▾}} menu and pick **Plug in a quote**. You can also **drop the vendor's file** — .xlsx, .csv, or .pdf — straight onto it: the extracted text lands in the paste box for you to see (spreadsheets with an "Ext Price" column are handled safely — only unit prices survive), and matching runs like always. Scanned image PDFs get a straight answer: copy/paste for now.
+
+{{gif:plug-in-file-drop.gif|Drop a vendor spreadsheet — extracted text lands in the paste box (extended-price columns dropped) and the match grid fills}}
 2. Pick the supply house, the rep if you want, and the **good until** date from the quote.
 3. Paste the reply exactly as it came — "4" cast iron 18.90/ft", "$368/box of 50", "wc carriers no stock til Oct" — and tap {{button:blue|Match to fixtures}}.
 4. Each line lands on the part it names, with the original text beside it: a green ✓ matched cleanly, a **?** wants a look. "No stock" phrasing marks **can't supply** automatically; box and per-foot pricing is converted to $/each so every house compares in the same units. Fix anything with the dropdowns, drop a line with the ×, or add lines by hand.
