@@ -104,6 +104,9 @@ export function PrepareFixtureCopyModal({
   const [linkHouseId, setLinkHouseId] = useState('')
   const [linkNeededBy, setLinkNeededBy] = useState('')
   const [minting, setMinting] = useState(false)
+  // Phase 3 (v2.2632): the picked house's name-keyed price memory — powers the
+  // "last quoted N of these items" recency hint under the quote-link strip.
+  const [houseMemory, setHouseMemory] = useState<{ keys: Set<string>; newest: string | null } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -153,6 +156,35 @@ export function PrepareFixtureCopyModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the id, not the object identity (callers pass inline objects)
   }, [open, quoteLink?.bidId])
+
+  useEffect(() => {
+    if (!open || !linkHouseId) {
+      setHouseMemory(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          () => supabase.from('supply_house_fixture_prices').select('fixture_key, quoted_at').eq('supply_house_id', linkHouseId),
+          'load house price memory',
+        )
+        if (cancelled) return
+        const keys = new Set<string>()
+        let newest: string | null = null
+        for (const r of data ?? []) {
+          if (r.fixture_key) keys.add(r.fixture_key)
+          if (r.quoted_at && (newest == null || r.quoted_at > newest)) newest = r.quoted_at
+        }
+        setHouseMemory({ keys, newest })
+      } catch {
+        if (!cancelled) setHouseMemory(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, linkHouseId])
 
   useEffect(() => {
     if (!open) return
@@ -493,6 +525,19 @@ export function PrepareFixtureCopyModal({
                 >
                   {minting ? 'Minting link…' : 'Copy with quote link'}
                 </button>
+                {houseMemory && linkHouseId ? (() => {
+                  const selectedNames = rows.filter((r) => selected.has(r.id))
+                  const known = selectedNames.filter((r) => houseMemory.keys.has((r.fixture ?? '').trim().toLowerCase())).length
+                  const houseName = houses.find((h) => h.id === linkHouseId)?.name ?? 'This house'
+                  if (known === 0) return <span style={{ ...smallMuted, width: '100%' }}>{houseName} hasn’t quoted any of these items before.</span>
+                  const days = houseMemory.newest ? Math.max(0, Math.floor((Date.now() - new Date(houseMemory.newest).getTime()) / 86_400_000)) : null
+                  return (
+                    <span style={{ ...smallMuted, width: '100%' }}>
+                      {houseName} has last-quoted prices for <strong style={{ color: 'var(--text-strong)' }}>{known} of these {selectedNames.length} items</strong>
+                      {days != null ? ` · newest ${days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}` : ''} — you’ll see them beside the reply.
+                    </span>
+                  )
+                })() : null}
               </div>
             ) : null}
 

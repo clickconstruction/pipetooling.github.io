@@ -80,6 +80,7 @@ Once a quote is saved, a {{chip:blue|Quotes (1)}} chip sits beside Share. It ope
 
 - Parts run down the left, **grouped by Division 22 section**; one column per supply house; the best live price wears a ★.
 - A quote past its good-until date stays visible but goes gray and crossed out, and loses its ★ — stale prices can't win quietly.
+- If a quote's good-until lands **before your needed-by date**, an amber warning says so up top — worth re-asking before ordering.
 - **Tap a price to pick it** for that part. The picked total at the bottom recomputes at today's counts.
 - The **Last quoted** column remembers what each house said the last time anyone asked about that same part name — on any bid — so you can smell a high number before you commit.
 

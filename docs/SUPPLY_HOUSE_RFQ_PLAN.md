@@ -9,8 +9,9 @@
 > list text) and **C** (paste-back) on one shared store; lane **B** (system-
 > sent RFQ desk with tracking/reminders) only if vendors prove they click.
 > Status: **Phases 1–2 SHIPPED** (1a store v2.2629, 1b screens v2.2630,
-> 2 link lane v2.2631 — migration `20260902030531`, edge functions
-> `get-rfq-quote-page`/`submit-rfq-quote` deployed). Phase 3 in progress. Foundations already shipped: Supply
+> 2 link lane v2.2631, 3 memory payoffs v2.2632 — migration
+> `20260902030531`, edge functions `get-rfq-quote-page`/`submit-rfq-quote`
+> deployed). All planned phases complete; Deferred items remain deferred. Foundations already shipped: Supply
 > house list prepare screen (v2.2612/2618), Division 22 ledger + audit
 > (v2.2580–v2.2627), `supply_houses` directory, Bid Room token pattern.
 
@@ -119,7 +120,7 @@ ends with all three fence appliers. Names snapshot as text.
   shows "this request is closed"; re-submit allowed until closed
   (latest-wins in compare, prior quotes kept).
 
-## Phase 3 — price memory pays off (1 PR)
+## Phase 3 — price memory pays off (1 PR) — SHIPPED v2.2632 (the compare "Last quoted" column shipped early in v2.2630)
 
 - "Last quoted" column in compare when a house has memory for a name.
 - Prepare screen: per-section note "Ferguson last quoted most of this
