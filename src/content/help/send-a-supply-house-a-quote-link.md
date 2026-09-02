@@ -33,7 +33,7 @@ Wendi texts Moore Supply the pipe scope with a quote link. Danny at the counter 
 ## Watching for the answer
 
 - While a link is out with nothing back yet, an amber {{chip:yellow|RFQ sent}} chip sits by Share.
-- The moment a vendor submits, the {{chip:blue|Quotes (1)}} chip turns **green** — open it to compare (see *send a bid's pricing package to the field* for the compare view).
+- The moment a vendor submits, the {{chip:blue|Quotes (1)}} chip turns **green** — open it to compare (see *get supply house prices on a bid* for the compare view).
 - Vendors can reopen the link to send a **revised quote** — the newest one is what compare shows.
 
 ## When links die
