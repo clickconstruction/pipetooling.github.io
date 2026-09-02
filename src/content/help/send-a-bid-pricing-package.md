@@ -2,7 +2,7 @@
 title: send a bid's pricing package to the field
 category: Bids & Estimating
 roles: dev, estimator, master_technician, assistant
-keywords: package and send, share pricing, send pricing, bid package, job plans, address, google maps, open in maps, copy for text, send for me, copy fixtures, parts house, supply house, fixture counts
+keywords: package and send, share pricing, send pricing, bid package, job plans, address, google maps, open in maps, copy for text, send for me, copy fixtures, parts house, supply house, supply house list, fixture counts
 ---
 
 Package and send bundles everything the field needs to look at a bid — the job address, plans links, and the external pricing table — into one email or text.
@@ -29,9 +29,9 @@ Pick a recipient (master techs appear as one-tap chips), then:
 Wendi opens BP376's pricing, taps {{button:green|Share}}, taps the {{chip:blue|Malachi}} chip, and {{button:blue|Send for me}}. Malachi's email has the address at the top — one tap and Google Maps is routing him to the site.
 :::
 
-## Text a parts house just the fixture list
+## Send a supply house the fixture list
 
-Need a supply house to price the job? Don't send them the package — it has your sale prices in it. Instead, open the {{button:green|▾}} menu beside Share and pick **Copy fixtures for text**. It copies only fixture names and counts — no prices, no totals, no links — ready to paste into a text or email to the parts house.
+Need a supply house to price the job? Don't send them the package — it has your sale prices in it. Instead, open the {{button:green|▾}} menu beside Share and pick **Supply house list**. It copies only fixture names and counts — no prices, no totals, no links — ready to paste into a text or email to the parts house.
 
 A prepare screen opens first so you're never copying blind:
 
@@ -42,7 +42,7 @@ A prepare screen opens first so you're never copying blind:
 The list arrives grouped by Division 22 spec section (22 11 16 Domestic Water Piping, 22 42 13 Water Closets &amp; Urinals, …) in spec-book order, so the counter can work it section by section. Anything still uncoded rides in a "No code yet" tail — the copy never blocks on an incomplete ledger.
 
 :::example Sending just the pipe to the supply house
-Wendi opens BP339, picks **Copy fixtures for text**, taps {{chip:blue|Pipe &amp; fittings}} — the preview drops the fixtures and the gas tail, showing 37 items of pipe and fittings — and hits {{button:green|Copy 37 items}}. The supply house gets exactly the scope they price, nothing else.
+Wendi opens BP339, picks **Supply house list**, taps {{chip:blue|Pipe &amp; fittings}} — the preview drops the fixtures and the gas tail, showing 37 items of pipe and fittings — and hits {{button:green|Copy 37 items}}. The supply house gets exactly the scope they price, nothing else.
 :::
 
 ## Teach the ledger the missing codes
@@ -60,5 +60,5 @@ Wendi copies BP339's fixtures and the toast says 36 names have no code. She open
 It works as soon as the bid has Counts, even before you've set up a price book or labor.
 
 :::example Getting cost pricing before the bid is priced
-Wendi finishes the takeoff on BP375, opens the {{button:green|▾}} menu, taps **Copy fixtures for text**, and pastes the list into a text to her Ferguson rep. The rep prices from names and counts — Wendi's numbers stay in the building.
+Wendi finishes the takeoff on BP375, opens the {{button:green|▾}} menu, taps **Supply house list**, and pastes the list into a text to her Ferguson rep. The rep prices from names and counts — Wendi's numbers stay in the building.
 :::
