@@ -1,4 +1,6 @@
 import { useState } from 'react'
+
+import { SupplyHouseContactsSection } from './SupplyHouseContactsSection'
 import type { Database } from '../types/database'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { isUrlLikelyMapsOrDirectionsPortal, normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
@@ -157,6 +159,7 @@ export function SupplyHouseForm({
         <FieldRow label="Notes" narrow={narrow} alignTop>
           <textarea value={notes} onChange={(e) => onChange('notes', e.target.value)} rows={2} style={fieldStyles} />
         </FieldRow>
+        {editingSupplyHouse ? <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} /> : null}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
         {editingSupplyHouse && myRole === 'dev' && onDelete ? (

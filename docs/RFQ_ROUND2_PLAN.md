@@ -80,7 +80,7 @@ Design questions the mockup must answer before code:
   action instead of an unconfirmed-ghost state machine; hand-editing a
   line drops its "from last time" tag; existing drafts always win.
 
-## Rung D — per-house contacts (owner item 1; 1 PR + 1 migration, full mockup cycle)
+## Rung D — per-house contacts (owner item 1) — SHIPPED v2.2648
 
 - Schema: `supply_house_contacts` (supply_house_id, name, email, label
   e.g. "inside sales" / "outside rep" / "branch", is_default, archived_at,
@@ -97,7 +97,16 @@ Design questions the mockup must answer before code:
   contact's name, not just the address.
 - Mockup must answer: does a "request" go to one contact with CCs, or
   fan out one-request-per-contact? (Proposal: one request, one To, CCs —
-  one link per house keeps the desk one-row-per-house.)
+  one link per house keeps the desk one-row-per-house.) ANSWERED: one
+  request/To/link per house; CCs ride the same email.
+- Build discoveries: `supply_house_contacts` ALREADY EXISTED (v2.1605,
+  the jobs-side org-wide shortlist) — EXTENDED it (nullable
+  supply_house_id; NULL rows stay the jobs shortlist) instead of adding
+  a second contacts store; estimator joined the office write roles.
+  Live testing exposed a chip dead-end (custom address could never be
+  To when a contact was selected) → the cycle is now the FULL loop
+  Off → CC → To → Off. Bounce caveat stands: delivery events are
+  per-message, so a bounced CC can flag the row's trail.
 
 ## Rung E — PDF/spreadsheet replies (owner item 2; 1–2 PRs, full mockup cycle, deepest think)
 

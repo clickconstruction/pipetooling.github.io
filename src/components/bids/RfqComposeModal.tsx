@@ -67,7 +67,11 @@ export function RfqComposeModal({
   const { showToast } = useToastContext()
   const [houses, setHouses] = useState<Array<{ id: string; name: string }>>([])
   const [picked, setPicked] = useState<Set<string>>(new Set())
-  const [emails, setEmails] = useState<Record<string, string>>({})
+  // Rung D (v2.2648): per-house contacts. sel[houseId] = who's To (contact id
+  // or 'custom'), which contacts ride as CC, the free-text escape hatch, and
+  // whether to remember it. Tap a chip to cycle Off → CC → To.
+  const [contacts, setContacts] = useState<Record<string, Array<{ id: string; name: string; email: string; label: string | null; isDefault: boolean }>>>({})
+  const [sel, setSel] = useState<Record<string, { to: string | null; cc: Set<string>; custom: string; remember: boolean }>>({})
   const [neededBy, setNeededBy] = useState('')
   const [note, setNote] = useState('')
   const [includePlans, setIncludePlans] = useState(true)
@@ -77,13 +81,14 @@ export function RfqComposeModal({
   // email a send would produce (same builder, no writes) — what you see here
   // is what the vendor gets, byte for byte.
   const [step, setStep] = useState<'edit' | 'preview'>('edit')
-  const [previews, setPreviews] = useState<Array<{ supplyHouseId: string; houseName: string; email: string; subject: string; html: string }>>([])
+  const [previews, setPreviews] = useState<Array<{ supplyHouseId: string; houseName: string; email: string; cc?: string[]; subject: string; html: string }>>([])
   const [previewIdx, setPreviewIdx] = useState(0)
   const [previewing, setPreviewing] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setPicked(new Set())
+    setSel({})
     setNeededBy('')
     setNote('')
     setFilter('')
@@ -94,28 +99,28 @@ export function RfqComposeModal({
     let cancelled = false
     void (async () => {
       try {
-        const [houseRows, priorRfqs] = await Promise.all([
+        const [houseRows, contactRows] = await Promise.all([
           withSupabaseRetry(() => supabase.from('supply_houses').select('id, name').order('name'), 'load supply houses'),
           withSupabaseRetry(
             () =>
               supabase
-                .from('bid_rfqs')
-                .select('supply_house_id, sent_email, created_at')
-                .not('sent_email', 'is', null)
-                .order('created_at', { ascending: false })
-                .limit(400),
-            'load prior rfq emails',
+                .from('supply_house_contacts')
+                .select('id, supply_house_id, name, email, label, is_default')
+                .not('supply_house_id', 'is', null)
+                .is('archived_at', null)
+                .order('is_default', { ascending: false })
+                .order('name'),
+            'load supply house contacts',
           ),
         ])
         if (cancelled) return
         setHouses((houseRows ?? []).map((h) => ({ id: h.id, name: h.name })))
-        const prefill: Record<string, string> = {}
-        for (const r of priorRfqs ?? []) {
-          if (r.supply_house_id && r.sent_email && prefill[r.supply_house_id] === undefined) {
-            prefill[r.supply_house_id] = r.sent_email
-          }
+        const byHouse: Record<string, Array<{ id: string; name: string; email: string; label: string | null; isDefault: boolean }>> = {}
+        for (const c of contactRows ?? []) {
+          if (!c.supply_house_id) continue
+          ;(byHouse[c.supply_house_id] ??= []).push({ id: c.id, name: c.name ?? c.label ?? c.email, email: c.email, label: c.label, isDefault: c.is_default })
         }
-        setEmails(prefill)
+        setContacts(byHouse)
       } catch {
         if (!cancelled) setHouses([])
       }
@@ -134,10 +139,53 @@ export function RfqComposeModal({
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
+  const selFor = (houseId: string) => {
+    const existing = sel[houseId]
+    if (existing) return existing
+    const list = contacts[houseId] ?? []
+    const def = list.find((c) => c.isDefault) ?? list[0]
+    return { to: def?.id ?? null, cc: new Set<string>(), custom: '', remember: (contacts[houseId] ?? []).length === 0 }
+  }
+
+  /** Resolve a house's selection into a concrete request, or null when not sendable. */
+  function resolve(houseId: string): { email: string; name: string | null; cc: string[] } | null {
+    const s2 = selFor(houseId)
+    const list = contacts[houseId] ?? []
+    const custom = s2.custom.trim()
+    const toContact = s2.to && s2.to !== 'custom' ? list.find((c) => c.id === s2.to) : undefined
+    const to = toContact ?? (custom && EMAIL_RE.test(custom) ? { email: custom, name: null as string | null } : undefined)
+    if (!to) return null
+    const cc = list.filter((c) => s2.cc.has(c.id) && c.email !== to.email).map((c) => c.email)
+    if (toContact && custom && EMAIL_RE.test(custom) && custom !== to.email) cc.push(custom)
+    return { email: to.email, name: 'name' in to ? (to.name as string | null) : null, cc }
+  }
+
   const ready = useMemo(
-    () => [...picked].filter((id) => EMAIL_RE.test((emails[id] ?? '').trim())),
-    [picked, emails],
+    () => [...picked].filter((id) => resolve(id) != null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolve reads contacts/sel
+    [picked, sel, contacts],
   )
+
+  /** Cycle a contact chip: Off → CC → To (promoting demotes the old To to CC). */
+  function cycleChip(houseId: string, contactId: string) {
+    setSel((m) => {
+      const cur = { ...selFor(houseId), cc: new Set(selFor(houseId).cc) }
+      if (cur.to === contactId) {
+        // Full cycle: tapping the To chip turns it off — the free-text
+        // address (if valid) becomes To, so a brand-new rep can be the To.
+        cur.to = null
+        return { ...m, [houseId]: cur }
+      }
+      if (cur.cc.has(contactId)) {
+        cur.cc.delete(contactId)
+        if (cur.to && cur.to !== 'custom') cur.cc.add(cur.to)
+        cur.to = contactId
+      } else {
+        cur.cc.add(contactId)
+      }
+      return { ...m, [houseId]: cur }
+    })
+  }
 
   async function loadPreview() {
     if (ready.length === 0) return
@@ -151,10 +199,13 @@ export function RfqComposeModal({
           vendorNote: note.trim() || null,
           plansLink: includePlans && plansLink ? plansLink : null,
           scope,
-          requests: ready.map((id) => ({ supplyHouseId: id, email: (emails[id] ?? '').trim() })),
+          requests: ready.map((id) => {
+            const r = resolve(id)!
+            return { supplyHouseId: id, email: r.email, name: r.name, cc: r.cc }
+          }),
         },
       })
-      const res = (data ?? {}) as { ok?: boolean; previews?: Array<{ supplyHouseId: string; houseName: string; email: string; subject: string; html: string }>; error?: string }
+      const res = (data ?? {}) as { ok?: boolean; previews?: Array<{ supplyHouseId: string; houseName: string; email: string; cc?: string[]; subject: string; html: string }>; error?: string }
       if (error || !res.ok || !res.previews?.length) throw new Error(res.error ?? error?.message ?? 'Could not build the preview')
       setPreviews(res.previews)
       setPreviewIdx(0)
@@ -179,7 +230,10 @@ export function RfqComposeModal({
           vendorNote: note.trim() || null,
           plansLink: includePlans && plansLink ? plansLink : null,
           scope,
-          requests: ready.map((id) => ({ supplyHouseId: id, email: (emails[id] ?? '').trim() })),
+          requests: ready.map((id) => {
+            const r = resolve(id)!
+            return { supplyHouseId: id, email: r.email, name: r.name, cc: r.cc }
+          }),
         },
       })
       const res = (data ?? {}) as { ok?: boolean; results?: Array<{ ok: boolean; error?: string }> }
@@ -191,6 +245,21 @@ export function RfqComposeModal({
           : `Sent ${ready.length - failed} of ${ready.length} — the desk shows what needs fixing.`,
         failed === 0 ? 'success' : 'error',
       )
+      // Remember free-text addresses as contacts (best effort, after the send).
+      const toRemember = ready
+        .map((id) => ({ id, s: selFor(id) }))
+        .filter(({ id, s: s3 }) => s3.remember && s3.custom.trim() && EMAIL_RE.test(s3.custom.trim()) && !(contacts[id] ?? []).some((c) => c.email === s3.custom.trim()))
+        .map(({ id, s: s3 }) => ({
+          supply_house_id: id,
+          name: s3.custom.trim().split('@')[0] ?? s3.custom.trim(),
+          email: s3.custom.trim(),
+          label: 'from a request',
+          is_default: (contacts[id] ?? []).length === 0,
+        }))
+      if (toRemember.length > 0) {
+        const { error: cErr } = await supabase.from('supply_house_contacts').insert(toRemember)
+        if (cErr) showToast('Sent, but couldn’t save the new contact — add it on the supply house.', 'error')
+      }
       onSent()
       onClose()
     } catch (err) {
@@ -233,7 +302,8 @@ export function RfqComposeModal({
             {previews[previewIdx] ? (
               <div data-theme="light" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', background: '#f6f7f9' }}>
                 <div style={{ padding: '0.5rem 0.9rem', borderBottom: '1px solid #e4e8f0', fontSize: '0.75rem', color: '#5b6577' }}>
-                  To: <b style={{ color: '#1c2434' }}>{previews[previewIdx].email}</b> · Subject: <b style={{ color: '#1c2434' }}>{previews[previewIdx].subject}</b>
+                  To: <b style={{ color: '#1c2434' }}>{previews[previewIdx].email}</b>
+                  {previews[previewIdx].cc?.length ? <> · CC: <b style={{ color: '#1c2434' }}>{previews[previewIdx].cc.join(', ')}</b></> : null} · Subject: <b style={{ color: '#1c2434' }}>{previews[previewIdx].subject}</b>
                 </div>
                 <div style={{ padding: '0.75rem 1rem', maxHeight: '46vh', overflowY: 'auto' }} dangerouslySetInnerHTML={{ __html: previews[previewIdx].html }} />
               </div>
@@ -250,25 +320,65 @@ export function RfqComposeModal({
           {visibleHouses.map((h) => {
             const on = picked.has(h.id)
             const hasOpen = openRfqHouseIds.has(h.id)
-            const email = emails[h.id] ?? ''
-            const bad = on && email.trim() !== '' && !EMAIL_RE.test(email.trim())
+            const list = contacts[h.id] ?? []
+            const s3 = selFor(h.id)
+            const custom = s3.custom.trim()
+            const bad = on && custom !== '' && !EMAIL_RE.test(custom)
             return (
-              <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: `1px solid ${hasOpen ? '#f59e0b' : 'var(--border)'}`, borderRadius: 8, padding: '0.45rem 0.7rem', background: on ? 'var(--bg-subtle)' : 'var(--surface)' }}>
-                <input
-                  type="checkbox"
-                  checked={on}
-                  aria-label={`Send to ${h.name}`}
-                  onChange={() => setPicked((p) => { const n = new Set(p); if (n.has(h.id)) n.delete(h.id); else n.add(h.id); return n })}
-                />
-                <span style={{ fontWeight: 600, color: 'var(--text-strong)', fontSize: '0.875rem', minWidth: '10rem' }}>{h.name}</span>
-                <input
-                  style={{ ...input, flex: 1, borderColor: bad ? '#ef4444' : undefined }}
-                  placeholder="add an email…"
-                  aria-label={`Email for ${h.name}`}
-                  value={email}
-                  onChange={(e) => setEmails((m) => ({ ...m, [h.id]: e.target.value }))}
-                />
-                {hasOpen ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>already has an open request — nudge it from the desk instead?</span> : null}
+              <div key={h.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', border: `1px solid ${hasOpen ? '#f59e0b' : 'var(--border)'}`, borderRadius: 8, padding: '0.45rem 0.7rem', background: on ? 'var(--bg-subtle)' : 'var(--surface)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    aria-label={`Send to ${h.name}`}
+                    onChange={() => setPicked((p) => { const n = new Set(p); if (n.has(h.id)) n.delete(h.id); else n.add(h.id); return n })}
+                  />
+                  <span style={{ fontWeight: 600, color: 'var(--text-strong)', fontSize: '0.875rem' }}>{h.name}</span>
+                  <span style={smallMuted}>{list.length === 0 ? 'no contacts yet' : `${list.length} contact${list.length === 1 ? '' : 's'}`}</span>
+                  {hasOpen ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)', marginLeft: 'auto' }}>already has an open request — nudge it from the desk instead?</span> : null}
+                </div>
+                {on ? (
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', paddingLeft: '1.6rem' }}>
+                    {list.map((c) => {
+                      const isTo = s3.to === c.id
+                      const isCc = s3.cc.has(c.id)
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => cycleChip(h.id, c.id)}
+                          title={isTo ? `${c.email} — the To address; tap to unset` : isCc ? `${c.email} — CC'd; tap to make To` : `${c.email} — tap to CC`}
+                          style={{
+                            padding: '0.22rem 0.65rem',
+                            borderRadius: 999,
+                            font: 'inherit',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            border: isTo ? '1px solid #2563eb' : isCc ? '1px solid var(--border-strong)' : '1px dashed var(--border-strong)',
+                            background: isTo ? '#2563eb' : isCc ? 'var(--bg-muted)' : 'transparent',
+                            color: isTo ? 'white' : isCc ? 'var(--text-strong)' : 'var(--text-faint)',
+                          }}
+                        >
+                          {isTo ? 'To · ' : isCc ? 'CC · ' : ''}{c.name}{c.label ? ` (${c.label})` : ''}
+                        </button>
+                      )
+                    })}
+                    <input
+                      style={{ ...input, minWidth: '12rem', flex: 1, borderColor: bad ? '#ef4444' : undefined }}
+                      placeholder={list.length === 0 ? 'add an email…' : 'CC someone else…'}
+                      aria-label={`Email for ${h.name}`}
+                      value={s3.custom}
+                      onChange={(e) => setSel((m) => ({ ...m, [h.id]: { ...selFor(h.id), custom: e.target.value } }))}
+                    />
+                    {custom && !bad ? (
+                      <label style={{ ...smallMuted, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={s3.remember} onChange={(e) => setSel((m) => ({ ...m, [h.id]: { ...selFor(h.id), remember: e.target.checked } }))} />
+                        remember as {h.name}’s contact
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             )
           })}

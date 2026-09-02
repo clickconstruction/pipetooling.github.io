@@ -51,7 +51,7 @@ const panel: CSSProperties = {
   gap: '0.75rem',
 }
 
-type DeskRow = DeskRfq & { token: string; fixEmail?: string }
+type DeskRow = DeskRfq & { token: string; fixEmail?: string; sentName: string | null; sentCc: string[] }
 
 function Trail({ steps }: { steps: TrailStep[] }) {
   const color = (s: TrailStep) =>
@@ -113,7 +113,7 @@ export function RfqDeskModal({
           () =>
             supabase
               .from('bid_rfqs')
-              .select('id, token, status, sent_to, sent_email, resend_email_id, created_at, viewed_at, last_reminded_at, reminder_count, needed_by, scope')
+              .select('id, token, status, sent_to, sent_name, sent_email, sent_cc, resend_email_id, created_at, viewed_at, last_reminded_at, reminder_count, needed_by, scope')
               .eq('bid_id', bidId)
               .neq('status', 'draft')
               .order('created_at', { ascending: false }),
@@ -147,6 +147,8 @@ export function RfqDeskModal({
             id: r.id,
             token: r.token ?? '',
             houseName: r.sent_to,
+            sentName: r.sent_name ?? null,
+            sentCc: (r.sent_cc as string[] | null) ?? [],
             sentEmail: r.sent_email,
             status: (r.status ?? 'sent') as DeskRfq['status'],
             createdAt: r.created_at,
@@ -339,7 +341,7 @@ export function RfqDeskModal({
                       </div>
                     ) : (
                       <div style={mini}>
-                        {r.sentEmail ?? 'no email — link was copied into a text'}
+                        {r.sentName ? `${r.sentName} · ` : ''}{r.sentEmail ?? 'no email — link was copied into a text'}{r.sentCc.length > 0 ? ` (+${r.sentCc.length} cc)` : ''}
                         {r.scopeLines.length > 0 ? ` · ${r.scopeLines.length} items` : ''}
                         {r.neededBy ? ` · needed by ${r.neededBy}` : ''}
                         {r.reminderCount > 0 ? ` · nudged ×${r.reminderCount}` : ''}
