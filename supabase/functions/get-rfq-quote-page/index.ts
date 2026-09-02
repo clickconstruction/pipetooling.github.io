@@ -65,7 +65,30 @@ serve(async (req) => {
     const plansLink =
       typeof scope.plansLink === 'string' && /^https?:\/\//i.test(scope.plansLink) ? scope.plansLink : null
 
+    // Rung C (v2.2646): the requesting house's OWN last-quoted prices — never
+    // another house's, never our cost/sale data. Offered only when fresher
+    // than 90 days; the page fills them ONLY on the vendor's explicit tap.
+    let prior: { newestAt: string; prices: Record<string, number> } | null = null
+    if (rfq.supply_house_id && lines.length > 0) {
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+      const { data: memory } = await admin
+        .from('supply_house_fixture_prices')
+        .select('fixture_key, unit_price_each_cents, quoted_at')
+        .eq('supply_house_id', rfq.supply_house_id)
+        .gte('quoted_at', cutoff)
+      const inScope = new Set(lines.map((l) => l.fixture.trim().toLowerCase()))
+      const prices: Record<string, number> = {}
+      let newestAt: string | null = null
+      for (const m of memory ?? []) {
+        if (!m.fixture_key || !inScope.has(m.fixture_key)) continue
+        prices[m.fixture_key] = m.unit_price_each_cents
+        if (m.quoted_at && (newestAt == null || m.quoted_at > newestAt)) newestAt = m.quoted_at
+      }
+      if (newestAt && Object.keys(prices).length > 0) prior = { newestAt, prices }
+    }
+
     return json({
+      prior,
       status: rfq.status,
       bidName: bidName || 'a job',
       supplyHouse: house?.name ?? null,

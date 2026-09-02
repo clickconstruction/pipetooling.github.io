@@ -58,7 +58,7 @@ Design questions the mockup must answer before code:
   captures freight; nothing new is stored — this is display + totals
   math (kernel change in `quoteCompare.ts` + tests).
 
-## Rung C — vendor page prefill (owner item 4; 1 PR, mockup cycle)
+## Rung C — vendor page prefill (owner item 4) — SHIPPED v2.2646
 
 - `get-rfq-quote-page` returns the requesting house's OWN last-quoted
   prices (per fixture, with age) — never another house's, never our
@@ -71,6 +71,10 @@ Design questions the mockup must answer before code:
   prefills.
 - Server-side: submit is unchanged (prices are prices); the win is pure
   vendor friction removal.
+- Review revision (artboard 7): auto-ghost prefill REPLACED by an
+  explicit one-tap "Fill with last time's prices" — one deliberate
+  action instead of an unconfirmed-ghost state machine; hand-editing a
+  line drops its "from last time" tag; existing drafts always win.
 
 ## Rung D — per-house contacts (owner item 1; 1 PR + 1 migration, full mockup cycle)
 
