@@ -82,11 +82,50 @@ const COUNTY_CAD_URLS: Record<string, string> = {
   Tarrant: 'https://www.tad.org/property-search',
 }
 
-/** Suggested county for a Texas city — '' when unknown. Case/whitespace tolerant. */
+/**
+ * Org-added city → county pairs (v2.2638), hydrated per session from
+ * `app_settings.tx_county_extra_mappings_v1` (see txCountySettings.ts) and
+ * re-applied immediately when the Settings block saves. Extras OVERRIDE the
+ * built-ins, so a wrong built-in guess can be corrected without a deploy.
+ */
+let extraCityToCounty: Record<string, string> = {}
+
+export function setExtraTxCountyMappings(map: Record<string, string>): void {
+  extraCityToCounty = map
+}
+
+export function getExtraTxCountyMappings(): Record<string, string> {
+  return extraCityToCounty
+}
+
+/**
+ * Parse the dev-entered extras text — one `City = County` per line ("Devine = Medina").
+ * Trimmed, blank/malformed lines skipped, later lines win on duplicate cities.
+ */
+export function parseExtraTxCountyMappingsText(text: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const raw of (text ?? '').split(/\n+/)) {
+    const m = raw.match(/^\s*([^=]+?)\s*=\s*(.+?)\s*$/)
+    if (!m) continue
+    const city = m[1]!.toLowerCase().replace(/\s+/g, ' ')
+    const county = m[2]!
+    if (city && county) out[city] = county
+  }
+  return out
+}
+
+/** Serialize the extras map back to the stored "City = County" text form. */
+export function formatExtraTxCountyMappingsText(map: Record<string, string>): string {
+  return Object.entries(map)
+    .map(([city, county]) => `${city.replace(/\b\w/g, (c) => c.toUpperCase())} = ${county}`)
+    .join('\n')
+}
+
+/** Suggested county for a Texas city — '' when unknown. Case/whitespace tolerant; org extras win. */
 export function suggestTxCountyForCity(city: string): string {
   const key = (city ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
   if (!key) return ''
-  return CITY_TO_COUNTY[key] ?? ''
+  return extraCityToCounty[key] ?? CITY_TO_COUNTY[key] ?? ''
 }
 
 /** CAD property-search URL for a county — '' when we don't have one. */

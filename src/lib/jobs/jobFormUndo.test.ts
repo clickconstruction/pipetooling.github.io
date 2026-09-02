@@ -27,6 +27,7 @@ const identity: JobIdentityFormFields = {
   serviceTypeId: 'st-1',
     accountManagerUserId: null,
     accountManagerRelationship: null,
+    customerAddressId: null,
 }
 
 const fixture = (over: Partial<FixtureRow> = {}): FixtureRow => ({

@@ -54,6 +54,7 @@ function identity(over: Partial<JobIdentityFormFields> = {}): JobIdentityFormFie
     serviceTypeId: 'st-plumbing',
     accountManagerUserId: null,
     accountManagerRelationship: null,
+    customerAddressId: null,
     ...over,
   }
 }

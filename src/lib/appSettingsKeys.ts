@@ -259,5 +259,14 @@ export function parseAssistantHoursWindowWeeks(value: number | string | null | u
  */
 export const APP_SETTINGS_KEY_JOB_ADDRESS_EXTRA_LOCALITIES_V1 = 'job_address_extra_localities_v1' as const
 
+/**
+ * `app_settings.key` — org-added "City = County" pairs (one per line) extending the
+ * built-in Texas city→county suggestion map on customer-address legal panels (the
+ * county a lien files in). Extras override built-ins. Dev writes (Settings → Jobs &
+ * dispatch); all authenticated read (hydrated once per session in Layout).
+ * @see `src/lib/txCountySettings.ts`
+ */
+export const APP_SETTINGS_KEY_TX_COUNTY_EXTRA_MAPPINGS_V1 = 'tx_county_extra_mappings_v1' as const
+
 /** `app_settings.key` — JSON easter-egg targeting ({ eggs: [...] }); dev writes via Settings → Easter eggs, all authenticated read. Parse/match kernel: src/lib/easterEggsConfig.ts. */
 export const APP_SETTINGS_KEY_EASTER_EGGS = 'easter_eggs_v1' as const

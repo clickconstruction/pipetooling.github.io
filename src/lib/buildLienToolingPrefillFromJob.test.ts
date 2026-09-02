@@ -223,6 +223,20 @@ describe('owner of record on the lien forms (v2.2611)', () => {
     expect(state['owner-name']).toBe('Jo Home')
   })
 
+  it('linked property record fills county + legal description on the lien forms (v2.2638)', () => {
+    const property = { county: 'Hays', legalDescription: 'Lot 3, Block A, Springtown Commercial Park' }
+    const lien = buildLienToolingPrefillState('mechanics-lien', { ...baseCtx, property })
+    expect(lien['property-county']).toBe('Hays')
+    expect(lien['legal-description']).toContain('Lot 3')
+    const release = buildLienToolingPrefillState('release-lien', { ...baseCtx, property })
+    expect(release['property-county']).toBe('Hays')
+    expect(release['property-description']).toContain('Lot 3')
+    // No property → county blank and release falls back to the job name.
+    const bare = buildLienToolingPrefillState('release-lien', baseCtx)
+    expect(bare['property-county']).toBe('')
+    expect(bare['property-description']).toBe('Replace WH')
+  })
+
   it('without an owner record, behavior is unchanged (customer at the property address)', () => {
     const state = buildLienToolingPrefillState('mechanics-lien', baseCtx)
     expect(state['owner-name']).toBe('Knight Contracting')

@@ -139,6 +139,36 @@ export default function LienToolingPrefillModal({
   // mechanic's-lien / release owner block — name + MAILING address — instead
   // of guessing the job customer at the property address.
   const [ownerRecord, setOwnerRecord] = useState<LienToolingOwnerRecord | null>(null)
+  // Linked property record (v2.2638): county + legal description for the
+  // mechanic's-lien / release forms, from the job's customer_addresses row.
+  const [propertyRecord, setPropertyRecord] = useState<{ county: string; legalDescription: string } | null>(null)
+
+  useEffect(() => {
+    const linkedId = job?.customer_address_id ?? null
+    if (!open || !linkedId) {
+      setPropertyRecord(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('customer_addresses')
+          .select('county, legal_description')
+          .eq('id', linkedId)
+          .maybeSingle()
+        if (cancelled) return
+        setPropertyRecord(
+          data ? { county: data.county ?? '', legalDescription: data.legal_description ?? '' } : null,
+        )
+      } catch {
+        // prefill nicety — fields stay editable either way
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, job?.customer_address_id])
 
   useEffect(() => {
     if (!open || !job) {
@@ -199,10 +229,11 @@ export default function LienToolingPrefillModal({
           senderNameFallback: senderNameFallback.trim() || '—',
           senderEmailFallback: authEmail.trim(),
           ownerRecord,
+          property: propertyRecord,
         }),
       )
     },
-    [job, invoice, issuer, senderNameFallback, authEmail, ownerRecord],
+    [job, invoice, issuer, senderNameFallback, authEmail, ownerRecord, propertyRecord],
   )
 
   useEffect(() => {
