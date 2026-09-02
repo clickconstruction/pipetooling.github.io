@@ -20,6 +20,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import {
   buildCrewDayEmailView,
@@ -134,12 +135,15 @@ async function sendCrewDay(
 ): Promise<{ success: boolean; error?: string }> {
   const payload = await fetchPayloadForUser(admin, recipientUserId, chicagoTodayYmd())
   const view = buildCrewDayEmailView(payload, Date.now())
-  const subject = `${subjectPrefix}${crewDayEmailSubject(view)}`
+  // Dev-saved wording (Settings -> Email templates, v2.2659): subject template
+  // + optional intro paragraph above the built digest; built-in copy otherwise.
+  const wording = await resolveServerEmailWording('crew_day', {}, crewDayEmailSubject(view))
+  const subject = `${subjectPrefix}${wording.subject}`
   return await sendEmailViaResend(
     recipientEmail,
     subject,
-    crewDayEmailText(view),
-    renderCrewDayEmail(view, senderName ?? undefined),
+    (wording.introText ? wording.introText + '\n\n' : '') + crewDayEmailText(view),
+    (wording.introHtml ?? '') + renderCrewDayEmail(view, senderName ?? undefined),
     resendApiKey,
   )
 }

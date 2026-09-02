@@ -609,6 +609,51 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
               )
             })}
 
+            <h3 style={{ margin: '1.5rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Digest Emails</h3>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Subject + an intro paragraph above the digest's data — the data tables never change here. {'{{default_subject}}'} inserts the built-in subject (dates and job labels included). No template saved = built-in wording.
+            </p>
+            {[
+              { type: 'paid_job' as const, label: 'Paid job / payment progress', description: 'Cron + send-now payment notifications' },
+              { type: 'ready_to_bill' as const, label: 'Ready to bill notify', description: 'Job became ready to bill' },
+              { type: 'money_waiting' as const, label: 'Money waiting digest', description: 'Scheduled money-waiting report' },
+              { type: 'billed_awaiting' as const, label: 'Billed awaiting payment digest', description: 'Scheduled billed report' },
+              { type: 'payment_forecast' as const, label: 'Payment forecast digest', description: 'Scheduled forecast report' },
+              { type: 'crew_day' as const, label: 'Crew day digest', description: 'Superintendent crew-day email' },
+              { type: 'weekly_money' as const, label: 'Weekly money movement', description: 'Monday money digest' },
+              { type: 'weekly_movement' as const, label: 'Weekly movement', description: 'Weekly movement summary' },
+              { type: 'schedule_day' as const, label: 'Dispatch schedule (one day)', description: 'Morning schedule email' },
+            ].map(({ type, label, description }) => {
+              const template = emailTemplates.find(t => t.template_type === type)
+              return (
+                <div key={type} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplate(template, type)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                      >
+                        {template ? 'Edit' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                  {template && (
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                      <div><strong>Subject:</strong> {template.subject}</div>
+                      <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
+                        <strong>Intro:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
             <h3 style={{ margin: '1.5rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Workflow Stage Notifications</h3>
             <h4 style={{ margin: '0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>Notify Assigned Person</h4>
             {[

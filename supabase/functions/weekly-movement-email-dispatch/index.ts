@@ -15,6 +15,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   renderWeeklyMovementHtml,
@@ -98,7 +99,8 @@ serve(async (req) => {
     const payload = payloadRaw as WeeklyMovementPayload
     if (!payload || !Array.isArray(payload.sections)) return jsonResponse({ error: 'empty payload' }, 500)
     const weekLabel = weekLabelFromMonday(payload.week_monday)
-    const subject = weeklyMovementSubject(weekLabel)
+    const wording = await resolveServerEmailWording('weekly_movement', { week: weekLabel }, weeklyMovementSubject(weekLabel))
+    const subject = wording.subject
 
     let sent = 0
     const errors: string[] = []
@@ -133,8 +135,8 @@ serve(async (req) => {
             from: FROM,
             to: [recipientEmail],
             subject,
-            html: renderWeeklyMovementHtml(payload, weekLabel, requester?.name ?? undefined),
-            text: renderWeeklyMovementText(payload, weekLabel),
+            html: (wording.introHtml ?? '') + renderWeeklyMovementHtml(payload, weekLabel, requester?.name ?? undefined),
+            text: (wording.introText ? wording.introText + '\n\n' : '') + renderWeeklyMovementText(payload, weekLabel),
             ...(replyTo ? { reply_to: replyTo } : {}),
           }),
         })

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { sendResendHtmlEmail } from '../_shared/recurringJobReportCore.ts'
+import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 const corsHeaders = {
@@ -248,12 +249,14 @@ serve(async (req) => {
         workDateYmd: workDateStr,
         blocks,
       })
+      // Dev-saved wording (Settings → Email templates, v2.2659).
+      const wording = await resolveServerEmailWording('schedule_day', { date: workDateStr }, subject)
 
       const mail = await sendResendHtmlEmail({
         to: emailTo,
-        subject,
-        html,
-        textFallback: text,
+        subject: wording.subject,
+        html: (wording.introHtml ?? '') + html,
+        textFallback: (wording.introText ? wording.introText + '\n\n' : '') + text,
         resendApiKey,
         emailType: 'schedule_day',
       })
