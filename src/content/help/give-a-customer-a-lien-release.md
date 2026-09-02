@@ -59,7 +59,7 @@ The moment the master signs, the release lands in the **Teams Inbox** (on the Da
 - {{button:outline-blue|Download PDF}} grabs the signed PDF to attach in your own email.
 - **Mark sent without emailing** covers a printed or hand-delivered copy.
 
-The master sees his own lane the same way — **Awaiting your signature** — and signs right from the row.
+The master sees his own lane the same way — **Awaiting your signature** — and signs right from the row. In **Dispatch Mode → Inbox** both lanes sit at the very top of the page, above My Inbox.
 
 ## Track what you issued
 
