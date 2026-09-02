@@ -72,3 +72,22 @@ export function lienReleaseSignatureAuditLine(row: {
   }).format(when)
   return `Signed electronically in ClickTooling · ${stamp} CT${row.signer_consented_at ? ' · consent recorded' : ''}`
 }
+
+/** Theme-token chip colors per lifecycle tone — shared by the modal history and Documents rows. */
+export function lienReleaseChipColors(tone: LienReleaseChip['tone']): {
+  background: string
+  color: string
+  border?: string
+} {
+  switch (tone) {
+    case 'awaiting':
+      return { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+    case 'signed':
+    case 'sent':
+      return { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }
+    case 'voided':
+      return { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' }
+    default:
+      return { background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+  }
+}

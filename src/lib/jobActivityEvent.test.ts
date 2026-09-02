@@ -25,6 +25,11 @@ const ALL_TYPES: JobActivityEventType[] = [
   'collections_change',
   'completeness_marked',
   'progress_updated',
+  'lien_release_issued',
+  'lien_release_signature_requested',
+  'lien_release_signed',
+  'lien_release_sent',
+  'lien_release_voided',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {
@@ -52,5 +57,7 @@ describe('JOB_ACTIVITY_EVENT_RENDER', () => {
     expect(bucketForEvent('collections_change')).toBe('billing')
     expect(bucketForEvent('completeness_marked')).toBe('status')
     expect(bucketForEvent('progress_updated')).toBe('status')
+    expect(bucketForEvent('lien_release_issued')).toBe('billing')
+    expect(bucketForEvent('lien_release_signed')).toBe('billing')
   })
 })
