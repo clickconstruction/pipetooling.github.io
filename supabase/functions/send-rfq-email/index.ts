@@ -135,12 +135,16 @@ serve(async (req) => {
           vendorNote?: string | null
           plansLink?: string | null
           scope?: { lines?: ScopeLine[]; text?: string; plansLink?: string | null }
-          requests?: Array<{ supplyHouseId?: string; email?: string }>
+          requests?: Array<{ supplyHouseId?: string; email?: string; name?: string; cc?: string[] }>
           rfqId?: string
           email?: string
         }
       | null
     if (!body?.mode) return json({ error: 'Missing mode' }, 400)
+
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const cleanCc = (v: unknown): string[] =>
+      Array.isArray(v) ? [...new Set(v.filter((e): e is string => typeof e === 'string' && EMAIL_RE.test(e.trim())).map((e) => e.trim()))].slice(0, 5) : []
 
     const cleanPlansLink = (v: unknown): string | null =>
       typeof v === 'string' && /^https?:\/\//i.test(v.trim()) && v.trim().length <= 500 ? v.trim() : null
@@ -202,7 +206,7 @@ serve(async (req) => {
           token: 'their-own-link-minted-at-send',
           plansLink: cleanPlansLink(body.plansLink),
         })
-        previews.push({ supplyHouseId: r.supplyHouseId, houseName: house?.name ?? '—', email: r.email ?? '', subject: mail.subject, text: mail.text, html: mail.html })
+        previews.push({ supplyHouseId: r.supplyHouseId, houseName: house?.name ?? '—', email: r.email ?? '', cc: cleanCc(r.cc), subject: mail.subject, text: mail.text, html: mail.html })
       }
       return json({ ok: true, previews, replyTo: replyTo ?? null })
     }
@@ -223,10 +227,12 @@ serve(async (req) => {
       const results: Array<{ supplyHouseId: string; ok: boolean; error?: string }> = []
       for (const r of requests) {
         const email = (r.email ?? '').trim()
-        if (!r.supplyHouseId || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (!r.supplyHouseId || !EMAIL_RE.test(email)) {
           results.push({ supplyHouseId: r.supplyHouseId ?? '?', ok: false, error: 'bad email' })
           continue
         }
+        const cc = cleanCc(r.cc).filter((e) => e !== email)
+        const toName = typeof r.name === 'string' ? r.name.trim().slice(0, 120) || null : null
         const { data: house } = await admin.from('supply_houses').select('name').eq('id', r.supplyHouseId).maybeSingle()
         const token = crypto.randomUUID().replace(/-/g, '')
         const { data: rfq, error: insErr } = await admin
@@ -237,6 +243,8 @@ serve(async (req) => {
             supply_house_id: r.supplyHouseId,
             sent_to: house?.name ?? null,
             sent_email: email,
+            sent_name: toName,
+            sent_cc: cc.length > 0 ? cc : null,
             scope: { lines, text: listText, plansLink },
             needed_by: neededBy,
             vendor_note: vendorNote,
@@ -263,7 +271,7 @@ serve(async (req) => {
           token,
           plansLink,
         })
-        const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo })
+        const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo, cc })
         if (sent.success) {
           await admin.from('bid_rfqs').update({ resend_email_id: sent.resendEmailId ?? null }).eq('id', rfq.id)
           results.push({ supplyHouseId: r.supplyHouseId, ok: true })
@@ -277,7 +285,7 @@ serve(async (req) => {
     // remind + resend act on one existing request.
     const { data: rfq } = await admin
       .from('bid_rfqs')
-      .select('id, bid_id, token, status, sent_email, sent_to, needed_by, vendor_note, viewed_at, scope, created_at, last_reminded_at, reminder_count')
+      .select('id, bid_id, token, status, sent_email, sent_cc, sent_to, needed_by, vendor_note, viewed_at, scope, created_at, last_reminded_at, reminder_count')
       .eq('id', body.rfqId ?? '')
       .maybeSingle()
     if (!rfq) return json({ error: 'Request not found' }, 404)
@@ -306,7 +314,7 @@ serve(async (req) => {
         token: rfq.token as string,
         plansLink: cleanPlansLink(scope.plansLink),
       })
-      const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo })
+      const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo, cc: cleanCc(rfq.sent_cc) })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
       await admin
         .from('bid_rfqs')
@@ -335,7 +343,7 @@ serve(async (req) => {
         token: rfq.token as string,
         plansLink: cleanPlansLink(scope.plansLink),
       })
-      const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo })
+      const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { replyTo, cc: cleanCc(rfq.sent_cc) })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
       await admin.from('bid_rfqs').update({ sent_email: email, resend_email_id: sent.resendEmailId ?? null }).eq('id', rfq.id)
       return json({ ok: true })

@@ -1177,7 +1177,9 @@ export type Database = {
           reminder_count: number
           resend_email_id: string | null
           scope: Json
+          sent_cc: string[] | null
           sent_email: string | null
+          sent_name: string | null
           sent_to: string | null
           status: string
           supply_house_id: string | null
@@ -1197,7 +1199,9 @@ export type Database = {
           reminder_count?: number
           resend_email_id?: string | null
           scope?: Json
+          sent_cc?: string[] | null
           sent_email?: string | null
+          sent_name?: string | null
           sent_to?: string | null
           status?: string
           supply_house_id?: string | null
@@ -1217,7 +1221,9 @@ export type Database = {
           reminder_count?: number
           resend_email_id?: string | null
           scope?: Json
+          sent_cc?: string[] | null
           sent_email?: string | null
+          sent_name?: string | null
           sent_to?: string | null
           status?: string
           supply_house_id?: string | null
@@ -13446,27 +13452,50 @@ export type Database = {
       }
       supply_house_contacts: {
         Row: {
+          archived_at: string | null
           created_at: string
           created_by: string | null
           email: string
           id: string
+          is_default: boolean
           label: string
+          name: string | null
+          supply_house_id: string | null
+          updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           created_by?: string | null
           email: string
           id?: string
+          is_default?: boolean
           label: string
+          name?: string | null
+          supply_house_id?: string | null
+          updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           created_by?: string | null
           email?: string
           id?: string
+          is_default?: boolean
           label?: string
+          name?: string | null
+          supply_house_id?: string | null
+          updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_contacts_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supply_house_fixture_prices: {
         Row: {
