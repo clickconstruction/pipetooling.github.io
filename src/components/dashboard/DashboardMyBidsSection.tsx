@@ -73,13 +73,15 @@ export function DashboardMyBidsSection({
   }, [role])
 
   useEffect(() => {
+    // Matches the render gate below (v2.2634 — superintendent removed: the
+    // extraction-era quirk had supers fetching bids that never displayed,
+    // wasted queries on every super dashboard load).
     const hasBidsAccess =
       role === 'dev' ||
       role === 'master_technician' ||
       isAssistantLike(role) ||
       role === 'estimator' ||
-      role === 'primary' ||
-      role === 'superintendent'
+      role === 'primary'
     if (!authUserId || !hasBidsAccess) return
     let cancelled = false
     setMyBidsLoading(true)
