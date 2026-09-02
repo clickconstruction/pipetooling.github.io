@@ -318,6 +318,7 @@ serve(async (req) => {
       html: htmlBody,
       textFallback: textBody,
       resendApiKey,
+      emailType: 'bid_pricing_package',
     })
 
     if (!send.ok) {

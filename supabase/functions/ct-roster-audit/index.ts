@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { callCtManageUser } from '../_shared/ctBridge.ts'
 import { diffCtRoster, type CtRosterDiff, type CtRosterRow, type PtRosterRow } from '../_shared/ctRosterDiff.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 
 // CT↔PT weekly roster drift audit (v2.2438; CT bridge Phase 3). Cron-invoked Mondays:
 // pulls the PT roster (service role) and the CT roster (manage-user `roster` over the
@@ -95,6 +96,14 @@ Deno.serve(async (req) => {
       const errText = await resendResponse.text()
       return jsonResponse({ error: `Resend failed: ${resendResponse.status} ${errText}` }, 502)
     }
+    const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
+    await logEmailSendBestEffort({
+      resendEmailId: sent.id ?? null,
+      to: devs.map((d) => d.email),
+      from: FROM,
+      subject,
+      emailType: 'ct_roster_audit',
+    })
     console.log(`ct-roster-audit: sent (${subject}) to ${devs.length} dev(s); clean=${diff.clean}`)
     return jsonResponse({ success: true, clean: diff.clean, subject, recipients: devs.length }, 200)
   } catch (e) {

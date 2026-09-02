@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -368,6 +369,14 @@ serve(async (req) => {
               }),
             })
             if (resp.ok) {
+              const sent = (await resp.json().catch(() => ({}))) as { id?: string }
+              await logEmailSendBestEffort({
+                resendEmailId: sent.id ?? null,
+                to: [email],
+                from: EMAIL_FROM,
+                subject: 'Task reminder',
+                emailType: 'task_reminder_fallback',
+              })
               sentForUser++
               totalSent++
               emailFallbacks++
