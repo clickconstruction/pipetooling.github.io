@@ -14,6 +14,9 @@ import {
   type DemandPriorNotice,
 } from '../../lib/jobsDocuments/demandLetter'
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
+import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
+import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
+import LienFilingTabs from './LienFilingTabs'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -83,6 +86,11 @@ export default function LienInstrumentsModal({
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  const [activeTab, setActiveTab] = useState<'demand' | 'notice' | 'affidavit' | 'release_record'>('demand')
+  const [filings, setFilings] = useState<JobLienFilingRow[]>([])
+  const [linkedAddress, setLinkedAddress] = useState<CustomerAddressRow | null>(null)
+  const [jobOwnerRow, setJobOwnerRow] = useState<JobPropertyOwnerLike>(null)
+  const [gcEmail, setGcEmail] = useState('')
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<ReadonlySet<string>>(() => new Set())
   const [fields, setFields] = useState<DemandLetterFields | null>(null)
   const [issuerGen, setIssuerGen] = useState(0)
@@ -130,6 +138,23 @@ export default function LienInstrumentsModal({
     }
   }, [job?.id])
 
+  const loadFilings = useCallback(async () => {
+    if (!job?.id) {
+      setFilings([])
+      return
+    }
+    try {
+      const { data } = await supabase
+        .from('job_lien_filings')
+        .select('*')
+        .eq('job_id', job.id)
+        .order('created_at', { ascending: false })
+      setFilings((data ?? []) as JobLienFilingRow[])
+    } catch {
+      setFilings([])
+    }
+  }, [job?.id])
+
   // Open-reset + context fetches (history, customer address, property kind).
   useEffect(() => {
     if (!open || !job) {
@@ -148,10 +173,12 @@ export default function LienInstrumentsModal({
     } else {
       setSelectedInvoiceIds(new Set(demandable.map((i) => i.id)))
     }
+    setActiveTab('demand')
     setRecordMethod('certified_mail')
     setRecordTracking('')
     setRecordSentOn(todayYmdLocal())
     void loadHistory()
+    void loadFilings()
     let cancelled = false
     void (async () => {
       try {
@@ -163,10 +190,36 @@ export default function LienInstrumentsModal({
         if (linkedId) {
           const { data } = await supabase
             .from('customer_addresses')
-            .select('property_kind')
+            .select('*')
             .eq('id', linkedId)
             .maybeSingle()
-          if (!cancelled) setPropertyKind((data?.property_kind ?? '').trim())
+          if (!cancelled) {
+            setLinkedAddress((data as CustomerAddressRow) ?? null)
+            setPropertyKind(((data as CustomerAddressRow | null)?.property_kind ?? '').trim())
+          }
+        } else if (!cancelled) {
+          setLinkedAddress(null)
+        }
+        {
+          const { data } = await supabase
+            .from('job_property_owners')
+            .select('owner_mode, owner_name, company_name, mailing_address, owner_email')
+            .eq('job_id', job.id)
+            .maybeSingle()
+          if (!cancelled) setJobOwnerRow((data as JobPropertyOwnerLike) ?? null)
+        }
+        if (job.gc_customer_id) {
+          const { data } = await supabase
+            .from('customers')
+            .select('contact_info')
+            .eq('id', job.gc_customer_id)
+            .maybeSingle()
+          if (!cancelled) {
+            const ci = (data?.contact_info ?? null) as { email?: unknown } | null
+            setGcEmail(typeof ci?.email === 'string' ? ci.email.trim() : '')
+          }
+        } else if (!cancelled) {
+          setGcEmail('')
         }
       } catch {
         // prefill niceties only
@@ -175,7 +228,7 @@ export default function LienInstrumentsModal({
     return () => {
       cancelled = true
     }
-  }, [open, job?.id, invoice?.id, loadHistory])
+  }, [open, job?.id, invoice?.id, loadHistory, loadFilings])
 
   const demandable = useMemo(() => (job ? demandableInvoices(job) : []), [job])
   const selectedInvoices = useMemo(
@@ -282,7 +335,25 @@ export default function LienInstrumentsModal({
     })
   }, [open, job, selectedInvoices, issuer, priorNotices, customerAddress, propertyKind, signerNameFallback, authEmail])
 
+  // Clamp: § 31.04 can never ride a letter for a job with payments (owner rule).
+  useEffect(() => {
+    if (!fields) return
+    const hasPayments = Number((fields.paymentsReceived ?? '').replace(/[$,\s]/g, '')) > 0
+    if (hasPayments && fields.includeTheftOfServices) {
+      setFields((prev) => (prev ? { ...prev, includeTheftOfServices: false } : prev))
+    }
+  }, [fields])
+
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
+  const isSub = Boolean(job?.gc_customer_id)
+  const clock = useMemo(
+    () => computeJobLienClock({ lastWorkYmd: job?.last_work_date ?? null, propertyKind, isSub }),
+    [job?.last_work_date, propertyKind, isSub],
+  )
+  const originalContractorName = isSub
+    ? (job?.gcCustomer?.name ?? '').trim() || (job?.customer_name ?? '').trim()
+    : (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical'
+  const hasFiledAffidavit = filings.some((f) => f.voided_at == null && f.kind === 'affidavit' && f.filed_at)
 
   const setField = <K extends keyof DemandLetterFields>(key: K, value: DemandLetterFields[K]) => {
     setFields((prev) => (prev ? { ...prev, [key]: value } : prev))
@@ -432,19 +503,45 @@ export default function LienInstrumentsModal({
           </h2>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} · {demandMoney(fields.outstanding)} open
+            {clock.workMonth ? (
+              <span style={{ marginLeft: '0.6rem', fontWeight: 700 }}>
+                {clock.noticeDeadline ? (
+                  <span style={{ color: 'var(--text-amber-700)' }}>⏱ Notice by {demandDate(clock.noticeDeadline)}</span>
+                ) : null}
+                <span style={{ color: 'var(--text-red-700)', marginLeft: clock.noticeDeadline ? '0.6rem' : 0 }}>
+                  File by {demandDate(clock.filingDeadline)}
+                </span>
+              </span>
+            ) : null}
           </p>
         </div>
 
         <div style={{ padding: '0.7rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, border: '2px solid #2563eb', background: 'var(--bg-blue-tint)', fontWeight: 600 }}>
-            Demand letter
-          </span>
-          <span title="Lands with phase 3" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px dashed var(--border)', color: 'var(--text-muted)' }}>
-            § 53.056 notice · phase 3
-          </span>
-          <span title="Lands with phase 3" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', borderRadius: 6, border: '1px dashed var(--border)', color: 'var(--text-muted)' }}>
-            Mechanic's lien · phase 3
-          </span>
+          {(
+            [
+              ['demand', 'Demand letter'],
+              ['notice', '§ 53.056 notice'],
+              ['affidavit', "Mechanic's lien"],
+              ...(hasFiledAffidavit ? ([['release_record', 'Release of record']] as const) : []),
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setActiveTab(value)}
+              style={{
+                padding: '0.4rem 0.75rem',
+                fontSize: '0.8125rem',
+                borderRadius: 6,
+                border: activeTab === value ? '2px solid #2563eb' : '1px solid var(--border-strong)',
+                background: activeTab === value ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                cursor: 'pointer',
+                fontWeight: activeTab === value ? 600 : 400,
+              }}
+            >
+              {label}
+            </button>
+          ))}
           <button
             type="button"
             onClick={onOpenExternalPrefill}
@@ -454,6 +551,8 @@ export default function LienInstrumentsModal({
           </button>
         </div>
 
+        {activeTab === 'demand' ? (
+          <>
         <div style={{ display: 'flex', flexWrap: 'wrap', overflowY: 'auto', flex: 1 }}>
           <div style={{ flex: '1 1 20rem', minWidth: '18rem', padding: '1rem 1.25rem' }}>
             {liveHistory.length > 0 && (
@@ -551,7 +650,25 @@ export default function LienInstrumentsModal({
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Escalation lines</div>
             {toggle('includeSmallClaims', 'Small-claims lawsuit')}
             {toggle('includeLien', fields.lienFilingDeadline ? `Mechanic's lien under Chapter 53 (window through ${demandDate(fields.lienFilingDeadline)})` : "Mechanic's lien under Chapter 53")}
-            {toggle('includeTheftOfServices', 'Theft-of-services report (Penal Code § 31.04)', 'off until attorney sign-off')}
+            {(() => {
+              // Owner rule (2026-09-02): § 31.04 only applies when the client
+              // has made NO payments on the job — a partial payment defeats it.
+              const hasPayments = Number((fields.paymentsReceived ?? '').replace(/[$,\s]/g, '')) > 0
+              return (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: hasPayments ? 'not-allowed' : 'pointer', opacity: hasPayments ? 0.55 : 1 }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(fields.includeTheftOfServices) && !hasPayments}
+                    disabled={hasPayments}
+                    onChange={(e) => setField('includeTheftOfServices', e.target.checked)}
+                  />
+                  Theft-of-services report (Penal Code § 31.04)
+                  <span style={{ color: hasPayments ? 'var(--text-muted)' : 'var(--text-amber-700)', fontSize: '0.6875rem', fontWeight: 700 }}>
+                    {hasPayments ? 'not applicable — payments have been made on this job' : 'available — no payments made on this job'}
+                  </span>
+                </label>
+              )
+            })()}
             {toggle('includeLateFees', 'Late-fees / interest note')}
             {toggle('includeNotarial', 'Notarial block (certified mail only)')}
           </div>
@@ -672,6 +789,28 @@ export default function LienInstrumentsModal({
               Save &amp; record send…
             </button>
           </div>
+        )}
+          </>
+        ) : (
+          <LienFilingTabs
+            job={job}
+            jobNumber={jobNumber}
+            activeTab={activeTab}
+            issuer={issuer}
+            signerNameFallback={signerNameFallback}
+            linkedAddress={linkedAddress}
+            jobOwnerRow={jobOwnerRow}
+            filings={filings}
+            clock={clock}
+            isSub={isSub}
+            originalContractorName={originalContractorName}
+            ownerEmail={(jobOwnerRow?.owner_email ?? '').trim()}
+            originalContractorEmail={isSub ? gcEmail : ''}
+            onChanged={() => {
+              void loadFilings()
+              onRecorded?.()
+            }}
+          />
         )}
       </div>
     </div>

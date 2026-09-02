@@ -150,6 +150,7 @@ when_to_read:
    - [crew-day-email-dispatch](#crew-day-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-lien-release-email](#send-lien-release-email)
+   - [send-lien-filing-email](#send-lien-filing-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
@@ -2402,6 +2403,14 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 **Endpoint**: `POST /functions/v1/send-lien-release-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client (RLS applies), `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
 
 Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?, pdf_base64, pdf_filename? }`. Guards: release must belong to the job, be `status = 'signed'`, and not voided; `customer_email` must match `jobs_ledger.customer_email` (case-insensitive); PDF ≤ 6M base64 chars. Success: `{ success: true }`; if the Resend send succeeds but the sent-stamp UPDATE fails, returns 500 with "mark it sent manually" (email already went out).
+
+### send-lien-filing-email
+
+**Purpose** (v2.2645, Lien Instruments phase 3): email a **lien-instrument PDF** — today the § 53.056 notice of claim — to a named recipient (the owner of record or the original contractor) as a **courtesy channel** beside the recorded certified-mail send. The caller records the send on its `job_lien_filings` row afterward (`sends` jsonb, method `email`, tracking `resend:<id> → <address>`); the statutory path stays traceable physical delivery. Client caller: the § 53.056 tab of [`LienFilingTabs`](../src/components/jobs/LienFilingTabs.tsx).
+
+**Endpoint**: `POST /functions/v1/send-lien-filing-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client — the access check is an RLS read of the `jobs_ledger` row (office/master only). `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
+
+Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename? }`. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record.
 
 ### send-physical-invoice-email
 

@@ -43,6 +43,9 @@ export type NeedsYouItem = {
     | 'robot-audits'
     | 'lien-unconditional'
     | 'demand-deadline'
+    | 'lien-serve-copy'
+    | 'lien-notice-window'
+    | 'lien-file-window'
     | 'd22-uncoded'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
@@ -75,6 +78,9 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'tally-team': 30,
   'job-followups': 40,
   'demand-deadline': 40,
+  'lien-serve-copy': 10,
+  'lien-notice-window': 40,
+  'lien-file-window': 40,
   'team-reviews': 50,
   'roadmap-needs-person': 50,
   'robot-audits': 50,
@@ -177,10 +183,70 @@ export type NeedsYouInputs = {
    */
   demandDeadlineEnabled: boolean
   demandDeadlineOverdue: { count: number; total: number } | null
+  /**
+   * Chapter 53 deadline watches (v2.2645) — serve-by (red, tier with received
+   * money: rights actively at risk), notice windows, filing windows. Null
+   * while loading; the hook reports empties on error.
+   */
+  lienWatchEnabled: boolean
+  lienWatch: {
+    noticeDue: { deadline: string; openBalance: number }[]
+    filingDue: { deadline: string; openBalance: number }[]
+    serveDue: { serveDue: string }[]
+  } | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   const items: NeedsYouItem[] = []
+
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.serveDue.length ?? 0) > 0) {
+    const rows = inputs.lienWatch?.serveDue ?? []
+    const n = rows.length
+    const worst = rows.map((r) => r.serveDue).sort()[0] ?? ''
+    items.push({
+      key: 'lien-serve-copy',
+      severity: 'red',
+      kicker: 'Lien filings',
+      title: n === 1 ? 'A filed lien has not been served' : `${n} filed liens have not been served`,
+      detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Record the service on the job's lien instruments.`,
+      figure: String(n),
+      actionLabel: 'Record service',
+    })
+  }
+
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.noticeDue.length ?? 0) > 0) {
+    const rows = inputs.lienWatch?.noticeDue ?? []
+    const n = rows.length
+    const total = rows.reduce((s, r) => s + r.openBalance, 0)
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const worst = rows.map((r) => r.deadline).sort()[0] ?? ''
+    items.push({
+      key: 'lien-notice-window',
+      severity: 'amber',
+      kicker: 'Lien deadlines',
+      title: n === 1 ? `A lien notice window closes ${worst}` : `${n} lien notice windows close soon (first: ${worst})`,
+      detail: `${money} open on unpaid sub job${n === 1 ? '' : 's'} with no § 53.056 notice recorded for the work month — after the 15th, lien rights on that month weaken. Send the notice from the job's lien instruments.`,
+      figure: String(n),
+      actionLabel: n === 1 ? 'Open the job' : 'Review them',
+    })
+  }
+
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.filingDue.length ?? 0) > 0) {
+    const rows = inputs.lienWatch?.filingDue ?? []
+    const n = rows.length
+    const total = rows.reduce((s, r) => s + r.openBalance, 0)
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const worst = rows.map((r) => r.deadline).sort()[0] ?? ''
+    items.push({
+      key: 'lien-file-window',
+      severity: 'amber',
+      kicker: 'Lien deadlines',
+      title: n === 1 ? `A lien filing window closes ${worst}` : `${n} lien filing windows close soon (first: ${worst})`,
+      detail: `${money} is still open and the § 53.052 affidavit window is closing — after it, the lien right on this work is gone. The affidavit is ready behind its gate on the job's lien instruments.`,
+      figure: String(n),
+      actionLabel: n === 1 ? 'Open the job' : 'Review them',
+    })
+  }
 
   if (inputs.demandDeadlineEnabled && (inputs.demandDeadlineOverdue?.count ?? 0) > 0) {
     const { count: n, total } = inputs.demandDeadlineOverdue as { count: number; total: number }

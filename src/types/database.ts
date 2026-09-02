@@ -6522,6 +6522,78 @@ export type Database = {
           },
         ]
       }
+      job_lien_filings: {
+        Row: {
+          amount: number
+          county: string
+          created_at: string
+          created_by: string | null
+          fields: Json
+          filed_at: string | null
+          id: string
+          invoice_ids: string[]
+          job_id: string
+          kind: string
+          months_covered: string[]
+          recording_number: string
+          sends: Json
+          serve_due: string | null
+          served_at: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          amount: number
+          county?: string
+          created_at?: string
+          created_by?: string | null
+          fields?: Json
+          filed_at?: string | null
+          id?: string
+          invoice_ids?: string[]
+          job_id: string
+          kind: string
+          months_covered?: string[]
+          recording_number?: string
+          sends?: Json
+          serve_due?: string | null
+          served_at?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          amount?: number
+          county?: string
+          created_at?: string
+          created_by?: string | null
+          fields?: Json
+          filed_at?: string | null
+          id?: string
+          invoice_ids?: string[]
+          job_id?: string
+          kind?: string
+          months_covered?: string[]
+          recording_number?: string
+          sends?: Json
+          serve_due?: string | null
+          served_at?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_lien_filings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_filings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_lien_releases: {
         Row: {
           amount: number
