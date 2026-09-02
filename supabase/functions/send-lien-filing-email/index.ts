@@ -111,7 +111,7 @@ serve(async (req) => {
       return jsonResponse({ error: errorData.message || `Resend ${resendResponse.status}` }, 502)
     }
     const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [toEmail], from: EMAIL_FROM, subject })
+    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [toEmail], from: EMAIL_FROM, subject, emailType: 'lien_filing_notice' })
 
     return jsonResponse({ success: true, resend_email_id: sent.id ?? null })
   } catch (e) {
