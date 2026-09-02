@@ -74,11 +74,21 @@ export function PrepareFixtureCopyModal({
   onClose,
   bidLabel,
   rows,
+  quoteLink,
+  onRfqMinted,
 }: {
   open: boolean
   onClose: () => void
   bidLabel: string
   rows: PrepareCopyRow[]
+  /**
+   * RFQ Phase 2 (v2.2631): when set, the footer offers "Copy with quote link" —
+   * mints a bid_rfqs row (scope = the current selection) and appends a public
+   * /q/<token> link to the paste. Omit for roles that can't write RFQs.
+   */
+  quoteLink?: { bidId: string; bidVersionId: string | null }
+  /** Fires after a quote link is minted (so the caller can refresh its RFQ chip). */
+  onRfqMinted?: () => void
 }) {
   const { showToast } = useToastContext()
   const [loading, setLoading] = useState(true)
@@ -89,6 +99,11 @@ export function PrepareFixtureCopyModal({
   const [filter, setFilter] = useState('')
   const [picked, setPicked] = useState<Record<string, string>>({})
   const [pinBusy, setPinBusy] = useState<string | null>(null)
+  // Quote-link lane state (only used when `quoteLink` is provided).
+  const [houses, setHouses] = useState<Array<{ id: string; name: string }>>([])
+  const [linkHouseId, setLinkHouseId] = useState('')
+  const [linkNeededBy, setLinkNeededBy] = useState('')
+  const [minting, setMinting] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -114,8 +129,30 @@ export function PrepareFixtureCopyModal({
     if (!open) return
     setFilter('')
     setPicked({})
+    setLinkHouseId('')
+    setLinkNeededBy('')
     void load()
   }, [open, load])
+
+  useEffect(() => {
+    if (!open || !quoteLink) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          () => supabase.from('supply_houses').select('id, name').order('name'),
+          'load supply houses',
+        )
+        if (!cancelled) setHouses((data ?? []).map((h) => ({ id: h.id, name: h.name })))
+      } catch {
+        if (!cancelled) setHouses([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the id, not the object identity (callers pass inline objects)
+  }, [open, quoteLink?.bidId])
 
   useEffect(() => {
     if (!open) return
@@ -231,6 +268,45 @@ export function PrepareFixtureCopyModal({
       onClose()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not copy to clipboard.', 'error')
+    }
+  }
+
+  /**
+   * Copy with quote link: mints a bid_rfqs row whose scope snapshot is the
+   * current selection, then copies the same paste with a public /q/<token>
+   * line appended. The vendor types prices into that page instead of texting
+   * them back.
+   */
+  async function copyWithQuoteLink() {
+    if (!quoteLink || !linkHouseId || selected.size === 0) return
+    setMinting(true)
+    try {
+      const token = crypto.randomUUID().replace(/-/g, '')
+      const scopeLines = rows
+        .filter((r) => selected.has(r.id) && Number.isFinite(r.count) && r.count > 0)
+        .map((r) => ({ fixture: r.fixture, count: r.count, unit: r.unit ?? null }))
+      const houseName = houses.find((h) => h.id === linkHouseId)?.name ?? null
+      const { error } = await supabase.from('bid_rfqs').insert({
+        bid_id: quoteLink.bidId,
+        bid_version_id: quoteLink.bidVersionId,
+        supply_house_id: linkHouseId,
+        sent_to: houseName,
+        scope: { lines: scopeLines },
+        needed_by: linkNeededBy || null,
+        token,
+        status: 'sent',
+      })
+      if (error) throw error
+      const text = `${copyText}\n\nPrice it here: https://clicktooling.com/q/${token}`
+      if (typeof navigator === 'undefined' || !navigator.clipboard) throw new Error('Clipboard unavailable in this browser.')
+      await navigator.clipboard.writeText(text)
+      showToast(`Copied ${selected.size} items + a quote link for ${houseName ?? 'the vendor'} — prices they type land on this bid.`, 'success')
+      onRfqMinted?.()
+      onClose()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not create the quote link.', 'error')
+    } finally {
+      setMinting(false)
     }
   }
 
@@ -392,6 +468,33 @@ export function PrepareFixtureCopyModal({
                 <pre style={{ margin: 0, padding: '0.7rem 0.85rem', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-strong)', background: 'var(--surface)', flex: 1, overflow: 'auto', maxHeight: '48vh', whiteSpace: 'pre-wrap' }}>{copyText}</pre>
               </div>
             </div>
+
+            {quoteLink ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)' }}>
+                <span style={{ ...smallMuted, fontWeight: 600 }}>Want prices typed straight into ClickTooling?</span>
+                <SearchableSelect
+                  options={houses.map((h): SearchableSelectOption => ({ value: h.id, label: h.name }))}
+                  value={linkHouseId}
+                  onChange={(v) => setLinkHouseId(v)}
+                  placeholder="pick the supply house…"
+                  portalZIndex={MODAL_Z + 10}
+                  fillViewportHeight
+                />
+                <label style={{ ...smallMuted, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                  needed by
+                  <input type="date" value={linkNeededBy} onChange={(e) => setLinkNeededBy(e.target.value)} style={{ padding: '0.3rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }} />
+                </label>
+                <button
+                  type="button"
+                  disabled={minting || !linkHouseId || selected.size === 0}
+                  title={!linkHouseId ? 'Pick the supply house the link is for' : 'Copies the same list with a public page link — the vendor types prices there'}
+                  onClick={() => void copyWithQuoteLink()}
+                  style={{ padding: '0.4rem 0.9rem', background: !linkHouseId || selected.size === 0 ? 'var(--bg-200)' : '#2563eb', color: !linkHouseId || selected.size === 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: minting || !linkHouseId || selected.size === 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600 }}
+                >
+                  {minting ? 'Minting link…' : 'Copy with quote link'}
+                </button>
+              </div>
+            ) : null}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
               <span style={smallMuted}>
