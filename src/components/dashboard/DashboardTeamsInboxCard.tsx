@@ -4,6 +4,7 @@ import { ChecklistReviewInboxSection } from '../checklist/ChecklistReviewInboxSe
 import { DispatchInboxSection } from '../DispatchInboxSection'
 import { EstimatorInboxSection } from '../EstimatorInboxSection'
 import { HelpFeedbackInboxSection } from '../HelpFeedbackInboxSection'
+import LienSignatureInboxSection from '../jobs/LienSignatureInboxSection'
 import type { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import type { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 import type { CreateTripChargeTarget } from '../CreateTripChargeModal'
@@ -86,6 +87,7 @@ export function DashboardTeamsInboxCard({
   return (
     <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
       {showHelpFeedback && <HelpFeedbackInboxSection />}
+      <LienSignatureInboxSection />
       <ChecklistReviewInboxSection />
       {dispatchInboxEligible && (
         <DispatchInboxSection

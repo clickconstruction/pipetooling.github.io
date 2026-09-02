@@ -491,6 +491,10 @@ verify_jwt = false
 [functions.send-hazmat-notice-email]
 verify_jwt = false
 
+# Signed lien release to the customer, PDF attached (v2.2621): Resend email; JWT + RLS in function (send-physical-invoice-email pattern).
+[functions.send-lien-release-email]
+verify_jwt = false
+
 # GC Review statement email: Resend send + gc_statement_emails audit; JWT + role check in function (v2.1416).
 [functions.send-gc-statement-email]
 verify_jwt = false
