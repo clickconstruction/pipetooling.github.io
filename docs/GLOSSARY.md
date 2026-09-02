@@ -62,6 +62,7 @@ when_to_read:
 - [Recurring job report emails (Jobs)](#recurring-job-report-emails-jobs)
 - [Bids System](#bids-system)
 - [Materials System](#materials-system)
+- [Job Accounts (Materials tab)](#job-accounts-materials-tab)
 - [PO Generator ledger](#po-generator-ledger)
 - [Digital Twins & Robots](#digital-twins--robots)
 - [Database Concepts](#database-concepts)
@@ -893,6 +894,9 @@ Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plu
 **Database**: `supply_houses` table
 
 **Fields**: name, contact info, address, notes, monthly_payment_day (day 1–31 when payment is typically due; used for Due column in supply house list)
+
+### Job Accounts (Materials tab)
+Per-job money-flow rollup (v2.2652): **Materials → Job Accounts** joins **`supply_house_invoice_job_allocations`** × **`supply_house_invoices`** against **`jobs_ledger.revenue`** / **`payments_made`** to show, per job, what the customer has paid vs what is paid/owed to supply houses. Headline "holding for suppliers" = unpaid supplier balances on jobs the customer has paid (per job: min(owed, payments_made)). Statuses: **Owe suppliers**, **Floating** (houses paid, customer not), **Awaiting customer**, **Settled**; unpaid invoices allocated to neither a job nor a bid surface as an **unallocated** bucket. Office roles only (dev/master/assistant-like). Kernel: **[`src/lib/materials/jobAccountsFlow.ts`](../src/lib/materials/jobAccountsFlow.ts)**.
 
 ### PO Generator ledger
 Shop PO / reference codes (10000–99999) generated from **Materials → PO Generator** and stored in **`material_po_generator_entries`** with **`job_ledger_id`**, **`for_user_id`**, optional **`supply_house_id`**, and unique **`po_code`**. **Supply Houses** → expanded house → **Invoices** **Purchase Order #** can show a red warning when that field contains a parsed generator-style code not present on visible ledger rows for this supply house or with **null** **`supply_house_id`**. Parser: **[`parsePoGeneratorCodeFromPurchaseOrderName`](../src/lib/parsePoGeneratorCodeFromPurchaseOrderName.ts)** — treats strings like **`40326-1`** as shop refs, not **`40326`**.

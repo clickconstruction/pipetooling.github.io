@@ -80,6 +80,9 @@ interface SupplyHousesTabProps {
   showTitle?: boolean
   selectedServiceTypeId?: string
   onNavigateToPO?: (poId: string) => void
+  /** Opens this house's detail once the house list is available (Job Accounts → "Open house"). */
+  autoOpenHouseId?: string | null
+  onAutoOpenHouseHandled?: () => void
 }
 
 export function SupplyHousesTab({
@@ -89,6 +92,8 @@ export function SupplyHousesTab({
   showTitle = false,
   selectedServiceTypeId: selectedServiceTypeIdProp,
   onNavigateToPO,
+  autoOpenHouseId,
+  onAutoOpenHouseHandled,
 }: SupplyHousesTabProps) {
   const navigate = useNavigate()
   const { user: authUser, role: authRole } = useAuth()
@@ -324,6 +329,16 @@ export function SupplyHousesTab({
   useEffect(() => {
     if (supplyHousesProp) setSupplyHousesState(supplyHousesProp)
   }, [supplyHousesProp])
+
+  // Job Accounts → "Open house": open the requested house's detail once the list has it.
+  useEffect(() => {
+    if (!autoOpenHouseId) return
+    const sh = supplyHousesList.find((s: SupplyHouse) => s.id === autoOpenHouseId)
+    if (!sh) return
+    void loadSupplyHouseDetail(sh)
+    onAutoOpenHouseHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenHouseId, supplyHousesList])
 
   useEffect(() => {
     const t = setTimeout(() => {

@@ -277,7 +277,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Materials**:
 - Full CRUD on parts, prices, supply houses
-- **Supply Houses** and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant)
+- **Supply Houses**, **Job Accounts** (v2.2652: per-job customer-paid vs supply-house-owed rollup), and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant)
 - Create and manage templates
 - Create and manage purchase orders
 - View price history
@@ -346,7 +346,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Materials**:
 - Full access (same as master/dev)
-- Manage price book, templates, purchase orders; **Supply Houses** and **PO Generator** tabs
+- Manage price book, templates, purchase orders; **Supply Houses**, **Job Accounts**, and **PO Generator** tabs
 - Confirm prices on POs
 
 **Special Features**:
@@ -455,7 +455,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 - **Can edit existing customers** from **Customers** page or edit modal: UPDATE RLS + trigger forbid changing `master_user_id` or `stripe_customer_id`
 
 **Materials - Full Access**:
-- Same permissions as master_technician **except** the **Supply Houses** and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs)
+- Same permissions as master_technician **except** the **Supply Houses**, **Job Accounts**, and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -511,7 +511,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Materials - Full Access**:
 - Same as estimator/master_technician (subject to primary_service_type_ids if set)
-- **UI**: **Supply Houses** and **PO Generator** tabs hidden (restricted URLs redirect)
+- **UI**: **Supply Houses**, **Job Accounts**, and **PO Generator** tabs hidden (restricted URLs redirect)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -597,7 +597,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 
 **Materials**:
 - Price book and Assembly book (subject to superintendent_service_type_ids if set)
-- Supply Houses, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary)
+- Supply Houses, **Job Accounts**, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary)
 
 **What They Cannot Do**:
 - No People page (only enough access to support Workflow assignment)
