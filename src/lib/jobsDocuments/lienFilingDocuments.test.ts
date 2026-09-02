@@ -122,7 +122,7 @@ describe('filenames', () => {
   })
 })
 
-describe('letterhead + extras dressing (v2.2661)', () => {
+describe('letterhead + extras dressing (v2.2663)', () => {
   const extras = {
     letterhead: { company: 'Click Plumbing and Electrical', licenseLine: 'Master Plumber Lic. M-00000', contactLines: ['5501 Balcones Dr A141, Austin, TX 78731', '(512) 360-0599 · office@clickplumbing.com'] },
     refItems: ['Job #898', 'Work month 2026-07', 'September 2, 2026'],

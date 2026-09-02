@@ -178,7 +178,7 @@ export default function LienFilingTabs({
     [filedAffidavit, property, issuer, signerNameFallback, job, ownerName, releasePaymentDate],
   )
 
-  // Letterhead + reference strip (v2.2661): the same issuer block invoices use.
+  // Letterhead + reference strip (v2.2663): the same issuer block invoices use.
   const docExtras: FilingDocExtras = useMemo(
     () => ({
       letterhead: filingLetterheadFromIssuer(issuer),

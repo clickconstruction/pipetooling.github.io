@@ -24,7 +24,7 @@ export type DemandLetterFields = {
   businessAddress: string
   businessPhone: string
   businessEmail: string
-  /** License line from the invoice-issuer settings (v2.2661 letterhead). */
+  /** License line from the invoice-issuer settings (v2.2663 letterhead). */
   businessLicense?: string
   recipientName: string
   recipientEmail: string
@@ -385,7 +385,7 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         break
     }
   }
-  // Page footer (v2.2661): sender identity left, page number right, every page.
+  // Page footer (v2.2663): sender identity left, page number right, every page.
   const pages = doc.getNumberOfPages()
   const footerLeft = [f.businessName.trim(), f.businessPhone.trim()].filter((l) => l).join(' · ')
   for (let p = 1; p <= pages; p++) {

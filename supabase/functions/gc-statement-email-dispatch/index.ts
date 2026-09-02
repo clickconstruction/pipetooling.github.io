@@ -23,6 +23,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
   chicagoDateStr,
@@ -208,11 +209,18 @@ serve(async (req) => {
           continue
         }
 
-        const subject = isSingle ? gcStatementSubject(dateStr) : gcShareAllSubject(payload.group_by, dateStr)
+        // Dev-saved wording (Settings → Email templates, v2.2660) — also frees
+        // the subject's baked-in company name for editing without a deploy.
+        const wording = await resolveServerEmailWording(
+          'gc_statement_scheduled',
+          { date: dateStr },
+          isSingle ? gcStatementSubject(dateStr) : gcShareAllSubject(payload.group_by, dateStr),
+        )
+        const subject = wording.subject
         // Portal card (v2.2151): single-GC statements carry the GC's portal link when one is active.
         const portalUrl = isSingle && row.group_by === 'gc' && row.gc_customer_id ? await resolveGcPortalUrl(admin, row.gc_customer_id) : null
-        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl) : renderGcShareAllHtml(payload, dateStr, officePhone)
-        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl) : renderGcShareAllText(payload, dateStr, officePhone)
+        const html = (wording.introHtml ?? '') + (isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl) : renderGcShareAllHtml(payload, dateStr, officePhone))
+        const text = (wording.introText ? wording.introText + '\n\n' : '') + (isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl) : renderGcShareAllText(payload, dateStr, officePhone))
 
         const { data: requester } = await admin
           .from('users')
