@@ -16,6 +16,7 @@ import { Database } from '../types/database'
 import { PartFormModal } from '../components/PartFormModal'
 import { SupplyHousesTab } from '../components/SupplyHousesTab'
 import { MaterialsPoGeneratorTab } from '../components/materials/MaterialsPoGeneratorTab'
+import { MaterialsJobAccountsTab } from '../components/materials/MaterialsJobAccountsTab'
 import { MaterialsPurchaseOrdersTab } from '../components/materials/MaterialsPurchaseOrdersTab'
 import { MaterialsPartsBookTab } from '../components/materials/MaterialsPartsBookTab'
 import { MaterialsAssemblyBookTab } from '../components/materials/MaterialsAssemblyBookTab'
@@ -51,7 +52,7 @@ interface ServiceType {
 
 // fetchPricesForParts now lives in lib/materials/partPrices; formatCurrency in lib/format
 
-const MATERIALS_TABS = ['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'supply-houses', 'po-generator'] as const
+const MATERIALS_TABS = ['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'supply-houses', 'job-accounts', 'po-generator'] as const
 
 export default function Materials() {
   const { user: authUser } = useAuth()
@@ -61,8 +62,10 @@ export default function Materials() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [activeTab, setActiveTab] = useState<
-    'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'po-generator'
+    'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'job-accounts' | 'po-generator'
   >('parts-book')
+  /** Set when Job Accounts sends the user to a specific house on the Supply Houses tab. */
+  const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -398,6 +401,7 @@ export default function Materials() {
     }
     const restrictedPrimarySuper =
       tab === 'supply-houses' ||
+      tab === 'job-accounts' ||
       tab === 'po-generator' ||
       tab === 'assemblies-po' ||
       tab === 'purchase-orders'
@@ -408,7 +412,7 @@ export default function Materials() {
         next.set('tab', 'parts-book')
         return next
       }, { replace: true })
-    } else if (myRole === 'estimator' && (tab === 'supply-houses' || tab === 'po-generator')) {
+    } else if (myRole === 'estimator' && (tab === 'supply-houses' || tab === 'job-accounts' || tab === 'po-generator')) {
       setActiveTab('parts-book')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -1466,8 +1470,8 @@ export default function Materials() {
         </div>
       )}
 
-      {/* Service Type Filter — hidden on Supply Houses, which doesn't filter by service type */}
-      {visibleServiceTypes.length > 0 && activeTab !== 'supply-houses' && (
+      {/* Service Type Filter — hidden on Supply Houses and Job Accounts, which don't filter by service type */}
+      {visibleServiceTypes.length > 0 && activeTab !== 'supply-houses' && activeTab !== 'job-accounts' && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {visibleServiceTypes.map(st => (
             <button
@@ -1509,6 +1513,20 @@ export default function Materials() {
             style={pageTabStyle(activeTab === 'supply-houses')}
           >
             Supply Houses
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('job-accounts')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'job-accounts')
+                return next
+              })
+            }}
+            style={pageTabStyle(activeTab === 'job-accounts')}
+          >
+            Job Accounts
           </button>
           <button
             type="button"
@@ -2120,6 +2138,21 @@ export default function Materials() {
         onError={setError}
       />
 
+      {/* Job Accounts Tab — always mounted so loaded data survives tab switches (renders null when inactive) */}
+      <MaterialsJobAccountsTab
+        active={activeTab === 'job-accounts'}
+        myRole={myRole}
+        onOpenSupplyHouse={(houseId) => {
+          setSupplyHouseToAutoOpen(houseId)
+          setActiveTab('supply-houses')
+          setSearchParams((p) => {
+            const next = new URLSearchParams(p)
+            next.set('tab', 'supply-houses')
+            return next
+          })
+        }}
+      />
+
       {/* Supply Houses Tab */}
       {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <SupplyHousesTab
@@ -2128,6 +2161,8 @@ export default function Materials() {
           myRole={myRole}
           selectedServiceTypeId={selectedServiceTypeId}
           onNavigateToPO={handleNavigateToPOFromSupplyHouses}
+          autoOpenHouseId={supplyHouseToAutoOpen}
+          onAutoOpenHouseHandled={() => setSupplyHouseToAutoOpen(null)}
         />
       )}
     </div>
