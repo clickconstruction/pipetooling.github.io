@@ -108,7 +108,7 @@ Design questions the mockup must answer before code:
   Off → CC → To → Off. Bounce caveat stands: delivery events are
   per-message, so a bounced CC can flag the row's trail.
 
-## Rung E — PDF/spreadsheet replies (owner item 2; 1–2 PRs, full mockup cycle, deepest think)
+## Rung E — PDF/spreadsheet replies (owner item 2) — SHIPPED v2.2651 (phases 1+2; scanned-PDF LLM lane still deferred)
 
 Three input classes, phased:
 1. **Spreadsheets (xlsx/csv)** — parse client-side (SheetJS for xlsx,
@@ -128,6 +128,12 @@ Three input classes, phased:
 - The mockup shows: drop-zone states (parsed ✓ / needs-review ? /
   no-text-layer), and the same match-grid flow after — the human-confirm
   step stays identical to paste.
+- Review rule that mattered (artboard 9): **the extended-price trap** —
+  vendor sheets carry unit AND extended columns and the parser prefers
+  the last number, so the flattener is header-aware and DROPS
+  ext/total/amount columns (tested kernel; the [file:…] header names
+  what was dropped). xlsx rides the existing exceljs dep; pdf.js added
+  as a lazy chunk; lot-wording lines get the amber rung-G hint.
 
 ## Rung F — desk recording for the help guide (follow-through)
 

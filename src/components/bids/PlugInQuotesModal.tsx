@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { parseVendorReply, type ReplyBasis } from '../../lib/rfq/parseVendorReply'
+import { extractReplyText } from '../../lib/rfq/extractReplyText'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -94,6 +95,8 @@ export function PlugInQuotesModal({
   const [lines, setLines] = useState<DraftLine[]>([])
   const [unassigned, setUnassigned] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -140,8 +143,28 @@ export function PlugInQuotesModal({
     return opts
   }, [rows])
 
-  function runMatch() {
-    const parsed = parseVendorReply(raw, rows.map((r) => ({ name: r.fixture, count: r.count, unit: r.unit })))
+  /** Rung E (v2.2651): drop a file — extracted text flows THROUGH the paste box, then matches. */
+  async function handleFile(file: File) {
+    setExtracting(true)
+    try {
+      const res = await extractReplyText(file)
+      if (!res.ok) {
+        showToast(res.error, 'error')
+        return
+      }
+      const text = `${res.meta}\n${res.text}`
+      setRaw(text)
+      runMatch(text)
+    } finally {
+      setExtracting(false)
+    }
+  }
+
+  function runMatch(text?: string) {
+    // The [file: …] provenance header stays visible in the paste box but is
+    // not a vendor line — keep it out of the parser.
+    const source = (text ?? raw).split('\n').filter((l) => !l.startsWith('[file:')).join('\n')
+    const parsed = parseVendorReply(source, rows.map((r) => ({ name: r.fixture, count: r.count, unit: r.unit })))
     const draft: DraftLine[] = []
     let i = 0
     for (const line of parsed.lines) {
@@ -274,6 +297,28 @@ export function PlugInQuotesModal({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 0.8fr) minmax(0, 1.4fr)', gap: '0.9rem', alignItems: 'start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault()
+                setDragOver(false)
+                const f = e.dataTransfer.files?.[0]
+                if (f) void handleFile(f)
+              }}
+              style={{ border: `2px dashed ${dragOver ? '#2563eb' : 'var(--border-strong)'}`, borderRadius: 8, padding: '0.5rem 0.7rem', textAlign: 'center', fontSize: '0.75rem', color: dragOver ? 'var(--text-blue-500)' : 'var(--text-muted)', marginBottom: '0.4rem' }}
+            >
+              {extracting ? 'Reading the file…' : (
+                <>
+                  Drop the vendor’s reply — <strong>.xlsx · .csv · .pdf</strong> — or{' '}
+                  <label style={{ color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline' }}>
+                    browse
+                    <input type="file" accept=".xlsx,.csv,.txt,.pdf" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = '' }} />
+                  </label>
+                  {' '}— or paste below
+                </>
+              )}
+            </div>
             <textarea
               value={raw}
               onChange={(e) => setRaw(e.target.value)}
@@ -281,7 +326,7 @@ export function PlugInQuotesModal({
               style={{ ...input, minHeight: 180, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.78rem', resize: 'vertical' }}
             />
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={runMatch} disabled={!raw.trim()} style={{ padding: '0.4rem 0.9rem', background: raw.trim() ? '#2563eb' : 'var(--bg-200)', color: raw.trim() ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: raw.trim() ? 'pointer' : 'not-allowed', font: 'inherit', fontWeight: 600, fontSize: '0.8125rem' }}>
+              <button type="button" onClick={() => runMatch()} disabled={!raw.trim()} style={{ padding: '0.4rem 0.9rem', background: raw.trim() ? '#2563eb' : 'var(--bg-200)', color: raw.trim() ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: raw.trim() ? 'pointer' : 'not-allowed', font: 'inherit', fontWeight: 600, fontSize: '0.8125rem' }}>
                 Match to fixtures
               </button>
               <button type="button" onClick={addManualLine} style={{ padding: '0.4rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
@@ -309,6 +354,9 @@ export function PlugInQuotesModal({
                     <SearchableSelect value={l.fixture ?? ''} onChange={(v) => patchLine(l.key, { fixture: v || null, confidence: 'manual' })} options={fixtureOptions} placeholder="assign a fixture…" portalZIndex={MODAL_Z + 10} listMinWidthPx={340} fillViewportHeight />
                     <span style={{ fontSize: '0.72rem', color: l.confidence === 'exact' ? '#15803d' : l.confidence === 'fuzzy' ? 'var(--text-amber-700)' : 'var(--text-muted)', overflowWrap: 'anywhere' }}>
                       {l.raw ? `${l.confidence === 'exact' ? '✓' : l.confidence === 'fuzzy' ? '?' : '·'} “${l.raw}”` : 'typed'}
+                      {l.raw && /\b(all.?in|package|lot\b|combo|bundle)\b/i.test(l.raw) ? (
+                        <span style={{ display: 'block', color: 'var(--text-amber-700)', fontWeight: 600 }}>package wording — one price for several items? plug totals carefully</span>
+                      ) : null}
                       {l.outlier ? <strong style={{ color: 'var(--text-red-600)' }}> · price looks off</strong> : null}
                       {l.cantSupply ? <em> · can’t supply</em> : null}
                     </span>
