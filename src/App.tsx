@@ -45,6 +45,7 @@ import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import HazmatNoticePublic from './pages/HazmatNoticePublic'
 import CustomerPortal from './pages/CustomerPortal'
+import SubPortal from './pages/SubPortal'
 import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
 import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
@@ -214,6 +215,8 @@ function AppContent() {
         <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />
         <Route path="/portal" element={<CustomerPortal />} />
         <Route path="/p/:slug" element={<CustomerPortal />} />
+        <Route path="/sub" element={<SubPortal />} />
+        <Route path="/s/:slug" element={<SubPortal />} />
         <Route
           path="/estimate/customer-accept-preview/:id"
           element={

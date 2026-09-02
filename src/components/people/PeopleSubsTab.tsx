@@ -5,6 +5,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { buildSubsHqRows, groupUnattributedSheets, type SubsHqResult, type UnattributedGroup } from '../../lib/people/subsHqRows'
 import { suggestSubSheetAssignee } from '../../lib/people/subSheetNameSuggestion'
 import type { ComplianceBadge } from '../../lib/people/subCompliance'
+import SubPortalGlobeButton from './SubPortalGlobeButton'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -439,7 +440,10 @@ export default function PeopleSubsTab() {
             {result.rows.map((row) => (
               <tr key={row.personId} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                 <td style={{ padding: '0.6rem' }}>
-                  <div style={{ fontWeight: 650 }}>{row.name}</div>
+                  <div style={{ fontWeight: 650, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    {row.name}
+                    <SubPortalGlobeButton personId={row.personId} personName={row.name} />
+                  </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     {row.hasAccount ? row.email ?? 'account linked' : 'roster only — no login'}
                   </div>

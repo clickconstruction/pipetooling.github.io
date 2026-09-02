@@ -18,6 +18,7 @@ import { laborItemsSubtotal, lineLaborCost } from '../../lib/peopleLaborJobItemL
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildLaborFormSubSheetHtml } from '../../lib/jobsDocuments/subLaborSheet'
 import { resolvedLaborInvoiceLink } from '../../lib/jobs/jobAddressUrls'
+import { SubSheetPortalFieldsBox } from './SubSheetPortalFieldsBox'
 import {
   resolveSubLaborJobByNumber,
   subLaborAssignPickerRows,
@@ -1933,6 +1934,20 @@ function JobsSubLaborFormModalInner(
                   )
                 })()}
               </div>
+              {editingLaborJob && (
+                <SubSheetPortalFieldsBox
+                  laborJobId={editingLaborJob.id}
+                  initialStatus={
+                    (editingLaborJob as { portal_status?: string | null }).portal_status ?? null
+                  }
+                  initialPayableAfter={
+                    (editingLaborJob as { payable_after?: string | null }).payable_after ?? null
+                  }
+                  initialHoldReason={
+                    (editingLaborJob as { pay_hold_reason?: string | null }).pay_hold_reason ?? null
+                  }
+                />
+              )}
               {editingLaborJob && (
                 <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Payments</h4>

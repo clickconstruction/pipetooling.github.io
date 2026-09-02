@@ -11,6 +11,12 @@ import { screen } from '@testing-library/react'
 import PeopleSubsTab from './PeopleSubsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
+// The sub portal globe (sub-portal train) reads the office role via useAuth.
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
+
 const TABLE_ROWS: Record<string, unknown[]> = {
   people: [{ id: 'p-jesse', name: 'Jesse Ramos', archived_at: null, account_user_id: null }],
   users: [],
