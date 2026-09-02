@@ -168,6 +168,19 @@ export function crewDayReportExcerpt(fieldValues: unknown, maxLen = 160): string
   return `${joined.slice(0, maxLen - 1).trimEnd()}…`
 }
 
+/**
+ * Display label for a report's template name (v2.2623): "Status Report" is
+ * the default template, so its name carries no information — it shortens to
+ * just "Report". Other template names keep their full names (the distinction
+ * is the point). Blank names also fall back to "Report". Keep in sync with
+ * the copy in supabase/functions/crew-day-email-dispatch/render.ts.
+ */
+export function crewDayReportLabel(templateName: string | null | undefined): string {
+  const t = (templateName ?? '').trim()
+  if (!t || /^status report$/i.test(t)) return 'Report'
+  return t
+}
+
 /** Elapsed ms of one session at `nowMs` (open sessions count up; never negative). */
 export function crewDaySessionMs(s: CrewDaySessionRow, nowMs: number): number {
   const inMs = Date.parse(s.clocked_in_at)

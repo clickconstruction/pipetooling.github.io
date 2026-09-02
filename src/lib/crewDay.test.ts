@@ -3,6 +3,7 @@ import {
   buildCrewDayView,
   crewDayNavWord,
   crewDayPctFromNoteBody,
+  crewDayReportLabel,
   crewDaySummaryFor,
   isCrewDayOfficeRole,
   crewDayReportExcerpt,
@@ -64,6 +65,16 @@ describe('crewDayReportExcerpt', () => {
     expect(crewDayReportExcerpt(null)).toBe('')
     expect(crewDayReportExcerpt([1, 2])).toBe('')
     expect(crewDayReportExcerpt('plain')).toBe('')
+  })
+})
+
+describe('crewDayReportLabel', () => {
+  it('shortens the default "Status Report" to "Report"; other templates keep their names', () => {
+    expect(crewDayReportLabel('Status Report')).toBe('Report')
+    expect(crewDayReportLabel('  status report ')).toBe('Report')
+    expect(crewDayReportLabel('Safety Incident')).toBe('Safety Incident')
+    expect(crewDayReportLabel('')).toBe('Report')
+    expect(crewDayReportLabel(null)).toBe('Report')
   })
 })
 

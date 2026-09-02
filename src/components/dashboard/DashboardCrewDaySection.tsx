@@ -7,6 +7,7 @@ import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import {
   buildCrewDayView,
   crewDayNavWord,
+  crewDayReportLabel,
   crewDaySummaryFor,
   formatCrewDayBlockTime,
   formatCrewDayHours,
@@ -374,7 +375,7 @@ export function DashboardCrewDaySection({
                           }}
                         >
                           <span style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>
-                            {r.templateName} · {compactClock(r.createdAt)}
+                            {crewDayReportLabel(r.templateName)} · {compactClock(r.createdAt)}
                           </span>
                           {r.excerpt ? <span> — {r.excerpt}</span> : null}
                         </div>

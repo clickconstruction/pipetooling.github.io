@@ -59,6 +59,16 @@ function reportExcerpt(fieldValues: unknown, maxLen = 200): string {
   return joined.length <= maxLen ? joined : `${joined.slice(0, maxLen - 1).trimEnd()}…`
 }
 
+/**
+ * "Status Report" is the default template — its name shortens to "Report"
+ * (v2.2623). Copy of crewDayReportLabel in src/lib/crewDay.ts — keep in sync.
+ */
+function reportLabel(templateName: string | null | undefined): string {
+  const t = (templateName ?? '').trim()
+  if (!t || /^status report$/i.test(t)) return 'Report'
+  return t
+}
+
 function pctFromNote(body: string): number | null {
   const m = /(\d{1,3})\s*%\s*complete/i.exec(body)
   if (!m?.[1]) return null
@@ -214,7 +224,7 @@ export function crewDayEmailText(view: CrewDayEmailView): string {
     for (const p of g.people) {
       lines.push(`  ${p.name} · ${p.spans}${p.unscheduled ? ' (unscheduled)' : ''} · ${hoursLabel(p.hoursMs)}${p.open ? ' (on the clock)' : ''}`)
     }
-    for (const r of g.reports) lines.push(`  ${r.byName} ${r.at}: ${r.excerpt || r.templateName}`)
+    for (const r of g.reports) lines.push(`  ${r.byName} ${r.at}: ${r.excerpt || reportLabel(r.templateName)}`)
     for (const f of g.flags) lines.push(`  ! ${f.text}`)
     lines.push('')
   }
@@ -254,7 +264,7 @@ export function renderCrewDayEmail(view: CrewDayEmailView, senderName?: string):
               .map(
                 (r) => `
         <div style="border-left:3px solid #15803d;background:#f0fdf4;border-radius:0 6px 6px 0;padding:5px 9px;margin:5px 0 0;font-size:12.5px;color:#334155;">
-          <b style="color:#15803d;">${esc(r.byName)} · ${esc(r.at)}</b>${r.excerpt ? ` — ${esc(r.excerpt)}` : ` — ${esc(r.templateName)}`}
+          <b style="color:#15803d;">${esc(r.byName)} · ${esc(r.at)}</b>${r.excerpt ? ` — ${esc(r.excerpt)}` : ` — ${esc(reportLabel(r.templateName))}`}
         </div>`,
               )
               .join('')
