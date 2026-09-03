@@ -8950,6 +8950,95 @@ export type Database = {
           },
         ]
       }
+      mercury_category_tag_members: {
+        Row: {
+          bank_category: string | null
+          created_at: string
+          id: string
+          label_id: string | null
+          tag_id: string
+        }
+        Insert: {
+          bank_category?: string | null
+          created_at?: string
+          id?: string
+          label_id?: string | null
+          tag_id: string
+        }
+        Update: {
+          bank_category?: string | null
+          created_at?: string
+          id?: string
+          label_id?: string | null
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_category_tag_members_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_drag_sort_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_category_tag_members_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_category_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_category_tags: {
+        Row: {
+          color: string
+          created_at: string
+          created_by: string | null
+          default_key: string | null
+          hide_from_picker: boolean
+          icon: string
+          id: string
+          name: string
+          show_as_cost_line: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          default_key?: string | null
+          hide_from_picker?: boolean
+          icon?: string
+          id?: string
+          name: string
+          show_as_cost_line?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          default_key?: string | null
+          hide_from_picker?: boolean
+          icon?: string
+          id?: string
+          name?: string
+          show_as_cost_line?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_category_tags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_debit_card_nicknames: {
         Row: {
           mercury_debit_card_id: string
@@ -16973,6 +17062,7 @@ export type Database = {
         }
         Returns: string
       }
+      app_today: { Args: never; Returns: string }
       apply_agreed_write_down_to_billed_invoice: {
         Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
         Returns: Json
@@ -17134,6 +17224,7 @@ export type Database = {
         Returns: boolean
       }
       can_manage_inspection_types: { Args: never; Returns: boolean }
+      can_manage_mercury_category_tags: { Args: never; Returns: boolean }
       can_manage_report_email_subscriptions: { Args: never; Returns: boolean }
       can_manage_schedule_share: { Args: never; Returns: boolean }
       can_manage_team_leader_assignments: { Args: never; Returns: boolean }
@@ -19041,6 +19132,7 @@ export type Database = {
           service_type_name: string
         }[]
       }
+      seed_default_mercury_category_tags: { Args: never; Returns: undefined }
       self_move_schedule_block: {
         Args: {
           p_block_id: string

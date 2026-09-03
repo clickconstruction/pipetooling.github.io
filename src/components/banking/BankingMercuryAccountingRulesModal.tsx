@@ -1,5 +1,9 @@
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import type { Database } from '../../types/database'
+import { parseAccountingLabelRuleCriteria } from '../../lib/accountingLabelRuleMatch'
+import type { CategoryTagLookups } from '../../lib/banking/categoryTags'
+import { describeRuleCriteria, ruleTagId } from '../../lib/banking/ruleCriteriaChips'
+import { CategoryTagChip } from './CategoryTagChip'
 
 type RuleRow = Database['public']['Tables']['mercury_accounting_label_rules']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -28,6 +32,10 @@ export type BankingMercuryAccountingRulesModalProps = {
   onApplyRules: () => void
   onEditRule: (rule: RuleRow) => void
   onDeleteRule: (rule: RuleRow) => void
+  /** Bank-category tags (v2.2718): draws criteria chips + the tag filter bar; null hides both. */
+  tagLookups?: CategoryTagLookups | null
+  /** Opens the Tags manager (v2.2718). */
+  onOpenTags?: () => void
   /** Backdrop + shell z-index. Defaults to 1100 so child modals (Edit Rule 1200,
    *  Audit Overlaps 1250, Apply Rules confirm 1260) stack on top naturally. */
   zIndex?: number
@@ -57,7 +65,26 @@ export function BankingMercuryAccountingRulesModal({
   onEditRule,
   onDeleteRule,
   zIndex = 1100,
+  tagLookups = null,
+  onOpenTags,
 }: BankingMercuryAccountingRulesModalProps) {
+  // Tag filter bar (v2.2718): a rule is filed under its bankTag clause, else its label's tag.
+  const [tagFilterId, setTagFilterId] = useState<string | null>(null)
+  const ruleTagIds = useMemo(() => {
+    const m = new Map<string, string | null>()
+    for (const r of rules) m.set(r.id, tagLookups ? ruleTagId(parseAccountingLabelRuleCriteria(r.criteria), r.label_id, tagLookups) : null)
+    return m
+  }, [rules, tagLookups])
+  const ruleCountByTagId = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const id of ruleTagIds.values()) if (id) m.set(id, (m.get(id) ?? 0) + 1)
+    return m
+  }, [ruleTagIds])
+  const untaggedRuleCount = useMemo(() => [...ruleTagIds.values()].filter((id) => !id).length, [ruleTagIds])
+  const rowsToShow = useMemo(() => {
+    if (!tagFilterId) return rulesSortedForTable
+    return rulesSortedForTable.filter((r) => (tagFilterId === '__none__' ? !ruleTagIds.get(r.id) : ruleTagIds.get(r.id) === tagFilterId))
+  }, [rulesSortedForTable, tagFilterId, ruleTagIds])
   const reactId = useId()
   const titleId = `${reactId}-rules-modal-title`
   const dialogId = `${reactId}-rules-modal-dialog`
@@ -243,6 +270,29 @@ export function BankingMercuryAccountingRulesModal({
                   }}
                 />
               </label>
+              {tagLookups && tagLookups.tagsById.size > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: '0.75rem', flexShrink: 0 }} role="group" aria-label="Filter rules by tag">
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginRight: 2 }}>Tags</span>
+                  {[...tagLookups.tagsById.values()]
+                    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+                    .map((t) => (
+                      <CategoryTagChip key={t.id} tag={t} count={ruleCountByTagId.get(t.id) ?? 0} selected={tagFilterId === t.id} onClick={() => setTagFilterId((cur) => (cur === t.id ? null : t.id))} />
+                    ))}
+                  <button
+                    type="button"
+                    aria-pressed={tagFilterId === '__none__'}
+                    onClick={() => setTagFilterId((cur) => (cur === '__none__' ? null : '__none__'))}
+                    style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 500, padding: '2px 9px', borderRadius: 999, border: '1px solid var(--border)', background: tagFilterId === '__none__' ? 'var(--bg-200)' : 'var(--bg-muted)', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  >
+                    No tag · {untaggedRuleCount}
+                  </button>
+                  {onOpenTags ? (
+                    <button type="button" onClick={onOpenTags} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline' }}>
+                      Manage tags
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               {rulesFilteredForTable.length === 0 && rulesSearchNorm !== '' ? (
                 <div style={{ color: 'var(--text-slate-500)' }}>No rules match this search.</div>
               ) : (
@@ -341,12 +391,32 @@ export function BankingMercuryAccountingRulesModal({
                       </tr>
                     </thead>
                     <tbody>
-                      {rulesSortedForTable.map((r) => {
+                      {rowsToShow.map((r) => {
                         const lbl = labelById.get(r.label_id)
                         const person = ruleAttributionNameById.get(r.id)
+                        const chips = tagLookups ? describeRuleCriteria(parseAccountingLabelRuleCriteria(r.criteria), tagLookups) : []
                         return (
                           <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
+                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                              <div style={{ fontWeight: 600 }}>{r.name}</div>
+                              {chips.length > 0 ? (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                                  {chips.map((c) =>
+                                    c.kind === 'tag' ? (
+                                      <CategoryTagChip key={c.key} tag={c.tag} />
+                                    ) : c.kind === 'tag-missing' ? (
+                                      <span key={c.key} title={`Deleted tag — still matches ${c.categories.join(', ') || 'nothing'}`} style={{ fontSize: '0.75rem', padding: '1px 8px', borderRadius: 6, border: '1px dashed var(--border-strong)', color: 'var(--text-muted)' }}>
+                                        deleted tag · {c.categories.join(', ') || '—'}
+                                      </span>
+                                    ) : (
+                                      <span key={c.key} style={{ fontSize: '0.75rem', padding: '1px 8px', borderRadius: 6, background: 'var(--bg-muted)', border: '1px solid var(--border-soft)', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
+                                        <span style={{ color: 'var(--text-muted)' }}>{c.label}</span> <b style={{ fontWeight: 600 }}>{c.value}</b>
+                                      </span>
+                                    ),
+                                  )}
+                                </div>
+                              ) : null}
+                            </td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
                               {lbl?.name ?? r.label_id.slice(0, 8)}
                               {person ? <span style={{ color: 'var(--text-muted)' }}>{' | '}{person}</span> : null}

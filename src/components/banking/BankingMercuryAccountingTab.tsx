@@ -5,6 +5,8 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
+import { useCategoryTags } from '../../lib/banking/categoryTagsData'
+import { BankingMercuryCategoryTagsModal } from './BankingMercuryCategoryTagsModal'
 import {
   buildMercuryTxSearchHaystackWithJobPerson,
   mercuryTxMatchesSearchQuery,
@@ -351,6 +353,10 @@ export function BankingMercuryAccountingTab({
   const assignmentsLoadSeqRef = useRef(0)
   const pendingLoadSeqRef = useRef(0)
   const [rules, setRules] = useState<RuleRow[]>([])
+  // Bank-category tags (v2.2718): the manager modal, the rule form's tag
+  // picker and the rules list's chips/filter all read this one load.
+  const categoryTags = useCategoryTags(true)
+  const [tagsModalOpen, setTagsModalOpen] = useState(false)
   const [rulesLoading, setRulesLoading] = useState(true)
   const [ruleUsageApproved, setRuleUsageApproved] = useState<Record<string, number>>({})
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([])
@@ -1950,6 +1956,23 @@ export function BankingMercuryAccountingTab({
             >
               Rules ({rules.length})
             </button>
+            <button
+              type="button"
+              onClick={() => setTagsModalOpen(true)}
+              title="Bank-category tags: group the bank's categories and your accounting labels into tags you pick on rules"
+              aria-label={`Open tags manager (${categoryTags.tags.length} tags)`}
+              style={{
+                padding: '0.45rem 0.9rem',
+                fontWeight: 600,
+                background: 'var(--bg-slate-100)',
+                color: 'var(--text-slate-900)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                cursor: 'pointer',
+              }}
+            >
+              Tags ({categoryTags.tags.length})
+            </button>
             {approvalsIdle ? null : (
             <button
               type="button"
@@ -2511,6 +2534,8 @@ export function BankingMercuryAccountingTab({
           labels={labels}
           labelsLoading={labelsLoading}
           labelAssignmentCountById={labelAssignmentCountById}
+          tags={categoryTags.tags}
+          tagLookups={categoryTags.lookups}
           onClose={closeRuleModal}
           onRunTest={runTestFromCriteria}
           onSave={saveRuleDraft}
@@ -2643,6 +2668,20 @@ export function BankingMercuryAccountingTab({
         onApplyRules={() => void applyRules()}
         onEditRule={openEditRuleModal}
         onDeleteRule={(r) => void deleteRule(r)}
+        tagLookups={categoryTags.lookups}
+        onOpenTags={() => setTagsModalOpen(true)}
+      />
+      <BankingMercuryCategoryTagsModal
+        open={tagsModalOpen}
+        onClose={() => setTagsModalOpen(false)}
+        tags={categoryTags.tags}
+        members={categoryTags.members}
+        lookups={categoryTags.lookups}
+        labels={labels}
+        rules={rules}
+        loading={categoryTags.loading}
+        onChanged={categoryTags.reload}
+        zIndex={1150}
       />
     </>
   )

@@ -39,6 +39,7 @@ describe('buildCategoryTagLookups + categoryTagForCharge', () => {
   )
   it('indexes categories (lower-cased) and labels by tag', () => {
     expect(lookups.categoriesByTagId.get('t-fuel')).toEqual(['fuelandgas', 'vehicleexpenses'])
+    expect(lookups.categoryNamesByTagId.get('t-fuel')).toEqual(['FuelAndGas', 'VehicleExpenses'])
     expect(lookups.tagIdByCategory.get('software')).toBe('t-office')
     expect(lookups.tagIdByCategory.has('retail')).toBe(false)
     expect(lookups.tagIdByLabelId.get('lbl-fuel')).toBe('t-fuel')
