@@ -93,12 +93,33 @@ async function generateSuggestion(
     .order('sort_order', { ascending: true })
     .order('id', { ascending: true })
 
-  for (const rule of (rules ?? []) as Array<{ id: string; label_id: string; criteria: unknown }>) {
-    const criteria = parseAccountingLabelRuleCriteria(rule.criteria)
+  const parsedRules = ((rules ?? []) as Array<{ id: string; label_id: string; criteria: unknown }>).map((rule) => ({
+    rule,
+    criteria: parseAccountingLabelRuleCriteria(rule.criteria),
+  }))
+  // Live tag membership for `bankTag` clauses (Variant D, v2.2714) — the
+  // snapshot inside the criteria is the fallback if this read fails.
+  const tagIds = [...new Set(parsedRules.map((p) => p.criteria?.bankTag?.tagId).filter((id): id is string => !!id))]
+  const tagCategoriesById = new Map<string, string[]>()
+  if (tagIds.length > 0) {
+    const { data: members } = await admin
+      .from('mercury_category_tag_members')
+      .select('tag_id, bank_category')
+      .in('tag_id', tagIds)
+      .not('bank_category', 'is', null)
+    for (const m of (members ?? []) as Array<{ tag_id: string; bank_category: string | null }>) {
+      if (!m.bank_category) continue
+      const list = tagCategoriesById.get(m.tag_id) ?? []
+      list.push(m.bank_category.trim().toLowerCase())
+      tagCategoriesById.set(m.tag_id, list)
+    }
+  }
+  for (const { rule, criteria } of parsedRules) {
     if (!criteria) continue
     const matched = matchAccountingLabelRuleCriteria(
       { amount: tx.amount, counterparty_name: tx.counterparty_name, raw: tx.raw, mercury_category: tx.mercury_category },
       criteria,
+      { tagCategoriesById },
     )
     if (matched) {
       await admin.rpc('insert_accounting_label_suggestion_service', {

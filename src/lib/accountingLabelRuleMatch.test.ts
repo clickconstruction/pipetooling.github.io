@@ -152,3 +152,31 @@ describe('bankCategory clause (v2.2700)', () => {
     expect(mercuryCategoryFromColumn(['x'])).toBeNull()
   })
 })
+
+describe('bankTag clause (category tags, Variant D)', () => {
+  const rule = parseAccountingLabelRuleCriteria({ v: 1, bankTag: { tagId: 't-fuel', categories: ['FuelAndGas', 'VehicleExpenses'] } })!
+  const fuelTx = { amount: -60, counterparty_name: 'QuikTrip', raw: {}, mercury_category: 'FuelAndGas' }
+  const parkingTx = { amount: -6, counterparty_name: 'City', raw: {}, mercury_category: 'Parking' }
+  it('parses, counts as a clause, and matches against the saved snapshot when no live lookup is given', () => {
+    expect(rule.bankTag).toEqual({ tagId: 't-fuel', categories: ['FuelAndGas', 'VehicleExpenses'] })
+    expect(accountingRuleEffectiveClauseCount(rule)).toBe(1)
+    expect(matchAccountingLabelRuleCriteria(fuelTx, rule)).toBe(true)
+    expect(matchAccountingLabelRuleCriteria(parkingTx, rule)).toBe(false)
+    expect(matchAccountingLabelRuleCriteria({ ...fuelTx, mercury_category: null }, rule)).toBe(false)
+  })
+  it('prefers the live tag membership when a lookup is supplied', () => {
+    const live = { tagCategoriesById: new Map([['t-fuel', ['fuelandgas', 'vehicleexpenses', 'parking']]]) }
+    expect(matchAccountingLabelRuleCriteria(parkingTx, rule, live)).toBe(true)
+    const shrunk = { tagCategoriesById: new Map([['t-fuel', ['vehicleexpenses']]]) }
+    expect(matchAccountingLabelRuleCriteria(fuelTx, rule, shrunk)).toBe(false)
+    // A lookup that does not know the tag falls back to the snapshot.
+    expect(matchAccountingLabelRuleCriteria(fuelTx, rule, { tagCategoriesById: new Map() })).toBe(true)
+  })
+  it('rejects malformed tag clauses and treats an empty tag id as absent', () => {
+    expect(parseAccountingLabelRuleCriteria({ v: 1, bankTag: { tagId: 7 } })).toBeNull()
+    expect(parseAccountingLabelRuleCriteria({ v: 1, bankTag: { tagId: 't', categories: 'x' } })).toBeNull()
+    expect(parseAccountingLabelRuleCriteria({ v: 1, bankTag: { tagId: 't', categories: [1] } })).toBeNull()
+    expect(parseAccountingLabelRuleCriteria({ v: 1, bankTag: { tagId: 't' } })!.bankTag).toEqual({ tagId: 't', categories: [] })
+    expect(accountingRuleEffectiveClauseCount(parseAccountingLabelRuleCriteria({ v: 1, bankTag: { tagId: ' ', categories: ['FuelAndGas'] } })!)).toBe(0)
+  })
+})
