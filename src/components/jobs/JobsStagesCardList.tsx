@@ -41,6 +41,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsStagesTableProps } from './JobsStagesTable'
 import type { JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
+import { useSessionNotesOpener } from './sessionNotesOpenerContext'
 import {
   accountManOnlyStripeStyle,
   renderJobCustomerAndAddressLine,
@@ -587,6 +588,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
   const jobHoursStoryModal = useJobHoursStoryModal()
   const checklistAddModal = useChecklistAddModal()
   const shareJob = useShareJob()
+  const sessionNotesOpener = useSessionNotesOpener()
   const [moreActionsJob, setMoreActionsJob] = useState<JobWithDetails | null>(null)
   const ctx: StagesRowRenderContext = {
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
@@ -602,6 +604,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     jobThreadActivityByJobId: props.jobThreadActivityByJobId,
     openJobThreadFullscreen: props.openJobThreadFullscreen,
     openJobActivityExpand: props.openJobActivityExpand,
+    openSessionNotesForJob: sessionNotesOpener,
     openJobCalendar: props.openJobCalendar,
     stagesUpcomingByJobId: props.stagesUpcomingByJobId,
     applyStagesInvoiceFocus: props.applyStagesInvoiceFocus,
@@ -830,6 +833,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
   const jobHoursStoryModal = useJobHoursStoryModal()
   const checklistAddModal = useChecklistAddModal()
   const shareJob = useShareJob()
+  const sessionNotesOpener = useSessionNotesOpener()
   const [moreActionsRow, setMoreActionsRow] = useState<(typeof rows)[number] | null>(null)
   const ctx: StagesRowRenderContext = {
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
@@ -845,6 +849,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     jobThreadActivityByJobId: props.jobThreadActivityByJobId,
     openJobThreadFullscreen: props.openJobThreadFullscreen,
     openJobActivityExpand: props.openJobActivityExpand,
+    openSessionNotesForJob: sessionNotesOpener,
     openJobCalendar: props.openJobCalendar,
     stagesUpcomingByJobId: props.stagesUpcomingByJobId,
     applyStagesInvoiceFocus: props.applyStagesInvoiceFocus,

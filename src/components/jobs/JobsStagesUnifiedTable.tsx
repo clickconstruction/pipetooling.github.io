@@ -35,6 +35,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
 import { useWideViewport1100 } from '../../hooks/useWideViewport1100'
+import { useSessionNotesOpener } from './sessionNotesOpenerContext'
 import {
   accountManOnlyStripeStyle,
   renderJobAddressWithMap,
@@ -253,7 +254,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
 
   const customerProfileModal = useCustomerProfileModal()
   const jobHoursStoryModal = useJobHoursStoryModal()
+  const sessionNotesOpener = useSessionNotesOpener()
   const stagesRowSharedCtx: StagesRowRenderContext = {
+    openSessionNotesForJob: sessionNotesOpener,
     openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
     showToast,
