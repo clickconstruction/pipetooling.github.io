@@ -7,7 +7,6 @@ import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTab
 import { contractSigningIconTitle, type ContractSigningTrafficLight } from '../../lib/contractSigningRollup'
 import { loginAsUser } from '../../lib/loginAsUser'
 import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
-import { canOpenPersonDesk } from '../../lib/people/personDeskGates'
 import { APP_HOSTNAME, appUrl } from '../../lib/appOrigin'
 import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
 import {
@@ -123,7 +122,7 @@ export function PeopleUsersTab({
   const { role: authRole } = useAuth()
   // Person Desk door (v2.2701): the name opens the per-person drawer for office roles.
   const personDesk = useOptionalPersonDesk()
-  const deskDoor = personDesk != null && canOpenPersonDesk(authRole)
+  const deskDoor = personDesk != null && personDesk.canOpen
   const canManageTeamLeads = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
   const [teamLeadsModalOpen, setTeamLeadsModalOpen] = useState(false)
 

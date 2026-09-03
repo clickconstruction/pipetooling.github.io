@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { canOpenPersonDesk } from '../lib/people/personDeskGates'
 
 /**
  * Person Desk opener (v2.2701). Any component can open the per-person drawer
@@ -8,6 +10,8 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 export type PersonDeskOpenArgs = {
   userId?: string | null
   personId?: string | null
+  /** Name-keyed surfaces (Hours grid, Contracts) open by pay name; the Desk resolves the account or roster row (PR 4). */
+  payName?: string | null
   /** Shown in the header until the key resolves. */
   displayName?: string | null
 }
@@ -19,6 +23,8 @@ type PersonDeskContextValue = {
   /** Bumped by sections after a write so siblings and the header refetch. */
   changeKey: number
   markChanged: () => void
+  /** Whether the signed-in viewer may open the Desk at all (office roles) — doors read this instead of useAuth. */
+  canOpen: boolean
 }
 
 const PersonDeskContext = createContext<PersonDeskContextValue | null>(null)
@@ -26,18 +32,21 @@ const PersonDeskContext = createContext<PersonDeskContextValue | null>(null)
 export function PersonDeskProvider({ children }: { children: ReactNode }) {
   const [payload, setPayload] = useState<PersonDeskOpenArgs | null>(null)
   const [changeKey, setChangeKey] = useState(0)
+  const { role } = useAuth()
+  const canOpen = canOpenPersonDesk(role)
 
   const open = useCallback((args: PersonDeskOpenArgs) => {
     const userId = args.userId?.trim() || null
     const personId = args.personId?.trim() || null
-    if (!userId && !personId) return
-    setPayload({ userId, personId, displayName: args.displayName?.trim() || null })
+    const payName = args.payName?.trim() || null
+    if (!userId && !personId && !payName) return
+    setPayload({ userId, personId, payName, displayName: args.displayName?.trim() || payName })
   }, [])
 
   const close = useCallback(() => setPayload(null), [])
   const markChanged = useCallback(() => setChangeKey((k) => k + 1), [])
 
-  const value = useMemo(() => ({ open, close, payload, changeKey, markChanged }), [open, close, payload, changeKey, markChanged])
+  const value = useMemo(() => ({ open, close, payload, changeKey, markChanged, canOpen }), [open, close, payload, changeKey, markChanged, canOpen])
   return <PersonDeskContext.Provider value={value}>{children}</PersonDeskContext.Provider>
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { UserRole } from '../../hooks/useAuth'
@@ -323,7 +324,7 @@ export function DashboardCrewDaySection({
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{p.name}</span>
+                    <PersonNameDoor name={p.name} userId={p.userId} style={{ fontWeight: 600, fontSize: '0.875rem' }} />
                     <span style={{ fontWeight: 700, fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                       {formatCrewDayHours(p.totalMs)}
                       {p.open ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · on the clock</span> : null}

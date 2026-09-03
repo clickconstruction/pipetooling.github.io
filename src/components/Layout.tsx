@@ -29,6 +29,7 @@ import UserReviewModal from './UserReviewModal'
 import { UserReviewDeepLinkHandler } from './userReview/UserReviewDeepLinkHandler'
 import { PersonDeskDrawer } from './personDesk/PersonDeskDrawer'
 import { PersonDeskDeepLinkHandler } from './personDesk/PersonDeskDeepLinkHandler'
+import { PersonQuickSheet } from './personDesk/PersonQuickSheet'
 import NewCustomerModal from './NewCustomerModal'
 import NewProjectModal from './NewProjectModal'
 import EditProjectModal from './projects/EditProjectModal'
@@ -2121,6 +2122,7 @@ export default function Layout() {
       <UserReviewDeepLinkHandler />
       <PersonDeskDrawer />
       <PersonDeskDeepLinkHandler />
+      <PersonQuickSheet />
       <NewCustomerModal />
       <NewProjectModal />
       <EditProjectModal />
