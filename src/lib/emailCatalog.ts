@@ -10,6 +10,7 @@
  * Source of truth for "where": docs/recent-features/v2.2656.md carries the
  * full inventory table with file:line pointers.
  */
+import { buildBidRoomLinkEmailPreview } from './bids/bidRoomLinkEmailPreview'
 
 export type EmailCatalogGroup = 'billing' | 'lien' | 'estimates_contracts' | 'bids' | 'digests' | 'team' | 'system'
 
@@ -35,6 +36,16 @@ export type EmailCatalogEntry = {
   subjectExample: string
   /** Variant sends folded into this row (resends, reminders, [TEST] twins). */
   variants?: string[]
+  /**
+   * v2.2732: fixed-design emails can render themselves with sample data — the catalog shows a
+   * Preview button that opens the result in a new tab, signed by whoever is looking.
+   */
+  preview?: (ctx: EmailCatalogPreviewContext) => { subject: string; html: string }
+}
+
+export type EmailCatalogPreviewContext = {
+  origin: string
+  viewer: { name: string; email: string; phone: string } | null
 }
 
 export const EMAIL_CATALOG_GROUP_LABELS: Record<EmailCatalogGroup, string> = {
@@ -170,7 +181,9 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     builtWhere: 'server',
     sender: 'send-bid-room-link',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'Proposal — {{project}}',
+    subjectExample: 'Plumbing proposal — {{project}} — $56,343 · Click Plumbing',
+    variants: ['Revised … (rev N)'],
+    preview: ({ origin, viewer }) => buildBidRoomLinkEmailPreview({ origin, sender: viewer }),
   },
   {
     id: 'bid_pricing_package',

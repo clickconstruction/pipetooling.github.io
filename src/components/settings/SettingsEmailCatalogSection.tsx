@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
 import {
   EMAIL_CATALOG,
   EMAIL_CATALOG_GROUP_LABELS,
@@ -19,7 +21,38 @@ type EmailTemplateRow = { template_type: string; subject: string }
  * template cards below (rows scroll to them).
  */
 export default function SettingsEmailCatalogSection({ templates }: { templates: EmailTemplateRow[] }) {
+  const { user } = useAuth()
+  const { showToast } = useToastContext()
   const [stats, setStats] = useState<Map<string, { last: string; count30: number }>>(() => new Map())
+  // v2.2732: fixed-design emails preview with the viewer as the signer (the real send is signed by the sender).
+  const [viewer, setViewer] = useState<{ name: string; email: string; phone: string } | null>(null)
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    void supabase
+      .from('users')
+      .select('name, email, phone')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        const row = data as { name: string | null; email: string | null; phone: string | null }
+        setViewer({ name: (row.name ?? '').trim(), email: (row.email ?? '').trim(), phone: (row.phone ?? '').trim() })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+  const openPreview = (e: EmailCatalogEntry) => {
+    if (!e.preview) return
+    const { html } = e.preview({ origin: window.location.origin, viewer })
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
+    // Same pattern as the template "Open as email" (v2.2662): no 'noopener' feature string.
+    const win = window.open(url, '_blank')
+    if (win) win.opener = null
+    else showToast('Pop-up blocked — allow pop-ups for this site to open the preview.', 'error')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -135,8 +168,18 @@ export default function SettingsEmailCatalogSection({ templates }: { templates: 
                     {e.variants?.length ? <span style={{ color: 'var(--text-faint)' }}> · +{e.variants.join(', +')}</span> : null}
                   </div>
                 </div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                  {lastSentLabel(e)}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+                  {e.preview ? (
+                    <button
+                      type="button"
+                      onClick={() => openPreview(e)}
+                      title="Open this email, rendered with sample data, in a new tab — signed by you"
+                      style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)', borderRadius: 5, cursor: 'pointer' }}
+                    >
+                      Preview
+                    </button>
+                  ) : null}
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>{lastSentLabel(e)}</span>
                 </span>
               </div>
             )
