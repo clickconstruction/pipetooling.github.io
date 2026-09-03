@@ -29,6 +29,8 @@ Open the **⋯** menu at the right end of the Pipeline search bar. Under **Filte
 
 Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the row's quick-action stack. The Contract modal opens with everything prefilled from the job:
 
+{{gif:get-a-job-contract-signed.gif|From the Pipeline row: the chip opens the Contract modal prefilled from the job; Copy link mints the customer's signing link and the strip shows where it stands}}
+
 - **Who signs** — name, email and mobile from the job's customer; add a GC, spouse or property manager under **Also send to**.
 - **What they're signing** — the terms document from the Contract Book (or the built-in service-agreement terms until you add one), the scope one line per item, anything not included, the amount, payment terms as chips ({{chip:blue|50% down, balance on completion}} is the default), optional dates and a note.
 - Everything autosaves as you type; there is no Save button. {{button:outline|Preview as customer}} opens the document exactly as they will see it.

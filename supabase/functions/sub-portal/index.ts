@@ -15,6 +15,7 @@ import {
   type SubPaymentRow,
   type SubSheetRow,
 } from '../_shared/subPortalStatement.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 /**
  * Sub portal payload (sub-portal train): resolves a sub portal link token OR
@@ -128,7 +129,7 @@ serve(async (req) => {
       .insert({ surface: 'sub_portal', entity_id: link.person_id, via: rawToken ? 'token' : 'slug' })
       .then(() => {}, () => {})
 
-    const todayYmd = new Date().toISOString().slice(0, 10)
+    const todayYmd = todayYmdInAppTz()
 
     // Sheets: junction-first (people_labor_job_assignees keys on people.id —
     // rename-proof). Sheets the junction doesn't cover are legacy multi-name

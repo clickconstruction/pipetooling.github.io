@@ -789,6 +789,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Endpoint**: `POST /functions/v1/twin-mcp` · **Auth**: per-twin token on every `tools/call` (`X-Twin-Token` or `Authorization: Bearer`; `initialize`/`tools/list` are open metadata). `verify_jwt = false`.
 
+**Dates** (v2.2703): the `due` date of a bid the twin creates is `today (Central) + due_in_days` via `ymdAddDays`.
+
 **Bundled docs are GENERATED**: `supabase/functions/twin-mcp/briefs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/*` (missions carry only the verbatim mission text, never the scorer sections) — regenerate + redeploy after editing those docs.
 
 **Two-app companion (v2.2439)**: `mint_session` takes `app: 'pipetooling' | 'counttooling'` — the CT path calls CountTooling's `twin-login` with CT's twin secret held server-side (one per-twin credential covers both apps; CT per-twin-credential parity deliberately deferred). The CT path re-applies the 6/min rate limit against `twin_runs` (PT's twin-login isn't in that path) and logs the mint (`app=counttooling` in the note).
@@ -1013,6 +1015,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `GET /functions/v1/sub-portal?token=<opaque>` or `GET /functions/v1/sub-portal?slug=<address>`
 
+**Dates** (v2.2703): the sheet window's "today" is the Central civil day (`todayYmdInAppTz()`).
+
 **Auth**: none (`verify_jwt = false` — the link IS the capability, minted/rotated by `mint_sub_portal_link`). Service-role reads; never returns costs beyond the sub's own money, other people's data, or document contents.
 
 **View counting**: each validated load appends a `public_page_views` row (`surface='sub_portal'`, `entity_id` = person id, `via` token/slug), fire-and-forget.
@@ -1023,6 +1027,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `POST /functions/v1/submit-sub-portal` — `{ token, kind, ... }` (`website` is the honeypot on availability).
 
+**Dates** (v2.2703): offer expiry compares against the Central civil day (`todayYmdInAppTz()`), not the UTC date.
+
 **Auth**: none (`verify_jwt = false`) — the sub portal token is the capability; every kind re-validates ownership server-side.
 
 ### get-estimate-for-customer
@@ -1030,6 +1036,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Purpose**: Public read of a **sent** estimate for the customer acceptance page (no JWT).
 
 **Endpoint**: `GET /functions/v1/get-estimate-for-customer?token=<opaque>`
+
+**Expiry** (v2.2703): an estimate is valid through the end of its `valid_until` day in Central time (it used to expire at 7 PM Central).
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -1055,7 +1063,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
-**Behavior**: Validates exactly like `get-estimate-for-customer` — token hash must match a live `sent` estimate, unexpired — and the `optionKey` must exist in that estimate's own `options_snapshot`; then appends an `estimate_customer_events` row (v2.2476 fixed the shared logger's bare-`req` ReferenceError that silently dropped every event) (`event_type = option_viewed`, `source = log-estimate-option-view`, `metadata.option_key/option_name`) via [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts). **Always returns 200** — invalid/unknown input is dropped silently (this endpoint must prove nothing to callers, and browsing must never break on it). Requires migration `20260828193012` (CHECK constraints widened).
+**Behavior**: Validates exactly like `get-estimate-for-customer` — token hash must match a live `sent` estimate, unexpired — and the `optionKey` must exist in that estimate's own `options_snapshot`; passes the [`_shared/publicEventThrottle.ts`](../supabase/functions/_shared/publicEventThrottle.ts) gate (v2.2697: identical event within 30 s or >60 from one IP in 10 min is dropped, still 200); then appends an `estimate_customer_events` row (v2.2476 fixed the shared logger's bare-`req` ReferenceError that silently dropped every event) (`event_type = option_viewed`, `source = log-estimate-option-view`, `metadata.option_key/option_name`) via [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts). **Always returns 200** — invalid/unknown input is dropped silently (this endpoint must prove nothing to callers, and browsing must never break on it). Requires migration `20260828193012` (CHECK constraints widened).
 
 ---
 
@@ -1069,7 +1077,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false`; the plaintext room token (portal-links precedent) is the credential.
 
-**Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` (always 200, invalid input dropped — browsing must never break). Requires migration `20260828215717`.
+**Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` — since v2.2697 the key is validated against the room's current revision and the write passes the shared throttle (30 s dedupe, 60/10 min per IP); always 200, invalid or throttled input dropped — browsing must never break. Requires migration `20260828215717`.
 
 ---
 
@@ -1139,7 +1147,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false`; the room token is the credential.
 
-**Behavior**: Only the room's **latest revision** may be answered (409 `stale_revision` — the page refreshes), and only once (409 `already_answered`). With `documentId` (v2.2472) the answer applies to that **change order** instead: sign sets the CO row `customer_accepted` with acceptor fields + optional signature PNG, decline sets `declined` with the note in the event — neither touches the proposal's outcome or the bid's won/lost. **Sign** mints an `estimates` row born `customer_accepted` (`doc_kind='bid_proposal'`, `bid_id`, the room's GC as `customer_id`; chosen option frozen into `line_items_snapshot`/`total_cents`/`accepted_option_key`, all options in `options_snapshot`; acceptor fields + optional PNG in `estimate-acceptor-signatures`), then applies [`_shared/bidRoomOutcome.ts`](../supabase/functions/_shared/bidRoomOutcome.ts): packet Won, other sent unanswered packets auto-Lost, conservative `bids.outcome` roll-up. **Decline** marks the packet Lost with the GC's own loss category/note (Why-we-lost feed). Both log room events and email the room's creator + master.
+**Behavior**: Only the room's **latest revision** may be answered (409 `stale_revision` — the page refreshes), and only once (409 `already_answered`). Since v2.2697 the `signed` event carries `metadata.auto_lost_gcs` (the GC names the win auto-marked Lost) and `bid_outcome_set`, and the staff email names them. With `documentId` (v2.2472) the answer applies to that **change order** instead: sign sets the CO row `customer_accepted` with acceptor fields + optional signature PNG, decline sets `declined` with the note in the event — neither touches the proposal's outcome or the bid's won/lost. **Sign** mints an `estimates` row born `customer_accepted` (`doc_kind='bid_proposal'`, `bid_id`, the room's GC as `customer_id`; chosen option frozen into `line_items_snapshot`/`total_cents`/`accepted_option_key`, all options in `options_snapshot`; acceptor fields + optional PNG in `estimate-acceptor-signatures`), then applies [`_shared/bidRoomOutcome.ts`](../supabase/functions/_shared/bidRoomOutcome.ts): packet Won, other sent unanswered packets auto-Lost, conservative `bids.outcome` roll-up. **Decline** marks the packet Lost with the GC's own loss category/note (Why-we-lost feed). Both log room events and email the room's creator + master.
 
 ---
 
@@ -1227,6 +1235,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Endpoint**: `POST /functions/v1/accept-estimate`
 
+**Expiry** (v2.2703): same end-of-Central-day rule as `get-estimate-for-customer`.
+
 **Body**: `{ "token": string, "printedName": string, "agreedTerms": true, "optionKey"?: string }` — `optionKey` is **required when the estimate offers 2+ options** (400 `option_required` / `option_unknown` otherwise).
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional; staff notify skipped if missing)
@@ -1284,6 +1294,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn.
 
 **Endpoint**: `POST /functions/v1/accept-contract`
+
+**Dates** (v2.2703): `signed_at` is the Central civil day via `todayYmdInAppTz()` — evening signatures used to be dated tomorrow.
 
 **Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true }`
 

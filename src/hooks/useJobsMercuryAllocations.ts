@@ -16,6 +16,7 @@ import type { BankingAttributionUser } from '../lib/mercuryCardNicknameUserMatch
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { fetchAccountingBucketByTxId } from '../lib/overheadPartsBucketLoader'
+import { sumFuelChargesByJob } from '../lib/mercuryFuelSplit'
 
 /** Mercury tx ids (among `txIds`) that carry a supply-house invoice link — the same purchase seen twice. */
 async function fetchMercuryTxIdsLinkedToSupplyInvoices(txIds: readonly string[]): Promise<Set<string>> {
@@ -85,6 +86,8 @@ export function useJobsMercuryAllocations({
   const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
   /** Card charges per job that are ALSO linked to a supply-house invoice — Job Summary counts those once (v2.2692). */
   const [mercuryInvoiceLinkedChargesByJobId, setMercuryInvoiceLinkedChargesByJobId] = useState<Map<string, number>>(() => new Map())
+  /** The fuel slice of `mercuryCardChargesByJobId` (Fuel / Gas label first, bank category fallback — `lib/mercuryFuelSplit`, v2.2708). */
+  const [mercuryFuelChargesByJobId, setMercuryFuelChargesByJobId] = useState<Map<string, number>>(() => new Map())
   const partsTabMercuryLoadedRef = useRef<Set<string>>(new Set())
   const partsTabMercuryInFlightRef = useRef<Set<string>>(new Set())
   const [partsTabMercuryAllocationsByJobId, setPartsTabMercuryAllocationsByJobId] = useState<
@@ -130,26 +133,39 @@ export function useJobsMercuryAllocations({
         // Internal Transfers are money moving between the org's own accounts,
         // not a cost — the same exclusion People → Overhead applies (v2.2692).
         // Bucket/link lookups degrade to "everything counts" when RLS hides them.
-        const [bucketByTxId, linkedTxIds] = await Promise.all([
+        const [bucketByTxId, linkedTxIds, categoryRows] = await Promise.all([
           fetchAccountingBucketByTxId(txIds).catch(() => new Map<string, string>()),
           fetchMercuryTxIdsLinkedToSupplyInvoices(txIds).catch(() => new Set<string>()),
+          // Bank category — the fuel fallback for transactions nobody has labelled yet (v2.2708).
+          fetchAllRowsChunkedIn(
+            txIds,
+            (chunk, from, to) =>
+              supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(from, to),
+            'mercury card categories by tx',
+          ).catch(() => [] as unknown[]),
         ])
         if (cancelled) return
         const m = new Map<string, number>()
         const linked = new Map<string, number>()
+        const counted: typeof rows = []
         for (const row of rows) {
           if (bucketByTxId.get(row.mercury_transaction_id) === 'internal_transfer') continue
+          counted.push(row)
           const jid = row.job_id
           const usd = Math.abs(Number(row.amount))
           m.set(jid, (m.get(jid) ?? 0) + usd)
           if (linkedTxIds.has(row.mercury_transaction_id)) linked.set(jid, (linked.get(jid) ?? 0) + usd)
         }
+        const categoryByTxId = new Map<string, unknown>()
+        for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
         setMercuryCardChargesByJobId(m)
         setMercuryInvoiceLinkedChargesByJobId(linked)
+        setMercuryFuelChargesByJobId(sumFuelChargesByJob(counted, bucketByTxId, categoryByTxId))
       } catch {
         if (cancelled) return
         setMercuryCardChargesByJobId(new Map())
         setMercuryInvoiceLinkedChargesByJobId(new Map())
+        setMercuryFuelChargesByJobId(new Map())
       }
     })()
     return () => {
@@ -401,6 +417,7 @@ export function useJobsMercuryAllocations({
   return {
     mercuryCardChargesByJobId,
     mercuryInvoiceLinkedChargesByJobId,
+    mercuryFuelChargesByJobId,
     partsTabMercuryLoadedRef,
     partsTabMercuryInFlightRef,
     partsTabMercuryAllocationsByJobId,

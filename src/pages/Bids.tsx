@@ -318,9 +318,9 @@ export default function Bids() {
   >({})
 
   const [estimatorUsers, setEstimatorUsers] = useState<EstimatorUser[]>([])
-  // "Only my bids" filter (shared across the workflow tab list views): bids the
-  // current user is the account manager or estimator for.
-  const [onlyMyBids, setOnlyMyBids] = useState(false)
+  // "Only my bids" filter (shared across all eight workflow tab list views): bids the
+  // current user is the account manager or estimator for. On by default (v2.2704).
+  const [onlyMyBids, setOnlyMyBids] = useState(true)
   const isMyBid = useCallback(
     (bid: BidWithBuilder) =>
       !!authUser?.id && (bid.account_manager_id === authUser.id || bid.estimator_id === authUser.id),
@@ -3886,7 +3886,6 @@ export default function Bids() {
           pricingRowsForGrid={pricingRowsForGrid}
           pricingPackageSource={pricingPackageSource}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'pricing')}
-          onNavigateToLaborDirectCosts={(bid) => { selectBidAndSyncUrl(bid, 'labor'); setScrollToLaborDirectCosts(true) }}
           pricingEquipmentRows={pricingEquipmentRows}
           pricingPermitRows={pricingPermitRows}
           pricingSubcontractorRows={pricingSubcontractorRows}
@@ -3897,7 +3896,6 @@ export default function Bids() {
           isMyBid={isMyBid}
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
-          onNavigateToLabor={() => setActiveTab('labor')}
           onNavigateBidToTab={(bid, tab) => selectBidAndSyncUrl(bid, tab)}
           onNavigateBidToTabRow={(bid, tab, target) => {
             setBidTabRowJump({ tab, ...target })
@@ -4008,6 +4006,9 @@ export default function Bids() {
         <BidRfiTab
           bids={bids}
           authUser={authUser}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
           selectedBid={selectedBidForRfi}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'rfi')}
           onClose={() => setSelectedBidForRfi(null)}
@@ -4019,6 +4020,9 @@ export default function Bids() {
         <BidChangeOrderTab
           bids={bids}
           authUser={authUser}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
           selectedBid={selectedBidForChangeOrder}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'change-order')}
           onClose={closeSharedBidAndClearUrl}
@@ -4030,6 +4034,9 @@ export default function Bids() {
       {activeTab === 'lien-release' && (
         <BidLienReleaseTab
           bids={bids}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
           selectedBid={selectedBidForLienRelease}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'lien-release')}
           onClose={closeSharedBidAndClearUrl}

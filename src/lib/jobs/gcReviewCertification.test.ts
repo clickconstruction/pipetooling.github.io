@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildGcCertSnapshot,
   gcGroupCertStatus,
+  gcReviewGcsToDo,
   gcReviewNudgeState,
   gcReviewSentThisWeek,
   gcReviewWeekProgress,
@@ -95,19 +96,28 @@ describe('gcReviewCertification', () => {
     expect(gcReviewSentThisWeek(undefined, '2026-08-24')).toBe(false)
   })
 
-  it('progress counts real GC groups only; the No-GC bucket is exempt', () => {
+  it('progress counts real GC groups with money outstanding only; the No-GC bucket and paid-up groups are exempt', () => {
     const groups = [
       { gcId: 'gc-1', isNoGc: false, rows: [{ key: 'a', remaining: 100 }, { key: 'b', remaining: 200 }] as never[], subtotal: 300 },
-      { gcId: 'gc-2', isNoGc: false, rows: [] as never[], subtotal: 0 },
+      { gcId: 'gc-2', isNoGc: false, rows: [{ key: 'c', remaining: 50 }] as never[], subtotal: 50 },
+      // A billed job that's fully paid but not yet marked paid: $0 outstanding, nothing to certify (v2.2705).
+      { gcId: 'gc-3', isNoGc: false, rows: [{ key: 'd', remaining: 0 }] as never[], subtotal: 0 },
       { gcId: null, isNoGc: true, rows: [] as never[], subtotal: 0 },
     ]
     const p = gcReviewWeekProgress(
       groups,
       latestCertByGc([cert()]),
-      { 'gc-1': '2026-08-26T12:05:00Z' },
+      { 'gc-1': '2026-08-26T12:05:00Z', 'gc-3': '2026-08-26T12:05:00Z' },
       '2026-08-24',
     )
     expect(p).toEqual({ gcs: 2, certified: 1, sent: 1 })
+  })
+
+  it('gcs to do = outstanding − done, falling back to min(certified, sent) on a v1 payload', () => {
+    expect(gcReviewGcsToDo({ gcs_outstanding: 10, gcs_certified: 10, gcs_sent: 0 })).toBe(10)
+    expect(gcReviewGcsToDo({ gcs_outstanding: 10, gcs_certified: 7, gcs_sent: 5 })).toBe(5)
+    expect(gcReviewGcsToDo({ gcs_outstanding: 10, gcs_certified: 7, gcs_sent: 5, gcs_done: 4 })).toBe(6)
+    expect(gcReviewGcsToDo({ gcs_outstanding: 3, gcs_certified: 3, gcs_sent: 3, gcs_done: 3 })).toBe(0)
   })
 
   it('nudge: hidden before Wednesday, due while incomplete, done on Wednesday once complete, hidden after', () => {

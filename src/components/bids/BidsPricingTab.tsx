@@ -38,7 +38,7 @@ import {
   sumEquipmentRows,
 } from '../../lib/bids/bidCostCalc'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
-import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from './GenerateUnitCostModal'
+import { GenerateUnitCostModal } from './GenerateUnitCostModal'
 import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
@@ -92,20 +92,6 @@ function formatRestoredStamp(at: number): string {
   const ageDays = (Date.now() - at) / (24 * 60 * 60 * 1000)
   if (ageDays < 6) return `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`
   return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${time}`
-}
-
-/** Old/New pills beside the bid title (v2.2376) — Cover Letter's bordered pill look, kept in step with its studioPillStyle. */
-function pricingViewPillStyle(on: boolean): React.CSSProperties {
-  return {
-    padding: '0.2rem 0.6rem',
-    borderRadius: 999,
-    border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-    background: on ? '#3b82f6' : 'var(--surface)',
-    color: on ? '#fff' : 'var(--text-muted)',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-  }
 }
 
 type BidsPricingTabProps = {
@@ -183,22 +169,12 @@ type BidsPricingTabProps = {
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
   onEditBid: (bid: BidWithBuilder) => void
-  onNavigateToLabor: () => void
   onNavigateBidToTab: (bid: BidWithBuilder, tab: 'counts' | 'takeoffs' | 'labor') => void
   /** Breakdown jump chips (v2.2400): navigate AND land on that fixture's row (scroll + flash). */
   onNavigateBidToTabRow?: (bid: BidWithBuilder, tab: 'counts' | 'takeoffs' | 'labor', target: { countRowId: string; fixture: string }) => void
-  onNavigateToLaborDirectCosts: (bid: BidWithBuilder) => void
   onlyMyBids: boolean
   setOnlyMyBids: (next: boolean) => void
   isMyBid: (bid: BidWithBuilder) => boolean
-}
-
-
-/** Margin flag → text color (replaces the old colored status circles). */
-const MARGIN_FLAG_COLOR: Record<'red' | 'yellow' | 'green', string> = {
-  red: '#dc2626',
-  yellow: '#ca8a04',
-  green: '#16a34a',
 }
 
 /** Self-contained payload for the per-line breakdown modal (Revenue → Cost → Margin). */
@@ -279,10 +255,8 @@ export function BidsPricingTab({
   onSelectBid,
   onClose,
   onEditBid,
-  onNavigateToLabor,
   onNavigateBidToTab,
   onNavigateBidToTabRow,
-  onNavigateToLaborDirectCosts,
   onlyMyBids,
   setOnlyMyBids,
   isMyBid,
@@ -309,7 +283,6 @@ export function BidsPricingTab({
   // auto-toFixed(2) total reformatted the field on every keystroke ("21.00" → "2.01").
   const [pricingEntryCombinedPrice, setPricingEntryCombinedPrice] = useState('')
   const [savingPricingEntry, setSavingPricingEntry] = useState(false)
-  const [savingPricingAssignment, setSavingPricingAssignment] = useState<string | null>(null)
   const [deletePricingVersionModalOpen, setDeletePricingVersionModalOpen] = useState(false)
   const [pricingVersionToDelete, setPricingVersionToDelete] = useState<PriceBookVersion | null>(null)
   const [deletePricingVersionNameInput, setDeletePricingVersionNameInput] = useState('')
@@ -456,28 +429,6 @@ export function BidsPricingTab({
   const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
   const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
   const [assignTakeoffRow, setAssignTakeoffRow] = useState<{ countRowId: string; fixture: string } | null>(null)
-  const [pricingViewModel, setPricingViewModel] = useState<'cost' | 'price'>('price')
-  // Old/New layout pills: Old = the classic grid; New = the Workbench (target
-  // solver + live totals). Per-device; New is the landing view (v2.2474,
-  // owner call) — an explicit flip to Old still sticks. The key was bumped
-  // from bids_pricing_view_v1 when New became the default, deliberately
-  // dropping every device's remembered view so the whole team lands on New
-  // once (the roadmap_view_v2 pattern).
-  const [pricingView, setPricingView] = useState<'old' | 'new'>(() => {
-    try {
-      return window.localStorage.getItem('bids_pricing_view_v2') === 'old' ? 'old' : 'new'
-    } catch {
-      return 'new'
-    }
-  })
-  const switchPricingView = (next: 'old' | 'new') => {
-    setPricingView(next)
-    try {
-      window.localStorage.setItem('bids_pricing_view_v2', next)
-    } catch {
-      /* device just won't remember */
-    }
-  }
   // Workbench (New view) state: solver PREVIEW prices (never written until Apply),
   // session-local locks, and the solver controls.
   const [wbPreview, setWbPreview] = useState<Record<string, number> | null>(null)
@@ -744,7 +695,6 @@ export function BidsPricingTab({
   const [wbVariantDoorOpen, setWbVariantDoorOpen] = useState(false)
   // Disables the toolbar price-book dropdown while a clone/switch is in flight (avoids double-submit).
   const [pricebookSwitchBusy, setPricebookSwitchBusy] = useState(false)
-  const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
   const [generateUnitCostModalParams, setGenerateUnitCostModalParams] = useState<{
     countRowId: string
     totalRevenue: number
@@ -1103,7 +1053,6 @@ export function BidsPricingTab({
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
-    setSavingPricingAssignment(countRowId)
     const existing = bidPricingAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === versionId)
     if (existing) {
       const { error: err } = await supabase
@@ -1119,7 +1068,6 @@ export function BidsPricingTab({
       if (err) setError(err.message)
       else await loadBidPricingAssignments(bidId, versionId)
     }
-    setSavingPricingAssignment(null)
   }
 
   async function removePricingAssignment(countRowId: string) {
@@ -1131,57 +1079,6 @@ export function BidsPricingTab({
     const { error: err } = await supabase.from('bid_pricing_assignments').delete().eq('id', existing.id)
     if (err) setError(err.message)
     else await loadBidPricingAssignments(bidId, versionId)
-  }
-
-  async function togglePricingAssignmentFixedPrice(countRowId: string) {
-    const bidId = selectedBidForPricing?.id
-    const versionId = selectedPricingVersionId
-    if (!bidId || !versionId) return
-
-    const existing = bidPricingAssignments.find(
-      (a) => a.count_row_id === countRowId && a.price_book_version_id === versionId
-    )
-    if (!existing) return
-
-    const { error: err } = await supabase
-      .from('bid_pricing_assignments')
-      .update({ is_fixed_price: !existing.is_fixed_price })
-      .eq('id', existing.id)
-
-    if (err) setError(err.message)
-    else await loadBidPricingAssignments(bidId, versionId)
-  }
-
-  async function togglePricingRowOmitFromSubmission(countRowId: string) {
-    const bidId = selectedBidForPricing?.id
-    const versionId = selectedPricingVersionId
-    if (!bidId || !versionId) return
-    const existingHide = bidCountRowSubmissionHides.find(
-      (h) => h.count_row_id === countRowId && h.price_book_version_id === versionId,
-    )
-    setSavingPricingAssignment(countRowId)
-    try {
-      if (existingHide) {
-        const { error: err } = await supabase
-          .from('bid_count_row_submission_hides')
-          .delete()
-          .eq('bid_id', bidId)
-          .eq('count_row_id', countRowId)
-          .eq('price_book_version_id', versionId)
-        if (err) setError(err.message)
-        else await loadBidPricingAssignments(bidId, versionId)
-      } else {
-        const { error: err } = await supabase.from('bid_count_row_submission_hides').insert({
-          bid_id: bidId,
-          count_row_id: countRowId,
-          price_book_version_id: versionId,
-        })
-        if (err) setError(err.message)
-        else await loadBidPricingAssignments(bidId, versionId)
-      }
-    } finally {
-      setSavingPricingAssignment(null)
-    }
   }
 
   /** One row's price write (no reload) — shared by the single-row editor and the margin bulk apply (v2.1769). */
@@ -1239,36 +1136,10 @@ export function BidsPricingTab({
     if (err) setError(err.message)
     else await loadBidPricingAssignments(bidId, versionId)
     setSavingUnitPriceOverride(null)
-    setUnitPriceEditValues((prev) => {
-      const next = { ...prev }
-      delete next[countRowId]
-      return next
-    })
   }
 
   /* ---- Price by margin (v2.1769; row-by-row Margin mode v2.1772) ---- */
   const [recentMargins, setRecentMargins] = useState<number[]>(() => loadRecentMargins(window.localStorage))
-  // Margin mode (v2.1772, Wendi's row-by-row flow): a per-row apply column so
-  // pricing one line at a time never scrolls back to the toolbar. Remembered
-  // per device; ON by default (v2.NNNN) — only an explicit toggle-off ('0')
-  // keeps it off.
-  const [marginRowMode, setMarginRowMode] = useState<boolean>(() => {
-    try {
-      return window.localStorage.getItem('bidPricingMarginMode_v1') !== '0'
-    } catch {
-      return true
-    }
-  })
-  const toggleMarginRowMode = () =>
-    setMarginRowMode((v) => {
-      const next = !v
-      try {
-        window.localStorage.setItem('bidPricingMarginMode_v1', next ? '1' : '0')
-      } catch {
-        /* device just won't remember the toggle */
-      }
-      return next
-    })
   /** The row whose "…" picker is open. */
   const [marginPickerRow, setMarginPickerRow] = useState<{ countRowId: string; fixture: string; cost: number; count: number } | null>(null)
   const [marginPickerCustom, setMarginPickerCustom] = useState('')
@@ -1808,7 +1679,7 @@ export function BidsPricingTab({
       materialTotalTrimSet: pricingMaterialTotalTrimSet,
       laborRate: pricingLaborRate,
       fixtureMaterialsFromTakeoff: pricingFixtureMaterialsFromTakeoff,
-      viewModel: pricingViewModel,
+      viewModel: 'price',
       assignments: bidPricingAssignments,
       customPrices: bidCountRowCustomPrices,
       submissionHides: bidCountRowSubmissionHides,
@@ -1960,7 +1831,7 @@ export function BidsPricingTab({
   useEffect(() => {
     const bid = selectedBidForPricing
     const versionIds = priceBookVersions.map((v) => v.id)
-    if (pricingView !== 'new' || !bid || versionIds.length < 2 || pricingCountRows.length === 0) {
+    if (!bid || versionIds.length < 2 || pricingCountRows.length === 0) {
       setWbScenarioRevenue({})
       return
     }
@@ -2002,11 +1873,11 @@ export function BidsPricingTab({
     return () => {
       cancelled = true
     }
-  }, [pricingView, selectedBidForPricing?.id, priceBookVersions, pricingCountRows, bidPricingAssignments, bidCountRowCustomPrices])
+  }, [selectedBidForPricing?.id, priceBookVersions, pricingCountRows, bidPricingAssignments, bidCountRowCustomPrices])
 
   // Iteration 3 — win/loss calibration history for this service type.
   useEffect(() => {
-    if (pricingView !== 'new' || !selectedServiceTypeId) {
+    if (!selectedServiceTypeId) {
       setWbHistory(null)
       return
     }
@@ -2023,7 +1894,7 @@ export function BidsPricingTab({
     return () => {
       cancelled = true
     }
-  }, [pricingView, selectedServiceTypeId])
+  }, [selectedServiceTypeId])
 
   /**
    * Workbench view/★ split (v2.2013): the bid's saved `selected_price_book_version_id` is the
@@ -2124,7 +1995,7 @@ export function BidsPricingTab({
   const [creatingOwnTakeoffAlt, setCreatingOwnTakeoffAlt] = useState(false)
   useEffect(() => {
     const bid = selectedBidForPricing
-    if (!bid || pricingView !== 'new') return
+    if (!bid) return
     const alts = sameGcAlternateVersions(bidVersions, selectedBidVersionId)
     if (alts.length === 0) {
       setAltVersionData({})
@@ -2182,7 +2053,7 @@ export function BidsPricingTab({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBidForPricing?.id, selectedBidVersionId, bidVersions, pricingView])
+  }, [selectedBidForPricing?.id, selectedBidVersionId, bidVersions])
   /** The ＋ Add price door's new choice: a same-GC version marked Alternate — its own
       counts + takeoff + prices, cloned from the active version (clone-all, v2.2395). */
   async function createOwnTakeoffAlternate(name: string) {
@@ -2777,17 +2648,10 @@ export function BidsPricingTab({
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
                   h2Style={{ margin: 0, flex: '0 0 auto' }}
                 />
-                {/* v2.2376 (Wendi): Old/New beside the title, Cover Letter's pattern — and one "?" as
-                    the single help door (the old (i) modal, tour, and guide all live behind it). */}
+                {/* v2.2376 (Wendi): one "?" beside the title as the single help door (the old (i) modal,
+                    tour, and guide all live behind it). The Old/New pills retired in v2.2707. */}
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <button type="button" role="tab" aria-selected={pricingView === 'old'} onClick={() => switchPricingView('old')} style={pricingViewPillStyle(pricingView === 'old')}>
-                    Old
-                  </button>
-                  <button type="button" role="tab" aria-selected={pricingView === 'new'} onClick={() => switchPricingView('new')} style={pricingViewPillStyle(pricingView === 'new')}>
-                    New
-                  </button>
-                  {pricingView === 'new' ? (
-                    <button
+                  <button
                       type="button"
                       onClick={() => setWbInfoOpen(true)}
                       title="How this page works"
@@ -2796,7 +2660,6 @@ export function BidsPricingTab({
                     >
                       ?
                     </button>
-                  ) : null}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
@@ -2881,45 +2744,6 @@ export function BidsPricingTab({
                   gap: '0.5rem',
                 }}
               >
-                {pricingView === 'old' && selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: '0 0 auto', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem' }}>View:</span>
-                    <button
-                      type="button"
-                      onClick={() => setPricingViewModel('cost')}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.8125rem',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background: pricingViewModel === 'cost' ? 'var(--bg-200)' : 'var(--surface)',
-                        cursor: 'pointer',
-                        fontWeight: pricingViewModel === 'cost' ? 600 : 400,
-                        color: pricingViewModel === 'cost' ? 'var(--text-strong)' : 'var(--text-muted)',
-                        boxShadow: pricingViewModel === 'cost' ? '0 0 0 2px #374151' : 'none',
-                      }}
-                    >
-                      Cost Model
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPricingViewModel('price')}
-                      style={{
-                        padding: '0.35rem 0.75rem',
-                        fontSize: '0.8125rem',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background: pricingViewModel === 'price' ? 'var(--bg-200)' : 'var(--surface)',
-                        cursor: 'pointer',
-                        fontWeight: pricingViewModel === 'price' ? 600 : 400,
-                        color: pricingViewModel === 'price' ? 'var(--text-strong)' : 'var(--text-muted)',
-                        boxShadow: pricingViewModel === 'price' ? '0 0 0 2px #374151' : 'none',
-                      }}
-                    >
-                      Price Model
-                    </button>
-                  </div>
-                ) : null}
               </div>
             </div>
             {/* v2.2376: the "?" card — the Workbench in four scannable lines; the tour and the
@@ -3008,755 +2832,7 @@ export function BidsPricingTab({
                 guideLabel="Read the full guide: price a bid with the Workbench →"
               />
             ) : null}
-            {pricingView === 'old' ? (
-              <>
-            {/* Price book selector (left) + partial-fill (right), styled like the Labor/Takeoffs tabs. */}
-            <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {/* Price-book picker: clone the chosen template into this bid as an editable copy. */}
-              {selectedBidForPricing ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <label htmlFor="pricing-pricebook-select" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                    Price book:
-                  </label>
-                  <select
-                    id="pricing-pricebook-select"
-                    value={currentPriceBookTemplateId ?? ''}
-                    disabled={pricebookSwitchBusy || templatePriceBookVersions.length === 0}
-                    onChange={(e) => {
-                      if (e.target.value) void onSelectPriceBookTemplate(e.target.value)
-                    }}
-                    style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', background: 'var(--surface)', cursor: 'pointer' }}
-                  >
-                    {currentPriceBookTemplateId == null ? <option value="">Select a price book…</option> : null}
-                    {templatePriceBookVersions.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div />
-              )}
-              {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPricingAssignmentSearches((prev) => {
-                      const next = { ...prev }
-                      for (const cr of pricingCountRows) {
-                        next[cr.id] = (cr.fixture ?? '').slice(0, 3)
-                      }
-                      return next
-                    })
-                  }}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.875rem',
-                    background: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                  }}
-                  title="Pre-fill each fixture's search box to find matching price book entries"
-                >
-                  Apply Matching Price Book Entries
-                </button>
-              )}
-              {pricingViewModel === 'price' ? (
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  <input type="checkbox" checked={marginRowMode} onChange={toggleMarginRowMode} style={{ margin: 0, cursor: 'pointer' }} />
-                  Margin mode
-                </label>
-              ) : null}
-            </div>
-            {!pricingCostEstimate && pricingCountRows.length > 0 && (
-              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                Add fixtures in Counts and set up Labor first to see margin comparison.{' '}
-                <button
-                  type="button"
-                  onClick={() => onNavigateToLabor()}
-                  style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                >
-                  Go to Labor
-                </button>
-              </p>
-            )}
-            {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && (() => {
-              const derived = derivePricingWorkbench()
-              if (!derived) return null
-              const { totalMaterials, laborCost, distance, ratePerMile, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown } = derived
-              // Margin mode's per-row apply column (between Revenue and Margin/Total) widens the trailing groups.
-              const marginModeColPad = pricingViewModel === 'price' && marginRowMode ? 1 : 0
-              return (
-                <>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'visible' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: 'var(--bg-subtle)' }}>
-                      <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Count</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price book entry</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Sale Price'}</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Revenue</th>
-                        {marginModeColPad ? (
-                          <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>Apply margin</th>
-                        ) : null}
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Margin/Total</th>
-                        <th style={{ width: 0, padding: 0, borderBottom: '1px solid var(--border)' }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row) => (
-                        <tr key={row.countRow.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '0.75rem' }}>{row.countRow.fixture ?? ''}</td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
-                          <td style={{ padding: '0.75rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                            <div style={{ position: 'relative' }} data-pricing-assignment-dropdown>
-                              <input
-                                type="text"
-                                value={pricingAssignmentSearches[row.countRow.id] !== undefined 
-                                  ? pricingAssignmentSearches[row.countRow.id] 
-                                  : (row.entry?.fixture_types?.name ?? '')}
-                                onChange={(e) => {
-                                  setPricingAssignmentSearches((prev) => ({ ...prev, [row.countRow.id]: e.target.value }))
-                                  setPricingAssignmentDropdownOpen(row.countRow.id)
-                                }}
-                                onFocus={() => setPricingAssignmentDropdownOpen(row.countRow.id)}
-                                placeholder="Search or assign..."
-                                disabled={savingPricingAssignment === row.countRow.id}
-                                style={{ 
-                                  width: '100%',
-                                  padding: '0.35rem', 
-                                  border: '1px solid var(--border-strong)', 
-                                  borderRadius: 4, 
-                                  minWidth: '10rem',
-                                  boxSizing: 'border-box',
-                                  paddingRight: row.entry ? '5rem' : '0.35rem'
-                                }}
-                              />
-                              {row.entry && (
-                                <>
-                                  <label
-                                    style={{
-                                      position: 'absolute',
-                                      right: '2rem',
-                                      top: '50%',
-                                      transform: 'translateY(-50%)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '0.25rem',
-                                      fontSize: '0.75rem',
-                                      color: 'var(--text-muted)',
-                                      cursor: 'pointer',
-                                      whiteSpace: 'nowrap'
-                                    }}
-                                    title="Fixed price: don't multiply by count"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={row.assignment?.is_fixed_price ?? false}
-                                      onChange={() => togglePricingAssignmentFixedPrice(row.countRow.id)}
-                                      style={{ cursor: 'pointer' }}
-                                    />
-                                    Fixed
-                                  </label>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      removePricingAssignment(row.countRow.id)
-                                      setPricingAssignmentSearches((prev) => {
-                                        const next = { ...prev }
-                                        delete next[row.countRow.id]
-                                        return next
-                                      })
-                                    }}
-                                    style={{
-                                      position: 'absolute',
-                                      right: '0.5rem',
-                                      top: '50%',
-                                      transform: 'translateY(-50%)',
-                                      background: 'none',
-                                      border: 'none',
-                                      cursor: 'pointer',
-                                      color: 'var(--text-muted)',
-                                      fontSize: '1.25rem',
-                                      lineHeight: 1,
-                                      padding: 0
-                                    }}
-                                    title="Clear assignment"
-                                  >
-                                    ×
-                                  </button>
-                                </>
-                              )}
-                              {pricingAssignmentDropdownOpen === row.countRow.id && (() => {
-                                const searchTerm = pricingAssignmentSearches[row.countRow.id] || ''
-                                const res = searchPriceBookEntries(priceBookEntries, (e) => e.fixture_types?.name ?? '', searchTerm, assignMatchMode, Infinity)
-                                return (
-                                  <div style={{
-                                    position: 'absolute',
-                                    top: '100%',
-                                    left: 0,
-                                    right: 0,
-                                    background: 'var(--surface)',
-                                    border: '1px solid var(--border-strong)',
-                                    borderRadius: 4,
-                                    marginTop: '0.25rem',
-                                    maxHeight: '240px',
-                                    overflowY: 'auto',
-                                    zIndex: 10,
-                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                                  }}>
-                                    {renderAssignDropdownHeader(res, searchTerm)}
-                                    {res.matches.length > 0 ? (
-                                      res.matches.map(({ entry: e, name, ranges }) => (
-                                        <div
-                                          key={e.id}
-                                          onClick={() => {
-                                            savePricingAssignment(row.countRow.id, e.id)
-                                            setPricingAssignmentSearches((prev) => {
-                                              const next = { ...prev }
-                                              delete next[row.countRow.id]
-                                              return next
-                                            })
-                                            setPricingAssignmentDropdownOpen(null)
-                                          }}
-                                          style={{
-                                            padding: '0.5rem',
-                                            cursor: 'pointer',
-                                            borderBottom: '1px solid var(--border)',
-                                            background: row.entry?.id === e.id ? 'var(--bg-blue-tint)' : 'var(--surface)'
-                                          }}
-                                          onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--bg-subtle)' }}
-                                          onMouseLeave={(ev) => { ev.currentTarget.style.background = row.entry?.id === e.id ? '#eff6ff' : 'white' }}
-                                        >
-                                          {renderAssignHighlightedName(name, ranges)}
-                                        </div>
-                                      ))
-                                    ) : searchTerm ? (
-                                      <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                        {assignMatchMode === 'exact' ? renderAssignExactEmptyEscape(res, searchTerm) : <>No matches for "{searchTerm}"</>}
-                                      </div>
-                                    ) : (
-                                      <div style={{ padding: '0.5rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                        Start typing to search...
-                                      </div>
-                                    )}
-                                    {/* v2.2398: the add door rides the dropdown's foot even when there ARE
-                                        matches — near-misses are exactly when a new entry is needed. */}
-                                    {searchTerm.trim() ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => openAddEntryFromAssignSearch(searchTerm)}
-                                        style={{ display: 'block', width: '100%', font: 'inherit', padding: '0.5rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontSize: '0.8125rem', textAlign: 'center' }}
-                                      >
-                                        + Add "{searchTerm.trim()}" to the book
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                )
-                              })()}
-                            </div>
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                            {pricingViewModel === 'cost' ? (
-                              `$${formatCurrency(row.cost)}`
-                            ) : (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
-                                {(() => {
-                                  const unitCostDisplayStr =
-                                    unitPriceEditValues[row.countRow.id] ??
-                                    (row.unitPrice > 0 ? formatCurrency(row.unitPrice) : '')
-                                  const showGenerateUnitCostIcon =
-                                    unitCostDisplayStr.trim() === '' &&
-                                    savingUnitPriceOverride !== row.countRow.id
-                                  return (
-                                    <div style={{ position: 'relative', display: 'inline-block' }}>
-                                      {showGenerateUnitCostIcon ?
-                                        <button
-                                          type="button"
-                                          aria-label="Line share of total percent"
-                                          title="Set unit from line share of current bid total (percent)"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            setGenerateUnitCostModalParams({
-                                              countRowId: row.countRow.id,
-                                              totalRevenue,
-                                              currentRowRevenue: row.revenue,
-                                              currentPctOfTotal: row.pctOfGrandTotal,
-                                              count: row.count,
-                                              isFixedPrice: row.isFixedPrice,
-                                              fixtureLabel: row.countRow.fixture ?? '',
-                                            })
-                                          }}
-                                          onMouseDown={(e) => e.stopPropagation()}
-                                          style={{
-                                            position: 'absolute',
-                                            left: 4,
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            padding: 0,
-                                            margin: 0,
-                                            border: 'none',
-                                            background: 'transparent',
-                                            cursor: 'pointer',
-                                            color: 'var(--text-muted)',
-                                            lineHeight: 0,
-                                            zIndex: 1,
-                                          }}
-                                        >
-                                          <GenerateUnitCostTriggerIcon />
-                                        </button>
-                                      : null}
-                                      <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        value={unitCostDisplayStr}
-                                        onFocus={() => {
-                                          if (unitPriceEditValues[row.countRow.id] == null) {
-                                            setUnitPriceEditValues((prev) => ({
-                                              ...prev,
-                                              [row.countRow.id]: row.unitPrice > 0 ? row.unitPrice.toFixed(2) : '',
-                                            }))
-                                          }
-                                        }}
-                                        onChange={(e) =>
-                                          setUnitPriceEditValues((prev) => ({
-                                            ...prev,
-                                            [row.countRow.id]: e.target.value,
-                                          }))
-                                        }
-                                        onBlur={() => {
-                                          const raw = (
-                                            unitPriceEditValues[row.countRow.id] ?? String(row.unitPrice)
-                                          ).replace(/,/g, '')
-                                          const v = parseFloat(raw)
-                                          const bookPrice = row.entry ? Number(row.entry.total_price) : 0
-                                          if (raw.trim() === '' || isNaN(v)) {
-                                            updateUnitPriceOverride(row.countRow.id, null)
-                                          } else if (row.entry && Math.abs(v - bookPrice) <= 0.001) {
-                                            updateUnitPriceOverride(row.countRow.id, null)
-                                          } else {
-                                            updateUnitPriceOverride(row.countRow.id, v)
-                                          }
-                                        }}
-                                        disabled={savingUnitPriceOverride === row.countRow.id}
-                                        placeholder={
-                                          row.entry ? `$${formatCurrency(row.entry.total_price)}` : '—'
-                                        }
-                                        style={{
-                                          width: '7rem',
-                                          paddingTop: '0.35rem',
-                                          paddingBottom: '0.35rem',
-                                          paddingRight: '0.5rem',
-                                          paddingLeft: showGenerateUnitCostIcon ? '1.6rem' : '0.5rem',
-                                          border: '1px solid var(--border-strong)',
-                                          borderRadius: 4,
-                                          textAlign: 'right',
-                                          // Theme tokens (v2.1161): the old literal #fef9c3 left
-                                          // light text on a cream chip in dark mode — unreadable.
-                                          background:
-                                            row.assignment?.unit_price_override != null || row.customPrice != null ?
-                                              'var(--bg-amber-tint)'
-                                            : 'var(--surface)',
-                                          color:
-                                            row.assignment?.unit_price_override != null || row.customPrice != null ?
-                                              'var(--text-amber-800)'
-                                            : undefined,
-                                          fontWeight:
-                                            row.assignment?.unit_price_override != null || row.customPrice != null ? 600 : undefined,
-                                          fontSize: '0.875rem',
-                                        }}
-                                      />
-                                    </div>
-                                  )
-                                })()}
-                                {(row.assignment?.unit_price_override != null || row.customPrice != null) && (
-                                  <button
-                                    type="button"
-                                    onClick={() => updateUnitPriceOverride(row.countRow.id, null)}
-                                    title={row.assignment ? 'Reset to price book' : 'Clear custom price'}
-                                    aria-label={row.assignment ? 'Reset to price book' : 'Clear custom price'}
-                                    disabled={savingUnitPriceOverride === row.countRow.id}
-                                    style={{
-                                      padding: '0.15rem',
-                                      background: 'none',
-                                      border: 'none',
-                                      cursor:
-                                        savingUnitPriceOverride === row.countRow.id ?
-                                          'not-allowed'
-                                        : 'pointer',
-                                      color: 'var(--text-muted)',
-                                      fontSize: '0.75rem',
-                                    }}
-                                  >
-                                    Reset
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </td>
-                          <td
-                            style={{ padding: '0.75rem', textAlign: 'right', cursor: 'pointer' }}
-                            role="button"
-                            tabIndex={0}
-                            title="Revenue, cost & margin breakdown"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openRowBreakdown(row)
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault()
-                                openRowBreakdown(row)
-                              }
-                            }}
-                          >
-                            ${formatCurrency(row.revenue)}
-                          </td>
-                          {marginModeColPad ? (
-                            <td
-                              style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap', borderLeft: '1px solid var(--border)', borderRight: '1px solid var(--border)' }}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {row.cost > 0 ? (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                  {recentMargins.length > 0 ? (
-                                    <button
-                                      type="button"
-                                      disabled={applyingMargin}
-                                      onClick={() => void applyMarginToSingleRow({ countRowId: row.countRow.id, cost: row.cost, count: row.count }, recentMargins[0]!)}
-                                      title={`Price this row at ${recentMargins[0]}% margin`}
-                                      style={{ padding: '0.1rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
-                                    >
-                                      {recentMargins[0]}%
-                                    </button>
-                                  ) : null}
-                                  <button
-                                    type="button"
-                                    disabled={applyingMargin}
-                                    onClick={() => setMarginPickerRow({ countRowId: row.countRow.id, fixture: row.countRow.fixture ?? '', cost: row.cost, count: row.count })}
-                                    aria-label={`More margin options for ${row.countRow.fixture ?? 'this row'}`}
-                                    title="More margin options"
-                                    style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}
-                                  >
-                                    …
-                                  </button>
-                                </span>
-                              ) : (
-                                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>no cost</span>
-                              )}
-                            </td>
-                          ) : null}
-                          <td
-                            style={{ padding: '0.75rem', textAlign: 'center' }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                {row.materialsFromTakeoff == null || row.materialsFromTakeoff === 0 ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setAssignTakeoffRow({ countRowId: row.countRow.id, fixture: row.countRow.fixture ?? '' })
-                                    }}
-                                    title="No Takeoffs cost yet — assign a part or assembly"
-                                    aria-label="No Takeoffs cost yet — assign a part or assembly"
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      background: 'none',
-                                      border: 'none',
-                                      padding: 0,
-                                      margin: 0,
-                                      color: 'var(--text-red-600)',
-                                      cursor: 'pointer',
-                                      lineHeight: 0,
-                                    }}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} aria-hidden focusable="false">
-                                      <path
-                                        fill="currentColor"
-                                        d="M102.8 57.3C108.2 51.9 116.6 51.1 123 55.3L241.9 134.5C250.8 140.4 256.1 150.4 256.1 161.1L256.1 210.7L346.9 301.5C380.2 286.5 420.8 292.6 448.1 320L574.2 446.1C592.9 464.8 592.9 495.2 574.2 514L514.1 574.1C495.4 592.8 465 592.8 446.2 574.1L320.1 448C292.7 420.6 286.6 380.1 301.6 346.8L210.8 256L161.2 256C150.5 256 140.5 250.7 134.6 241.8L55.4 122.9C51.2 116.6 52 108.1 57.4 102.7L102.8 57.3zM247.8 360.8C241.5 397.7 250.1 436.7 274 468L179.1 563C151 591.1 105.4 591.1 77.3 563C49.2 534.9 49.2 489.3 77.3 461.2L212.7 325.7L247.9 360.8zM416.1 64C436.2 64 455.5 67.7 473.2 74.5C483.2 78.3 485 91 477.5 98.6L420.8 155.3C417.8 158.3 416.1 162.4 416.1 166.6L416.1 208C416.1 216.8 423.3 224 432.1 224L473.5 224C477.7 224 481.8 222.3 484.8 219.3L541.5 162.6C549.1 155.1 561.8 156.9 565.6 166.9C572.4 184.6 576.1 203.9 576.1 224C576.1 267.2 558.9 306.3 531.1 335.1L482 286C448.9 253 403.5 240.3 360.9 247.6L304.1 190.8L304.1 161.1L303.9 156.1C303.1 143.7 299.5 131.8 293.4 121.2C322.8 86.2 366.8 64 416.1 63.9z"
-                                      />
-                                    </svg>
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      openRowBreakdown(row)
-                                    }}
-                                    title="How this margin was computed"
-                                    style={{
-                                      background: 'none',
-                                      border: 'none',
-                                      padding: 0,
-                                      margin: 0,
-                                      font: 'inherit',
-                                      fontSize: '0.875rem',
-                                      fontWeight: 600,
-                                      color: row.flag ? MARGIN_FLAG_COLOR[row.flag] : '#374151',
-                                      cursor: 'pointer',
-                                      textDecoration: 'underline',
-                                      textDecorationStyle: 'dotted',
-                                      textUnderlineOffset: '2px',
-                                    }}
-                                  >
-                                    {row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}
-                                  </button>
-                                )}
-                                <span style={{ color: 'var(--text-faint)' }}>/</span>
-                                {(() => {
-                                  const pctDisplay =
-                                    row.pctOfGrandTotal != null ? `${row.pctOfGrandTotal.toFixed(1)}%` : '—'
-                                  const pctTextStyle = { fontSize: '0.875rem' as const }
-                                  const toggleInteractive =
-                                    row.canToggleOmitSubmission &&
-                                    savingPricingAssignment !== row.countRow.id
-                                  if (toggleInteractive) {
-                                    return (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          void togglePricingRowOmitFromSubmission(row.countRow.id)
-                                        }}
-                                        aria-pressed={row.omitFromSubmissionDocuments}
-                                        aria-label={
-                                          row.omitFromSubmissionDocuments ?
-                                            'Include line in Cover Letter fixture list'
-                                          : 'Hide line from Cover Letter fixture list'
-                                        }
-                                        title={
-                                          row.omitFromSubmissionDocuments ?
-                                            'Hidden from Cover Letter fixture list — click to restore'
-                                          : 'Click to hide from Cover Letter fixture list (included in totals)'
-                                        }
-                                        style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '0.35rem',
-                                          padding: 0,
-                                          margin: 0,
-                                          border: 'none',
-                                          borderRadius: 0,
-                                          background: 'transparent',
-                                          cursor: 'pointer',
-                                          font: 'inherit',
-                                          color:
-                                            row.omitFromSubmissionDocuments ? 'var(--text-link)' : 'var(--text-700)',
-                                          lineHeight: 1.25,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                          e.currentTarget.style.textDecoration = 'underline'
-                                        }}
-                                        onMouseLeave={(e) => {
-                                          e.currentTarget.style.textDecoration = 'none'
-                                        }}
-                                      >
-                                        <span style={pctTextStyle}>{pctDisplay}</span>
-                                        {row.omitFromSubmissionDocuments ?
-                                          <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 640 640"
-                                            width={16}
-                                            height={16}
-                                            aria-hidden
-                                          >
-                                            <path
-                                              fill="currentColor"
-                                              d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z"
-                                            />
-                                          </svg>
-                                        : null}
-                                      </button>
-                                    )
-                                  }
-                                  return (
-                                    <span
-                                      style={{
-                                        ...pctTextStyle,
-                                        color:
-                                          savingPricingAssignment === row.countRow.id ?
-                                            '#9ca3af'
-                                          : !row.canToggleOmitSubmission ?
-                                            '#9ca3af'
-                                          : '#374151',
-                                        opacity:
-                                          savingPricingAssignment === row.countRow.id ?
-                                            0.7
-                                          : !row.canToggleOmitSubmission ?
-                                            0.55
-                                          : 1,
-                                      }}
-                                      title={
-                                        savingPricingAssignment === row.countRow.id ?
-                                          'Saving…'
-                                        : !row.canToggleOmitSubmission ?
-                                          'Select a price option to change what goes on the letter.'
-                                        : undefined
-                                      }
-                                    >
-                                      {pctDisplay}
-                                    </span>
-                                  )
-                                })()}
-                              </div>
-                          </td>
-                          <td style={{ width: 0, padding: 0 }} />
-                        </tr>
-                      ))}
-                      <tr style={{ background: 'var(--bg-amber-tint)' }}>
-                        <td colSpan={3} style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>Our cost breakdown</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>${formatCurrency(totalCost)}</td>
-                        <td colSpan={3 + marginModeColPad} />
-                      </tr>
-                      <tr style={{ fontSize: '0.8125rem' }}>
-                        <td colSpan={7 + marginModeColPad} style={{ padding: '0.35rem 0.75rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs') }}
-                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
-                          >
-                            Takeoffs
-                          </button>
-                        </td>
-                      </tr>
-                      <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                        <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Materials</td>
-                        <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(totalMaterials)} {totalCost > 0 ? <span style={{ color: 'var(--text-muted)' }}>{`| ${((totalMaterials / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
-                        <td colSpan={3 + marginModeColPad} />
-                      </tr>
-                      <tr style={{ fontSize: '0.8125rem' }}>
-                        <td colSpan={7 + marginModeColPad} style={{ padding: '0.35rem 0.75rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'labor') }}
-                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
-                          >
-                            Labor
-                          </button>
-                        </td>
-                      </tr>
-                      {(() => {
-                        const laborSubtotal = laborCost + drivingCost + travelCost + estimatorCost + teamLaborCost
-                        const pct = (v: number) => (totalCost > 0 ? <span style={{ color: 'var(--text-muted)' }}>{`| ${((v / totalCost) * 100).toFixed(1)}%`}</span> : '')
-                        const lineRow = (label: React.ReactNode, value: number) => (
-                          <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>{label}</td>
-                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
-                            <td colSpan={3 + marginModeColPad} />
-                          </tr>
-                        )
-                        const subtotalRow = (label: string, value: number) => (
-                          <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', background: 'var(--bg-subtle)' }}>
-                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1rem' }}>{label}</td>
-                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
-                            <td colSpan={3 + marginModeColPad} />
-                          </tr>
-                        )
-                        return (
-                          <>
-                            {lineRow('Manhours', laborCost)}
-                            {lineRow(
-                              <>Vehicle Travel <span style={{ color: 'var(--text-muted)' }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span></>,
-                              drivingCost,
-                            )}
-                            {lineRow(<>Lodging &amp; Meals <span style={{ color: 'var(--text-muted)' }}>(meals + hotels)</span></>, travelCost)}
-                            {lineRow('Estimators Time', estimatorCost)}
-                            {lineRow('Team Labor (clocked)', teamLaborCost)}
-                            {subtotalRow('Labor subtotal', laborSubtotal)}
-                          </>
-                        )
-                      })()}
-                      <tr style={{ fontSize: '0.8125rem' }}>
-                        <td colSpan={7 + marginModeColPad} style={{ padding: '0.35rem 0.75rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => { if (selectedBidForPricing) onNavigateToLaborDirectCosts(selectedBidForPricing) }}
-                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
-                          >
-                            Direct Costs
-                          </button>
-                        </td>
-                      </tr>
-                      {(() => {
-                        const directCostsSubtotal = equipmentRentalCost + permitCost + subcontractorCost + wasteCost + otherCost
-                        const pct = (v: number) => (totalCost > 0 ? <span style={{ color: 'var(--text-muted)' }}>{`| ${((v / totalCost) * 100).toFixed(1)}%`}</span> : '')
-                        const lineRow = (label: React.ReactNode, value: number) => (
-                          <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>{label}</td>
-                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
-                            <td colSpan={3 + marginModeColPad} />
-                          </tr>
-                        )
-                        return (
-                          <>
-                            {lineRow(<>Equipment &amp; Tool Rental</>, equipmentRentalCost)}
-                            {lineRow(<>Permits, Inspections &amp; Fees</>, permitCost)}
-                            {lineRow(<>Subcontractor Fees</>, subcontractorCost)}
-                            {lineRow(<>Waste Disposal &amp; Site Cleanup</>, wasteCost)}
-                            {lineRow(<>Other</>, otherCost)}
-                            <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', background: 'var(--bg-subtle)' }}>
-                              <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1rem' }}>Direct Costs subtotal</td>
-                              <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(directCostsSubtotal)} {pct(directCostsSubtotal)}</td>
-                              <td colSpan={3 + marginModeColPad} />
-                            </tr>
-                          </>
-                        )
-                      })()}
-                      <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
-                        <td style={{ padding: '0.75rem' }}>Total</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }} />
-                        <td style={{ padding: '0.75rem' }} />
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{pricingViewModel === 'cost' ? `$${formatCurrency(totalCost)}` : ''}</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalRevenue)}</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          {(() => {
-                            const m = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : null
-                            const f = m != null ? marginFlag(m) : null
-                            return (
-                              <>
-                                <span style={{ color: f ? MARGIN_FLAG_COLOR[f] : undefined }}>
-                                  {m != null ? `${m.toFixed(1)}%` : '—'}
-                                </span>
-                                {' / 100%'}
-                              </>
-                            )
-                          })()}
-                        </td>
-                        <td style={{ width: 0, padding: 0 }} />
-                      </tr>
-                      {uncostedRevenueRows.length > 0 && (
-                        <tr style={{ background: 'var(--bg-amber-tint)' }}>
-                          <td
-                            colSpan={7 + marginModeColPad}
-                            style={{
-                              padding: '0.6rem 0.75rem',
-                              fontSize: '0.8125rem',
-                              color: 'var(--text-amber-800)',
-                              borderTop: '1px solid var(--border-amber-soft)',
-                              textAlign: 'center',
-                            }}
-                          >
-                            ⚠ {uncostedRevenueRows.length} item
-                            {uncostedRevenueRows.length === 1 ? '' : 's'} with a Sale Price but no Takeoffs cost
-                            {` (${`$${formatCurrency(uncostedRevenue)}`}${totalRevenue > 0 ? `, ${((uncostedRevenue / totalRevenue) * 100).toFixed(0)}% of revenue` : ''})`}
-                            {' '}Currently counts as 100% margin.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                </>
-              )
-            })()}
-            </>
-            ) : (
+            {
               (() => {
                 // v2.2367: while this bid's versions/prices are still resolving (or the resolve
                 // failed), say so — the "needs Counts…" empty state below reads as deleted work.
@@ -3813,7 +2889,7 @@ export function BidsPricingTab({
                           </div>
                         </>
                       ) : (
-                        <>The Workbench needs Counts, an active Pricing, and a cost estimate. Set those up (the Old view and the Counts / Labor tabs work as always), then come back.</>
+                        <>The Workbench needs Counts, an active Pricing, and a cost estimate. Set those up on the Counts / Labor tabs, then come back.</>
                       )}
                     </div>
                   )
@@ -5437,7 +4513,7 @@ export function BidsPricingTab({
                   </>
                 )
               })()
-            )}
+            }
           </div>
         )}
         {marginPickerRow ? (

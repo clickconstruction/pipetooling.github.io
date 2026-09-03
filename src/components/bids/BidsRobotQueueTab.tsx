@@ -14,6 +14,7 @@ import {
 } from '../../lib/bids/backtestCandidates'
 import { buildAxisCards, type RunScoreRow } from '../../lib/bids/confidenceBoard'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 // twin_run_scores / bids.backtest_axis predate the generated types
 // (BidsAuditsTab pattern) — untyped until the post-push gen-types run.
@@ -97,7 +98,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
       presenceOf: (bidId) => referencePresence.get(bidId) ?? null,
       usedReferenceNumbers: used,
       axisCards,
-      todayYmd: new Date().toISOString().slice(0, 10),
+      todayYmd: todayYmdInAppTz(),
     })
   }, [bids, axisOverrides, referencePresence, runScores, shadowRuns, axisCards])
   const backtestCount = backtestGroups.reduce((sum, g) => sum + g.eligible.length, 0)

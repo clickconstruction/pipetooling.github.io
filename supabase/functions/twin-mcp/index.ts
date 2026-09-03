@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, PLACEMENT_GUIDE, MISSIONS } from './briefs.ts'
+import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
 // A minimal, dependency-free Model Context Protocol server over streamable HTTP
@@ -699,7 +700,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         return textContent(JSON.stringify({ ok: true, reused: true, bid: `b${existing.bid_number}`, bid_id: existing.id, name: ztName, reference_grade: referenceGrade, grade_note: gradeNote }, null, 2))
       }
       const dueDays = Number(args.due_in_days ?? 7)
-      const due = new Date(Date.now() + (Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 7) * 86400_000).toISOString().slice(0, 10)
+      const due = ymdAddDays(todayYmdInAppTz(), Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 7)
       const { data: created, error: insErr } = await admin
         .from('bids')
         .insert({

@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from './physicalInvoiceIssuer'
 import type { LienToolingFormPage, LienToolingPrefillState } from './lienToolingPrefillUrl'
 import { splitJobAddressForPrefill } from './txLocalityAddressSplit'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 export { splitJobAddressForPrefill }
 
@@ -81,7 +82,7 @@ function ymdFromIso(iso: string | null | undefined): string {
 }
 
 function todayYmd(): string {
-  return new Date().toISOString().slice(0, 10)
+  return todayYmdInAppTz()
 }
 
 function addDaysYmd(ymd: string, days: number): string {

@@ -22,16 +22,20 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
+import { MyBidsToggle } from './MyBidsToggle'
 
 type BidLienReleaseTabProps = {
   bids: BidWithBuilder[]
+  onlyMyBids: boolean
+  setOnlyMyBids: (next: boolean) => void
+  isMyBid: (bid: BidWithBuilder) => boolean
   selectedBid: BidWithBuilder | null
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
   onEditBid: (bid: BidWithBuilder) => void
 }
 
-export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onEditBid }: BidLienReleaseTabProps) {
+export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, selectedBid, onSelectBid, onClose, onEditBid }: BidLienReleaseTabProps) {
   const tabLedgerPrefixMap = useLedgerPrefixMap()
   const narrowViewport640 = useNarrowViewport640()
   const bidPreview = useBidPreview()
@@ -55,12 +59,14 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
             style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
           <BidPickerSortToggle />
+          <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
         </div>
       )}
       {!selectedBid ? (
         (() => {
           const q = lienReleaseSearchQuery.toLowerCase()
-          const filtered = bids.filter((b) => {
+          const scoped = onlyMyBids ? bids.filter(isMyBid) : bids
+          const filtered = scoped.filter((b) => {
             if (!q) return true
             const name = bidDisplayName(b).toLowerCase()
             const cust = (b.customers?.name ?? '').toLowerCase()
@@ -72,7 +78,13 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
               bids={filtered}
               prefixMap={tabLedgerPrefixMap}
               onSelectBid={onSelectBid}
-              emptyMessage={bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
+              emptyMessage={
+                bids.length === 0
+                  ? 'No bids yet.'
+                  : onlyMyBids && scoped.length === 0
+                    ? 'No bids you are the account manager or estimator for.'
+                    : 'No bids match your search.'
+              }
             />
           )
         })()

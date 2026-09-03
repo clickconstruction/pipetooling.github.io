@@ -28,6 +28,8 @@ export type PendingHoursApprovals = {
  */
 export function usePendingHoursApprovalsNudge(enabled: boolean): {
   approvals: PendingHoursApprovals | null
+  /** Re-poll now — call after approving/rejecting so a count badge doesn't lag until the next focus. */
+  refresh: () => void
 } {
   const [refreshKey, setRefreshKey] = useState(0)
   const [approvals, setApprovals] = useState<PendingHoursApprovals | null>(null)
@@ -83,5 +85,5 @@ export function usePendingHoursApprovalsNudge(enabled: boolean): {
     return () => window.removeEventListener('focus', onFocus)
   }, [enabled, bump])
 
-  return { approvals }
+  return { approvals, refresh: bump }
 }

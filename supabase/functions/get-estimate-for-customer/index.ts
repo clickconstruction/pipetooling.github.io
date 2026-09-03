@@ -9,6 +9,7 @@ import {
 import { clientIpFromRequest } from '../_shared/logEstimateCustomerEvent.ts'
 import { parseCustomerAttachmentSent } from '../_shared/estimateCustomerAttachment.ts'
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -165,8 +166,8 @@ serve(async (req) => {
     }
 
     if (est.valid_until) {
-      const vu = new Date(String(est.valid_until) + 'T23:59:59.999Z').getTime()
-      if (vu < Date.now()) {
+      // Valid through the end of that civil day in the company zone (the old 'T23:59:59.999Z' expired it at 7 PM Central).
+      if (String(est.valid_until).slice(0, 10) < todayYmdInAppTz()) {
         return new Response(JSON.stringify({ error: 'Estimate expired', code: 'expired' }), {
           status: 410,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

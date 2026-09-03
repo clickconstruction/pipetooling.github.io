@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
-import { denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
+import { denverCalendarDayKey, endOfYmdInAppTzMs, startOfYmdInAppTzMs, ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber, formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
@@ -34,7 +34,7 @@ import {
 import { bucketInvoiceRevenueByAppTzDay } from '../../lib/overheadAvgDailyCost'
 import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
 import { fetchAccountingBucketByTxId, loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
-import { mercuryCategoryFromColumn } from '../../lib/accountingLabelRuleMatch'
+import { sumFuelChargesByJob } from '../../lib/mercuryFuelSplit'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import type {
   CrewJobAssignment,
@@ -1501,8 +1501,9 @@ export default function PeopleReviewTab({
       }
     })
 
-    const startDate = new Date(start + 'T00:00:00').getTime()
-    const endDate = new Date(end + 'T23:59:59').getTime()
+    // Company-calendar window, not the browser's zone (identical for a Central viewer; correct for a remote one).
+    const startDate = startOfYmdInAppTzMs(start)
+    const endDate = endOfYmdInAppTzMs(end)
     const reports = allReports.filter((r) => (r.created_by_name ?? '').trim() === personNameTrimmed && new Date(r.created_at).getTime() >= startDate && new Date(r.created_at).getTime() <= endDate)
 
     const tasks: ReviewTask[] = taskInstances.map((t) => ({
@@ -2111,19 +2112,10 @@ export default function PeopleReviewTab({
           'load team summary card categories',
         ).catch(() => [] as unknown[]),
       ])
-      const categoryByTxId = new Map<string, string | null>()
-      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) {
-        categoryByTxId.set(r.id, mercuryCategoryFromColumn(r.mercury_category))
-      }
-      for (const row of cardRows) {
-        if (!row.mercury_transaction_id) continue
-        const bucket = bucketByTxId.get(row.mercury_transaction_id)
-        const isFuel =
-          bucket === 'fuel_gas' ||
-          (bucket == null && (categoryByTxId.get(row.mercury_transaction_id) ?? '').toLowerCase() === 'fuelandgas')
-        if (!isFuel) continue
-        fuelChargesByJobId.set(row.job_id, (fuelChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
-      }
+      const categoryByTxId = new Map<string, unknown>()
+      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
+      // Same classifier Jobs → Job Summary uses (v2.2708), so the two surfaces agree on what is fuel.
+      for (const [jobId, usd] of sumFuelChargesByJob(cardRows, bucketByTxId, categoryByTxId)) fuelChargesByJobId.set(jobId, usd)
     }
 
     return {

@@ -361,6 +361,8 @@ export type JobSummaryRow = {
   cardCharges: number
   /** Card charges also linked to a supply-house invoice — already inside `invoicesFromSupplyHouses`, so subtracted from `partsCost` (v2.2692). */
   cardChargesLinkedToInvoices: number
+  /** Fuel slice of the counted card charges (Fuel / Gas label first, bank category FuelAndGas fallback) — inside `partsCost` (v2.2708). */
+  fuelCost: number
   teamLaborRow: TeamLaborRow | undefined
   subLaborJobs: LaborJob[]
   tallyPartsForJob: TallyPartRow[]
@@ -548,6 +550,7 @@ export default function JobsJobSummaryTab({
                           invoicesFromSupplyHouses,
                           billedMaterialsSum,
                           cardCharges,
+                          fuelCost,
                           teamLaborRow,
                           subLaborJobs,
                           tallyPartsForJob,
@@ -629,6 +632,14 @@ export default function JobsJobSummaryTab({
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                               {partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}
+                              {fuelCost > 0 && (
+                                <div
+                                  style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
+                                  title="Fuel inside Parts Cost — card charges labelled Fuel / Gas in Banking, or bank-categorised FuelAndGas until labelled."
+                                >
+                                  fuel ${formatCurrency(fuelCost)}
+                                </div>
+                              )}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, color: showTeamLaborAndProfit && enriched.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>
                               {showTeamLaborAndProfit ? `$${formatCurrency(enriched.grossUsd)}` : '—'}
@@ -2422,6 +2433,11 @@ export default function JobsJobSummaryTab({
                                         <span style={{ fontWeight: 400 }}>
                                           {partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}
                                         </span>
+                                        {fuelCost > 0 && (
+                                          <span style={{ fontWeight: 400, color: 'var(--text-muted)' }} title="Fuel inside Parts Cost — card charges labelled Fuel / Gas in Banking, or bank-categorised FuelAndGas until labelled.">
+                                            {' '}· fuel ${formatCurrency(fuelCost)}
+                                          </span>
+                                        )}
                                       </summary>
                                       <div style={{ marginTop: '0.5rem' }}>
                                     <div style={jobSummaryCostSectionBodyStyle}>

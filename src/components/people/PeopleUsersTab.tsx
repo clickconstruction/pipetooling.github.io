@@ -6,6 +6,8 @@ import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
 import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTabTags'
 import { contractSigningIconTitle, type ContractSigningTrafficLight } from '../../lib/contractSigningRollup'
 import { loginAsUser } from '../../lib/loginAsUser'
+import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
+import { canOpenPersonDesk } from '../../lib/people/personDeskGates'
 import { APP_HOSTNAME, appUrl } from '../../lib/appOrigin'
 import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
 import {
@@ -119,6 +121,9 @@ export function PeopleUsersTab({
   // Same gate the Settings manager had (dev|master|assistant-like), which also
   // matches the People Teams tab gate (dev/master_technician/assistant/controller).
   const { role: authRole } = useAuth()
+  // Person Desk door (v2.2701): the name opens the per-person drawer for office roles.
+  const personDesk = useOptionalPersonDesk()
+  const deskDoor = personDesk != null && canOpenPersonDesk(authRole)
   const canManageTeamLeads = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
   const [teamLeadsModalOpen, setTeamLeadsModalOpen] = useState(false)
 
@@ -330,7 +335,20 @@ export function PeopleUsersTab({
                 )}
               </>
             )}
-            <span style={{ fontWeight: 500 }}>{item.name}</span>
+            {deskDoor ? (
+              <button
+                type="button"
+                onClick={() =>
+                  personDesk?.open(item.source === 'user' ? { userId: item.id, displayName: item.name } : { personId: item.id, displayName: item.name })
+                }
+                title={`Open ${item.name}'s desk`}
+                style={{ fontWeight: 500, border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
+              >
+                {item.name}
+              </button>
+            ) : (
+              <span style={{ fontWeight: 500 }}>{item.name}</span>
+            )}
             {isExternalSubRoster &&
               (activeProjectCount === 0 ? (
                 <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>0 active</span>

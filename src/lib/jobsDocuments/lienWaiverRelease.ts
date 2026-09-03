@@ -2,6 +2,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { loadJsPDF } from '../loadJsPDF'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * Lien waiver-and-release documents issued from the Jobs board (v2.2579):
@@ -165,7 +166,7 @@ function ymdFromIso(iso: string | null | undefined): string {
 }
 
 function todayYmd(): string {
-  return new Date().toISOString().slice(0, 10)
+  return todayYmdInAppTz()
 }
 
 function moneyInputStr(n: number): string {

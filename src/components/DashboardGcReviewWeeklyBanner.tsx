@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../lib/jobs/gcReviewCertification'
+import { gcReviewGcsToDo, gcReviewNudgeState, gcReviewWeekdayIndex } from '../lib/jobs/gcReviewCertification'
 import type { GcReviewWeekStatus } from '../lib/gcReviewCertifications'
 import { useGcReviewWeekNudge } from '../hooks/useGcReviewWeekNudge'
 
@@ -71,11 +71,7 @@ export default function DashboardGcReviewWeeklyBanner({
 
   useEffect(() => {
     if (!loaded) return
-    onCount?.(
-      status != null && gcReviewNudgeState(status) === 'due'
-        ? Math.max(0, status.gcs_outstanding - status.gcs_certified)
-        : 0,
-    )
+    onCount?.(status != null && gcReviewNudgeState(status) === 'due' ? gcReviewGcsToDo(status) : 0)
   }, [status, loaded, onCount])
 
   if (!status) return null
@@ -84,13 +80,13 @@ export default function DashboardGcReviewWeeklyBanner({
 
   if (nudge === 'done') return <GcReviewWeekDoneNotice status={status} />
 
-  const remaining = Math.max(0, status.gcs_outstanding - status.gcs_certified)
+  const remaining = gcReviewGcsToDo(status)
   const isWednesday = gcReviewWeekdayIndex() === 3
   return (
     <button
       type="button"
       onClick={() => navigate('/jobs?tab=stages&gcReview=1')}
-      aria-label={`Open GC Review — ${remaining} GCs left to certify this week`}
+      aria-label={`Open GC Review — ${remaining} GCs still to certify and send this week`}
       style={{
         display: 'flex',
         flexWrap: 'wrap',
