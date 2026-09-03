@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 const SIGNATURE_BUCKET = 'contract-signer-signatures'
 const MAX_SIGNATURE_BYTES = 524288
@@ -170,7 +171,7 @@ serve(async (req) => {
     const fwd = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     const ipRaw = fwd || req.headers.get('cf-connecting-ip') || null
     const nowIso = new Date().toISOString()
-    const todayYmd = new Date().toISOString().slice(0, 10)
+    const todayYmd = todayYmdInAppTz()
 
     const updatePayload = hasSig
       ? {

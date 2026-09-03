@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
-import { denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
+import { denverCalendarDayKey, endOfYmdInAppTzMs, startOfYmdInAppTzMs, ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber, formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
@@ -1500,8 +1500,9 @@ export default function PeopleReviewTab({
       }
     })
 
-    const startDate = new Date(start + 'T00:00:00').getTime()
-    const endDate = new Date(end + 'T23:59:59').getTime()
+    // Company-calendar window, not the browser's zone (identical for a Central viewer; correct for a remote one).
+    const startDate = startOfYmdInAppTzMs(start)
+    const endDate = endOfYmdInAppTzMs(end)
     const reports = allReports.filter((r) => (r.created_by_name ?? '').trim() === personNameTrimmed && new Date(r.created_at).getTime() >= startDate && new Date(r.created_at).getTime() <= endDate)
 
     const tasks: ReviewTask[] = taskInstances.map((t) => ({

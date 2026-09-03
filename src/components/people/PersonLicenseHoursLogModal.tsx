@@ -9,6 +9,7 @@ import {
   buildLicenseHoursSummary,
   type LicenseHoursLogRow,
 } from '../../lib/licenseHoursLog'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 // Certification header fields (employer / supervising licensee) are the same
 // for every export from this device, so they persist in localStorage.
@@ -104,7 +105,7 @@ export default function PersonLicenseHoursLogModal({ personName, userId, onClose
   const summary = useMemo(() => buildLicenseHoursSummary(groups), [groups])
 
   const handleExportCsv = useCallback(() => {
-    const generatedOnYmd = new Date().toISOString().slice(0, 10)
+    const generatedOnYmd = todayYmdInAppTz()
     const csv = buildLicenseHoursCsv(
       {
         personName,

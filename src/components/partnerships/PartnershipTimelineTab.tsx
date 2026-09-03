@@ -16,6 +16,7 @@ import {
   type PartnerTimelineRow,
   type TimelineEventInputs,
 } from '../../lib/partnerLedger/partnerTimeline'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * Partnerships → Timeline tab (owner-approved mockup): money, infractions,
@@ -70,7 +71,7 @@ export function PartnershipTimelineTab({
   const [failed, setFailed] = useState(false)
   const [addType, setAddType] = useState('backcharge')
   const [addAmount, setAddAmount] = useState('')
-  const [addDate, setAddDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [addDate, setAddDate] = useState(() => todayYmdInAppTz())
   const [addDesc, setAddDesc] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)

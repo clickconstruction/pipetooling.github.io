@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 /**
  * Sub portal intake (sub-portal train): everything a sub can DO from the
@@ -251,7 +252,7 @@ serve(async (req) => {
       if (c.status !== 'offered') {
         return jsonResponse({ error: 'This work order is no longer open.' }, 409)
       }
-      const todayYmd = new Date().toISOString().slice(0, 10)
+      const todayYmd = todayYmdInAppTz()
       if ((c.offer_expires_at ?? '') !== '' && (c.offer_expires_at as string) < todayYmd) {
         return jsonResponse({ error: 'This offer has expired — call the office if you still want it.' }, 409)
       }

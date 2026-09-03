@@ -15,6 +15,18 @@
 
 Run `npm run check:timezone` before merge to ensure no stray `'America/Chicago'` literals were added outside those files.
 
+## "Today" and end-of-day (v2.2703)
+
+There is one "today" per runtime, and it is the Central civil date — never the UTC clock, which is tomorrow's date every evening after 7 PM Central (6 PM in winter):
+
+| Runtime | Helper |
+|---|---|
+| Web app | `todayYmdInAppTz(now?)`, `startOfYmdInAppTzMs(ymd)`, `endOfYmdInAppTzMs(ymd)` in `src/utils/dateUtils.ts` (DST-aware) |
+| Edge Functions | `todayYmdInAppTz(now?)`, `ymdAddDays(ymd, n)` in `supabase/functions/_shared/appTimeZone.ts` — parity with the web helper is pinned by `src/lib/appTimeZoneSharedParity.test.ts` |
+| Postgres | `public.app_today()` — the session zone is UTC, so `CURRENT_DATE` has the same evening problem |
+
+Rules `npm run check:timezone` enforces: no `new Date().toISOString().slice(0, 10)` (or the substring/split spellings) outside download-filename stamps; no end-of-day built as `<ymd> + 'T23:59:59Z'` (that is 7 PM Central — use `endOfYmdInAppTzMs`, or compare civil dates); no `CURRENT_DATE` in migrations newer than `20260903190000`. A deliberate exception takes `// tz-ok: <why>` (or `-- tz-ok:` in SQL) on the line. Pure date arithmetic on a `YYYY-MM-DD` via `Date.UTC(...)` is fine — a day is a day.
+
 ## What we store
 
 | Kind | Typical Postgres types | Meaning |

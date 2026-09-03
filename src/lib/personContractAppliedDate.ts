@@ -1,4 +1,4 @@
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../utils/dateUtils'
 
 /**
  * Applied-version date helpers for People → Contracts.
@@ -39,5 +39,5 @@ export function isoToPlainDateInAppTz(iso: string | null | undefined, timeZone: 
 
 /** Today's 'YYYY-MM-DD' in the app calendar timezone (fallback seed for the custom-date input). */
 export function todayPlainDateInAppTz(timeZone: string = APP_CALENDAR_TZ): string {
-  return isoToPlainDateInAppTz(new Date().toISOString(), timeZone) ?? new Date().toISOString().slice(0, 10)
+  return isoToPlainDateInAppTz(new Date().toISOString(), timeZone) ?? todayYmdInAppTz()
 }

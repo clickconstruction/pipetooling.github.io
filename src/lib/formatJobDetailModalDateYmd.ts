@@ -2,7 +2,7 @@
  * Job Detail modal: short ordinal month/day + signed offset from Chicago "today" (t±N).
  */
 
-import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd, todayYmdInAppTz } from '../utils/dateUtils'
 
 const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
@@ -13,13 +13,9 @@ export function normalizeToYmd(raw: string | null | undefined): string | null {
   return YMD_RE.test(head) ? head : null
 }
 
+/** @deprecated alias — use `todayYmdInAppTz` from `utils/dateUtils` (kept so callers need not churn). */
 export function todayYmdChicago(now: Date = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: APP_CALENDAR_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now)
+  return todayYmdInAppTz(now)
 }
 
 function parseYmdToEpochDay(ymd: string): number {

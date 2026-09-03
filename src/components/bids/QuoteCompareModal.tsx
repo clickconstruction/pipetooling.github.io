@@ -16,6 +16,7 @@ import { type SpecSectionMatchKind, type SpecSectionMatchRule } from '../../lib/
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 const MODAL_Z = 10050
 const KNOWN_KINDS = new Set<string>(['starts_with', 'contains', 'exact'])
@@ -217,7 +218,7 @@ export function QuoteCompareModal({
         snapshotQtyByName: snapshotQty ?? undefined,
         lastQuotedEachCentsByName: lastQuoted,
         rules,
-        today: new Date().toISOString().slice(0, 10),
+        today: todayYmdInAppTz(),
       }),
     [quotes, currentQtyByName, snapshotQty, lastQuoted, rules],
   )

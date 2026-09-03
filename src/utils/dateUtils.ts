@@ -33,6 +33,55 @@ export function calendarYmdInAppTzFromIso(iso: string): string {
   return `${y}-${m}-${day}`
 }
 
+/**
+ * Today's civil YYYY-MM-DD in `APP_CALENDAR_TZ` — the one "today" for anything written to a
+ * `date` column or printed on a document. Never `new Date().toISOString().slice(0, 10)`: that
+ * is the UTC day, which is tomorrow's date every evening after 7 PM Central (6 PM in winter).
+ * `npm run check:timezone` flags that pattern (v2.2703).
+ */
+export function todayYmdInAppTz(now: Date = new Date()): string {
+  return calendarYmdInAppTzFromIso(now.toISOString())
+}
+
+/** Minutes east of UTC that `timeZone` observes at the instant `ms` (e.g. Chicago: −300 CDT, −360 CST). */
+function tzOffsetMinutesAt(ms: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date(ms))
+  const g = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? '0')
+  const wallAsUtc = Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second'))
+  return Math.round((wallAsUtc - Math.floor(ms / 1000) * 1000) / 60_000)
+}
+
+/** UTC ms at which the civil day `ymd` begins in `APP_CALENDAR_TZ` (DST-aware). NaN if malformed. */
+export function startOfYmdInAppTzMs(ymd: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!m) return NaN
+  const naive = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  // Two passes: the offset at the naive instant is wrong only across a DST switch, and the
+  // second lookup lands on the correct side of it.
+  const first = naive - tzOffsetMinutesAt(naive, APP_CALENDAR_TZ) * 60_000
+  return naive - tzOffsetMinutesAt(first, APP_CALENDAR_TZ) * 60_000
+}
+
+/**
+ * Last ms of the civil day `ymd` in `APP_CALENDAR_TZ` — the "valid through end of day" instant.
+ * Replaces `new Date(ymd + 'T23:59:59.999Z')`, which ends the day at 7 PM Central. NaN if malformed.
+ */
+export function endOfYmdInAppTzMs(ymd: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
+  if (!m) return NaN
+  const next = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + 1)).toISOString().slice(0, 10)
+  return startOfYmdInAppTzMs(next) - 1
+}
+
 /** E.g. UTC−06:00 (Unicode minus). Null if `Intl` longOffset is unavailable. */
 export function formatIanaTimeZoneLongOffsetLabel(iana: string, at: Date): string | null {
   try {
