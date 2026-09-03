@@ -16,7 +16,8 @@ import type { BankingAttributionUser } from '../lib/mercuryCardNicknameUserMatch
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { fetchAccountingBucketByTxId } from '../lib/overheadPartsBucketLoader'
-import { sumFuelChargesByJob } from '../lib/mercuryFuelSplit'
+import { costLineTags, sumTagChargesByJob } from '../lib/mercuryTagSplit'
+import { fetchLabelIdByTxId, useCategoryTags } from '../lib/banking/categoryTagsData'
 
 /** Mercury tx ids (among `txIds`) that carry a supply-house invoice link — the same purchase seen twice. */
 async function fetchMercuryTxIdsLinkedToSupplyInvoices(txIds: readonly string[]): Promise<Set<string>> {
@@ -86,8 +87,10 @@ export function useJobsMercuryAllocations({
   const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
   /** Card charges per job that are ALSO linked to a supply-house invoice — Job Summary counts those once (v2.2692). */
   const [mercuryInvoiceLinkedChargesByJobId, setMercuryInvoiceLinkedChargesByJobId] = useState<Map<string, number>>(() => new Map())
-  /** The fuel slice of `mercuryCardChargesByJobId` (Fuel / Gas label first, bank category fallback — `lib/mercuryFuelSplit`, v2.2708). */
-  const [mercuryFuelChargesByJobId, setMercuryFuelChargesByJobId] = useState<Map<string, number>>(() => new Map())
+  /** Slices of `mercuryCardChargesByJobId` by cost-line tag (job id → tag id → $) — `lib/mercuryTagSplit`, v2.2725. */
+  const [mercuryTagChargesByJobId, setMercuryTagChargesByJobId] = useState<Map<string, ReadonlyMap<string, number>>>(() => new Map())
+  const categoryTags = useCategoryTags(true)
+  const tagLookups = categoryTags.lookups
   const partsTabMercuryLoadedRef = useRef<Set<string>>(new Set())
   const partsTabMercuryInFlightRef = useRef<Set<string>>(new Set())
   const [partsTabMercuryAllocationsByJobId, setPartsTabMercuryAllocationsByJobId] = useState<
@@ -133,16 +136,17 @@ export function useJobsMercuryAllocations({
         // Internal Transfers are money moving between the org's own accounts,
         // not a cost — the same exclusion People → Overhead applies (v2.2692).
         // Bucket/link lookups degrade to "everything counts" when RLS hides them.
-        const [bucketByTxId, linkedTxIds, categoryRows] = await Promise.all([
+        const [bucketByTxId, linkedTxIds, categoryRows, labelIdByTxId] = await Promise.all([
           fetchAccountingBucketByTxId(txIds).catch(() => new Map<string, string>()),
           fetchMercuryTxIdsLinkedToSupplyInvoices(txIds).catch(() => new Set<string>()),
-          // Bank category — the fuel fallback for transactions nobody has labelled yet (v2.2708).
+          // Bank category — the fallback for transactions nobody has labelled yet (v2.2708 → v2.2725).
           fetchAllRowsChunkedIn(
             txIds,
             (chunk, from, to) =>
               supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(from, to),
             'mercury card categories by tx',
           ).catch(() => [] as unknown[]),
+          fetchLabelIdByTxId(txIds).catch(() => new Map<string, string>()),
         ])
         if (cancelled) return
         const m = new Map<string, number>()
@@ -160,18 +164,19 @@ export function useJobsMercuryAllocations({
         for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
         setMercuryCardChargesByJobId(m)
         setMercuryInvoiceLinkedChargesByJobId(linked)
-        setMercuryFuelChargesByJobId(sumFuelChargesByJob(counted, bucketByTxId, categoryByTxId))
+        setMercuryTagChargesByJobId(sumTagChargesByJob(counted, labelIdByTxId, categoryByTxId, tagLookups))
       } catch {
         if (cancelled) return
         setMercuryCardChargesByJobId(new Map())
         setMercuryInvoiceLinkedChargesByJobId(new Map())
-        setMercuryFuelChargesByJobId(new Map())
+        setMercuryTagChargesByJobId(new Map())
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [jobIdsKeyForCardCharges])
+    // tagLookups is in the deps so the split re-runs once tags load (or change).
+  }, [jobIdsKeyForCardCharges, tagLookups])
 
   const loadPartsTabMercuryForJob = useCallback(async (jobId: string) => {
     if (partsTabMercuryLoadedRef.current.has(jobId) || partsTabMercuryInFlightRef.current.has(jobId)) {
@@ -417,7 +422,9 @@ export function useJobsMercuryAllocations({
   return {
     mercuryCardChargesByJobId,
     mercuryInvoiceLinkedChargesByJobId,
-    mercuryFuelChargesByJobId,
+    mercuryTagChargesByJobId,
+    /** Cost-line tags in manager order (v2.2725). */
+    costLineTags: costLineTags(tagLookups),
     partsTabMercuryLoadedRef,
     partsTabMercuryInFlightRef,
     partsTabMercuryAllocationsByJobId,

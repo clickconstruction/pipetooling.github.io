@@ -12,6 +12,7 @@ import type {
   CrewBidAssignment,
   CrewJobRow,
 } from '../../utils/teamLabor'
+import type { CategoryTagRow } from '../banking/categoryTags'
 
 export type TeamLedgerRow = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }
 /**
@@ -53,12 +54,14 @@ export type TeamReviewUnion = {
   /** Mercury debit-card purchases allocated to jobs (abs amounts) — canonical parts composition includes this bucket. */
   cardChargesByJobId: Map<string, number>
   /**
-   * The fuel slice of `cardChargesByJobId` (abs amounts): allocations whose
-   * transaction carries the Banking "Fuel / Gas" accounting label, or — when
-   * it has no label yet — whose bank category is FuelAndGas. Always ≤ the
-   * card total for the job. v2.2700.
+   * Slices of `cardChargesByJobId` by bank-category tag (abs amounts), for
+   * tags flagged `show_as_cost_line` only: job id → (tag id → $). A charge
+   * belongs to its accounting label's tag, else its bank category's tag
+   * (`lib/mercuryTagSplit`). v2.2725 — generalises the v2.2700 fuel slice.
    */
-  fuelChargesByJobId: Map<string, number>
+  tagChargesByJobId: Map<string, ReadonlyMap<string, number>>
+  /** The cost-line tags, in manager order — the drawer / verdict draw one line per tag. */
+  costLineTags: CategoryTagRow[]
   hoursMap: Record<string, number>
   crewByDatePerson: Record<string, CrewJobRow>
   overheadHoursByPerson: Record<string, { office: number; bid: number }>

@@ -122,7 +122,8 @@ export function derivePersonTeamSummary(
     return { jobId: c.job_id, hours, laborCost }
   })
 
-  const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number; partsCost: number; fuelCost: number }>()
+  const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number; partsCost: number; tagCosts: ReadonlyMap<string, number> }>()
+  const noTagCosts: ReadonlyMap<string, number> = new Map()
   const laborJobIdsSeen = new Set<string>()
   for (const r of laborRowsFiltered) {
     const hcp = (r.job_number ?? '').trim().toLowerCase()
@@ -138,7 +139,7 @@ export function derivePersonTeamSummary(
     const pctComplete = job?.pct_complete ?? null
     const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
     const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
-    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, fuelCost: union.fuelChargesByJobId.get(jobId) ?? 0 })
+    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts: union.tagChargesByJobId.get(jobId) ?? noTagCosts })
   }
   for (const jobId of crewJobIds) {
     if (allocationJobsMap.has(jobId)) continue
@@ -151,7 +152,7 @@ export function derivePersonTeamSummary(
     const pctComplete = j?.pct_complete ?? null
     const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
     const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
-    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, fuelCost: union.fuelChargesByJobId.get(jobId) ?? 0 })
+    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts: union.tagChargesByJobId.get(jobId) ?? noTagCosts })
   }
 
   const costOnJobInPeriod = new Map<string, number>()
@@ -165,13 +166,14 @@ export function derivePersonTeamSummary(
   let allocatedRevenue = 0
   let allocatedProfit = 0
   // The person's share of each job's cost buckets, on the same ratio — so
-  // gross − parts − fuel − labor = net for every person (v2.2700).
+  // gross − parts − labor = net for every person, and the tag lines
+  // (fuel, permits, …) are slices of parts (v2.2700 → v2.2725).
   let allocatedParts = 0
-  let allocatedFuel = 0
   let allocatedLabor = 0
+  const allocatedByTag: Record<string, number> = {}
   const grossBreakdownJobs: GrossRevenueBreakdown['jobs'] = []
   const netBreakdownJobs: NetRevenueBreakdown['jobs'] = []
-  for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, fuelCost }] of allocationJobsMap) {
+  for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts }] of allocationJobsMap) {
     const costInPeriod = costOnJobInPeriod.get(jobId) ?? 0
     const ratio = totalLaborOnJob > 0 ? costInPeriod / totalLaborOnJob : (costInPeriod > 0 ? 1 : 0)
     const jobAllocated = valueCreated * ratio
@@ -179,8 +181,12 @@ export function derivePersonTeamSummary(
     allocatedRevenue += jobAllocated
     allocatedProfit += jobAllocatedNet
     allocatedParts += partsCost * ratio
-    allocatedFuel += fuelCost * ratio
     allocatedLabor += totalLaborOnJob * ratio
+    const tagCostsRecord: Record<string, number> = {}
+    for (const [tagId, usd] of tagCosts) {
+      tagCostsRecord[tagId] = usd
+      allocatedByTag[tagId] = (allocatedByTag[tagId] ?? 0) + usd * ratio
+    }
 
     const job = union.jobsById.get(jobId)
     const hcp = (job?.hcp_number ?? '').trim().toUpperCase() || 'Unknown'
@@ -206,7 +212,7 @@ export function derivePersonTeamSummary(
       jobName,
       valueCreated,
       partsCost,
-      fuelCost,
+      tagCosts: tagCostsRecord,
       totalLaborOnJob,
       revenueBeforeOverhead,
       costInPeriod,
@@ -425,7 +431,7 @@ export function derivePersonTeamSummary(
     profit: allocatedProfit,
     gross: allocatedRevenue,
     allocatedParts,
-    allocatedFuel,
+    allocatedByTag,
     allocatedLabor,
     revPerHour: totalHours > 0 ? allocatedRevenue / totalHours : 0,
     profitPerHour: totalHours > 0 ? allocatedProfit / totalHours : 0,

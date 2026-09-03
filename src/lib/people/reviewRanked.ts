@@ -9,6 +9,7 @@
 
 import type { TeamSummaryBreakdown } from '../../components/people/teamSummary/types'
 import { ymdAddDays } from '../../utils/dateUtils'
+import type { CategoryTagColor, CategoryTagRow } from '../banking/categoryTags'
 
 // ---------------------------------------------------------------------------
 // Grouping
@@ -78,7 +79,11 @@ export function compareProfit(current: number, prior: number, flatBand = 0.05): 
 }
 
 export type ReviewCompositionSegment = {
-  key: 'costs' | 'fuel' | 'overheadLabor' | 'burden' | 'profit'
+  /** 'costs' | 'overheadLabor' | 'burden' | 'profit' | `tag:<id>` for each cost-line tag. */
+  key: string
+  /** Set on tag segments — the tag's color family. */
+  color?: CategoryTagColor
+  icon?: string
   label: string
   usd: number
   /** Share of gross, 0–1, clamped so the bar always fits. */
@@ -89,10 +94,10 @@ export type ReviewVerdict = {
   people: number
   gross: number
   net: number
-  /** Parts, subs and everyone's labor — gross − net (fuel included). */
+  /** Parts, subs and everyone's labor — gross − net (tag lines included). */
   costs: number
-  /** The fuel slice of `costs` (team share of Fuel / Gas card charges). */
-  fuel: number
+  /** The team's share of each cost-line tag's card charges, in manager order. */
+  byTag: Array<{ tag: CategoryTagRow; usd: number }>
   /** Stored positive (a cost). */
   overheadLabor: number
   /** Positive; null until the 90-day rate loads. */
@@ -118,10 +123,11 @@ function sumProfit(rows: readonly TeamSummaryBreakdown[]): number | null {
 export function buildReviewVerdict(
   rows: readonly TeamSummaryBreakdown[],
   priorRows: readonly TeamSummaryBreakdown[] | null,
+  costLineTags: readonly CategoryTagRow[] = [],
 ): ReviewVerdict {
   let gross = 0
   let net = 0
-  let fuel = 0
+  const usdByTag = new Map<string, number>()
   let overheadLabor = 0
   let burden: number | null = 0
   const field = { count: 0, profit: 0 as number | null, fieldHours: 0 }
@@ -130,7 +136,7 @@ export function buildReviewVerdict(
   for (const r of rows) {
     gross += r.gross
     net += r.net
-    fuel += r.allocatedFuel
+    for (const t of costLineTags) usdByTag.set(t.id, (usdByTag.get(t.id) ?? 0) + (r.allocatedByTag[t.id] ?? 0))
     overheadLabor += -r.overheadLaborCost
     if (burden != null) burden = r.overheadBurden == null ? null : burden + -r.overheadBurden
     const group = classifyReviewPerson(r)
@@ -149,12 +155,14 @@ export function buildReviewVerdict(
   }
   const profit = sumProfit(rows)
   const costs = gross - net
+  const byTag = costLineTags.map((tag) => ({ tag, usd: usdByTag.get(tag.id) ?? 0 }))
 
   const segments: ReviewCompositionSegment[] = []
   if (gross > 0 && burden != null && profit != null) {
     const share = (usd: number) => Math.max(0, Math.min(1, usd / gross))
-    segments.push({ key: 'costs', label: 'Parts, subs & labor', usd: costs - fuel, share: share(costs - fuel) })
-    segments.push({ key: 'fuel', label: 'Fuel', usd: fuel, share: share(fuel) })
+    const tagTotal = byTag.reduce((s, t) => s + t.usd, 0)
+    segments.push({ key: 'costs', label: 'Parts, subs & labor', usd: costs - tagTotal, share: share(costs - tagTotal) })
+    for (const t of byTag) segments.push({ key: `tag:${t.tag.id}`, color: t.tag.color, icon: t.tag.icon, label: t.tag.name, usd: t.usd, share: share(t.usd) })
     segments.push({ key: 'overheadLabor', label: 'Overhead labor', usd: overheadLabor, share: share(overheadLabor) })
     segments.push({ key: 'burden', label: 'Parts burden', usd: burden, share: share(burden) })
     segments.push({ key: 'profit', label: 'Profit', usd: profit, share: share(profit) })
@@ -168,7 +176,7 @@ export function buildReviewVerdict(
     gross,
     net,
     costs,
-    fuel,
+    byTag,
     overheadLabor,
     burden,
     profit,
@@ -314,8 +322,10 @@ export type ReviewPersonMath = {
 
 export function buildReviewPersonMath(
   b: TeamSummaryBreakdown,
-  ctx: { partsRate: number | null },
+  ctx: { partsRate: number | null; costLineTags?: readonly CategoryTagRow[] },
 ): ReviewPersonMath {
+  const tagLines = (ctx.costLineTags ?? []).map((tag) => ({ tag, usd: b.allocatedByTag[tag.id] ?? 0 }))
+  const tagTotal = tagLines.reduce((s, t) => s + t.usd, 0)
   const group = classifyReviewPerson(b)
   const salaried = b.payConfigSource === 'salary'
   const jobs = b.gb.jobs
@@ -337,17 +347,17 @@ export function buildReviewPersonMath(
           {
             key: 'parts',
             label: '− Parts & job purchases',
-            why: 'tally parts + supply invoices + billed materials + card charges other than fuel, in the same share',
-            usd: -(b.allocatedParts - b.allocatedFuel),
+            why: `tally parts + supply invoices + billed materials + card charges${tagLines.length > 0 ? ' outside the lines below' : ''}, in the same share`,
+            usd: -(b.allocatedParts - tagTotal),
             kind: 'out' as const,
           },
-          {
-            key: 'fuel',
-            label: '− Fuel',
-            why: 'card charges labelled Fuel / Gas in Banking (or bank-categorised FuelAndGas until labelled), in the same share',
-            usd: -b.allocatedFuel,
+          ...tagLines.map((t) => ({
+            key: `tag:${t.tag.id}`,
+            label: `− ${t.tag.icon} ${t.tag.name}`,
+            why: `card charges in the ${t.tag.name} tag (the purchase's accounting label, else the bank's category), in the same share`,
+            usd: -t.usd,
             kind: 'out' as const,
-          },
+          })),
           {
             key: 'labor',
             label: '− Subs & team labor',

@@ -3,20 +3,10 @@
 // six theme families; tints are mixed from the ink so both themes hold.
 
 import type { CSSProperties } from 'react'
-import type { CategoryTagColor, CategoryTagRow } from '../../lib/banking/categoryTags'
-
-/** Saturated ink per family — status/accent colors stay literal per the theme convention; tints derive from them. */
-const TAG_INK: Record<CategoryTagColor, string> = {
-  amber: '#b45309',
-  blue: '#1d4ed8',
-  violet: '#6d28d9',
-  teal: '#0f766e',
-  gray: '#4b5563',
-  rose: '#be123c',
-}
+import { CATEGORY_TAG_INK, type CategoryTagColor, type CategoryTagRow } from '../../lib/banking/categoryTags'
 
 export function categoryTagChipStyle(color: CategoryTagColor, opts?: { selected?: boolean; muted?: boolean }): CSSProperties {
-  const ink = TAG_INK[color]
+  const ink = CATEGORY_TAG_INK[color]
   return {
     display: 'inline-flex',
     alignItems: 'center',

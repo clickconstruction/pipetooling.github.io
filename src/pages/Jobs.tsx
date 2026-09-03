@@ -314,7 +314,8 @@ export default function Jobs() {
   const {
     mercuryCardChargesByJobId,
     mercuryInvoiceLinkedChargesByJobId,
-    mercuryFuelChargesByJobId,
+    mercuryTagChargesByJobId,
+    costLineTags,
     partsTabMercuryLoadedRef,
     partsTabMercuryAllocationsByJobId,
     partsUnattribFlowJobIdRef,
@@ -1346,9 +1347,18 @@ export default function Jobs() {
         // invoice allocation already counts — count it once (v2.2692).
         const cardChargesLinkedToInvoices = Math.min(cardCharges, mercuryInvoiceLinkedChargesByJobId.get(job.id) ?? 0)
         const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges - cardChargesLinkedToInvoices
-        // Fuel slice of the card charges that count (Fuel / Gas label first, bank
-        // category fallback — the same classifier People → Review uses, v2.2708).
-        const fuelCost = Math.min(Math.max(0, cardCharges - cardChargesLinkedToInvoices), mercuryFuelChargesByJobId.get(job.id) ?? 0)
+        // Cost-line tag slices of the card charges that count (label's tag, else the
+        // bank category's tag — the same classifier People → Review uses, v2.2725).
+        // Each slice is clamped so the lines never exceed the counted card charges.
+        const tagCharges = mercuryTagChargesByJobId.get(job.id)
+        let countedLeft = Math.max(0, cardCharges - cardChargesLinkedToInvoices)
+        const costLines = costLineTags
+          .map((t) => {
+            const usd = Math.min(countedLeft, tagCharges?.get(t.id) ?? 0)
+            countedLeft -= usd
+            return { tagId: t.id, name: t.name, icon: t.icon, color: t.color, usd }
+          })
+          .filter((l) => l.usd > 0)
         const totalBill = job.revenue != null ? Number(job.revenue) : 0
         const profit = totalBill - partsCost - laborCost
         const teamLaborRow = teamLaborData.find((r) => r.jobId === job.id)
@@ -1366,7 +1376,7 @@ export default function Jobs() {
           billedMaterialsSum,
           cardCharges,
           cardChargesLinkedToInvoices,
-          fuelCost,
+          costLines,
           teamLaborRow,
           subLaborJobs,
           tallyPartsForJob,
@@ -1392,7 +1402,8 @@ export default function Jobs() {
     invoiceAmountByJob,
     mercuryCardChargesByJobId,
     mercuryInvoiceLinkedChargesByJobId,
-    mercuryFuelChargesByJobId,
+    mercuryTagChargesByJobId,
+    costLineTags,
   ])
 
   // Job Summary ledger view (v2.2692): prefs + the job day ledger + enriched rows;

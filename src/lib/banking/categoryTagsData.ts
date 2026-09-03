@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import type { Database } from '../../types/database'
 import { buildCategoryTagLookups, type CategoryTagColor, type CategoryTagLookups, type CategoryTagMemberRow, type CategoryTagRow } from './categoryTags'
 import { diffCategoryTagMembers } from './categoryTagMembersDiff'
@@ -105,6 +106,55 @@ export async function saveCategoryTagMembers(
     const { error } = await supabase.from('mercury_category_tag_members').insert({ tag_id: tagId, label_id: id })
     if (error) throw new Error(error.message)
   }
+}
+
+/** Mercury tx id → its accounting label id (drag-sort assignment), chunked. Used by the cost-line split. */
+export async function fetchLabelIdByTxId(txIds: readonly string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (txIds.length === 0) return out
+  const rows = (await fetchAllRowsChunkedIn(
+    [...txIds],
+    (chunk, from, to) =>
+      supabase
+        .from('mercury_transaction_drag_sort_assignments')
+        .select('mercury_transaction_id, label_id')
+        .in('mercury_transaction_id', chunk)
+        .order('mercury_transaction_id')
+        .range(from, to),
+    'load accounting labels by tx',
+  )) as Array<{ mercury_transaction_id: string; label_id: string }>
+  for (const r of rows) out.set(r.mercury_transaction_id, r.label_id)
+  return out
+}
+
+/**
+ * Merge `sourceId` into `targetId`: members move across (a category / label
+ * lives in one tag, so no conflicts), rules that point at the source are
+ * re-pointed at the target with a fresh category snapshot, then the source
+ * is deleted.
+ */
+export async function mergeCategoryTags(sourceId: string, targetId: string): Promise<{ movedMembers: number; repointedRules: number }> {
+  if (sourceId === targetId) throw new Error('Pick a different tag to merge into.')
+  const moved = await supabase.from('mercury_category_tag_members').update({ tag_id: targetId }).eq('tag_id', sourceId).select('id')
+  if (moved.error) throw new Error(moved.error.message)
+  const rulesRes = await supabase.from('mercury_accounting_label_rules').select('id, criteria')
+  if (rulesRes.error) throw new Error(rulesRes.error.message)
+  const targetMembers = await supabase.from('mercury_category_tag_members').select('bank_category').eq('tag_id', targetId).not('bank_category', 'is', null)
+  if (targetMembers.error) throw new Error(targetMembers.error.message)
+  const snapshot = (targetMembers.data ?? []).map((m) => m.bank_category).filter((c): c is string => !!c)
+  let repointed = 0
+  for (const r of rulesRes.data ?? []) {
+    const c = r.criteria
+    if (!c || typeof c !== 'object' || Array.isArray(c)) continue
+    const bt = (c as Record<string, unknown>).bankTag
+    if (!bt || typeof bt !== 'object' || (bt as { tagId?: unknown }).tagId !== sourceId) continue
+    const next = { ...(c as Record<string, unknown>), bankTag: { tagId: targetId, categories: snapshot } }
+    const { error } = await supabase.from('mercury_accounting_label_rules').update({ criteria: next, updated_at: new Date().toISOString() }).eq('id', r.id)
+    if (error) throw new Error(error.message)
+    repointed += 1
+  }
+  await deleteCategoryTag(sourceId)
+  return { movedMembers: (moved.data ?? []).length, repointedRules: repointed }
 }
 
 /** Members cascade. Rules that pointed at the tag keep matching from their saved category snapshot. */

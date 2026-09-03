@@ -55,7 +55,7 @@ function row(over: Partial<TeamSummaryBreakdown> & { name: string }): TeamSummar
     hourlyWage: 50,
     overheadWage: 50,
     allocatedParts: over.allocatedParts ?? 0,
-    allocatedFuel: over.allocatedFuel ?? 0,
+    allocatedByTag: over.allocatedByTag ?? {},
     allocatedLabor: over.allocatedLabor ?? Math.max(0, gross - net - (over.allocatedParts ?? 0)),
     overheadSessions: [],
     gross,
@@ -129,8 +129,8 @@ describe('buildReviewVerdict', () => {
     expect(v.none.names).toEqual(['Micah'])
     const shareSum = v.segments.reduce((s, seg) => s + seg.share, 0)
     expect(shareSum).toBeCloseTo(1, 5)
-    expect(v.segments.map((s) => s.key)).toEqual(['costs', 'fuel', 'overheadLabor', 'burden', 'profit'])
-    expect(v.fuel).toBe(0)
+    expect(v.segments.map((s) => s.key)).toEqual(['costs', 'overheadLabor', 'burden', 'profit'])
+    expect(v.byTag).toEqual([])
     expect(v.trend).toBeNull()
   })
   it('leaves profit null until the overhead rate lands, and compares against the prior period when given', () => {
@@ -173,9 +173,8 @@ describe('buildReviewPersonMath', () => {
     const m = buildReviewPersonMath(malachi, { partsRate: 5 })
     const by = Object.fromEntries(m.lines.map((l) => [l.key, l.usd]))
     expect(by.gross).toBe(49063)
-    // row() fixtures carry no parts/fuel split, so everything between gross and net is labor.
+    // row() fixtures carry no parts split, so everything between gross and net is labor.
     expect(by.parts).toBe(-0)
-    expect(by.fuel).toBe(-0)
     expect(by.labor).toBe(-(49063 - 23326))
     expect(by.net).toBe(23326)
     expect(by.overheadLabor).toBe(-604)
@@ -257,5 +256,25 @@ describe('buildReviewHygiene', () => {
     expect(items[0]!.headline).toBe('$3,171 of office-type charges on 5 field jobs')
     expect(items[0]!.detail).toContain('Auto Group $1,700, Post Oak Landfill $397, City Of Kyle $364, …')
     expect(items[0]!.href).toBe('/banking?tab=sorting')
+  })
+})
+
+describe('cost-line tags (v2.2725)', () => {
+  const fuelTag = { id: 't-fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber' as const, sort_order: 0, default_key: 'fuel_vehicle', show_as_cost_line: true, hide_from_picker: false }
+  const permitsTag = { id: 't-gov', name: 'Government', icon: '🏛', color: 'gray' as const, sort_order: 40, default_key: 'government', show_as_cost_line: true, hide_from_picker: false }
+  const r = row({ name: 'M', totalHours: 100, gross: 10000, net: 4000, allocatedParts: 3000, allocatedLabor: 3000, allocatedByTag: { 't-fuel': 500, 't-gov': 120 } })
+  it('draws one verdict segment and one drawer line per cost-line tag, slicing them out of parts', () => {
+    const v = buildReviewVerdict([r], null, [fuelTag, permitsTag])
+    expect(v.byTag.map((t) => `${t.tag.name} ${t.usd}`)).toEqual(['Fuel & gas 500', 'Government 120'])
+    expect(v.segments.map((s) => s.key)).toEqual(['costs', 'tag:t-fuel', 'tag:t-gov', 'overheadLabor', 'burden', 'profit'])
+    expect(v.segments[0]!.usd).toBe(6000 - 620)
+    expect(v.segments[1]).toMatchObject({ color: 'amber', icon: '⛽', label: 'Fuel & gas', usd: 500 })
+    const m = buildReviewPersonMath(r, { partsRate: 5, costLineTags: [fuelTag, permitsTag] })
+    const by = Object.fromEntries(m.lines.map((l) => [l.key, l.usd]))
+    expect(by.parts).toBe(-(3000 - 620))
+    expect(by['tag:t-fuel']).toBe(-500)
+    expect(by['tag:t-gov']).toBe(-120)
+    expect(by.labor).toBe(-3000)
+    expect(m.lines.find((l) => l.key === 'tag:t-fuel')?.label).toBe('− ⛽ Fuel & gas')
   })
 })
