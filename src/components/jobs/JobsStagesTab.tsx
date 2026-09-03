@@ -2560,34 +2560,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 Forecast
               </button>
             )}
-            {canOpenSessionNotes && (
-              <button
-                type="button"
-                onClick={() => openSessionNotes(null)}
-                title="Session notes — every clock session on one line: what people wrote and where the time landed"
-                aria-label="Session notes"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0.5rem 0.6rem',
-                  background: 'var(--bg-blue-tint)',
-                  color: 'var(--text-link)',
-                  border: '1px solid var(--border-blue)',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  lineHeight: 1,
-                }}
-              >
-                {/* Font Awesome Free 7 "clock" (solid) — owner-picked glyph for the Session notes door. */}
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} aria-hidden>
-                  <path
-                    fill="currentColor"
-                    d="M320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64zM296 184L296 320C296 328 300 335.5 306.7 340L402.7 404C413.7 411.4 428.6 408.4 436 397.3C443.4 386.2 440.4 371.4 429.3 364L344 307.2L344 184C344 170.7 333.3 160 320 160C306.7 160 296 170.7 296 184z"
-                  />
-                </svg>
-              </button>
-            )}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
             <div
               style={{
@@ -2670,6 +2642,38 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 >
                   + schedule &amp; clock…
                 </span>
+              ) : null}
+              {canOpenSessionNotes ? (
+                // Session notes door (v2.2683): lives in the command bar beside the
+                // search it complements — same round chip grammar as the # jump.
+                <button
+                  type="button"
+                  onClick={() => openSessionNotes(null)}
+                  title="Session notes — every clock session on one line: what people wrote and where the time landed"
+                  aria-label="Session notes"
+                  style={{
+                    width: '2.1rem',
+                    height: '2.1rem',
+                    flexShrink: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 999,
+                    background: 'var(--surface)',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  {/* Font Awesome Free 7 "clock" (solid) — owner-picked glyph. */}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={17} height={17} aria-hidden>
+                    <path
+                      fill="currentColor"
+                      d="M320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64zM296 184L296 320C296 328 300 335.5 306.7 340L402.7 404C413.7 411.4 428.6 408.4 436 397.3C443.4 386.2 440.4 371.4 429.3 364L344 307.2L344 184C344 170.7 333.3 160 320 160C306.7 160 296 170.7 296 184z"
+                    />
+                  </svg>
+                </button>
               ) : null}
               <StagesJobNumberJumpChip
                 onJump={(digits) => {
