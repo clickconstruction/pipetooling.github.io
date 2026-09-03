@@ -20,7 +20,7 @@ import {
 import { boardValueForRule, bundleSectionsForBoard, formatSendBadge, latestSendByVersion, parseBoardValueRule, type BoardValueRule, type VersionSendRow } from '../../lib/bids/versionSends'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
-import { BidRoomPanel } from './BidRoomPanel'
+import { BidRoomPanel, BidRoomSetupButton } from './BidRoomPanel'
 import {
   breakAmountOntoOwnLineForPreview,
   buildCoverLetterHtml,
@@ -174,6 +174,9 @@ export function BidsCoverLetterTab({
   const [versionSends, setVersionSends] = useState<VersionSendRow[]>([])
   const [boardValueRule, setBoardValueRule] = useState<BoardValueRule>('base_sum')
   const [markingSent, setMarkingSent] = useState(false)
+  // vv2.2716: the Bid Room panel is controlled per GC so "Setup bid room" can sit beside Mark sent.
+  const [roomOpenByKey, setRoomOpenByKey] = useState<Record<string, boolean>>({})
+  const [roomPresenceByKey, setRoomPresenceByKey] = useState<Record<string, boolean>>({})
   // Same-page alternates (v2.2370): default same-page; "Separate pages" is the pre-2370 document.
   const [altsLayout, setAltsLayout] = useState<'same-page' | 'separate'>(() => {
     try {
@@ -1051,6 +1054,9 @@ export function BidsCoverLetterTab({
                                 >
                                   {markingSent ? 'Marking…' : 'Mark sent today'}
                                 </button>
+                                {roomPresenceByKey[`${bid.id}:own`] === false && !roomOpenByKey[`${bid.id}:own`] ? (
+                                  <BidRoomSetupButton gcShort={letterCustomerName} onClick={() => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:own`]: true }))} />
+                                ) : null}
                                 <OpenRfiChip bidId={bid.id} />
                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                                   stamps the bid with today as its sent date and this letter's amount as its value
@@ -1074,6 +1080,9 @@ export function BidsCoverLetterTab({
                                 terms={terms}
                                 crmCustomerId={bid.customers?.id ?? null}
                                 onFirstLinkSent={() => void markSentTodaySimple(bid.id, headlineAmount)}
+                                open={roomOpenByKey[`${bid.id}:own`] ?? false}
+                                onOpenChange={(v) => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:own`]: v }))}
+                                onRoomPresence={(has) => setRoomPresenceByKey((m) => (m[`${bid.id}:own`] === has ? m : { ...m, [`${bid.id}:own`]: has }))}
                               />
                             </>
                           ) : (
@@ -1183,6 +1192,9 @@ export function BidsCoverLetterTab({
                                 >
                                   {markingSent ? 'Marking…' : multi ? `Mark sent to ${gcShort}` : 'Mark sent today'}
                                 </button>
+                                {roomPresenceByKey[`${bid.id}:${selectedKey}`] === false && !roomOpenByKey[`${bid.id}:${selectedKey}`] ? (
+                                  <BidRoomSetupButton gcShort={gcShort} onClick={() => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:${selectedKey}`]: true }))} />
+                                ) : null}
                                   <OpenRfiChip bidId={bid.id} />
                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                                   {multi
@@ -1204,6 +1216,9 @@ export function BidsCoverLetterTab({
                                 terms={terms}
                                 crmCustomerId={selectedKey === 'bid-default' ? bid.customers?.id ?? null : selectedKey}
                                 onFirstLinkSent={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null, { isOwnGc: !multi || selectedKey === 'bid-default', currentDateSent: bid.bid_date_sent ?? null })}
+                                open={roomOpenByKey[`${bid.id}:${selectedKey}`] ?? false}
+                                onOpenChange={(v) => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:${selectedKey}`]: v }))}
+                                onRoomPresence={(has) => setRoomPresenceByKey((m) => (m[`${bid.id}:${selectedKey}`] === has ? m : { ...m, [`${bid.id}:${selectedKey}`]: has }))}
                               />
                             </>
                           )}
