@@ -169,7 +169,7 @@ serve(async (req) => {
             dates: [typeof f.start_date === 'string' && f.start_date ? `Start: ${f.start_date}` : '', typeof f.completion_date === 'string' && f.completion_date ? `Estimated completion: ${f.completion_date}` : ''].filter(Boolean).join('  ·  '),
             termsText: contractBodyToPlainText(c.body_html, c.body_format),
             issuer,
-            signature: { printedName: signerName, auditLine: `Signed electronically by ${signerName} (${how}) · ${stamp(c.signed_at)} CT${c.signer_consented_at ? ' · consent recorded' : ''}${c.signer_ip ? ` · ${c.signer_ip}` : ''}`, png: sigPng },
+            signature: { printedName: signerName, auditLine: `${c.signer_consented_at ? 'Consent recorded · ' : ''}${how} · ${stamp(c.signed_at)} CT${c.signer_ip ? ` · ${c.signer_ip}` : ''}`, png: sigPng, recordId: signedRecordId('J', jobNo, c.id), whenLabel: `${stamp(c.signed_at)} CT` },
           })
           const { error: upErr } = await admin.storage.from(JOB_CONTRACT_BUCKET).upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: true })
           if (!upErr) await admin.from('job_contracts').update({ signed_pdf_path: pdfPath }).eq('id', c.id)
@@ -245,7 +245,7 @@ serve(async (req) => {
           dates: '',
           termsText: e.terms_snapshot ?? '',
           issuer,
-          signature: { printedName: signerName, auditLine: `Accepted electronically by ${signerName} (${sigPng ? 'drawn' : 'typed'}) · ${stamp(e.acceptor_consented_at)} CT · consent recorded${e.acceptor_ip ? ` · ${e.acceptor_ip}` : ''}`, png: sigPng },
+          signature: { printedName: signerName, auditLine: `Consent recorded · ${sigPng ? 'drawn' : 'typed'} on the estimate page · ${stamp(e.acceptor_consented_at)} CT${e.acceptor_ip ? ` · ${e.acceptor_ip}` : ''}`, png: sigPng, recordId: signedRecordId('E', e.estimate_number, e.id), whenLabel: `${stamp(e.acceptor_consented_at)} CT` },
         }
         pdf = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, input)
         await admin.storage.from(JOB_CONTRACT_BUCKET).upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: true })

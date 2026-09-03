@@ -85,3 +85,10 @@ export const corsHeaders = {
 
 export const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
+/** Short record ID printed inside the signature frame (client twin: src/lib/signedRecordId.ts). */
+export function signedRecordId(prefix: 'E' | 'J', number: string | number | null | undefined, rowId: string | null | undefined): string {
+  const n = String(number ?? '').replace(/[^a-zA-Z0-9]/g, '') || '0'
+  const hex = (rowId ?? '').replace(/-/g, '').slice(0, 6).toUpperCase() || '000000'
+  return `${prefix}${n}-${hex}`
+}
