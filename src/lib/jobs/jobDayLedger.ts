@@ -41,7 +41,10 @@ export type JobDayLedgerJob = {
   lastYmd: string
 }
 
-export type JobDayLedgerJobLabel = { number: string; name: string }
+export type JobDayLedgerJobLabel = { number: string; name: string; /** jobs_ledger.status at load time (Timeline buckets, v2.2711). */ status?: string | null }
+
+/** Working → Billed/Paid status moves from job_status_events (Timeline's status definition, v2.2711). */
+export type JobDayLedgerStatusSpan = { startYmd: string; endYmd: string | null }
 
 export type JobDayLedger = {
   startYmd: string
@@ -54,6 +57,8 @@ export type JobDayLedger = {
   jobs: Map<string, JobDayLedgerJob>
   /** Display labels for the touched jobs (the Days view's chips) — filled by the loader; empty in pure tests. */
   jobLabels: Map<string, JobDayLedgerJobLabel>
+  /** Status spans for the touched jobs — filled by the loader; empty in pure tests. */
+  statusSpansByJob: Map<string, JobDayLedgerStatusSpan>
   /** Approved field hours on each touched job BEFORE the window (not charged — surfaced as a flag). */
   priorHoursByJob: Map<string, number>
   /** Closed field sessions in the window still awaiting approval (count nowhere yet). */
@@ -109,6 +114,7 @@ export function buildJobDayLedger(args: {
   poolUsdByDay: ReadonlyMap<string, number>
   priorHoursByJob?: ReadonlyMap<string, number>
   jobLabels?: ReadonlyMap<string, JobDayLedgerJobLabel>
+  statusSpansByJob?: ReadonlyMap<string, JobDayLedgerStatusSpan>
   pendingFieldSessions?: number
   pendingFieldHours?: number
   invoicedRevenueUsd?: number
@@ -166,6 +172,7 @@ export function buildJobDayLedger(args: {
     dayByYmd,
     jobs,
     jobLabels: new Map(args.jobLabels ?? []),
+    statusSpansByJob: new Map(args.statusSpansByJob ?? []),
     priorHoursByJob: new Map(args.priorHoursByJob ?? []),
     pendingFieldSessions: args.pendingFieldSessions ?? 0,
     pendingFieldHours: args.pendingFieldHours ?? 0,
@@ -227,6 +234,7 @@ export type JobDayLedgerSerialized = {
   days: Array<{ ymd: string; poolUsd: number; fieldHours: number; fieldLaborUsd: number; byJob: Array<[string, JobDayLedgerJobDay]> }>
   priorHoursByJob: Array<[string, number]>
   jobLabels?: Array<[string, JobDayLedgerJobLabel]>
+  statusSpansByJob?: Array<[string, JobDayLedgerStatusSpan]>
   pendingFieldSessions: number
   pendingFieldHours: number
   invoicedRevenueUsd: number
@@ -240,6 +248,7 @@ export function serializeJobDayLedger(l: JobDayLedger): JobDayLedgerSerialized {
     days: l.days.map((d) => ({ ymd: d.ymd, poolUsd: d.poolUsd, fieldHours: d.fieldHours, fieldLaborUsd: d.fieldLaborUsd, byJob: [...d.byJob.entries()] })),
     priorHoursByJob: [...l.priorHoursByJob.entries()],
     jobLabels: [...l.jobLabels.entries()],
+    statusSpansByJob: [...l.statusSpansByJob.entries()],
     pendingFieldSessions: l.pendingFieldSessions,
     pendingFieldHours: l.pendingFieldHours,
     invoicedRevenueUsd: l.totals.invoicedRevenueUsd,
@@ -276,6 +285,7 @@ export function deserializeJobDayLedger(s: JobDayLedgerSerialized): JobDayLedger
     dayByYmd,
     jobs,
     jobLabels: new Map(s.jobLabels ?? []),
+    statusSpansByJob: new Map(s.statusSpansByJob ?? []),
     priorHoursByJob: new Map(s.priorHoursByJob),
     pendingFieldSessions: s.pendingFieldSessions,
     pendingFieldHours: s.pendingFieldHours,

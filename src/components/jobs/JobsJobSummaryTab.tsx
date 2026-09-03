@@ -54,6 +54,7 @@ import {
 import JobSummaryChargesTimelineChart from './JobSummaryChargesTimelineChart'
 import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedgerToolbar'
 import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
+import JobSummaryTimelineView from './JobSummaryTimelineView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
 import type { TallyPartRow } from '../../types/tallyPart'
@@ -482,7 +483,18 @@ export default function JobsJobSummaryTab({
           )}
           <JobSummaryLedgerToolbar view={view} search={jobSummarySearch} setSearch={setJobSummarySearch} showMoney={showTeamLaborAndProfit} />
           {/* Job Summary uses jobSummaryLedgerJobs, not the Stages/Billing/Parts jobs list — do not gate on jobsListLoading or it stays true when users open this tab first. */}
-          {view.prefs.view === 'days' ? (
+          {view.prefs.view === 'timeline' ? (
+            <JobSummaryTimelineView
+              ledger={view.ledger}
+              ledgerLoading={view.ledgerLoading}
+              ledgerError={view.ledgerError}
+              statusByJob={new Map((jobSummaryLedgerAllJobs ?? []).map((j) => [j.id, j.status]))}
+              todayYmd={view.endYmd}
+              canOpenSessionNotes={canOpenSessionNotes}
+              users={users}
+              jobs={jobSummaryLedgerAllJobs ?? []}
+            />
+          ) : view.prefs.view === 'days' ? (
             <JobSummaryDaysView
               ledger={view.ledger}
               ledgerLoading={view.ledgerLoading}
