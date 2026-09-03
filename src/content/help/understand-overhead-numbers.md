@@ -26,6 +26,8 @@ Sessions nobody has approved (or rejected) yet don't count **anywhere** — not 
 
 Fix it on the **Hours** tab: review and approve the pending sessions. Sessions that are still open (no clock-out yet) are listed by count only — they get hours once they're clocked out.
 
+Salary-schedule sessions (the ones the system creates for salaried people) **approve themselves** about every half hour once they close, so they no longer add to this indicator — what you see pending is real punches waiting on a human.
+
 ### Unpriced hours
 
 If a person clocks time but has no wage in **Pay config**, their sessions count hours at **$0**: the hours still land in the denominators, but no dollars reach the pool. That deflates the daily-cost KPIs and Methods B and C while Method A's denominator stays full — the worst combination, because every rate reads lower than reality.
