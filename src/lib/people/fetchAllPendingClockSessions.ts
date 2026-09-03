@@ -11,19 +11,23 @@ export const PENDING_APPROVALS_FETCH_CAP = 2000
  * week window — the approvals queue's one read. Caller RLS applies: pay roles
  * see the company, a team lead sees their members.
  */
-export async function fetchAllPendingClockSessions(): Promise<ClockSessionRow[]> {
+export async function fetchAllPendingClockSessions(opts: { userId?: string | null } = {}): Promise<ClockSessionRow[]> {
   const data = await withSupabaseRetry(
-    async () =>
-      supabase
+    async () => {
+      let q = supabase
         .from('clock_sessions')
         .select(CLOCK_SESSION_LIST_SELECT)
         .not('clocked_out_at', 'is', null)
         .is('approved_at', null)
         .is('rejected_at', null)
         .is('revoked_at', null)
+      // Person Desk pin (v2.2701): one person's queue, every week.
+      if (opts.userId) q = q.eq('user_id', opts.userId)
+      return q
         .order('work_date', { ascending: true })
         .order('clocked_in_at', { ascending: true })
-        .limit(PENDING_APPROVALS_FETCH_CAP),
+        .limit(PENDING_APPROVALS_FETCH_CAP)
+    },
     'load all pending clock sessions',
   )
   return (data ?? []) as unknown as ClockSessionRow[]

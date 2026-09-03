@@ -83,6 +83,7 @@ import { JobHoursStoryModalProvider } from './contexts/JobHoursStoryModalContext
 import { UpdateFocusOpenerBridgeProvider } from './contexts/UpdateFocusOpenerBridgeContext'
 import { UserReviewModalProvider } from './contexts/UserReviewModalContext'
 import { ActiveAccountsModalProvider } from './contexts/ActiveAccountsModalContext'
+import { PersonDeskProvider } from './contexts/PersonDeskContext'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -261,7 +262,9 @@ function AppContent() {
                                               <JobHoursStoryModalProvider>
                                               <UserReviewModalProvider>
                                                 <ActiveAccountsModalProvider>
-                                                  <Layout />
+                                                  <PersonDeskProvider>
+                                                    <Layout />
+                                                  </PersonDeskProvider>
                                                 </ActiveAccountsModalProvider>
                                               </UserReviewModalProvider>
                                               </JobHoursStoryModalProvider>

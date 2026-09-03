@@ -30,6 +30,11 @@ type Props = {
   authUserId: string | undefined
   /** Bump to refetch (e.g. after the parent's edit modal saves). */
   reloadKey: number
+  /** Person Desk pin (v2.2701): only this account's sessions; the title names them. */
+  pinUserId?: string | null
+  pinDisplayName?: string | null
+  /** Stack above a host that already sits at the default modal rung (the Desk drawer). */
+  zIndex?: number
 }
 
 const BTN: CSSProperties = {
@@ -69,7 +74,7 @@ function FlagSummary({ counts, prefix }: { counts: ApprovalsQueueFlagCounts; pre
   )
 }
 
-export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey }: Props) {
+export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60 }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()
@@ -83,13 +88,13 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
   const load = useCallback(async () => {
     try {
       setLoadError(null)
-      const data = await fetchAllPendingClockSessions()
+      const data = await fetchAllPendingClockSessions({ userId: pinUserId ?? null })
       setRows(data)
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Could not load pending sessions')
       setRows((prev) => prev ?? [])
     }
-  }, [])
+  }, [pinUserId])
 
   useEffect(() => {
     void load()
@@ -356,7 +361,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
       role="dialog"
       aria-modal="true"
       aria-label="Hours approvals, every week"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -375,7 +380,9 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '0.35rem' }}>
           <div style={{ minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: '1.125rem', lineHeight: 1.2 }}>Hours approvals · every week</h2>
+            <h2 style={{ margin: 0, fontSize: '1.125rem', lineHeight: 1.2 }}>
+              {pinUserId ? `Hours approvals · ${pinDisplayName?.trim() || 'this person'} · every week` : 'Hours approvals · every week'}
+            </h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
               {loading ? (
                 'Loading every pending session…'

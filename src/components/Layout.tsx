@@ -27,6 +27,8 @@ import DispatchTaskModal from './DispatchTaskModal'
 import EstimatorTaskModal from './EstimatorTaskModal'
 import UserReviewModal from './UserReviewModal'
 import { UserReviewDeepLinkHandler } from './userReview/UserReviewDeepLinkHandler'
+import { PersonDeskDrawer } from './personDesk/PersonDeskDrawer'
+import { PersonDeskDeepLinkHandler } from './personDesk/PersonDeskDeepLinkHandler'
 import NewCustomerModal from './NewCustomerModal'
 import NewProjectModal from './NewProjectModal'
 import EditProjectModal from './projects/EditProjectModal'
@@ -2117,6 +2119,8 @@ export default function Layout() {
       <EstimatorTaskModal />
       <UserReviewModal />
       <UserReviewDeepLinkHandler />
+      <PersonDeskDrawer />
+      <PersonDeskDeepLinkHandler />
       <NewCustomerModal />
       <NewProjectModal />
       <EditProjectModal />
