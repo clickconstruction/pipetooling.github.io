@@ -28,7 +28,9 @@ export function pickActiveVersion(input: {
  *    no pricing yet).
  *  - Unsplit bid (activeVersionId null): the saved id when it's one of the bid's unsplit pricing
  *    copies, else any unsplit copy, else the saved id as-is (a shared/template pricing), else the
- *    service type's "Default" template. That last fallback preserves the long-standing behavior
+ *    template that actually holds this bid's assignment / custom-price rows (v2.2720 — a bid
+ *    priced straight on a shared book before copies existed), else the viewer's default template
+ *    (last pick → "Default" → first). That last fallback preserves the long-standing behavior
  *    where bids that never explicitly picked a price book price against "Default" — without it,
  *    those bids show no pricing at all.
  */
@@ -36,11 +38,13 @@ export function deriveActivePricingId(input: {
   activeVersionId: string | null
   bidPricings: { id: string; bid_version_id: string | null }[]
   legacyFallbackPricingId: string | null
+  /** The shared template whose id this bid's pricing rows actually carry (v2.2720, `pickLegacyDataTemplateId`). */
+  legacyDataPricingId?: string | null
   defaultTemplatePricingId?: string | null
   /** The active version's own ★ (`bid_versions.starred_price_book_version_id`, v2.2117) — wins when it belongs to the version. */
   versionStarredPricingId?: string | null
 }): string | null {
-  const { activeVersionId, bidPricings, legacyFallbackPricingId, defaultTemplatePricingId, versionStarredPricingId } = input
+  const { activeVersionId, bidPricings, legacyFallbackPricingId, legacyDataPricingId, defaultTemplatePricingId, versionStarredPricingId } = input
   if (activeVersionId != null) {
     const versionPricings = bidPricings.filter((p) => p.bid_version_id === activeVersionId)
     const starred = versionStarredPricingId ? versionPricings.find((p) => p.id === versionStarredPricingId) : undefined
@@ -49,7 +53,7 @@ export function deriveActivePricingId(input: {
   }
   const unsplitPricings = bidPricings.filter((p) => p.bid_version_id == null)
   const savedUnsplit = unsplitPricings.find((p) => p.id === legacyFallbackPricingId)
-  return savedUnsplit?.id ?? unsplitPricings[0]?.id ?? legacyFallbackPricingId ?? defaultTemplatePricingId ?? null
+  return savedUnsplit?.id ?? unsplitPricings[0]?.id ?? legacyFallbackPricingId ?? legacyDataPricingId ?? defaultTemplatePricingId ?? null
 }
 
 /**
