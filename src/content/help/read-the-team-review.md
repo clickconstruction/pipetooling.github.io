@@ -21,8 +21,11 @@ An amber strip appears when something is quietly distorting the period. Each lin
 **119 sessions · 619.6 h awaiting approval** — 12 people, oldest 122 days ago — not counted anywhere until approved. {{button:blue|Approve in Hours ›}}
 **3 jobs have no bill amount** — labor there lands as pure loss. {{button:blue|Open Jobs ›}}
 **10 jobs have no % complete** — they count as 100% done, so their whole bill is treated as earned. {{button:blue|Set progress ›}}
+**$478 of office-type charges on 3 field jobs** — 3 card charges the bank filed as software, utilities, insurance, internet or medical count as parts there — usually office spend, sometimes a dump fee or permit (Post Oak Landfill $397, City of Shavano Park $68, Dropbox $13). Confirm or re-sort. {{button:blue|Sort in Banking ›}}
 **Salaried hours are assumed for 2 people** — 8 h every weekday in the period, including today — not clock time.
 :::
+
+The office-type line reads the bank's own category on each card purchase, so it is a prompt, not a verdict: a landfill fee filed under "Utilities" is a real job cost and can stay; a software subscription on a field job belongs on the office job. Both are fixed in {{button:blue|Banking → Sorting}}.
 
 When the period is clean the strip disappears.
 

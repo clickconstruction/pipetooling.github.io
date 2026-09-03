@@ -231,5 +231,24 @@ describe('buildReviewHygiene', () => {
   })
   it('returns nothing when the period is clean', () => {
     expect(buildReviewHygiene([row({ name: 'A', totalHours: 8 })], null)).toEqual([])
+    expect(buildReviewHygiene([row({ name: 'A', totalHours: 8 })], null, { usd: 0, charges: 0, jobs: 0, top: [] })).toEqual([])
+  })
+  it('names office-type card charges that landed on field jobs and points at Banking sorting', () => {
+    const items = buildReviewHygiene([row({ name: 'A', totalHours: 8 })], null, {
+      usd: 3171,
+      charges: 9,
+      jobs: 5,
+      top: [
+        { category: 'Software', counterparty: 'Auto Group', usd: 1700 },
+        { category: 'Utilities', counterparty: 'Post Oak Landfill', usd: 397 },
+        { category: 'Utilities', counterparty: 'City Of Kyle', usd: 364 },
+        { category: 'InternetAndTelephone', counterparty: 'Starlink', usd: 275 },
+      ],
+    })
+    expect(items).toHaveLength(1)
+    expect(items[0]!.key).toBe('officeLikeCharges')
+    expect(items[0]!.headline).toBe('$3,171 of office-type charges on 5 field jobs')
+    expect(items[0]!.detail).toContain('Auto Group $1,700, Post Oak Landfill $397, City Of Kyle $364, …')
+    expect(items[0]!.href).toBe('/banking?tab=sorting')
   })
 })
