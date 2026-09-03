@@ -55,6 +55,12 @@ export function buildCourseModel(input: {
   /** Net $ the owner wants to add over the projection span; null = no destination. */
   targetUsd: number | null
   levers?: ReadonlyArray<CourseLever>
+  /**
+   * Overhead drag per calendar day for SPEED and the projection, when the
+   * trailing span isn't trustworthy (an approvals stall empties recent
+   * overhead days). The track still uses the per-day map as recorded.
+   */
+  overheadPerDayBaseline?: number
 }): CourseModel {
   const speedDays = Math.max(1, Math.floor(input.speedDays ?? 14))
   const track: CourseDay[] = []
@@ -72,7 +78,7 @@ export function buildCourseModel(input: {
   const avg = (pick: (d: CourseDay) => number) => (tail.length ? tail.reduce((s, d) => s + pick(d), 0) / tail.length : 0)
   const earnedPerDay = avg((d) => d.earnedUsd)
   const directPerDay = avg((d) => d.directUsd)
-  const overheadPerDay = avg((d) => d.overheadUsd)
+  const overheadPerDay = input.overheadPerDayBaseline != null && Number.isFinite(input.overheadPerDayBaseline) ? input.overheadPerDayBaseline : avg((d) => d.overheadUsd)
   const speed = { days: tail.length, earnedPerDay, directPerDay, overheadPerDay, burnPerDay: directPerDay + overheadPerDay, climbPerDay: earnedPerDay - directPerDay - overheadPerDay }
   const totalEarned = track.reduce((s, d) => s + d.earnedUsd, 0)
   const totalDirect = track.reduce((s, d) => s + d.directUsd, 0)

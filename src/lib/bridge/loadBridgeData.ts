@@ -43,7 +43,9 @@ export type BridgeData = {
   directByDay: Map<string, number>
   overheadByDay: Map<string, number>
   totals: { earnedUsd: number; fieldLaborUsd: number; materialsUsd: number; subLaborUsd: number; overheadUsd: number }
-  crew: { fieldHours7d: number; officeBidHours7d: number; pendingClosedHours: number; pendingClosedSessions: number }
+  crew: { fieldHours7d: number; fieldHoursWindow: number; officeBidHours7d: number; pendingClosedHours: number; pendingClosedSessions: number }
+  /** 90-day calendar-day overhead average — the drag used for speed and the projection. */
+  overheadPerDayBaseline: number
   hygiene: { unattributedNoncard: number | null; unlinkedCard: number | null }
   levers: {
     rtb: { count: number; revenueUsd: number }
@@ -270,7 +272,12 @@ export async function loadBridgeData(): Promise<BridgeData> {
   const sum = (m: ReadonlyMap<string, number>) => [...m.values()].reduce((s, v) => s + v, 0)
   const last7 = ymdAddDays(todayYmd, -6)
   let fieldHours7d = 0
-  for (const s of fieldSessions) if (s.work_date >= last7) fieldHours7d += hoursOf(s.clocked_in_at, s.clocked_out_at)
+  let fieldHoursWindow = 0
+  for (const s of fieldSessions) {
+    const h = hoursOf(s.clocked_in_at, s.clocked_out_at)
+    fieldHoursWindow += h
+    if (s.work_date >= last7) fieldHours7d += h
+  }
   let officeBidHours7d = 0
   for (const l of snap.peopleLines.labor) if (l.workDate >= last7) officeBidHours7d += l.hours
   const hazardsByDay = new Map<string, number>()
@@ -295,7 +302,8 @@ export async function loadBridgeData(): Promise<BridgeData> {
       subLaborUsd: sum(subByDay),
       overheadUsd: sum(overheadByDay),
     },
-    crew: { fieldHours7d, officeBidHours7d, pendingClosedHours: snap.hygiene.pending.closedHours, pendingClosedSessions: snap.hygiene.pending.closedCount },
+    crew: { fieldHours7d, fieldHoursWindow, officeBidHours7d, pendingClosedHours: snap.hygiene.pending.closedHours, pendingClosedSessions: snap.hygiene.pending.closedCount },
+    overheadPerDayBaseline: snap.avg.avg90,
     hygiene: { unattributedNoncard: ncCount, unlinkedCard: cardCount },
     levers: {
       rtb: { count: (rtbRows ?? []).length, revenueUsd: (rtbRows ?? []).reduce((acc: number, r: { revenue: number | null }) => acc + Number(r.revenue ?? 0), 0) },

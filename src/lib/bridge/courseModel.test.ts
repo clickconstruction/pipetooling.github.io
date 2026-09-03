@@ -41,6 +41,14 @@ describe('buildCourseModel', () => {
     expect(bent.verdict.kind).toBe('makes')
   })
 
+  it('an overhead baseline replaces the trailing overhead in speed and the projection, not the track', () => {
+    const c = buildCourseModel({ ...base, overheadPerDayBaseline: 300 })
+    expect(c.speed.overheadPerDay).toBe(300)
+    expect(c.speed.climbPerDay).toBe(500)
+    expect(c.track.map((d) => d.cumulativeUsd)).toEqual([500, 1400, 1900, 2800])
+    expect(c.projection[0]?.cumulativeUsd).toBe(3300)
+  })
+
   it('counts underwater days on a sinking projection', () => {
     const c = buildCourseModel({ ...base, earnedByDay: new Map(), targetUsd: 0 })
     expect(c.speed.climbPerDay).toBe(-300)

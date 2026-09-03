@@ -68,6 +68,7 @@ export default function Bridge() {
             directByDay: data.directByDay,
             overheadByDay: data.overheadByDay,
             targetUsd: data.targetUsd,
+            overheadPerDayBaseline: data.overheadPerDayBaseline,
           })
         : null,
     [data],
@@ -82,10 +83,10 @@ export default function Bridge() {
     }
     const oh = baseModel.speed.overheadPerDay
     if (oh > 0) out.push({ lever: { key: 'oh10', label: 'Cut overhead 10%', ratePerDay: oh * 0.1 }, effect: `+${money(oh * 0.1)}/day`, sub: `of ${money(oh)}/day overhead drag` })
-    const idle = Math.max(0, 40 * 5 - data.crew.fieldHours7d)
-    if (baseModel.speed.earnedPerDay > 0 && data.crew.fieldHours7d > 0 && idle > 0) {
-      const perHour = (baseModel.speed.earnedPerDay * 7) / data.crew.fieldHours7d
-      out.push({ lever: { key: 'crew8', label: 'One more field day a week (8h earning at the current rate)', ratePerDay: (perHour * 8) / 7 }, effect: `+${money((perHour * 8) / 7)}/day`, sub: `field earns about ${money(perHour)} per approved hour right now` })
+    if (data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0) {
+      const perHour = data.totals.earnedUsd / data.crew.fieldHoursWindow
+      const margin = baseModel.contributionMargin ?? 0
+      out.push({ lever: { key: 'crew8', label: 'One more field day a week (8h at the window\'s earning rate)', ratePerDay: (perHour * margin * 8) / 7 }, effect: `+${money((perHour * margin * 8) / 7)}/day`, sub: `field earned ${money(perHour)} per approved hour over the window; ${Math.round(margin * 100)}% of it is contribution` })
     }
     return out
   }, [data, baseModel])
@@ -102,6 +103,7 @@ export default function Bridge() {
             overheadByDay: data.overheadByDay,
             targetUsd: data.targetUsd,
             levers: leverDefs.filter((l) => checked.has(l.lever.key)).map((l) => l.lever),
+            overheadPerDayBaseline: data.overheadPerDayBaseline,
           })
         : null,
     [data, leverDefs, checked],
@@ -159,7 +161,7 @@ export default function Bridge() {
                 {money(Math.abs(speed.climbPerDay))} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>/day · {speed.days}-day avg</span>
               </div>
               <div style={det}>
-                earned <b style={{ color: 'var(--text)' }}>{money(speed.earnedPerDay)}</b>/day · burn <b style={{ color: 'var(--text)' }}>{money(speed.burnPerDay)}</b>/day (direct {money(speed.directPerDay)} + overhead {money(speed.overheadPerDay)})
+                earned <b style={{ color: 'var(--text)' }}>{money(speed.earnedPerDay)}</b>/day · burn <b style={{ color: 'var(--text)' }}>{money(speed.burnPerDay)}</b>/day (direct {money(speed.directPerDay)} + overhead {money(speed.overheadPerDay)} at the 90-day rate)
                 {model.contributionMargin != null && <> · contribution {Math.round(model.contributionMargin * 100)}%</>}
               </div>
             </div>
