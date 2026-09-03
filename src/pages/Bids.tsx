@@ -3886,7 +3886,6 @@ export default function Bids() {
           pricingRowsForGrid={pricingRowsForGrid}
           pricingPackageSource={pricingPackageSource}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'pricing')}
-          onNavigateToLaborDirectCosts={(bid) => { selectBidAndSyncUrl(bid, 'labor'); setScrollToLaborDirectCosts(true) }}
           pricingEquipmentRows={pricingEquipmentRows}
           pricingPermitRows={pricingPermitRows}
           pricingSubcontractorRows={pricingSubcontractorRows}
@@ -3897,7 +3896,6 @@ export default function Bids() {
           isMyBid={isMyBid}
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
-          onNavigateToLabor={() => setActiveTab('labor')}
           onNavigateBidToTab={(bid, tab) => selectBidAndSyncUrl(bid, tab)}
           onNavigateBidToTabRow={(bid, tab, target) => {
             setBidTabRowJump({ tab, ...target })

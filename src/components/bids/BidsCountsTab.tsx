@@ -15,8 +15,6 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { parseCountsImportText } from '../../lib/bids/parseCountsImportText'
 import { buildCountsCsv, sanitizeCsvFilenamePart } from '../../lib/bids/bidCsvExport'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
-import { SortableCountRow } from './CountRow'
-import { NewCountRow } from './NewCountRow'
 import { ClearAllCountsModal } from './ClearAllCountsModal'
 import { ModalShell } from './ModalShell'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -27,20 +25,6 @@ import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, par
 import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, summarizeRowsByUnit, type CountUnit } from '../../lib/bids/countRowUnit'
 import { breakdownJumpDomId, breakdownJumpMissMessage, countsRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
-
-/** Old/New pills beside the bid title (v2.2385) — the bordered pill look Cover Letter and Pricing use. */
-function countsViewPillStyle(on: boolean): React.CSSProperties {
-  return {
-    padding: '0.2rem 0.6rem',
-    borderRadius: 999,
-    border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-    background: on ? '#3b82f6' : 'var(--surface)',
-    color: on ? '#fff' : 'var(--text-muted)',
-    fontSize: '0.78rem',
-    fontWeight: 600,
-    cursor: 'pointer',
-  }
-}
 
 type BidsCountsTabProps = {
   bids: BidWithBuilder[]
@@ -119,40 +103,17 @@ export function BidsCountsTab({
   const [countsSearchQuery, setCountsSearchQuery] = useState('')
   const [movingCountRow, setMovingCountRow] = useState(false)
   const countRowsSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
-  const [lastMovedId, setLastMovedId] = useState<string | null>(null)
   // Breakdown jump landing (v2.2400): scroll + flash the row the Pricing modal pointed at.
   const rowJumpFlashDomId = usePendingRowFlash(rowJump ? breakdownJumpDomId(rowJump) : null, (found) => {
     if (!found && rowJump) showToast(breakdownJumpMissMessage(rowJump.tab, rowJump.fixture), 'info')
     onRowJumpHandled?.()
   })
-  const [addingCountRow, setAddingCountRow] = useState(false)
   const [countsImportOpen, setCountsImportOpen] = useState(false)
   const [countsImportText, setCountsImportText] = useState('')
   const [countsImportError, setCountsImportError] = useState<string | null>(null)
   const [clearAllCountsOpen, setClearAllCountsOpen] = useState(false)
   const [clearAllCountsConfirm, setClearAllCountsConfirm] = useState('')
   const [clearAllCountsBusy, setClearAllCountsBusy] = useState(false)
-  // Old/New pills: Old = the classic sortable table; New = the Count Sheet
-  // (summary, by-page audit, quick add). Per-device; New is the landing view
-  // (v2.2474, owner call) — an explicit flip to Old still sticks. The key was
-  // bumped from bids_counts_view_v1 when New became the default, deliberately
-  // dropping every device's remembered view so the whole team lands on New
-  // once (the roadmap_view_v2 pattern).
-  const [countsView, setCountsView] = useState<'old' | 'new'>(() => {
-    try {
-      return window.localStorage.getItem('bids_counts_view_v2') === 'old' ? 'old' : 'new'
-    } catch {
-      return 'new'
-    }
-  })
-  const switchCountsView = (next: 'old' | 'new') => {
-    setCountsView(next)
-    try {
-      window.localStorage.setItem('bids_counts_view_v2', next)
-    } catch {
-      /* device just won't remember */
-    }
-  }
   // Count Sheet (New view) state
   const [sheetMode, setSheetMode] = useState<'list' | 'pages'>('list')
   const [sheetNoPageOnly, setSheetNoPageOnly] = useState(false)
@@ -167,11 +128,10 @@ export function BidsCountsTab({
   const [sheetChips, setSheetChips] = useState<string[]>([])
   const qaCountRef = useRef<HTMLInputElement | null>(null)
 
-  // Quick-add chips: the service type's counts fixture groups (same source as
-  // NewCountRow's suggestions), flattened, first 14.
+  // Quick-add chips: the service type's counts fixture groups, flattened, first 14.
   useEffect(() => {
     const stId = selectedBidForCounts?.service_type_id
-    if (countsView !== 'new' || !stId) {
+    if (!stId) {
       setSheetChips([])
       return
     }
@@ -200,7 +160,7 @@ export function BidsCountsTab({
     return () => {
       cancelled = true
     }
-  }, [countsView, selectedBidForCounts?.service_type_id])
+  }, [selectedBidForCounts?.service_type_id])
 
   useEffect(() => {
     setSheetPendingDeleteId(null)
@@ -250,7 +210,7 @@ export function BidsCountsTab({
 
   /**
    * Inline sheet edit (v2.2024): validate one field, write it optimistically,
-   * then the same single-row update the Old view's editor does. Returns false
+   * then the same single-row update the row editor does. Returns false
    * when the value was rejected so the input can revert.
    */
   async function sheetSaveRowEdit(row: BidCountRow, field: 'count' | 'fixture' | 'group_tag' | 'page' | 'unit', raw: string): Promise<boolean> {
@@ -353,7 +313,6 @@ export function BidsCountsTab({
     refreshAfterCountsChange()
   }
   const clearAllCountsConfirmInputRef = useRef<HTMLInputElement | null>(null)
-  const countsTableRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!clearAllCountsOpen) return
@@ -417,8 +376,6 @@ export function BidsCountsTab({
     const newOrder = arrayMove(countRows, oldIndex, newIndex)
     setMovingCountRow(true)
     setCountRows(newOrder)
-    setLastMovedId(activeId)
-    setTimeout(() => setLastMovedId(null), 800)
     skipNextLoadCountRowsRef.current = true
     try {
       await saveCountRowsOrder(newOrder)
@@ -621,7 +578,7 @@ export function BidsCountsTab({
           ) : null}
           {narrowViewport640 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', marginBottom: '1rem' }}>
-              {/* v2.2385 (Wendi): Old/New beside the title (Cover Letter's pattern), Import on the right, Edit Bid retired — the bid title link already opens the bid. */}
+              {/* v2.2385 (Wendi): Import on the right, Edit Bid retired — the bid title link already opens the bid. Old/New pills retired v2.2707. */}
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <BidWorkflowTabTitleWithPreview
                   bid={selectedBidForCounts}
@@ -629,14 +586,6 @@ export function BidsCountsTab({
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
                   h2Style={{ margin: 0 }}
                 />
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                <button type="button" role="tab" aria-selected={countsView === 'old'} onClick={() => switchCountsView('old')} style={countsViewPillStyle(countsView === 'old')}>
-                  Old
-                </button>
-                <button type="button" role="tab" aria-selected={countsView === 'new'} onClick={() => switchCountsView('new')} style={countsViewPillStyle(countsView === 'new')}>
-                  New
-                </button>
-              </span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                 <button
@@ -651,7 +600,7 @@ export function BidsCountsTab({
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-              {/* v2.2385 (Wendi): Old/New beside the title (Cover Letter's pattern), Import on the right, Edit Bid retired — the bid title link already opens the bid. */}
+              {/* v2.2385 (Wendi): Import on the right, Edit Bid retired — the bid title link already opens the bid. Old/New pills retired v2.2707. */}
               <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', flex: '0 0 auto' }}>
                 <BidWorkflowTabTitleWithPreview
                   bid={selectedBidForCounts}
@@ -659,14 +608,6 @@ export function BidsCountsTab({
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
                   h2Style={{ margin: 0 }}
                 />
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                <button type="button" role="tab" aria-selected={countsView === 'old'} onClick={() => switchCountsView('old')} style={countsViewPillStyle(countsView === 'old')}>
-                  Old
-                </button>
-                <button type="button" role="tab" aria-selected={countsView === 'new'} onClick={() => switchCountsView('new')} style={countsViewPillStyle(countsView === 'new')}>
-                  New
-                </button>
-              </span>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto' }}>
                 <button
@@ -689,7 +630,7 @@ export function BidsCountsTab({
               </div>
             </div>
           )}
-          {countsView === 'new' ? (() => {
+          {(() => {
             const summary = countSheetSummary(countRows)
             const groups = buildCountSheetPageGroups(countRows)
             const showGroupTag = summary.withGroupTag > 0
@@ -1020,7 +961,9 @@ export function BidsCountsTab({
                   </table>
                   </DndContext>
                 </div>
-                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'center' }}>
+                {/* v2.2707: the Old table retired; its "Clear all counts" door moves here so the sheet keeps it. */}
+                <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '0.5rem' }}>
+                  <div />
                   <button
                     type="button"
                     onClick={() => exportCountsToCsv()}
@@ -1029,117 +972,29 @@ export function BidsCountsTab({
                   >
                     Export as .csv
                   </button>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setClearAllCountsOpen(true); setClearAllCountsConfirm('') }}
+                      disabled={countRows.length === 0 || clearAllCountsBusy}
+                      title={countRows.length === 0 ? 'No count rows to clear' : 'Remove all count rows for this bid'}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: 'var(--surface)',
+                        color: 'var(--text-red-700)',
+                        border: '1px solid var(--border-red)',
+                        borderRadius: 4,
+                        cursor: countRows.length === 0 || clearAllCountsBusy ? 'not-allowed' : 'pointer',
+                        opacity: countRows.length === 0 ? 0.5 : 1,
+                      }}
+                    >
+                      Clear all counts
+                    </button>
+                  </div>
                 </div>
               </>
             )
-          })() : (
-          <>
-          <div ref={countsTableRef} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-            <DndContext
-              sensors={countRowsSensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleCountsDragEnd}
-            >
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: 'var(--bg-subtle)' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid var(--border)' }} aria-label="Reorder"></th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', width: 132 }}>Count<span style={{ color: '#FF6600' }}>*</span></th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', width: '50%' }}>Fixture or Tie-in<span style={{ color: '#FF6600' }}>*</span></th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Group/Tag</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Plan Page</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }} aria-label="Actions"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <SortableContext items={countRows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
-                    {countRows.map((row) => (
-                      <SortableCountRow
-                        key={row.id}
-                        row={row}
-                        highlight={lastMovedId === row.id || rowJumpFlashDomId === countsRowDomId(row.id)}
-                        onUpdate={refreshAfterCountsChange}
-                        onDelete={refreshAfterCountsChange}
-                      />
-                    ))}
-                    {addingCountRow && (
-                      <NewCountRow
-                        bidId={selectedBidForCounts.id}
-                        bidVersionId={activeBidVersionId}
-                        serviceTypeId={selectedBidForCounts.service_type_id ?? undefined}
-                        onSaved={() => { setAddingCountRow(false); refreshAfterCountsChange() }}
-                        onCancel={() => setAddingCountRow(false)}
-                        onSavedAndAddAnother={refreshAfterCountsChange}
-                        showDragHandleColumn
-                      />
-                    )}
-                  </SortableContext>
-                </tbody>
-              </table>
-            </DndContext>
-          </div>
-          {!addingCountRow && (
-            <div
-              style={{
-                marginTop: '0.75rem',
-                display: 'grid',
-                gridTemplateColumns: '1fr auto 1fr',
-                alignItems: 'center',
-                width: '100%',
-                gap: '0.5rem',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                <button
-                  type="button"
-                  onClick={() => setAddingCountRow(true)}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Add row
-                </button>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => exportCountsToCsv()}
-                  disabled={countRows.length === 0}
-                  title={countRows.length === 0 ? 'No rows to export' : 'Download counts as a CSV file'}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: countRows.length === 0 ? '#d1d5db' : '#059669',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: countRows.length === 0 ? 'not-allowed' : 'pointer',
-                    textAlign: 'center',
-                  }}
-                >
-                  Export as .csv
-                </button>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => { setClearAllCountsOpen(true); setClearAllCountsConfirm('') }}
-                  disabled={countRows.length === 0 || clearAllCountsBusy}
-                  title={countRows.length === 0 ? 'No count rows to clear' : 'Remove all count rows for this bid'}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: 'var(--surface)',
-                    color: 'var(--text-red-700)',
-                    border: '1px solid var(--border-red)',
-                    borderRadius: 4,
-                    cursor: countRows.length === 0 || clearAllCountsBusy ? 'not-allowed' : 'pointer',
-                    opacity: countRows.length === 0 ? 0.5 : 1,
-                  }}
-                >
-                  Clear all counts
-                </button>
-              </div>
-            </div>
-          )}
-          </>
-          )}
+          })()}
         </div>
       )}
       <ClearAllCountsModal
