@@ -15,7 +15,7 @@ The card at the top is who you're calling: company, contact, and a big {{button:
 
 Every way a call can end sits in one row:
 
-- {{button:amber|Didn't Answer}} or {{button:green|Answered}} — logs the call, with whatever you typed in the comment box attached as the note.
+- {{button:amber|Didn't Answer}} or {{button:green|Answered}} — logs the call, with whatever you typed in the comment box attached as the note. Pressing **Enter** in the comment box saves a plain note instead — it does not count as a call, so the prospect keeps its {{chip:green|never called}} chip. If you already hit Enter, just click the outcome button next: it turns that fresh note into the call rather than adding a second line.
 - {{button:outline|Can't reach}} — the number's dead or nobody ever picks up; the prospect leaves the queue but stays on the Prospect List.
 - {{button:outline|Not a fit}} — they'll never be a plumbing customer.
 - {{button:purple|Converted ✓}} — they became a customer. The prospect leaves the queue for good and shows up under **Converted** on the Prospect List.
