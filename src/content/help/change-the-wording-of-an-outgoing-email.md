@@ -28,3 +28,7 @@ For digest emails (money waiting, crew day, weekly movement, and friends) you ed
 - {{button:outline|Test Email}} sends the real thing to the test target picked at the top of the page — the byte-for-byte check.
 
 Wording only: the attached documents (invoices, signed releases, fee notices) are never edited here — they stay exactly what the app generated.
+
+## Preview an email you can't edit
+
+Some emails have a fixed design rather than editable wording — the bid-room proposal letter, for one. In the **Outbound email catalog** at the top of the page, those rows carry a {{button:blue|Preview}} button: it opens the email in a new tab, filled with sample data and signed with your own name, phone and email, so you can see exactly what a GC receives without sending one.
