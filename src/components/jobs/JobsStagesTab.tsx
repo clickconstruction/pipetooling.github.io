@@ -201,6 +201,9 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
+import SessionNotesModal from './SessionNotesModal'
+import { SessionNotesOpenerContext } from './sessionNotesOpenerContext'
+import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
 import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
 import { fetchLeanJobIdsByNumber, fetchLeanJobSearchIds } from '../../lib/jobs/leanJobSearch'
@@ -603,6 +606,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   }, [active, stagesSectionOpen, cacheMergedScopes, customerFilterForFetch, cacheFetchScopeIfNeeded])
 
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
+  /** Session notes: null = closed; `job` = the pinned job when opened from a row's "Sessions" door. */
+  const [sessionNotesModal, setSessionNotesModal] = useState<{ job: SessionNotesJobIdentity | null } | null>(null)
   const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
   /** Personal statement rounds (v2.2072): open GC Review straight into the round overlay. */
   const [gcReviewStartRound, setGcReviewStartRound] = useState(false)
@@ -855,6 +860,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // chips (bill date + customer's median billed→paid gap, company-wide
   // fallback for thin history). Same fail-soft posture as the hazmat lookup:
   // an RPC error (including a not-yet-deployed function) leaves rows chipless.
+  // Session notes doors (toolbar pill + per-job "Sessions") show for every office
+  // role — owner call 2026-09-03. What the view returns still follows the
+  // clock_sessions RLS, so a role without pay access sees only its own rows.
+  const canOpenSessionNotes = (['dev', 'master_technician', 'assistant', 'controller'] as const).some(
+    (r) => r === authRole || r === myRole,
+  )
+  const openSessionNotes = useCallback(
+    (job?: SessionNotesJobIdentity | null) => setSessionNotesModal({ job: job ?? null }),
+    [],
+  )
   const canSeeBilledExpectedPay =
     authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
   const [billedPaySpeeds, setBilledPaySpeeds] = useState<PaySpeedData | null>(null)
@@ -2050,24 +2065,30 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Imperative handle: the page's URL deep-link router effects and the
   // page-side useJobsStagesMutations hook drive tab-owned state through these
   // methods — each mirrors exactly what the page did before the move.
+  /** Open the job's section, scroll to it, and flash the row (the `focusJob` handle + Session notes' "Open on board"). */
+  const focusJobOnBoard = useCallback(
+    (jobId: string) => {
+      const job = jobs.find((j) => j.id === jobId)
+      if (job) {
+        // A live search would filter out the row we're about to scroll to.
+        setStagesSearchQuery('')
+        const section = stagesSectionKeyForJobStatus(job.status)
+        if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
+        setPendingStagesJobFocusId(jobId)
+        setStagesJobFlashId(jobId)
+      } else {
+        showToast('That job isn’t on the Pipeline board right now.', 'info')
+      }
+    },
+    [jobs, showToast],
+  )
+
   useImperativeHandle(
     ref,
     () => ({
       followMovedJob,
       focusSection: focusStagesSection,
-      focusJob: (jobId: string) => {
-        const job = jobs.find((j) => j.id === jobId)
-        if (job) {
-          // A live search would filter out the row we're about to scroll to.
-          setStagesSearchQuery('')
-          const section = stagesSectionKeyForJobStatus(job.status)
-          if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
-          setPendingStagesJobFocusId(jobId)
-          setStagesJobFlashId(jobId)
-        } else {
-          showToast('That job isn’t on the Pipeline board right now.', 'info')
-        }
-      },
+      focusJob: focusJobOnBoard,
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
@@ -2105,7 +2126,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         }
       },
     }),
-    [followMovedJob, focusStagesSection, applyStagesInvoiceFocus, jobs, showToast],
+    [followMovedJob, focusStagesSection, focusJobOnBoard, applyStagesInvoiceFocus],
   )
 
   /**
@@ -2411,6 +2432,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   return (
     <StagesSearchHighlightProvider query={stagesSearchQuery.trim() || null}>
+    <SessionNotesOpenerContext.Provider value={canOpenSessionNotes ? openSessionNotes : null}>
       {active && (
         <div>
           {(error || jobsListError) && (
@@ -2531,6 +2553,26 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 }}
               >
                 Forecast
+              </button>
+            )}
+            {canOpenSessionNotes && (
+              <button
+                type="button"
+                onClick={() => openSessionNotes(null)}
+                title="Every clock session on one line — search what people wrote and where the time landed"
+                aria-label="Session notes"
+                style={{
+                  padding: '0.5rem 0.9rem',
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-link)',
+                  border: '1px solid var(--border-blue)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Session notes
               </button>
             )}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
@@ -5062,6 +5104,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           }}
         />
       )}
+      {sessionNotesModal ? (
+        <SessionNotesModal
+          initialJob={sessionNotesModal.job}
+          users={users}
+          jobs={jobs}
+          onOpenJobOnBoard={(jobId) => {
+            setSessionNotesModal(null)
+            focusJobOnBoard(jobId)
+          }}
+          onClose={() => setSessionNotesModal(null)}
+        />
+      ) : null}
       {billedPaymentForecastOpen && (
         <BilledPaymentForecastModal
           rows={unfilteredBoardLists.billedActiveRows}
@@ -5781,6 +5835,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           </button>
         </div>
       ) : null}
+    </SessionNotesOpenerContext.Provider>
     </StagesSearchHighlightProvider>
   )
 })

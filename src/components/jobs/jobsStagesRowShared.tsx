@@ -70,6 +70,12 @@ export type StagesRowRenderContext = {
   openJobThreadFullscreen: (jobId: string) => void
   /** Opens the full-page Job activity modal (the activity box's expand view). */
   openJobActivityExpand: (job: JobWithDetails) => void
+  /**
+   * Opens the Pipeline "Session notes" view pinned to this job (the per-job
+   * door beside "N Reports"). Null/absent when the viewer's role can't open it —
+   * the tables read it from `SessionNotesOpenerContext`.
+   */
+  openSessionNotesForJob?: ((job: JobWithDetails) => void) | null
   openJobCalendar: (job: JobWithDetails) => void
   stagesUpcomingByJobId: Record<string, StagesUpcomingAppointment>
   applyStagesInvoiceFocus: (invoiceId: string) => boolean
@@ -880,8 +886,9 @@ export function renderStagesThreadExpandButton(ctx: StagesRowRenderContext, jobI
 export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const cellReportCount = job.report_count ?? 0
   const hasReports = cellReportCount > 0
+  const openSessionNotes = ctx.openSessionNotesForJob
   return (
-    <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
+    <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 2, flexShrink: 0 }}>
       <button
         type="button"
         onClick={() => ctx.openJobActivityExpand(job)}
@@ -899,6 +906,28 @@ export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: 
       >
         {hasReports ? `${cellReportCount} Report${cellReportCount !== 1 ? 's' : ''}` : 'Reports'}
       </button>
+      {openSessionNotes ? (
+        // The per-job door into Session notes: every clock session on this job,
+        // one line each, pinned on open. Quiet like zero-report "Reports".
+        <button
+          type="button"
+          onClick={() => openSessionNotes(job)}
+          title="Every clock session on this job, one line each — Session notes"
+          aria-label={`Session notes for ${(job.job_name ?? '').trim() || 'this job'}`}
+          style={{
+            padding: '0.2rem 0.5rem',
+            fontSize: '0.75rem',
+            background: 'none',
+            color: 'var(--text-faint)',
+            border: '1px solid transparent',
+            borderRadius: 4,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Sessions
+        </button>
+      ) : null}
     </div>
   )
 }

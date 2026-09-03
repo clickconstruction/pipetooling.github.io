@@ -6,6 +6,7 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { JobActivityView } from './JobActivityView'
 import { renderStagesThreadFullscreenJobHeader } from './jobsStagesRowShared'
+import { useSessionNotesOpener } from './sessionNotesOpenerContext'
 import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 
 /**
@@ -62,6 +63,8 @@ export function JobsStagesActivityExpandModal({
   // hook the thread panel's fullscreen mode uses) or phones keep scrolling the
   // Pipeline underneath the card.
   useBodyScrollLock(true)
+  // Per-job door into Session notes (null for roles that can't open it).
+  const sessionNotesOpener = useSessionNotesOpener()
 
   // Escape anywhere in the modal closes it; the composer's own Escape handler
   // stops propagation before this listener sees it (blur-first behavior).
@@ -110,6 +113,27 @@ export function JobsStagesActivityExpandModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0.8rem 0.9rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ flex: 1, minWidth: 0 }}>{renderStagesThreadFullscreenJobHeader(job)}</div>
+          {sessionNotesOpener ? (
+            <button
+              type="button"
+              onClick={() => sessionNotesOpener(job)}
+              title="Every clock session on this job, one line each — Session notes"
+              style={{
+                padding: '0.3rem 0.65rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                background: 'var(--bg-blue-tint)',
+                color: 'var(--text-link)',
+                border: '1px solid var(--border-blue)',
+                borderRadius: 999,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              Sessions
+            </button>
+          ) : null}
           {narrow ? null : (
             <span style={{ color: 'var(--text-faint)', fontSize: '0.68rem', whiteSpace: 'nowrap' }}>esc to close</span>
           )}
