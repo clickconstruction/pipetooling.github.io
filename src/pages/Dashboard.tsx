@@ -66,6 +66,7 @@ import CreateTripChargeModal, { type CreateTripChargeTarget } from '../component
 import { DashboardTeamsInboxCard } from '../components/dashboard/DashboardTeamsInboxCard'
 import { DashboardProjectsCard } from '../components/dashboard/DashboardProjectsCard'
 import { DashboardSubMoneySection } from '../components/dashboard/DashboardSubMoneySection'
+import { DashboardOverheadCard } from '../components/dashboard/DashboardOverheadCard'
 import { DashboardPersonReportCard } from '../components/dashboard/DashboardPersonReportCard'
 import { DashboardPartnerLedgerSection } from '../components/dashboard/DashboardPartnerLedgerSection'
 import { DashboardPartnerJobsSection } from '../components/dashboard/DashboardPartnerJobsSection'
@@ -1340,7 +1341,13 @@ export default function Dashboard() {
           showFinancials ? (
             <>
               <div id="dash-notifications" aria-hidden="true" style={dockAnchorStyle} />
-              <DashboardFinancialsSection />
+              <DashboardFinancialsSection
+                overheadCard={
+                  role === 'dev' || role === 'master_technician' ? (
+                    <DashboardOverheadCard authUserId={authUser?.id} role={role} />
+                  ) : null
+                }
+              />
             </>
           ) : null
         }

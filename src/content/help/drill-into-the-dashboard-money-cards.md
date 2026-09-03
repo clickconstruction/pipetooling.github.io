@@ -73,6 +73,12 @@ The drill-downs keep their table layout, now wider and with the same controls as
 
 Next to the sort buttons sits the **aging strip** — three colored totals like {{chip:green|0–14d $12k}} {{chip:yellow|15–30d $31k}} {{chip:red|30d+ $165k}}. It answers "how much of this is old?" at a glance, and clicking a band filters the list to just that money; click again to clear.
 
+## The Overhead card (devs and pay-approved masters)
+
+A fourth card, **Overhead**, sits beside the money cards for devs and pay-approved masters. It reads the same way as its neighbors: the headline is the 90-day burn per day, the thin bar shows what the pool is made of (office labor, bid labor, office parts), the small line under it is the trend against the prior 30 days, and the three lenses sit in one row — {{button:outline|A $14.39/hr}} {{button:outline|B 11.8%}} {{button:outline|C $0.50/$1}}. Tap any lens (or the headline) for the same math window People → Overhead opens; {{button:outline|Open tab ›}} goes to the full tab.
+
+It loads once the card scrolls into view and remembers the numbers for an hour, so it never slows the Dashboard down.
+
 ## Good to know
 
 - Row taps behave the same everywhere: jobs open **Job Detail**, supply bills open the **bill view** with the invoice facts and attachment.
