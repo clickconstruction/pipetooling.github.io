@@ -24,4 +24,4 @@ Tap **Sent** — the bids you sent most recently rise to the top, and everything
 ## Narrow it down
 
 - Type in the search bar to filter by **bid #, project name, or GC/Builder** — the matches keep the order you picked.
-- On Counts, Takeoffs, Labor, Pricing, and Cover Letter, {{button:outline|Only my bids}} keeps just the bids where you're the estimator or account manager.
+- {{button:blue|Only my bids}} is on when you arrive and keeps just the bids where you're the estimator or account manager. It sits next to the sort buttons on every workflow tab, RFI, Change Order, and Lien Release included. Tap it to see everyone's bids; it switches back on next time you open Bids.
