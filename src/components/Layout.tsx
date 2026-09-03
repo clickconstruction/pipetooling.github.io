@@ -479,6 +479,12 @@ export default function Layout() {
       <path d="M96 128 L544 128 C579.3 128 608 156.7 608 192 L608 448 C608 483.3 579.3 512 544 512 L96 512 C60.7 512 32 483.3 32 448 L32 192 C32 156.7 60.7 128 96 128 Z M320 224 C267 224 224 267 224 320 C224 373 267 416 320 416 C373 416 416 373 416 320 C416 267 373 224 320 224 Z M128 296 C114.7 296 104 306.7 104 320 C104 333.3 114.7 344 128 344 C141.3 344 152 333.3 152 320 C152 306.7 141.3 296 128 296 Z M512 296 C498.7 296 488 306.7 488 320 C488 333.3 498.7 344 512 344 C525.3 344 536 333.3 536 320 C536 306.7 525.3 296 512 296 Z" />
     </svg>
   )
+  // Compass glyph (v2.2723) — The Bridge, dev only. Same 640-grid style as the other nav icons.
+  const bridgeIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" fillRule="evenodd" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M320 64 C178.6 64 64 178.6 64 320 C64 461.4 178.6 576 320 576 C461.4 576 576 461.4 576 320 C576 178.6 461.4 64 320 64 Z M320 128 C426 128 512 214 512 320 C512 426 426 512 320 512 C214 512 128 426 128 320 C128 214 214 128 320 128 Z M432 208 L272 272 L208 432 L368 368 Z M320 296 C333.3 296 344 306.7 344 320 C344 333.3 333.3 344 320 344 C306.7 344 296 333.3 296 320 C296 306.7 306.7 296 320 296 Z" />
+    </svg>
+  )
   // Wrench glyph — same path the Dashboard's Job Parts Tally square uses.
   const tallyIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
@@ -677,6 +683,11 @@ export default function Layout() {
         {!excludeHeaderLinks && role === 'dev' && (
           <NavLink to="/people?tab=review" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Review" aria-label="Review">
             {reviewIcon}
+          </NavLink>
+        )}
+        {!excludeHeaderLinks && role === 'dev' && (
+          <NavLink to="/bridge" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="The Bridge" aria-label="The Bridge">
+            {bridgeIcon}
           </NavLink>
         )}
         {!excludeHeaderLinks && (
@@ -885,6 +896,26 @@ export default function Layout() {
                     >
                       {moneyfillIcon}
                       Moneyfill
+                    </NavLink>
+                  )}
+                  {role === 'dev' && (
+                    <NavLink
+                      to="/bridge"
+                      onClick={() => setMenuOpen(false)}
+                      style={({ isActive }) => ({
+                        ...dropdownLinkStyle({ isActive }),
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.5rem 1rem',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      })}
+                      title="The Bridge"
+                      aria-label="The Bridge"
+                    >
+                      {bridgeIcon}
+                      Bridge
                     </NavLink>
                   )}
                   {(role === 'master_technician' || role === 'dev') && (
