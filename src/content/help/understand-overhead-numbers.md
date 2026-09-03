@@ -9,6 +9,16 @@ order: 61
 
 Every labor hour and dollar in those numbers comes from clock sessions that are **approved**, **clocked out**, and **priced with a wage**. When any of that upkeep falls behind, the numbers quietly drift low — so the tab watches for it and shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
 
+## Click a lens to see its math
+
+Each of the three lens cards is a button. {{button:outline|See the math ›}} opens a window that shows the actual arithmetic with today's numbers — the pool on top (office labor, bid labor, office parts, each itemized), the denominator underneath with the exact rule for what counts, and the result.
+
+Below that, **How it moved** charts the rate week by week across the 90 days with a rolling 4-week line and a dashed line for the 90-day headline, so you can see whether this week is unusual or the whole quarter is drifting.
+
+**What moves it** lists the levers, each sized at today's numbers — for example *"+100 hr → −$0.51/hr"* on Method A, or *"+$10,000 invoiced → −0.34 pts"* on Method B. Green arrows lower the rate, amber arrows raise it. When field time is awaiting approval, Method A also shows what the rate would read once it's approved.
+
+**Watch-outs** names the ways each lens can mislead — salaried hourly pricing on A, billing rhythm on B, raises lowering C — and states plainly whether any session is being counted on both sides of the math.
+
 ## Is the pool going up or down?
 
 The **Overhead pool — 90 days** card answers that directly. Its pill compares the average $/day over the last 30 days with the 30 days before: {{chip:yellow|↑ Trending up · +12%}} means overhead is growing, {{chip:green|↓ Trending down · −8%}} means it's shrinking, and anything inside ±5% reads as **flat** so a single parts spike doesn't flip the arrow.
