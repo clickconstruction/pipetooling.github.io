@@ -125,11 +125,27 @@ export function gcReviewWeekProgress(
   let sent = 0
   for (const g of groups) {
     if (g.isNoGc || !g.gcId) continue
+    // A group with nothing outstanding (a billed job that's fully paid but not
+    // yet marked paid) has nothing to certify or send — it stays out of the
+    // ritual's count, matching the server's gcs_outstanding (v2.2705).
+    if (cents(g.subtotal) <= 0) continue
     gcs += 1
     if (gcGroupCertStatus(g, certsByGc.get(g.gcId)).state === 'certified') certified += 1
     if (gcReviewSentThisWeek(lastSentByGcId[g.gcId], weekStartYmd)) sent += 1
   }
   return { gcs, certified, sent }
+}
+
+/**
+ * GCs the ritual still needs something for — not yet certified AND sent. The
+ * Needs-you badge used `outstanding − certified`, which read "0" the moment
+ * everything was certified even with zero statements sent (v2.2705). The v2
+ * RPC reports `gcs_done` (certified ∩ sent); older payloads fall back to
+ * `min(certified, sent)`, the best lower bound on the intersection.
+ */
+export function gcReviewGcsToDo(status: { gcs_outstanding: number; gcs_certified: number; gcs_sent: number; gcs_done?: number }): number {
+  const done = status.gcs_done ?? Math.min(status.gcs_certified, status.gcs_sent)
+  return Math.max(0, status.gcs_outstanding - done)
 }
 
 export type GcReviewNudgeState = 'hidden' | 'due' | 'done'

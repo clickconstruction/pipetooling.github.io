@@ -31,7 +31,13 @@ export async function insertGcReviewCertification(row: {
   if (error) throw new Error(error.message)
 }
 
-export type GcReviewWeekStatus = { gcs_outstanding: number; gcs_certified: number; gcs_sent: number }
+export type GcReviewWeekStatus = {
+  gcs_outstanding: number
+  gcs_certified: number
+  gcs_sent: number
+  /** GCs both certified (still matching the live total) AND sent this week (RPC v2, v2.2705); absent from the v1 RPC. */
+  gcs_done?: number
+}
 
 /** Dashboard nudge spine — distinct-GC counts for the given cert week. */
 export async function fetchGcReviewWeekStatus(weekStartYmd: string): Promise<GcReviewWeekStatus | null> {

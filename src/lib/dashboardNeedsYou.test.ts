@@ -205,10 +205,22 @@ describe('buildNeedsYouItems', () => {
     expect(gc?.detail).toBe(
       '3 of 11 GCs certified · 1 statement sent — certify each group and send it off so every GC knows what they owe.',
     )
-    expect(gc?.figure).toBe('8')
+    // Badge = GCs not yet certified AND sent: without gcs_done, min(certified, sent) is the best lower bound on the intersection.
+    expect(gc?.figure).toBe('10')
     expect(buildNeedsYouItems(inputs({ gcReviewStatus: due, gcReviewNudge: 'due' }))[0]?.title).toBe(
       'GC review is still due this week',
     )
+  })
+
+  it('GC weekly: all certified but nothing sent still shows every GC as to-do and says so', () => {
+    const certifiedNotSent = { gcs_outstanding: 10, gcs_certified: 10, gcs_sent: 0, gcs_done: 0 }
+    const gc = buildNeedsYouItems(inputs({ gcReviewStatus: certifiedNotSent, gcReviewNudge: 'due' }))[0]
+    expect(gc?.figure).toBe('10')
+    expect(gc?.detail).toBe(
+      '10 of 10 GCs certified · 0 statements sent — every group is certified; send each statement off so every GC knows what they owe.',
+    )
+    const partlyDone = { gcs_outstanding: 10, gcs_certified: 7, gcs_sent: 5, gcs_done: 4 }
+    expect(buildNeedsYouItems(inputs({ gcReviewStatus: partlyDone, gcReviewNudge: 'due' }))[0]?.figure).toBe('6')
   })
 
   it('GC weekly: done/hidden states and the enabled gate contribute no item', () => {

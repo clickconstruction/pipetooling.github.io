@@ -2,7 +2,7 @@ import type { UserRole } from '../hooks/useAuth'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
 import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFollowupQueue'
 import type { RoadmapNudge } from './dashboardRoadmapNudge'
-import type { GcReviewNudgeState } from './jobs/gcReviewCertification'
+import { gcReviewGcsToDo, type GcReviewNudgeState } from './jobs/gcReviewCertification'
 import type { GcReviewWeekStatus } from './gcReviewCertifications'
 import type { BulkDeleteAlert } from '../hooks/useBulkDeleteAlerts'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDisplay'
@@ -448,13 +448,16 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
 
   if (inputs.gcReviewEnabled && inputs.gcReviewStatus != null && inputs.gcReviewNudge === 'due') {
     const s = inputs.gcReviewStatus
-    const remaining = Math.max(0, s.gcs_outstanding - s.gcs_certified)
+    const remaining = gcReviewGcsToDo(s)
+    const allCertified = s.gcs_certified >= s.gcs_outstanding
     items.push({
       key: 'gc-review-weekly',
       severity: 'amber',
       kicker: 'Wednesday ritual',
       title: inputs.gcReviewIsWednesday ? 'GC review is due today' : 'GC review is still due this week',
-      detail: `${s.gcs_certified} of ${s.gcs_outstanding} GCs certified · ${s.gcs_sent} statement${s.gcs_sent === 1 ? '' : 's'} sent — certify each group and send it off so every GC knows what they owe.`,
+      detail: `${s.gcs_certified} of ${s.gcs_outstanding} GCs certified · ${s.gcs_sent} statement${s.gcs_sent === 1 ? '' : 's'} sent — ${
+        allCertified ? 'every group is certified; send each statement off so every GC knows what they owe.' : 'certify each group and send it off so every GC knows what they owe.'
+      }`,
       figure: remaining > 99 ? '99+' : String(remaining),
       actionLabel: 'Open GC Review',
     })
