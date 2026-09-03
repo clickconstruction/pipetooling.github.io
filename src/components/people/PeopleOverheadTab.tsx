@@ -19,6 +19,7 @@ import {
   sumPartsUsdByDayExcludingInternalTransfer,
   type OverheadPartsAccountingBucketKey,
   type OverheadPartsAccountingSection,
+  bucketForOverheadPartsLine,
 } from '../../lib/overheadPartsAccountingBuckets'
 import {
   collectMercuryTxIds,
@@ -55,6 +56,8 @@ import { buildOverheadPoolTrend, type OverheadPoolTrend } from '../../lib/overhe
 import { OverheadPoolTrendCard } from './OverheadPoolTrendCard'
 import { buildOverheadLensSeries, type OverheadLensKey } from '../../lib/overheadLensSeries'
 import { OverheadLensModal, type OverheadLensDetail } from './OverheadLensModal'
+import { OverheadPeopleTable } from './OverheadPeopleTable'
+import type { OverheadPeopleLaborInput, OverheadPeoplePartsInput } from '../../lib/overheadPeopleTable'
 import {
   fetchOtherJobsPartsByDay,
   fetchOverheadOfficePartsByDay,
@@ -311,6 +314,13 @@ export default function PeopleOverheadTab({
   /** Lens modals (v2.2674): which lens is open + the per-lens history/denominators the same effect computes. */
   const [overheadLensModal, setOverheadLensModal] = useState<OverheadLensKey | null>(null)
   const [overheadLensDetail, setOverheadLensDetail] = useState<OverheadLensDetail | null>(null)
+  /** "Who makes up overhead" table (v2.2675): the 90-day detail lines the same effect builds; window sliced client-side. */
+  const [overheadPeopleLines, setOverheadPeopleLines] = useState<{
+    labor: OverheadPeopleLaborInput[]
+    parts: Array<{ workDate: string; line: OverheadPartsDetailLine }>
+    bucketByTxId: ReadonlyMap<string, OverheadPartsAccountingBucketKey>
+    endYmd: string
+  } | null>(null)
   /**
    * Maintenance-hygiene indicators (pending approvals / unpriced hours /
    * unassigned salary time) over the SAME 90-day window as the KPI/lenses —
@@ -804,6 +814,8 @@ export default function PeopleOverheadTab({
           ),
         ])
         let partsByDay: Map<string, number> = new Map()
+        const partsDetailLines: Array<{ workDate: string; line: OverheadPartsDetailLine }> = []
+        let partsBucketByTxId: ReadonlyMap<string, OverheadPartsAccountingBucketKey> = new Map()
         if (overheadOfficeJobLedgerId) {
           // Same symmetric rule as the table: Internal Transfers are not an
           // expense and stay out of the KPI numerator's office parts $. A
@@ -816,6 +828,12 @@ export default function PeopleOverheadTab({
             endYmd: today,
           })
           partsByDay = r.partsUsdByDay
+          // People table (v2.2675): keep the per-line detail the loader already
+          // returns (previously discarded) so parts can attribute to a person.
+          partsBucketByTxId = r.bucketByTxId
+          for (const [ymd, lines] of r.partsDetailByDay) {
+            for (const line of lines) partsDetailLines.push({ workDate: ymd, line })
+          }
         }
         if (cancelled) return
         const labor = buildOverheadDailyLabor({
@@ -852,6 +870,14 @@ export default function PeopleOverheadTab({
           loading: false,
         })
         const merged = mergeOverheadDayTableRows(labor.byDay, partsByDay, new Map(), new Map(), new Map())
+        setOverheadPeopleLines({
+          labor: [...labor.detailByDay.values()]
+            .flat()
+            .map((l) => ({ workDate: l.workDate, userName: l.userName, bucket: l.bucket, hours: l.hours, laborUsd: l.laborUsd })),
+          parts: partsDetailLines,
+          bucketByTxId: partsBucketByTxId,
+          endYmd: today,
+        })
         setOverheadPoolTrend({
           trend: buildOverheadPoolTrend({ laborDays: labor.byDay, partsUsdByDay: partsByDay, startYmd: start, endYmd: today }),
           loading: false,
@@ -974,6 +1000,7 @@ export default function PeopleOverheadTab({
           setOverheadHygiene({ summary: null, loading: false })
           setOverheadPoolTrend({ trend: null, loading: false })
           setOverheadLensDetail(null)
+          setOverheadPeopleLines(null)
         }
       }
     })()
@@ -1243,6 +1270,24 @@ export default function PeopleOverheadTab({
       ? overheadMercuryNicknameByDebitCard[ln.mercuryDebitCardId.toLowerCase()]?.trim() ||
         `card ${formatMercuryDebitCardIdCompact(ln.mercuryDebitCardId)}`
       : ''
+
+  // People table (v2.2675): attribute each office-parts line to a person the
+  // same way the breakdown modal labels it — Mercury card → nickname; supply /
+  // tally / no-card Mercury lines have no person. Internal transfers drop with
+  // the SAME bucket rule the pool sum uses.
+  const overheadPeopleParts = useMemo<OverheadPeoplePartsInput[]>(() => {
+    if (!overheadPeopleLines) return []
+    const out: OverheadPeoplePartsInput[] = []
+    for (const { workDate, line } of overheadPeopleLines.parts) {
+      if (bucketForOverheadPartsLine(line, overheadPeopleLines.bucketByTxId) === 'internal_transfer') continue
+      const person =
+        line.source === 'mercury' && line.mercuryDebitCardId
+          ? overheadMercuryNicknameByDebitCard[line.mercuryDebitCardId.toLowerCase()]?.trim() || null
+          : null
+      out.push({ workDate, amountUsd: line.amountUsd, person })
+    }
+    return out
+  }, [overheadPeopleLines, overheadMercuryNicknameByDebitCard])
 
   // Close (reset) the day-breakdown modal whenever the visible range moves —
   // Previous/Next week or a manual Start/End edit. Left open, it would keep
@@ -1529,6 +1574,12 @@ export default function PeopleOverheadTab({
           onClose={() => setOverheadLensModal(null)}
         />
       ) : null}
+      <OverheadPeopleTable
+        labor={overheadPeopleLines?.labor ?? []}
+        parts={overheadPeopleParts}
+        endYmd={overheadPeopleLines?.endYmd ?? null}
+        loading={overheadPoolTrend.loading}
+      />
       {overheadHygieneCards.length > 0 ? (
         <div
           role="note"

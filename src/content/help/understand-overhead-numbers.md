@@ -29,6 +29,16 @@ Under the pill is the ledger of what the pool is made of — **office labor**, *
 If the pill says flat but the bars climb across the last two weeks, the rise is recent and hasn't moved the 30-day average yet — check back in a week, or read the 7-day line, which reacts sooner.
 :::
 
+## Who makes up the pool
+
+The **Who makes up overhead** table lists every person with office or bid time (or office-job card purchases) in the window — one row each, with columns for **office labor**, **bid labor**, **office parts**, and **total**. Every cell shows the dollars and that person's share of the column, so the biggest contributors read at a glance; the Pool row at the bottom shows each column's share of the whole.
+
+Switch the window with the chips: {{chip:blue|Today}} {{chip:gray|Last 7 days}} {{chip:gray|Last 30 days}} {{chip:gray|Last 90 days}} — the numbers re-slice instantly, nothing reloads.
+
+:::example Where purchases land
+A Mercury card purchase on the office job goes to the cardholder (by card nickname). Supply-house invoices, ACH/wire payments, and tally lines don't belong to a person, so they sit on an italic last row — that way the parts column still adds up to the pool instead of quietly shrinking.
+:::
+
 ## The three indicators
 
 :::example What the strip looks like
