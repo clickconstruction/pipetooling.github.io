@@ -747,7 +747,7 @@ export default function Bids() {
     bidAssignedCosts,
     priceBookVersions,
     templatePriceBookVersions,
-    defaultPriceBookTemplateId, rememberLastPriceBookTemplate,
+    defaultPriceBookTemplateId, versionClonePricingSourceId, rememberLastPriceBookTemplate,
     priceBookEntries, setPriceBookEntries,
     bidPricingAssignments,
     bidCountRowCustomPrices,
@@ -3608,7 +3608,7 @@ export default function Bids() {
             bidVersions={bidVersions}
             selectedBidVersionId={selectedBidVersionId}
             currentPricingId={selectedPricingVersionId}
-            fallbackPricingSourceId={defaultPriceBookTemplateId}
+            fallbackPricingSourceId={versionClonePricingSourceId}
             isExactMaterials={selectedBidForCounts.materials_model === 'exact'}
             onSwitch={(versionId) => switchActiveVersion(selectedBidForCounts.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForCounts.id), loadBidPricings(selectedBidForCounts.id)]).then(() => {})}
@@ -3655,7 +3655,7 @@ export default function Bids() {
             bidVersions={bidVersions}
             selectedBidVersionId={selectedBidVersionId}
             currentPricingId={selectedPricingVersionId}
-            fallbackPricingSourceId={defaultPriceBookTemplateId}
+            fallbackPricingSourceId={versionClonePricingSourceId}
             isExactMaterials={selectedBidForTakeoff.materials_model === 'exact'}
             onSwitch={(versionId) => switchActiveVersion(selectedBidForTakeoff.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForTakeoff.id), loadBidPricings(selectedBidForTakeoff.id)]).then(() => {})}
@@ -3818,7 +3818,7 @@ export default function Bids() {
             bidVersions={bidVersions}
             selectedBidVersionId={selectedBidVersionId}
             currentPricingId={selectedPricingVersionId}
-            fallbackPricingSourceId={defaultPriceBookTemplateId}
+            fallbackPricingSourceId={versionClonePricingSourceId}
             isExactMaterials={selectedBidForPricing.materials_model === 'exact'}
             onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
@@ -3917,7 +3917,7 @@ export default function Bids() {
             bidVersions={bidVersions}
             selectedBidVersionId={selectedBidVersionId}
             currentPricingId={selectedPricingVersionId}
-            fallbackPricingSourceId={defaultPriceBookTemplateId}
+            fallbackPricingSourceId={versionClonePricingSourceId}
             isExactMaterials={selectedBidForPricing.materials_model === 'exact'}
             onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
             reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
