@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { JobContractChip } from './JobContractChip'
 import { useNavigate } from 'react-router-dom'
 import type { CSSProperties, ReactNode } from 'react'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
@@ -472,6 +473,13 @@ function cardFooterRow(
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.4rem', marginTop: '0.1rem' }}>
       {cardInvoiceChips(ctx, job)}
       {renderStagesViewReportsButton(ctx, job)}
+      {ctx.jobContractCoverageByJobId ? (
+        <JobContractChip
+          coverage={ctx.jobContractCoverageByJobId.get(job.id)}
+          onClick={ctx.onOpenJobContract ? () => ctx.onOpenJobContract?.(job) : undefined}
+          compact
+        />
+      ) : null}
       {cardMetaChips(ctx, job, openLabel)}
       <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
         {cardCallIcon(job)}
@@ -614,6 +622,8 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     checklistAddModal,
     loadJobs: props.loadJobs,
     onDevelopmentFilter: props.onDevelopmentFilter,
+    jobContractCoverageByJobId: props.jobContractCoverageByJobId,
+    onOpenJobContract: props.onOpenJobContract,
   }
 
   const moreActionsFor = (j: JobWithDetails): StagesCardMoreAction[] => {
@@ -857,6 +867,8 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     checklistAddModal,
     loadJobs: props.loadJobs,
     onDevelopmentFilter: props.onDevelopmentFilter,
+    jobContractCoverageByJobId: props.jobContractCoverageByJobId,
+    onOpenJobContract: props.onOpenJobContract,
   }
 
   const moreActionsForRow = (row: (typeof rows)[number]): StagesCardMoreAction[] => {

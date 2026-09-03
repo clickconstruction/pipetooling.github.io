@@ -3324,6 +3324,7 @@ export type Database = {
       }
       contract_template_documents: {
         Row: {
+          audience: string
           book_body_format: string
           book_body_html: string | null
           book_version_date: string | null
@@ -3337,6 +3338,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          audience?: string
           book_body_format?: string
           book_body_html?: string | null
           book_version_date?: string | null
@@ -3350,6 +3352,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          audience?: string
           book_body_format?: string
           book_body_html?: string | null
           book_version_date?: string | null
@@ -6347,6 +6350,238 @@ export type Database = {
             columns: ["jobs_ledger_invoice_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_contract_events: {
+        Row: {
+          actor_user_id: string | null
+          client_ip: string | null
+          contract_id: string
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          client_ip?: string | null
+          contract_id: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          client_ip?: string | null
+          contract_id?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_contract_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_contract_events_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "job_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_contracts: {
+        Row: {
+          body_format: string
+          body_html: string | null
+          cc_emails: string[]
+          created_at: string
+          created_by: string | null
+          fields: Json
+          first_viewed_at: string | null
+          id: string
+          job_id: string
+          last_sent_at: string | null
+          last_viewed_at: string | null
+          minted_pdf_path: string | null
+          next_reminder_at: string | null
+          paper_signed_on: string | null
+          paper_upload_path: string | null
+          public_token_expires_at: string | null
+          public_token_hash: string | null
+          recipient_email: string | null
+          recipient_name: string | null
+          recipient_phone: string | null
+          recorded_by: string | null
+          reminder_count: number
+          reminders_enabled: boolean
+          revision: number
+          send_count: number
+          sent_at: string | null
+          signed_at: string | null
+          signed_pdf_path: string | null
+          signer_consented_at: string | null
+          signer_ip: string | null
+          signer_mode: string | null
+          signer_printed_name: string | null
+          signer_signature_storage_path: string | null
+          signer_user_agent: string | null
+          status: string
+          superseded_by: string | null
+          template_document_id: string | null
+          template_name: string | null
+          template_version_date: string | null
+          updated_at: string
+          view_count: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          body_format?: string
+          body_html?: string | null
+          cc_emails?: string[]
+          created_at?: string
+          created_by?: string | null
+          fields?: Json
+          first_viewed_at?: string | null
+          id?: string
+          job_id: string
+          last_sent_at?: string | null
+          last_viewed_at?: string | null
+          minted_pdf_path?: string | null
+          next_reminder_at?: string | null
+          paper_signed_on?: string | null
+          paper_upload_path?: string | null
+          public_token_expires_at?: string | null
+          public_token_hash?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          recorded_by?: string | null
+          reminder_count?: number
+          reminders_enabled?: boolean
+          revision?: number
+          send_count?: number
+          sent_at?: string | null
+          signed_at?: string | null
+          signed_pdf_path?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_mode?: string | null
+          signer_printed_name?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
+          status?: string
+          superseded_by?: string | null
+          template_document_id?: string | null
+          template_name?: string | null
+          template_version_date?: string | null
+          updated_at?: string
+          view_count?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          body_format?: string
+          body_html?: string | null
+          cc_emails?: string[]
+          created_at?: string
+          created_by?: string | null
+          fields?: Json
+          first_viewed_at?: string | null
+          id?: string
+          job_id?: string
+          last_sent_at?: string | null
+          last_viewed_at?: string | null
+          minted_pdf_path?: string | null
+          next_reminder_at?: string | null
+          paper_signed_on?: string | null
+          paper_upload_path?: string | null
+          public_token_expires_at?: string | null
+          public_token_hash?: string | null
+          recipient_email?: string | null
+          recipient_name?: string | null
+          recipient_phone?: string | null
+          recorded_by?: string | null
+          reminder_count?: number
+          reminders_enabled?: boolean
+          revision?: number
+          send_count?: number
+          sent_at?: string | null
+          signed_at?: string | null
+          signed_pdf_path?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_mode?: string | null
+          signer_printed_name?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
+          status?: string
+          superseded_by?: string | null
+          template_document_id?: string | null
+          template_name?: string | null
+          template_version_date?: string | null
+          updated_at?: string
+          view_count?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_contracts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_contracts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_contracts_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_contracts_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "job_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_contracts_template_document_id_fkey"
+            columns: ["template_document_id"]
+            isOneToOne: false
+            referencedRelation: "contract_template_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_contracts_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

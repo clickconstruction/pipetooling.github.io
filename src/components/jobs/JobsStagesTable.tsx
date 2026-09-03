@@ -124,6 +124,8 @@ export type JobsStagesTableProps = {
   authRole: StagesRowRenderContext['authRole']
   loadJobs: StagesRowRenderContext['loadJobs']
   onDevelopmentFilter?: StagesRowRenderContext['onDevelopmentFilter']
+  jobContractCoverageByJobId?: StagesRowRenderContext['jobContractCoverageByJobId']
+  onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
 }
 
 export default function JobsStagesTable(props: JobsStagesTableProps) {
@@ -179,6 +181,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     authRole,
     loadJobs,
     onDevelopmentFilter,
+    jobContractCoverageByJobId,
+    onOpenJobContract,
   } = props
   const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
@@ -214,6 +218,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     checklistAddModal,
     loadJobs,
     onDevelopmentFilter,
+    jobContractCoverageByJobId,
+    onOpenJobContract,
   }
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
     renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)

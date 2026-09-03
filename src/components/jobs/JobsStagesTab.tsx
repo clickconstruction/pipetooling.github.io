@@ -76,6 +76,16 @@ import {
 import BilledExpectedPayChip from './BilledExpectedPayChip'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import {
+  buildJobContractCoverage,
+  filterJobsByContractCoverage,
+  parseStagesContractFilter,
+  STAGES_CONTRACT_FILTER_LABELS,
+  STAGES_CONTRACT_FILTERS,
+  type JobContractRowLike,
+  type SignedEstimateLike,
+  type StagesContractFilter,
+} from '../../lib/jobs/jobContractCoverage'
 import { PipelineOverview } from './PipelineOverview'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
@@ -741,6 +751,54 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadDemandOutJobIds()
   }, [loadDemandOutJobIds])
+  // Contract coverage (Contract Desk PR 1): one job_contracts scan + one
+  // customer-accepted estimates scan, folded per job by the coverage kernel.
+  // Office-only read-back; a fetch failure leaves rows chipless.
+  const canSeeJobContracts =
+    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const [jobContractRows, setJobContractRows] = useState<JobContractRowLike[]>([])
+  const [signedEstimateRows, setSignedEstimateRows] = useState<SignedEstimateLike[]>([])
+  const loadJobContractCoverage = useCallback(async () => {
+    if (!canSeeJobContracts) return
+    try {
+      const [contractsRes, estimatesRes] = await Promise.all([
+        supabase
+          .from('job_contracts')
+          .select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at')
+          .is('voided_at', null),
+        supabase
+          .from('estimates')
+          .select('job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
+          .eq('status', 'customer_accepted')
+          .not('acceptor_consented_at', 'is', null),
+      ])
+      if (!contractsRes.error) setJobContractRows((contractsRes.data ?? []) as JobContractRowLike[])
+      if (!estimatesRes.error) setSignedEstimateRows((estimatesRes.data ?? []) as SignedEstimateLike[])
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [canSeeJobContracts])
+  useEffect(() => {
+    void loadJobContractCoverage()
+  }, [loadJobContractCoverage])
+  useEffect(() => {
+    const onChanged = () => void loadJobContractCoverage()
+    window.addEventListener('job-contract-changed', onChanged)
+    return () => window.removeEventListener('job-contract-changed', onChanged)
+  }, [loadJobContractCoverage])
+  const jobContractCoverageByJobId = useMemo(
+    () => buildJobContractCoverage(jobs, jobContractRows, signedEstimateRows),
+    [jobs, jobContractRows, signedEstimateRows],
+  )
+  // ?contract=missing deep-links the board to the jobs with nothing on file
+  // (Needs You, PR 4). Read-only init like ?view=recent — the tab never writes params.
+  const [stagesContractFilter, setStagesContractFilter] = useState<StagesContractFilter | ''>(() => {
+    try {
+      return parseStagesContractFilter(new URLSearchParams(window.location.search).get('contract'))
+    } catch {
+      return ''
+    }
+  })
   const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
   /** Release of lien (v2.2579): in-app waiver-and-release modal — same office set as the hazmat gate. */
   const [lienReleaseModal, setLienReleaseModal] = useState<{
@@ -1126,6 +1184,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     Boolean(stagesGcFilter) ||
     Boolean(stagesDevelopmentFilter) ||
     Boolean(stagesAccountManFilter) ||
+    Boolean(stagesContractFilter) ||
     // Billed aging / no-line filter (v2.2155): billed lines hang on working
     // and waiting jobs too, and the board routes them into Billed only once
     // their job's scope is loaded — with Working collapsed, "Show 90+" listed
@@ -1166,18 +1225,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const stagesBoardLists = useMemo(
     () =>
       buildJobsStagesBoardLists(
-        filterJobsByAccountMan(
-          filterJobsByDevelopment(
-            filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
-            stagesDevelopmentFilter || null,
+        filterJobsByContractCoverage(
+          filterJobsByAccountMan(
+            filterJobsByDevelopment(
+              filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
+              stagesDevelopmentFilter || null,
+            ),
+            stagesAccountManFilter || null,
           ),
-          stagesAccountManFilter || null,
+          jobContractCoverageByJobId,
+          stagesContractFilter,
         ),
         stagesSearchQuery,
         stagesCombinedExtraJobIds,
         stagesSortMode,
       ),
-    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
   )
 
   // Capable of Being Billed dollars, shared by the Working section header and
@@ -2120,6 +2183,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       authRole,
       loadJobs,
       onDevelopmentFilter: setStagesDevelopmentFilter,
+      jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
     }
     const unifiedShared = {
       ...shared,
@@ -2576,6 +2640,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <span aria-hidden style={{ flexShrink: 0 }}>×</span>
                 </button>
               ) : null}
+              {stagesContractFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setStagesContractFilter('')}
+                  title="Filtered by contract state — tap to clear"
+                  aria-label={`Clear contract filter: ${STAGES_CONTRACT_FILTER_LABELS[stagesContractFilter]}`}
+                  style={stagesActiveFilterChipStyle}
+                >
+                  <span aria-hidden style={{ flexShrink: 0 }}>✍</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                    {STAGES_CONTRACT_FILTER_LABELS[stagesContractFilter]}
+                  </span>
+                  <span aria-hidden style={{ flexShrink: 0 }}>
+                    ×
+                  </span>
+                </button>
+              ) : null}
               {stagesGcFilter ? (
                 <button
                   type="button"
@@ -2763,6 +2844,29 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.35rem 0.75rem 0.1rem', borderTop: '1px solid var(--border)', marginTop: 2 }}>
                       Filters
                     </div>
+                        {canSeeJobContracts ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem' }}>
+                            <span aria-hidden style={{ color: 'var(--text-muted)', flexShrink: 0, width: 15, textAlign: 'center' }}>✍</span>
+                            <select
+                              value={stagesContractFilter}
+                              onChange={(e) => setStagesContractFilter(parseStagesContractFilter(e.target.value))}
+                              aria-label="Filter the Pipeline board by contract state"
+                              title="Filter the Pipeline board by contract state"
+                              style={{
+                                ...stagesToolsMenuFilterSelectStyle,
+                                background: stagesContractFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                                color: stagesContractFilter ? 'var(--text-link)' : 'inherit',
+                              }}
+                            >
+                              <option value="">Any contract state</option>
+                              {STAGES_CONTRACT_FILTERS.map((f) => (
+                                <option key={f} value={f}>
+                                  {STAGES_CONTRACT_FILTER_LABELS[f]}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : null}
                         {stagesGcFilterOptions.length > 0 ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem' }}>
                             <GcHardHatIcon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -3553,6 +3657,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
+
+                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
                   />
                 )}
 
@@ -3640,6 +3746,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
+
+                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
                   />
                 )}
 
@@ -3792,6 +3900,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
+
+                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4113,6 +4223,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
+
+                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4215,6 +4327,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     authRole={authRole}
                     loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
+
+                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4350,6 +4464,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       authRole={authRole}
                       loadJobs={loadJobs}
                     onDevelopmentFilter={setStagesDevelopmentFilter}
+
+                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
                     />
                   </>
                 ) : null}

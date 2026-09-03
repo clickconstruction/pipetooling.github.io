@@ -166,6 +166,8 @@ export type JobsStagesUnifiedTableProps = {
   authRole: StagesRowRenderContext['authRole']
   loadJobs: StagesRowRenderContext['loadJobs']
   onDevelopmentFilter?: StagesRowRenderContext['onDevelopmentFilter']
+  jobContractCoverageByJobId?: StagesRowRenderContext['jobContractCoverageByJobId']
+  onOpenJobContract?: StagesRowRenderContext['onOpenJobContract']
   stagesInvoiceUpdatingId: ReturnType<typeof useJobsStagesMutations>['stagesInvoiceUpdatingId']
   invoiceEstimatedBillDateSavingId: ReturnType<typeof useJobsStagesMutations>['invoiceEstimatedBillDateSavingId']
   bumpInvoiceEstimatedBillDate: ReturnType<typeof useJobsStagesMutations>['bumpInvoiceEstimatedBillDate']
@@ -240,6 +242,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     authRole,
     loadJobs,
     onDevelopmentFilter,
+    jobContractCoverageByJobId,
+    onOpenJobContract,
     stagesInvoiceUpdatingId,
     invoiceEstimatedBillDateSavingId,
     bumpInvoiceEstimatedBillDate,
@@ -280,6 +284,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     checklistAddModal,
     loadJobs,
     onDevelopmentFilter,
+    jobContractCoverageByJobId,
+    onOpenJobContract,
   }
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
     renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)
