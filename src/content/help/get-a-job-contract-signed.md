@@ -2,7 +2,7 @@
 title: get a job contract signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo
+keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience
 order: 74
 ---
 Every job should have a signed agreement with its customer on file — including jobs that already started. The app tells you which ones don't, and gives the office one place to send and track them.
@@ -48,3 +48,18 @@ The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the modal sh
 One page on their phone: your letterhead, the job address, the work in plain words, the contract amount and payment line, and the terms one tap away. They type their full name (or switch to **Draw** and sign with a finger), tick the agreement box, and press a button that names the amount — {{button:blue|Sign agreement — $5,000.00}}. The page then shows the signed record and emails them a copy; you and the job's master get an email too, and the row turns {{chip:green|✍ Signed Sep 2 · M. Palmer}}.
 
 The link never dies: it shows the signed record afterwards, a polite note if you voided the contract, and asks them to reply for a fresh one only if 90 days pass without a signature (every resend restarts that clock).
+
+## Already signed on paper?
+
+Open the Contract modal and press {{button:outline|Upload signed copy}}. Enter who signed and the date, attach a scan or phone photo if you have one, and press {{button:blue|Record as signed on paper}}. Nothing goes to the customer — the row simply reads {{chip:green|✍ On file · paper}} and the copy is filed with the job.
+
+## Where else it shows
+
+- **Bill Customer** and **View bill** — a strip at the top says whether an agreement is behind the bill, with {{button:blue|Send contract}} or {{button:outline|View record}} right there. Billing is when the office most often notices a missing contract.
+- **Job window → Edit** — a *Contract* row under the customer block.
+- **Documents → Jobs** — sent, signed and voided contracts list under each job; click one for the signed record: the document as signed, the signature, and who / how / when / from where, with **Print / save as PDF**.
+
+## Your own terms
+
+The built-in terms get you started. To use your own, open **People → Contracts → Contract library**, add a document, and set **Audience** to **Customer — job-contract terms**. It then appears in the Contract modal's **Terms** picker, and every contract sent from it snapshots that version.
+
