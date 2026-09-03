@@ -593,7 +593,7 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
               navigate('/jobs?tab=stages')
             } else if (item.key === 'hours-approvals') {
-              navigate('/people?tab=hours')
+              navigate('/people?tab=hours&approvals=1')
             }
           }}
           onSecondary={(item, key) => {

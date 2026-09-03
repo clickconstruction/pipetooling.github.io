@@ -5,6 +5,8 @@ export interface PeopleHoursPendingBannerProps {
   canAccessHours: boolean
   canAccessPay: boolean
   onReviewApprove: () => void
+  /** Opens the all-weeks approvals queue — the banner itself only knows about the visible week. */
+  onOpenQueue?: () => void
 }
 
 /** Hours grid warning banner: pending sessions not yet in payroll, with a bulk review/approve CTA. Renders nothing when there is nothing pending. */
@@ -13,6 +15,7 @@ export function PeopleHoursPendingBanner({
   canAccessHours,
   canAccessPay,
   onReviewApprove,
+  onOpenQueue,
 }: PeopleHoursPendingBannerProps) {
   if (!(summary.totalSessions > 0 && (canAccessHours || canAccessPay))) return null
   return (
@@ -63,6 +66,25 @@ export function PeopleHoursPendingBanner({
       >
         Review &amp; approve
       </button>
+      {onOpenQueue ? (
+        <button
+          type="button"
+          onClick={onOpenQueue}
+          title="Every pending session, all weeks — not just the week shown here"
+          style={{
+            padding: '0.25rem 0.6rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            border: '1px solid #b45309',
+            background: 'transparent',
+            color: 'var(--text-amber-800)',
+            borderRadius: 4,
+            cursor: 'pointer',
+          }}
+        >
+          All weeks
+        </button>
+      ) : null}
     </div>
   )
 }

@@ -149,6 +149,8 @@ import {
 } from '../lib/peopleHoursPendingByCell'
 import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
 import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
+import { PeopleHoursApprovalsQueueModal } from '../components/people/PeopleHoursApprovalsQueueModal'
+import { usePendingHoursApprovalsNudge } from '../hooks/usePendingHoursApprovalsNudge'
 import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import type { ClockSessionRow } from '../types/clockSessions'
 
@@ -594,6 +596,9 @@ export default function People() {
     entry: PeopleHoursPendingCellEntry
   } | null>(null)
   const [bulkApprovePendingOpen, setBulkApprovePendingOpen] = useState(false)
+  /** All-weeks approvals queue (the Needs You card's door; also the Hours header button + banner "All weeks"). */
+  const [approvalsQueueOpen, setApprovalsQueueOpen] = useState(false)
+  const [approvalsQueueReloadKey, setApprovalsQueueReloadKey] = useState(0)
   /** People → Hours "Align hours" modal: week sessions with no job/bid, one pass to link them. */
   const [alignHoursOpen, setAlignHoursOpen] = useState(false)
   const alignHoursSessions = useMemo(
@@ -636,6 +641,10 @@ export default function People() {
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
   const [matchSessionsOpen, setMatchSessionsOpen] = useState(false)
   const [unassignedSessionCount, setUnassignedSessionCount] = useState<number | null>(null)
+  /** Company-wide pending count (all weeks) for the Hours header's Approvals badge — the RPC re-gates by role. */
+  const { approvals: pendingApprovalsAllWeeks, refresh: refreshPendingApprovalsCount } = usePendingHoursApprovalsNudge(
+    activeTab === 'hours' && canOpenHoursTab,
+  )
   const [hoursDayAuditModal, setHoursDayAuditModal] = useState<{ personName: string; workDate: string } | null>(null)
 
   // Offset form state — only the Record-payment "employee credit" entry point lives here.
@@ -886,6 +895,21 @@ export default function People() {
     window.addEventListener('hashchange', syncCostMatrixHash)
     return () => window.removeEventListener('hashchange', syncCostMatrixHash)
   }, [activeTab])
+
+  // `?tab=hours&approvals=1` (the Dashboard Needs You "Open approvals" action) opens the
+  // all-weeks queue on arrival and strips the flag so a reload doesn't reopen it.
+  useEffect(() => {
+    if (searchParams.get('approvals') !== '1') return
+    if (!(canAccessHours || canAccessPay)) return
+    setActiveTab('hours')
+    setApprovalsQueueOpen(true)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', 'hours')
+      next.delete('approvals')
+      return next
+    }, { replace: true })
+  }, [searchParams, canAccessHours, canAccessPay, setSearchParams])
 
   useEffect(() => {
     const section = searchParams.get('section')
@@ -4014,6 +4038,32 @@ export default function People() {
                   </span>
                 ) : null}
               </button>
+              <button
+                type="button"
+                onClick={() => setApprovalsQueueOpen(true)}
+                aria-label="Open the hours approvals queue for every week"
+                title="Every pending session, all weeks"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.25rem 0.7rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  ...((pendingApprovalsAllWeeks?.sessions ?? 0) > 0
+                    ? { border: '1px solid #f59e0b', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+                    : { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)' }),
+                }}
+              >
+                Approvals
+                {(pendingApprovalsAllWeeks?.sessions ?? 0) > 0 ? (
+                  <span style={{ background: '#d97706', color: '#fff', borderRadius: 999, padding: '0 0.45rem', fontSize: '0.71875rem', fontWeight: 800, lineHeight: 1.5 }}>
+                    {pendingApprovalsAllWeeks?.sessions}
+                  </span>
+                ) : null}
+              </button>
             </div>
             {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} addSessionPeople={addSessionPeople} minDateYmd={hoursFloorYmd} /> : null}
           </section>
@@ -4080,6 +4130,7 @@ export default function People() {
                 canAccessHours={canAccessHours}
                 canAccessPay={canAccessPay}
                 onReviewApprove={() => setBulkApprovePendingOpen(true)}
+                onOpenQueue={() => setApprovalsQueueOpen(true)}
               />
               <PeopleHoursGrid
                 hoursTableScrollRef={hoursTableScrollRef}
@@ -4532,6 +4583,23 @@ export default function People() {
         />
       ) : null}
 
+      {approvalsQueueOpen ? (
+        <PeopleHoursApprovalsQueueModal
+          reloadKey={approvalsQueueReloadKey}
+          authUserId={authUser?.id}
+          onClose={() => setApprovalsQueueOpen(false)}
+          onChanged={() => {
+            loadAllClockSessionsRef.current?.()
+            loadPeopleHoursRef.current?.()
+            refreshPendingApprovalsCount()
+          }}
+          onEditSession={(s) => {
+            setEditClockSession(s)
+            setError(null)
+          }}
+        />
+      ) : null}
+
       {bulkApprovePendingOpen ? (
         <PeopleHoursBulkApprovePendingModal
           pendingByCellMap={peopleHoursPendingByCellMap}
@@ -4559,7 +4627,10 @@ export default function People() {
             approved_at: editClockSession.approved_at,
           }}
           onClose={() => setEditClockSession(null)}
-          onSaved={() => loadAllClockSessionsRef.current?.()}
+          onSaved={() => {
+            loadAllClockSessionsRef.current?.()
+            setApprovalsQueueReloadKey((k) => k + 1)
+          }}
           showToast={showToast}
         />
       )}
