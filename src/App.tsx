@@ -30,6 +30,7 @@ const JobsAccountsReceivable = lazy(() => import('./pages/JobsAccountsReceivable
 const Banking = lazy(() => import('./pages/Banking'))
 const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
+const Bridge = lazy(() => import('./pages/Bridge'))
 const Moneyfill = lazy(() => import('./pages/Moneyfill'))
 const Partnerships = lazy(() => import('./pages/Partnerships'))
 const Bids = lazy(() => import('./pages/Bids'))
@@ -307,6 +308,7 @@ function AppContent() {
           <Route path="schedule-dispatch" element={<ScheduleDispatch />} />
           <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
+          <Route path="bridge" element={<ErrorBoundary><Bridge /></ErrorBoundary>} />
           <Route path="moneyfill" element={<ErrorBoundary><Moneyfill /></ErrorBoundary>} />
           <Route path="partnerships" element={<ErrorBoundary><Partnerships /></ErrorBoundary>} />
           <Route path="my-statement" element={<ErrorBoundary><PartnerStatement /></ErrorBoundary>} />
