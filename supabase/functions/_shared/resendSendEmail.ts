@@ -11,7 +11,7 @@ export async function sendEmailViaResend(
   textPlain: string,
   htmlBody: string,
   resendApiKey: string,
-  options?: { replyTo?: string; cc?: string[] },
+  options?: { replyTo?: string; cc?: string[]; attachments?: Array<{ filename: string; content: string }> },
 ): Promise<{ success: boolean; error?: string; resendEmailId?: string }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -27,6 +27,8 @@ export async function sendEmailViaResend(
       text: textPlain,
       ...(options?.replyTo ? { reply_to: options.replyTo } : {}),
       ...(options?.cc && options.cc.length > 0 ? { cc: options.cc } : {}),
+      // Resend attachments: base64 content + filename (send-lien-release-email precedent).
+      ...(options?.attachments && options.attachments.length > 0 ? { attachments: options.attachments } : {}),
     }),
   })
   if (!resendResponse.ok) {
