@@ -22,7 +22,7 @@ import {
  */
 
 export type JobSummaryStatusFilter = 'finished' | 'in_progress' | 'all'
-export type JobSummaryWindowKey = '90d' | 'ytd' | '12mo' | 'all'
+export type JobSummaryWindowKey = '90d' | '6mo' | 'ytd' | '12mo' | 'all'
 export type JobSummarySortKey =
   | 'job'
   | 'revenue'
@@ -68,7 +68,7 @@ export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewM
 ]
 
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
-const WINDOW_KEYS: readonly JobSummaryWindowKey[] = ['90d', 'ytd', '12mo', 'all']
+const WINDOW_KEYS: readonly JobSummaryWindowKey[] = ['90d', '6mo', 'ytd', '12mo', 'all']
 const METHOD_KEYS: readonly JobOverheadMethod[] = ['day', 'A', 'B', 'C']
 const SORT_KEYS: readonly JobSummarySortKey[] = ['job', 'revenue', 'labor', 'subs', 'parts', 'gross', 'margin', 'hours', 'overhead', 'trueProfit', 'trueMargin', 'pct']
 
@@ -80,6 +80,7 @@ export const JOB_SUMMARY_STATUS_OPTIONS: ReadonlyArray<{ key: JobSummaryStatusFi
 
 export const JOB_SUMMARY_WINDOW_OPTIONS: ReadonlyArray<{ key: JobSummaryWindowKey; label: string; title: string }> = [
   { key: '90d', label: '90d', title: 'Worked in the last 90 days' },
+  { key: '6mo', label: '6 mo', title: 'Worked in the last 6 months (182 days)' },
   { key: 'ytd', label: 'This year', title: 'Worked since January 1' },
   { key: '12mo', label: '12 mo', title: 'Worked in the last 12 months' },
   { key: 'all', label: 'All', title: 'Every job — overhead charged from 2025-01-01' },
@@ -107,6 +108,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
 
 export function jobSummaryWindowStartYmd(todayYmd: string, window: JobSummaryWindowKey, addDays: (ymd: string, delta: number) => string): string {
   if (window === '90d') return addDays(todayYmd, -89)
+  if (window === '6mo') return addDays(todayYmd, -181)
   if (window === '12mo') return addDays(todayYmd, -364)
   if (window === 'ytd') return `${todayYmd.slice(0, 4)}-01-01`
   return JOB_SUMMARY_ALL_TIME_START_YMD
