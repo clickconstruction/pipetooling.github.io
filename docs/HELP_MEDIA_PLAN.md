@@ -2,7 +2,7 @@
 
 > The five screen recordings worth adding to `/help` guides, with capture scripts and the exact `{{gif:}}` lines to paste once each file lands in `public/help/`. Also the standing conventions for any future recording. Static screenshots are deliberately NOT used in guides — see Conventions for why.
 
-last_updated: 2026-08-09
+last_updated: 2026-09-03
 
 ## Conventions (apply to every recording)
 
@@ -54,5 +54,6 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Dispatch Mode assign work | ✅ 2026-08-09 | ✅ |
 | Job Mode clock + report | ✅ 2026-08-09 (clock flow; report flow not recorded — send would email) | ✅ |
 | Takeoff assembly | ✅ 2026-08-09 | ✅ |
+| Job contract: chip → modal → Copy link (`get-a-job-contract-signed.gif`, desktop, 1.8 MB, Chrome recording as dev on Job 922 — the minted link was voided afterwards) | ✅ 2026-09-03 | ✅ |
 
 (The one existing recording, `settings-basics.gif` in `settings-basics.md`, predates this plan and stays.)
