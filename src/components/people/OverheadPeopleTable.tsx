@@ -85,7 +85,9 @@ export function OverheadPeopleTable({
                 background: w.key === windowKey ? 'var(--bg-blue-tint)' : 'transparent',
                 color: w.key === windowKey ? 'var(--text-blue-800)' : 'var(--text-muted)',
                 fontWeight: w.key === windowKey ? 700 : 500,
-                font: 'inherit',
+                // fontFamily, not the `font` shorthand: mixing the shorthand with fontWeight/fontSize
+                // makes React reset the longhands on re-render (the v2.770 tab-pill bug).
+                fontFamily: 'inherit',
                 fontSize: '0.8125rem',
                 padding: '0.25rem 0.6rem',
                 cursor: 'pointer',
