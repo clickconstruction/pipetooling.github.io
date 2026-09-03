@@ -34,6 +34,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'contract_viewed',
   'contract_signed',
   'contract_voided',
+  'contract_shared',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {
