@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
+import { VEHICLE_ARRANGEMENT_OPTIONS, parseVehicleArrangement } from '../../lib/people/wheels'
 
 export type PeoplePayConfigRosterSection = { label: string; names: string[] }
 
@@ -45,6 +46,7 @@ function PayConfigRowTr({
     office_hourly_wage: null,
     is_salary: false,
     record_hours_but_salary: false,
+    vehicle_arrangement: 'none',
   }
   return (
     <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -110,6 +112,23 @@ function PayConfigRowTr({
           disabled={payConfigSaving || !c.is_salary}
           title={!c.is_salary ? 'Only applies when Salary is checked' : undefined}
         />
+      </td>
+      <td style={{ padding: '0.5rem 0.75rem' }}>
+        {/* Wheels on Labor (v2.2733): the deal decides where fuel and truck cost land on Review. */}
+        <select
+          value={parseVehicleArrangement(c.vehicle_arrangement)}
+          onChange={(e) => onUpsertPayConfig(n, { vehicle_arrangement: parseVehicleArrangement(e.target.value) })}
+          disabled={payConfigSaving}
+          aria-label={`Vehicle arrangement for ${n}`}
+          title="Own vehicle · fuel paid: their fuel counts as part of their labor. Company truck: the truck they hold on Vehicles is priced per field hour. Rates show on People → Vehicles → Wheels."
+          style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit', fontSize: '0.8125rem' }}
+        >
+          {VEHICLE_ARRANGEMENT_OPTIONS.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.icon ? `${o.icon} ` : ''}{o.label}
+            </option>
+          ))}
+        </select>
       </td>
     </tr>
   )
@@ -226,7 +245,7 @@ export function PeoplePayConfigModal({
           </button>
         </div>
         <p id="people-pay-config-modal-desc" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
-          Set hourly wage and Salary (8 hrs/day). Everyone here appears on the Hours tab and in crew costing; archive a user to remove them.
+          Set hourly wage, Salary (8 hrs/day) and the vehicle deal. Everyone here appears on the Hours tab and in crew costing; archive a user to remove them.
         </p>
         <label htmlFor="people-pay-config-modal-name-filter" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-700)', marginBottom: '0.35rem', flexShrink: 0 }}>
           Filter by name
@@ -261,12 +280,13 @@ export function PeoplePayConfigModal({
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }} title="Optional second rate for office/bid/unassigned time. Blank = same as hourly wage.">Office wage ($)</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Salary</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }} title="Record hours for tracking (salary still used for pay)">Record hours</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }} title="Own vehicle with fuel paid, or a company truck. Sets where fuel and truck cost land on People → Review; rates on People → Vehicles → Wheels.">Vehicle</th>
               </tr>
             </thead>
             <tbody>
               {sectionBlocks.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
+                  <td colSpan={6} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                     {emptyMessage}
                   </td>
                 </tr>

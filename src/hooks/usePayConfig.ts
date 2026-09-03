@@ -5,6 +5,7 @@ import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/s
 import { resolvePersonIdFromRosterName } from '../lib/payPersonSubject'
 import { buildPayConfigById } from '../lib/people/payConfigLookup'
 import type { PayConfigRow } from '../types/peoplePayConfig'
+import { parseVehicleArrangement } from '../lib/people/wheels'
 import type { Person, UserRow } from './usePeopleRoster'
 
 export interface UsePayConfigDeps {
@@ -78,7 +79,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
     const { data, error } = wageAccess
       ? await supabase
           .from('people_pay_config')
-          .select('person_name, person_id, hourly_wage, office_hourly_wage, is_salary, record_hours_but_salary')
+          .select('*')
       : await supabase.rpc('list_people_pay_flags')
     if (error) {
       setError(error.message)
@@ -92,6 +93,9 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         person_id: raw.person_id ?? null,
         hourly_wage: raw.hourly_wage ?? null,
         office_hourly_wage: raw.office_hourly_wage ?? null,
+        // Columns from 20260903233954 (v2.2733); read through a cast until database.ts is regenerated after the push.
+        vehicle_arrangement: parseVehicleArrangement((raw as { vehicle_arrangement?: unknown }).vehicle_arrangement),
+        vehicle_rate_override: (raw as { vehicle_rate_override?: number | null }).vehicle_rate_override ?? null,
         is_salary: !!raw.is_salary,
         record_hours_but_salary: !!raw.record_hours_but_salary,
       }
@@ -162,6 +166,8 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
       office_hourly_wage: row.office_hourly_wage ?? cur.office_hourly_wage ?? null,
       is_salary: row.is_salary ?? cur.is_salary,
       record_hours_but_salary: row.record_hours_but_salary ?? cur.record_hours_but_salary,
+      vehicle_arrangement: row.vehicle_arrangement ?? cur.vehicle_arrangement ?? 'none',
+      vehicle_rate_override: row.vehicle_rate_override !== undefined ? row.vehicle_rate_override : (cur.vehicle_rate_override ?? null),
     }
     setPayConfig((prev) => ({ ...prev, [personName]: full }))
     const prevTimeout = payConfigDebounceRef.current[personName]
