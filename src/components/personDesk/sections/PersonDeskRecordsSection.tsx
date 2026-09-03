@@ -11,6 +11,8 @@ import { BTN, BTN_QUIET, Chip, DeskRow, DeskSection, LockTag, fmtDate } from '..
  */
 export function PersonDeskRecordsSection({ userId, personId, viewer, changeKey }: { userId: string | null; personId: string | null; viewer: PersonDeskViewer; changeKey: number }) {
   const [hr, setHr] = useState<{ freshness: PersonFileFreshness; pending: number } | null | undefined>(undefined)
+  /** Non-dev existence line (v2.2713): the count RPC, never content. */
+  const [hrCounts, setHrCounts] = useState<{ entries: number; hasSummary: boolean; updatedAt: string | null } | null | undefined>(undefined)
   const [writeups, setWriteups] = useState<{ count: number; latest: string | null } | null>(null)
   const [incidents, setIncidents] = useState<number | null>(null)
 
@@ -33,7 +35,19 @@ export function PersonDeskRecordsSection({ userId, personId, viewer, changeKey }
           freshness: derivePersonFileFreshness({ summaryUpdatedAt: summary?.updated_at ?? null, summaryCoveredThrough: summary?.covered_through ?? null, entryCreatedAts: created, nowIso: new Date().toISOString() }),
           pending: (reports as { count: number | null }).count ?? 0,
         })
-      } else setHr(null)
+      } else {
+        setHr(null)
+        if (personId) {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { data } = await (supabase as any).rpc('person_file_summary_counts', { p_person_id: personId })
+            const row = (Array.isArray(data) ? data[0] : data) as { entries?: number; has_summary?: boolean; updated_at?: string | null } | undefined
+            if (!cancelled) setHrCounts(row ? { entries: row.entries ?? 0, hasSummary: Boolean(row.has_summary), updatedAt: row.updated_at ?? null } : null)
+          } catch {
+            if (!cancelled) setHrCounts(null)
+          }
+        } else if (!cancelled) setHrCounts(null)
+      }
       const wrows = (((wu as { data: Array<{ id: string; created_at: string }> | null }).data) ?? [])
       setWriteups({ count: wrows.length, latest: wrows[0]?.created_at ?? null })
       setIncidents((inc as { count: number | null }).count ?? 0)
@@ -58,7 +72,18 @@ export function PersonDeskRecordsSection({ userId, personId, viewer, changeKey }
         }
       >
         {!viewer.isDev ? (
-          <span style={{ color: 'var(--text-muted)' }}>Kept by the dev</span>
+          !personId ? (
+            <span style={{ color: 'var(--text-muted)' }}>Needs a roster row</span>
+          ) : hrCounts === undefined ? (
+            <span style={{ color: 'var(--text-muted)' }}>Loading…</span>
+          ) : hrCounts == null || (hrCounts.entries === 0 && !hrCounts.hasSummary) ? (
+            <span style={{ color: 'var(--text-muted)' }}>No HR file yet — the dev keeps them</span>
+          ) : (
+            <span>
+              <Chip tone="gray">HR file on record</Chip> {hrCounts.entries} entr{hrCounts.entries === 1 ? 'y' : 'ies'}
+              {hrCounts.updatedAt ? ` · updated ${fmtDate(hrCounts.updatedAt)}` : ''} · ask the dev
+            </span>
+          )
         ) : !personId ? (
           <span style={{ color: 'var(--text-muted)' }}>Needs a roster row</span>
         ) : hr === undefined ? (
