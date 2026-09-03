@@ -51,6 +51,8 @@ import {
   computeOverheadTrailingAverages,
 } from '../../lib/overheadAvgDailyCost'
 import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
+import { buildOverheadPoolTrend, type OverheadPoolTrend } from '../../lib/overheadPoolTrend'
+import { OverheadPoolTrendCard } from './OverheadPoolTrendCard'
 import {
   fetchOtherJobsPartsByDay,
   fetchOverheadOfficePartsByDay,
@@ -296,6 +298,14 @@ export default function PeopleOverheadTab({
     windowEnd: string | null
     loading: boolean
   }>({ methodA: null, methodB: null, methodC: null, windowStart: null, windowEnd: null, loading: false })
+  /**
+   * Pool trend + composition card (v2.2673): built from the SAME per-day
+   * labor/parts maps the KPI/lenses effect assembles (kernel `overheadPoolTrend`).
+   */
+  const [overheadPoolTrend, setOverheadPoolTrend] = useState<{ trend: OverheadPoolTrend | null; loading: boolean }>({
+    trend: null,
+    loading: false,
+  })
   /**
    * Maintenance-hygiene indicators (pending approvals / unpriced hours /
    * unassigned salary time) over the SAME 90-day window as the KPI/lenses —
@@ -689,6 +699,7 @@ export default function PeopleOverheadTab({
     let cancelled = false
     setOverheadAvgDailyCost((prev) => ({ ...prev, loading: true }))
     setOverheadRateLenses((prev) => ({ ...prev, loading: true }))
+    setOverheadPoolTrend((prev) => ({ ...prev, loading: true }))
     setOverheadHygiene((prev) => ({ ...prev, loading: true }))
     void (async () => {
       try {
@@ -836,6 +847,10 @@ export default function PeopleOverheadTab({
           loading: false,
         })
         const merged = mergeOverheadDayTableRows(labor.byDay, partsByDay, new Map(), new Map(), new Map())
+        setOverheadPoolTrend({
+          trend: buildOverheadPoolTrend({ laborDays: labor.byDay, partsUsdByDay: partsByDay, startYmd: start, endYmd: today }),
+          loading: false,
+        })
         const totalsByDay = new Map<string, number>()
         for (const row of merged) totalsByDay.set(row.work_date, row.totalUsd)
         // Fetch a day wide on both sides, then re-bucket each invoice into
@@ -922,6 +937,7 @@ export default function PeopleOverheadTab({
             loading: false,
           })
           setOverheadHygiene({ summary: null, loading: false })
+          setOverheadPoolTrend({ trend: null, loading: false })
         }
       }
     })()
@@ -1457,6 +1473,7 @@ export default function PeopleOverheadTab({
           not these.
         </p>
       </div>
+      <OverheadPoolTrendCard trend={overheadPoolTrend.trend} loading={overheadPoolTrend.loading} windowLabel={lensWindowLabel} />
       {overheadHygieneCards.length > 0 ? (
         <div
           role="note"

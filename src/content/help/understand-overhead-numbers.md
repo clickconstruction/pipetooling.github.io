@@ -9,6 +9,16 @@ order: 61
 
 Every labor hour and dollar in those numbers comes from clock sessions that are **approved**, **clocked out**, and **priced with a wage**. When any of that upkeep falls behind, the numbers quietly drift low — so the tab watches for it and shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
 
+## Is the pool going up or down?
+
+The **Overhead pool — 90 days** card answers that directly. Its pill compares the average $/day over the last 30 days with the 30 days before: {{chip:yellow|↑ Trending up · +12%}} means overhead is growing, {{chip:green|↓ Trending down · −8%}} means it's shrinking, and anything inside ±5% reads as **flat** so a single parts spike doesn't flip the arrow.
+
+Under the pill is the ledger of what the pool is made of — **office labor**, **bid labor**, and **office parts**, each with its dollars and share — and a day-by-day chart stacked the same way with a 7-day average line. Hover any bar for that day's split.
+
+:::example Reading a flat pill with a rising chart
+If the pill says flat but the bars climb across the last two weeks, the rise is recent and hasn't moved the 30-day average yet — check back in a week, or read the 7-day line, which reacts sooner.
+:::
+
 ## The three indicators
 
 :::example What the strip looks like
