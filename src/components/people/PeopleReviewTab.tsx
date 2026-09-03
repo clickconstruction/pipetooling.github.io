@@ -62,6 +62,7 @@ import {
 } from '../../lib/people/reviewRanked'
 import { readReviewViewFromStorage, writeReviewViewToStorage, type PeopleReviewView } from '../../lib/people/reviewViewStorage'
 import { buildReviewJobsRollup, type ReviewRollupRowInput } from '../../lib/people/reviewJobsRollup'
+import { loadOfficeLikeChargeRows, summarizeOfficeLikeCharges, type OfficeLikeChargesSummary } from '../../lib/people/reviewOfficeLikeCharges'
 import { buildReviewTasksRollup } from '../../lib/people/reviewTasksRollup'
 import { usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { PeopleReviewVerdictStrip } from './review/PeopleReviewVerdictStrip'
@@ -333,6 +334,8 @@ export default function PeopleReviewTab({
   const [teamSummaryPriorLoading, setTeamSummaryPriorLoading] = useState(false)
   const teamSummaryPriorReqIdRef = useRef(0)
   const pendingApprovals = usePendingHoursApprovalsNudge(isDev && reviewView === 'ranked')
+  const [reviewOfficeLikeCharges, setReviewOfficeLikeCharges] = useState<OfficeLikeChargesSummary | null>(null)
+  const reviewOfficeLikeReqIdRef = useRef(0)
 
   const handleInlineTogglePerson = useCallback(
     (personName: string) => {
@@ -696,9 +699,35 @@ export default function PeopleReviewTab({
     return b ? buildReviewPersonMath(b, { partsRate: reviewSplitPartsRate }) : null
   }, [teamSummaryBreakdowns, teamSummarySelectedPersonName, reviewSplitPartsRate])
   const reviewHygieneItems = useMemo(
-    () => buildReviewHygiene(teamSummaryBreakdowns, pendingApprovals.approvals),
-    [teamSummaryBreakdowns, pendingApprovals.approvals],
+    () => buildReviewHygiene(teamSummaryBreakdowns, pendingApprovals.approvals, reviewOfficeLikeCharges),
+    [teamSummaryBreakdowns, pendingApprovals.approvals, reviewOfficeLikeCharges],
   )
+
+  // Office-type card charges on field jobs for the period (hygiene line,
+  // v2.2698). Keyed on the current rows' identity like the prior-period load,
+  // ranked view only; fails soft to "no line".
+  useEffect(() => {
+    if (!isDev || reviewView !== 'ranked' || !teamSummaryRows) {
+      reviewOfficeLikeReqIdRef.current += 1
+      setReviewOfficeLikeCharges(null)
+      return
+    }
+    const reqId = ++reviewOfficeLikeReqIdRef.current
+    const [start, end] = getReviewDateRange()
+    void (async () => {
+      try {
+        const [rows, officeJobLedgerId] = await Promise.all([
+          loadOfficeLikeChargeRows({ startYmd: start, endYmd: end }),
+          fetchOverheadOfficeJobLedgerIdFromAppSettings(),
+        ])
+        if (reviewOfficeLikeReqIdRef.current !== reqId) return
+        setReviewOfficeLikeCharges(summarizeOfficeLikeCharges(rows, officeJobLedgerId))
+      } catch {
+        if (reviewOfficeLikeReqIdRef.current === reqId) setReviewOfficeLikeCharges(null)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDev, reviewView, teamSummaryRows])
 
   // ---- person panel rollups (v2.2682) ----
   const reviewJobsRollup = useMemo(() => {

@@ -421,7 +421,7 @@ export function buildReviewPersonMath(
 // ---------------------------------------------------------------------------
 
 export type ReviewHygieneItem = {
-  key: 'approvals' | 'noBill' | 'assumedPct' | 'salaried'
+  key: 'approvals' | 'noBill' | 'assumedPct' | 'officeLikeCharges' | 'salaried'
   headline: string
   detail: string
   href?: string
@@ -430,9 +430,18 @@ export type ReviewHygieneItem = {
 
 export type ReviewHygieneApprovals = { sessions: number; totalHours: number; people: number; oldestAgeDays: number }
 
+/** Office-type card charges (Software, Utilities, Insurance, Medical…) allocated to field jobs in the period. */
+export type ReviewHygieneOfficeLikeCharges = {
+  usd: number
+  charges: number
+  jobs: number
+  top: ReadonlyArray<{ category: string; counterparty: string; usd: number }>
+}
+
 export function buildReviewHygiene(
   rows: readonly TeamSummaryBreakdown[],
   approvals: ReviewHygieneApprovals | null,
+  officeLike: ReviewHygieneOfficeLikeCharges | null = null,
 ): ReviewHygieneItem[] {
   const items: ReviewHygieneItem[] = []
   if (approvals && approvals.sessions > 0) {
@@ -471,6 +480,16 @@ export function buildReviewHygiene(
       detail: 'They count as 100% done, so their whole bill is treated as earned.',
       href: '/jobs',
       linkLabel: 'Set progress',
+    })
+  }
+  if (officeLike && officeLike.usd >= 1 && officeLike.charges > 0) {
+    const named = officeLike.top.slice(0, 3).map((t) => `${t.counterparty} ${fmtUsd0(t.usd)}`).join(', ')
+    items.push({
+      key: 'officeLikeCharges',
+      headline: `${fmtUsd0(officeLike.usd)} of office-type charges on ${officeLike.jobs} field ${officeLike.jobs === 1 ? 'job' : 'jobs'}`,
+      detail: `${officeLike.charges} card ${officeLike.charges === 1 ? 'charge' : 'charges'} the bank filed as software, utilities, insurance, internet or medical count as parts there — usually office spend, sometimes a dump fee or permit (${named}${officeLike.top.length > 3 ? ', …' : ''}). Confirm or re-sort.`,
+      href: '/banking?tab=sorting',
+      linkLabel: 'Sort in Banking',
     })
   }
   if (salaried > 0) {
