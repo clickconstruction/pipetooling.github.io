@@ -259,7 +259,7 @@ describe('buildReviewHygiene', () => {
   })
 })
 
-describe('cost-line tags (v2.2723)', () => {
+describe('cost-line tags (v2.2725)', () => {
   const fuelTag = { id: 't-fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber' as const, sort_order: 0, default_key: 'fuel_vehicle', show_as_cost_line: true, hide_from_picker: false }
   const permitsTag = { id: 't-gov', name: 'Government', icon: '🏛', color: 'gray' as const, sort_order: 40, default_key: 'government', show_as_cost_line: true, hide_from_picker: false }
   const r = row({ name: 'M', totalHours: 100, gross: 10000, net: 4000, allocatedParts: 3000, allocatedLabor: 3000, allocatedByTag: { 't-fuel': 500, 't-gov': 120 } })

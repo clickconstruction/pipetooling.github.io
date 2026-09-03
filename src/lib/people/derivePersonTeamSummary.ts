@@ -167,7 +167,7 @@ export function derivePersonTeamSummary(
   let allocatedProfit = 0
   // The person's share of each job's cost buckets, on the same ratio — so
   // gross − parts − labor = net for every person, and the tag lines
-  // (fuel, permits, …) are slices of parts (v2.2700 → v2.2723).
+  // (fuel, permits, …) are slices of parts (v2.2700 → v2.2725).
   let allocatedParts = 0
   let allocatedLabor = 0
   const allocatedByTag: Record<string, number> = {}

@@ -363,7 +363,7 @@ export type JobSummaryRow = {
   cardCharges: number
   /** Card charges also linked to a supply-house invoice — already inside `invoicesFromSupplyHouses`, so subtracted from `partsCost` (v2.2692). */
   cardChargesLinkedToInvoices: number
-  /** Cost-line tag slices of the counted card charges (label's tag, else bank category's tag) — inside `partsCost` (v2.2723). */
+  /** Cost-line tag slices of the counted card charges (label's tag, else bank category's tag) — inside `partsCost` (v2.2725). */
   costLines: Array<{ tagId: string; name: string; icon: string; color: CategoryTagColor; usd: number }>
   teamLaborRow: TeamLaborRow | undefined
   subLaborJobs: LaborJob[]

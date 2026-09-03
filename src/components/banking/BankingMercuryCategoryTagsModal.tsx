@@ -180,7 +180,7 @@ export function BankingMercuryCategoryTagsModal({
       setBusy(false)
     }
   }
-  // Merge (v2.2723): move every category + label into the target, repoint the
+  // Merge (v2.2725): move every category + label into the target, repoint the
   // rules that named this tag, then delete it. Nothing stops matching.
   const merge = async () => {
     if (!draft.id || !mergeTargetId || mergeTargetId === draft.id) return

@@ -1348,7 +1348,7 @@ export default function Jobs() {
         const cardChargesLinkedToInvoices = Math.min(cardCharges, mercuryInvoiceLinkedChargesByJobId.get(job.id) ?? 0)
         const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges - cardChargesLinkedToInvoices
         // Cost-line tag slices of the card charges that count (label's tag, else the
-        // bank category's tag — the same classifier People → Review uses, v2.2723).
+        // bank category's tag — the same classifier People → Review uses, v2.2725).
         // Each slice is clamped so the lines never exceed the counted card charges.
         const tagCharges = mercuryTagChargesByJobId.get(job.id)
         let countedLeft = Math.max(0, cardCharges - cardChargesLinkedToInvoices)

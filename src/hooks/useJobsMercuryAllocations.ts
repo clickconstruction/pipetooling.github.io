@@ -87,7 +87,7 @@ export function useJobsMercuryAllocations({
   const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
   /** Card charges per job that are ALSO linked to a supply-house invoice — Job Summary counts those once (v2.2692). */
   const [mercuryInvoiceLinkedChargesByJobId, setMercuryInvoiceLinkedChargesByJobId] = useState<Map<string, number>>(() => new Map())
-  /** Slices of `mercuryCardChargesByJobId` by cost-line tag (job id → tag id → $) — `lib/mercuryTagSplit`, v2.2723. */
+  /** Slices of `mercuryCardChargesByJobId` by cost-line tag (job id → tag id → $) — `lib/mercuryTagSplit`, v2.2725. */
   const [mercuryTagChargesByJobId, setMercuryTagChargesByJobId] = useState<Map<string, ReadonlyMap<string, number>>>(() => new Map())
   const categoryTags = useCategoryTags(true)
   const tagLookups = categoryTags.lookups
@@ -139,7 +139,7 @@ export function useJobsMercuryAllocations({
         const [bucketByTxId, linkedTxIds, categoryRows, labelIdByTxId] = await Promise.all([
           fetchAccountingBucketByTxId(txIds).catch(() => new Map<string, string>()),
           fetchMercuryTxIdsLinkedToSupplyInvoices(txIds).catch(() => new Set<string>()),
-          // Bank category — the fallback for transactions nobody has labelled yet (v2.2708 → v2.2723).
+          // Bank category — the fallback for transactions nobody has labelled yet (v2.2708 → v2.2725).
           fetchAllRowsChunkedIn(
             txIds,
             (chunk, from, to) =>
@@ -423,7 +423,7 @@ export function useJobsMercuryAllocations({
     mercuryCardChargesByJobId,
     mercuryInvoiceLinkedChargesByJobId,
     mercuryTagChargesByJobId,
-    /** Cost-line tags in manager order (v2.2723). */
+    /** Cost-line tags in manager order (v2.2725). */
     costLineTags: costLineTags(tagLookups),
     partsTabMercuryLoadedRef,
     partsTabMercuryInFlightRef,

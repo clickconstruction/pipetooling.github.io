@@ -337,7 +337,7 @@ export default function PeopleReviewTab({
   const [teamSummaryPriorLoading, setTeamSummaryPriorLoading] = useState(false)
   const teamSummaryPriorReqIdRef = useRef(0)
   const pendingApprovals = usePendingHoursApprovalsNudge(isDev && reviewView === 'ranked')
-  // Bank-category tags (v2.2723): cost-line tags become lines in the drawer and
+  // Bank-category tags (v2.2725): cost-line tags become lines in the drawer and
   // segments on the verdict bar; the union loader files card charges by tag.
   const categoryTags = useCategoryTags(isDev)
   const reviewCostLineTags = useMemo(() => costLineTags(categoryTags.lookups), [categoryTags.lookups])
@@ -2105,7 +2105,7 @@ export default function PeopleReviewTab({
     for (const row of cardRows) {
       cardChargesByJobId.set(row.job_id, (cardChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
     }
-    // Cost-line tags (v2.2723): a card charge belongs to its accounting label's
+    // Cost-line tags (v2.2725): a card charge belongs to its accounting label's
     // tag, else its bank category's tag; only tags flagged "show as cost line"
     // become lines. Same classifier Jobs → Job Summary uses.
     const tagChargesByJobId = new Map<string, ReadonlyMap<string, number>>()

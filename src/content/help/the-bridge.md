@@ -5,7 +5,7 @@ roles: dev
 keywords: bridge, ship, course, earned revenue, projection, target, destination, overhead, burn, climb, hazards, corrections, chart table
 order: 62
 ---
-**The Bridge** (`/bridge`, devs only for now) is the company as a ship's computer: where we are, how fast we're climbing, where we're trying to get to, and what's in the way. One clock — days.
+**The Bridge** (devs only for now — the compass icon in the header, or **Bridge** in the ☰ menu; `/bridge`) is the company as a ship's computer: where we are, how fast we're climbing, where we're trying to get to, and what's in the way. One clock — days.
 
 ## The course chart
 

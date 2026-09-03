@@ -9,7 +9,9 @@ Everything about one person used to live on a different tab: their role on Manag
 
 ## Open it
 
-Tap a person's **name** on **People → Users** or **People → Subs** (it's underlined with dots). The drawer slides in from the right; on a phone it fills the screen. Press **Esc** or tap outside to close. A link like `/people?tab=users&person=u:<id>` opens it directly.
+Tap a person's **name** anywhere it's underlined with dots — People → Users and Subs, the Hours grid, the clock sessions tables, the Dashboard clock strip, My Team, Crew Day cards, the Contracts list, the approvals queue. The drawer slides in from the right; on a phone it fills the screen. Press **Esc** or tap outside to close. A link like `/people?tab=users&person=u:<id>` opens it directly.
+
+Or press **/** on any page, type a name, and press **Enter**.
 
 Or open the **People → Person** tab: the same desk as a page, with a roster rail on the left. The rail's dots say who needs you — {{chip:yellow|amber}} for sessions waiting, paperwork unsent or expiring, or a missing roster row; {{chip:red|red}} for expired paperwork — and a **Needs attention** group at the top lists them first. On a phone the rail and the desk take turns.
 
@@ -52,6 +54,6 @@ The mirror: **Start employment…** lists the start date, wage, team lead, packe
 A controller sees the role with a {{chip:gray|dev only}} tag beside it — the value is shown so you know where it stands and who to ask. Training mode and Archive are theirs (and a pay-approved Master's) since the Desk shipped; changing a role is still the dev's.
 :::
 
-## What's coming
+## A note on the clock strip
 
-A name-is-the-door pass across the rest of the app (the Hours grid, the clock strip, Crew Day, Contracts, Schedule Dispatch) and a `/` quick sheet from any page.
+For office roles the clock strip's name now opens the desk (which has **Day · week · month** in its header). Team leads without office access keep the schedule review they had.

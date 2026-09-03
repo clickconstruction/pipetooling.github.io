@@ -57,7 +57,7 @@ export type TeamReviewUnion = {
    * Slices of `cardChargesByJobId` by bank-category tag (abs amounts), for
    * tags flagged `show_as_cost_line` only: job id → (tag id → $). A charge
    * belongs to its accounting label's tag, else its bank category's tag
-   * (`lib/mercuryTagSplit`). v2.2723 — generalises the v2.2700 fuel slice.
+   * (`lib/mercuryTagSplit`). v2.2725 — generalises the v2.2700 fuel slice.
    */
   tagChargesByJobId: Map<string, ReadonlyMap<string, number>>
   /** The cost-line tags, in manager order — the drawer / verdict draw one line per tag. */
