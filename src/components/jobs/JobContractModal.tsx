@@ -121,6 +121,8 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
   const [paperFile, setPaperFile] = useState<File | null>(null)
   const [paperBusy, setPaperBusy] = useState(false)
   const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
+  /** Channel of the live row's latest send event: 'email' = the customer was emailed, 'link' = only minted/copied. */
+  const [lastSendChannel, setLastSendChannel] = useState<'email' | 'link' | null>(null)
   const userTouchedRef = useRef(false)
   const hydratedRef = useRef(false)
   const prefillDoneRef = useRef(false)
@@ -133,7 +135,22 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
       const { data } = await supabase.from('job_contracts').select('*').eq('job_id', job.id).order('created_at', { ascending: false })
       const list = (data ?? []) as JobContractRow[]
       setRows(list)
-      setLiveRow(list.find((r) => jobContractIsLive(r)) ?? null)
+      const live = list.find((r) => jobContractIsLive(r)) ?? null
+      setLiveRow(live)
+      if (live) {
+        const { data: ev } = await supabase
+          .from('job_contract_events')
+          .select('metadata')
+          .eq('contract_id', live.id)
+          .eq('event_type', 'sent')
+          .order('occurred_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        const channel = (ev as { metadata?: { channel?: unknown } } | null)?.metadata?.channel
+        setLastSendChannel(channel === 'email' ? 'email' : channel === 'link' ? 'link' : null)
+      } else {
+        setLastSendChannel(null)
+      }
     } catch {
       setRows([])
     }
@@ -571,14 +588,15 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
     liveRow && status === 'sent' ? (
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', margin: '0.6rem 0' }}>
         <span style={{ flex: 1, minWidth: 200 }}>
-          ✉ Sent {formatContractStamp(liveRow.last_sent_at ?? liveRow.sent_at) ?? ''}
-          {liveRow.recipient_email ? ` to ${liveRow.recipient_email}` : ''}
+          {lastSendChannel === 'link' ? '🔗 Link copied ' : '✉ Sent '}
+          {formatContractStamp(liveRow.last_sent_at ?? liveRow.sent_at) ?? ''}
+          {liveRow.recipient_email ? (lastSendChannel === 'link' ? ` — nothing emailed yet to ${liveRow.recipient_email}` : ` to ${liveRow.recipient_email}`) : lastSendChannel === 'link' ? ' — nothing emailed yet' : ''}
           {liveRow.send_count > 1 ? ` · ${liveRow.send_count} sends` : ''}
           {liveRow.view_count > 0 ? ` · opened ${liveRow.view_count}×` : ' · not opened yet'}
           {liveRow.public_token_expires_at ? ` · link good until ${formatContractStamp(liveRow.public_token_expires_at)?.split(',')[0] ?? ''}` : ''}
         </span>
-        <button type="button" style={btn} disabled={busy != null} onClick={() => void invokeSend('email')}>
-          {busy === 'send' ? 'Sending…' : 'Resend email'}
+        <button type="button" style={lastSendChannel === 'link' ? btnPrimary : btn} disabled={busy != null} onClick={() => void invokeSend('email')}>
+          {busy === 'send' ? 'Sending…' : lastSendChannel === 'link' ? 'Send by email' : 'Resend email'}
         </button>
         <button type="button" style={btn} disabled={busy != null} onClick={() => void copyLink()}>
           Copy link
