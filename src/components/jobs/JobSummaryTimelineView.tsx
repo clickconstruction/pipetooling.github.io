@@ -100,7 +100,11 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
   const gridStep = maxY <= 8 ? 2 : maxY <= 20 ? 4 : Math.ceil(maxY / 5)
   const gridVals: number[] = []
   for (let v = 0; v <= maxY; v += gridStep) gridVals.push(v)
-  const order: JobRunBucket[] = ['paid', 'billed', 'working']
+  // Stack order, bottom → top (v2.2734, owner's call): the still-working jobs
+  // are the calm carry, so they set the floor; billed rides on them and the
+  // paid one-day calls — the jumpy part — sit on top where they don't shake
+  // everything beneath.
+  const order: JobRunBucket[] = ['working', 'billed', 'paid']
   const areaPaths = (() => {
     const base = series.days.map(() => 0)
     return order.map((bucket) => {
@@ -247,10 +251,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
           ))}
         </svg>
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-700)', padding: '0.35rem 0.25rem 0.2rem' }}>
-          {order
-            .slice()
-            .reverse()
-            .map((b) => (
+          {order.map((b) => (
               <span key={b} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                 <i style={{ display: 'inline-block', width: 12, height: 8, borderRadius: 2, background: BUCKET_COLOR[b] }} />
                 {BUCKET_LABEL[b]}
