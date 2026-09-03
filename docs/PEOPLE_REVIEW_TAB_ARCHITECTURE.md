@@ -166,6 +166,16 @@ Implication: sub-extractions here are **children of PeopleReviewTab**, which rem
 
 The Team Summary half churned heavily through the v2.539–v2.547 wave (Convention-1 alignment, Overhead-labor column, iframe→client-side sort/search rebuild, popup cache, period-selector expansion, printable drilldowns, hierarchical Hours/Overhead breakdowns with `people_crew_bids` + `get_bids_by_ids` additions) — ~35 `TeamSummary` mentions overall, all predating or landing with the extraction from `People.tsx`. Since extraction the file is comparatively stable; the drilldown-modal presentation logic now lives mostly in `teamSummary/drilldowns.tsx`, but the popup builder in this file duplicates it and must be kept in sync until Stage A unifies the payload.
 
+## H. Ranked view (v2.2678)
+
+- **What:** the tab's default view since v2.2678 — verdict strip (profit after overhead + prior-period trend + gross→profit composition), amber hygiene strip, ranked profit bars with a shared zero line, and a per-person math drawer. The table (region C's `TeamSummaryInline`) stays behind a Ranked / Table control (`lib/people/reviewViewStorage.ts`, key `people_review_view_v1`).
+- **Kernel:** [`lib/people/reviewRanked.ts`](../src/lib/people/reviewRanked.ts) — every function takes the enriched `TeamSummaryBreakdown[]` (region C's memo) and nothing else, so the view cannot disagree with the table. Components in [`components/people/review/`](../src/components/people/review/) are presentational.
+- **Owned state:** `reviewView`, `reviewRankBy`, `reviewRankedSearch`, `teamSummaryPriorRows` / `teamSummaryPriorLoading` / `teamSummaryPriorReqIdRef`; `usePendingHoursApprovalsNudge(isDev && ranked)` feeds the hygiene strip.
+- **Prior-period effect:** keyed on `teamSummaryRows` identity (ranked view only); calls `loadTeamReviewUnion` + `derivePersonTeamSummary` for `priorPeriodRange(getReviewDateRange())`, request-id guarded. Deliberately separate from region C's auto-refresh effect — the deferral choreography there is untouched.
+- **Render:** in the table-mount block, `reviewView === 'ranked'` swaps `TeamSummaryInline` for the four components; the "Overhead (split)" meta line is clickable only in table view (the drilldown handle is null when the table is unmounted); region E's headline card returns null in ranked view (the drawer replaces it), the rest of the person panel renders unchanged.
+- **Selection:** the ranked list's name buttons call `handleInlineTogglePerson` — the same pointer the table uses.
+- **Next:** person-panel rework (jobs rolled up per job, recurring tasks collapsed, zero-hour rows named), then the Review-only math fixes from the 2026-09-03 audit.
+
 ## Recommended extraction order (value ÷ risk)
 
 1. ~~**Stage A: `buildTeamSummaryHtml`**~~ — **done (v2.1305)**: popup document builder moved to [`lib/peopleDocuments/buildTeamSummaryHtml.ts`](../src/lib/peopleDocuments/buildTeamSummaryHtml.ts) + 12 tests; file dropped 5,267 → 3,777.
