@@ -174,7 +174,12 @@ export function OverheadLensModal({
     const linePath = series.rolling
       .map((r, i) => (r.rate == null ? null : `${dayX(i).toFixed(1)} ${y(r.rate).toFixed(1)}`))
       .reduce<string>((acc, pt) => (pt == null ? acc : acc ? `${acc} L ${pt}` : `M ${pt}`), '')
-    const ticks = [0.25, 0.5, 0.75, 1].map((f) => max * f * (1 / 1.15))
+    // Nice-step gridlines (1/2/2.5/5 × 10^k) so a $/hr axis reads $5, $10, $15 — works for fractions (Method B) too.
+    const rawStep = (max / 1.15) / 3
+    const pow = 10 ** Math.floor(Math.log10(rawStep))
+    const step = [1, 2, 2.5, 5, 10].map((k) => k * pow).find((s) => s >= rawStep) ?? rawStep
+    const ticks: number[] = []
+    for (let t = step; t < max; t += step) ticks.push(t)
     return { max, y, n, bw, linePath, ticks }
   })()
 
