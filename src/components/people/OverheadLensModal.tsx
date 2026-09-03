@@ -166,8 +166,14 @@ export function OverheadLensModal({
     if (!series || series.weeks.length === 0) return null
     const vals = series.weeks.map((w) => w.rate).filter((v): v is number => v != null)
     const rollVals = series.rolling.map((r) => r.rate).filter((v): v is number => v != null)
-    const max = Math.max(...vals, ...rollVals, rate ?? 0, 1e-9) * 1.15
-    const y = (v: number) => H - MB - (v / max) * (H - MT - MB)
+    // Cap the axis at 4× the headline: a week with almost no invoicing (or
+    // hours) posts an absurd rate that would squash the headline line to the
+    // baseline. Over-cap weeks draw clipped with a marker; the tooltip keeps
+    // the true value.
+    const rawMax = Math.max(...vals, ...rollVals, rate ?? 0, 1e-9)
+    const cap = rate != null && rate > 0 ? Math.min(rawMax, rate * 4) : rawMax
+    const max = cap * 1.15
+    const y = (v: number) => H - MB - (Math.min(v, cap) / max) * (H - MT - MB)
     const n = series.weeks.length
     const bw = (W - ML - MR) / n
     const dayX = (i: number) => ML + ((i + 0.5) / series.rolling.length) * (W - ML - MR)
@@ -180,7 +186,7 @@ export function OverheadLensModal({
     const step = [1, 2, 2.5, 5, 10].map((k) => k * pow).find((s) => s >= rawStep) ?? rawStep
     const ticks: number[] = []
     for (let t = step; t < max; t += step) ticks.push(t)
-    return { max, y, n, bw, linePath, ticks }
+    return { max, cap, y, n, bw, linePath, ticks }
   })()
 
   const stop = (e: React.MouseEvent) => e.stopPropagation()
@@ -326,7 +332,7 @@ export function OverheadLensModal({
                 {series.weeks.map((w, i) => {
                   const x = ML + i * chart.bw + 3
                   const bwid = Math.max(2, chart.bw - 6)
-                  const tip = `${shortMd(w.startYmd)} – ${shortMd(w.endYmd)}${w.days < 7 ? ` (${w.days} days)` : ''}: ${money(w.poolUsd)} ÷ ${lens === 'A' ? hours(w.denominator) : money(w.denominator)} = ${fmtRate(lens, w.rate)}`
+                  const tip = `${shortMd(w.startYmd)} – ${shortMd(w.endYmd)}${w.days < 7 ? ` (${w.days} days)` : ''}: ${money(w.poolUsd)} ÷ ${lens === 'A' ? hours(w.denominator) : money(w.denominator)} = ${fmtRate(lens, w.rate)}${w.rate != null && w.rate > chart.cap ? ' (off the chart — bar clipped)' : ''}`
                   return (
                     <g key={w.endYmd}>
                       <title>{tip}</title>
@@ -335,7 +341,14 @@ export function OverheadLensModal({
                           —
                         </text>
                       ) : (
-                        <rect x={x} y={chart.y(w.rate)} width={bwid} height={Math.max(0.5, H - MB - chart.y(w.rate))} rx={2} fill={cfg.color} opacity={0.5} />
+                        <>
+                          <rect x={x} y={chart.y(w.rate)} width={bwid} height={Math.max(0.5, H - MB - chart.y(w.rate))} rx={2} fill={cfg.color} opacity={0.5} />
+                          {w.rate > chart.cap && (
+                            <text x={x + bwid / 2} y={MT + 8} textAnchor="middle" fill={cfg.color} fontSize={9} fontWeight={700}>
+                              ▲
+                            </text>
+                          )}
+                        </>
                       )}
                       <rect x={x} y={MT} width={bwid} height={H - MT - MB} fill="transparent" />
                       {i % 2 === 0 && (
