@@ -9,6 +9,19 @@ export type AccountingLabelRuleCriteriaV1 = {
   bankDescription?: { op: 'contains' | 'equals'; value: string }
   /** Mercury's own category on the transaction (`mercury_transactions.mercury_category`, e.g. "FuelAndGas"). v2.2700. */
   bankCategory?: { op: 'contains' | 'equals'; value: string }
+  /**
+   * A bank-category TAG (`mercury_category_tags`): matches when the
+   * transaction's bank category is one the tag covers. `categories` is the
+   * membership snapshot taken when the rule was saved — used when no live
+   * lookup is supplied (older code paths); the live tag wins when it is.
+   */
+  bankTag?: { tagId: string; categories: string[] }
+}
+
+/** Optional live data the matcher can consult; absent = fall back to the snapshots inside the criteria. */
+export type AccountingLabelRuleMatchLookups = {
+  /** tag id → lower-cased bank categories it covers right now. */
+  tagCategoriesById?: ReadonlyMap<string, readonly string[]>
 }
 
 export type AccountingLabelRuleMatchTx = Pick<
@@ -45,6 +58,7 @@ export function accountingRuleEffectiveClauseCount(c: AccountingLabelRuleCriteri
   if (c.counterparty != null && c.counterparty.value.trim().length > 0) n += 1
   if (c.bankDescription != null && c.bankDescription.value.trim().length > 0) n += 1
   if (c.bankCategory != null && c.bankCategory.value.trim().length > 0) n += 1
+  if (c.bankTag != null && c.bankTag.tagId.trim().length > 0) n += 1
   return n
 }
 
@@ -98,6 +112,20 @@ export function parseAccountingLabelRuleCriteria(raw: Json): AccountingLabelRule
     if (typeof value !== 'string') return null
     out.bankCategory = { op, value }
   }
+  const bt = raw.bankTag
+  if (bt !== undefined) {
+    if (!isRecord(bt)) return null
+    const tagId = bt.tagId
+    if (typeof tagId !== 'string') return null
+    const cats = bt.categories
+    if (cats !== undefined && !Array.isArray(cats)) return null
+    const categories: string[] = []
+    for (const c of (cats ?? []) as unknown[]) {
+      if (typeof c !== 'string') return null
+      categories.push(c)
+    }
+    out.bankTag = { tagId, categories }
+  }
   return out
 }
 
@@ -144,6 +172,7 @@ function matchStringClause(
 export function matchAccountingLabelRuleCriteria(
   tx: AccountingLabelRuleMatchTx,
   criteria: AccountingLabelRuleCriteriaV1,
+  lookups?: AccountingLabelRuleMatchLookups,
 ): boolean {
   if (accountingRuleEffectiveClauseCount(criteria) === 0) return false
   const a = criteria.amount
@@ -166,6 +195,13 @@ export function matchAccountingLabelRuleCriteria(
   const bc = criteria.bankCategory
   if (bc != null && bc.value.trim().length > 0) {
     if (!matchStringClause(mercuryCategoryFromColumn(tx.mercury_category), bc.op, bc.value)) return false
+  }
+  const bt = criteria.bankTag
+  if (bt != null && bt.tagId.trim().length > 0) {
+    const live = lookups?.tagCategoriesById?.get(bt.tagId)
+    const members = (live ?? bt.categories).map((c) => normStr(c)).filter((c) => c.length > 0)
+    const cat = normStr(mercuryCategoryFromColumn(tx.mercury_category) ?? '')
+    if (!cat || !members.includes(cat)) return false
   }
   return true
 }
