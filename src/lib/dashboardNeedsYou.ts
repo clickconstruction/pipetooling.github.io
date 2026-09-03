@@ -48,6 +48,8 @@ export type NeedsYouItem = {
     | 'lien-file-window'
     | 'd22-uncoded'
     | 'hours-approvals'
+    | 'contract-missing'
+    | 'contract-stale'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -86,6 +88,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'roadmap-needs-person': 50,
   'robot-audits': 50,
   'hours-approvals': 50,
+  'contract-missing': 40,
+  'contract-stale': 50,
   'lost-bids': 60,
   'd22-uncoded': 60,
 }
@@ -135,6 +139,9 @@ export type NeedsYouInputs = {
    * dedicated Job follow-ups station already carries this count.
    */
   jobFollowupsEnabled: boolean
+  /** Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet. */
+  contractNudgeEnabled?: boolean
+  contractNudge?: { missing: { count: number; revenueTotal: number }; stale: { count: number; oldestDays: number | null } } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -257,6 +264,35 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${money} is still open and the § 53.052 affidavit window is closing — after it, the lien right on this work is gone. The affidavit is ready behind its gate on the job's lien instruments.`,
       figure: String(n),
       actionLabel: n === 1 ? 'Open the job' : 'Review them',
+    })
+  }
+
+  if (inputs.contractNudgeEnabled && (inputs.contractNudge?.missing.count ?? 0) > 0) {
+    const { count: n, revenueTotal } = inputs.contractNudge!.missing
+    const money = revenueTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'contract-missing',
+      severity: 'amber',
+      kicker: 'Contracts',
+      title: n === 1 ? 'A live job has no contract on file' : `${n} live jobs have no contract on file`,
+      detail:
+        `${money} of work is running on no signed agreement. ` +
+        'Open the sweep: every job is a row with the customer’s email and a Send button — or upload the paper copy where one exists.',
+      figure: String(n),
+      actionLabel: 'Start the sweep',
+    })
+  }
+
+  if (inputs.contractNudgeEnabled && (inputs.contractNudge?.stale.count ?? 0) > 0) {
+    const { count: n, oldestDays } = inputs.contractNudge!.stale
+    items.push({
+      key: 'contract-stale',
+      severity: 'amber',
+      kicker: 'Contracts',
+      title: n === 1 ? 'A contract has been out for signature a week' : `${n} contracts have been out for signature a week`,
+      detail: `Sent 7+ days ago and still unsigned${oldestDays != null ? ` — the oldest ${oldestDays} days` : ''}. Resend, text the link, or call and sign it in person.`,
+      figure: String(n),
+      actionLabel: 'See them',
     })
   }
 
