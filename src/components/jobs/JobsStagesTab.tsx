@@ -77,6 +77,7 @@ import BilledExpectedPayChip from './BilledExpectedPayChip'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import JobContractModal from './JobContractModal'
+import JobsContractSweepModal from './JobsContractSweepModal'
 import {
   buildJobContractCoverage,
   filterJobsByContractCoverage,
@@ -799,6 +800,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** The Contract modal (Contract Desk PR 2) — opened from the row chip and the ✍ quick action. */
   const [jobContractModalJob, setJobContractModalJob] = useState<JobWithDetails | null>(null)
   const openJobContract = canSeeJobContracts ? (j: JobWithDetails) => setJobContractModalJob(j) : undefined
+  /** The contract sweep (PR 4): every live job with nothing on file, one row each. ?contractSweep=1 deep-links it. */
+  const [contractSweepOpen, setContractSweepOpen] = useState<boolean>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('contractSweep') === '1'
+    } catch {
+      return false
+    }
+  })
+  const contractSweepCount = useMemo(() => {
+    if (!canSeeJobContracts) return 0
+    let n = 0
+    for (const j of jobs) {
+      if ((j.status ?? '') === 'paid') continue
+      const cov = jobContractCoverageByJobId.get(j.id)
+      if (!cov || cov.kind === 'none' || cov.kind === 'draft') n++
+    }
+    return n
+  }, [canSeeJobContracts, jobs, jobContractCoverageByJobId])
   // ?contract=missing deep-links the board to the jobs with nothing on file
   // (Needs You, PR 4). Read-only init like ?view=recent — the tab never writes params.
   const [stagesContractFilter, setStagesContractFilter] = useState<StagesContractFilter | ''>(() => {
@@ -1204,6 +1223,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     Boolean(stagesDevelopmentFilter) ||
     Boolean(stagesAccountManFilter) ||
     Boolean(stagesContractFilter) ||
+    contractSweepOpen ||
     // Billed aging / no-line filter (v2.2155): billed lines hang on working
     // and waiting jobs too, and the board routes them into Billed only once
     // their job's scope is loaded — with Working collapsed, "Show 90+" listed
@@ -2999,6 +3019,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           <option value={STAGES_ACCOUNT_MAN_FILTER_NONE}>No Account Man</option>
                         </select>
                       </div>
+                    ) : null}
+                    {canSeeJobContracts ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setStagesToolsMenuOpen(false)
+                          setContractSweepOpen(true)
+                        }}
+                        title="Every live job with no agreement on file, one row each, with Send"
+                        style={stagesToolsMenuItemStyle}
+                      >
+                        <span>Contract sweep…</span>
+                        {contractSweepCount > 0 ? (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>
+                            {contractSweepCount} without
+                          </span>
+                        ) : null}
+                      </button>
                     ) : null}
                     <button
                       type="button"
@@ -5323,6 +5362,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setJobContractModalJob(null)}
         job={jobContractModalJob}
         onChanged={() => void loadJobContractCoverage()}
+      />
+      <JobsContractSweepModal
+        open={contractSweepOpen}
+        onClose={() => setContractSweepOpen(false)}
+        jobs={jobs}
+        coverage={jobContractCoverageByJobId}
+        onEditJob={(j) => openEdit(j)}
+        onSent={() => void loadJobContractCoverage()}
       />
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}

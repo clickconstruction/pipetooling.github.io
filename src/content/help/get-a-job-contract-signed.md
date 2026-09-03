@@ -2,7 +2,7 @@
 title: get a job contract signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience
+keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience, contract sweep, backlog, needs you
 order: 74
 ---
 Every job should have a signed agreement with its customer on file — including jobs that already started. The app tells you which ones don't, and gives the office one place to send and track them.
@@ -62,4 +62,10 @@ Open the Contract modal and press {{button:outline|Upload signed copy}}. Enter w
 ## Your own terms
 
 The built-in terms get you started. To use your own, open **People → Contracts → Contract library**, add a document, and set **Audience** to **Customer — job-contract terms**. It then appears in the Contract modal's **Terms** picker, and every contract sent from it snapshots that version.
+
+## Clear the backlog
+
+The Dashboard's **Needs You** list shows {{chip:yellow|14 live jobs have no contract on file}} with {{button:blue|Start the sweep}}, and a second line for contracts out for signature a week without an answer. The sweep also lives in the Pipeline's **⋯** menu as **Contract sweep…**.
+
+Every live job without an agreement is one row: job, address, stage, amount, the customer's email, and {{button:blue|Send}}. Pick the terms once in the footer, then send row by row — or {{button:blue|Send all 9 ready}} for every row with a valid email (it asks once to confirm). Rows with no email get {{button:outline|Fix email}}, which opens the job. Click a job name to open the full Contract modal instead, for careful edits or to record a paper copy. Rows leave the list as they send, and the Dashboard count falls with them.
 
