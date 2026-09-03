@@ -4,6 +4,8 @@ import { calendarYmdInAppTzFromIso, denverCalendarDayKey, ymdAddDays } from '../
 import { fetchAllRows } from '../supabasePaging'
 import { loadOverheadPoolSnapshot, loadOverheadPoolSnapshotInputs } from '../overheadPoolSnapshot'
 import { buildEarnedRevenue, type EarnedRevenueJob, type EarnedRevenueResult } from './earnedRevenue'
+import { upcomingFridays } from './cashForecast'
+import { parsePaySpeedsRpc, parsePromisedPayDatesRpc, type PaySpeedData, type PromisedPayDate } from '../jobs/billedExpectedPay'
 
 /**
  * Bridge data loader (v2.2677) — every number the Chart Table shows, from the
@@ -27,6 +29,9 @@ import { buildEarnedRevenue, type EarnedRevenueJob, type EarnedRevenueResult } f
  */
 
 export const BRIDGE_TARGET_SETTING_KEY = 'bridge_target_usd_v1'
+export const BRIDGE_CASH_SETTING_KEY = 'bridge_cash_on_hand_v1'
+export const BRIDGE_FLOOR_SETTING_KEY = 'bridge_cash_floor_usd_v1'
+export const BRIDGE_DEFAULT_FLOOR_USD = 5000
 export const BRIDGE_DAYS_BACK = 56
 export const BRIDGE_DAYS_AHEAD = 56
 
@@ -54,6 +59,22 @@ export type BridgeData = {
   }
   hazards: Array<{ ymd: string; offset: number; label: string; usd: number }>
   targetUsd: number | null
+  /** Net position + cash forecast inputs (v2.2726). */
+  bankFlowByDay: Map<string, number>
+  invoicesSentByDay: Map<string, number>
+  paymentsReceivedByDay: Map<string, number>
+  supplyDatedByDay: Map<string, number>
+  supplyPaidByDay: Map<string, number>
+  /** Typed cash on hand, rolled forward on the page from its as-of day. Null until someone types it. */
+  cashSetting: { usd: number; asOfYmd: string } | null
+  floorUsd: number
+  /** Scheduled outflows in the next window: unpaid supply invoices by due date + payroll Fridays (estimated). Sub labor owed is added on the page from the finance hook's AP figure. */
+  bills: Array<{ ymd: string; usd: number; label: string }>
+  payrollWeeklyEstUsd: number
+  /** Unscheduled spend per day (office parts at the 90-day rate). */
+  dailyDrainUsd: number
+  paySpeeds: PaySpeedData | null
+  promisedByJob: Record<string, PromisedPayDate> | null
 }
 
 const hoursOf = (inIso: string, outIso: string | null): number => {
@@ -160,20 +181,24 @@ export async function loadBridgeData(): Promise<BridgeData> {
         async () =>
           supabase
             .from('mercury_transactions')
-            .select('id, posted_at')
+            .select('id, posted_at, amount')
             .gte('posted_at', `${windowStart}T00:00:00-06:00`)
-            .lt('amount', 0)
             .is('duplicate_of_transaction_id', null)
             .neq('kind', 'internalTransfer')
             .order('id')
             .range(from, to),
         'bridge mercury tx',
-      )) as Array<{ id: string; posted_at: string }> | null,
+      )) as Array<{ id: string; posted_at: string; amount: number | null }> | null,
       error: null,
     }),
     'bridge mercury tx',
   )
-  const txDay = new Map(txRows.map((t) => [t.id, calendarYmdInAppTzFromIso(t.posted_at)]))
+  const bankFlowByDay = new Map<string, number>()
+  for (const t of txRows) {
+    const d = calendarYmdInAppTzFromIso(t.posted_at)
+    if (d >= windowStart && d <= todayYmd) addTo(bankFlowByDay, d, Number(t.amount ?? 0))
+  }
+  const txDay = new Map(txRows.filter((t) => Number(t.amount ?? 0) < 0).map((t) => [t.id, calendarYmdInAppTzFromIso(t.posted_at)]))
   for (const ids of chunks([...txDay.keys()], 200)) {
     const rows = (await withSupabaseRetry(
       async () => supabase.from('mercury_transaction_job_allocations').select('mercury_transaction_id, job_id, amount').in('mercury_transaction_id', ids),
@@ -187,9 +212,9 @@ export async function loadBridgeData(): Promise<BridgeData> {
   }
   // Materials: supply-house invoices allocated to non-office jobs, by invoice date.
   const invRows = (await withSupabaseRetry(
-    async () => supabase.from('supply_house_invoices').select('id, amount, invoice_date').gte('invoice_date', windowStart).lte('invoice_date', todayYmd),
+    async () => supabase.from('supply_house_invoices').select('id, amount, invoice_date, paid_at').gte('invoice_date', windowStart).lte('invoice_date', todayYmd),
     'bridge supply invoices',
-  )) as Array<{ id: string; amount: number | null; invoice_date: string }> | null
+  )) as Array<{ id: string; amount: number | null; invoice_date: string; paid_at: string | null }> | null
   const invById = new Map((invRows ?? []).map((r) => [r.id, r]))
   for (const ids of chunks([...invById.keys()], 200)) {
     const rows = (await withSupabaseRetry(
@@ -221,6 +246,74 @@ export async function loadBridgeData(): Promise<BridgeData> {
       addTo(subByDay, d, v)
     }
   }
+
+  // Net position history flows (v2.2726): invoices sent, payments received,
+  // supply invoices dated / paid — by company day, inside the window.
+  const invoicesSentByDay = new Map<string, number>()
+  const paymentsReceivedByDay = new Map<string, number>()
+  const supplyDatedByDay = new Map<string, number>()
+  const supplyPaidByDay = new Map<string, number>()
+  for (const inv of invRows ?? []) addTo(supplyDatedByDay, inv.invoice_date, Number(inv.amount ?? 0))
+  const [sentRows, paidRows, supplyPaidRows, settingRows, paySpeedRaw, promisesRaw] = await Promise.all([
+    withSupabaseRetry(
+      async () =>
+        supabase
+          .from('jobs_ledger_invoices')
+          .select('amount, sent_to_customer_at')
+          .gte('sent_to_customer_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`)
+          .or('stripe_mode.is.null,stripe_mode.neq.test'),
+      'bridge invoices sent',
+    ) as Promise<Array<{ amount: number | null; sent_to_customer_at: string | null }> | null>,
+    withSupabaseRetry(async () => supabase.from('jobs_ledger_payments').select('amount, paid_on').gte('paid_on', windowStart).lte('paid_on', todayYmd), 'bridge payments') as Promise<Array<{ amount: number | null; paid_on: string | null }> | null>,
+    withSupabaseRetry(
+      async () => supabase.from('supply_house_invoices').select('amount, paid_at').gte('paid_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`),
+      'bridge supply paid',
+    ) as Promise<Array<{ amount: number | null; paid_at: string | null }> | null>,
+    withSupabaseRetry(async () => supabase.from('app_settings').select('key, value_text').in('key', [BRIDGE_CASH_SETTING_KEY, BRIDGE_FLOOR_SETTING_KEY]), 'bridge settings') as Promise<Array<{ key: string; value_text: string | null }> | null>,
+    (async (): Promise<unknown> => {
+      try {
+        return (await supabase.rpc('get_billed_customer_pay_speeds' as never)).data
+      } catch {
+        return null
+      }
+    })(),
+    (async (): Promise<unknown> => {
+      try {
+        return (await supabase.rpc('list_job_promised_pay_dates' as never)).data
+      } catch {
+        return null
+      }
+    })(),
+  ])
+  for (const r of sentRows ?? []) {
+    if (!r.sent_to_customer_at) continue
+    const d = calendarYmdInAppTzFromIso(r.sent_to_customer_at)
+    if (d >= windowStart && d <= todayYmd) addTo(invoicesSentByDay, d, Number(r.amount ?? 0))
+  }
+  for (const r of paidRows ?? []) if (r.paid_on) addTo(paymentsReceivedByDay, r.paid_on, Number(r.amount ?? 0))
+  for (const r of supplyPaidRows ?? []) {
+    if (!r.paid_at) continue
+    const d = calendarYmdInAppTzFromIso(r.paid_at)
+    if (d >= windowStart && d <= todayYmd) addTo(supplyPaidByDay, d, Number(r.amount ?? 0))
+  }
+  let cashSetting: { usd: number; asOfYmd: string } | null = null
+  let floorUsd = BRIDGE_DEFAULT_FLOOR_USD
+  for (const r of settingRows ?? []) {
+    if (r.key === BRIDGE_FLOOR_SETTING_KEY) {
+      const v = Number(r.value_text)
+      if (Number.isFinite(v)) floorUsd = v
+    }
+    if (r.key === BRIDGE_CASH_SETTING_KEY && r.value_text) {
+      try {
+        const parsed = JSON.parse(r.value_text) as { usd?: unknown; asOfYmd?: unknown }
+        if (typeof parsed.usd === 'number' && Number.isFinite(parsed.usd) && typeof parsed.asOfYmd === 'string') cashSetting = { usd: parsed.usd, asOfYmd: parsed.asOfYmd }
+      } catch {
+        /* ignore a corrupt setting */
+      }
+    }
+  }
+  const paySpeeds = parsePaySpeedsRpc(paySpeedRaw)
+  const promisedByJob = parsePromisedPayDatesRpc(promisesRaw)
 
   // Levers, hazards, hygiene counts, target — small independent reads.
   const [rtbRows, collRows, bidRows, dueRows, ncCount, cardCount, targetRow] = await Promise.all([
@@ -282,6 +375,16 @@ export async function loadBridgeData(): Promise<BridgeData> {
   for (const l of snap.peopleLines.labor) if (l.workDate >= last7) officeBidHours7d += l.hours
   const hazardsByDay = new Map<string, number>()
   for (const r of dueRows ?? []) addTo(hazardsByDay, r.due_date, Number(r.amount ?? 0))
+  // Scheduled outflows for the cash forecast.
+  let officeLaborWindow = 0
+  for (const l of snap.peopleLines.labor) if (l.workDate >= windowStart) officeLaborWindow += l.laborUsd
+  const fieldLaborWindow = [...snap.fieldLaborUsdByDay].filter(([d]) => d >= windowStart).reduce((acc, [, v]) => acc + v, 0)
+  const payrollWeeklyEstUsd = ((fieldLaborWindow + officeLaborWindow) / BRIDGE_DAYS_BACK) * 7
+  const bills: BridgeData['bills'] = []
+  for (const [ymd, usd] of hazardsByDay) bills.push({ ymd, usd, label: 'Supply invoices due' })
+  for (const ymd of upcomingFridays(todayYmd, BRIDGE_DAYS_AHEAD)) bills.push({ ymd, usd: payrollWeeklyEstUsd, label: 'Payroll (estimated)' })
+  bills.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0))
+  const dailyDrainUsd = snap.poolTrend.totals.officePartsUsd / 90
   const targetRaw = targetRow?.value_text?.trim()
   const targetUsd = targetRaw && Number.isFinite(Number(targetRaw)) ? Number(targetRaw) : null
 
@@ -323,7 +426,33 @@ export async function loadBridgeData(): Promise<BridgeData> {
       .map(([ymd, usd]) => ({ ymd, offset: dayOffset(ymd, todayYmd), label: 'Supply invoices due', usd }))
       .sort((a, b) => a.offset - b.offset),
     targetUsd,
+    bankFlowByDay,
+    invoicesSentByDay,
+    paymentsReceivedByDay,
+    supplyDatedByDay,
+    supplyPaidByDay,
+    cashSetting,
+    floorUsd,
+    bills,
+    payrollWeeklyEstUsd,
+    dailyDrainUsd,
+    paySpeeds,
+    promisedByJob,
   }
+}
+
+export async function saveBridgeCashOnHand(usd: number, asOfYmd: string): Promise<void> {
+  await withSupabaseRetry(
+    async () => supabase.from('app_settings').upsert({ key: BRIDGE_CASH_SETTING_KEY, value_text: JSON.stringify({ usd: Math.round(usd), asOfYmd }) }, { onConflict: 'key' }),
+    'save bridge cash on hand',
+  )
+}
+
+export async function saveBridgeFloor(usd: number): Promise<void> {
+  await withSupabaseRetry(
+    async () => supabase.from('app_settings').upsert({ key: BRIDGE_FLOOR_SETTING_KEY, value_text: String(Math.round(usd)) }, { onConflict: 'key' }),
+    'save bridge cash floor',
+  )
 }
 
 export async function saveBridgeTarget(targetUsd: number | null): Promise<void> {
