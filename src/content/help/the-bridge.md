@@ -25,7 +25,7 @@ The solid line is **cash + owed to you − owed by you**, today's real number, w
 
 ## Cash — next 8 weeks
 
-The dashed line starts at cash today. It **drops on the day each bill is due** — supply invoices by due date, sub labor by its payable-after date, payroll every Friday at the 8-week average — and **rises on the day each receipt is expected**: a promised pay date if the customer named one, otherwise that customer's usual pay speed, otherwise the company's, otherwise 45 days. Collections never count. Office parts drain a little every day at the 90-day rate.
+The dashed line starts at cash today. It **drops on the day each bill is due** — supply invoices by due date, sub labor by its payable-after date, payroll every Friday at the 8-week average — and **rises on the day each receipt is expected**: a promised pay date if the customer named one, otherwise that customer's usual pay speed, otherwise the company's, otherwise 45 days. An invoice already past its expected day is assumed to arrive within 14 days; one more than 60 days late isn't counted at all and is listed as doubtful. Collections never count. Office parts drain a little every day at the 90-day rate.
 
 The readout is a date and a number: **the lowest cash point in the window and whether it clears your floor.** The dot on the line marks it.
 

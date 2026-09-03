@@ -79,6 +79,28 @@ export function buildCashForecast(input: {
   }
 }
 
+export const LATE_RECEIPT_GRACE_DAYS = 14
+export const DOUBTFUL_AFTER_DAYS = 60
+
+/**
+ * Where an expected receipt lands on the forecast. On time → its expected day.
+ * Recently late (under `doubtfulAfterDays` past expected) → today + a grace
+ * window, because "they'll pay any day now" is not the same as tomorrow.
+ * Late beyond that → not counted at all (doubtful), listed beside collections.
+ */
+export function scheduleReceipt(
+  expectedYmd: string,
+  todayYmd: string,
+  opts: { graceDays?: number; doubtfulAfterDays?: number } = {},
+): { ymd: string; status: 'on-time' } | { ymd: string; status: 'late'; daysLate: number } | { ymd: null; status: 'doubtful'; daysLate: number } {
+  const grace = opts.graceDays ?? LATE_RECEIPT_GRACE_DAYS
+  const doubtfulAfter = opts.doubtfulAfterDays ?? DOUBTFUL_AFTER_DAYS
+  if (expectedYmd > todayYmd) return { ymd: expectedYmd, status: 'on-time' }
+  const daysLate = Math.round((Date.parse(`${todayYmd}T00:00:00Z`) - Date.parse(`${expectedYmd}T00:00:00Z`)) / 86_400_000)
+  if (daysLate >= doubtfulAfter) return { ymd: null, status: 'doubtful', daysLate }
+  return { ymd: ymdAddDays(todayYmd, grace), status: 'late', daysLate }
+}
+
 /** Next `count` Fridays after today (offset ≥ 1) — payroll days. */
 export function upcomingFridays(todayYmd: string, daysAhead: number): string[] {
   const out: string[] = []

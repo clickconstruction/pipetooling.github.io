@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCashForecast, upcomingFridays } from './cashForecast'
+import { buildCashForecast, scheduleReceipt, upcomingFridays } from './cashForecast'
 
 describe('buildCashForecast', () => {
   it('steps down on bills, up on receipts, drains daily, and finds the lowest point', () => {
@@ -36,5 +36,15 @@ describe('upcomingFridays', () => {
   it('lists the Fridays after today within the window', () => {
     // 2026-09-03 is a Thursday.
     expect(upcomingFridays('2026-09-03', 15)).toEqual(['2026-09-04', '2026-09-11', '2026-09-18'])
+  })
+})
+
+describe('scheduleReceipt', () => {
+  it('on-time stays put; recently late waits the grace window; very late is doubtful', () => {
+    expect(scheduleReceipt('2026-09-10', '2026-09-03')).toEqual({ ymd: '2026-09-10', status: 'on-time' })
+    expect(scheduleReceipt('2026-08-30', '2026-09-03')).toEqual({ ymd: '2026-09-17', status: 'late', daysLate: 4 })
+    expect(scheduleReceipt('2026-09-03', '2026-09-03')).toEqual({ ymd: '2026-09-17', status: 'late', daysLate: 0 })
+    expect(scheduleReceipt('2026-06-01', '2026-09-03')).toEqual({ ymd: null, status: 'doubtful', daysLate: 94 })
+    expect(scheduleReceipt('2026-08-01', '2026-09-03', { graceDays: 7, doubtfulAfterDays: 30 })).toEqual({ ymd: null, status: 'doubtful', daysLate: 33 })
   })
 })

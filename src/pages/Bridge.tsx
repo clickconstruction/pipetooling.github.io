@@ -7,7 +7,7 @@ import { formatErrorMessage } from '../utils/errorHandling'
 import { BRIDGE_DAYS_AHEAD, BRIDGE_DAYS_BACK, loadBridgeData, saveBridgeCashOnHand, saveBridgeFloor, type BridgeData } from '../lib/bridge/loadBridgeData'
 import { buildCourseModel } from '../lib/bridge/courseModel'
 import { buildNetPositionHistory, cashTodayFromAsOf } from '../lib/bridge/netPosition'
-import { buildCashForecast, type CashEvent } from '../lib/bridge/cashForecast'
+import { DOUBTFUL_AFTER_DAYS, LATE_RECEIPT_GRACE_DAYS, buildCashForecast, scheduleReceipt, type CashEvent } from '../lib/bridge/cashForecast'
 import { billedExpectedPayModel } from '../lib/jobs/billedExpectedPay'
 import { BridgeCashChart, BridgeNetPositionChart } from '../components/bridge/BridgeCashCharts'
 
@@ -24,7 +24,6 @@ const hrs = (h: number): string => `${Math.round(h).toLocaleString('en-US')}h`
 const md = (ymd: string): string => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 const DEFAULT_PAY_DAYS = 45
 const SUB_LABOR_DEFAULT_DAYS = 14
-const nextDay = (ymd: string): string => new Date(Date.parse(`${ymd}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10)
 
 const panel: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem' }
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -107,9 +106,11 @@ export default function Bridge() {
   }, [data, cashToday, fin.data])
 
   // Receipts: each open AR item on its expected day — promise → customer median → company median → 45 days.
-  const receipts = useMemo<Array<CashEvent & { source: string }>>(() => {
-    if (!data || !fin.data) return []
+  // Recently late waits the grace window; late past the doubtful line is not counted (listed with collections).
+  const { receipts, doubtful } = useMemo<{ receipts: Array<CashEvent & { source: string }>; doubtful: Array<{ label: string; usd: number; daysLate: number }> }>(() => {
+    if (!data || !fin.data) return { receipts: [], doubtful: [] }
     const out: Array<CashEvent & { source: string }> = []
+    const doubtful: Array<{ label: string; usd: number; daysLate: number }> = []
     for (const item of fin.data.ar.items) {
       if (item.amount <= 0) continue
       const promise = item.jobId && data.promisedByJob ? data.promisedByJob[item.jobId] : undefined
@@ -124,12 +125,20 @@ export default function Bridge() {
         expectedYmd = new Date(Date.parse(`${base}T00:00:00Z`) + DEFAULT_PAY_DAYS * 86_400_000).toISOString().slice(0, 10)
         source = `no history · ${DEFAULT_PAY_DAYS}d default`
       }
-      // Already past its expected day → it lands on the first forecast day, and the list says it's late.
-      const late = expectedYmd <= data.todayYmd
-      const ymd = late ? nextDay(data.todayYmd) : expectedYmd
-      out.push({ ymd, usd: item.amount, label: item.label, kind: 'receipt', source: late ? `late — expected ${md(expectedYmd)}` : source })
+      const sched = scheduleReceipt(expectedYmd, data.todayYmd)
+      if (sched.status === 'doubtful') {
+        doubtful.push({ label: item.label, usd: item.amount, daysLate: sched.daysLate })
+        continue
+      }
+      out.push({
+        ymd: sched.ymd,
+        usd: item.amount,
+        label: item.label,
+        kind: 'receipt',
+        source: sched.status === 'late' ? `${sched.daysLate}d late — assumed within ${LATE_RECEIPT_GRACE_DAYS}d` : source,
+      })
     }
-    return out.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0))
+    return { receipts: out.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0)), doubtful }
   }, [data, fin.data])
 
   // Bills: supply due dates + payroll Fridays from the loader, plus sub labor owed
@@ -314,7 +323,7 @@ export default function Bridge() {
             </div>
             <div style={panel}>
               <div style={label}>Receipts expected · next 8 weeks</div>
-              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → company pace → {DEFAULT_PAY_DAYS} days</div>
+              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → company pace → {DEFAULT_PAY_DAYS} days · late invoices assumed within {LATE_RECEIPT_GRACE_DAYS}d · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
               <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
                 {receiptsByDay.slice(0, 10).map((r) => (
                   <li key={r.ymd} style={listRow}>
@@ -326,6 +335,15 @@ export default function Bridge() {
                     <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', fontVariantNumeric: 'tabular-nums' }}>+{money(r.usd)}</span>
                   </li>
                 ))}
+                {doubtful.length > 0 && (
+                  <li style={{ ...listRow, color: 'var(--text-muted)' }}>
+                    <span>
+                      {doubtful.length} invoice{doubtful.length === 1 ? '' : 's'} more than {DOUBTFUL_AFTER_DAYS}d past expected — not counted
+                      <span style={{ display: 'block', fontSize: '0.72rem' }}>{doubtful.slice(0, 3).map((d) => `${d.label} (${d.daysLate}d)`).join(' · ')}{doubtful.length > 3 ? ` +${doubtful.length - 3}` : ''}</span>
+                    </span>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{shortK(doubtful.reduce((acc, d) => acc + d.usd, 0))}</span>
+                  </li>
+                )}
                 {fin.data && fin.data.arCollections.count > 0 && (
                   <li style={{ ...listRow, color: 'var(--text-muted)' }}>
                     <span>Collections ({fin.data.arCollections.count}) — not counted</span>
