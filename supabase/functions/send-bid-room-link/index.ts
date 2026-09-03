@@ -3,12 +3,17 @@
  * validated in-body, the send-estimate pattern); the email carries the option ladder — every
  * option's price with the base marked (the estimate-options email precedent) — and the one
  * durable link. Logs a link_sent event and remembers the recipient on the room.
+ * v2.2729: the email is the "Letterhead" design — brand banner, fileable subject, option table,
+ * bulletproof button, the sender's signature + reply-to, revision note on revised sends
+ * (`_shared/bidRoomLinkEmail.ts`, unit-tested from src/lib).
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
-import { escapeHtmlForEmail } from '../_shared/estimateEmailBrandImage.ts'
+import { brandImageAbsoluteUrl } from '../_shared/estimateEmailBrandImage.ts'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
+import { buildBidRoomLinkEmail } from '../_shared/bidRoomLinkEmail.ts'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,7 +55,7 @@ serve(async (req) => {
 
     const { data: rev } = await admin
       .from('bid_proposal_room_revisions')
-      .select('payload, rev_number')
+      .select('payload, rev_number, note')
       .eq('room_id', roomId)
       .order('rev_number', { ascending: false })
       .limit(1)
@@ -64,33 +69,31 @@ serve(async (req) => {
       'https://clicktooling.com'
     const link = `${origin.replace(/\/$/, '')}/bid-room?t=${encodeURIComponent(room.public_token)}`
 
-    const fmt = (cents: number) =>
-      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
-    const project = payload.project_name || 'your project'
-    const subject = `Proposal — ${project}`
-    const optionLine = (o: { name: string; is_base: boolean; total_cents: number }) =>
-      `${o.is_base ? '★ ' : ''}${o.name || 'Option'}${o.is_base ? ' (proposed)' : ' (alternate)'} — ${fmt(o.total_cents)}`
-    const text =
-      `Please review our proposal for ${project}.\n\n` +
-      payload.options.map((o) => `  ${optionLine(o)}`).join('\n') +
-      `\n\nReview, choose, and sign here (this link stays current if we revise):\n${link}\n\nThank you.`
-    const html =
-      `<p>Please review our proposal for <strong>${escapeHtmlForEmail(project)}</strong>.</p>` +
-      payload.options
-        .map(
-          (o) =>
-            `<div style="display:flex;justify-content:space-between;max-width:380px;padding:0.15rem 0">` +
-            `<span>${o.is_base ? '&#9733; ' : ''}${escapeHtmlForEmail(o.name || 'Option')}${o.is_base ? ' (proposed)' : ' (alternate)'}</span>` +
-            `<strong>${fmt(o.total_cents)}</strong></div>`,
-        )
-        .join('') +
-      `<p style="margin-top:1rem"><a href="${link}" style="background:#ea580c;color:#fff;padding:0.55rem 1.2rem;border-radius:8px;text-decoration:none;font-weight:700">Review &amp; sign the proposal</a></p>` +
-      `<p style="color:#6a7684;font-size:13px">This link stays current if the proposal is revised.</p>`
+    // Who is sending: signature block + reply-to (null → the email still goes, just unsigned).
+    const { data: me } = await admin.from('users').select('name, email, phone').eq('id', userData.user.id).maybeSingle()
+    const sender = me
+      ? {
+          name: String((me as { name?: string | null }).name ?? '').trim(),
+          email: String((me as { email?: string | null }).email ?? '').trim(),
+          phone: String((me as { phone?: string | null }).phone ?? '').trim(),
+        }
+      : null
+    const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
+    const mail = buildBidRoomLinkEmail({
+      payload,
+      link,
+      brandImageUrl: brandImageAbsoluteUrl(origin, payload.header_brand === 'elec' ? 'elec' : 'plum'),
+      revNumber: rev!.rev_number,
+      revNote: (rev as { note?: string | null }).note ?? null,
+      sender,
+      dateLabel,
+    })
+    const { subject, text, html } = mail
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     let emailed = false
     if (resendApiKey) {
-      const sent = await sendEmailViaResend(email, subject, text, html, resendApiKey)
+      const sent = await sendEmailViaResend(email, subject, text, html, resendApiKey, mail.replyTo ? { replyTo: mail.replyTo } : undefined)
       if (!sent.success) return json({ ok: false, error: sent.error ?? 'Email failed' }, 502)
       emailed = true
     }

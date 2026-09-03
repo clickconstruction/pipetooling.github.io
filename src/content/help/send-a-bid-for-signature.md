@@ -11,7 +11,7 @@ Every GC on a bid can have a **bid room** — one permanent link that always sho
 
 On **Bids → Cover Letter**, while a GC has no room yet, a {{button:blue|✍ Setup bid room}} button sits right beside {{button:blue|Mark sent today}}. Press it and the room panel opens under the row:
 
-- {{button:blue|✍ Publish & send room link}} pins the current letter as **rev 1** and emails the link — the GC's contact email is pre-filled; change it per send. The email lists every option's price with ★ on the proposed one, plus the link. The first send also stamps the packet sent, exactly like Mark sent today.
+- {{button:blue|✍ Publish & send room link}} pins the current letter as **rev 1** and emails the link — the GC's contact email is pre-filled; change it per send. The email is a letter on your letterhead: the subject names the trade, project, proposed amount and company; inside are the project and address, every option's price in a table with yours marked *Our recommendation*, a sign button, and your name, phone and email at the bottom — replies come straight to you. The first send also stamps the packet sent, exactly like Mark sent today.
 - The **revision note** is the line the GC sees on the page — *"per addendum 2"*.
 - The **Google Docs letter link** field attaches your full letter to the room; the Docs method isn't replaced, it rides along.
 
