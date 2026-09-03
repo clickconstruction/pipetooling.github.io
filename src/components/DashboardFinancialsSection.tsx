@@ -1576,7 +1576,8 @@ function ItemsModal({
 }
 
 /** Dashboard "Financials" one-pager: AR / AP / Not billed cards with drill-down modals. */
-export default function DashboardFinancialsSection() {
+/** `overheadCard` (v2.2676): an optional fourth tile rendered inside the same grid — the Dashboard passes the self-gating Overhead card. */
+export default function DashboardFinancialsSection({ overheadCard = null }: { overheadCard?: React.ReactNode } = {}) {
   const { role } = useAuth()
   const { data, loading, error } = useDashboardFinancials(true, undefined, role)
   const [openCard, setOpenCard] = useState<CardKey | null>(null)
@@ -1752,6 +1753,7 @@ export default function DashboardFinancialsSection() {
               </button>
             )
           })}
+          {overheadCard}
         </div>
       )}
       {openCard && data ? (

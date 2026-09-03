@@ -4,7 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { APP_CALENDAR_TZ, denverCalendarDayKey, referenceDateForWorkDateYmd, ymdAddDays } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
@@ -24,8 +24,7 @@ import {
 import {
   collectMercuryTxIds,
   fetchAccountingBucketByTxId,
-  loadOfficePartsUsdByDayExcludingInternalTransfer,
-} from '../../lib/overheadPartsBucketLoader'
+  } from '../../lib/overheadPartsBucketLoader'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import {
   aggregateOtherJobsLaborByPerson,
@@ -43,20 +42,15 @@ import {
   type OverheadPayConfigInput,
 } from '../../lib/overheadDailyLabor'
 import {
-  buildOverheadHygieneSummary,
   formatOverheadHygienePersonNames,
   type OverheadHygieneSummary,
 } from '../../lib/overheadHygiene'
-import {
-  bucketInvoiceRevenueByAppTzDay,
-  computeOverheadTrailingAverages,
-} from '../../lib/overheadAvgDailyCost'
-import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
-import { buildOverheadPoolTrend, type OverheadPoolTrend } from '../../lib/overheadPoolTrend'
+import { type OverheadPoolTrend } from '../../lib/overheadPoolTrend'
 import { OverheadPoolTrendCard } from './OverheadPoolTrendCard'
-import { buildOverheadLensSeries, type OverheadLensKey } from '../../lib/overheadLensSeries'
+import { type OverheadLensKey } from '../../lib/overheadLensSeries'
 import { OverheadLensModal, type OverheadLensDetail } from './OverheadLensModal'
 import { OverheadPeopleTable } from './OverheadPeopleTable'
+import { loadOverheadPoolSnapshot } from '../../lib/overheadPoolSnapshot'
 import type { OverheadPeopleLaborInput, OverheadPeoplePartsInput } from '../../lib/overheadPeopleTable'
 import {
   fetchOtherJobsPartsByDay,
@@ -718,264 +712,29 @@ export default function PeopleOverheadTab({
     setOverheadHygiene((prev) => ({ ...prev, loading: true }))
     void (async () => {
       try {
-        // Anchor the whole 90-day window on the COMPANY calendar day
-        // (America/Chicago), not the viewer's browser-local date — a viewer
-        // in another timezone near midnight used to see the entire
-        // session/parts/revenue window shifted by a day.
-        const today = denverCalendarDayKey(Date.now())
-        const start = ymdAddDays(today, -89)
-        // Paged (fetchAllRows): a company-wide 90-day scan silently truncates
-        // at PostgREST max_rows (1000) if un-ranged — a truncated day total
-        // deflates every trailing average. Fresh builder per page;
-        // `.order('id')` keeps pages stable.
-        const sessionSelect =
-          'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)'
-        const makeQ = () => {
-          let q = supabase
-            .from('clock_sessions')
-            .select(sessionSelect)
-            .gte('work_date', start)
-            .lte('work_date', today)
-          if (overheadOfficeJobLedgerId) {
-            q = q.or(`job_ledger_id.eq.${overheadOfficeJobLedgerId},bid_id.not.is.null`)
-          } else {
-            q = q.not('bid_id', 'is', null)
-          }
-          return q.order('id')
-        }
-        // Field (non-office jobs-ledger) sessions for the three-lenses
-        // denominators — Method A needs field hours, Method C field labor $.
-        // Same paged pattern, same 90-day window, same fetch pass.
-        const makeFieldQ = () => {
-          let q = supabase
-            .from('clock_sessions')
-            .select(sessionSelect)
-            .gte('work_date', start)
-            .lte('work_date', today)
-            .not('job_ledger_id', 'is', null)
-          if (overheadOfficeJobLedgerId) q = q.neq('job_ledger_id', overheadOfficeJobLedgerId)
-          return q.order('id')
-        }
-        // Unassigned salary-schedule time for the hygiene strip's third
-        // indicator: synthetic sessions (docs/SALARY_CLOCK_SESSIONS.md) with
-        // no job AND no bid are invisible to the overhead pool entirely.
-        // Same paged pattern, same window; failure degrades to `null` (the
-        // indicator hides) via the per-source error pattern instead of
-        // nulling the KPIs/lenses with it.
-        const makeSalaryQ = () =>
-          supabase
-            .from('clock_sessions')
-            .select(sessionSelect)
-            .gte('work_date', start)
-            .lte('work_date', today)
-            .eq('origin', 'salary_schedule')
-            .is('job_ledger_id', null)
-            .is('bid_id', null)
-            .order('id')
-        const [sessions, fieldSessions, salarySessions] = await Promise.all([
-          fetchAllRows(
-            async (from, to) => ({
-              data: (await withSupabaseRetry(
-                async () => makeQ().range(from, to),
-                'load overhead 90d sessions',
-              )) as unknown as OverheadClockSessionRow[] | null,
-              error: null,
-            }),
-            'load overhead 90d sessions',
-          ),
-          fetchAllRows(
-            async (from, to) => ({
-              data: (await withSupabaseRetry(
-                async () => makeFieldQ().range(from, to),
-                'load overhead 90d field sessions',
-              )) as unknown as OverheadClockSessionRow[] | null,
-              error: null,
-            }),
-            'load overhead 90d field sessions',
-          ),
-          fetchAllRows(
-            async (from, to) => ({
-              data: (await withSupabaseRetry(
-                async () => makeSalaryQ().range(from, to),
-                'load overhead 90d unassigned salary sessions',
-              )) as unknown as OverheadClockSessionRow[] | null,
-              error: null,
-            }),
-            'load overhead 90d unassigned salary sessions',
-          ).then(
-            (rows) => {
-              if (!cancelled) clearOverheadLoadError('unassigned salary time')
-              return rows
-            },
-            (e: unknown) => {
-              if (!cancelled) reportOverheadLoadError('unassigned salary time', e)
-              return null
-            },
-          ),
-        ])
-        let partsByDay: Map<string, number> = new Map()
-        const partsDetailLines: Array<{ workDate: string; line: OverheadPartsDetailLine }> = []
-        let partsBucketByTxId: ReadonlyMap<string, OverheadPartsAccountingBucketKey> = new Map()
-        if (overheadOfficeJobLedgerId) {
-          // Same symmetric rule as the table: Internal Transfers are not an
-          // expense and stay out of the KPI numerator's office parts $. A
-          // bucket-fetch failure degrades to "everything counted" (empty map
-          // buckets to 'other') instead of nulling the KPIs. Shared loader —
-          // the Review tab builds its pool through the same function.
-          const r = await loadOfficePartsUsdByDayExcludingInternalTransfer({
-            officeJobLedgerId: overheadOfficeJobLedgerId,
-            startYmd: start,
-            endYmd: today,
-          })
-          partsByDay = r.partsUsdByDay
-          // People table (v2.2675): keep the per-line detail the loader already
-          // returns (previously discarded) so parts can attribute to a person.
-          partsBucketByTxId = r.bucketByTxId
-          for (const [ymd, lines] of r.partsDetailByDay) {
-            for (const line of lines) partsDetailLines.push({ workDate: ymd, line })
-          }
-        }
-        if (cancelled) return
-        const labor = buildOverheadDailyLabor({
-          sessions,
-          officeJobLedgerId: overheadOfficeJobLedgerId,
-          wageByNormalizedName: overheadWageLookup.byName,
-          wageByPersonId: overheadWageLookup.byPersonId,
-          personIdByUserId: overheadPersonIdByUserId,
-        })
-        // Field denominators via the same kernel the weekly table uses (field
-        // wage, id-first join): hours always count; missing wage prices $0.
-        const fieldLabor = buildOtherJobsLaborByDay({
-          sessions: fieldSessions,
-          officeJobLedgerId: overheadOfficeJobLedgerId,
-          wageByNormalizedName: overheadWageLookup.byName,
-          wageByPersonId: overheadWageLookup.byPersonId,
-          personIdByUserId: overheadPersonIdByUserId,
-        })
-        let fieldHours90 = 0
-        for (const v of fieldLabor.laborHoursByDay.values()) fieldHours90 += v
-        let fieldLaborUsd90 = 0
-        for (const v of fieldLabor.laborUsdByDay.values()) fieldLaborUsd90 += v
-        // Hygiene strip: pending approvals from the SAME two session arrays
-        // (zero extra fetches); unpriced hours from the builders' missingWage
-        // detail lines; unassigned salary from the third fetch above.
-        setOverheadHygiene({
-          summary: buildOverheadHygieneSummary({
-            officeAndBidSessions: sessions,
-            fieldSessions,
-            unassignedSalarySessions: salarySessions,
-            overheadDetailLines: [...labor.detailByDay.values()].flat(),
-            otherJobsDetailLines: [...fieldLabor.detailByDay.values()].flat(),
-          }),
-          loading: false,
-        })
-        const merged = mergeOverheadDayTableRows(labor.byDay, partsByDay, new Map(), new Map(), new Map())
-        setOverheadPeopleLines({
-          labor: [...labor.detailByDay.values()]
-            .flat()
-            .map((l) => ({ workDate: l.workDate, userName: l.userName, bucket: l.bucket, hours: l.hours, laborUsd: l.laborUsd })),
-          parts: partsDetailLines,
-          bucketByTxId: partsBucketByTxId,
-          endYmd: today,
-        })
-        setOverheadPoolTrend({
-          trend: buildOverheadPoolTrend({ laborDays: labor.byDay, partsUsdByDay: partsByDay, startYmd: start, endYmd: today }),
-          loading: false,
-        })
-        const totalsByDay = new Map<string, number>()
-        for (const row of merged) totalsByDay.set(row.work_date, row.totalUsd)
-        // Fetch a day wide on both sides, then re-bucket each invoice into
-        // its Chicago calendar day (bucketInvoiceRevenueByAppTzDay) — the old
-        // UTC-bounded window pulled in the previous evening's invoices and
-        // dropped everything sent after ~6pm on the last day (v2.1249 fix,
-        // same as the Review tab).
-        const startIsoLow = `${ymdAddDays(start, -1)}T00:00:00-00:00`
-        const endIsoHigh = `${ymdAddDays(today, 2)}T00:00:00-00:00`
-        const invoiceRows = await fetchAllRows(
-          async (from, to) => ({
-            data: (await withSupabaseRetry(
-              async () =>
-                supabase
-                  .from('jobs_ledger_invoices')
-                  .select('amount, sent_to_customer_at')
-                  .gte('sent_to_customer_at', startIsoLow)
-                  .lt('sent_to_customer_at', endIsoHigh)
-                  // Stripe TEST-mode invoices are not revenue — keep them out
-                  // of the Method B denominator. NULL stripe_mode = non-Stripe
-                  // (HCP/physical) or pre-v2.1114 legacy rows, both real
-                  // revenue, so a bare .neq() would wrongly drop them under
-                  // SQL <> NULL semantics.
-                  .or('stripe_mode.is.null,stripe_mode.neq.test')
-                  .order('id')
-                  .range(from, to),
-              'load overhead 90d revenue invoices',
-            )) as Array<{ amount: number | null; sent_to_customer_at: string | null }> | null,
-            error: null,
-          }),
-          'load overhead 90d revenue invoices',
+        // The ONE 90-day scan (v2.2676): lifted verbatim into
+        // loadOverheadPoolSnapshot so the Dashboard's Overhead card computes
+        // from the same code path. This effect only unpacks the result.
+        const snap = await loadOverheadPoolSnapshot(
+          { officeJobLedgerId: overheadOfficeJobLedgerId, wageLookup: overheadWageLookup, personIdByUserId: overheadPersonIdByUserId },
+          { isCancelled: () => cancelled },
         )
-        if (cancelled) return
-        const revenueByDay = bucketInvoiceRevenueByAppTzDay(invoiceRows, start, today)
-        const { w7, w30, w90 } = computeOverheadTrailingAverages({
-          totalsByDay,
-          revenueByDay,
-          todayYmd: today,
-        })
-        // Three lenses: the w90 cost sum IS the 90-day pool (office labor +
-        // bid labor + office parts) — one pool, three denominators.
-        const rates = computeOverheadRateMethods({
-          overheadPoolUsd: w90.costUsd,
-          fieldHours: fieldHours90,
-          invoicedRevenueUsd: w90.revenueUsd,
-          fieldLaborUsd: fieldLaborUsd90,
-        })
-        setOverheadAvgDailyCost({
-          avg7: w7.avgDailyCostUsd,
-          avg30: w30.avgDailyCostUsd,
-          avg90: w90.avgDailyCostUsd,
-          per100_7: w7.per100RevenueUsd,
-          per100_30: w30.per100RevenueUsd,
-          per100_90: w90.per100RevenueUsd,
-          loading: false,
-        })
+        if (cancelled || !snap) return
+        if (snap.unassignedSalaryError != null) reportOverheadLoadError('unassigned salary time', snap.unassignedSalaryError)
+        else clearOverheadLoadError('unassigned salary time')
+        setOverheadHygiene({ summary: snap.hygiene, loading: false })
+        setOverheadPeopleLines(snap.peopleLines)
+        setOverheadPoolTrend({ trend: snap.poolTrend, loading: false })
+        setOverheadAvgDailyCost({ ...snap.avg, loading: false })
         setOverheadRateLenses({
-          methodA: rates.methodA,
-          methodB: rates.methodB,
-          methodC: rates.methodC,
-          windowStart: start,
-          windowEnd: today,
+          methodA: snap.rates.methodA,
+          methodB: snap.rates.methodB,
+          methodC: snap.rates.methodC,
+          windowStart: snap.windowStart,
+          windowEnd: snap.windowEnd,
           loading: false,
         })
-        // Lens modals (v2.2674): week-by-week + rolling history per lens from
-        // the maps above, plus the two audit facts the modal states outright —
-        // pending field hours (A/C's missing denominator) and sessions that
-        // sit on BOTH sides (non-office job + bid link).
-        const pendingFieldHours = fieldSessions.reduce((acc, sess) => {
-          if (sess.approved_at || sess.rejected_at || sess.revoked_at || !sess.clocked_out_at) return acc
-          const h = (Date.parse(sess.clocked_out_at) - Date.parse(sess.clocked_in_at)) / 3_600_000
-          return Number.isFinite(h) && h > 0 ? acc + h : acc
-        }, 0)
-        const overlapSessions = sessions.filter(
-          (sess) =>
-            sess.approved_at &&
-            !sess.rejected_at &&
-            !sess.revoked_at &&
-            sess.bid_id &&
-            sess.job_ledger_id &&
-            sess.job_ledger_id !== overheadOfficeJobLedgerId,
-        ).length
-        const lensSeries = (denominatorByDay: ReadonlyMap<string, number>) =>
-          buildOverheadLensSeries({ poolUsdByDay: totalsByDay, denominatorByDay, startYmd: start, endYmd: today })
-        setOverheadLensDetail({
-          series: {
-            A: lensSeries(fieldLabor.laborHoursByDay),
-            B: lensSeries(revenueByDay),
-            C: lensSeries(fieldLabor.laborUsdByDay),
-          },
-          denominators: { fieldHours: fieldHours90, invoicedRevenueUsd: w90.revenueUsd, fieldLaborUsd: fieldLaborUsd90 },
-          pendingFieldHours,
-          overlapSessions,
-        })
+        setOverheadLensDetail(snap.lensDetail)
         clearOverheadLoadError('90-day averages')
       } catch (e) {
         if (!cancelled) {

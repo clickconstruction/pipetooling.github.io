@@ -72,6 +72,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 |---|---|---|---|---|---|---|---|
 | Job Mode variant | per-user `useJobModeEnabled` flag (any role) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Financials (`showFinancials`) | ✓ | ✓ | ✓ | — | — | — | — |
+| Overhead card inside Financials (v2.2676, `DashboardOverheadCard`, self-gating) | ✓ | ✓ only with pay approval (`usePeopleAccess.canAccessPay`) | — | — | — | — | — |
 | Quick action buttons (`showDashboardQuickButtons`) | ✓ | ✓ | ✓ (Builder Review button master_technician-only) | — | — | — | — |
 | Banners: AR bank | `canRoleSeeArBankUnallocatedDashboardBanner(role)` | | | | | | |
 | Banners: Tally stale (self) / tally icon+Job Report row | any signed-in role (`role != null`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
