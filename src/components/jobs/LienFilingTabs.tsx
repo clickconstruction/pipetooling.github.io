@@ -31,6 +31,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -54,7 +55,7 @@ const SEND_METHOD_LABELS: Record<string, string> = {
 type SendDraft = { method: string; tracking: string; sentOn: string }
 
 function todayYmd(): string {
-  return new Date().toISOString().slice(0, 10)
+  return todayYmdInAppTz()
 }
 
 function jobOpenBalance(job: JobWithDetails): number {

@@ -2,7 +2,7 @@ import type { JobWithDetails } from '../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../types/limitedJobDetailSnapshot'
 import type { PhysicalInvoiceIssuer } from './physicalInvoiceIssuer'
 import { splitJobAddressForPrefill } from './txLocalityAddressSplit'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../utils/dateUtils'
 
 /** Public URL path (Vite serves from `public/`). */
 export const AIA_TEMPLATE_PUBLIC_PATH = '/templates/aia-g702-g703-mission-hills.xlsx'
@@ -237,7 +237,7 @@ export function buildAiaPrefillFromJob(
     contractDateStr = formatLongDateInAppTz(job.created_at)
   }
 
-  const applicationDateStr = formatLongDateFromYmd(new Date().toISOString().slice(0, 10))
+  const applicationDateStr = formatLongDateFromYmd(todayYmdInAppTz())
 
   const contractorName = issuer?.companyName?.trim() ?? ''
   const contractorAddr = issuer ? issuerAddressOneLine(issuer) : ''
@@ -284,6 +284,6 @@ export function buildAiaPrefillFromJob(
 
 export function aiaDownloadFilename(hcpOrFallback: string): string {
   const safe = (hcpOrFallback || 'job').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-|-$/g, '') || 'job'
-  const ymd = new Date().toISOString().slice(0, 10)
+  const ymd = new Date().toISOString().slice(0, 10) // tz-ok: filename stamp
   return `AIA-G702-G703-${safe}-${ymd}.xlsx`
 }

@@ -109,7 +109,7 @@ export function JobSummaryCostCellDrilldownModal({ open, onClose, title, childre
       return
     }
     const csv = elementToLikelyCsv(el, { title })
-    const ymd = new Date().toISOString().slice(0, 10)
+    const ymd = new Date().toISOString().slice(0, 10) // tz-ok: filename stamp
     const name = `job-summary-drilldown_${sanitizeFilenameSegment(title)}_${ymd}.csv`
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)

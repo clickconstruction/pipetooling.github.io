@@ -9,6 +9,7 @@ const MAX_SIGNATURE_BYTES = 524288 // 512 KiB (matches bucket file_size_limit)
 const PNG_MAGIC = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
 
 import { freezeSharedAcceptedOption, normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -272,8 +273,8 @@ serve(async (req) => {
     }
 
     if (row.valid_until) {
-      const vu = new Date(String(row.valid_until) + 'T23:59:59.999Z').getTime()
-      if (vu < Date.now()) {
+      // Valid through the end of that civil day in the company zone (the old 'T23:59:59.999Z' expired it at 7 PM Central).
+      if (String(row.valid_until).slice(0, 10) < todayYmdInAppTz()) {
         return new Response(JSON.stringify({ error: 'Estimate expired', code: 'expired' }), {
           status: 410,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },

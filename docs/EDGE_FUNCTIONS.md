@@ -789,6 +789,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Endpoint**: `POST /functions/v1/twin-mcp` · **Auth**: per-twin token on every `tools/call` (`X-Twin-Token` or `Authorization: Bearer`; `initialize`/`tools/list` are open metadata). `verify_jwt = false`.
 
+**Dates** (v2.2703): the `due` date of a bid the twin creates is `today (Central) + due_in_days` via `ymdAddDays`.
+
 **Bundled docs are GENERATED**: `supabase/functions/twin-mcp/briefs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/*` (missions carry only the verbatim mission text, never the scorer sections) — regenerate + redeploy after editing those docs.
 
 **Two-app companion (v2.2439)**: `mint_session` takes `app: 'pipetooling' | 'counttooling'` — the CT path calls CountTooling's `twin-login` with CT's twin secret held server-side (one per-twin credential covers both apps; CT per-twin-credential parity deliberately deferred). The CT path re-applies the 6/min rate limit against `twin_runs` (PT's twin-login isn't in that path) and logs the mint (`app=counttooling` in the note).
@@ -1013,6 +1015,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `GET /functions/v1/sub-portal?token=<opaque>` or `GET /functions/v1/sub-portal?slug=<address>`
 
+**Dates** (v2.2703): the sheet window's "today" is the Central civil day (`todayYmdInAppTz()`).
+
 **Auth**: none (`verify_jwt = false` — the link IS the capability, minted/rotated by `mint_sub_portal_link`). Service-role reads; never returns costs beyond the sub's own money, other people's data, or document contents.
 
 **View counting**: each validated load appends a `public_page_views` row (`surface='sub_portal'`, `entity_id` = person id, `via` token/slug), fire-and-forget.
@@ -1023,6 +1027,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `POST /functions/v1/submit-sub-portal` — `{ token, kind, ... }` (`website` is the honeypot on availability).
 
+**Dates** (v2.2703): offer expiry compares against the Central civil day (`todayYmdInAppTz()`), not the UTC date.
+
 **Auth**: none (`verify_jwt = false`) — the sub portal token is the capability; every kind re-validates ownership server-side.
 
 ### get-estimate-for-customer
@@ -1030,6 +1036,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Purpose**: Public read of a **sent** estimate for the customer acceptance page (no JWT).
 
 **Endpoint**: `GET /functions/v1/get-estimate-for-customer?token=<opaque>`
+
+**Expiry** (v2.2703): an estimate is valid through the end of its `valid_until` day in Central time (it used to expire at 7 PM Central).
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
@@ -1227,6 +1235,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Endpoint**: `POST /functions/v1/accept-estimate`
 
+**Expiry** (v2.2703): same end-of-Central-day rule as `get-estimate-for-customer`.
+
 **Body**: `{ "token": string, "printedName": string, "agreedTerms": true, "optionKey"?: string }` — `optionKey` is **required when the estimate offers 2+ options** (400 `option_required` / `option_unknown` otherwise).
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional; staff notify skipped if missing)
@@ -1284,6 +1294,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn.
 
 **Endpoint**: `POST /functions/v1/accept-contract`
+
+**Dates** (v2.2703): `signed_at` is the Central civil day via `todayYmdInAppTz()` — evening signatures used to be dated tomorrow.
 
 **Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true }`
 

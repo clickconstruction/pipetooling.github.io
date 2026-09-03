@@ -24,6 +24,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -46,7 +47,7 @@ const SENT_METHODS: Array<{ value: string; label: string }> = [
 ]
 
 function todayYmdLocal(): string {
-  return new Date().toISOString().slice(0, 10)
+  return todayYmdInAppTz()
 }
 
 /** Billed lines with money still open — what a demand letter is about. */

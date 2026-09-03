@@ -13,6 +13,7 @@
  */
 
 import { type CompareRow } from './quoteCompare'
+import { endOfYmdInAppTzMs } from '../../utils/dateUtils'
 
 export type DeskRfq = {
   id: string
@@ -127,7 +128,7 @@ export function rfqUrgency(rfq: DeskRfq, nowMs: number): RfqUrgency {
   const bounced = rfq.emailLastEvent != null && BOUNCED_EVENTS.has(rfq.emailLastEvent)
   if (bounced) return { tier: 0, reason: 'bounced — fix & resend' }
   if (rfq.neededBy) {
-    const untilMs = new Date(`${rfq.neededBy}T23:59:59Z`).getTime() - nowMs
+    const untilMs = endOfYmdInAppTzMs(rfq.neededBy) - nowMs
     if (untilMs < 0) return { tier: 1, reason: 'needed-by has passed — still no quote' }
     if (untilMs <= URGENCY_NEEDED_BY_DAYS * DAY_MS) {
       const days = Math.max(1, Math.ceil(untilMs / DAY_MS))

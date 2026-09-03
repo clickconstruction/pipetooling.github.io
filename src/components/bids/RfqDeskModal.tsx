@@ -24,6 +24,7 @@ import { buildQuoteComparison, type CompareQuote } from '../../lib/rfq/quoteComp
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 const MODAL_Z = 10050
 
@@ -213,7 +214,7 @@ export function RfqDeskModal({
 
   const coverage = useMemo(() => {
     if (quotes.length === 0) return null
-    const comparison = buildQuoteComparison({ quotes, currentQtyByName, today: new Date().toISOString().slice(0, 10) })
+    const comparison = buildQuoteComparison({ quotes, currentQtyByName, today: todayYmdInAppTz() })
     return coverageFromCompareRows(comparison.rows)
   }, [quotes, currentQtyByName])
 

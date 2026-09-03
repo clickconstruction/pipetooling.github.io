@@ -32,7 +32,7 @@ function defaultStartYmd(lookbackDays: number): string {
 }
 
 function defaultEndYmd(): string {
-  return new Date().toISOString().slice(0, 10)
+  return new Date().toISOString().slice(0, 10) // tz-ok: inclusive end of the Mercury fetch window; an extra evening day only widens the query
 }
 
 serve(async (req) => {

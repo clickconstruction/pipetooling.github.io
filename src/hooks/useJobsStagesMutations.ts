@@ -20,6 +20,7 @@ import {
 import type { InvoiceWithJob } from '../lib/jobsStagesBoard'
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -376,7 +377,7 @@ export function useJobsStagesMutations({
   ) {
     const base =
       inv.estimated_bill_date ??
-      new Date().toISOString().slice(0, 10)
+      todayYmdInAppTz()
     const newDate = addDaysToDate(base, deltaDays)
     await setInvoiceEstimatedBillDate(invoiceId, jobId, newDate)
   }
