@@ -1232,6 +1232,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // The default template id (user's last pick → "Default" → first), exposed so the page can feed
   // it to BidVersionPicker's `fallbackPricingSourceId` instead of re-deriving it inline.
   const defaultPriceBookTemplateId = pickDefaultTemplatePricingId()
+  // v2.2731: what "+ version" / "+ Add GC" clone from when the bid has no active pricing —
+  // the template that actually holds the bid's legacy rows (so the new version carries its
+  // prices), else the viewer's default. The "your default for new bids" chip keeps the latter.
+  const versionClonePricingSourceId = legacyDataTemplateIdFor(null, priceBookVersions) ?? defaultPriceBookTemplateId
 
   /** Remember the template the user just chose as their per-service-type default (optimistic + persisted). */
   function rememberLastPriceBookTemplate(templateId: string) {
@@ -1734,6 +1738,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     saveBidSelectedLaborBookVersion,
     loadTemplatePriceBookVersions,
     defaultPriceBookTemplateId,
+    versionClonePricingSourceId,
     rememberLastPriceBookTemplate,
     loadBidPricings,
     loadBidVersions,
