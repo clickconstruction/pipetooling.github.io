@@ -11,7 +11,8 @@ import {
 import { loadOfficePartsUsdByDayExcludingInternalTransfer } from '../overheadPartsBucketLoader'
 import { bucketInvoiceRevenueByAppTzDay } from '../overheadAvgDailyCost'
 import { loadOverheadPoolSnapshotInputs, type OverheadPoolSnapshotInputs } from '../overheadPoolSnapshot'
-import { buildJobDayLedger, type JobDayLedger } from './jobDayLedger'
+import { buildJobDayLedger, type JobDayLedger, type JobDayLedgerJobLabel } from './jobDayLedger'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 /**
  * Loads the job day ledger for a window (v2.2692) — the same scans People →
@@ -112,10 +113,19 @@ export async function loadJobDayLedger(args: {
   for (const v of bucketInvoiceRevenueByAppTzDay(invoiceRows, startYmd, endYmd).values()) invoicedRevenueUsd += v
   if (cancelled()) return null
 
-  // Approved hours before the window on the jobs touched inside it.
+  // Approved hours before the window on the jobs touched inside it, and their
+  // display labels (the Days view's chips — the page's ledger list may not hold
+  // every touched job because of the HCP filter).
   const touchedJobIds = [...new Set([...field.detailByDay.values()].flat().map((l) => l.jobLedgerId))]
   const priorHoursByJob = new Map<string, number>()
+  const jobLabels = new Map<string, JobDayLedgerJobLabel>()
   if (touchedJobIds.length > 0) {
+    const labelRows = (await fetchAllRowsChunkedIn(
+      touchedJobIds,
+      (chunk, from, to) => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name').in('id', chunk).order('id').range(from, to),
+      'job day ledger job labels',
+    ).catch(() => [])) as Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null }>
+    for (const j of labelRows) jobLabels.set(j.id, { number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', name: (j.job_name ?? '').trim() })
     const priorRows = (await fetchAllRowsChunkedIn(
       touchedJobIds,
       (chunk, from, to) =>
@@ -143,6 +153,7 @@ export async function loadJobDayLedger(args: {
     fieldDetailByDay: field.detailByDay,
     poolUsdByDay,
     priorHoursByJob,
+    jobLabels,
     pendingFieldSessions,
     pendingFieldHours,
     invoicedRevenueUsd,

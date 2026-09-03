@@ -45,7 +45,7 @@ type CacheEntry = { cachedAtMs: number; ledger: JobDayLedgerSerialized }
 const CACHE_TTL_MS = 60 * 60 * 1000
 
 function cacheKey(userId: string, startYmd: string, endYmd: string): string {
-  return `jobDayLedger:v1:${userId}:${startYmd}:${endYmd}`
+  return `jobDayLedger:v2:${userId}:${startYmd}:${endYmd}`
 }
 
 export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { job_address?: string | null } }>(args: {

@@ -3,6 +3,7 @@ import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
 import {
   JOB_SUMMARY_STATUS_OPTIONS,
+  JOB_SUMMARY_VIEW_MODE_OPTIONS,
   JOB_SUMMARY_WINDOW_OPTIONS,
   type JobSummaryLedgerRowInput,
   type JobSummarySortKey,
@@ -66,7 +67,8 @@ function Tile({ k, v, s, tone }: { k: string; v: ReactNode; s?: ReactNode; tone?
 const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 999, padding: '0.1rem 0.6rem', fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
 const chipMuted: CSSProperties = { ...chip, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
 
-const money = (v: number | null | undefined): string => (v == null ? '—' : `${v < 0 ? '−' : ''}$${formatUsdNoCents(Math.abs(v))}`)
+/** `formatUsdNoCents` already carries the "$"; this only adds the sign and the null dash. */
+const money = (v: number | null | undefined): string => (v == null ? '—' : `${v < 0 ? '−' : ''}${formatUsdNoCents(Math.abs(v))}`)
 const pct = (v: number | null | undefined): string => (v == null ? '—' : `${Math.round(v)}%`)
 
 export default function JobSummaryLedgerToolbar({
@@ -93,9 +95,10 @@ export default function JobSummaryLedgerToolbar({
         style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <Segmented label="Show" value={prefs.status} options={JOB_SUMMARY_STATUS_OPTIONS} onChange={(status) => setPrefs({ status })} />
+        <Segmented label="View" value={prefs.view} options={JOB_SUMMARY_VIEW_MODE_OPTIONS} onChange={(view) => setPrefs({ view })} />
+        {prefs.view === 'jobs' ? <Segmented label="Show" value={prefs.status} options={JOB_SUMMARY_STATUS_OPTIONS} onChange={(status) => setPrefs({ status })} /> : null}
         <Segmented label="Worked in" value={prefs.window} options={JOB_SUMMARY_WINDOW_OPTIONS} onChange={(window) => setPrefs({ window })} />
-        {showMoney ? <Segmented label="Overhead" value={prefs.method} options={JOB_OVERHEAD_METHODS} onChange={(method) => setPrefs({ method })} /> : null}
+        {showMoney && prefs.view === 'jobs' ? <Segmented label="Overhead" value={prefs.method} options={JOB_OVERHEAD_METHODS} onChange={(method) => setPrefs({ method })} /> : null}
         {ledgerLoading ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading the day ledger…</span> : null}
         {ledgerError ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
@@ -106,6 +109,7 @@ export default function JobSummaryLedgerToolbar({
           </span>
         ) : null}
       </div>
+      {prefs.view === 'days' ? null : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
         <Tile k="Jobs" v={totals.jobs} s={`${JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === prefs.status)?.label.toLowerCase() ?? ''} · ${JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === prefs.window)?.title.toLowerCase() ?? ''}`} />
         <Tile k="Revenue" v={money(totals.revenueUsd)} s={totals.earnedRows > 0 ? `${totals.earnedRows} in-progress shown as earned` : 'contract on jobs_ledger'} />
@@ -124,6 +128,8 @@ export default function JobSummaryLedgerToolbar({
           <Tile k="Field hours" v={totals.hours.toFixed(1)} s="approved, in the window" />
         )}
       </div>
+      )}
+      {prefs.view === 'days' ? null : (
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         {totals.noRevenueJobs > 0 ? <span style={chip}>⚠ {totals.noRevenueJobs} {totals.noRevenueJobs === 1 ? 'job has' : 'jobs have'} no contract $</span> : null}
         {totals.noPctJobs > 0 ? <span style={chip}>⚠ {totals.noPctJobs} {totals.noPctJobs === 1 ? 'job has' : 'jobs have'} no % complete</span> : null}
@@ -139,6 +145,7 @@ export default function JobSummaryLedgerToolbar({
           </span>
         ) : null}
       </div>
+      )}
     </div>
   )
 }

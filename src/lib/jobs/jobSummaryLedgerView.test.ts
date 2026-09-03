@@ -68,7 +68,8 @@ describe('prefs + window', () => {
   it('reads valid prefs and falls back per field', () => {
     expect(readJobSummaryViewPrefs(null)).toEqual(JOB_SUMMARY_VIEW_DEFAULTS)
     expect(readJobSummaryViewPrefs('{bad')).toEqual(JOB_SUMMARY_VIEW_DEFAULTS)
-    expect(readJobSummaryViewPrefs(JSON.stringify({ status: 'all', window: 'nope', method: 'B', sortKey: 'pct', sortDir: 'up' }))).toEqual({
+    expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'days', status: 'all', window: 'nope', method: 'B', sortKey: 'pct', sortDir: 'up' }))).toEqual({
+      view: 'days',
       status: 'all',
       window: 'ytd',
       method: 'B',
