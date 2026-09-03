@@ -467,6 +467,16 @@ verify_jwt = false
 [functions.sign-bid-room]
 verify_jwt = false
 
+# Contract Desk (v2.2681): the customer's page fetches/signs by durable token; send validates the staff JWT in-body.
+[functions.get-job-contract]
+verify_jwt = false
+
+[functions.sign-job-contract]
+verify_jwt = false
+
+[functions.send-job-contract]
+verify_jwt = false
+
 [functions.send-estimate-to-customer]
 verify_jwt = false
 

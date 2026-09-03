@@ -76,6 +76,7 @@ import {
 import BilledExpectedPayChip from './BilledExpectedPayChip'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import JobContractModal from './JobContractModal'
 import {
   buildJobContractCoverage,
   filterJobsByContractCoverage,
@@ -795,6 +796,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     () => buildJobContractCoverage(jobs, jobContractRows, signedEstimateRows),
     [jobs, jobContractRows, signedEstimateRows],
   )
+  /** The Contract modal (Contract Desk PR 2) — opened from the row chip and the ✍ quick action. */
+  const [jobContractModalJob, setJobContractModalJob] = useState<JobWithDetails | null>(null)
+  const openJobContract = canSeeJobContracts ? (j: JobWithDetails) => setJobContractModalJob(j) : undefined
   // ?contract=missing deep-links the board to the jobs with nothing on file
   // (Needs You, PR 4). Read-only init like ?view=recent — the tab never writes params.
   const [stagesContractFilter, setStagesContractFilter] = useState<StagesContractFilter | ''>(() => {
@@ -2205,6 +2209,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       loadJobs,
       onDevelopmentFilter: setStagesDevelopmentFilter,
       jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
+      onOpenJobContract: openJobContract,
     }
     const unifiedShared = {
       ...shared,
@@ -3701,6 +3706,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                   />
                 )}
 
@@ -3790,6 +3798,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                   />
                 )}
 
@@ -3944,6 +3955,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4267,6 +4281,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4371,6 +4388,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4508,6 +4528,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                     />
                   </>
                 ) : null}
@@ -5282,6 +5305,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienReleaseModal?.invoice ?? null}
         signerNameFallback={lienReleaseSignerFallback}
         onIssued={() => void loadLienReleaseJobIds()}
+      />
+      <JobContractModal
+        open={jobContractModalJob != null}
+        onClose={() => setJobContractModalJob(null)}
+        job={jobContractModalJob}
+        onChanged={() => void loadJobContractCoverage()}
       />
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}

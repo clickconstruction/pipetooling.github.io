@@ -6419,6 +6419,7 @@ export type Database = {
           next_reminder_at: string | null
           paper_signed_on: string | null
           paper_upload_path: string | null
+          public_token: string | null
           public_token_expires_at: string | null
           public_token_hash: string | null
           recipient_email: string | null
@@ -6465,6 +6466,7 @@ export type Database = {
           next_reminder_at?: string | null
           paper_signed_on?: string | null
           paper_upload_path?: string | null
+          public_token?: string | null
           public_token_expires_at?: string | null
           public_token_hash?: string | null
           recipient_email?: string | null
@@ -6511,6 +6513,7 @@ export type Database = {
           next_reminder_at?: string | null
           paper_signed_on?: string | null
           paper_upload_path?: string | null
+          public_token?: string | null
           public_token_expires_at?: string | null
           public_token_hash?: string | null
           recipient_email?: string | null
@@ -10788,6 +10791,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          hidden_from_sub: boolean
           id: string
           job_id: string
           memo: string | null
@@ -10797,6 +10801,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string | null
+          hidden_from_sub?: boolean
           id?: string
           job_id: string
           memo?: string | null
@@ -10806,6 +10811,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string | null
+          hidden_from_sub?: boolean
           id?: string
           job_id?: string
           memo?: string | null
@@ -10835,6 +10841,9 @@ export type Database = {
           labor_rate: number | null
           master_user_id: string
           paid_at: string | null
+          pay_hold_reason: string | null
+          payable_after: string | null
+          portal_status: string | null
           project_id: string | null
           step_id: string | null
         }
@@ -10850,6 +10859,9 @@ export type Database = {
           labor_rate?: number | null
           master_user_id: string
           paid_at?: string | null
+          pay_hold_reason?: string | null
+          payable_after?: string | null
+          portal_status?: string | null
           project_id?: string | null
           step_id?: string | null
         }
@@ -10865,6 +10877,9 @@ export type Database = {
           labor_rate?: number | null
           master_user_id?: string
           paid_at?: string | null
+          pay_hold_reason?: string | null
+          payable_after?: string | null
+          portal_status?: string | null
           project_id?: string | null
           step_id?: string | null
         }
@@ -13624,12 +13639,21 @@ export type Database = {
           id: string
           labor_job_id: string | null
           notes: string | null
+          offer_expires_at: string | null
+          offer_scope_snapshot: Json | null
           offered_at: string | null
           person_id: string
           proposed_end: string | null
           proposed_start: string | null
           retainage_pct: number
           settled_at: string | null
+          signed_at: string | null
+          signer_consented_at: string | null
+          signer_ip: string | null
+          signer_printed_name: string | null
+          signer_signature_mode: string | null
+          signer_signature_storage_path: string | null
+          signer_user_agent: string | null
           status: string
           step_id: string
           updated_at: string
@@ -13646,12 +13670,21 @@ export type Database = {
           id?: string
           labor_job_id?: string | null
           notes?: string | null
+          offer_expires_at?: string | null
+          offer_scope_snapshot?: Json | null
           offered_at?: string | null
           person_id: string
           proposed_end?: string | null
           proposed_start?: string | null
           retainage_pct?: number
           settled_at?: string | null
+          signed_at?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
           status?: string
           step_id: string
           updated_at?: string
@@ -13668,12 +13701,21 @@ export type Database = {
           id?: string
           labor_job_id?: string | null
           notes?: string | null
+          offer_expires_at?: string | null
+          offer_scope_snapshot?: Json | null
           offered_at?: string | null
           person_id?: string
           proposed_end?: string | null
           proposed_start?: string | null
           retainage_pct?: number
           settled_at?: string | null
+          signed_at?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
           status?: string
           step_id?: string
           updated_at?: string
@@ -13826,6 +13868,135 @@ export type Database = {
           stripe_event_id?: string
         }
         Relationships: []
+      }
+      sub_portal_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          person_id: string
+          revoked_at: string | null
+          token: string | null
+          token_hash: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id: string
+          revoked_at?: string | null
+          token?: string | null
+          token_hash?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          person_id?: string
+          revoked_at?: string | null
+          token?: string | null
+          token_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_portal_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_portal_links_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_portal_slug_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event: string
+          id: string
+          person_id: string
+          slug: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event: string
+          id?: string
+          person_id: string
+          slug?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event?: string
+          id?: string
+          person_id?: string
+          slug?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_portal_slug_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_portal_slug_events_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_portal_slugs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          locked_at: string | null
+          person_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          locked_at?: string | null
+          person_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          locked_at?: string | null
+          person_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_portal_slugs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_portal_slugs_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supply_house_contacts: {
         Row: {
@@ -16872,6 +17043,12 @@ export type Database = {
       }
       auth_uid_is_helpers_or_subcontractor: { Args: never; Returns: boolean }
       auth_user_can_merge_customers: { Args: never; Returns: boolean }
+      auto_approve_salary_clock_sessions: {
+        Args: never
+        Returns: {
+          approved_count: number
+        }[]
+      }
       auto_clock_out_eod_if_due: { Args: never; Returns: undefined }
       auto_clock_out_open_sessions_eod: { Args: never; Returns: undefined }
       backfill_mercury_auto_attributions_for_debit_card: {
@@ -17021,6 +17198,15 @@ export type Database = {
       count_mercury_transactions_for_bank_payments: {
         Args: { p_filter?: Json }
         Returns: number
+      }
+      count_pending_clock_session_approvals: {
+        Args: never
+        Returns: {
+          oldest_work_date: string
+          people: number
+          sessions: number
+          total_hours: number
+        }[]
       }
       count_unattributed_noncard_mercury_transactions: {
         Args: never
@@ -18446,6 +18632,10 @@ export type Database = {
             Args: { p_job_id: string; p_note?: string; p_paid_on?: string }
             Returns: Json
           }
+      mark_sub_portal_slug_shared: {
+        Args: { p_person_id: string }
+        Returns: Json
+      }
       master_adopted_current_user: {
         Args: { master_user_id: string }
         Returns: boolean
@@ -18486,6 +18676,10 @@ export type Database = {
       }
       mint_customer_portal_link: {
         Args: { p_audience?: string; p_customer_id: string; p_rotate?: boolean }
+        Returns: Json
+      }
+      mint_sub_portal_link: {
+        Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
       }
       move_job_schedule_block_group: {
@@ -18756,6 +18950,7 @@ export type Database = {
         Args: { p_audience?: string; p_customer_id: string }
         Returns: Json
       }
+      revoke_sub_portal_link: { Args: { p_person_id: string }; Returns: Json }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }
         Returns: boolean
@@ -18914,6 +19109,23 @@ export type Database = {
       set_mercury_transaction_duplicate: {
         Args: { p_duplicate_id: string; p_keeper_id: string }
         Returns: undefined
+      }
+      set_sub_payment_visibility: {
+        Args: { p_hidden: boolean; p_payment_id: string }
+        Returns: Json
+      }
+      set_sub_portal_slug: {
+        Args: { p_person_id: string; p_slug: string }
+        Returns: Json
+      }
+      set_sub_sheet_portal_fields: {
+        Args: {
+          p_labor_job_id: string
+          p_pay_hold_reason?: string
+          p_payable_after?: string
+          p_portal_status?: string
+        }
+        Returns: Json
       }
       set_tally_payroll_flag: {
         Args: { p_is_payroll: boolean; p_mercury_transaction_id: string }
