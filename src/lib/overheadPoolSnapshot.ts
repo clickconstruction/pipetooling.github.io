@@ -80,6 +80,10 @@ export type OverheadPoolSnapshot = {
     bucketByTxId: ReadonlyMap<string, OverheadPartsAccountingBucketKey>
     endYmd: string
   }
+  /** Per-day maps (v2.2677, for the Bridge): the pool $, and the field denominators. */
+  poolUsdByDay: ReadonlyMap<string, number>
+  fieldLaborUsdByDay: ReadonlyMap<string, number>
+  fieldHoursByDay: ReadonlyMap<string, number>
 }
 
 export function buildOverheadWageLookups(inputs: readonly OverheadPayConfigInput[]): OverheadWageLookup {
@@ -315,5 +319,8 @@ export async function loadOverheadPoolSnapshot(
       bucketByTxId: partsBucketByTxId,
       endYmd: today,
     },
+    poolUsdByDay: totalsByDay,
+    fieldLaborUsdByDay: fieldLabor.laborUsdByDay,
+    fieldHoursByDay: fieldLabor.laborHoursByDay,
   }
 }
