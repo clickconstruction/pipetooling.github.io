@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OVERHEAD_PEOPLE_NO_PERSON_LABEL, buildOverheadPeopleTable, overheadPeopleShare } from './overheadPeopleTable'
+import { OVERHEAD_PEOPLE_NO_PERSON_LABEL, buildOverheadPeopleTable, overheadPeopleDisplayName, overheadPeopleShare } from './overheadPeopleTable'
 
 const labor = [
   { workDate: '2026-09-02', userName: 'Taunya', bucket: 'office' as const, hours: 8, laborUsd: 200 },
@@ -42,6 +42,22 @@ describe('buildOverheadPeopleTable', () => {
     const t = buildOverheadPeopleTable({ labor, parts, endYmd: '2026-01-01', days: 7 })
     expect(t.rows).toEqual([])
     expect(t.totals.totalUsd).toBe(0)
+  })
+
+  it('a card nickname with the last-four suffix merges into the person\'s labor row; a shared card stays its own row', () => {
+    const t = buildOverheadPeopleTable({
+      labor: [{ workDate: '2026-09-02', userName: 'Malachi', bucket: 'office', hours: 8, laborUsd: 200 }],
+      parts: [
+        { workDate: '2026-09-02', amountUsd: 54, person: 'Malachi 6783' },
+        { workDate: '2026-09-02', amountUsd: 232, person: 'Taunya or Wendi' },
+      ],
+      endYmd: '2026-09-02',
+      days: 1,
+    })
+    expect(t.rows.map((r) => r.name)).toEqual(['Malachi', 'Taunya or Wendi'])
+    expect(t.rows[0]).toMatchObject({ officeLaborUsd: 200, officePartsUsd: 54, totalUsd: 254 })
+    expect(overheadPeopleDisplayName('Michael A 4003')).toBe('Michael A')
+    expect(overheadPeopleDisplayName('  Wendi ')).toBe('Wendi')
   })
 
   it('share of column', () => {

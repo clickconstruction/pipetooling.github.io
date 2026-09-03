@@ -73,6 +73,15 @@ export const OVERHEAD_PEOPLE_NO_PERSON_LABEL = 'No person — supply invoices, A
 
 const num = (v: number | null | undefined): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
+/**
+ * Card nicknames usually carry the card's last four ("Malachi 6783"); strip
+ * that so the purchase merges with the person's labor row. A shared card
+ * ("Taunya or Wendi") has no suffix and stays its own row on purpose.
+ */
+export function overheadPeopleDisplayName(raw: string): string {
+  return raw.trim().replace(/\s+\d{4}$/, '')
+}
+
 export function buildOverheadPeopleTable(input: {
   labor: ReadonlyArray<OverheadPeopleLaborInput>
   parts: ReadonlyArray<OverheadPeoplePartsInput>
@@ -85,11 +94,12 @@ export function buildOverheadPeopleTable(input: {
 
   const byKey = new Map<string, OverheadPeopleRow>()
   const rowFor = (name: string, unattributed = false): OverheadPeopleRow => {
-    const key = unattributed ? ' unattributed' : name.trim().toLowerCase()
+    const display = overheadPeopleDisplayName(name)
+    const key = unattributed ? ' unattributed' : display.toLowerCase()
     let row = byKey.get(key)
     if (!row) {
       row = {
-        name: unattributed ? OVERHEAD_PEOPLE_NO_PERSON_LABEL : name.trim(),
+        name: unattributed ? OVERHEAD_PEOPLE_NO_PERSON_LABEL : display,
         officeLaborUsd: 0,
         bidLaborUsd: 0,
         officePartsUsd: 0,
