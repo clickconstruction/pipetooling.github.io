@@ -4,14 +4,19 @@
 // `buildReviewVerdict`.
 
 import type { ReviewVerdict } from '../../../lib/people/reviewRanked'
+import { CATEGORY_TAG_INK } from '../../../lib/banking/categoryTags'
 import { fmtH, fmtMoney } from '../teamSummary/formatters'
 
-const SEGMENT_COLOR: Record<ReviewVerdict['segments'][number]['key'], string> = {
+const FIXED_SEGMENT_COLOR: Record<string, string> = {
   costs: 'var(--text-faint)',
-  fuel: '#0ea5e9',
   overheadLabor: '#8b5cf6',
   burden: '#f59e0b',
   profit: '#15803d',
+}
+/** Tag segments take their family ink; the fixed four keep their colors. */
+function segmentColor(s: ReviewVerdict['segments'][number]): string {
+  if (s.color) return CATEGORY_TAG_INK[s.color]
+  return FIXED_SEGMENT_COLOR[s.key] ?? 'var(--text-faint)'
 }
 
 const kpiShell: React.CSSProperties = {
@@ -140,14 +145,14 @@ export function PeopleReviewVerdictStrip({
               aria-label={verdict.segments.map((s) => `${s.label} ${fmtMoney(s.usd)} (${Math.round(s.share * 100)}%)`).join(', ')}
             >
               {verdict.segments.map((s) => (
-                <span key={s.key} style={{ display: 'block', height: '100%', width: `${s.share * 100}%`, background: SEGMENT_COLOR[s.key] }} />
+                <span key={s.key} style={{ display: 'block', height: '100%', width: `${s.share * 100}%`, background: segmentColor(s) }} />
               ))}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 6 }}>
               {verdict.segments.map((s) => (
                 <span key={s.key} style={{ whiteSpace: 'nowrap' }}>
-                  <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, background: SEGMENT_COLOR[s.key], marginRight: 5, verticalAlign: -1 }} />
-                  {s.label} <b style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(s.usd)}</b> · {Math.round(s.share * 100)}%
+                  <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: 2, background: segmentColor(s), marginRight: 5, verticalAlign: -1 }} />
+                  {s.icon ? <span aria-hidden="true">{s.icon} </span> : null}{s.label} <b style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>{fmtMoney(s.usd)}</b> · {Math.round(s.share * 100)}%
                 </span>
               ))}
             </div>

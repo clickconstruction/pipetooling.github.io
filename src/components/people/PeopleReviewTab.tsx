@@ -33,8 +33,10 @@ import {
 } from '../../lib/overheadDailyLabor'
 import { bucketInvoiceRevenueByAppTzDay } from '../../lib/overheadAvgDailyCost'
 import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
-import { fetchAccountingBucketByTxId, loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
-import { sumFuelChargesByJob } from '../../lib/mercuryFuelSplit'
+import { loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
+import { costLineTags, sumTagChargesByJob } from '../../lib/mercuryTagSplit'
+import { fetchLabelIdByTxId, useCategoryTags } from '../../lib/banking/categoryTagsData'
+import type { CategoryTagLookups } from '../../lib/banking/categoryTags'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import type {
   CrewJobAssignment,
@@ -335,6 +337,10 @@ export default function PeopleReviewTab({
   const [teamSummaryPriorLoading, setTeamSummaryPriorLoading] = useState(false)
   const teamSummaryPriorReqIdRef = useRef(0)
   const pendingApprovals = usePendingHoursApprovalsNudge(isDev && reviewView === 'ranked')
+  // Bank-category tags (v2.2723): cost-line tags become lines in the drawer and
+  // segments on the verdict bar; the union loader files card charges by tag.
+  const categoryTags = useCategoryTags(isDev)
+  const reviewCostLineTags = useMemo(() => costLineTags(categoryTags.lookups), [categoryTags.lookups])
   const [reviewOfficeLikeCharges, setReviewOfficeLikeCharges] = useState<OfficeLikeChargesSummary | null>(null)
   const reviewOfficeLikeReqIdRef = useRef(0)
 
@@ -686,8 +692,8 @@ export default function PeopleReviewTab({
     })
   }, [teamSummaryPriorRows, reviewSplitPartsRate, payConfig])
   const reviewVerdict = useMemo(
-    () => buildReviewVerdict(teamSummaryBreakdowns, teamSummaryPriorBreakdowns),
-    [teamSummaryBreakdowns, teamSummaryPriorBreakdowns],
+    () => buildReviewVerdict(teamSummaryBreakdowns, teamSummaryPriorBreakdowns, reviewCostLineTags),
+    [teamSummaryBreakdowns, teamSummaryPriorBreakdowns, reviewCostLineTags],
   )
   const reviewRankedBars = useMemo(
     () => buildReviewRankedBars(teamSummaryBreakdowns, reviewRankBy, reviewRankedSearch),
@@ -697,8 +703,8 @@ export default function PeopleReviewTab({
     const b = teamSummarySelectedPersonName
       ? teamSummaryBreakdowns.find((x) => x.name === teamSummarySelectedPersonName)
       : undefined
-    return b ? buildReviewPersonMath(b, { partsRate: reviewSplitPartsRate }) : null
-  }, [teamSummaryBreakdowns, teamSummarySelectedPersonName, reviewSplitPartsRate])
+    return b ? buildReviewPersonMath(b, { partsRate: reviewSplitPartsRate, costLineTags: reviewCostLineTags }) : null
+  }, [teamSummaryBreakdowns, teamSummarySelectedPersonName, reviewSplitPartsRate, reviewCostLineTags])
   const reviewHygieneItems = useMemo(
     () => buildReviewHygiene(teamSummaryBreakdowns, pendingApprovals.approvals, reviewOfficeLikeCharges),
     [teamSummaryBreakdowns, pendingApprovals.approvals, reviewOfficeLikeCharges],
@@ -811,7 +817,7 @@ export default function PeopleReviewTab({
     setTeamSummaryPriorLoading(true)
     void (async () => {
       try {
-        const union = await loadTeamReviewUnion(priorStart, priorEnd, reviewOnlyPaidInFull, payConfig)
+        const union = await loadTeamReviewUnion(priorStart, priorEnd, reviewOnlyPaidInFull, payConfig, categoryTags.lookups)
         if (teamSummaryPriorReqIdRef.current !== reqId) return
         setTeamSummaryPriorRows(
           showPeopleForReview.map((personName) =>
@@ -1771,6 +1777,7 @@ export default function PeopleReviewTab({
     end: string,
     onlyPaidJobs: boolean,
     payConfigSnapshot: Record<string, PayConfigRow>,
+    tagLookups: CategoryTagLookups,
   ): Promise<TeamReviewUnion> {
     // Anchored to the SELECTED PERIOD, not just today: with a pure today−2y
     // lookback, any period starting more than 2 years back had zero lifetime
@@ -2098,14 +2105,14 @@ export default function PeopleReviewTab({
     for (const row of cardRows) {
       cardChargesByJobId.set(row.job_id, (cardChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
     }
-    // Fuel slice (v2.2700): the Banking "Fuel / Gas" accounting label wins;
-    // an unlabelled transaction falls back to the bank's own FuelAndGas
-    // category so the split is honest before the label rule has been applied.
-    const fuelChargesByJobId = new Map<string, number>()
+    // Cost-line tags (v2.2723): a card charge belongs to its accounting label's
+    // tag, else its bank category's tag; only tags flagged "show as cost line"
+    // become lines. Same classifier Jobs → Job Summary uses.
+    const tagChargesByJobId = new Map<string, ReadonlyMap<string, number>>()
     const cardTxIds = [...new Set(cardRows.map((r) => r.mercury_transaction_id).filter((id): id is string => !!id))]
-    if (cardTxIds.length > 0) {
-      const [bucketByTxId, categoryRows] = await Promise.all([
-        fetchAccountingBucketByTxId(cardTxIds).catch(() => new Map<string, string>()),
+    if (cardTxIds.length > 0 && tagLookups.tagsById.size > 0) {
+      const [labelIdByTxId, categoryRows] = await Promise.all([
+        fetchLabelIdByTxId(cardTxIds).catch(() => new Map<string, string>()),
         fetchAllRowsChunkedIn(
           cardTxIds,
           (chunk, f, t) => supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(f, t),
@@ -2114,8 +2121,7 @@ export default function PeopleReviewTab({
       ])
       const categoryByTxId = new Map<string, unknown>()
       for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
-      // Same classifier Jobs → Job Summary uses (v2.2708), so the two surfaces agree on what is fuel.
-      for (const [jobId, usd] of sumFuelChargesByJob(cardRows, bucketByTxId, categoryByTxId)) fuelChargesByJobId.set(jobId, usd)
+      for (const [jobId, perTag] of sumTagChargesByJob(cardRows, labelIdByTxId, categoryByTxId, tagLookups)) tagChargesByJobId.set(jobId, perTag)
     }
 
     return {
@@ -2135,7 +2141,8 @@ export default function PeopleReviewTab({
       invoiceAmountByJob,
       billedMaterialsByJobId,
       cardChargesByJobId,
-      fuelChargesByJobId,
+      tagChargesByJobId,
+      costLineTags: costLineTags(tagLookups),
       hoursMap,
       crewByDatePerson,
       overheadHoursByPerson,
@@ -2148,7 +2155,7 @@ export default function PeopleReviewTab({
   async function loadTeamSummaryData(): Promise<TeamSummaryRow[]> {
     const [start, end] = getReviewDateRange()
     const days = getDaysInRange(start, end)
-    const union = await loadTeamReviewUnion(start, end, reviewOnlyPaidInFull, payConfig)
+    const union = await loadTeamReviewUnion(start, end, reviewOnlyPaidInFull, payConfig, categoryTags.lookups)
     return showPeopleForReview.map((personName) =>
       derivePersonTeamSummary(union, personName, payConfig, reviewOnlyPaidInFull, days)
     )

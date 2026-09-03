@@ -35,4 +35,6 @@ Each rule now shows what it matches on as small chips — *counterparty contains
 
 ## Deleting and resetting
 
+**Merge into…** folds one tag into another: choose the target in the editor, click {{button:outline|Merge}}, and every bank category, accounting label and rule that named the old tag moves to the target before the old tag goes away. Use it when two tags turned out to be the same idea (say, a *Gas* tag someone made beside ⛽ Fuel & gas).
+
 Deleting a tag keeps its rules working: each rule remembers the categories the tag covered when it was saved, and the Rules list shows them as *deleted tag · FuelAndGas, VehicleExpenses* until you edit the rule. {{button:outline|Reset to defaults}} re-plants the six starter tags where they are missing and never moves a category you have re-homed.

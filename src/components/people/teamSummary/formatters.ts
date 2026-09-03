@@ -114,7 +114,7 @@ export function enrichTeamSummaryRowsForInline(
     hourlyWage: r.hourlyWage,
     overheadWage: r.overheadWage,
     allocatedParts: r.allocatedParts,
-    allocatedFuel: r.allocatedFuel,
+    allocatedByTag: r.allocatedByTag,
     allocatedLabor: r.allocatedLabor,
     overheadLaborCost: r.overheadLaborCost,
     overheadSessions: r.overheadSessions,

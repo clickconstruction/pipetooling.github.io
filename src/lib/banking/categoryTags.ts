@@ -8,6 +8,16 @@
 export const CATEGORY_TAG_COLORS = ['amber', 'blue', 'violet', 'teal', 'gray', 'rose'] as const
 export type CategoryTagColor = (typeof CATEGORY_TAG_COLORS)[number]
 
+/** Saturated ink per family — status/accent colors stay literal per the theme convention; surfaces mix tints from these. */
+export const CATEGORY_TAG_INK: Record<CategoryTagColor, string> = {
+  amber: '#b45309',
+  blue: '#1d4ed8',
+  violet: '#6d28d9',
+  teal: '#0f766e',
+  gray: '#4b5563',
+  rose: '#be123c',
+}
+
 export type CategoryTagRow = {
   id: string
   name: string

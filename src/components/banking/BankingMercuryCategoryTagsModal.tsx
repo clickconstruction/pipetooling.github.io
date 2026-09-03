@@ -16,7 +16,7 @@ import {
   type CategoryTagMemberRow,
   type CategoryTagRow,
 } from '../../lib/banking/categoryTags'
-import { deleteCategoryTag, resetDefaultCategoryTags, saveCategoryTag, saveCategoryTagMembers, type CategoryTagDraft } from '../../lib/banking/categoryTagsData'
+import { deleteCategoryTag, mergeCategoryTags, resetDefaultCategoryTags, saveCategoryTag, saveCategoryTagMembers, type CategoryTagDraft } from '../../lib/banking/categoryTagsData'
 import { parseAccountingLabelRuleCriteria } from '../../lib/accountingLabelRuleMatch'
 import { CategoryTagChip, categoryTagChipStyle } from './CategoryTagChip'
 import { MERCURY_BANK_CATEGORY_SUGGESTIONS } from './AccountingRuleFormModal'
@@ -75,6 +75,7 @@ export function BankingMercuryCategoryTagsModal({
   const [draftLabelIds, setDraftLabelIds] = useState<Set<string>>(() => new Set())
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [mergeTargetId, setMergeTargetId] = useState('')
 
   // Rule counts per tag: bankTag clauses + rules whose label belongs to the tag.
   const ruleCountByTagId = useMemo(() => {
@@ -110,6 +111,7 @@ export function BankingMercuryCategoryTagsModal({
     setDraftCategories(new Set(members.filter((m) => m.tag_id === t.id && m.bank_category).map((m) => m.bank_category as string)))
     setDraftLabelIds(new Set(members.filter((m) => m.tag_id === t.id && m.label_id).map((m) => m.label_id as string)))
     setConfirmDelete(false)
+    setMergeTargetId('')
   }, [open, selectedId, tags, members])
 
   useEffect(() => {
@@ -172,6 +174,24 @@ export function BankingMercuryCategoryTagsModal({
       await onChanged()
       startNew()
       showToast('Tag deleted. Rules that used it keep matching from their saved categories.', 'info')
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  // Merge (v2.2723): move every category + label into the target, repoint the
+  // rules that named this tag, then delete it. Nothing stops matching.
+  const merge = async () => {
+    if (!draft.id || !mergeTargetId || mergeTargetId === draft.id) return
+    const target = tags.find((t) => t.id === mergeTargetId)
+    if (!target) return
+    setBusy(true)
+    try {
+      const r = await mergeCategoryTags(draft.id, mergeTargetId)
+      await onChanged()
+      setSelectedId(mergeTargetId)
+      showToast(`Merged into ${target.icon} ${target.name} — ${r.movedMembers} member${r.movedMembers === 1 ? '' : 's'} moved, ${r.repointedRules} rule${r.repointedRules === 1 ? '' : 's'} repointed.`, 'success')
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
     } finally {
@@ -328,7 +348,7 @@ export function BankingMercuryCategoryTagsModal({
                       onClick={() => toggleCategory(c)}
                       aria-pressed={inDraft}
                       title={owner ? `Currently in ${owner.icon} ${owner.name} — click to move it here` : undefined}
-                      style={inDraft ? { ...categoryTagChipStyle(draft.color, { selected: true }), cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 600 } : { ...categoryTagChipStyle('gray', { muted: !!owner }), cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 500 }}
+                      style={inDraft ? { ...categoryTagChipStyle(draft.color, { selected: true }), cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600 } : { ...categoryTagChipStyle('gray', { muted: !!owner }), cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 500 }}
                     >
                       {c}
                       {owner ? <span style={{ opacity: 0.7, fontWeight: 400 }}> · {owner.icon} {owner.name}</span> : null}
@@ -352,7 +372,7 @@ export function BankingMercuryCategoryTagsModal({
                       onClick={() => toggleLabel(l.id)}
                       aria-pressed={inDraft}
                       title={owner ? `Currently in ${owner.icon} ${owner.name} — click to move it here` : undefined}
-                      style={inDraft ? { ...categoryTagChipStyle(draft.color, { selected: true }), cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 600 } : { ...categoryTagChipStyle('gray', { muted: !!owner }), cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 500 }}
+                      style={inDraft ? { ...categoryTagChipStyle(draft.color, { selected: true }), cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 600 } : { ...categoryTagChipStyle('gray', { muted: !!owner }), cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 500 }}
                     >
                       {l.name}
                       {owner ? <span style={{ opacity: 0.7, fontWeight: 400 }}> · {owner.icon}</span> : null}
@@ -372,6 +392,22 @@ export function BankingMercuryCategoryTagsModal({
                 Hide from the rule tag picker
               </label>
             </div>
+
+            {draft.id && tags.length > 1 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: '0.85rem', paddingTop: 8, borderTop: '1px solid var(--border-soft)' }}>
+                <span style={fieldLabel}>Merge into</span>
+                <select value={mergeTargetId} onChange={(e) => setMergeTargetId(e.target.value)} disabled={busy} style={{ ...input, padding: '0.3rem 0.5rem' }} aria-label="Merge this tag into">
+                  <option value="">Choose a tag…</option>
+                  {tags.filter((t) => t.id !== draft.id).map((t) => (
+                    <option key={t.id} value={t.id}>{t.icon} {t.name}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => void merge()} disabled={busy || !mergeTargetId} style={btn} title="Move every category and label into the chosen tag, repoint rules that name this tag, then delete it.">
+                  Merge
+                </button>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Members and rules move over; this tag goes away.</span>
+              </div>
+            ) : null}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <button type="button" onClick={() => void save()} disabled={busy} style={primaryBtn}>{busy ? 'Saving…' : draft.id ? 'Save tag' : 'Create tag'}</button>

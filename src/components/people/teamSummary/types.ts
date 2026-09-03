@@ -52,8 +52,8 @@ export type NetRevenueBreakdown = {
     jobName: string
     valueCreated: number
     partsCost: number
-    /** The fuel slice of `partsCost` (Banking "Fuel / Gas" label, else bank category FuelAndGas). */
-    fuelCost: number
+    /** Slices of `partsCost` by cost-line tag id (label's tag, else bank category's tag). */
+    tagCosts: Record<string, number>
     totalLaborOnJob: number
     revenueBeforeOverhead: number
     costInPeriod: number
@@ -99,10 +99,10 @@ export type TeamSummaryRow = {
   personName: string
   profit: number
   gross: number
-  /** This person's share of parts (all card charges, invoices, tally, billed materials — fuel included). gross − parts − labor = profit. */
+  /** This person's share of parts (all card charges, invoices, tally, billed materials — tag lines included). gross − parts − labor = profit. */
   allocatedParts: number
-  /** The fuel slice of `allocatedParts`. */
-  allocatedFuel: number
+  /** Slices of `allocatedParts` by cost-line tag id (fuel, permits, …). */
+  allocatedByTag: Record<string, number>
   /** This person's share of every contributor's labor on the jobs (own labor included). */
   allocatedLabor: number
   revPerHour: number
@@ -150,7 +150,7 @@ export type TeamSummaryBreakdown = {
   overheadSessions: OverheadSessionLine[]
   gross: number
   allocatedParts: number
-  allocatedFuel: number
+  allocatedByTag: Record<string, number>
   allocatedLabor: number
   /** Net Revenue (before overhead). Stored under `net` for backward-compat
    * with the iframe code that this component replaces. */

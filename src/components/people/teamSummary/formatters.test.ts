@@ -20,7 +20,7 @@ function makeRow(overrides: Partial<TeamSummaryRow>): TeamSummaryRow {
     hourlyWage: 0,
     overheadWage: 0,
     allocatedParts: 0,
-    allocatedFuel: 0,
+    allocatedByTag: {},
     allocatedLabor: 0,
     overheadLaborCost: 0,
     hoursBreakdown: {
