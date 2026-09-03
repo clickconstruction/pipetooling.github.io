@@ -19,6 +19,7 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 import { decimalToHms } from '../../lib/people/hoursGridTime'
 import { laborJobMatchesPerson } from '../../lib/people/laborJobPersonMatch'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
+import { computeReviewDateRange, ymdAddYears, type ReviewPeriod as ReviewPeriodKind } from '../../lib/people/reviewDateRange'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 import {
   approvedClosedSessionHours,
@@ -43,7 +44,7 @@ import {
   TeamSummaryInline,
   type TeamSummaryInlineHandle,
 } from './teamSummary/TeamSummaryInline'
-import { enrichTeamSummaryRowsForInline, fmtMoney } from './teamSummary/formatters'
+import { enrichTeamSummaryRowsForInline, fmtH, fmtMoney } from './teamSummary/formatters'
 import type {
   OverheadRateDecomp,
   TeamSummaryBreakdown,
@@ -163,16 +164,7 @@ export default function PeopleReviewTab({
   // value to `last_30_days` and added a few common period scopes plus a custom
   // range picker. `ReviewPeriod` is local state only (not persisted), so the
   // value rename is safe.
-  type ReviewPeriod =
-    | 'today'
-    | 'yesterday'
-    | 'this_week'
-    | 'last_week'
-    | 'last_two_weeks'
-    | 'last_30_days'
-    | 'last_90_days'
-    | 'this_year'
-    | 'custom'
+  type ReviewPeriod = ReviewPeriodKind
   // -1 = no person expanded. The Team Summary table acts as the picker;
   // clicking a name in it toggles the per-person panel into view (v2.X).
   // Replaces the legacy "← Prev | Person ▾ | Next →" row.
@@ -856,70 +848,14 @@ export default function PeopleReviewTab({
   ])
 
   function getReviewDateRange(): [string, string] {
-    const today = new Date()
-    const todayStr = today.toLocaleDateString('en-CA')
-    if (reviewPeriod === 'today') return [todayStr, todayStr]
-    if (reviewPeriod === 'yesterday') {
-      const d = new Date(today)
-      d.setDate(d.getDate() - 1)
-      const y = d.toLocaleDateString('en-CA')
-      return [y, y]
-    }
-    if (reviewPeriod === 'custom') {
-      // Empty inputs collapse to "today" so the table still has *something*
-      // to render rather than throwing on an invalid range. The UI surfaces
-      // a hint when both inputs are empty.
-      const cs = reviewCustomRangeStart.trim()
-      const ce = reviewCustomRangeEnd.trim()
-      if (cs && ce) {
-        // Swap if the user picked them in the wrong order.
-        return cs <= ce ? [cs, ce] : [ce, cs]
-      }
-      if (cs && !ce) return [cs, cs]
-      if (!cs && ce) return [ce, ce]
-      return [todayStr, todayStr]
-    }
-    // Current week's Sunday (start of this week)
-    const day = today.getDay()
-    const thisWeekSunday = new Date(today)
-    thisWeekSunday.setDate(today.getDate() - day)
-    if (reviewPeriod === 'this_week') {
-      // Sunday of this week through today (running week, mid-week monitoring).
-      return [thisWeekSunday.toLocaleDateString('en-CA'), todayStr]
-    }
-    if (reviewPeriod === 'last_week') {
-      const lastWeekSunday = new Date(thisWeekSunday)
-      lastWeekSunday.setDate(thisWeekSunday.getDate() - 7)
-      const lastWeekSaturday = new Date(lastWeekSunday)
-      lastWeekSaturday.setDate(lastWeekSunday.getDate() + 6)
-      return [lastWeekSunday.toLocaleDateString('en-CA'), lastWeekSaturday.toLocaleDateString('en-CA')]
-    }
-    if (reviewPeriod === 'last_30_days') {
-      // Rolling 30 days back from today (was previously labeled "Last month";
-      // the label was a misnomer — see ReviewPeriod doc above). −29 because
-      // the range is inclusive of today: [today−29, today] = 30 days (−30
-      // used to yield a 31-day window, ~1.1% off vs the true 90-day rate).
-      const start = new Date(today)
-      start.setDate(today.getDate() - 29)
-      return [start.toLocaleDateString('en-CA'), todayStr]
-    }
-    if (reviewPeriod === 'last_90_days') {
-      // −89 for the same inclusive-range reason as last_30_days.
-      const start = new Date(today)
-      start.setDate(today.getDate() - 89)
-      return [start.toLocaleDateString('en-CA'), todayStr]
-    }
-    if (reviewPeriod === 'this_year') {
-      // Calendar year-to-date (Jan 1 → today).
-      const start = new Date(today.getFullYear(), 0, 1)
-      return [start.toLocaleDateString('en-CA'), todayStr]
-    }
-    // last_two_weeks (default fallthrough)
-    const twoWeeksAgoSunday = new Date(thisWeekSunday)
-    twoWeeksAgoSunday.setDate(thisWeekSunday.getDate() - 14)
-    const lastWeekSaturday = new Date(thisWeekSunday)
-    lastWeekSaturday.setDate(thisWeekSunday.getDate() - 1)
-    return [twoWeeksAgoSunday.toLocaleDateString('en-CA'), lastWeekSaturday.toLocaleDateString('en-CA')]
+    // Anchored on the COMPANY calendar day, not the viewer's browser clock
+    // (v2.2688, audit finding 17) — the same anchor the 90-day overhead
+    // window uses, so the two never sit a day apart for a remote viewer.
+    return computeReviewDateRange(
+      reviewPeriod,
+      { start: reviewCustomRangeStart, end: reviewCustomRangeEnd },
+      denverCalendarDayKey(Date.now()),
+    )
   }
 
   function stripAddressZipState(addr: string): string {
@@ -1037,12 +973,11 @@ export default function PeopleReviewTab({
       if (row.person_id) payConfigById[row.person_id] = row
     }
 
-    const twoYearsAgo = new Date()
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
     // Anchored to the selected period like loadTeamReviewUnion — see the
     // comment there. Old custom ranges used to fall entirely outside the
     // lookback and rendered '—' hours with 100%-of-job allocations.
-    const twoYearsAgoYmd = twoYearsAgo.toLocaleDateString('en-CA')
+    // Company calendar day (v2.2688), not the browser's.
+    const twoYearsAgoYmd = ymdAddYears(denverCalendarDayKey(Date.now()), -2)
     const lookbackStart = start < twoYearsAgoYmd ? start : twoYearsAgoYmd
 
     const [assigneesRes, allLaborResForCostAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime] = await Promise.all([
@@ -1581,16 +1516,10 @@ export default function PeopleReviewTab({
       hoursOnJobInPeriod.set(j.job_id, (hoursOnJobInPeriod.get(j.job_id) ?? 0) + j.hours)
     }
 
-    const lookbackStart2Y = (() => {
-      const d = new Date(start + 'T12:00:00')
-      d.setFullYear(d.getFullYear() - 2)
-      return d.toLocaleDateString('en-CA')
-    })()
-    const lookbackEnd = (() => {
-      const d = new Date(end + 'T12:00:00')
-      d.setFullYear(d.getFullYear() + 1)
-      return d.toLocaleDateString('en-CA')
-    })()
+    // Calendar arithmetic on the YYYY-MM-DD strings themselves (v2.2688) —
+    // no Date round-trip through the browser's timezone.
+    const lookbackStart2Y = ymdAddYears(start, -2)
+    const lookbackEnd = ymdAddYears(end, 1)
 
     const [allLaborRes, allCrewRes, allHoursRes2] = await Promise.all([
       forTeamSummary || !(laborHcps.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd).order('id').range(f, t), 'load review windowed labor jobs'),
@@ -1812,13 +1741,12 @@ export default function PeopleReviewTab({
     onlyPaidJobs: boolean,
     payConfigSnapshot: Record<string, PayConfigRow>,
   ): Promise<TeamReviewUnion> {
-    const twoYearsAgo = new Date()
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
     // Anchored to the SELECTED PERIOD, not just today: with a pure today−2y
     // lookback, any period starting more than 2 years back had zero lifetime
     // hours/cost rows, so the allocation-ratio fallback credited each person
-    // 100% of every job. YYYY-MM-DD compares lexicographically.
-    const twoYearsAgoYmd = twoYearsAgo.toLocaleDateString('en-CA')
+    // 100% of every job. YYYY-MM-DD compares lexicographically. Company
+    // calendar day (v2.2688), not the browser's.
+    const twoYearsAgoYmd = ymdAddYears(denverCalendarDayKey(Date.now()), -2)
     const lookbackStart = start < twoYearsAgoYmd ? start : twoYearsAgoYmd
 
     const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
@@ -2671,9 +2599,8 @@ export default function PeopleReviewTab({
                 const tsRow = personName
                   ? teamSummaryBreakdowns.find((b) => b.name === personName)
                   : undefined
-                const panelHours = reviewOnlyPaidInFull
-                  ? [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.hours, 0)
-                  : days.reduce((s, d) => s + getHoursForDay(d), 0)
+                // One hour basis regardless of the paid-only toggle (v2.2688).
+                const panelHours = days.reduce((s, d) => s + getHoursForDay(d), 0)
                 const totalHours = tsRow ? tsRow.totalHours : panelHours
                 const totalRevenue = tsRow
                   ? tsRow.gross
@@ -3768,14 +3695,30 @@ export default function PeopleReviewTab({
                                 {(() => {
                                   const totalRev = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
                                   const totalProfit = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedRevenueBeforeOverhead, 0)
-                                  const totalHrs = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.hours, 0)
-                                  if (totalHrs <= 0) return '—'
-                                  const revHr = totalRev / totalHrs
-                                  const profitHr = totalProfit / totalHrs
+                                  const jobHrs = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.hours, 0)
+                                  // One denominator, the same one the headline and the Team
+                                  // Summary use (v2.2688): the person's hours in the period.
+                                  // The hours-on-jobs figure stays, labelled, so the two
+                                  // never read as one number.
+                                  const footerPerson = showPeopleForReview[selectedReviewPersonIndex]
+                                  const footerRow = footerPerson ? teamSummaryBreakdowns.find((b) => b.name === footerPerson) : undefined
+                                  const periodHrs = footerRow?.totalHours ?? 0
+                                  if (periodHrs <= 0 && jobHrs <= 0) return '—'
+                                  const basisHrs = periodHrs > 0 ? periodHrs : jobHrs
+                                  const revHr = totalRev / basisHrs
+                                  const profitHr = totalProfit / basisHrs
                                   return (
                                     <>
                                       <div><strong>{fmtMoney(revHr)}</strong>/hr revenue</div>
                                       <div style={{ color: profitHr < 0 ? 'var(--text-red-700)' : undefined }}><strong>{fmtMoney(profitHr)}</strong>/hr profit</div>
+                                      <div style={{ fontSize: '0.75em', color: 'var(--text-muted)', fontWeight: 400, whiteSpace: 'nowrap' }} title="Same denominator as the headline and the Team Summary: this person's hours in the period (salaried: 8 h per weekday assumed). The second line divides by only the hours that landed on jobs.">
+                                        ÷ {fmtH(basisHrs)} h in period{periodHrs > 0 ? '' : ' (on jobs)'}
+                                      </div>
+                                      {periodHrs > 0 && jobHrs > 0 && Math.abs(jobHrs - periodHrs) >= 0.05 && (
+                                        <div style={{ fontSize: '0.75em', color: 'var(--text-muted)', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                                          on {fmtH(jobHrs)} job h: {fmtMoney(totalRev / jobHrs)} / {fmtMoney(totalProfit / jobHrs)}
+                                        </div>
+                                      )}
                                     </>
                                   )
                                 })()}

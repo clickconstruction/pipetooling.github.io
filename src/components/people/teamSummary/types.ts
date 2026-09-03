@@ -21,7 +21,10 @@ export type HoursBreakdown = {
     daily: number
     crew: number
     subLabor: number
+    /** The person's hours in the period (clocked, or the salaried 8/0 credit) — the per-hour denominator. */
     totalHours: number
+    /** Under "Only paid in full": hours that landed on paid jobs (crew + sub labor). Undefined otherwise. */
+    onPaidJobs?: number
   }
 }
 

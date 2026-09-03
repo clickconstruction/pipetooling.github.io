@@ -729,7 +729,8 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
               }
               html += '</tbody><tfoot><tr><td colspan="2" style="text-align:right;font-weight:600;">Sub labor subtotal</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.subLabor) + '</td></tr></tfoot></table>';
             }
-            html += '<p class="caption">Total = crew (' + fmtH(hb.totals.crew) + ') + sub labor (' + fmtH(hb.totals.subLabor) + ') = ' + fmtH(hb.totals.totalHours) + ' hrs. Each crew line shows <em>(pct) Job # | Job Name</em>; pct is the share of the day attributed to that job.</p>';
+            var onPaid = (hb.totals.onPaidJobs != null) ? hb.totals.onPaidJobs : (hb.totals.crew + hb.totals.subLabor);
+            html += '<p class="caption">On paid jobs = crew (' + fmtH(hb.totals.crew) + ') + sub labor (' + fmtH(hb.totals.subLabor) + ') = ' + fmtH(onPaid) + ' hrs. The Hours column and every per-hour rate still divide by the person’s ' + fmtH(hb.totals.totalHours) + ' hrs in the period, so the toggle changes which jobs earn revenue, not the denominator. Each crew line shows <em>(pct) Job # | Job Name</em>; pct is the share of the day attributed to that job.</p>';
           } else {
             if (sortedDailyRows.length > 0) {
               html += '<div class="hours-day-list">';
