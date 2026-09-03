@@ -30,6 +30,10 @@ const ALL_TYPES: JobActivityEventType[] = [
   'lien_release_signed',
   'lien_release_sent',
   'lien_release_voided',
+  'contract_sent',
+  'contract_viewed',
+  'contract_signed',
+  'contract_voided',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {

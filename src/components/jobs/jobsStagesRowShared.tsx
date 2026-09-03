@@ -37,6 +37,8 @@ import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+import { JobContractChip } from './JobContractChip'
+import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -82,6 +84,10 @@ export type StagesRowRenderContext = {
   loadJobs: () => Promise<unknown>
   /** When set, the row's development label becomes a button that filters the board to that development. */
   onDevelopmentFilter?: (developmentId: string) => void
+  /** Contract Desk: per-job contract coverage — the chip under the job (office roles only; undefined hides it). */
+  jobContractCoverageByJobId?: ReadonlyMap<string, JobContractCoverage>
+  /** Opens the job's Contract modal (PR 2); absent = the chip is a plain label. */
+  onOpenJobContract?: (job: JobWithDetails) => void
 }
 
 
@@ -1208,9 +1214,22 @@ export function renderStagesJobCellActivityFooter(
     )
   }
 
+  function renderStagesContractChip(): ReactNode {
+    const coverage = ctx.jobContractCoverageByJobId
+    if (!coverage) return null
+    const cov = coverage.get(job.id)
+    const open = ctx.onOpenJobContract
+    return (
+      <div style={{ marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+        <JobContractChip coverage={cov} onClick={open ? () => open(job) : undefined} />
+      </div>
+    )
+  }
+
   return (
     <>
       {renderStagesInvoiceJumpChips(job)}
+      {renderStagesContractChip()}
       {renderStagesStripeEmailedCustomerHint()}
       {opts?.hideReportsButton ? null : (
         <div style={{ marginTop: '0.35rem' }}>{renderStagesViewReportsButton(ctx, job)}</div>

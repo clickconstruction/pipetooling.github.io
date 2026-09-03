@@ -32,6 +32,10 @@ export type JobActivityEventType =
   | 'lien_release_signed'
   | 'lien_release_sent'
   | 'lien_release_voided'
+  | 'contract_sent'
+  | 'contract_viewed'
+  | 'contract_signed'
+  | 'contract_voided'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -99,6 +103,12 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   lien_release_signed: { tag: 'Release', ...MONEY_GREEN, bucket: 'billing' },
   lien_release_sent: { tag: 'Release', ...MONEY_GREEN, bucket: 'billing' },
   lien_release_voided: { tag: 'Release', ...DANGER_RED, bucket: 'billing' },
+  // Job-contract lifecycle (Contract Desk) — written by the job_contracts
+  // bridge trigger since 20260903141146; all financial.
+  contract_sent: { tag: 'Contract', ...BILLING_BLUE, bucket: 'billing' },
+  contract_viewed: { tag: 'Contract', ...STATUS_AMBER, bucket: 'billing' },
+  contract_signed: { tag: 'Contract', ...MONEY_GREEN, bucket: 'billing' },
+  contract_voided: { tag: 'Contract', ...DANGER_RED, bucket: 'billing' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {
