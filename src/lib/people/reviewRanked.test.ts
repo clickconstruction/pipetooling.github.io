@@ -53,6 +53,7 @@ function row(over: Partial<TeamSummaryBreakdown> & { name: string }): TeamSummar
     bidHours: 0,
     fieldHours: 0,
     hourlyWage: 50,
+    overheadWage: 50,
     overheadSessions: [],
     gross,
     net,

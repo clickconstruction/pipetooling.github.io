@@ -7,6 +7,8 @@
 
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { laborJobShareForPerson } from './laborJobPersonMatch'
+import { laborJobSubCost } from '../jobs/subLaborCost'
+import { shouldUseDualRate } from '../officeJobRateSplit'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type {
   GrossRevenueBreakdown,
@@ -78,10 +80,13 @@ export function derivePersonTeamSummary(
   const laborJobs = laborRowsFiltered.map((r) => {
     const items = union.laborItemsByJobId.get(r.id) ?? []
     const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
-    const rate = r.labor_rate ?? 0
-    const miles = Number(r.distance_miles) || 0
-    const driveCost = miles > 0 && rate > 0 ? miles * union.mileageCost + miles * union.timePerMile * rate : miles > 0 ? miles * union.mileageCost : 0
-    const laborCost = totalHrs * rate + driveCost
+    // Same costing as Jobs → Job Summary (`laborJobSubCost`): per-line rate
+    // overrides and direct $ lines count, plus drive cost. Hours stay hours.
+    const laborCost = laborJobSubCost(
+      { labor_rate: r.labor_rate, items, distance_miles: r.distance_miles },
+      union.mileageCost,
+      union.timePerMile,
+    )
     const hcp = (r.job_number ?? '').trim().toLowerCase()
     const jobId = hcp ? union.jobIdByHcp.get(hcp) ?? null : null
     const share = laborShareByRowId.get(r.id) ?? 1
@@ -342,13 +347,18 @@ export function derivePersonTeamSummary(
   }
 
   const hourlyWage = cfg?.hourly_wage ?? 0
-  // Overhead labor only — Office + Bid hours × wage. Field labor is
+  // Office + bid hours are priced at the person's OFFICE rate when they opt
+  // into a dual rate (hourly people with `office_hourly_wage` set — the same
+  // gate payroll and the Overhead tab's pool use); everyone else at their
+  // one hourly wage. Review used to charge the field wage for everyone.
+  const overheadWage = shouldUseDualRate(cfg) ? (cfg?.office_hourly_wage ?? 0) : hourlyWage
+  // Overhead labor only — Office + Bid hours × office wage. Field labor is
   // already subtracted at the per-job level inside Net Revenue
   // (`job_net = revenue - parts - total_labor`), so re-listing it here
   // would visually double-count. Stored negative so the column reads
   // as a cost (red `negStyle`, `-$X` via `fmtMoney`) and flows naturally
   // into the footer total + per-bucket drilldown rows.
-  const overheadLaborCost = -(overheadHours * hourlyWage)
+  const overheadLaborCost = -(overheadHours * overheadWage)
 
   // Build the per-session display list for the Overhead-hours-breakdown
   // modal. Times are formatted in the company TZ; bid metadata is
@@ -412,6 +422,7 @@ export function derivePersonTeamSummary(
     bidHours,
     fieldHours,
     hourlyWage,
+    overheadWage,
     overheadLaborCost,
     hoursBreakdown,
     grossBreakdown,

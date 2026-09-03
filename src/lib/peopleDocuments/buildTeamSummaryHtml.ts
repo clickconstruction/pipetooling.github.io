@@ -1146,7 +1146,7 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
           var bidHrs = entry.bidHours || 0;
           var fieldHrs = entry.fieldHours || 0;
           var overheadHrs = officeHrs + bidHrs;
-          var wage = entry.hourlyWage || 0;
+          var wage = entry.overheadWage || entry.hourlyWage || 0;
           var overheadLaborCost = entry.overheadLaborCost || 0;
           var src = entry.payConfigSource || 'unknown';
           var srcLabel = src === 'salary' ? 'Salaried (weekday hrs \u00d7 hourly_wage from people_pay_config)' : src === 'hourly' ? 'Hourly (people_hours / clock sessions \u00d7 hourly_wage)' : 'Unknown (no people_pay_config row \u2014 wage treated as $0)';
@@ -1438,7 +1438,7 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
             // Append the hourly_wage to the title so reviewers see the
             // rate driving the cost column without opening the modal.
             // Matches TeamSummaryInline.drilldownTitleFor.
-            var olWage = entry.hourlyWage || 0;
+            var olWage = entry.overheadWage || entry.hourlyWage || 0;
             var olWageSuffix = olWage > 0
               ? ' \\u00b7 $' + olWage.toFixed(2) + '/hr'
               : ' \\u00b7 no wage configured';

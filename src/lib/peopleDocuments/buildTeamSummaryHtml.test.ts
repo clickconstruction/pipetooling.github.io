@@ -74,6 +74,7 @@ function makeBreakdown(overrides: Partial<TeamSummaryBreakdown> = {}): TeamSumma
     bidHours: 0,
     fieldHours: 8,
     hourlyWage: 50,
+    overheadWage: 50,
     overheadLaborCost: 0,
     overheadSessions: [],
     gross: 1000,

@@ -314,7 +314,10 @@ export function buildReviewPersonMath(
   const salaried = b.payConfigSource === 'salary'
   const jobs = b.gb.jobs
   const costs = b.gross - b.net
-  const wageText = b.hourlyWage > 0 ? ` × $${b.hourlyWage.toFixed(2)}` : ''
+  const wageText =
+    b.overheadWage > 0
+      ? ` × $${b.overheadWage.toFixed(2)}${b.overheadWage !== b.hourlyWage ? ' office rate' : ''}`
+      : ''
   const lines: ReviewMathLine[] = [
     {
       key: 'gross',

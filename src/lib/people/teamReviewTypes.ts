@@ -14,7 +14,18 @@ import type {
 } from '../../utils/teamLabor'
 
 export type TeamLedgerRow = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }
-export type TeamLaborItem = { count: number; hrs_per_unit: number; is_fixed: boolean }
+/**
+ * Sub-labor sheet line. `labor_rate` (per-line override) and
+ * `direct_labor_amount` (a flat $ line) are honored by `laborJobSubCost`, the
+ * same costing the Jobs page uses — Review used to ignore both (v2.2686).
+ */
+export type TeamLaborItem = {
+  count: number
+  hrs_per_unit: number
+  is_fixed: boolean
+  labor_rate?: number | null
+  direct_labor_amount?: number | null
+}
 export type TeamPeriodLaborRow = { id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }
 export type TeamReviewUnion = {
   periodLaborRows: TeamPeriodLaborRow[]
