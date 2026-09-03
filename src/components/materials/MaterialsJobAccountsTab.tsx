@@ -26,6 +26,34 @@ const OWED_SEGMENT_COLORS: Record<AgingBucketKey, string> = {
 
 const OWED_SEGMENT_ORDER: AgingBucketKey[] = ['current', 'past1_30', 'past30_60', 'past60_90', 'past90plus', 'noDueDate']
 
+/**
+ * Job-account (owner-secured) styling — teal, distinct from the aging ramp.
+ * No teal theme tokens exist; saturated status colors stay literal (CLAUDE.md).
+ */
+const JOB_ACCOUNT_TEAL = { text: '#0f766e', tint: '#ccfbf1', mid: '#14b8a6' }
+const JOB_ACCOUNT_STRIPE = `repeating-linear-gradient(45deg, ${JOB_ACCOUNT_TEAL.mid} 0 4px, ${JOB_ACCOUNT_TEAL.tint} 4px 8px)`
+
+/** Small teal "on job acct" chip — the house bills the property owner if unpaid. */
+function JobAccountChip({ amount }: { amount?: number }) {
+  return (
+    <span
+      title="On the house's job account — if this goes unpaid, the house bills the property owner, not you."
+      style={{
+        padding: '1px 8px',
+        background: JOB_ACCOUNT_TEAL.tint,
+        color: JOB_ACCOUNT_TEAL.text,
+        fontSize: '0.6875rem',
+        fontWeight: 600,
+        borderRadius: 999,
+        whiteSpace: 'nowrap',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {amount !== undefined ? `$${formatCurrency(amount)} on job acct` : 'Job acct'}
+    </span>
+  )
+}
+
 /** Heat chip styles matching AGING_CELL_STYLES on the Supply Houses tab. */
 const DUE_CHIP_STYLES: Record<AgingBucketKey, { background: string; color: string }> = {
   current: { background: 'var(--bg-emerald-tint)', color: 'var(--text-emerald-800)' },
@@ -45,7 +73,7 @@ const STATUS_CHIP: Record<JobAccountsStatus, { label: string; background: string
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 
-type FilterKey = 'all' | 'owe_suppliers' | 'awaiting' | 'settled'
+type FilterKey = 'all' | 'owe_suppliers' | 'awaiting' | 'settled' | 'job_account'
 
 export type MaterialsJobAccountsTabProps = {
   /** Render gate — stays mounted across tab switches so loaded data survives. */
@@ -59,6 +87,7 @@ function matchesFilter(row: JobAccountsRow, filter: FilterKey): boolean {
   if (filter === 'all') return true
   if (filter === 'owe_suppliers') return row.status === 'owe_suppliers'
   if (filter === 'awaiting') return row.status === 'floating' || row.status === 'awaiting_customer'
+  if (filter === 'job_account') return row.owedOnJobAccount > 0.005
   return row.status === 'settled'
 }
 
@@ -95,22 +124,46 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
     setLoading(true)
     setError(null)
     try {
+      const invoicesPromise = (async () => {
+        try {
+          return await fetchAllRows(
+            async (from, to) => ({
+              data: await withSupabaseRetry(
+                () =>
+                  supabase
+                    .from('supply_house_invoices')
+                    .select('id, supply_house_id, amount, is_paid, due_date, on_job_account')
+                    .order('id')
+                    .range(from, to),
+                'load supply house invoices',
+              ),
+              error: null,
+            }),
+            'load supply house invoices',
+          )
+        } catch {
+          // Pre-migration prod (merge-to-db-push window): on_job_account doesn't
+          // exist yet — load without it so the tab keeps working.
+          const rows = await fetchAllRows(
+            async (from, to) => ({
+              data: await withSupabaseRetry(
+                () =>
+                  supabase
+                    .from('supply_house_invoices')
+                    .select('id, supply_house_id, amount, is_paid, due_date')
+                    .order('id')
+                    .range(from, to),
+                'load supply house invoices',
+              ),
+              error: null,
+            }),
+            'load supply house invoices',
+          )
+          return rows.map((inv) => ({ ...inv, on_job_account: false }))
+        }
+      })()
       const [invoices, allocations, bidAllocations, houses] = await Promise.all([
-        fetchAllRows(
-          async (from, to) => ({
-            data: await withSupabaseRetry(
-              () =>
-                supabase
-                  .from('supply_house_invoices')
-                  .select('id, supply_house_id, amount, is_paid, due_date')
-                  .order('id')
-                  .range(from, to),
-              'load supply house invoices',
-            ),
-            error: null,
-          }),
-          'load supply house invoices',
-        ),
+        invoicesPromise,
         fetchAllRows(
           async (from, to) => ({
             data: await withSupabaseRetry(
@@ -244,6 +297,18 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
               <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
                 {view.holdingJobs} job{view.holdingJobs === 1 ? '' : 's'} paid you — houses still owed
               </div>
+              {view.holdingOnJobAccount > 0.005 && (
+                <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px dashed var(--bg-amber-200)', fontSize: '0.75rem', color: 'var(--text-amber-700)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <span>
+                    Your account:{' '}
+                    <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(view.holdingTotal - view.holdingOnJobAccount)}</strong>
+                  </span>
+                  <span style={{ color: JOB_ACCOUNT_TEAL.text }}>
+                    Job accounts:{' '}
+                    <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(view.holdingOnJobAccount)}</strong>
+                  </span>
+                </div>
+              )}
             </div>
             <div style={{ background: 'var(--bg-blue-tint)', border: '1px solid var(--bg-blue-200)', borderRadius: 8, padding: '0.875rem 1rem' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-blue-700)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
@@ -276,6 +341,19 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                 {view.unallocatedCount} unpaid invoice{view.unallocatedCount === 1 ? '' : 's'} not tied to a job or bid
               </div>
             </div>
+            {view.onJobAccountTotal > 0.005 && (
+              <div style={{ background: JOB_ACCOUNT_TEAL.tint, border: `1px solid ${JOB_ACCOUNT_TEAL.mid}`, borderRadius: 8, padding: '0.875rem 1rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: JOB_ACCOUNT_TEAL.text, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  On job accounts
+                </div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: JOB_ACCOUNT_TEAL.text, fontVariantNumeric: 'tabular-nums' }}>
+                  ${formatCurrency(view.onJobAccountTotal)}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: JOB_ACCOUNT_TEAL.text }}>
+                  {view.onJobAccountJobs} job{view.onJobAccountJobs === 1 ? '' : 's'} — house bills the owner if unpaid, not you
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Filter chips */}
@@ -286,6 +364,9 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                 { key: 'owe_suppliers' as FilterKey, label: 'Owe suppliers', count: view.holdingJobs },
                 { key: 'awaiting' as FilterKey, label: 'Awaiting customer', count: awaitingCount },
                 { key: 'settled' as FilterKey, label: 'Settled', count: view.settledJobs },
+                ...(view.onJobAccountJobs > 0
+                  ? [{ key: 'job_account' as FilterKey, label: 'On job account', count: view.onJobAccountJobs }]
+                  : []),
               ]
             ).map((chip) => (
               <button
@@ -335,6 +416,12 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
               </span>
               Owed to houses, by days past due
             </span>
+            {view.onJobAccountTotal > 0.005 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                <span style={{ width: 14, height: 8, borderRadius: 4, background: JOB_ACCOUNT_STRIPE, display: 'inline-block' }} />
+                On job account — house bills the owner
+              </span>
+            )}
           </div>
 
           {/* Job list */}
@@ -444,6 +531,12 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                                   {row.suppliersPaid > 0.005 && (
                                     <span style={{ display: 'block', height: '100%', width: `${(row.suppliersPaid / outTotal) * 100}%`, background: 'var(--text-slate-400)', opacity: dimmed ? 0.5 : 1 }} />
                                   )}
+                                  {row.owedOnJobAccount > 0.005 && (
+                                    <span
+                                      title="On job account — house bills the owner if unpaid"
+                                      style={{ display: 'block', height: '100%', width: `${(row.owedOnJobAccount / outTotal) * 100}%`, background: JOB_ACCOUNT_STRIPE }}
+                                    />
+                                  )}
                                   {OWED_SEGMENT_ORDER.map((bucket) =>
                                     row.owedBuckets[bucket] > 0.005 ? (
                                       <span
@@ -503,6 +596,16 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                               <path d="M5 8.2l2 2 4-4.4" stroke="var(--text-green-700)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           )}
+                          {row.owedOnJobAccount > 0.005 && (
+                            <span
+                              title="On the house's job account — if this goes unpaid, the house bills the property owner, not you."
+                              style={{ fontSize: '0.6875rem', fontWeight: 600, color: JOB_ACCOUNT_TEAL.text, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}
+                            >
+                              {row.owedOnJobAccount > row.suppliersOwed - 0.005
+                                ? 'all on job acct'
+                                : `$${formatCurrency(row.owedOnJobAccount)} on job acct`}
+                            </span>
+                          )}
                         </div>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ justifySelf: 'center', transform: expanded ? 'rotate(180deg)' : 'none' }} aria-hidden>
                           <path d="M4 6l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -558,7 +661,10 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                                 key={group.supplyHouseId}
                                 style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.625rem 0.875rem', borderBottom: gi === row.houses.length - 1 ? 'none' : '1px solid var(--border)', fontSize: '0.8125rem', alignItems: 'center' }}
                               >
-                                <div style={{ fontWeight: 500, overflowWrap: 'anywhere' }}>{group.name}</div>
+                                <div style={{ fontWeight: 500, overflowWrap: 'anywhere', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                  {group.name}
+                                  {group.owedOnJobAccount > 0.005 && <JobAccountChip amount={group.owedOnJobAccount} />}
+                                </div>
                                 <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{group.invoiceCount}</div>
                                 <div>
                                   {group.oldestUnpaidBucket ? (
@@ -588,7 +694,15 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                           {row.suppliersOwed > 0.005 && (
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                               Owed on this job: <span style={{ fontWeight: 600, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(row.suppliersOwed)}</span>{' '}
-                              across {row.houses.filter((g) => g.owed > 0.005).length} house{row.houses.filter((g) => g.owed > 0.005).length === 1 ? '' : 's'}. Invoice detail and payments live on the Supply Houses tab.
+                              across {row.houses.filter((g) => g.owed > 0.005).length} house{row.houses.filter((g) => g.owed > 0.005).length === 1 ? '' : 's'}
+                              {row.owedOnJobAccount > 0.005 && (
+                                <>
+                                  {' — '}
+                                  <span style={{ fontWeight: 600, color: JOB_ACCOUNT_TEAL.text, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(row.owedOnJobAccount)}</span>{' '}
+                                  of it on the job account (the house&rsquo;s recourse is the owner)
+                                </>
+                              )}
+                              . Invoice detail and payments live on the Supply Houses tab.
                             </div>
                           )}
                         </div>

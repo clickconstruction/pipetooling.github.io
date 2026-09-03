@@ -18,6 +18,8 @@ export interface JobAccountsInvoiceInput {
   amount: number | null
   is_paid: boolean
   due_date: string | null
+  /** Invoice rides on the house's job account — unpaid balance is the property owner's exposure, not ours. */
+  on_job_account: boolean
 }
 
 export interface JobAccountsAllocationInput {
@@ -46,6 +48,8 @@ export interface JobAccountHouseGroup {
   oldestUnpaidBucket: AgingBucketKey | null
   paid: number
   owed: number
+  /** Portion of `owed` on the house's job account (owner-secured). */
+  owedOnJobAccount: number
 }
 
 export interface JobAccountsRow {
@@ -59,7 +63,14 @@ export interface JobAccountsRow {
   paidIn: number
   suppliersPaid: number
   suppliersOwed: number
+  /**
+   * Aging of owed dollars NOT on a job account — job-account owed dollars are
+   * excluded (the house's collection path is the owner, so they don't join the
+   * past-due heat) and reported separately in `owedOnJobAccount`.
+   */
   owedBuckets: Record<AgingBucketKey, number>
+  /** Portion of suppliersOwed on job accounts (owner-secured). */
+  owedOnJobAccount: number
   /** Supplier balance covered by money already received: min(suppliersOwed, paidIn). */
   held: number
   /** paidIn / billed clamped to [0, 1]; null when nothing billed. */
@@ -82,6 +93,16 @@ export interface JobAccountsView {
   /** Unpaid invoices allocated to neither a job nor a bid — dollars missing from the rows. */
   unallocatedTotal: number
   unallocatedCount: number
+  /** Owed dollars on job accounts across all rows (owner-secured slice of every "owed" figure). */
+  onJobAccountTotal: number
+  /** Rows with any owed job-account dollars. */
+  onJobAccountJobs: number
+  /**
+   * Slice of holdingTotal secured by job accounts. Attribution is job-account
+   * first: per owe_suppliers row, min(owedOnJobAccount, held) — when held is
+   * less than owed, the secured dollars are counted as held before our own.
+   */
+  holdingOnJobAccount: number
 }
 
 function emptyBuckets(): Record<AgingBucketKey, number> {
@@ -139,6 +160,7 @@ export function buildJobAccountsView(
     suppliersPaid: number
     suppliersOwed: number
     owedBuckets: Record<AgingBucketKey, number>
+    owedOnJobAccount: number
     invoiceCount: number
     houses: Map<string, JobAccountHouseGroup>
   }
@@ -161,6 +183,7 @@ export function buildJobAccountsView(
         suppliersPaid: 0,
         suppliersOwed: 0,
         owedBuckets: emptyBuckets(),
+        owedOnJobAccount: 0,
         invoiceCount: 0,
         houses: new Map(),
       }
@@ -178,6 +201,7 @@ export function buildJobAccountsView(
         oldestUnpaidBucket: null,
         paid: 0,
         owed: 0,
+        owedOnJobAccount: 0,
       }
       acc.houses.set(inv.supply_house_id, group)
     }
@@ -187,7 +211,12 @@ export function buildJobAccountsView(
       group.paid += allocated
     } else {
       acc.suppliersOwed += allocated
-      acc.owedBuckets[agingBucketFor(inv.due_date, todayYmd)] += allocated
+      if (inv.on_job_account) {
+        acc.owedOnJobAccount += allocated
+        group.owedOnJobAccount += allocated
+      } else {
+        acc.owedBuckets[agingBucketFor(inv.due_date, todayYmd)] += allocated
+      }
       group.owed += allocated
       group.unpaidCount++
       if (inv.due_date && (!group.oldestUnpaidDueYmd || inv.due_date < group.oldestUnpaidDueYmd)) {
@@ -221,6 +250,7 @@ export function buildJobAccountsView(
       suppliersPaid: acc.suppliersPaid,
       suppliersOwed: acc.suppliersOwed,
       owedBuckets: acc.owedBuckets,
+      owedOnJobAccount: acc.owedOnJobAccount,
       held: Math.min(acc.suppliersOwed, Math.max(0, paidIn)),
       customerPaidFraction: billed > EPSILON ? Math.min(1, Math.max(0, paidIn / billed)) : null,
       status,
@@ -246,10 +276,18 @@ export function buildJobAccountsView(
   let floatingJobs = 0
   let awaitingJobs = 0
   let settledJobs = 0
+  let onJobAccountTotal = 0
+  let onJobAccountJobs = 0
+  let holdingOnJobAccount = 0
   for (const row of rows) {
+    if (row.owedOnJobAccount > EPSILON) {
+      onJobAccountTotal += row.owedOnJobAccount
+      onJobAccountJobs++
+    }
     if (row.status === 'owe_suppliers') {
       holdingTotal += row.held
       holdingJobs++
+      holdingOnJobAccount += Math.min(row.owedOnJobAccount, row.held)
     } else if (row.status === 'floating') {
       floatingTotal += row.suppliersPaid
       floatingJobs++
@@ -270,5 +308,8 @@ export function buildJobAccountsView(
     settledJobs,
     unallocatedTotal,
     unallocatedCount,
+    onJobAccountTotal,
+    onJobAccountJobs,
+    holdingOnJobAccount,
   }
 }

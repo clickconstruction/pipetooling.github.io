@@ -41,3 +41,5 @@ Because the app can't see your inbox, the first two paths finish with one honest
 ## Keeping track
 
 Every send is remembered. If a job was shared before, the modal shows a blue **Already shared with … · date** pill — click it to see every previous send with the exact time, contact, and who sent it — sends from someone’s own inbox are tagged "from their inbox". And **Materials → Supply Houses** has a collapsible **Job accounts** section listing every job with an account: the contacts it went to, the last send, and a search box. Click a job there to open its Job Detail.
+
+Once the account is open and invoices start arriving, flag them **On job account** as you enter them — that keeps your payables picture honest about whose exposure an unpaid balance is. See [mark an invoice as on a job account](?g=mark-an-invoice-on-a-job-account).
