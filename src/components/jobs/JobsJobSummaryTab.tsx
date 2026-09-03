@@ -53,6 +53,7 @@ import {
 } from './JobSummaryCostCellDrilldownModal'
 import JobSummaryChargesTimelineChart from './JobSummaryChargesTimelineChart'
 import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedgerToolbar'
+import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
 import type { TallyPartRow } from '../../types/tallyPart'
@@ -474,7 +475,22 @@ export default function JobsJobSummaryTab({
           )}
           <JobSummaryLedgerToolbar view={view} search={jobSummarySearch} setSearch={setJobSummarySearch} showMoney={showTeamLaborAndProfit} />
           {/* Job Summary uses jobSummaryLedgerJobs, not the Stages/Billing/Parts jobs list — do not gate on jobsListLoading or it stays true when users open this tab first. */}
-          {tallyPartsLoading || laborJobsLoading || (jobSummaryLedgerJobs === null && jobSummaryLedgerLoading) ? (
+          {view.prefs.view === 'days' ? (
+            <JobSummaryDaysView
+              ledger={view.ledger}
+              ledgerLoading={view.ledgerLoading}
+              ledgerError={view.ledgerError}
+              jobLabelById={
+                new Map<string, JobSummaryDaysJobLabel>(
+                  (jobSummaryLedgerAllJobs ?? []).map((j) => [
+                    j.id,
+                    { number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', name: (j.job_name ?? '').trim() },
+                  ]),
+                )
+              }
+              showMoney={showTeamLaborAndProfit}
+            />
+          ) : tallyPartsLoading || laborJobsLoading || (jobSummaryLedgerJobs === null && jobSummaryLedgerLoading) ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : jobSummaryData.length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>

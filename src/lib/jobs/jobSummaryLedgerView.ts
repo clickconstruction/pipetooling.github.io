@@ -38,7 +38,11 @@ export type JobSummarySortKey =
   | 'pct'
 export type JobSummarySortDir = 'asc' | 'desc'
 
+/** Jobs = the ledger table; Days = jobs carried per day (v2.2695). */
+export type JobSummaryViewMode = 'jobs' | 'days'
+
 export type JobSummaryViewPrefs = {
+  view: JobSummaryViewMode
   status: JobSummaryStatusFilter
   window: JobSummaryWindowKey
   method: JobOverheadMethod
@@ -49,12 +53,18 @@ export type JobSummaryViewPrefs = {
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
 
 export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
+  view: 'jobs',
   status: 'finished',
   window: 'ytd',
   method: 'day',
   sortKey: 'trueProfit',
   sortDir: 'desc',
 }
+
+export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewMode; label: string; title: string }> = [
+  { key: 'jobs', label: 'Jobs', title: 'One row per job — costs, overhead share, true profit' },
+  { key: 'days', label: 'Days', title: 'One row per day — how many jobs the crew carried, and what a job-day of overhead cost' },
+]
 
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
 const WINDOW_KEYS: readonly JobSummaryWindowKey[] = ['90d', 'ytd', '12mo', 'all']
@@ -82,6 +92,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
   try {
     const p = JSON.parse(raw) as Partial<JobSummaryViewPrefs>
     return {
+      view: p.view === 'days' ? 'days' : 'jobs',
       status: STATUS_KEYS.includes(p.status as JobSummaryStatusFilter) ? (p.status as JobSummaryStatusFilter) : JOB_SUMMARY_VIEW_DEFAULTS.status,
       window: WINDOW_KEYS.includes(p.window as JobSummaryWindowKey) ? (p.window as JobSummaryWindowKey) : JOB_SUMMARY_VIEW_DEFAULTS.window,
       method: METHOD_KEYS.includes(p.method as JobOverheadMethod) ? (p.method as JobOverheadMethod) : JOB_SUMMARY_VIEW_DEFAULTS.method,
