@@ -58,9 +58,17 @@ serve(async (req) => {
       .eq('id', authUser.id)
       .single()
 
-    if (userError || !userData || userData.role !== 'dev') {
+    // Person Desk PR 5 (v2.2713): controllers and pay-approved masters restore too — the
+    // mirror of archive-user's gate.
+    const callerRole = userData?.role as string | undefined
+    let callerAllowed = callerRole === 'dev' || callerRole === 'controller'
+    if (!callerAllowed && callerRole === 'master_technician') {
+      const { data: pam } = await supabase.from('pay_approved_masters').select('master_id').eq('master_id', authUser.id).maybeSingle()
+      callerAllowed = Boolean(pam)
+    }
+    if (userError || !userData || !callerAllowed) {
       return new Response(
-        JSON.stringify({ error: 'Forbidden - Only devs can restore users' }),
+        JSON.stringify({ error: 'Forbidden - Only a dev, a controller, or a pay-approved master can restore users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

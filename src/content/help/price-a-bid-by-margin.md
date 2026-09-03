@@ -2,24 +2,26 @@
 title: price a bid at a target margin
 category: Bids & Estimating
 roles: dev, estimator, master_technician
-keywords: margin, markup, pricing, sale price, apply margin, 50%, price by margin, margin mode, recent margins
+keywords: margin, markup, pricing, sale price, apply margin, 50%, price by margin, margin brush, sweep, recent margins, undo sweep
 ---
 
-On Bids → Pricing (Price Model view), **Margin mode** prices each line at your target margin right where you're reading it — no calculator, no scrolling.
+On **Bids → Pricing**, the **margin brush** prices rows at your target margin right where you're reading them — no calculator, no scrolling back to a toolbar.
 
-## Turn it on
+## Pick up the brush
 
-Flip the **Margin mode** toggle next to {{button:blue|Apply Matching Price Book Entries}}. It stays on for you (per device), and an **Apply margin** column appears between Revenue and Margin/Total.
+Press {{button:outline|🖌 Margin ›}} on the totals strip, left of {{button:blue|Solve ›}}. A purple ring unfolds with the margin box and your **recent margins** as chips — the loaded one lit solid purple. Type a percent or tap a chip; that's the margin the brush carries.
 
-## Price a row
+## Sweep the rows
 
-- Every row with a Takeoffs cost shows your **last-used margin as a chip** — tap {{chip:gray|50%}} and that row's Sale Price becomes cost ÷ (1 − margin), rounded to whole dollars, so the Margin column lands right on your number.
-- The **…** opens a small picker: your three recent margins, each previewing the resulting price ("45% → $6,472"), plus a custom box — type a percent, watch the live preview, press Enter or **→**.
+- **Press and sweep across rows.** Every row the brush crosses is priced at that margin the instant it's touched — cost ÷ (1 − margin), rounded to whole dollars — and the Revenue / Profit / Margin totals move as you go. One motion, many rows.
+- Rows you've held with 📌, fixed-price rows, and rows with no Takeoffs cost are never painted — there's nothing to price *from*; set those by hand.
+- Let go and the sweep saves in one batch. {{button:outline|↩ Undo sweep}} takes the whole stroke back.
+- **‹** or Esc puts the brush down.
 
-Your three recents follow you from bid to bid on that device, most recent first. Rows without a Takeoffs cost read "no cost" — there's nothing to price *from*; set those by hand.
+Your three most recent margins follow you from bid to bid on that device, most recent first, and the margin you just swept with becomes the top chip.
 
 :::example Walking a bid
-34 costed rows. Tap 50% down the big fixtures, then … → 40% on the fittings — every application happens in the row, and the Margin column confirms each one instantly.
+34 costed rows. Load 50%, sweep down the big fixtures; load 40%, sweep the fittings — every row lands on its number as you pass it, and the Margin column confirms each one instantly.
 :::
 
-Every price Margin mode writes is a normal custom price: edit any of them by hand afterward, or use the row's **Reset** to fall back to the price book. Margin here means profit ÷ revenue — the same definition as the Margin column and the line breakdown popup.
+Every price the brush writes is a normal saved price: edit any of them by hand afterward, or use the row's **Reset** to fall back to the price book. Margin here means profit ÷ revenue — the same definition as the Margin column and the ⓘ line breakdown.

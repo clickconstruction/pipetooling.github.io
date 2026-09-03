@@ -1,6 +1,6 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { ymdAddDays } from '../../utils/dateUtils'
+import { denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import {
   buildOtherJobsLaborByDay,
@@ -11,7 +11,7 @@ import {
 import { loadOfficePartsUsdByDayExcludingInternalTransfer } from '../overheadPartsBucketLoader'
 import { bucketInvoiceRevenueByAppTzDay } from '../overheadAvgDailyCost'
 import { loadOverheadPoolSnapshotInputs, type OverheadPoolSnapshotInputs } from '../overheadPoolSnapshot'
-import { buildJobDayLedger, type JobDayLedger, type JobDayLedgerJobLabel } from './jobDayLedger'
+import { buildJobDayLedger, type JobDayLedger, type JobDayLedgerJobLabel, type JobDayLedgerStatusSpan } from './jobDayLedger'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 /**
@@ -119,13 +119,32 @@ export async function loadJobDayLedger(args: {
   const touchedJobIds = [...new Set([...field.detailByDay.values()].flat().map((l) => l.jobLedgerId))]
   const priorHoursByJob = new Map<string, number>()
   const jobLabels = new Map<string, JobDayLedgerJobLabel>()
+  const statusSpansByJob = new Map<string, JobDayLedgerStatusSpan>()
   if (touchedJobIds.length > 0) {
-    const labelRows = (await fetchAllRowsChunkedIn(
-      touchedJobIds,
-      (chunk, from, to) => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name').in('id', chunk).order('id').range(from, to),
-      'job day ledger job labels',
-    ).catch(() => [])) as Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null }>
-    for (const j of labelRows) jobLabels.set(j.id, { number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', name: (j.job_name ?? '').trim() })
+    const [labelRows, eventRows] = await Promise.all([
+      fetchAllRowsChunkedIn(
+        touchedJobIds,
+        (chunk, from, to) => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, status').in('id', chunk).order('id').range(from, to),
+        'job day ledger job labels',
+      ).catch(() => []) as Promise<Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; status: string | null }>>,
+      // Working → Billed/Paid moves for the Timeline's status definition (v2.2711); fails soft to no spans.
+      fetchAllRowsChunkedIn(
+        touchedJobIds,
+        (chunk, from, to) => supabase.from('job_status_events').select('job_id, to_status, changed_at').in('job_id', chunk).order('changed_at').range(from, to),
+        'job day ledger status events',
+      ).catch(() => []) as Promise<Array<{ job_id: string; to_status: string; changed_at: string }>>,
+    ])
+    for (const j of labelRows) jobLabels.set(j.id, { number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', name: (j.job_name ?? '').trim(), status: j.status })
+    const sortedEvents = [...eventRows].sort((a, b) => a.changed_at.localeCompare(b.changed_at))
+    for (const e of sortedEvents) {
+      const ymd = denverCalendarDayKey(Date.parse(e.changed_at))
+      const span = statusSpansByJob.get(e.job_id)
+      if (!span) {
+        if (e.to_status === 'working' || e.to_status === 'ready_to_bill' || e.to_status === 'billed' || e.to_status === 'paid') statusSpansByJob.set(e.job_id, { startYmd: ymd, endYmd: e.to_status === 'billed' || e.to_status === 'paid' ? ymd : null })
+      } else if (span.endYmd == null && (e.to_status === 'billed' || e.to_status === 'paid')) {
+        span.endYmd = ymd
+      }
+    }
     const priorRows = (await fetchAllRowsChunkedIn(
       touchedJobIds,
       (chunk, from, to) =>
@@ -154,6 +173,7 @@ export async function loadJobDayLedger(args: {
     poolUsdByDay,
     priorHoursByJob,
     jobLabels,
+    statusSpansByJob,
     pendingFieldSessions,
     pendingFieldHours,
     invoicedRevenueUsd,

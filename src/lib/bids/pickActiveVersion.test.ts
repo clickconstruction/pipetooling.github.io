@@ -54,6 +54,25 @@ describe('deriveActivePricingId', () => {
     expect(deriveActivePricingId({ activeVersionId: null, bidPricings: multiUnsplit, legacyFallbackPricingId: null })).toBe('u1')
   })
 
+  it('prefers the template that holds the bid’s rows over the viewer’s default (v2.2720)', () => {
+    // BP190: no copy, no saved pointer, rows keyed to Default; the viewer's last pick is WENDI.
+    expect(
+      deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: null, legacyDataPricingId: 'tDefault', defaultTemplatePricingId: 'tWendi' }),
+    ).toBe('tDefault')
+    // A saved pointer still wins over the data-derived template.
+    expect(
+      deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: 'tSaved', legacyDataPricingId: 'tDefault', defaultTemplatePricingId: 'tWendi' }),
+    ).toBe('tSaved')
+    // No legacy rows → the viewer's default as before.
+    expect(
+      deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: null, legacyDataPricingId: null, defaultTemplatePricingId: 'tWendi' }),
+    ).toBe('tWendi')
+    // A bid that owns a copy never consults it.
+    expect(
+      deriveActivePricingId({ activeVersionId: null, bidPricings: pricings, legacyFallbackPricingId: null, legacyDataPricingId: 'tDefault', defaultTemplatePricingId: 'tWendi' }),
+    ).toBe('pLegacy')
+  })
+
   it('returns null when the active version has no pricing facet', () => {
     expect(deriveActivePricingId({ activeVersionId: 'vNoPricing', bidPricings: pricings, legacyFallbackPricingId: 'x' })).toBeNull()
   })

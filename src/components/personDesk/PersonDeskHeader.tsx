@@ -54,6 +54,8 @@ export function PersonDeskHeader({
   onChanged,
   onClose,
   placeholderName,
+  onOpenFlow,
+  hideClose = false,
 }: {
   personKey: PersonKey | null
   user: PersonDeskUserRow | null
@@ -64,7 +66,12 @@ export function PersonDeskHeader({
   onChanged: () => void
   onClose: () => void
   placeholderName: string | null
+  /** PR 2: the Start / End employment checklists (pay roles). */
+  onOpenFlow?: (mode: 'start' | 'end') => void
+  /** PR 3: the page variant has no close button. */
+  hideClose?: boolean
 }) {
+  const [menuOpen, setMenuOpen] = useState(false)
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -223,9 +230,11 @@ export function PersonDeskHeader({
             {[roleLabel, ...trades].filter(Boolean).join(' · ')}
             {personKey?.archived ? ' · archived' : ''}
           </span>
-          <button type="button" aria-label="Close" onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)', padding: '0 0.15rem' }}>
-            ×
-          </button>
+          {hideClose ? null : (
+            <button type="button" aria-label="Close" onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)', padding: '0 0.15rem' }}>
+              ×
+            </button>
+          )}
         </div>
         {personKey ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem', fontSize: '0.75rem', color: 'var(--text-700)', marginTop: '0.2rem' }}>
@@ -299,6 +308,23 @@ export function PersonDeskHeader({
             <button type="button" style={BTN_QUIET} onClick={() => void imitate()} title="Sign in as this person (dev only)">
               Imitate
             </button>
+          ) : null}
+          {onOpenFlow && viewer.canAccessPay && personKey ? (
+            <span style={{ position: 'relative' }}>
+              <button type="button" style={BTN_QUIET} aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)} title="Start or end employment">
+                ⋯
+              </button>
+              {menuOpen ? (
+                <div role="menu" style={{ position: 'absolute', top: '110%', left: 0, zIndex: 5, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', minWidth: 190, padding: '0.25rem', display: 'flex', flexDirection: 'column' }}>
+                  <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-700)' }} onClick={() => { setMenuOpen(false); onOpenFlow('start') }}>
+                    Start employment…
+                  </button>
+                  <button type="button" role="menuitem" style={{ ...BTN_QUIET, border: 'none', justifyContent: 'flex-start', color: 'var(--text-red-600)' }} onClick={() => { setMenuOpen(false); onOpenFlow('end') }}>
+                    End employment…
+                  </button>
+                </div>
+              ) : null}
+            </span>
           ) : null}
         </div>
       </div>

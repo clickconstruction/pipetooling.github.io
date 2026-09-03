@@ -825,7 +825,7 @@ export function BidsPricingTab({
   /** The ▾ beside Solve — holds the rarely-used "Price unpriced only" (batch 2, artifact 11c68afc). */
   const [solveMenuOpen, setSolveMenuOpen] = useState(false)
   const solveMenuRef = useRef<HTMLSpanElement | null>(null)
-  // v2.2385 (Wendi): the whole solver folds behind a blue "Solve ›" — open, its
+  // v2.2385 (Wendi): the whole solver folds behind a blue "Solver ›" — open, its
   // controls (slider back inline, margin box, target total, Solve) sit inside a
   // blue ring so they read as one unit; ‹ folds them away. Device preference,
   // folded by default. This replaces v2.2378's slider-behind-▾ popover.
@@ -1140,48 +1140,6 @@ export function BidsPricingTab({
 
   /* ---- Price by margin (v2.1769; row-by-row Margin mode v2.1772) ---- */
   const [recentMargins, setRecentMargins] = useState<number[]>(() => loadRecentMargins(window.localStorage))
-  /** The row whose "…" picker is open. */
-  const [marginPickerRow, setMarginPickerRow] = useState<{ countRowId: string; fixture: string; cost: number; count: number } | null>(null)
-  const [marginPickerCustom, setMarginPickerCustom] = useState('')
-
-  /** One-row apply (chip tap or picker choice) — no overwrite confirm; a single deliberate row is trivially re-done. */
-  async function applyMarginToSingleRow(target: { countRowId: string; cost: number; count: number }, marginRaw: string | number) {
-    const m = normalizeMarginTarget(marginRaw)
-    if (m == null) {
-      showToast('Enter a margin between 1 and 95.', 'error')
-      return
-    }
-    const bidId = selectedBidForPricing?.id
-    const versionId = selectedPricingVersionId
-    if (!bidId || !versionId) return
-    const price = unitPriceForTargetMargin(target.cost, target.count, m)
-    if (price == null) return
-    setApplyingMargin(true)
-    try {
-      const err = await writeUnitPriceOverrideRow(target.countRowId, price)
-      if (err) setError(err.message)
-      else {
-        // The applied price is now the saved price — drop the row from any solver
-        // preview (and its veto) so a later Apply can't overwrite it (New view).
-        if (wbPreview && target.countRowId in wbPreview) {
-          const nextPreview = { ...wbPreview }
-          delete nextPreview[target.countRowId]
-          const nextVeto = new Set(wbPreviewVeto)
-          nextVeto.delete(target.countRowId)
-          setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null, nextVeto)
-        }
-        await loadBidPricingAssignments(bidId, versionId)
-      }
-      const next = updateRecentMargins(recentMargins, m)
-      setRecentMargins(next)
-      saveRecentMargins(window.localStorage, next)
-    } finally {
-      setApplyingMargin(false)
-      setMarginPickerRow(null)
-      setMarginPickerCustom('')
-    }
-  }
-  const [applyingMargin, setApplyingMargin] = useState(false)
 
   function openEditPricingVersion(v: PriceBookVersion) {
     setEditingPricingVersion(v)
@@ -1926,7 +1884,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-solver',
       title: 'Solve to a number',
-      body: 'Press the blue Solve › to unfold the solver — its blue ring holds the 20–95 slider (re-prices live as you drag), the typed margin, and the whole-bid target total; ‹ folds it away, and your choice is remembered. Hand-set prices on no-cost rows stack on top. The ▾ beside Solve holds "Price unpriced only". Apply writes the drafts; Discard throws them away.',
+      body: 'Press the blue Solver › to unfold the solver — its blue ring holds the 20–95 slider (re-prices live as you drag), the typed margin, and the whole-bid target total; ‹ folds it away, and your choice is remembered. Hand-set prices on no-cost rows stack on top. The ▾ beside Solver holds "Price unpriced only". Apply writes the drafts; Discard throws them away.',
     },
     {
       anchor: 'workbench-rows',
@@ -3525,7 +3483,7 @@ export function BidsPricingTab({
                         const rightCluster = (children: React.ReactNode) => (
                           <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto', minWidth: 0 }}>{children}</span>
                         )
-                        // Margin brush (v2.2401, Wendi): the brush lives LEFT of Solve › — its own
+                        // Margin brush (v2.2401, Wendi): the brush lives LEFT of Solver › — its own
                         // purple ring when armed, mirroring the solver's blue one.
                         // Font Awesome Free "brush" (fontawesome.com/license/free, CC BY 4.0) — same glyph as the armed cursor.
                         const brushGlyph = (
@@ -3639,7 +3597,7 @@ export function BidsPricingTab({
                                     title="Open the solver — margin, target total, Solve"
                                     style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.32rem 0.75rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1 }}
                                   >
-                                    Solve ›
+                                    Solver ›
                                   </button>
                                   {restoredChip}
                                   {previewControl}
@@ -4312,7 +4270,7 @@ export function BidsPricingTab({
                                   )}
                                 </td>
                                 {/* v2.2401: the Apply-margin column retired — the margin brush (strip, left
-                                    of Solve ›) is the per-row/per-sweep way to price at a margin here. */}
+                                    of Solver ›) is the per-row/per-sweep way to price at a margin here. */}
                                 <td style={{ padding: '0.35rem 0.5rem 0.35rem 0.2rem', borderBottom: '1px solid var(--border)' }}>
                                   <button
                                     type="button"
@@ -4516,86 +4474,6 @@ export function BidsPricingTab({
             }
           </div>
         )}
-        {marginPickerRow ? (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Margin for ${marginPickerRow.fixture || 'row'}`}
-            style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))' }}
-            onClick={() => setMarginPickerRow(null)}
-          >
-            <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, padding: '1rem 1.25rem', width: 'min(320px, calc(100vw - 2rem))', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                <h2 style={{ margin: 0, fontSize: '1rem' }}>Margin for {marginPickerRow.fixture || 'row'}</h2>
-                <button
-                  type="button"
-                  onClick={() => setMarginPickerRow(null)}
-                  aria-label="Close margin picker"
-                  style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 0.25rem' }}
-                >
-                  ✕
-                </button>
-              </div>
-              <p style={{ margin: '0.1rem 0 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                {marginPickerRow.count > 1 ? `Row cost $${formatCurrency(marginPickerRow.cost)} across ${marginPickerRow.count} units` : `Unit cost $${formatCurrency(marginPickerRow.cost)}`}
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                {recentMargins.map((v) => {
-                  const preview = unitPriceForTargetMargin(marginPickerRow.cost, marginPickerRow.count, v)
-                  return (
-                    <button
-                      key={v}
-                      type="button"
-                      disabled={applyingMargin}
-                      onClick={() => void applyMarginToSingleRow(marginPickerRow, v)}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
-                    >
-                      <b>{v}%</b>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{preview != null ? `→ $${formatCurrency(preview)}${marginPickerRow.count > 1 ? ' /unit' : ''}` : '—'}</span>
-                    </button>
-                  )
-                })}
-              </div>
-              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.7rem', alignItems: 'center' }}>
-                <input
-                  type="number"
-                  min={1}
-                  max={95}
-                  step={1}
-                  value={marginPickerCustom}
-                  autoFocus={recentMargins.length === 0}
-                  onChange={(e) => setMarginPickerCustom(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void applyMarginToSingleRow(marginPickerRow, marginPickerCustom)
-                    if (e.key === 'Escape') {
-                      e.stopPropagation()
-                      setMarginPickerRow(null)
-                    }
-                  }}
-                  placeholder="Custom %"
-                  aria-label="Custom margin percent"
-                  style={{ flex: 1, padding: '0.35rem 0.45rem', fontSize: '0.85rem', textAlign: 'right', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
-                />
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', minWidth: '4.5rem', textAlign: 'right' }}>
-                  {(() => {
-                    const m = normalizeMarginTarget(marginPickerCustom)
-                    const preview = m != null ? unitPriceForTargetMargin(marginPickerRow.cost, marginPickerRow.count, m) : null
-                    return preview != null ? `→ $${formatCurrency(preview)}` : '—'
-                  })()}
-                </span>
-                <button
-                  type="button"
-                  disabled={applyingMargin}
-                  onClick={() => void applyMarginToSingleRow(marginPickerRow, marginPickerCustom)}
-                  aria-label="Apply the custom margin"
-                  style={{ padding: '0.35rem 0.7rem', fontSize: '0.85rem', fontWeight: 700, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
-                >
-                  →
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
         {pricingBreakdownRow && (() => {
           const b = pricingBreakdownRow
           const profit = b.revenue - b.cost

@@ -10,7 +10,7 @@ import { useJobContractCoverage } from '../../hooks/useJobContractCoverage'
 import { jobContractChipLabel, jobContractChipTitle } from '../../lib/jobs/jobContractCoverage'
 import { JobContractChip } from './JobContractChip'
 import JobContractModal from './JobContractModal'
-import JobContractRecordModal from './JobContractRecordModal'
+import JobSignedAgreementModal from './JobSignedAgreementModal'
 
 const btn: React.CSSProperties = {
   padding: '0.25rem 0.6rem',
@@ -39,9 +39,10 @@ export default function JobContractStrip({
 
   const signedRow = coverage.kind === 'signed' && coverage.contractId ? rows.find((r) => r.id === coverage.contractId) ?? null : null
   const label = jobContractChipLabel(coverage)
+  const openPrimary = () => (coverage.kind === 'signed' ? setRecordOpen(true) : setModalOpen(true))
   const controls = (
     <>
-      <JobContractChip coverage={coverage} onClick={() => setModalOpen(true)} />
+      <JobContractChip coverage={coverage} onClick={openPrimary} />
       {coverage.kind === 'none' || coverage.kind === 'draft' ? (
         <button type="button" style={{ ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }} onClick={() => setModalOpen(true)}>
           Send contract
@@ -50,7 +51,7 @@ export default function JobContractStrip({
         <button type="button" style={btn} onClick={() => setModalOpen(true)}>
           Resend / manage
         </button>
-      ) : signedRow ? (
+      ) : coverage.kind === 'signed' ? (
         <button type="button" style={btn} onClick={() => setRecordOpen(true)}>
           View record
         </button>
@@ -64,7 +65,17 @@ export default function JobContractStrip({
         job={job}
         onChanged={() => void reload()}
       />
-      <JobContractRecordModal open={recordOpen} onClose={() => setRecordOpen(false)} row={signedRow} job={job} />
+      <JobSignedAgreementModal
+        open={recordOpen}
+        onClose={() => setRecordOpen(false)}
+        job={job}
+        coverage={coverage.kind === 'signed' ? coverage : null}
+        contractRow={signedRow}
+        onStartNewAgreement={() => {
+          setRecordOpen(false)
+          setModalOpen(true)
+        }}
+      />
     </>
   )
   if (variant === 'inline') return <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>{controls}</span>

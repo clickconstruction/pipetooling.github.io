@@ -120,6 +120,25 @@ export function PersonDeskAccessSection({
     }
   }
 
+  async function archiveDirect() {
+    if (!user?.email) return
+    const ok = await confirmDialog({ message: `Archive ${user.name ?? user.email}? They can no longer sign in and disappear from rosters; the account can be restored later. If they own customers, ask a dev to reassign them first.`, confirmLabel: 'Archive', danger: true })
+    if (!ok) return
+    setBusy('archive')
+    try {
+      const { data, error } = await supabase.functions.invoke('archive-user', { body: { email: user.email.trim(), name: (user.name ?? '').trim() } })
+      if (error) throw error
+      const err = (data as { error?: string } | null)?.error
+      if (err) throw new Error(err)
+      showToast(`${user.name ?? user.email} archived`, 'success')
+      onChanged()
+    } catch (e) {
+      showToast(await fnErrorMessage(e), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   async function restore() {
     if (!user) return
     setBusy('restore')
@@ -194,8 +213,14 @@ export function PersonDeskAccessSection({
                 {busy === 'restore' ? 'Restoring…' : 'Restore'}
               </button>
             ) : (
-              <button type="button" style={BTN_RED} onClick={() => accountsModal?.openActiveAccounts({ onDataChanged: onChanged })} title="Archive runs through the Active Accounts row so customers can be reassigned on the way out">
-                Archive…
+              <button
+                type="button"
+                style={deskBtn(BTN_RED, busy != null)}
+                disabled={busy != null}
+                onClick={() => (viewer.isDev ? accountsModal?.openActiveAccounts({ onDataChanged: onChanged }) : void archiveDirect())}
+                title={viewer.isDev ? 'Archive runs through the Active Accounts row so customers can be reassigned on the way out' : 'Archive the account — they can no longer sign in; a dev can restore it'}
+              >
+                {busy === 'archive' ? 'Archiving…' : 'Archive…'}
               </button>
             )
           ) : (
