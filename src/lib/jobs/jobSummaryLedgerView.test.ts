@@ -80,6 +80,7 @@ describe('prefs + window', () => {
 
   it('computes window starts', () => {
     expect(jobSummaryWindowStartYmd('2026-09-03', '90d', ymdAddDays)).toBe('2026-06-06')
+    expect(jobSummaryWindowStartYmd('2026-09-03', '6mo', ymdAddDays)).toBe('2026-03-06')
     expect(jobSummaryWindowStartYmd('2026-09-03', 'ytd', ymdAddDays)).toBe('2026-01-01')
     expect(jobSummaryWindowStartYmd('2026-09-03', '12mo', ymdAddDays)).toBe('2025-09-04')
     expect(jobSummaryWindowStartYmd('2026-09-03', 'all', ymdAddDays)).toBe('2025-01-01')

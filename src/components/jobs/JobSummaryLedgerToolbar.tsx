@@ -109,7 +109,7 @@ export default function JobSummaryLedgerToolbar({
           </span>
         ) : null}
       </div>
-      {prefs.view === 'days' ? null : (
+      {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
         <Tile k="Jobs" v={totals.jobs} s={`${JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === prefs.status)?.label.toLowerCase() ?? ''} · ${JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === prefs.window)?.title.toLowerCase() ?? ''}`} />
         <Tile k="Revenue" v={money(totals.revenueUsd)} s={totals.earnedRows > 0 ? `${totals.earnedRows} in-progress shown as earned` : 'contract on jobs_ledger'} />
@@ -129,7 +129,7 @@ export default function JobSummaryLedgerToolbar({
         )}
       </div>
       )}
-      {prefs.view === 'days' ? null : (
+      {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
         {totals.noRevenueJobs > 0 ? <span style={chip}>⚠ {totals.noRevenueJobs} {totals.noRevenueJobs === 1 ? 'job has' : 'jobs have'} no contract $</span> : null}
         {totals.noPctJobs > 0 ? <span style={chip}>⚠ {totals.noPctJobs} {totals.noPctJobs === 1 ? 'job has' : 'jobs have'} no % complete</span> : null}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
+import { pickLegacyDataTemplateId } from '../lib/bids/legacyTemplatePricing'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
 import { expandTemplate } from '../lib/materialPOUtils'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
@@ -153,6 +154,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   const [templatePriceBookVersions, setTemplatePriceBookVersions] = useState<PriceBookVersion[]>([])
   // Per-user "last selected" price-book template for the current service type (cross-device pref).
   const [userLastPriceBookTemplateId, setUserLastPriceBookTemplateId] = useState<string | null>(null)
+  // v2.2720: the price_book_version_id of every assignment / custom-price row on the current bid,
+  // loaded only when the bid owns no pricing copy. Lets the fallback prefer the shared template
+  // that actually holds a legacy bid's prices over the viewer's last-picked book.
+  const [legacyPricingRefs, setLegacyPricingRefs] = useState<{ bidId: string; versionIds: string[] } | null>(null)
   const [templatesMode, setTemplatesMode] = useState(false)
   const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntryWithFixture[]>([])
   const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
@@ -840,6 +845,39 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setPriceBookEntries(entries)
   }
 
+  /**
+   * v2.2720: which pricing versions this bid's assignment / custom-price rows point at. Cheap
+   * (ids only) and non-fatal — a failure just means the fallback behaves as before.
+   */
+  async function loadLegacyPricingRefs(bidId: string, signal?: AbortSignal): Promise<string[]> {
+    try {
+      const [a, c] = await Promise.all([
+        withSupabaseRetry(
+          async () => {
+            let q = supabase.from('bid_pricing_assignments').select('price_book_version_id').eq('bid_id', bidId)
+            if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+            return await q
+          },
+          'fetch bid pricing version refs',
+        ),
+        withSupabaseRetry(
+          async () => {
+            let q = supabase.from('bid_count_row_custom_prices').select('price_book_version_id').eq('bid_id', bidId)
+            if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+            return await q
+          },
+          'fetch bid custom price version refs',
+        ),
+      ])
+      const rows = [...((a as { price_book_version_id: string | null }[] | null) ?? []), ...((c as { price_book_version_id: string | null }[] | null) ?? [])]
+      const versionIds = rows.map((r) => r.price_book_version_id).filter((id): id is string => !!id)
+      if (!signal?.aborted) setLegacyPricingRefs({ bidId, versionIds })
+      return versionIds
+    } catch {
+      return []
+    }
+  }
+
   async function loadBidPricingAssignments(bidId: string, versionId: string | null, signal?: AbortSignal) {
     if (versionId == null) {
       setBidPricingAssignments([])
@@ -1181,6 +1219,16 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     })
   }
 
+  /** v2.2720: the shared template holding this bid's legacy rows (see `pickLegacyDataTemplateId`), from explicit refs or the loaded state. */
+  function legacyDataTemplateIdFor(refs: string[] | null, pricings: { id: string }[]): string | null {
+    const ids = refs ?? (legacyPricingRefs && legacyPricingRefs.bidId === selectedBidForPricing?.id ? legacyPricingRefs.versionIds : [])
+    return pickLegacyDataTemplateId({
+      referencedVersionIds: ids,
+      templateIds: templatePriceBookVersions.map((t) => t.id),
+      bidPricingIds: pricings.map((p) => p.id),
+    })
+  }
+
   // The default template id (user's last pick → "Default" → first), exposed so the page can feed
   // it to BidVersionPicker's `fallbackPricingSourceId` instead of re-deriving it inline.
   const defaultPriceBookTemplateId = pickDefaultTemplatePricingId()
@@ -1212,6 +1260,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         activeVersionId: versionId,
         bidPricings: pricings,
         legacyFallbackPricingId: selectedBidForPricing?.selected_price_book_version_id ?? null,
+        legacyDataPricingId: legacyDataTemplateIdFor(null, pricings),
         defaultTemplatePricingId: pickDefaultTemplatePricingId(),
         versionStarredPricingId: versionStarredId(bidVersions, versionId),
       }),
@@ -1435,6 +1484,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         // effect mid-flight — dropped setSelectedPricingVersionId forever: the
         // re-run saw bidJustChanged=false and reloaded with a null pricing id,
         // the split-bid empty state that only a reload or Version click fixed.
+        // v2.2720: an unsplit bid with no copy may still hold rows keyed to a shared template
+        // (pre-copy pricing). Find that template before choosing a fallback book.
+        const legacyRefs = versions.length === 0 && pricings.length === 0 ? await loadLegacyPricingRefs(bidId, signal) : []
+        if (signal.aborted) return
         pricingBidIdRef.current = bidId
         const activeVersionId = pickActiveVersion({ savedVersionId: savedBidVersionId, bidVersions: versions })
         setSelectedBidVersionId(bidId, activeVersionId)
@@ -1442,6 +1495,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           activeVersionId,
           bidPricings: pricings,
           legacyFallbackPricingId: legacyPricingFallback,
+          legacyDataPricingId: legacyDataTemplateIdFor(legacyRefs, pricings),
           defaultTemplatePricingId: pickDefaultTemplatePricingId(),
           versionStarredPricingId: versionStarredId(versions, activeVersionId),
         })
@@ -1496,11 +1550,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       activeVersionId: null,
       bidPricings: priceBookVersions,
       legacyFallbackPricingId: selectedBidForPricing.selected_price_book_version_id ?? null,
+      legacyDataPricingId: legacyDataTemplateIdFor(null, priceBookVersions),
       defaultTemplatePricingId: pickDefaultTemplatePricingId(),
     })
     if (fallback) setSelectedPricingVersionId(fallback)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, templatePriceBookVersions, userLastPriceBookTemplateId, selectedPricingVersionId, selectedBidVersionId, selectedBidForPricing?.id])
+  }, [activeTab, templatePriceBookVersions, userLastPriceBookTemplateId, legacyPricingRefs, selectedPricingVersionId, selectedBidVersionId, selectedBidForPricing?.id])
 
   useEffect(() => {
     if (activeTab !== 'pricing' && activeTab !== 'labor' && activeTab !== 'bid-costs') return

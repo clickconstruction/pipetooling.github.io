@@ -481,6 +481,10 @@ verify_jwt = false
 [functions.remind-job-contracts]
 verify_jwt = false
 
+# Signed agreement view PR B (v2.2712): share validates the staff JWT in-body.
+[functions.share-job-contract]
+verify_jwt = false
+
 [functions.send-estimate-to-customer]
 verify_jwt = false
 

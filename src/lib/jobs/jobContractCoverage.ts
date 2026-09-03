@@ -29,6 +29,7 @@ export type JobContractRowLike = {
 
 /** A customer-accepted estimates row — the rails every online signature already lands on. */
 export type SignedEstimateLike = {
+  id: string
   job_ledger_id: string | null
   bid_id: string | null
   doc_kind: string
@@ -59,6 +60,8 @@ export type JobContractCoverage =
       signerName: string | null
       contractId: string | null
       estimateNumber: number | null
+      /** The estimates row behind an estimate / bid-room signature (opens the acceptance record). */
+      estimateId: string | null
     }
 
 export type JobContractCoverageOptions = {
@@ -119,6 +122,7 @@ export function buildJobContractCoverage(
         signerName: signed.signer_printed_name,
         contractId: signed.id,
         estimateNumber: null,
+        estimateId: null,
       })
       continue
     }
@@ -131,6 +135,7 @@ export function buildJobContractCoverage(
         signerName: est.acceptor_printed_name,
         contractId: null,
         estimateNumber: est.estimate_number,
+        estimateId: est.id,
       })
       continue
     }
@@ -143,6 +148,7 @@ export function buildJobContractCoverage(
         signerName: bid.acceptor_printed_name,
         contractId: null,
         estimateNumber: bid.estimate_number,
+        estimateId: bid.id,
       })
       continue
     }

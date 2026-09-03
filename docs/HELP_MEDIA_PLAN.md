@@ -55,5 +55,6 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Job Mode clock + report | ✅ 2026-08-09 (clock flow; report flow not recorded — send would email) | ✅ |
 | Takeoff assembly | ✅ 2026-08-09 | ✅ |
 | Job contract: chip → modal → Copy link (`get-a-job-contract-signed.gif`, desktop, 1.8 MB, Chrome recording as dev on Job 922 — the minted link was voided afterwards) | ✅ 2026-09-03 | ✅ |
+| Signed agreement view: green chip → record → Share ▾ → Email a copy… (`get-a-job-contract-signed-view.gif`, desktop, 1.7 MB, Chrome recording as dev on Job 1005; the sheet was cancelled, nothing sent) | ✅ 2026-09-03 | ✅ |
 
 (The one existing recording, `settings-basics.gif` in `settings-basics.md`, predates this plan and stays.)

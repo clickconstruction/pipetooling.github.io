@@ -30,7 +30,8 @@ import {
 } from '../lib/jobs/lienReleaseTracking'
 import { lienReleaseChipColors, lienReleaseChips, lienReleaseSignatureAuditLine, lienReleaseStatus } from '../lib/jobs/lienReleaseLifecycle'
 import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
-import JobContractRecordModal from '../components/jobs/JobContractRecordModal'
+import JobSignedAgreementModal from '../components/jobs/JobSignedAgreementModal'
+import { buildJobContractRecordHtml } from '../components/jobs/JobContractRecordModal'
 import { buildLienWaiverPrintHtml, type LienWaiverSignature } from '../lib/jobsDocuments/lienWaiverRelease'
 import { openHtmlPreviewWindow } from '../lib/jobsDocuments/printWindow'
 import { billingTypeLabel } from '../components/jobs/HostedStripeBillPanel'
@@ -641,7 +642,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const [search, setSearch] = useState('')
   const [addDriveLinkJob, setAddDriveLinkJob] = useState<{ id: string; title: string } | null>(null)
   const [billedInvoiceModal, setBilledInvoiceModal] = useState<DocumentsJobLedgerInvoiceRow | null>(null)
-  const [contractRecord, setContractRecord] = useState<{ row: JobContractRow; job: { hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; customer_name: string | null } } | null>(null)
+  const [contractRecord, setContractRecord] = useState<{ row: JobContractRow; job: { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; customer_name: string | null } } | null>(null)
 
   const effectiveSearch = embedded ? embedSearch : search
   const filteredRows = useMemo(() => {
@@ -790,11 +791,16 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
         invoice={billedInvoiceModal}
         onClose={() => setBilledInvoiceModal(null)}
       />
-      <JobContractRecordModal
-        open={contractRecord != null}
+      <JobSignedAgreementModal
+        open={contractRecord != null && contractRecord.row.signed_at != null}
         onClose={() => setContractRecord(null)}
-        row={contractRecord?.row ?? null}
         job={contractRecord?.job ?? null}
+        coverage={
+          contractRecord?.row.signed_at
+            ? { kind: 'signed', source: contractRecord.row.signer_mode === 'paper' ? 'paper' : 'contract', signedAt: contractRecord.row.signed_at, signerName: contractRecord.row.signer_printed_name, contractId: contractRecord.row.id, estimateNumber: null, estimateId: null }
+            : null
+        }
+        contractRow={contractRecord?.row ?? null}
       />
       <DocumentsAddDriveLinkModal
         open={addDriveLinkJob != null}
@@ -990,7 +996,10 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                         <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
                           <button
                             type="button"
-                            onClick={() => setContractRecord({ row: con, job: r })}
+                            onClick={() => {
+                              if (con.signed_at) setContractRecord({ row: con, job: r })
+                              else if (!openHtmlPreviewWindow(buildJobContractRecordHtml(con, r, null))) showToast('Popup blocked — allow popups to view the contract.', 'error')
+                            }}
                             style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'var(--text-blue-700)', textDecoration: 'underline' }}
                           >
                             {con.template_name ?? 'Contract'}

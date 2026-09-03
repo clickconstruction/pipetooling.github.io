@@ -28,7 +28,7 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
           .is('voided_at', null),
         supabase
           .from('estimates')
-          .select('job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
+          .select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
           .eq('status', 'customer_accepted')
           .not('acceptor_consented_at', 'is', null),
       ])

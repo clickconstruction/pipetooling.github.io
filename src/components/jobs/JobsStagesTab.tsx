@@ -77,6 +77,7 @@ import BilledExpectedPayChip from './BilledExpectedPayChip'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import JobContractModal from './JobContractModal'
+import JobSignedAgreementModal, { type SignedCoverage } from './JobSignedAgreementModal'
 import JobsContractSweepModal from './JobsContractSweepModal'
 import {
   buildJobContractCoverage,
@@ -775,7 +776,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           .is('voided_at', null),
         supabase
           .from('estimates')
-          .select('job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
+          .select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
           .eq('status', 'customer_accepted')
           .not('acceptor_consented_at', 'is', null),
       ])
@@ -799,7 +800,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
   /** The Contract modal (Contract Desk PR 2) — opened from the row chip and the ✍ quick action. */
   const [jobContractModalJob, setJobContractModalJob] = useState<JobWithDetails | null>(null)
-  const openJobContract = canSeeJobContracts ? (j: JobWithDetails) => setJobContractModalJob(j) : undefined
+  /** The signed-agreement view (v2.2709): a green chip opens the record, not the send form. */
+  const [signedAgreement, setSignedAgreement] = useState<{ job: JobWithDetails; coverage: SignedCoverage } | null>(null)
+  const openJobContract = canSeeJobContracts
+    ? (j: JobWithDetails) => {
+        const cov = jobContractCoverageByJobId.get(j.id)
+        if (cov && cov.kind === 'signed') setSignedAgreement({ job: j, coverage: cov })
+        else setJobContractModalJob(j)
+      }
+    : undefined
   /** The contract sweep (PR 4): every live job with nothing on file, one row each. ?contractSweep=1 deep-links it. */
   const [contractSweepOpen, setContractSweepOpen] = useState<boolean>(() => {
     try {
@@ -5362,6 +5371,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setJobContractModalJob(null)}
         job={jobContractModalJob}
         onChanged={() => void loadJobContractCoverage()}
+      />
+      <JobSignedAgreementModal
+        open={signedAgreement != null}
+        onClose={() => setSignedAgreement(null)}
+        job={signedAgreement?.job ?? null}
+        coverage={signedAgreement?.coverage ?? null}
+        onOpenJob={signedAgreement ? () => { const j = signedAgreement.job; setSignedAgreement(null); openEdit(j) } : undefined}
+        onStartNewAgreement={signedAgreement ? () => { const j = signedAgreement.job; setSignedAgreement(null); setJobContractModalJob(j) } : undefined}
       />
       <JobsContractSweepModal
         open={contractSweepOpen}
