@@ -100,8 +100,10 @@ export const DEFAULT_TAGGED_BANK_CATEGORIES: ReadonlySet<string> = new Set(
 )
 
 export type CategoryTagLookups = {
-  /** tag id → the bank categories it covers (lower-cased). */
+  /** tag id → the bank categories it covers (lower-cased, for matching). */
   categoriesByTagId: ReadonlyMap<string, readonly string[]>
+  /** tag id → the same categories in the bank's own spelling (for display and snapshots). */
+  categoryNamesByTagId: ReadonlyMap<string, readonly string[]>
   /** lower-cased bank category → owning tag id (a category belongs to at most one tag). */
   tagIdByCategory: ReadonlyMap<string, string>
   /** label id → owning tag id. */
@@ -114,25 +116,29 @@ export function buildCategoryTagLookups(
   members: readonly CategoryTagMemberRow[],
 ): CategoryTagLookups {
   const categoriesByTagId = new Map<string, string[]>()
+  const categoryNamesByTagId = new Map<string, string[]>()
   const tagIdByCategory = new Map<string, string>()
   const tagIdByLabelId = new Map<string, string>()
   const tagsById = new Map<string, CategoryTagRow>()
   for (const t of tags) {
     tagsById.set(t.id, t)
     categoriesByTagId.set(t.id, [])
+    categoryNamesByTagId.set(t.id, [])
   }
   for (const m of members) {
     if (!tagsById.has(m.tag_id)) continue
     if (m.bank_category) {
-      const key = m.bank_category.trim().toLowerCase()
+      const name = m.bank_category.trim()
+      const key = name.toLowerCase()
       if (!key) continue
       categoriesByTagId.get(m.tag_id)!.push(key)
+      categoryNamesByTagId.get(m.tag_id)!.push(name)
       tagIdByCategory.set(key, m.tag_id)
     } else if (m.label_id) {
       tagIdByLabelId.set(m.label_id, m.tag_id)
     }
   }
-  return { categoriesByTagId, tagIdByCategory, tagIdByLabelId, tagsById }
+  return { categoriesByTagId, categoryNamesByTagId, tagIdByCategory, tagIdByLabelId, tagsById }
 }
 
 /** The tag a card charge belongs to: its accounting label's tag first, else its bank category's tag. */

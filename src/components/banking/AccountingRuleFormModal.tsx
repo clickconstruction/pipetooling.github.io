@@ -13,6 +13,8 @@ import { parseBankingAttributionValue } from '../../lib/bankingAttributionOption
 import type { SearchableSelectOption, SearchableSelectSelectableOption } from '../SearchableSelect'
 import type { Json } from '../../types/database'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
+import type { CategoryTagLookups, CategoryTagRow } from '../../lib/banking/categoryTags'
+import { CategoryTagChip } from './CategoryTagChip'
 
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
 
@@ -31,6 +33,8 @@ export type AccountingRuleFormState = {
   /** Mercury's own category on the transaction (e.g. FuelAndGas) — v2.2700. */
   categoryOp: 'contains' | 'equals'
   categoryValue: string
+  /** Bank-category tag the rule points at (`bankTag` clause) — v2.2718. Empty = none. */
+  tagId: string
 }
 
 export const RULE_NAME_MAX = 200
@@ -128,6 +132,7 @@ export function ruleRowToForm(
     base.categoryOp = parsed.bankCategory.op
     base.categoryValue = parsed.bankCategory.value
   }
+  if (parsed.bankTag) base.tagId = parsed.bankTag.tagId
   return base
 }
 
@@ -145,11 +150,18 @@ export function emptyRuleForm(): AccountingRuleFormState {
     bankValue: '',
     categoryOp: 'equals',
     categoryValue: '',
+    tagId: '',
   }
 }
 
-function formToCriteria(form: AccountingRuleFormState): AccountingLabelRuleCriteriaV1 {
+function formToCriteria(form: AccountingRuleFormState, tagLookups?: CategoryTagLookups | null): AccountingLabelRuleCriteriaV1 {
   const c: AccountingLabelRuleCriteriaV1 = { v: 1 }
+  if (form.tagId.trim()) {
+    // Snapshot the tag's current categories so the rule keeps matching if the
+    // tag is later deleted or a caller has no live lookup.
+    const live = tagLookups?.categoryNamesByTagId.get(form.tagId) ?? []
+    c.bankTag = { tagId: form.tagId, categories: [...live] }
+  }
   const minT = form.amountMin.trim()
   const maxT = form.amountMax.trim()
   if (minT !== '' || maxT !== '') {
@@ -213,6 +225,9 @@ export type AccountingRuleFormModalProps = {
   onDelete?: () => Promise<void>
   /** Overlay z-index (default 1200); raise when opened above another modal. */
   zIndex?: number
+  /** Bank-category tags for the tag picker (v2.2718); omit to hide it. */
+  tags?: CategoryTagRow[]
+  tagLookups?: CategoryTagLookups | null
 }
 
 export function AccountingRuleFormModal({
@@ -230,6 +245,8 @@ export function AccountingRuleFormModal({
   applyRulesBusy = false,
   onDelete,
   zIndex = 1200,
+  tags,
+  tagLookups = null,
 }: AccountingRuleFormModalProps) {
   const { showToast } = useToastContext()
   const accountingLabelFieldId = useId()
@@ -302,7 +319,7 @@ export function AccountingRuleFormModal({
 
   const handleTest = () => {
     if (controlsDisabled || !onRunTest) return
-    const c = formToCriteria(form)
+    const c = formToCriteria(form, tagLookups)
     if (accountingRuleEffectiveClauseCount(c) === 0) {
       showToast('Add at least one criterion to test.', 'error')
       return
@@ -324,9 +341,9 @@ export function AccountingRuleFormModal({
       showToast('Choose an Accounting Label.', 'error')
       return null
     }
-    const c = formToCriteria(form)
+    const c = formToCriteria(form, tagLookups)
     if (accountingRuleEffectiveClauseCount(c) === 0) {
-      showToast('Add at least one criterion (amount, counterparty, bank description, or bank category).', 'error')
+      showToast('Add at least one criterion (a tag, amount, counterparty, bank description, or bank category).', 'error')
       return null
     }
     const { personId, userId } = parseBankingAttributionValue(form.attribution)
@@ -614,8 +631,31 @@ export function AccountingRuleFormModal({
               />
             </div>
           </fieldset>
+          {tags && tags.length > 0 ? (
+            <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem' }}>
+              <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Tag</legend>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {tags
+                  .filter((t) => !t.hide_from_picker || t.id === form.tagId)
+                  .map((t) => (
+                    <CategoryTagChip
+                      key={t.id}
+                      tag={t}
+                      selected={form.tagId === t.id}
+                      onClick={() => setForm((f) => ({ ...f, tagId: f.tagId === t.id ? '' : t.id }))}
+                      title={(tagLookups?.categoryNamesByTagId.get(t.id) ?? []).join(', ') || 'no bank categories yet'}
+                    />
+                  ))}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                {form.tagId
+                  ? `Matches when the bank filed the purchase under any of: ${(tagLookups?.categoryNamesByTagId.get(form.tagId) ?? []).join(', ') || '—'}. Edit the tag to change that; the rule follows.`
+                  : 'Pick a tag to match by the bank’s own category of the purchase. Manage tags from the Rules list.'}
+              </div>
+            </fieldset>
+          ) : null}
           <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem' }}>
-            <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Bank category</legend>
+            <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Bank category <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(raw — use a tag instead when you can)</span></legend>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <select
                 value={form.categoryOp}
