@@ -28,6 +28,10 @@ The **Pending approval** card lists every finished session waiting on you, newes
 
 **Approve all** at the top of the card approves every listed session in one confirmed tap — it shows the count and total ("Approve all 7 · 46.4h") so you know exactly what you're signing off on.
 
+:::example Salaried schedule time approves itself
+Sessions the system creates from a **salary schedule** don't wait in this list — they approve automatically about every half hour once they close. Only real punches need your eyes. If you edit an auto-approved session later, the person's hours re-sync just like any other approved-session edit.
+:::
+
 ## The ⚠ long day flag
 
 A session longer than **12 hours** wears an amber **⚠ long day** tag — like a 7:30 AM–9:59 PM day. It doesn't block anything; it's a nudge to look before approving, since a forgotten clock-out looks exactly like a long day.

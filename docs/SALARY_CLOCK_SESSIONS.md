@@ -25,6 +25,8 @@ Salaried users get **auto materialized** `clock_sessions` rows with `origin = 's
 - **Catch-up**: after **`t_end`**, if no canonical **`salary_schedule`** row covers the continuous slot yet (and **`20270402100000`** does not forbid it), INSERT a **closed** **`[t_start, t_end]`** row—or slot 1/slot 2 parallels in split mode—as in the migration SQL.
 - **Approved-but-open rows**: As of **`20260515092032`**, sync closes approved-but-open `salary_schedule` rows at **`t_end`** / **`t_end2`** alongside non-approved ones. Approval is **not** a terminal state for sync; only **`rejected_at`** and **`revoked_at`** stop sync from modifying a row. Earlier bodies returned early on any of the three flags, which left approved rows hanging until the **23:59 CT** **`auto_clock_out_open_sessions_eod`** safety net (inflating an 8 h day to ~16 h).
 
+- **Auto-approval** (v2.2670, migration `20260903010000`): closed `salary_schedule` sessions are approved by the pg_cron job **`auto-approve-salary-sessions`** (every 30 min, ≥2h after clock-out so sync's close/adjust pass wins) via **`auto_approve_salary_clock_sessions()`** — same write semantics as `approve_clock_sessions` (incremental `people_hours` + crew sync), `approved_by` NULL. Kill switch: `app_settings` `auto_approve_salary_sessions_disabled_v1` = `'1'`. Rejected/revoked rows stay untouched; post-approval edits still flow through `recompute_people_hours_after_session_edit`.
+
 ---
 
 ## Payroll & cost hours (the flat 8/0 rule + payroll adjustments)
