@@ -2,10 +2,10 @@
 title: count with the Count Sheet
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, superintendent
-keywords: counts, count sheet, plan page, audit, quick add, fixtures, duplicate, merge, totals, line feet, ft, unscaled, px
+keywords: counts, count sheet, plan page, audit, quick add, fixtures, duplicate, merge, totals, line feet, ft, unscaled, px, export, clear all
 order: 95
 ---
-The **Bids → Counts** tab has two layouts, switched with the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic table (drag to reorder, edit rows in place); **New is the Count Sheet**, built for checking your count against the drawings. The tab opens on **New**; flip to Old and your device remembers the choice.
+The **Bids → Counts** tab opens a selected bid straight onto the **Count Sheet**, built for checking your count against the drawings. (The classic Old table and the Old / New pills retired in September 2026 — everything it did lives on the sheet.)
 
 Before you even pick a bid, the list leads each row with a subtle number — **how many fixtures and tie-ins are counted** on that bid. A dim **—** means nothing's counted yet, so "which bids still need counting" is answered before anyone clicks; hover the number for the long form.
 
@@ -23,7 +23,9 @@ Items 35 · Counts 1,122 ea · 29 items · Line feet 444.74 ft · 6 line types �
 
 Every value on the sheet is editable — tap a count, fixture name, or plan page, type, and **Enter** saves (**Esc** reverts). Renaming a row to a fixture that's already on the bid offers to **merge** instead — the counts combine onto the existing row — so one fixture name stays one row and the takeoff assignment never forks.
 
-In List mode, drag the **⣿ handle** at the left of a row to reorder the sheet — same order as the Old view.
+In List mode, drag the **⣿ handle** at the left of a row to reorder the sheet — the order every other tab reads.
+
+Under the sheet, {{button:green|Export as .csv}} downloads the rows and {{button:outline|Clear all counts}} removes every row on the bid after you type the confirmation.
 
 :::example Fixing a mis-paged row
 In By plan page, a WC-1 sits under "No plan page". Type `2` in its page cell, Enter — the row hops up into "Plan page 2" and the red bucket shrinks by one.

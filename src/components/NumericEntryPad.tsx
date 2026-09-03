@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 
 /**
- * Compact digit pad (counts / rough qty). Matches Bids NewCountRow keypad styling.
+ * Compact digit pad (counts / rough qty). Matches the Bids Count Sheet keypad styling.
  */
 export type NumericEntryPadProps = {
   value: string
