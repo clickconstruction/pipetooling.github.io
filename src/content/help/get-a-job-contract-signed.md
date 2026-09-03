@@ -51,6 +51,10 @@ One page on their phone: your letterhead, the job address, the work in plain wor
 
 The link never dies: it shows the signed record afterwards, a polite note if you voided the contract, and asks them to reply for a fresh one only if 90 days pass without a signature (every resend restarts that clock).
 
+## View the signed record
+
+Once a job reads {{chip:green|✍ Signed}}, the chip opens the **Signed agreement** view instead of the send form — the same view whether the customer signed a contract you sent, uploaded paper, or accepted an estimate online. It shows who signed, when and how, the document exactly as signed with the signature, and where it was signed from. {{button:blue|Share ▾}} holds every door: **Copy link** to the customer's page (contracts), **Text link**, **Download PDF**, **Print**, and for estimate-sourced signatures **Open estimate**. Need a fresh agreement because the scope moved? **Start a new agreement…** opens the send form; a new signature supersedes the old one.
+
 ## Already signed on paper?
 
 Open the Contract modal and press {{button:outline|Upload signed copy}}. Enter who signed and the date, attach a scan or phone photo if you have one, and press {{button:blue|Record as signed on paper}}. Nothing goes to the customer — the row simply reads {{chip:green|✍ On file · paper}} and the copy is filed with the job.
