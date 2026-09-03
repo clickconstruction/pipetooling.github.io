@@ -1,6 +1,7 @@
 /**
- * "Only my bids" filter toggle, shown to the right of the Search Bids bar on the
- * Counts / Takeoffs / Labor / Pricing / Cover Letter tabs (no-bid-selected list view).
+ * "Only my bids" filter toggle, shown to the right of the Search Bids bar on all eight
+ * workflow tabs — Counts / Takeoffs / Labor / Pricing / Cover Letter / RFI / Change Order /
+ * Lien Release (no-bid-selected list view). On by default (v2.2704); one shared state in Bids.tsx.
  * "My bids" = bids the current user is the account manager or estimator for.
  */
 export function MyBidsToggle({ active, onChange }: { active: boolean; onChange: (next: boolean) => void }) {
