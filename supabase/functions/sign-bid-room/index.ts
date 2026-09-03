@@ -320,6 +320,11 @@ serve(async (req) => {
     }
     if (plan.bidOutcomeSet === 'won') await admin.from('bids').update({ outcome: 'won' }).eq('id', bid.id)
 
+    // v2.2697: the blast radius, named. A GC's click just flipped OTHER GCs' packets to Lost
+    // (the staff-kernel rule for sent, unanswered packets) — the record and the email must say
+    // exactly which, or the office learns it only by stumbling onto a Lost it never set.
+    const autoLostGcNames = await gcNamesForVersions(admin, versions, plan.autoLostVersionIds, bid.customer_id)
+
     await admin.from('bid_proposal_room_events').insert({
       room_id: room.id,
       event_type: 'signed',
@@ -331,15 +336,21 @@ serve(async (req) => {
         estimate_id: estimateId,
         estimate_number: (inserted as { estimate_number: number } | null)?.estimate_number ?? null,
         printed_name: printedName,
+        auto_lost_gcs: autoLostGcNames,
+        bid_outcome_set: plan.bidOutcomeSet,
       },
       client_ip: ip,
       user_agent: ua,
     })
+    const autoLostLine =
+      autoLostGcNames.length > 0
+        ? ` Also marked Lost — sent, unanswered: ${autoLostGcNames.join(', ')}. (Open the bid to change any of these.)`
+        : ''
     await notifyStaff(
       admin,
       room,
       bid.project_name ?? '',
-      `signed “${chosen.name.trim() || 'the proposal'}” — ${fmtUsd(chosen.total_cents)}. Packet marked Won.`,
+      `signed “${chosen.name.trim() || 'the proposal'}” — ${fmtUsd(chosen.total_cents)}. Packet marked Won.${autoLostLine}`,
     )
     return json({ ok: true })
   } catch (e) {
@@ -347,6 +358,23 @@ serve(async (req) => {
     return json({ error: 'Internal error' }, 500)
   }
 })
+
+/** Display names of the GC packets behind a set of version ids (null customer = the bid's own GC). */
+async function gcNamesForVersions(
+  admin: ReturnType<typeof createClient>,
+  versions: OutcomeVersionRow[],
+  versionIds: string[],
+  bidCustomerId: string | null,
+): Promise<string[]> {
+  if (versionIds.length === 0) return []
+  const gcIds = new Set<string | null>()
+  for (const v of versions) if (versionIds.includes(v.id)) gcIds.add(v.customer_id ?? null)
+  const lookup = [...gcIds].map((id) => id ?? bidCustomerId).filter((x): x is string => !!x)
+  if (lookup.length === 0) return ['the bid’s GC']
+  const { data } = await admin.from('customers').select('id, name').in('id', [...new Set(lookup)])
+  const byId = new Map(((data ?? []) as Array<{ id: string; name: string | null }>).map((c) => [c.id, c.name]))
+  return [...gcIds].map((id) => byId.get(id ?? bidCustomerId ?? '') ?? 'a GC').map((n) => (n ?? 'a GC').trim() || 'a GC')
+}
 
 async function notifyStaff(
   admin: ReturnType<typeof createClient>,

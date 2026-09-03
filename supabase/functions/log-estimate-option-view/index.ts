@@ -10,6 +10,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
+import { publicEventGate } from '../_shared/publicEventThrottle.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -61,6 +62,18 @@ serve(async (req) => {
     const options = normalizeSharedEstimateOptions(row.options_snapshot)
     const chosen = options.find((o) => o.key === optionKey)
     if (!chosen) return ok() // unknown key: drop silently — this endpoint proves nothing to callers
+
+    // v2.2697: throttle. A re-tap inside the dedupe window is one signal; a loop from one IP
+    // is none. Dropped events still answer 200 — browsing never depends on telemetry.
+    const gate = await publicEventGate(admin, {
+      table: 'estimate_customer_events',
+      subjectColumn: 'estimate_id',
+      subjectId: String(row.id),
+      eventType: 'option_viewed',
+      optionKey: chosen.key,
+      clientIp: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+    })
+    if (!gate.record) return ok()
 
     await insertEstimateCustomerEvent(admin, {
       estimateId: String(row.id),
