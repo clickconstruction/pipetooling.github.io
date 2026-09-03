@@ -104,6 +104,7 @@ when_to_read:
    - [get-job-contract](#get-job-contract)
    - [sign-job-contract](#sign-job-contract)
    - [remind-job-contracts](#remind-job-contracts)
+   - [share-job-contract](#share-job-contract)
    - [get-rfq-quote-page](#get-rfq-quote-page)
    - [submit-rfq-quote](#submit-rfq-quote)
    - [send-rfq-email](#send-rfq-email)
@@ -1204,6 +1205,20 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false`; the cron secret is the credential. Scheduled hourly (`:23`) by pg_cron job `job-contract-reminders` (migration `20260903154024`).
 
 **Behavior**: Kill switch `app_settings` `job_contract_reminders_disabled_v1 = '1'` → `{ skipped: 'disabled' }`. Otherwise drains up to 50 `job_contracts` rows that are `sent`, `reminders_enabled`, not voided, `next_reminder_at <= now()` and `reminder_count < 3`. Rows with no token, an invalid email, or an expired link get `next_reminder_at` cleared (never re-queue). Each remaining row gets a Resend email ("Reminder: please sign — …", the durable link, reply-to = the contract's creator, CC list honored; the third says it is the last automatic reminder), then `reminder_count + 1` and `next_reminder_at` +3 days (null after the third), and a `reminded` event. An email failure leaves the row untouched to retry next hour.
+
+---
+
+### share-job-contract
+
+**Purpose**: Share a signed agreement — the stored signed PDF — by email, or hand back a download URL (Signed agreement view PR B, v2.2712).
+
+**Endpoint**: `POST /functions/v1/share-job-contract` — `{ contract_id } | { estimate_id, job_id? }`, `mode: 'email' | 'pdf_url'`, `to?: string[]` (≤10; first To, rest CC), `note?`, `public_origin?`; staff user JWT in `Authorization`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false` (JWT validated in-body; rows read as the caller).
+
+**Behavior**: Contracts must be `signed`; the PDF is `signed_pdf_path` from `job-contract-documents` (rebuilt once with `_shared/jobContractPdf.ts` and stored when missing; paper records send `paper_upload_path`). Estimates must be `customer_accepted` with a consent stamp; their PDF is built once from the frozen line items / option / terms / acceptor fields and cached at `estimates/<id>/signed.pdf`. `pdf_url` → 1-hour signed URL. `email` → Resend with the attachment, reply-to = the sender, the durable link for contracts, optional note; then a `shared` `job_contract_events` row (contracts) and a `contract_shared` `job_activity_events` row (both, when a job is known) carrying `to`.
 
 ---
 

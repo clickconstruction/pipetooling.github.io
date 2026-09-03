@@ -17,6 +17,7 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { formatContractStamp, jobContractSigningUrl, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { buildJobContractRecordHtml, JobContractRecordBody, useJobContractRecordUrls, type JobContractRecordJob } from './JobContractRecordModal'
+import JobContractShareSheet, { type ShareTarget } from './JobContractShareSheet'
 
 export type SignedCoverage = Extract<JobContractCoverage, { kind: 'signed' }>
 
@@ -83,6 +84,10 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
   const [loadedRow, setLoadedRow] = useState<JobContractRow | null>(null)
   const [estimateRow, setEstimateRow] = useState<EstimateRecordRow | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [pdfBusy, setPdfBusy] = useState(false)
+  /** Latest share, from the job's activity ledger (contract_shared). */
+  const [lastShare, setLastShare] = useState<{ to: string[]; at: string; by: string | null } | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   const isContract = coverage?.source === 'contract' || coverage?.source === 'paper'
@@ -105,6 +110,37 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
       cancelled = true
     }
   }, [open, isContract, contractRow, coverage?.contractId, coverage])
+
+  const loadLastShare = async (jobId: string) => {
+    try {
+      const { data } = await supabase
+        .from('job_activity_events')
+        .select('occurred_at, detail, actor:users!job_activity_events_actor_user_id_fkey(name)')
+        .eq('job_id', jobId)
+        .eq('event_type', 'contract_shared')
+        .order('occurred_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const ev = data as { occurred_at: string; detail: { to?: unknown } | null; actor: { name: string | null } | { name: string | null }[] | null } | null
+      if (!ev) {
+        setLastShare(null)
+        return
+      }
+      const to = Array.isArray(ev.detail?.to) ? (ev.detail!.to as unknown[]).filter((x): x is string => typeof x === 'string') : []
+      const actor = Array.isArray(ev.actor) ? ev.actor[0] : ev.actor
+      setLastShare({ to, at: ev.occurred_at, by: actor?.name ?? null })
+    } catch {
+      setLastShare(null)
+    }
+  }
+  useEffect(() => {
+    if (!open || !job?.id) {
+      setLastShare(null)
+      return
+    }
+    void loadLastShare(job.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, job?.id])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -157,6 +193,32 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
     if (isContract && row && !openHtmlPrintWindow(buildJobContractRecordHtml(row, job, urls.signatureUrl))) showToast('Allow pop-ups to print the agreement.', 'error')
     setMenuOpen(false)
   }
+  const shareTarget: ShareTarget | null = isContract
+    ? row
+      ? { kind: 'contract', contractId: row.id }
+      : null
+    : coverage?.estimateId
+      ? { kind: 'estimate', estimateId: coverage.estimateId, jobId: job?.id ?? null }
+      : null
+  const pdfFilename = isContract ? `Signed-agreement-J${jobNo}.pdf` : `Signed-${coverage?.source === 'bid_room' ? 'proposal' : 'estimate'}-${estimateNumber ?? ''}.pdf`
+  const downloadViaFunction = async () => {
+    if (!shareTarget || pdfBusy) return
+    setPdfBusy(true)
+    setMenuOpen(false)
+    try {
+      const { data, error } = await supabase.functions.invoke('share-job-contract', {
+        body: { ...(shareTarget.kind === 'contract' ? { contract_id: shareTarget.contractId } : { estimate_id: shareTarget.estimateId, job_id: shareTarget.jobId }), mode: 'pdf_url', public_origin: window.location.origin },
+      })
+      const res = (data ?? {}) as { ok?: boolean; pdf_url?: string | null; error?: string }
+      if (error || !res.ok || !res.pdf_url) {
+        showToast(res.error || error?.message || 'Could not build the PDF.', 'error')
+        return
+      }
+      window.open(res.pdf_url, '_blank', 'noopener')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
   const acceptedOptionName = (() => {
     const key = estimateRow?.accepted_option_key
     const snap = estimateRow?.options_snapshot
@@ -207,10 +269,20 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
                 <span style={k}>customer&apos;s page</span>
               </button>
             ) : null}
-            <button type="button" role="menuitem" style={{ ...menuItem, color: 'var(--text-muted)' }} disabled title="Arrives with the next release">
-              <span>Email a copy…</span>
-              <span style={k}>soon</span>
-            </button>
+            {shareTarget && (isContract ? row?.signer_mode !== 'paper' || !!row?.paper_upload_path : true) ? (
+              <button
+                type="button"
+                role="menuitem"
+                style={menuItem}
+                onClick={() => {
+                  setMenuOpen(false)
+                  setShareOpen(true)
+                }}
+              >
+                <span>Email a copy…</span>
+                <span style={k}>PDF attached</span>
+              </button>
+            ) : null}
             {signLink && phone ? (
               <button type="button" role="menuitem" style={menuItem} onClick={textLink}>
                 <span>Text link</span>
@@ -222,10 +294,10 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
               <a role="menuitem" style={menuItem} href={urls.pdfUrl} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
                 <span>Download PDF</span>
               </a>
-            ) : isContract && row?.signer_mode !== 'paper' ? (
-              <button type="button" role="menuitem" style={{ ...menuItem, color: 'var(--text-muted)' }} disabled title="No stored PDF for this record yet — use Print / save as PDF">
+            ) : shareTarget && (!isContract || row?.signer_mode !== 'paper') ? (
+              <button type="button" role="menuitem" style={menuItem} onClick={() => void downloadViaFunction()} disabled={pdfBusy}>
                 <span>Download PDF</span>
-                <span style={k}>none stored</span>
+                <span style={k}>{pdfBusy ? 'building…' : 'build & open'}</span>
               </button>
             ) : null}
             {row?.signer_mode === 'paper' && urls.paperUrl ? (
@@ -333,7 +405,28 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
             ) : null}
           </>
         )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+          <span>
+            {lastShare
+              ? `↗ Shared with ${lastShare.to.join(', ')} · ${formatContractStamp(lastShare.at)?.split(',').slice(0, 2).join(',') ?? ''}${lastShare.by ? ` by ${lastShare.by}` : ''}`
+              : 'Not shared yet'}
+          </span>
+          <span style={{ display: 'inline-block', padding: '0.05rem 0.5rem', borderRadius: 999, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontWeight: 700 }}>✍ {verb}</span>
+        </div>
       </div>
+      <JobContractShareSheet
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        target={shareTarget}
+        heading={`${isContract ? 'Contract' : coverage.source === 'bid_room' ? 'Proposal' : 'Estimate'} · J${jobNo}${job.job_address ? ` · ${job.job_address}` : ''}`}
+        signerName={signerName}
+        signerEmail={isContract ? row?.recipient_email ?? job.customer_email ?? null : estimateRow?.customer_email ?? job.customer_email ?? null}
+        contractRow={isContract ? row : null}
+        filenameHint={pdfFilename}
+        onShared={() => {
+          if (job?.id) void loadLastShare(job.id)
+        }}
+      />
     </ResponsiveModalShell>
   )
 }

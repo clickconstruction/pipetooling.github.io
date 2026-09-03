@@ -36,6 +36,7 @@ export type JobActivityEventType =
   | 'contract_viewed'
   | 'contract_signed'
   | 'contract_voided'
+  | 'contract_shared'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -109,6 +110,7 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   contract_viewed: { tag: 'Contract', ...STATUS_AMBER, bucket: 'billing' },
   contract_signed: { tag: 'Contract', ...MONEY_GREEN, bucket: 'billing' },
   contract_voided: { tag: 'Contract', ...DANGER_RED, bucket: 'billing' },
+  contract_shared: { tag: 'Contract', ...BILLING_BLUE, bucket: 'billing' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {
