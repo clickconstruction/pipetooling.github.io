@@ -50,6 +50,7 @@ import SubPortal from './pages/SubPortal'
 import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
 import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
+import JobContractSign from './pages/JobContractSign'
 import ContractBookPreview from './pages/ContractBookPreview'
 import TaskShortcut from './pages/TaskShortcut'
 import { POST_LOGIN_REDIRECT_KEY } from './lib/iosPwa'
@@ -212,6 +213,7 @@ function AppContent() {
         <Route path="/bid-room" element={<BidRoom />} />
         <Route path="/q/:token" element={<SupplyHouseQuotePage />} />
         <Route path="/contract/accept" element={<ContractAccept />} />
+        <Route path="/contract/sign" element={<JobContractSign />} />
         <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
         <Route path="/hazmat-notice" element={<HazmatNoticePublic />} />
         <Route path="/portal" element={<CustomerPortal />} />

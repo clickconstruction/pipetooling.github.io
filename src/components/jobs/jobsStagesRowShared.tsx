@@ -1023,6 +1023,30 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
             </svg>
           </button>
         ) : null}
+        {ctx.onOpenJobContract ? (
+          <button
+            type="button"
+            onClick={() => ctx.onOpenJobContract?.(job)}
+            title={
+              ctx.jobContractCoverageByJobId?.get(job.id)?.kind === 'none'
+                ? 'Send contract — this job has no signed agreement on file'
+                : 'Contract — send, resend, or view the signed record'
+            }
+            aria-label="Open the job contract"
+            style={{
+              ...quickIconButtonStyle,
+              cursor: 'pointer',
+              color: 'var(--text-orange-700)',
+              fontSize: 15,
+              lineHeight: 1,
+              borderRadius: 6,
+              background: ctx.jobContractCoverageByJobId?.get(job.id)?.kind === 'none' ? 'var(--bg-orange-tint)' : 'none',
+              border: ctx.jobContractCoverageByJobId?.get(job.id)?.kind === 'none' ? '1.5px solid #c2410c' : 'none',
+            }}
+          >
+            <span aria-hidden>✍</span>
+          </button>
+        ) : null}
         {customerPhone ? (
           <a
             href={`tel:${customerPhone}`}

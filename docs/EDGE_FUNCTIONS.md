@@ -100,6 +100,9 @@ when_to_read:
    - [get-bid-proposal-room](#get-bid-proposal-room)
    - [send-bid-room-link](#send-bid-room-link)
    - [sign-bid-room](#sign-bid-room)
+   - [send-job-contract](#send-job-contract)
+   - [get-job-contract](#get-job-contract)
+   - [sign-job-contract](#sign-job-contract)
    - [get-rfq-quote-page](#get-rfq-quote-page)
    - [submit-rfq-quote](#submit-rfq-quote)
    - [send-rfq-email](#send-rfq-email)
@@ -1134,6 +1137,48 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false`; the room token is the credential.
 
 **Behavior**: Only the room's **latest revision** may be answered (409 `stale_revision` — the page refreshes), and only once (409 `already_answered`). With `documentId` (v2.2472) the answer applies to that **change order** instead: sign sets the CO row `customer_accepted` with acceptor fields + optional signature PNG, decline sets `declined` with the note in the event — neither touches the proposal's outcome or the bid's won/lost. **Sign** mints an `estimates` row born `customer_accepted` (`doc_kind='bid_proposal'`, `bid_id`, the room's GC as `customer_id`; chosen option frozen into `line_items_snapshot`/`total_cents`/`accepted_option_key`, all options in `options_snapshot`; acceptor fields + optional PNG in `estimate-acceptor-signatures`), then applies [`_shared/bidRoomOutcome.ts`](../supabase/functions/_shared/bidRoomOutcome.ts): packet Won, other sent unanswered packets auto-Lost, conservative `bids.outcome` roll-up. **Decline** marks the packet Lost with the GC's own loss category/note (Why-we-lost feed). Both log room events and email the room's creator + master.
+
+---
+
+### send-job-contract
+
+**Purpose**: The office sends a job contract for signature (Contract Desk PR 2, v2.2681) — by email, or by minting the link to copy / text / sign in person.
+
+**Endpoint**: `POST /functions/v1/send-job-contract` — `{ contract_id, mode: 'email'|'link', recipient_email?, recipient_name?, cc_emails?, public_origin?, message? }` with the staff user JWT in `Authorization`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional — without it the link is returned un-emailed), `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false` (the JWT is validated in-body so the row is read through the caller's RLS).
+
+**Behavior**: Reads `job_contracts` as the caller (403 when RLS hides it); refuses voided / signed rows and rows without terms. Mints the durable plaintext `public_token` on the first send, reuses it after; refreshes `public_token_expires_at` (+90 days); sets `status = 'sent'`, `sent_at` (first), `last_sent_at`, `send_count + 1`, the recipient block, `next_reminder_at` (+3 days when reminders are on); logs a `sent` event (`metadata.channel` email|link). `mode: 'email'` sends the Resend email (Review & sign button, reply-to = the sender, CC list) and returns `{ ok, emailed, sign_url }`; `mode: 'link'` returns the URL without emailing. The `job_contracts_to_activity()` trigger writes `contract_sent` on every send.
+
+---
+
+### get-job-contract
+
+**Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681).
+
+**Endpoint**: `GET /functions/v1/get-job-contract?t=<token>`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**Gateway**: `verify_jwt = false`; the token is the credential, service role behind it.
+
+**Behavior**: Resolves `job_contracts.public_token`; 404 unknown, 410 `voided` (withdrawn page), 410 `expired` (sent rows past `public_token_expires_at`), 404 `empty` (draft). Returns the contract's public fields (heading, job number/address/customer, recipient, `fields`, terms body + format, template name, sent/signed stamps, a 1-hour signed URL for a drawn signature), the invoice-issuer letterhead block (`app_settings` `physical_invoice_issuer_v1`), and the brand. While the row is `sent` it bumps `view_count` / `first_viewed_at` / `last_viewed_at` and logs a `viewed` event (first view → `contract_viewed` on the job's activity feed). Signed rows serve forever — the link is the customer's copy.
+
+---
+
+### sign-job-contract
+
+**Purpose**: Record the customer's e-signature on a job contract (Contract Desk PR 2, v2.2681).
+
+**Endpoint**: `POST /functions/v1/sign-job-contract` — `{ token, revision, printedName, agreedTerms: true, signaturePngBase64?, mode?: 'in_person', public_origin? }`
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional confirmations), `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false`; the token is the credential.
+
+**Behavior**: Only a `sent` row at the CURRENT `revision` can be signed — 409 `stale_revision` / `already_signed` (the page refreshes to the current version), 410 `voided` / `expired`. Validates the drawn PNG (magic bytes, ≤512 KiB) and stores it in the private `job-contract-documents` bucket at `<contract_id>/<uuid>.png` (upload failure degrades to a typed record). Conditional update (`status = 'sent'` and the revision) writes `status = 'signed'`, `signed_at`, `signer_printed_name`, `signer_mode` (type | draw | in_person), `signer_consented_at`, `signer_ip`, `signer_user_agent`, `signer_signature_storage_path`, clears `next_reminder_at`; logs a `signed` event; the bridge trigger writes `contract_signed`. Best-effort emails: the customer a confirmation carrying the same durable link (CC list honored), the contract's creator + the job's master a notice linking to the job.
 
 ---
 
