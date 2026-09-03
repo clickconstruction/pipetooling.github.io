@@ -34,7 +34,7 @@ import {
 import { bucketInvoiceRevenueByAppTzDay } from '../../lib/overheadAvgDailyCost'
 import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
 import { fetchAccountingBucketByTxId, loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
-import { mercuryCategoryFromColumn } from '../../lib/accountingLabelRuleMatch'
+import { sumFuelChargesByJob } from '../../lib/mercuryFuelSplit'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import type {
   CrewJobAssignment,
@@ -2111,19 +2111,10 @@ export default function PeopleReviewTab({
           'load team summary card categories',
         ).catch(() => [] as unknown[]),
       ])
-      const categoryByTxId = new Map<string, string | null>()
-      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) {
-        categoryByTxId.set(r.id, mercuryCategoryFromColumn(r.mercury_category))
-      }
-      for (const row of cardRows) {
-        if (!row.mercury_transaction_id) continue
-        const bucket = bucketByTxId.get(row.mercury_transaction_id)
-        const isFuel =
-          bucket === 'fuel_gas' ||
-          (bucket == null && (categoryByTxId.get(row.mercury_transaction_id) ?? '').toLowerCase() === 'fuelandgas')
-        if (!isFuel) continue
-        fuelChargesByJobId.set(row.job_id, (fuelChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
-      }
+      const categoryByTxId = new Map<string, unknown>()
+      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
+      // Same classifier Jobs → Job Summary uses (v2.2708), so the two surfaces agree on what is fuel.
+      for (const [jobId, usd] of sumFuelChargesByJob(cardRows, bucketByTxId, categoryByTxId)) fuelChargesByJobId.set(jobId, usd)
     }
 
     return {
