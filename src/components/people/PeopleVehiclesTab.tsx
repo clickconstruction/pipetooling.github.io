@@ -5,6 +5,7 @@ import { formatCurrency } from '../../lib/format'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { PeopleVehiclesWheelsSection } from './PeopleVehiclesWheelsSection'
 import {
   DEFAULT_VEHICLE_CHECKIN_SETTINGS,
   fetchVehicleCheckinSettings,
@@ -2077,6 +2078,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             )
           })()
         )}
+        {/* Wheels (v2.2733): vehicle cost per field hour, dev-only like Review. */}
+        {isDev && !loading && !selectedVehicle ? <PeopleVehiclesWheelsSection users={users} /> : null}
       </div>
 
       {vehicleFormOpen && (

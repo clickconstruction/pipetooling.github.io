@@ -1466,3 +1466,8 @@ Command to auto-generate TypeScript types from Supabase schema: `supabase gen ty
 - [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Role permissions details
 - [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - Bids terminology in context
 - [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Technical reference
+
+## Wheels (vehicle cost per field hour)
+
+**v2.2733.** Each pay-config person has a **vehicle arrangement** (`people_pay_config.vehicle_arrangement`: `none` | `own_fuel_paid` | `company`; `vehicle_rate_override` = manual $/field h). *Own vehicle, fuel paid* → the person's fuel-tag card charges (attributed via `mercury_transaction_attributions`) ÷ their approved field hours. *Company truck* → the truck they hold (`vehicle_possessions`) priced all-in: holder's fuel + `weekly_insurance_cost` while on a plan + `weekly_registration_cost`, pro-rated over 90 days, + `vehicle_service_events.cost`, ÷ holder field hours. Kernel **[`lib/people/wheels.ts`](../src/lib/people/wheels.ts)**, loader `wheelsData.ts`, report **[`PeopleVehiclesWheelsSection`](../src/components/people/PeopleVehiclesWheelsSection.tsx)** on People → Vehicles (dev), deal set on Payroll → Pay config. Review wiring (own fuel → labor line, company → Wheels burden line, verdict segments, ranked-bar chip) is PR 2.
+
