@@ -59,6 +59,8 @@ import {
   type ReviewRankBy,
 } from '../../lib/people/reviewRanked'
 import { readReviewViewFromStorage, writeReviewViewToStorage, type PeopleReviewView } from '../../lib/people/reviewViewStorage'
+import { buildReviewJobsRollup, type ReviewRollupRowInput } from '../../lib/people/reviewJobsRollup'
+import { buildReviewTasksRollup } from '../../lib/people/reviewTasksRollup'
 import { usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { PeopleReviewVerdictStrip } from './review/PeopleReviewVerdictStrip'
 import { PeopleReviewHygieneStrip } from './review/PeopleReviewHygieneStrip'
@@ -255,11 +257,14 @@ export default function PeopleReviewTab({
   const [reviewHours, setReviewHours] = useState<Array<{ work_date: string; hours: number }>>([])
   type ReviewReport = { id: string; template_name: string; job_display_name: string; created_at: string }
   const [reviewReports, setReviewReports] = useState<ReviewReport[]>([])
-  type ReviewTask = { id: string; title: string; links?: string[] | null; scheduled_date: string; completed_at: string | null }
+  type ReviewTask = { id: string; title: string; links?: string[] | null; scheduled_date: string; completed_at: string | null; checklist_item_id?: string | null }
   const [reviewTasks, setReviewTasks] = useState<ReviewTask[]>([])
   const [reviewTasksOutstanding, setReviewTasksOutstanding] = useState<ReviewTask[]>([])
   const [reviewJobsWorkedCollapsed, setReviewJobsWorkedCollapsed] = useState(false)
   const [reviewJobExpandedKey, setReviewJobExpandedKey] = useState<string | null>(null)
+  // Jobs Worked is rolled up one line per job (v2.2682); this holds the jobs
+  // whose day rows are open. The per-day detail grid keeps its own key above.
+  const [reviewJobGroupsOpen, setReviewJobGroupsOpen] = useState<ReadonlySet<string>>(() => new Set())
   type ReviewLaborContributor = {
     personName: string
     hours: number
@@ -701,6 +706,69 @@ export default function PeopleReviewTab({
     () => buildReviewHygiene(teamSummaryBreakdowns, pendingApprovals.approvals),
     [teamSummaryBreakdowns, pendingApprovals.approvals],
   )
+
+  // ---- person panel rollups (v2.2682) ----
+  const reviewJobsRollup = useMemo(() => {
+    const inputs: ReviewRollupRowInput[] = []
+    for (const j of reviewLaborJobs) {
+      const numberLabel = (j.job_number ?? '').trim()
+        ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number, j.click_number)
+        : '—'
+      inputs.push({
+        rowKey: `labor-${j.id}`,
+        jobKey: j.job_id ?? `hcp:${(j.job_number ?? '').trim().toLowerCase() || j.id}`,
+        date: j.job_date,
+        numberLabel,
+        jobName: j.job_name,
+        jobAddress: j.address,
+        hours: j.hours,
+        laborCost: j.laborCost,
+        allocatedTotalBill: j.allocatedTotalBill,
+        allocatedRevenueBeforeOverhead: j.allocatedRevenueBeforeOverhead,
+        totalLaborOnJob: j.totalLaborOnJob,
+        valueCreated: j.valueCreated,
+        revenueBeforeOverhead: j.revenueBeforeOverhead,
+        totalBill: j.totalBill,
+        pctComplete: j.pctComplete,
+      })
+    }
+    for (const j of reviewCrewJobs) {
+      const rawHcp = j.hcp_number === '—' ? '' : j.hcp_number
+      const numberLabel = effectiveJobLedgerNumber(rawHcp, j.click_number)
+        ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawHcp, j.click_number)
+        : '—'
+      inputs.push({
+        rowKey: `crew-${j.job_id}-${j.work_date}`,
+        jobKey: j.job_id,
+        date: j.work_date,
+        numberLabel,
+        jobName: j.job_name,
+        jobAddress: j.job_address,
+        hours: j.hours,
+        laborCost: j.laborCost,
+        allocatedTotalBill: j.allocatedTotalBill,
+        allocatedRevenueBeforeOverhead: j.allocatedRevenueBeforeOverhead,
+        totalLaborOnJob: j.totalLaborOnJob,
+        valueCreated: j.valueCreated,
+        revenueBeforeOverhead: j.revenueBeforeOverhead,
+        totalBill: j.totalBill,
+        pctComplete: j.pctComplete,
+      })
+    }
+    return buildReviewJobsRollup(inputs)
+  }, [reviewLaborJobs, reviewCrewJobs, prefixMap])
+  const reviewTasksRollup = useMemo(
+    () => buildReviewTasksRollup(reviewTasksOutstanding, denverCalendarDayKey(Date.now())),
+    [reviewTasksOutstanding],
+  )
+  const toggleReviewJobGroup = useCallback((jobKey: string) => {
+    setReviewJobGroupsOpen((cur) => {
+      const next = new Set(cur)
+      if (next.has(jobKey)) next.delete(jobKey)
+      else next.add(jobKey)
+      return next
+    })
+  }, [])
 
   // Prior-period rows for the trend pill. Keyed on the CURRENT rows' identity
   // so every successful main load (period change, paid-only toggle, roster
@@ -1492,6 +1560,7 @@ export default function PeopleReviewTab({
         links: (t.checklist_items as { title: string; links?: string[] | null } | null)?.links,
         scheduled_date: t.scheduled_date,
         completed_at: null as string | null,
+        checklist_item_id: t.checklist_item_id,
       }))
       .sort((a, b) => {
         const as = (a.scheduled_date ?? '').trim()
@@ -2743,7 +2812,11 @@ export default function PeopleReviewTab({
                   style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', userSelect: 'none' }}
                 >
                   <span style={{ transform: reviewJobsWorkedCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>▾</span>
-                  Jobs Worked ({reviewLaborJobs.length + reviewCrewJobs.length})
+                  Jobs Worked ({reviewJobsRollup.jobs.length})
+                  <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+                    · {reviewJobsRollup.dayRows} day {reviewJobsRollup.dayRows === 1 ? 'row' : 'rows'}
+                    {reviewJobsRollup.zeroHourRows > 0 ? ` · ${reviewJobsRollup.zeroHourRows} with 0 h` : ''}
+                  </span>
                 </h3>
                 {reviewLaborJobs.length === 0 && reviewCrewJobs.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs in this period.</p>
@@ -2874,7 +2947,11 @@ export default function PeopleReviewTab({
                             </tr>
                           </thead>
                           <tbody>
-                            {reviewLaborJobs.map((j) => {
+                            {(() => {
+                            // Day rows keep their original renderers (and the
+                            // per-day detail grid); they are now listed under
+                            // one header row per job (v2.2682).
+                            const renderLaborRow = (j: ReviewLaborJob) => {
                               const key = `labor-${j.id}`
                               const expanded = reviewJobExpandedKey === key
                               const revPerHour = j.hours > 0 ? j.allocatedTotalBill / j.hours : null
@@ -3215,8 +3292,8 @@ export default function PeopleReviewTab({
                                   )}
                                 </Fragment>
                               )
-                            })}
-                            {reviewCrewJobs.map((j) => {
+                            }
+                            const renderCrewRow = (j: ReviewCrewJob) => {
                               const key = `crew-${j.job_id}-${j.work_date}`
                               const expanded = reviewJobExpandedKey === key
                               const revPerHour = j.hours > 0 ? j.allocatedTotalBill / j.hours : null
@@ -3557,7 +3634,89 @@ export default function PeopleReviewTab({
                                   )}
                                 </Fragment>
                               )
-                            })}
+                            }
+                            const laborByKey = new Map<string, ReviewLaborJob>(reviewLaborJobs.map((j) => [`labor-${j.id}`, j]))
+                            const crewByKey = new Map<string, ReviewCrewJob>(reviewCrewJobs.map((j) => [`crew-${j.job_id}-${j.work_date}`, j]))
+                            const chipStyle: React.CSSProperties = {
+                              display: 'inline-block',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              padding: '0 6px',
+                              borderRadius: 999,
+                              border: '1px solid var(--border-amber)',
+                              background: 'var(--bg-amber-tint)',
+                              color: 'var(--text-amber-900)',
+                              marginLeft: 6,
+                              verticalAlign: 'middle',
+                            }
+                            return reviewJobsRollup.jobs.map((g) => {
+                              const open = reviewJobGroupsOpen.has(g.jobKey)
+                              const num = { fontVariantNumeric: 'tabular-nums' } as const
+                              return (
+                                <Fragment key={`group-${g.jobKey}`}>
+                                  <tr
+                                    onClick={() => toggleReviewJobGroup(g.jobKey)}
+                                    aria-expanded={open}
+                                    style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: open ? 'var(--bg-subtle)' : undefined }}
+                                  >
+                                    <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
+                                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                                        <span style={{ fontSize: '0.75em', color: 'var(--text-muted)', lineHeight: '1.4' }}>{open ? '▾' : '▸'}</span>
+                                        <div>
+                                          <div style={{ fontWeight: 700 }}>{g.numberLabel}</div>
+                                          <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>
+                                            {g.dayRows} {g.dayRows === 1 ? 'day' : 'days'}
+                                            {g.zeroHourRows > 0 ? ` · ${g.zeroHourRows} with 0 h` : ''}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
+                                      <div style={{ fontWeight: 600 }}>
+                                        {g.jobName || '—'}
+                                        {g.flags.noBill && <span style={chipStyle} title="This job has no bill amount, so labor on it lands as pure loss.">no bill</span>}
+                                        {g.flags.assumedPct && <span style={chipStyle} title="No % complete on the ledger — treated as 100% done.">% assumed</span>}
+                                      </div>
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{g.jobAddress || ''}</div>
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', ...num }}>
+                                      <div style={{ fontWeight: 600 }}>{g.laborCost > 0 ? `${fmtMoney(g.laborCost)} / ${g.hours.toFixed(2)}hrs` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>
+                                        {g.share != null ? `${Math.round(g.share * 100)}% of ${fmtMoney(g.totalLaborOnJob)}` : g.totalLaborOnJob > 0 ? fmtMoney(g.totalLaborOnJob) : '—'}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', ...num }}>
+                                      <div style={{ fontWeight: 600, color: g.allocatedRevenueBeforeOverhead < 0 ? 'var(--text-red-700)' : undefined }}>
+                                        {g.allocatedRevenueBeforeOverhead !== 0 ? fmtMoney(g.allocatedRevenueBeforeOverhead) : '—'}
+                                      </div>
+                                      <div style={{ fontSize: '0.8em', color: g.revenueBeforeOverhead < 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                                        {g.revenueBeforeOverhead !== 0 ? fmtMoney(g.revenueBeforeOverhead) : '—'}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', ...num }}>
+                                      <div style={{ fontWeight: 600 }}>{g.allocatedTotalBill > 0 ? fmtMoney(g.allocatedTotalBill) : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{g.valueCreated > 0 ? fmtMoney(g.valueCreated) : '—'}</div>
+                                    </td>
+                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', ...num }}>
+                                      {g.revPerHour != null && g.profitPerHour != null ? (
+                                        <>
+                                          <div><strong>{fmtMoney(g.revPerHour)}</strong>/hr revenue</div>
+                                          <div style={{ color: g.profitPerHour < 0 ? 'var(--text-red-700)' : undefined }}><strong>{fmtMoney(g.profitPerHour)}</strong>/hr profit</div>
+                                        </>
+                                      ) : '—'}
+                                    </td>
+                                  </tr>
+                                  {open &&
+                                    g.rowKeys.map((k) => {
+                                      const l = laborByKey.get(k)
+                                      if (l) return renderLaborRow(l)
+                                      const c = crewByKey.get(k)
+                                      return c ? renderCrewRow(c) : null
+                                    })}
+                                </Fragment>
+                              )
+                            })
+                            })()}
                           </tbody>
                           <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600, borderTop: '2px solid var(--border)' }}>
                             <tr>
@@ -3792,6 +3951,11 @@ export default function PeopleReviewTab({
               <section style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>
                   Tasks outstanding ({reviewTasksOutstanding.length})
+                  {reviewTasksRollup.lines.length < reviewTasksOutstanding.length && (
+                    <span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+                      {' '}· {reviewTasksRollup.lines.length} {reviewTasksRollup.lines.length === 1 ? 'line' : 'lines'}, recurring items collapsed
+                    </span>
+                  )}
                 </h3>
                 {reviewTasksOutstanding.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No open tasks assigned.</p>
@@ -3805,16 +3969,38 @@ export default function PeopleReviewTab({
                         </tr>
                       </thead>
                       <tbody>
-                        {reviewTasksOutstanding.map((t) => (
-                          <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <ChecklistTitleWithLinks title={t.title} links={t.links} />
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              {(t.scheduled_date ?? '').trim() ? t.scheduled_date : '—'}
-                            </td>
-                          </tr>
-                        ))}
+                        {reviewTasksRollup.lines.map((line) =>
+                          line.kind === 'single' ? (
+                            <tr key={line.task.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                <ChecklistTitleWithLinks title={line.task.title} links={line.task.links} />
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                {(line.task.scheduled_date ?? '').trim() ? line.task.scheduled_date : '—'}
+                              </td>
+                            </tr>
+                          ) : (
+                            <tr key={`recurring-${line.groupKey}`} style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                <span aria-hidden="true" style={{ color: 'var(--text-muted)', marginRight: 6 }}>↻</span>
+                                <ChecklistTitleWithLinks title={line.title} links={line.links} />
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>
+                                  {' '}· {line.cadence} · {line.count} open
+                                  {line.missed > 0 && (
+                                    <>
+                                      {' '}· <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>{line.missed} missed</span>
+                                      {line.firstMissed ? ` since ${line.firstMissed}` : ''}
+                                    </>
+                                  )}
+                                  {line.upcoming > 0 ? ` · ${line.upcoming} upcoming` : ''}
+                                </span>
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                                {line.nextDue ? `next ${line.nextDue}` : line.lastMissed ? `last ${line.lastMissed}` : '—'}
+                              </td>
+                            </tr>
+                          ),
+                        )}
                       </tbody>
                     </table>
                   </div>
