@@ -34,6 +34,15 @@ Tabs switch on a single `activeTab` state ([`People.tsx`](../src/pages/People.ts
 
 ---
 
+## Person Desk (v2.2701) — the per-person drawer
+
+> Not a tab: a global drawer opened from a person's **name** (People → Users rows, People → Subs rows; more doors in later PRs) or from `?person=u:<users.id>` / `?person=p:<people.id>` on any route. Owner-approved proposal: artifact 321baa3e.
+
+- **Identity spine**: [`lib/people/personKey.ts`](../src/lib/people/personKey.ts) resolves `{ userId, personId, payName, gaps }` from either id (pay name = trimmed account name when an account exists, else the roster name — the Phase A finding). Gaps (`no_roster_row`, `no_login`, `unlinked_email_match`, `pay_name_mismatch`, `no_pay_config`) render in the header as one amber line each with the one existing fix (Link account → `people.account_user_id`; Reconcile → `people.name` + `cascadePersonNameInPayTables`; Create roster row → the Employment-tab insert). **Nothing is created or linked silently.**
+- **Gates**: [`lib/people/personDeskGates.ts`](../src/lib/people/personDeskGates.ts) restates each surface's existing gate, one function per control, so widening is a one-line change here plus the enforcing edge function / policy. The Desk adds no permissions; locked rows stay visible with a `dev only` tag.
+- **Pieces**: [`contexts/PersonDeskContext.tsx`](../src/contexts/PersonDeskContext.tsx) (opener + `changeKey`), [`hooks/usePersonDesk.ts`](../src/hooks/usePersonDesk.ts) (loader), [`components/personDesk/`](../src/components/personDesk/) — `PersonDeskDrawer` (z 60; full-screen ≤ 640px), `PersonDeskHeader`, `PersonDeskDeepLinkHandler`, `personDeskShared` (`DeskSection` / `DeskRow` / `Chip` / `LockTag`), and `sections/` — Hours & approvals (the v2.2694 queue modal with `pinUserId`), Portal & paperwork (subs; `SubPortalGlobeButton` inline + compliance chips), Team & alerts, Access & account (mirrors the Active Accounts row; Archive routes to that modal for customer reassignment).
+- **Train**: PR 2 Pay & schedule + End / Start employment flows; PR 3 Field, Paperwork, Records, Schedule + a People → Person tab (the same section registry in a page); PR 4 doors everywhere + the `/` quick sheet; then the gate widenings and an optional summary RPC.
+
 ## Master summary table
 
 | Tab key | Render lines | ~Lines | Status | Owned state | Cross-tab coupling | Coupling / risk | Recommended action |

@@ -6,6 +6,7 @@ import { buildSubsHqRows, groupUnattributedSheets, type SubsHqResult, type Unatt
 import { suggestSubSheetAssignee } from '../../lib/people/subSheetNameSuggestion'
 import type { ComplianceBadge } from '../../lib/people/subCompliance'
 import SubPortalGlobeButton from './SubPortalGlobeButton'
+import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -47,6 +48,7 @@ const DOC_TYPES = ['agreement', 'coi', 'w9', 'license', 'other'] as const
 
 export default function PeopleSubsTab() {
   const navigate = useNavigate()
+  const personDesk = useOptionalPersonDesk()
   const [result, setResult] = useState<SubsHqResult | null>(null)
   const [docsByPerson, setDocsByPerson] = useState<Record<string, DocRow[]>>({})
   const [expandedPersonId, setExpandedPersonId] = useState<string | null>(null)
@@ -441,7 +443,18 @@ export default function PeopleSubsTab() {
               <tr key={row.personId} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                 <td style={{ padding: '0.6rem' }}>
                   <div style={{ fontWeight: 650, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    {row.name}
+                    {personDesk ? (
+                      <button
+                        type="button"
+                        onClick={() => personDesk.open({ personId: row.personId, displayName: row.name })}
+                        title={`Open ${row.name}'s desk`}
+                        style={{ fontWeight: 650, border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
+                      >
+                        {row.name}
+                      </button>
+                    ) : (
+                      row.name
+                    )}
                     <SubPortalGlobeButton personId={row.personId} personName={row.name} />
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
