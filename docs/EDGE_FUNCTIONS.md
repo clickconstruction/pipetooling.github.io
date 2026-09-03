@@ -498,11 +498,11 @@ interface MergeUsersRequest {
 
 ### archive-user
 
-**Purpose**: Archive users by email or name (dev-only operation). Archived users are hidden across the app and cannot sign in, but can be restored later.
+**Purpose**: Archive users by email or name. Archived users are hidden across the app and cannot sign in, but can be restored later.
 
 **Endpoint**: `POST /functions/v1/archive-user`
 
-**Required Role**: `dev`
+**Required Role**: `dev`, `controller`, or a **pay-approved** `master_technician` (v2.2713 — Person Desk End employment; was dev-only)
 
 **Required Secrets**:
 - `SUPABASE_URL`
@@ -560,11 +560,11 @@ const response = await supabase.functions.invoke('archive-user', {
 
 ### restore-user
 
-**Purpose**: Restore an archived user (dev-only). Clears `archived_at` and `banned_until` so the user can sign in again.
+**Purpose**: Restore an archived user. Clears `archived_at` and `banned_until` so the user can sign in again.
 
 **Endpoint**: `POST /functions/v1/restore-user`
 
-**Required Role**: `dev`
+**Required Role**: `dev`, `controller`, or a **pay-approved** `master_technician` (v2.2713; was dev-only)
 
 **Required Secrets**:
 - `SUPABASE_URL`

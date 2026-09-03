@@ -28,7 +28,7 @@ Or open the **People → Person** tab: the same desk as a page, with a roster ra
 - **Pay & schedule** (pay roles) — wage and office rate ({{button:outline|Edit}}), the **Salaried** switch (turning it off shows the same warning Employment does: history is safe, pay becomes hours × wage, today's auto-sessions go, and the workday template is cleared), **also record hours** for salaried people, employment start → end, upcoming **time off** with {{button:outline|Add}}, {{button:outline|Workday schedule…}} for salaried people, and Money: the last pay report with a {{chip:green|paid}} or {{chip:yellow|unpaid}} chip, open offsets, and {{button:outline|Ledger}} · {{button:outline|Payroll}} · {{button:outline|Add offset}}.
 - **Field** — the truck they hold with {{button:outline|To motor pool}}, or **Hand off…** any vehicle to them; the housing they occupy with {{button:outline|End occupancy}} or **Assign…** a unit; their licenses with expiry chips and the {{button:outline|Hours log}}.
 - **Paperwork** (contracts roles) — every document on file with its state ({{chip:red|unsent}}, {{chip:blue|sent}}, {{chip:green|signed}}, {{chip:yellow|expiring}}), the **clock-in nag** switch per unsigned document, and the packet: pick one and {{button:outline|Assign}} to create its documents as unsent. Sending and uploading a signed copy stay on Contracts, one tap away.
-- **Records** — the HR file's freshness and pending reports with {{button:outline|Open file}} (dev), write-ups and attendance incidents in the last 90 days, and {{button:outline|Rate}} into Team → Review.
+- **Records** — the HR file's freshness and pending reports with {{button:outline|Open file}} (dev; everyone else sees whether a file exists and how many entries, nothing more), write-ups and attendance incidents in the last 90 days, and {{button:outline|Rate}} into Team → Review.
 - **Schedule** — today's schedule blocks and clock, the same view the Day · week · month button opens.
 - **Access & account** — role, trades, last sign-in with {{button:outline|Send sign-in email}}, training mode, and Active / Archived with {{button:red|Archive…}} (which runs through the Active Accounts row so customers can be reassigned on the way out).
 
@@ -38,7 +38,7 @@ The header's **⋯** menu (pay roles) opens **End employment…**: a checklist o
 
 - Each row has its one-tap fix: {{button:blue|Force clock out}}, {{button:outline|Open approvals}} (the queue pinned to them), {{button:blue|Turn off portal}}, {{button:blue|To motor pool}}, {{button:blue|End occupancy}}, {{button:blue|Remove}} for a leader, or a link to the tab that does it.
 - Rows you mean to leave (a sub balance still being settled, a pay report that runs Friday) take {{button:outline|Leave open…}} with a reason. A live portal, a running clock, pending sessions and a leader link can't be left open — they'd keep paying or exposing.
-- The footer takes the **end date**, **Archive account after** (dev today), and **Note to HR file** (dev). The button reads {{button:red|End employment · 3 open}} until every row is green, grey, or left open on purpose. Finishing writes the end date, appends one factual line to the HR file, and archives the account if you asked.
+- The footer takes the **end date**, **Archive account after** (dev, controller, or pay-approved Master), and **Note to HR file** (dev). The button reads {{button:red|End employment · 3 open}} until every row is green, grey, or left open on purpose. Finishing writes the end date, appends one factual line to the HR file, and archives the account if you asked.
 
 :::example What the HR line says
 "Employment ended 2026-09-05 for Isiah. Closed out: pending sessions, team lead. Left open on purpose: final pay report (runs Friday)."
@@ -49,7 +49,7 @@ The header's **⋯** menu (pay roles) opens **End employment…**: a checklist o
 The mirror: **Start employment…** lists the start date, wage, team lead, packet, truck and housing. Type the date, the wage, or pick the leader right on the row and tap {{button:blue|Save}}; the packet and the optional truck and housing link to their tabs. Rows a dev must do (the role, sign-in) stay on the Access section with their {{chip:gray|dev only}} tag, so a controller finishes everything else and sends the dev one message.
 
 :::example Locked rows still show
-A controller sees the role and the training-mode switch with a {{chip:gray|dev only}} tag beside them — the value is shown so you know where it stands and who to ask. The Desk adds no permissions of its own.
+A controller sees the role with a {{chip:gray|dev only}} tag beside it — the value is shown so you know where it stands and who to ask. Training mode and Archive are theirs (and a pay-approved Master's) since the Desk shipped; changing a role is still the dev's.
 :::
 
 ## What's coming

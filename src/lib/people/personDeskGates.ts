@@ -28,14 +28,19 @@ export function canEditAccount(v: PersonDeskViewer): boolean {
   return v.isDev && !v.readOnly
 }
 
-/** Archive / restore — `archive-user` and `restore-user` check dev today (owner decision 2: widen later, one line here + one line there). */
-export function canArchiveAccount(v: PersonDeskViewer): boolean {
-  return v.isDev && !v.readOnly
+/** The people who onboard and offboard: dev, controller, or a pay-approved master (v2.2713, owner decision 2). */
+function isOffboardingRole(v: PersonDeskViewer): boolean {
+  return v.isDev || v.role === 'controller' || (v.role === 'master_technician' && v.canAccessPay)
 }
 
-/** Training mode flag — the `users.read_only` write is dev-only today (owner decision 2: widen later). */
+/** Archive / restore — `archive-user` / `restore-user` admit the same set in code (v2.2713; was dev-only). */
+export function canArchiveAccount(v: PersonDeskViewer): boolean {
+  return isOffboardingRole(v) && !v.readOnly
+}
+
+/** Training mode — `users_guard_privileged_columns` admits the same set, never on your own row (v2.2713; was dev-only). */
 export function canSetTrainingMode(v: PersonDeskViewer): boolean {
-  return v.isDev && !v.readOnly
+  return isOffboardingRole(v) && !v.readOnly
 }
 
 /** Imitate stays dev-only in the UI regardless of what the edge function admits. */
