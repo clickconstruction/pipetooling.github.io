@@ -1130,6 +1130,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `POST /functions/v1/send-bid-room-link` — `{ room_id, email, public_origin? }`
 
+**Email** (v2.2729): the "Letterhead" design from `_shared/bidRoomLinkEmail.ts` — fileable subject (trade · project · proposed amount · company), brand banner, meta line, option table with *Our recommendation*, bulletproof button + plain-URL fallback, validity from the terms, the sender's signature block with Reply-To, revision note on revised sends.
+
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional — returns the link un-emailed when missing), `APP_ORIGIN` fallback for the link base.
 
 **Gateway**: `verify_jwt = false`; staff JWT validated in-body (`auth.getUser`), and the caller's own RLS must see the room (403 otherwise).
