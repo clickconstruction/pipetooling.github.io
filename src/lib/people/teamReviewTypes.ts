@@ -52,6 +52,13 @@ export type TeamReviewUnion = {
   billedMaterialsByJobId: Map<string, number>
   /** Mercury debit-card purchases allocated to jobs (abs amounts) — canonical parts composition includes this bucket. */
   cardChargesByJobId: Map<string, number>
+  /**
+   * The fuel slice of `cardChargesByJobId` (abs amounts): allocations whose
+   * transaction carries the Banking "Fuel / Gas" accounting label, or — when
+   * it has no label yet — whose bank category is FuelAndGas. Always ≤ the
+   * card total for the job. v2.2700.
+   */
+  fuelChargesByJobId: Map<string, number>
   hoursMap: Record<string, number>
   crewByDatePerson: Record<string, CrewJobRow>
   overheadHoursByPerson: Record<string, { office: number; bid: number }>

@@ -78,7 +78,7 @@ export function compareProfit(current: number, prior: number, flatBand = 0.05): 
 }
 
 export type ReviewCompositionSegment = {
-  key: 'costs' | 'overheadLabor' | 'burden' | 'profit'
+  key: 'costs' | 'fuel' | 'overheadLabor' | 'burden' | 'profit'
   label: string
   usd: number
   /** Share of gross, 0–1, clamped so the bar always fits. */
@@ -89,8 +89,10 @@ export type ReviewVerdict = {
   people: number
   gross: number
   net: number
-  /** Parts, subs and everyone's labor — gross − net. */
+  /** Parts, subs and everyone's labor — gross − net (fuel included). */
   costs: number
+  /** The fuel slice of `costs` (team share of Fuel / Gas card charges). */
+  fuel: number
   /** Stored positive (a cost). */
   overheadLabor: number
   /** Positive; null until the 90-day rate loads. */
@@ -119,6 +121,7 @@ export function buildReviewVerdict(
 ): ReviewVerdict {
   let gross = 0
   let net = 0
+  let fuel = 0
   let overheadLabor = 0
   let burden: number | null = 0
   const field = { count: 0, profit: 0 as number | null, fieldHours: 0 }
@@ -127,6 +130,7 @@ export function buildReviewVerdict(
   for (const r of rows) {
     gross += r.gross
     net += r.net
+    fuel += r.allocatedFuel
     overheadLabor += -r.overheadLaborCost
     if (burden != null) burden = r.overheadBurden == null ? null : burden + -r.overheadBurden
     const group = classifyReviewPerson(r)
@@ -149,7 +153,8 @@ export function buildReviewVerdict(
   const segments: ReviewCompositionSegment[] = []
   if (gross > 0 && burden != null && profit != null) {
     const share = (usd: number) => Math.max(0, Math.min(1, usd / gross))
-    segments.push({ key: 'costs', label: 'Parts, subs & labor', usd: costs, share: share(costs) })
+    segments.push({ key: 'costs', label: 'Parts, subs & labor', usd: costs - fuel, share: share(costs - fuel) })
+    segments.push({ key: 'fuel', label: 'Fuel', usd: fuel, share: share(fuel) })
     segments.push({ key: 'overheadLabor', label: 'Overhead labor', usd: overheadLabor, share: share(overheadLabor) })
     segments.push({ key: 'burden', label: 'Parts burden', usd: burden, share: share(burden) })
     segments.push({ key: 'profit', label: 'Profit', usd: profit, share: share(profit) })
@@ -163,6 +168,7 @@ export function buildReviewVerdict(
     gross,
     net,
     costs,
+    fuel,
     overheadLabor,
     burden,
     profit,
@@ -326,13 +332,39 @@ export function buildReviewPersonMath(
       usd: b.gross,
       kind: 'in',
     },
-    {
-      key: 'costs',
-      label: '− Parts, subs & team labor',
-      why: 'tally parts + supply invoices + billed materials + card charges + every contributor\'s labor, in the same share',
-      usd: -costs,
-      kind: 'out',
-    },
+    ...(b.allocatedParts + b.allocatedLabor > 0 || costs === 0
+      ? [
+          {
+            key: 'parts',
+            label: '− Parts & job purchases',
+            why: 'tally parts + supply invoices + billed materials + card charges other than fuel, in the same share',
+            usd: -(b.allocatedParts - b.allocatedFuel),
+            kind: 'out' as const,
+          },
+          {
+            key: 'fuel',
+            label: '− Fuel',
+            why: 'card charges labelled Fuel / Gas in Banking (or bank-categorised FuelAndGas until labelled), in the same share',
+            usd: -b.allocatedFuel,
+            kind: 'out' as const,
+          },
+          {
+            key: 'labor',
+            label: '− Subs & team labor',
+            why: 'every contributor\'s labor on those jobs, own labor included, in the same share',
+            usd: -b.allocatedLabor,
+            kind: 'out' as const,
+          },
+        ]
+      : [
+          {
+            key: 'costs',
+            label: '− Parts, subs & team labor',
+            why: 'tally parts + supply invoices + billed materials + card charges + every contributor\'s labor, in the same share',
+            usd: -costs,
+            kind: 'out' as const,
+          },
+        ]),
     { key: 'net', label: 'Net revenue', why: '', usd: b.net, kind: 'total' },
     {
       key: 'overheadLabor',

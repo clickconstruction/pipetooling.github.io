@@ -76,7 +76,7 @@ async function verifyMercurySignature(
  */
 async function generateSuggestion(
   admin: ReturnType<typeof createClient>,
-  tx: { id: string; amount: number | string | null; counterparty_name: string | null; raw: unknown },
+  tx: { id: string; amount: number | string | null; counterparty_name: string | null; raw: unknown; mercury_category?: unknown },
 ): Promise<void> {
   // Skip if this transaction already has a drag-sort assignment (already sorted).
   const { data: assigned } = await admin
@@ -97,7 +97,7 @@ async function generateSuggestion(
     const criteria = parseAccountingLabelRuleCriteria(rule.criteria)
     if (!criteria) continue
     const matched = matchAccountingLabelRuleCriteria(
-      { amount: tx.amount, counterparty_name: tx.counterparty_name, raw: tx.raw },
+      { amount: tx.amount, counterparty_name: tx.counterparty_name, raw: tx.raw, mercury_category: tx.mercury_category },
       criteria,
     )
     if (matched) {
@@ -176,7 +176,7 @@ serve(async (req) => {
     const { data: upserted, error: upsertErr } = await admin
       .from('mercury_transactions')
       .upsert([row], { onConflict: 'mercury_id' })
-      .select('id, amount, counterparty_name, raw')
+      .select('id, amount, counterparty_name, raw, mercury_category')
       .single()
     if (upsertErr) {
       console.error('mercury-webhook upsert', upsertErr)
@@ -190,6 +190,7 @@ serve(async (req) => {
         amount: number | string | null
         counterparty_name: string | null
         raw: unknown
+        mercury_category?: unknown
       })
     } catch (e) {
       console.error('mercury-webhook suggestion (non-fatal)', e)

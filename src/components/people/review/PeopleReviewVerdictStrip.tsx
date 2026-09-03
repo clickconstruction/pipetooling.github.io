@@ -8,6 +8,7 @@ import { fmtH, fmtMoney } from '../teamSummary/formatters'
 
 const SEGMENT_COLOR: Record<ReviewVerdict['segments'][number]['key'], string> = {
   costs: 'var(--text-faint)',
+  fuel: '#0ea5e9',
   overheadLabor: '#8b5cf6',
   burden: '#f59e0b',
   profit: '#15803d',

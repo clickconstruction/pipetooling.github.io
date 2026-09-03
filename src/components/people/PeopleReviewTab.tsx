@@ -33,7 +33,8 @@ import {
 } from '../../lib/overheadDailyLabor'
 import { bucketInvoiceRevenueByAppTzDay } from '../../lib/overheadAvgDailyCost'
 import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
-import { loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
+import { fetchAccountingBucketByTxId, loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
+import { sumFuelChargesByJob } from '../../lib/mercuryFuelSplit'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import type {
   CrewJobAssignment,
@@ -2076,9 +2077,10 @@ export default function PeopleReviewTab({
         'load team summary billed materials',
       ).then((rows) => ({ data: rows, error: null })),
       // Mercury card charges — canonical parts composition, see loadReviewDataCore.
+      // `mercury_transaction_id` rides along so the fuel slice can be split off (v2.2700).
       fetchAllRowsChunkedIn(
         jobIds,
-        (chunk, f, t) => supabase.from('mercury_transaction_job_allocations').select('job_id, amount').in('job_id', chunk).order('id').range(f, t),
+        (chunk, f, t) => supabase.from('mercury_transaction_job_allocations').select('job_id, amount, mercury_transaction_id').in('job_id', chunk).order('id').range(f, t),
         'load team summary card charges',
       ),
     ])
@@ -2092,8 +2094,28 @@ export default function PeopleReviewTab({
       billedMaterialsByJobId.set(row.job_id, (billedMaterialsByJobId.get(row.job_id) ?? 0) + Number(row.amount ?? 0))
     }
     const cardChargesByJobId = new Map<string, number>()
-    for (const row of cardChargeRows as Array<{ job_id: string; amount: number }>) {
+    const cardRows = cardChargeRows as Array<{ job_id: string; amount: number; mercury_transaction_id: string | null }>
+    for (const row of cardRows) {
       cardChargesByJobId.set(row.job_id, (cardChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
+    }
+    // Fuel slice (v2.2700): the Banking "Fuel / Gas" accounting label wins;
+    // an unlabelled transaction falls back to the bank's own FuelAndGas
+    // category so the split is honest before the label rule has been applied.
+    const fuelChargesByJobId = new Map<string, number>()
+    const cardTxIds = [...new Set(cardRows.map((r) => r.mercury_transaction_id).filter((id): id is string => !!id))]
+    if (cardTxIds.length > 0) {
+      const [bucketByTxId, categoryRows] = await Promise.all([
+        fetchAccountingBucketByTxId(cardTxIds).catch(() => new Map<string, string>()),
+        fetchAllRowsChunkedIn(
+          cardTxIds,
+          (chunk, f, t) => supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(f, t),
+          'load team summary card categories',
+        ).catch(() => [] as unknown[]),
+      ])
+      const categoryByTxId = new Map<string, unknown>()
+      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
+      // Same classifier Jobs → Job Summary uses (v2.2708), so the two surfaces agree on what is fuel.
+      for (const [jobId, usd] of sumFuelChargesByJob(cardRows, bucketByTxId, categoryByTxId)) fuelChargesByJobId.set(jobId, usd)
     }
 
     return {
@@ -2113,6 +2135,7 @@ export default function PeopleReviewTab({
       invoiceAmountByJob,
       billedMaterialsByJobId,
       cardChargesByJobId,
+      fuelChargesByJobId,
       hoursMap,
       crewByDatePerson,
       overheadHoursByPerson,

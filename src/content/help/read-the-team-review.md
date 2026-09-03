@@ -41,7 +41,9 @@ Click a name. The drawer beside the list shows the formula with this period's fi
 
 :::example Malachi · where $21,894 comes from
 Gross revenue **$49,063** — 18 jobs, each job's bill × % complete, then his share by labor cost
-− Parts, subs & team labor **−$25,737**
+− Parts & job purchases **−$9,412** — tally, supply invoices, billed materials, card purchases other than fuel
+− Fuel **−$1,006** — card charges labelled Fuel / Gas in Banking (the bank's FuelAndGas category until labelled)
+− Subs & team labor **−$15,319**
 Net revenue **$23,326**
 − Own office / bid wages **−$604** — 10.5 h of office and bid sessions
 − Parts burden **−$828** — 165.5 field h × $5.00
