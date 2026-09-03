@@ -29,6 +29,8 @@ import {
   type JobLienReleaseRow,
 } from '../lib/jobs/lienReleaseTracking'
 import { lienReleaseChipColors, lienReleaseChips, lienReleaseSignatureAuditLine, lienReleaseStatus } from '../lib/jobs/lienReleaseLifecycle'
+import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
+import JobContractRecordModal from '../components/jobs/JobContractRecordModal'
 import { buildLienWaiverPrintHtml, type LienWaiverSignature } from '../lib/jobsDocuments/lienWaiverRelease'
 import { openHtmlPreviewWindow } from '../lib/jobsDocuments/printWindow'
 import { billingTypeLabel } from '../components/jobs/HostedStripeBillPanel'
@@ -634,10 +636,12 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   // Minted lien releases as document child rows (v2.2620) — drafts stay off
   // the page (not yet documents); voided ones stay listed, chipped.
   const [lienReleasesByJobId, setLienReleasesByJobId] = useState<Map<string, JobLienReleaseRow[]>>(() => new Map())
+  const [contractsByJobId, setContractsByJobId] = useState<Map<string, JobContractRow[]>>(() => new Map())
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [addDriveLinkJob, setAddDriveLinkJob] = useState<{ id: string; title: string } | null>(null)
   const [billedInvoiceModal, setBilledInvoiceModal] = useState<DocumentsJobLedgerInvoiceRow | null>(null)
+  const [contractRecord, setContractRecord] = useState<{ row: JobContractRow; job: { hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; customer_name: string | null } } | null>(null)
 
   const effectiveSearch = embedded ? embedSearch : search
   const filteredRows = useMemo(() => {
@@ -738,6 +742,29 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
       } catch {
         setLienReleasesByJobId(new Map())
       }
+
+      // Job contracts (Contract Desk PR 3) — sent, signed, voided; drafts stay in the modal.
+      try {
+        const conData = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('job_contracts')
+              .select('*')
+              .in('job_id', jobIds)
+              .neq('status', 'draft')
+              .order('created_at', { ascending: true }),
+          'load documents job contracts',
+        )
+        const conByJob = new Map<string, JobContractRow[]>()
+        for (const row of (conData ?? []) as JobContractRow[]) {
+          const arr = conByJob.get(row.job_id) ?? []
+          arr.push(row)
+          conByJob.set(row.job_id, arr)
+        }
+        setContractsByJobId(conByJob)
+      } catch {
+        setContractsByJobId(new Map())
+      }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not load jobs'), 'error')
       setRows([])
@@ -762,6 +789,12 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
         open={billedInvoiceModal != null}
         invoice={billedInvoiceModal}
         onClose={() => setBilledInvoiceModal(null)}
+      />
+      <JobContractRecordModal
+        open={contractRecord != null}
+        onClose={() => setContractRecord(null)}
+        row={contractRecord?.row ?? null}
+        job={contractRecord?.job ?? null}
       />
       <DocumentsAddDriveLinkModal
         open={addDriveLinkJob != null}
@@ -832,6 +865,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                 const hasJobFiles = !!filesLink
                 const jobInvoices = invoicesByJobId.get(r.id) ?? []
                 const jobLienReleases = lienReleasesByJobId.get(r.id) ?? []
+                const jobContracts = contractsByJobId.get(r.id) ?? []
                 return (
                   <Fragment key={r.id}>
                     <tr>
@@ -951,6 +985,33 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                         </tr>
                       )
                     })}
+                    {jobContracts.map((con) => (
+                      <tr key={con.id}>
+                        <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
+                          <button
+                            type="button"
+                            onClick={() => setContractRecord({ row: con, job: r })}
+                            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'var(--text-blue-700)', textDecoration: 'underline' }}
+                          >
+                            {con.template_name ?? 'Contract'}
+                          </button>
+                          <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>rev {con.revision}</span>
+                          {jobContractChips(con).map((c) => {
+                            const colors = jobContractChipColors(c.tone)
+                            return (
+                              <span key={c.label} style={{ marginLeft: '0.5rem', fontSize: '0.68rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 9999, whiteSpace: 'nowrap', background: colors.background, color: colors.color, border: colors.border }}>
+                                {c.label}
+                              </span>
+                            )
+                          })}
+                          {con.signed_at ? (
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>{jobContractSignatureAuditLine(con)}</span>
+                          ) : con.last_sent_at ? (
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {formatContractStamp(con.last_sent_at)}</span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
                     {jobLienReleases.map((rel) => {
                       const relForm = isLienWaiverFormType(rel.form_type) ? rel.form_type : 'conditional_progress'
                       const signature: LienWaiverSignature | null =

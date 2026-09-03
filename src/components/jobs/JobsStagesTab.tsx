@@ -76,6 +76,8 @@ import {
 import BilledExpectedPayChip from './BilledExpectedPayChip'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import JobContractModal from './JobContractModal'
+import JobsContractSweepModal from './JobsContractSweepModal'
 import {
   buildJobContractCoverage,
   filterJobsByContractCoverage,
@@ -795,6 +797,27 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     () => buildJobContractCoverage(jobs, jobContractRows, signedEstimateRows),
     [jobs, jobContractRows, signedEstimateRows],
   )
+  /** The Contract modal (Contract Desk PR 2) — opened from the row chip and the ✍ quick action. */
+  const [jobContractModalJob, setJobContractModalJob] = useState<JobWithDetails | null>(null)
+  const openJobContract = canSeeJobContracts ? (j: JobWithDetails) => setJobContractModalJob(j) : undefined
+  /** The contract sweep (PR 4): every live job with nothing on file, one row each. ?contractSweep=1 deep-links it. */
+  const [contractSweepOpen, setContractSweepOpen] = useState<boolean>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('contractSweep') === '1'
+    } catch {
+      return false
+    }
+  })
+  const contractSweepCount = useMemo(() => {
+    if (!canSeeJobContracts) return 0
+    let n = 0
+    for (const j of jobs) {
+      if ((j.status ?? '') === 'paid') continue
+      const cov = jobContractCoverageByJobId.get(j.id)
+      if (!cov || cov.kind === 'none' || cov.kind === 'draft') n++
+    }
+    return n
+  }, [canSeeJobContracts, jobs, jobContractCoverageByJobId])
   // ?contract=missing deep-links the board to the jobs with nothing on file
   // (Needs You, PR 4). Read-only init like ?view=recent — the tab never writes params.
   const [stagesContractFilter, setStagesContractFilter] = useState<StagesContractFilter | ''>(() => {
@@ -1200,6 +1223,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     Boolean(stagesDevelopmentFilter) ||
     Boolean(stagesAccountManFilter) ||
     Boolean(stagesContractFilter) ||
+    contractSweepOpen ||
     // Billed aging / no-line filter (v2.2155): billed lines hang on working
     // and waiting jobs too, and the board routes them into Billed only once
     // their job's scope is loaded — with Working collapsed, "Show 90+" listed
@@ -2205,6 +2229,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       loadJobs,
       onDevelopmentFilter: setStagesDevelopmentFilter,
       jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
+      onOpenJobContract: openJobContract,
     }
     const unifiedShared = {
       ...shared,
@@ -2555,26 +2580,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 Forecast
               </button>
             )}
-            {canOpenSessionNotes && (
-              <button
-                type="button"
-                onClick={() => openSessionNotes(null)}
-                title="Every clock session on one line — search what people wrote and where the time landed"
-                aria-label="Session notes"
-                style={{
-                  padding: '0.5rem 0.9rem',
-                  background: 'var(--bg-blue-tint)',
-                  color: 'var(--text-link)',
-                  border: '1px solid var(--border-blue)',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Session notes
-              </button>
-            )}
             {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
             <div
               style={{
@@ -2657,6 +2662,38 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 >
                   + schedule &amp; clock…
                 </span>
+              ) : null}
+              {canOpenSessionNotes ? (
+                // Session notes door (v2.2683): lives in the command bar beside the
+                // search it complements — same round chip grammar as the # jump.
+                <button
+                  type="button"
+                  onClick={() => openSessionNotes(null)}
+                  title="Session notes — every clock session on one line: what people wrote and where the time landed"
+                  aria-label="Session notes"
+                  style={{
+                    width: '2.1rem',
+                    height: '2.1rem',
+                    flexShrink: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 999,
+                    background: 'var(--surface)',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  {/* Font Awesome Free 7 "clock" (solid) — owner-picked glyph. */}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={17} height={17} aria-hidden>
+                    <path
+                      fill="currentColor"
+                      d="M320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64zM296 184L296 320C296 328 300 335.5 306.7 340L402.7 404C413.7 411.4 428.6 408.4 436 397.3C443.4 386.2 440.4 371.4 429.3 364L344 307.2L344 184C344 170.7 333.3 160 320 160C306.7 160 296 170.7 296 184z"
+                    />
+                  </svg>
+                </button>
               ) : null}
               <StagesJobNumberJumpChip
                 onJump={(digits) => {
@@ -2982,6 +3019,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           <option value={STAGES_ACCOUNT_MAN_FILTER_NONE}>No Account Man</option>
                         </select>
                       </div>
+                    ) : null}
+                    {canSeeJobContracts ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setStagesToolsMenuOpen(false)
+                          setContractSweepOpen(true)
+                        }}
+                        title="Every live job with no agreement on file, one row each, with Send"
+                        style={stagesToolsMenuItemStyle}
+                      >
+                        <span>Contract sweep…</span>
+                        {contractSweepCount > 0 ? (
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>
+                            {contractSweepCount} without
+                          </span>
+                        ) : null}
+                      </button>
                     ) : null}
                     <button
                       type="button"
@@ -3701,6 +3757,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                   />
                 )}
 
@@ -3790,6 +3849,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                   />
                 )}
 
@@ -3944,6 +4006,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4267,6 +4332,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4371,6 +4439,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -4508,6 +4579,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onDevelopmentFilter={setStagesDevelopmentFilter}
 
                     jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
+
+
+                    onOpenJobContract={openJobContract}
                     />
                   </>
                 ) : null}
@@ -5282,6 +5356,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienReleaseModal?.invoice ?? null}
         signerNameFallback={lienReleaseSignerFallback}
         onIssued={() => void loadLienReleaseJobIds()}
+      />
+      <JobContractModal
+        open={jobContractModalJob != null}
+        onClose={() => setJobContractModalJob(null)}
+        job={jobContractModalJob}
+        onChanged={() => void loadJobContractCoverage()}
+      />
+      <JobsContractSweepModal
+        open={contractSweepOpen}
+        onClose={() => setContractSweepOpen(false)}
+        jobs={jobs}
+        coverage={jobContractCoverageByJobId}
+        onEditJob={(j) => openEdit(j)}
+        onSent={() => void loadJobContractCoverage()}
       />
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}

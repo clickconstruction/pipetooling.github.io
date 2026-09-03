@@ -41,6 +41,7 @@ import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBi
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { maybePromoteJobToBilledAfterCustomerInvoice } from '../../lib/promoteJobToBilledIfFullyInvoiced'
 import BillCustomerLienReleaseStrip from './BillCustomerLienReleaseStrip'
+import JobContractStrip from './JobContractStrip'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
@@ -2071,6 +2072,8 @@ export default function SendRecordInvoiceModal({
           </div>
         ) : null}
 
+        {/* Contract Desk PR 3: is there a signed agreement behind this bill? */}
+        <JobContractStrip job={billCustomerJobDetails} />
         {/* Lien releases for this job (v2.2582) — issued list + clearance + new/unconditional follow-up. */}
         <BillCustomerLienReleaseStrip
           open={open}
