@@ -12,7 +12,7 @@ When someone clocks in they write a short note — their **focus** — and pick 
 
 Go to **Jobs → Pipeline**. Two doors open the same view:
 
-- The blue **clock** icon button on the toolbar, right after {{button:outline|Forecast}} — for searching across everyone. Hover it and it says "Session notes".
+- The round **clock** button inside the search bar, next to the {{chip:gray|#}} jump chip — for searching across everyone. Hover it and it says "Session notes".
 - The small **Sessions** link beside **N Reports** on any job row (and in the job activity pop-out) — the view opens with that job already pinned, so you see everyone who clocked time on it.
 
 Everyone in the office can open it. What you see inside follows the same rules as People → Hours: a role without pay access only sees the sessions it could already read there.
