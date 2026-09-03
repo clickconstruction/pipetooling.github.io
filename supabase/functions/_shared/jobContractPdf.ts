@@ -19,6 +19,7 @@ type PdfPageLike = {
   drawText(text: string, opts: { x: number; y: number; size: number; font: PdfFontLike; color?: unknown }): void
   drawLine(opts: { start: { x: number; y: number }; end: { x: number; y: number }; thickness: number; color?: unknown }): void
   drawImage(img: unknown, opts: { x: number; y: number; width: number; height: number }): void
+  drawRectangle(opts: { x: number; y: number; width: number; height: number; borderColor?: unknown; borderWidth?: number; color?: unknown }): void
 }
 type PdfDocLike = {
   addPage(size: [number, number]): PdfPageLike
@@ -51,6 +52,10 @@ export type JobContractPdfInput = {
     auditLine: string
     /** Drawn signature PNG bytes, when the customer drew. */
     png?: Uint8Array | null
+    /** Short record ID printed inside the frame (J922-1B0C4D). */
+    recordId?: string | null
+    /** Stamp beside the name, e.g. "Sep 2, 2026, 7:14 PM CT". */
+    whenLabel?: string | null
   }
 }
 
@@ -213,35 +218,60 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
   label(`Terms${input.templateName ? ` · ${input.templateName}` : ''}`)
   text(input.termsText || 'Terms as agreed.', 9, font, ink, MARGIN, CONTENT_W, 1.4)
 
-  // Signature block
+  // Signature block (v2.2724 "Option A"): a framed mark tagged SIGNED
+  // ELECTRONICALLY with the record ID, printed name + time to the right, the
+  // audit line below.
   gap(18)
-  ensure(110)
+  ensure(120)
   label('Customer signature')
   const sig = input.signature
-  let drewImage = false
+  const frameX = MARGIN
+  const frameW = 250
+  const innerPad = 12
+  let markH = 34
+  let img: { width: number; height: number } | null = null
+  let imgW = 0
+  let imgH = 0
   if (sig.png && sig.png.length > 0) {
     try {
-      const img = await doc.embedPng(sig.png)
-      const maxW = 220
-      const maxH = 60
-      const scale = Math.min(maxW / img.width, maxH / img.height, 1)
-      const w = img.width * scale
-      const h = img.height * scale
-      page.drawImage(img, { x: MARGIN, y: y - h, width: w, height: h })
-      y -= h + 4
-      drewImage = true
+      img = await doc.embedPng(sig.png)
+      const scale = Math.min((frameW - innerPad * 2) / img.width, 56 / img.height, 1)
+      imgW = img.width * scale
+      imgH = img.height * scale
+      markH = imgH
     } catch {
-      drewImage = false
+      img = null
     }
   }
-  if (!drewImage) {
-    ensure(30)
-    page.drawText(sig.printedName || '—', { x: MARGIN, y: y - 22, size: 22, font: italic, color: ink })
-    y -= 30
+  const frameH = markH + innerPad * 2 + 6
+  const frameTop = y - 8
+  const frameBottom = frameTop - frameH
+  page.drawRectangle({ x: frameX, y: frameBottom, width: frameW, height: frameH, borderColor: accent, borderWidth: 1.2 })
+  // Tag on the top edge (white gap behind it).
+  const tag = 'SIGNED ELECTRONICALLY'
+  const tagW = bold.widthOfTextAtSize(tag, 6.5)
+  page.drawRectangle({ x: frameX + 10, y: frameTop - 3.5, width: tagW + 8, height: 8, color: lib.rgb(1, 1, 1) })
+  page.drawText(tag, { x: frameX + 14, y: frameTop - 2.4, size: 6.5, font: bold, color: accent })
+  // The mark.
+  if (img) {
+    page.drawImage(img, { x: frameX + innerPad, y: frameBottom + innerPad + 3, width: imgW, height: imgH })
+  } else {
+    page.drawText(sig.printedName || '—', { x: frameX + innerPad, y: frameBottom + innerPad + 10, size: 24, font: italic, color: ink })
   }
-  page.drawLine({ start: { x: MARGIN, y }, end: { x: MARGIN + 300, y }, thickness: 0.8, color: ink })
-  y -= 12
-  text(sig.printedName, 9.5, bold)
+  // Record ID on the bottom edge.
+  if (sig.recordId) {
+    const idW = font.widthOfTextAtSize(sig.recordId, 7)
+    page.drawRectangle({ x: frameX + frameW - idW - 18, y: frameBottom - 4, width: idW + 8, height: 8, color: lib.rgb(1, 1, 1) })
+    page.drawText(sig.recordId, { x: frameX + frameW - idW - 14, y: frameBottom - 2.5, size: 7, font, color: muted })
+  }
+  // Printed name + time, right-aligned to the content edge.
+  const nameW = bold.widthOfTextAtSize(sig.printedName || '—', 10.5)
+  page.drawText(sig.printedName || '—', { x: PAGE_W - MARGIN - nameW, y: frameBottom + innerPad + 14, size: 10.5, font: bold, color: ink })
+  if (sig.whenLabel) {
+    const whenW = font.widthOfTextAtSize(sig.whenLabel, 8.5)
+    page.drawText(sig.whenLabel, { x: PAGE_W - MARGIN - whenW, y: frameBottom + innerPad + 2, size: 8.5, font, color: muted })
+  }
+  y = frameBottom - 14
   text(sig.auditLine, 8.5, font, muted)
 
   // Footer on every page

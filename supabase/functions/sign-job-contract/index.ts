@@ -27,6 +27,7 @@ import {
   jobNumberLabel,
   json,
   signingUrl,
+  signedRecordId,
 } from '../_shared/jobContract.ts'
 
 type Body = {
@@ -210,8 +211,10 @@ serve(async (req) => {
         issuer,
         signature: {
           printedName,
-          auditLine: `Signed electronically by ${printedName} (${how}) · ${stamp} CT · consent recorded${ip ? ` · ${ip}` : ''}`,
+          auditLine: `Consent recorded · ${how} · ${stamp} CT${ip ? ` · ${ip}` : ''}`,
           png: sigBytes,
+          recordId: signedRecordId('J', jobNo, c.id),
+          whenLabel: `${stamp} CT`,
         },
       })
       pdfFilename = `Signed-agreement-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`

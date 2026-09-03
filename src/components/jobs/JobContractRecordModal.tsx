@@ -17,6 +17,7 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { buildJobContractDocumentHtml, jobContractHeading, parseJobContractFields } from '../../lib/jobs/jobContractDocument'
 import { formatContractStamp, jobContractSignatureAuditLine, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import { signedRecordId } from '../../lib/signedRecordId'
 
 export const JOB_CONTRACT_BUCKET = 'job-contract-documents'
 
@@ -83,7 +84,16 @@ export function buildJobContractRecordHtml(row: JobContractRow, job: JobContract
     termsHtml: renderContractBodyToSafeHtml(row.body_html, row.body_format),
     templateName: row.template_name,
     issuer: issuer.companyName ? issuer : null,
-    signature: row.signed_at ? { printedName: row.signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(row) ?? '', imageUrl: signatureUrl } : null,
+    signature: row.signed_at
+      ? {
+          printedName: row.signer_printed_name ?? '',
+          auditLine: jobContractSignatureAuditLine(row) ?? '',
+          imageUrl: signatureUrl,
+          recordId: signedRecordId('J', effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '0', row.id),
+          whenLabel: formatContractStamp(row.signed_at) ? `${formatContractStamp(row.signed_at)} CT` : null,
+          paper: row.signer_mode === 'paper',
+        }
+      : null,
   })
 }
 

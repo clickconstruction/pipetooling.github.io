@@ -200,6 +200,12 @@ export type JobContractRenderInput = {
     auditLine: string
     /** Drawn signature as a data: or https: URL. */
     imageUrl?: string | null
+    /** Short record ID printed inside the frame (J922-1B0C4D). */
+    recordId?: string | null
+    /** Right-hand stamp under the name (e.g. "Sep 2, 2026, 7:14 PM CT"). */
+    whenLabel?: string | null
+    /** "Signed on paper" frames paper records. */
+    paper?: boolean
   } | null
 }
 
@@ -230,9 +236,15 @@ export function buildJobContractDocumentHtml(input: JobContractRenderInput): str
   .tot{display:flex;justify-content:space-between;font-weight:700;font-size:17px;border-top:1px solid #e5e7eb;padding-top:8px;margin-top:6px}
   .terms{font-size:12.5px;color:#1f2937;white-space:normal}.terms p{margin:0 0 8px}
   .sig{margin-top:26px;border-top:1px solid #e5e7eb;padding-top:14px}
-  .sigline{border-bottom:1px solid #6b7280;min-height:44px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 4px 4px;font:30px/1 "Great Vibes","Brush Script MT",cursive}
-  .sigline img{max-height:60px}.sigline small{font:11px -apple-system,"Segoe UI",Roboto,sans-serif;color:#6b7280}
-  .audit{font-size:11px;color:#6b7280;margin-top:6px}
+  .sigrow{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+  .frame{position:relative;display:inline-block;padding:12px 18px 9px;border:1.5px solid #c2410c;border-radius:6px;min-width:180px}
+  .frame .tag{position:absolute;top:-8px;left:10px;background:#fff;padding:0 6px;font:700 9px/1 -apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#c2410c}
+  .frame .id{position:absolute;bottom:-7px;right:10px;background:#fff;padding:0 6px;font:10px/1 ui-monospace,Menlo,monospace;color:#6b7280}
+  .frame .mark{font:38px/1 "Great Vibes","Brush Script MT",cursive;color:#111827;white-space:nowrap}
+  .frame img{max-height:60px;max-width:260px;display:block}
+  .frame .empty{font:13px -apple-system,sans-serif;color:#9ca3af}
+  .who{text-align:right}.who b{display:block;font-size:13px}.who span{font-size:11px;color:#6b7280}
+  .audit{font-size:11px;color:#6b7280;margin-top:12px}
   .foot{margin-top:28px;font-size:11px;color:#6b7280;text-align:center;white-space:pre-line}
   @media print{.page{padding:0}}
 </style></head><body><div class="page">
@@ -253,13 +265,15 @@ ${dates ? `<p class="kv">${dates}</p>` : ''}
 <h2>Terms${input.templateName ? ` · ${escapeHtml(input.templateName)}` : ''}</h2>
 <div class="terms">${input.termsHtml}</div>
 <div class="sig"><h2 style="margin-top:0">Customer signature</h2>
-<div class="sigline">${
+<div class="sigrow"><div class="frame"><span class="tag">${sig?.paper ? 'Signed on paper' : 'Signed electronically'}</span>${
     sig
       ? sig.imageUrl
         ? `<img src="${escapeHtml(sig.imageUrl)}" alt="Signature of ${escapeHtml(sig.printedName)}">`
-        : `<span>${escapeHtml(sig.printedName)}</span>`
-      : '<span style="font:13px -apple-system,sans-serif;color:#9ca3af">Not yet signed</span>'
-  }<small>${sig ? escapeHtml(sig.printedName) : ''}</small></div>
+        : `<div class="mark">${escapeHtml(sig.printedName)}</div>`
+      : '<div class="empty">Not yet signed</div>'
+  }${sig?.recordId ? `<span class="id">${escapeHtml(sig.recordId)}</span>` : ''}</div>${
+    sig ? `<div class="who"><b>${escapeHtml(sig.printedName)}</b><span>${escapeHtml(sig.whenLabel ?? '')}</span></div>` : ''
+  }</div>
 ${sig ? `<div class="audit">${escapeHtml(sig.auditLine)}</div>` : ''}
 </div>
 ${issuer ? `<div class="foot">${escapeHtml([issuer.tagline, issuer.companyName, issuer.addressText, issuer.phone ? `Ph: ${issuer.phone}` : '', issuer.licenseLine].filter(Boolean).join('\n'))}</div>` : ''}

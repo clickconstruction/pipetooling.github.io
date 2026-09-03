@@ -10,6 +10,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
+import { signedRecordId } from '../lib/signedRecordId'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -6332,6 +6333,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           drawSignatureLoading:
                             !!(row.acceptor_signature_storage_path?.trim()) &&
                             !acceptorSignatureSignedUrl,
+                          ip: row.acceptor_ip,
+                          userAgent: row.acceptor_user_agent,
+                          recordId: signedRecordId('E', row.estimate_number, row.id),
                         }
                       : null
                   }

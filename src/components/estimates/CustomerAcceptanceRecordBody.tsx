@@ -18,6 +18,7 @@ import {
 } from '../../lib/estimateCustomerExperience'
 import { parseAcceptHeaderBrand } from '../../lib/estimateAcceptHeaderBrand'
 import { parseCustomerAttachmentSent } from '../../lib/estimateCustomerAttachment'
+import { signedRecordId } from '../../lib/signedRecordId'
 
 const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
 
@@ -175,6 +176,9 @@ export function CustomerAcceptanceRecordBody({
           consentedAtIso: row.acceptor_consented_at,
           drawSignatureUrl: row.acceptor_signature_storage_path?.trim() ? signedUrl : null,
           drawSignatureLoading: !!row.acceptor_signature_storage_path?.trim() && !signedUrl,
+          ip: row.acceptor_ip,
+          userAgent: row.acceptor_user_agent,
+          recordId: signedRecordId('E', row.estimate_number, row.id),
         }}
         customerAttachment={recordCustomerAttachment}
       />

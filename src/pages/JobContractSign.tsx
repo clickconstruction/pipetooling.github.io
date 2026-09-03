@@ -11,7 +11,8 @@ import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
 import { ContractBodyDisplay } from '../components/contracts/ContractBodyDisplay'
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
-import { EstimateAcceptTypedSignatureLine } from '../components/estimates/EstimateAcceptTypedSignatureLine'
+import { SignedSignatureBlock } from '../components/SignedSignatureBlock'
+import { signedRecordId } from '../lib/signedRecordId'
 import { acceptHeaderBrandImageSrc, acceptHeaderBrandLabel, parseAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
 import { formatContractMoney, parseJobContractFields, paymentTermsSentence, type JobContractIssuer } from '../lib/jobs/jobContractDocument'
 import { jobContractSignatureAuditLine } from '../lib/jobs/jobContractLifecycle'
@@ -281,20 +282,22 @@ export default function JobContractSign() {
         </button>
 
         {signed ? (
-          <div style={{ marginTop: '1.2rem', borderTop: '1px solid var(--border-rule)', paddingTop: '0.9rem' }}>
-            <div style={sectionLabel}>Customer signature</div>
-            {c.signature_url ? (
-              <img src={c.signature_url} alt={`Signature of ${signedName}`} style={{ maxHeight: 80, maxWidth: '100%', display: 'block' }} />
-            ) : (
-              <EstimateAcceptTypedSignatureLine printedName={signedName} consentAtIso={signedAt} />
-            )}
-            <p style={{ margin: '0.4rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{auditLine}</p>
+          <div style={{ marginTop: '1.2rem', borderTop: '1px solid var(--border-rule)', paddingTop: '0.4rem' }}>
+            <SignedSignatureBlock
+              printedName={signedName}
+              signedAtIso={signedAt}
+              consentedAtIso={justSigned ? justSigned.signedAt : c.signer_consented_at}
+              consentSummary="agreed to do business electronically and to this agreement's scope, price and terms"
+              method={justSigned?.mode ?? c.signer_mode}
+              recordId={signedRecordId('J', c.job_number, c.id)}
+              drawSignatureUrl={c.signature_url}
+            />
             {c.signed_pdf_url ? (
               <a
                 href={c.signed_pdf_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ display: 'inline-block', marginTop: '0.8rem', padding: '0.55rem 1rem', borderRadius: 8, border: '1.5px solid var(--text-orange-700)', color: 'var(--text-orange-700)', fontWeight: 700, fontSize: '0.9rem', textDecoration: 'none' }}
+                style={{ display: 'inline-block', marginTop: '0.9rem', padding: '0.55rem 1rem', borderRadius: 8, border: '1.5px solid var(--text-orange-700)', color: 'var(--text-orange-700)', fontWeight: 700, fontSize: '0.9rem', textDecoration: 'none' }}
               >
                 Download signed PDF
               </a>

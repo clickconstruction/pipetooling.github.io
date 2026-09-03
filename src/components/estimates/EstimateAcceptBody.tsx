@@ -21,6 +21,7 @@ function formatOptionMoney(cents: number): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
 import { EstimateAcceptTypedSignatureLine } from './EstimateAcceptTypedSignatureLine'
+import { SignedSignatureBlock } from '../SignedSignatureBlock'
 import { isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
 
 const ESTIMATE_ACCEPT_MODAL_TITLE = 'Approve Estimate'
@@ -75,6 +76,10 @@ export type EstimateAcceptStaffAcceptedRecord = {
   drawSignatureUrl: string | null
   /** True when DB has signature path but signed URL is not ready yet. */
   drawSignatureLoading: boolean
+  /** v2.2724 signature block: attribution facts + the printed record ID (E84-9F3A2C). */
+  ip?: string | null
+  userAgent?: string | null
+  recordId?: string
 }
 
 export type EstimateAcceptBodyProps = {
@@ -257,13 +262,6 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     cursor: readOnly ? ('default' as const) : ('pointer' as const),
   }
 
-  const acceptedNamePreview =
-    staffAcceptedRecord != null && staffAcceptedRecord.printedName.trim()
-      ? staffAcceptedRecord.printedName.trim()
-      : ESTIMATE_ACCEPT_NAME_PLACEHOLDER
-  const acceptedNameIsPlaceholder = !(
-    staffAcceptedRecord != null && staffAcceptedRecord.printedName.trim()
-  )
 
   function handleInteractiveSubmit() {
     if (readOnly) return
@@ -334,99 +332,20 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
       {customerAttachment ? <EstimateCustomerAttachmentCard attachment={customerAttachment} /> : null}
 
       {showStaffAcceptedInline && staffAcceptedRecord ? (
-        <section
-          aria-label="Customer acceptance record"
-          style={{ marginTop: '1.5rem' }}
-        >
-          <h2
-            style={{
-              fontSize: '1rem',
-              fontWeight: 600,
-              margin: '0 0 0.75rem',
-              color: 'var(--text-strong)',
-            }}
-          >
-            Customer acceptance
-          </h2>
-          <p
-            style={{
-              fontSize: '0.8rem',
-              color: 'var(--text-muted)',
-              lineHeight: 1.45,
-              marginTop: 0,
-              marginBottom: '0.5rem',
-            }}
-          >
-            {ESTIMATE_ACCEPT_MODAL_SIGNATURE_DISCLOSURE}
-          </p>
-          <label
-            style={{
-              display: 'flex',
-              gap: '0.5rem',
-              alignItems: 'flex-start',
-              marginTop: 0,
-              marginBottom: '0.75rem',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked
-              disabled
-              aria-label="Customer agreed to the estimate and terms as recorded at acceptance"
-            />
-            <span>{cx.acceptCheckboxLabel}</span>
-          </label>
-          <label style={{ display: 'block' }}>
-            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem', fontSize: '0.9rem' }}>
-              {cx.acceptNameFieldLabel}
-            </span>
-            <div
-              style={{
-                width: '100%',
-                maxWidth: 400,
-                padding: '0.5rem',
-                boxSizing: 'border-box',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                background: 'var(--bg-subtle)',
-                fontSize: '0.95rem',
-                color: acceptedNameIsPlaceholder ? 'var(--text-muted)' : 'var(--text-strong)',
-              }}
-            >
-              {acceptedNamePreview}
-            </div>
-          </label>
-          {staffAcceptedRecord.drawSignatureLoading ? (
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.75rem', marginBottom: 0 }}>
-              Loading signature…
-            </p>
-          ) : staffAcceptedRecord.drawSignatureUrl ? (
-            <div style={{ marginTop: '0.75rem' }}>
-              <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9rem' }}>Signature</div>
-              <img
-                src={staffAcceptedRecord.drawSignatureUrl}
-                alt="Customer signature"
-                style={{
-                  display: 'block',
-                  maxWidth: 400,
-                  width: '100%',
-                  border: '1px solid var(--border)',
-                  borderRadius: 6,
-                }}
-              />
-            </div>
-          ) : (
-            <div style={{ marginTop: '0.75rem' }}>
-              <EstimateAcceptTypedSignatureLine
-                printedName={staffAcceptedRecord.printedName}
-                consentAtIso={staffAcceptedRecord.consentedAtIso}
-                placeholderName={ESTIMATE_ACCEPT_NAME_PLACEHOLDER}
-                nameMutedOverride={acceptedNameIsPlaceholder}
-                ariaHidden
-              />
-            </div>
-          )}
-        </section>
+        <SignedSignatureBlock
+          heading="Customer acceptance"
+          printedName={staffAcceptedRecord.printedName}
+          signedAtIso={staffAcceptedRecord.consentedAtIso}
+          consentedAtIso={staffAcceptedRecord.consentedAtIso}
+          consentSummary={cx.acceptCheckboxLabel.replace(/^I agree to /i, 'agreed to ').replace(/^I /i, '')}
+          method={staffAcceptedRecord.drawSignatureUrl || staffAcceptedRecord.drawSignatureLoading ? 'draw' : 'type'}
+          surface="estimate"
+          ip={staffAcceptedRecord.ip ?? null}
+          userAgent={staffAcceptedRecord.userAgent ?? null}
+          recordId={staffAcceptedRecord.recordId ?? '—'}
+          drawSignatureUrl={staffAcceptedRecord.drawSignatureUrl}
+          drawSignatureLoading={staffAcceptedRecord.drawSignatureLoading}
+        />
       ) : null}
 
       {!showStaffAcceptedInline ? (
