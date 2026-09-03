@@ -57,9 +57,13 @@ const QUERY_DEBOUNCE_MS = 300
 type Props = {
   /** Pin this job on open (the per-job door). */
   initialJob: SessionNotesJobIdentity | null
+  /** Pin one company calendar day on open (the Job Summary Days view's door, v2.2699); replaces the window chips. */
+  initialDay?: string | null
+  initialGroupBy?: SessionNotesGroupBy
   users: ReadonlyArray<{ id: string; name: string | null }>
   jobs: ReadonlyArray<SessionNotesJobIdentity>
-  onOpenJobOnBoard: (jobId: string) => void
+  /** Absent when the host has no Pipeline board to jump to (the "Open on board" links hide). */
+  onOpenJobOnBoard?: (jobId: string) => void
   onClose: () => void
 }
 
@@ -161,7 +165,7 @@ function Highlight({ text, tokens }: { text: string; tokens: readonly string[] }
   )
 }
 
-export default function SessionNotesModal({ initialJob, users, jobs, onOpenJobOnBoard, onClose }: Props) {
+export default function SessionNotesModal({ initialJob, initialDay, initialGroupBy, users, jobs, onOpenJobOnBoard, onClose }: Props) {
   const isMobile = useIsMobile()
   const { prefixMap } = useLedgerDisplayPrefixes()
   useBodyScrollLock(true)
@@ -170,8 +174,9 @@ export default function SessionNotesModal({ initialJob, users, jobs, onOpenJobOn
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [windowDays, setWindowDays] = useState<SessionNotesWindowDays>(SESSION_NOTES_DEFAULT_WINDOW_DAYS)
   const [scope, setScope] = useState<SessionNotesScope>('all')
-  const [groupBy, setGroupBy] = useState<SessionNotesGroupBy>('day')
+  const [groupBy, setGroupBy] = useState<SessionNotesGroupBy>(initialGroupBy ?? 'day')
   const [pinnedJobId, setPinnedJobId] = useState<string | null>(initialJob?.id ?? null)
+  const [pinnedDay, setPinnedDay] = useState<string | null>(initialDay ?? null)
   const [pinnedUserId, setPinnedUserId] = useState<string | null>(null)
   const [officeJobId, setOfficeJobId] = useState<string | null>(null)
   const [rows, setRows] = useState<SessionNotesRow[]>([])
@@ -225,8 +230,8 @@ export default function SessionNotesModal({ initialJob, users, jobs, onOpenJobOn
     const seq = ++requestSeq.current
     setLoading(true)
     setError(null)
-    const startYmd = sessionNotesWindowStartYmd(denverCalendarDayKey(Date.now()), windowDays, ymdAddDays)
-    void fetchSessionNotes({ startYmd, pinnedJobId, pinnedUserId, serverFilter }).then((res) => {
+    const startYmd = pinnedDay ?? sessionNotesWindowStartYmd(denverCalendarDayKey(Date.now()), windowDays, ymdAddDays)
+    void fetchSessionNotes({ startYmd, endYmd: pinnedDay, pinnedJobId, pinnedUserId, serverFilter }).then((res) => {
       if (seq !== requestSeq.current) return
       setRows(res.rows)
       setTruncated(res.truncated)
@@ -235,7 +240,7 @@ export default function SessionNotesModal({ initialJob, users, jobs, onOpenJobOn
     })
     // serverFilter is keyed by its JSON so a re-created but equal object doesn't refetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windowDays, pinnedJobId, pinnedUserId, serverFilterKey])
+  }, [windowDays, pinnedDay, pinnedJobId, pinnedUserId, serverFilterKey])
 
   const tokens = useMemo(() => sessionNotesSearchTokens(query), [query])
   const nowMs = Date.now()
@@ -414,14 +419,27 @@ export default function SessionNotesModal({ initialJob, users, jobs, onOpenJobOn
                 </button>
               ) : null}
             </div>
-            <span style={groupLabelStyle}>Last</span>
-            <span style={segmentedWrap} role="group" aria-label="Window">
-              {SESSION_NOTES_WINDOWS.map((d, i) => (
-                <button key={d} type="button" aria-pressed={windowDays === d} onClick={() => setWindowDays(d)} style={segmentedButtonStyle(windowDays === d, i === SESSION_NOTES_WINDOWS.length - 1)}>
-                  {d === 0 ? 'All' : `${d}d`}
-                </button>
-              ))}
-            </span>
+            {pinnedDay ? (
+              <button
+                type="button"
+                onClick={() => setPinnedDay(null)}
+                title="Unpin this day and go back to the last 30 days"
+                style={{ ...chipStyle, color: 'var(--text-link)', background: 'var(--bg-blue-tint)', borderColor: 'transparent', fontSize: '0.78rem', padding: '0.3rem 0.65rem' }}
+              >
+                Day: {formatStagesNextDateLabel(pinnedDay)} <span aria-hidden style={{ opacity: 0.7 }}>✕</span>
+              </button>
+            ) : (
+              <>
+                <span style={groupLabelStyle}>Last</span>
+                <span style={segmentedWrap} role="group" aria-label="Window">
+                  {SESSION_NOTES_WINDOWS.map((d, i) => (
+                    <button key={d} type="button" aria-pressed={windowDays === d} onClick={() => setWindowDays(d)} style={segmentedButtonStyle(windowDays === d, i === SESSION_NOTES_WINDOWS.length - 1)}>
+                      {d === 0 ? 'All' : `${d}d`}
+                    </button>
+                  ))}
+                </span>
+              </>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span style={groupLabelStyle}>Booked to</span>
@@ -487,7 +505,7 @@ export default function SessionNotesModal({ initialJob, users, jobs, onOpenJobOn
           {lines.length === 0 && !loading ? (
             <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {rows.length === 0
-                ? `No clock sessions ${windowDays === 0 ? 'on record' : `in the last ${windowDays} days`}${pinnedJobLabel ? ` on ${pinnedJobLabel}` : ''}${query.trim() ? ` matching “${query.trim()}”` : ''}.`
+                ? `No clock sessions ${pinnedDay ? `on ${formatStagesNextDateLabel(pinnedDay)}` : windowDays === 0 ? 'on record' : `in the last ${windowDays} days`}${pinnedJobLabel ? ` on ${pinnedJobLabel}` : ''}${query.trim() ? ` matching “${query.trim()}”` : ''}.`
                 : `Nothing booked to “${scopeLabel}” matches. Try All under Booked to, or clear a pin.`}
             </div>
           ) : (
@@ -571,7 +589,7 @@ function GroupRows({
   onAssignSuggestion: (sessionId: string, jobId: string) => void
   onPatch: (sessionId: string, selection: AssignSessionJobSavedPatch['selection']) => void
   onError: (msg: string) => void
-  onOpenJobOnBoard: (jobId: string) => void
+  onOpenJobOnBoard?: (jobId: string) => void
 }) {
   return (
     <>
@@ -653,7 +671,7 @@ function GroupRows({
               </span>
             </td>
             <td style={tdStyle}>
-              {l.bookedTo === 'job' && l.jobId ? (
+              {l.bookedTo === 'job' && l.jobId && onOpenJobOnBoard ? (
                 <button
                   type="button"
                   onClick={() => onOpenJobOnBoard(l.jobId!)}

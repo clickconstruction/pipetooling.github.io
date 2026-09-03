@@ -24,6 +24,8 @@ export function sessionNotesOrClause(filter: SessionNotesServerFilter | null): s
 export async function fetchSessionNotes(args: {
   /** Inclusive lower bound on work_date; null = no bound. */
   startYmd: string | null
+  /** Inclusive upper bound on work_date (a pinned day passes the same ymd twice); null = today and beyond. */
+  endYmd?: string | null
   pinnedJobId?: string | null
   pinnedUserId?: string | null
   serverFilter?: SessionNotesServerFilter | null
@@ -34,6 +36,7 @@ export async function fetchSessionNotes(args: {
     const data = await withSupabaseRetry(async () => {
       let q = supabase.from('clock_sessions').select(SESSION_NOTES_SELECT).is('revoked_at', null)
       if (args.startYmd) q = q.gte('work_date', args.startYmd)
+      if (args.endYmd) q = q.lte('work_date', args.endYmd)
       if (args.pinnedJobId) q = q.eq('job_ledger_id', args.pinnedJobId)
       if (args.pinnedUserId) q = q.eq('user_id', args.pinnedUserId)
       const or = sessionNotesOrClause(args.serverFilter ?? null)

@@ -25,6 +25,10 @@ J931 25.9h · 2   J878 3.5h · 1   J983 2.3h · 1   …
 
 Tick **Show days with nothing on them** to include weekends and other days with no field work and no office cost.
 
+## Open a day's session notes
+
+Click any **day** in the table and **Session notes** opens pinned to that day and grouped by job — every clock session from that day as one line, with what each person wrote and the Assign / Change controls. A {{chip:blue|Day: Wed Sep 2 ✕}} chip at the top says which day you're on; clear it to widen back to the last 30 days.
+
 ## How it ties to true profit
 
 The Jobs view charges each job its share of every day it was worked, by hours. The per job-day figure here is the same pool over the same days, so a stretch of five-job days makes every job on them cheaper, and a week where one job had the crew to itself makes that job carry the whole week's office.

@@ -1842,6 +1842,8 @@ export default function Jobs() {
           setJobSummaryMinHcpExclusive={setJobSummaryMinHcpExclusive}
           jobSummaryData={jobSummaryData}
           view={jobSummaryView}
+          canOpenSessionNotes={(['dev', 'master_technician', 'assistant', 'controller'] as const).some((r) => r === authRole || r === myRole)}
+          users={users}
           jobSummarySearch={jobSummarySearch}
           setJobSummarySearch={setJobSummarySearch}
           expandedJobSummaryJobIds={expandedJobSummaryJobIds}
