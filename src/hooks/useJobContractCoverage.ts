@@ -30,12 +30,12 @@ export function useJobContractCoverage(job: { id: string; bid_id: string | null 
         bidId
           ? supabase
               .from('estimates')
-              .select('job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
+              .select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
               .eq('status', 'customer_accepted')
               .or(`job_ledger_id.eq.${jobId},bid_id.eq.${bidId}`)
           : supabase
               .from('estimates')
-              .select('job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
+              .select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
               .eq('status', 'customer_accepted')
               .eq('job_ledger_id', jobId),
       ])

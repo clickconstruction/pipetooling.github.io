@@ -30,6 +30,7 @@ function contract(p: Partial<JobContractRowLike>): JobContractRowLike {
 
 function estimate(p: Partial<SignedEstimateLike>): SignedEstimateLike {
   return {
+    id: 'e84',
     job_ledger_id: 'j1',
     bid_id: null,
     doc_kind: 'estimate',
@@ -78,7 +79,7 @@ describe('buildJobContractCoverage', () => {
 
   it('an e-signed accepted estimate counts; one without a consent stamp does not', () => {
     const signed = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [], [estimate({})])
-    expect(signed.get('j1')).toMatchObject({ kind: 'signed', source: 'estimate', estimateNumber: 84 })
+    expect(signed.get('j1')).toMatchObject({ kind: 'signed', source: 'estimate', estimateNumber: 84, estimateId: 'e84' })
     expect(jobContractChipLabel(signed.get('j1'), NOW)).toBe('✍ Signed · estimate #84')
     const unsigned = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [], [estimate({ acceptor_consented_at: null })])
     expect(unsigned.get('j1')).toEqual({ kind: 'none' })
@@ -117,7 +118,7 @@ describe('filters and helpers', () => {
     expect(contractCoverageMatchesFilter(undefined, '')).toBe(true)
     const coverage = new Map([
       ['a', { kind: 'none' } as const],
-      ['b', { kind: 'signed', source: 'contract', signedAt: null, signerName: null, contractId: 'c', estimateNumber: null } as const],
+      ['b', { kind: 'signed', source: 'contract', signedAt: null, signerName: null, contractId: 'c', estimateNumber: null, estimateId: null } as const],
     ])
     expect(filterJobsByContractCoverage([{ id: 'a' }, { id: 'b' }], coverage, 'signed').map((j) => j.id)).toEqual(['b'])
   })

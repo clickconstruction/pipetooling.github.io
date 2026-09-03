@@ -13,7 +13,8 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
-import JobContractRecordModal, { JOB_CONTRACT_BUCKET } from './JobContractRecordModal'
+import { JOB_CONTRACT_BUCKET } from './JobContractRecordModal'
+import JobSignedAgreementModal from './JobSignedAgreementModal'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
@@ -799,7 +800,17 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
           </div>
         ) : null}
       </div>
-      <JobContractRecordModal open={recordRow != null} onClose={() => setRecordRow(null)} row={recordRow} job={job} />
+      <JobSignedAgreementModal
+        open={recordRow != null}
+        onClose={() => setRecordRow(null)}
+        job={job}
+        coverage={
+          recordRow
+            ? { kind: 'signed', source: recordRow.signer_mode === 'paper' ? 'paper' : 'contract', signedAt: recordRow.signed_at, signerName: recordRow.signer_printed_name, contractId: recordRow.id, estimateNumber: null, estimateId: null }
+            : null
+        }
+        contractRow={recordRow}
+      />
     </ResponsiveModalShell>
   )
 }

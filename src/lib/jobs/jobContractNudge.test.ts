@@ -61,7 +61,7 @@ describe('summarizeContractNudge', () => {
     const s = summarizeContractNudge(
       [{ id: 'a', bid_id: null, status: 'billed', revenue: 100 }],
       [],
-      [{ job_ledger_id: 'a', bid_id: null, doc_kind: 'estimate', status: 'customer_accepted', acceptor_consented_at: '2026-08-01T00:00:00Z', acceptor_printed_name: 'K', estimate_number: 1, total_cents: 1 }],
+      [{ id: 'e1', job_ledger_id: 'a', bid_id: null, doc_kind: 'estimate', status: 'customer_accepted', acceptor_consented_at: '2026-08-01T00:00:00Z', acceptor_printed_name: 'K', estimate_number: 1, total_cents: 1 }],
       NOW,
     )
     expect(s.missing.count).toBe(0)
