@@ -3386,6 +3386,7 @@ export default function JobFormModal({
                rows — label · value · pencil — with the classic editors inside
                each opened row. New Job keeps the always-open form below. */
             <JobFormEditFactRows
+              contractJob={initialJob}
               users={users}
               teamMemberIds={teamMemberIds}
               setTeamMemberIds={setTeamMemberIds}

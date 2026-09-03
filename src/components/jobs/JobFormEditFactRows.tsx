@@ -19,6 +19,8 @@ import GcHardHatIcon from '../icons/GcHardHatIcon'
 import TeamCrewIcon from '../icons/TeamCrewIcon'
 import { customerAddressLienReady, suggestCustomerAddressForJob } from '../../lib/jobs/lienProperty'
 import { JobFormFactRow } from './JobFormFactRow'
+import JobContractStrip from './JobContractStrip'
+import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
 import {
@@ -71,6 +73,8 @@ const fieldInputStyle = {
 }
 
 type JobFormEditFactRowsProps = {
+  /** Contract Desk PR 3: when set, a read-only Contract row (chip + send / view record) follows the customer rows. */
+  contractJob?: JobWithDetails | null
   users: Array<{ id: string; name: string }>
   teamMemberIds: string[]
   setTeamMemberIds: Dispatch<SetStateAction<string[]>>
@@ -530,6 +534,9 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         </label>
         <input type="email" aria-label="Customer Email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={fieldInputStyle} />
       </JobFormFactRow>
+      {props.contractJob ? (
+        <JobFormFactRow label="Contract" labelIcon={CUSTOMER_SUBROW_INDENT} value={<JobContractStrip job={props.contractJob} variant="inline" />} />
+      ) : null}
       {/* Property record (v2.2638): which of the customer's/GC's saved
           addresses this job sits at — county / legal description / owner of
           record for lien documents. Collapsed shows the linked address (or

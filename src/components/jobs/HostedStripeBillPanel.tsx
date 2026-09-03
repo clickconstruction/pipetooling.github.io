@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import JobContractStrip from './JobContractStrip'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import type { Database } from '../../types/database'
@@ -343,6 +344,8 @@ export function HostedStripeBillPanel({
 
   return (
     <>
+      {/* Contract Desk PR 3: the agreement behind this bill, or the door to send one. */}
+      <JobContractStrip job={job} />
       {isStripeHosted ? (
         <>
           {stripeLoading ? (

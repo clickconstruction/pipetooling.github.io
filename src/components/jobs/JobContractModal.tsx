@@ -13,6 +13,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
+import JobContractRecordModal, { JOB_CONTRACT_BUCKET } from './JobContractRecordModal'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
@@ -114,6 +115,12 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
   const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview'>(null)
   const [voidArmed, setVoidArmed] = useState(false)
   const [lastLink, setLastLink] = useState<string | null>(null)
+  const [paperOpen, setPaperOpen] = useState(false)
+  const [paperSignedOn, setPaperSignedOn] = useState('')
+  const [paperSignerName, setPaperSignerName] = useState('')
+  const [paperFile, setPaperFile] = useState<File | null>(null)
+  const [paperBusy, setPaperBusy] = useState(false)
+  const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
   const userTouchedRef = useRef(false)
   const hydratedRef = useRef(false)
   const prefillDoneRef = useRef(false)
@@ -144,6 +151,10 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
     setVoidArmed(false)
     setLastLink(null)
     setMessage('')
+    setPaperOpen(false)
+    setPaperSignedOn('')
+    setPaperFile(null)
+    setRecordRow(null)
     setRecipientName((job.customer_name ?? '').trim())
     setRecipientEmail((job.customer_email ?? '').trim())
     setRecipientPhone((job.customer_phone ?? '').trim())
@@ -490,6 +501,69 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
     }
   }
 
+  /** Upload signed copy / record a paper signature: a signed row with signer_mode 'paper' (no token, no email). */
+  const recordPaper = async () => {
+    if (!job || paperBusy) return
+    const name = paperSignerName.trim() || recipientName.trim() || (job.customer_name ?? '').trim()
+    if (!name) {
+      showToast('Enter who signed the paper copy.', 'error')
+      return
+    }
+    setPaperBusy(true)
+    try {
+      const nowIso = new Date().toISOString()
+      const base = {
+        ...(buildRowPayload() ?? { job_id: job.id }),
+        status: 'signed',
+        signed_at: paperSignedOn ? `${paperSignedOn}T12:00:00Z` : nowIso,
+        signer_printed_name: name,
+        signer_mode: 'paper',
+        signer_consented_at: null,
+        paper_signed_on: paperSignedOn || null,
+        recorded_by: authUser?.id ?? null,
+        public_token: null,
+        next_reminder_at: null,
+      }
+      let row: JobContractRow | null = null
+      if (liveRow && jobContractStatus(liveRow) === 'draft') {
+        row = await withSupabaseRetry<JobContractRow>(
+          () => supabase.from('job_contracts').update(base).eq('id', liveRow.id).eq('status', 'draft').select('*').single(),
+          'record paper contract (draft)',
+        )
+      } else {
+        row = await withSupabaseRetry<JobContractRow>(
+          () => supabase.from('job_contracts').insert({ ...base, created_by: authUser?.id ?? null }).select('*').single(),
+          'record paper contract',
+        )
+      }
+      if (row && paperFile) {
+        const ext = (paperFile.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '') || 'pdf'
+        const path = `${row.id}/paper.${ext}`
+        const { error: upErr } = await supabase.storage.from(JOB_CONTRACT_BUCKET).upload(path, paperFile, { contentType: paperFile.type || undefined, upsert: true })
+        if (upErr) {
+          showToast('Recorded the paper signature, but the file did not upload (storage bucket not ready).', 'error')
+        } else {
+          await withSupabaseRetry(() => supabase.from('job_contracts').update({ paper_upload_path: path }).eq('id', row!.id), 'attach paper upload')
+        }
+      }
+      if (row) {
+        await supabase.from('job_contract_events').insert({ contract_id: row.id, event_type: 'recorded', metadata: { paper_signed_on: paperSignedOn || null, file: !!paperFile }, actor_user_id: authUser?.id ?? null })
+      }
+      setPaperOpen(false)
+      setPaperFile(null)
+      hydratedRef.current = false
+      setLiveRow(null)
+      await loadRows()
+      showToast('Signed paper contract recorded.', 'success')
+      dispatchChanged()
+      onChanged?.()
+    } catch {
+      showToast('Could not record the paper contract.', 'error')
+    } finally {
+      setPaperBusy(false)
+    }
+  }
+
   if (!open || !job) return null
 
   const historyRows = rows.filter((r) => !liveRow || r.id !== liveRow.id)
@@ -528,6 +602,9 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" style={btn} disabled={busy != null} onClick={preview}>
           Preview as customer
+        </button>
+        <button type="button" style={{ ...btn, borderColor: 'transparent', background: 'transparent' }} disabled={busy != null} onClick={() => setPaperOpen((v) => !v)}>
+          Upload signed copy
         </button>
         <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
           {!editable ? 'Locked — sent' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Draft saved' : autosaveState === 'error' ? 'Save failed' : ''}
@@ -653,6 +730,28 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
           </label>
         </div>
 
+        {paperOpen ? (
+          <div style={{ marginTop: '1rem', padding: '0.7rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)' }}>
+            <div style={{ ...sectionHead, margin: '0 0 0.4rem' }}>Already signed on paper</div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>Signed by</span>
+              <input style={inputStyle} value={paperSignerName} onChange={(e) => setPaperSignerName(e.target.value)} placeholder={recipientName.trim() || job.customer_name || 'Customer name'} />
+              <span style={labelStyle}>Signed on</span>
+              <input style={{ ...inputStyle, maxWidth: 180 }} type="date" value={paperSignedOn} onChange={(e) => setPaperSignedOn(e.target.value)} aria-label="Date the paper copy was signed" />
+              <span style={labelStyle}>Scan / photo</span>
+              <input type="file" accept="image/png,image/jpeg,application/pdf" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.8rem' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <button type="button" style={btn} disabled={paperBusy} onClick={() => setPaperOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" style={btnPrimary} disabled={paperBusy} onClick={() => void recordPaper()}>
+                {paperBusy ? 'Recording…' : paperFile ? 'Upload & record as signed' : 'Record as signed on paper'}
+              </button>
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Files nothing to the customer — this just puts the agreement on file so the row reads signed.</div>
+          </div>
+        ) : null}
         {historyRows.length > 0 ? (
           <>
             <div style={sectionHead}>History</div>
@@ -668,7 +767,7 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
                       {chip.label}
                     </span>
                   ))}
-                  <button type="button" style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.72rem' }} onClick={() => viewHistoryRow(r)}>
+                  <button type="button" style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.72rem' }} onClick={() => (r.signed_at ? setRecordRow(r) : viewHistoryRow(r))}>
                     View
                   </button>
                 </div>
@@ -682,6 +781,7 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
           </div>
         ) : null}
       </div>
+      <JobContractRecordModal open={recordRow != null} onClose={() => setRecordRow(null)} row={recordRow} job={job} />
     </ResponsiveModalShell>
   )
 }

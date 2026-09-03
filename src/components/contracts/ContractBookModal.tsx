@@ -22,6 +22,7 @@ export type ContractBookTemplate = { id: string; name: string; sequence_order: n
 export type ContractBookTemplateDocument = {
   updated_at?: string | null
   book_version_date?: string | null
+  audience?: string | null
   id: string
   template_id: string
   document_name: string
@@ -124,6 +125,7 @@ export function ContractBookModal({
   const [editDocumentName, setEditDocumentName] = useState('')
   const [editBody, setEditBody] = useState('')
   const [editTagsStr, setEditTagsStr] = useState('')
+  const [editAudience, setEditAudience] = useState<'staff' | 'customer'>('staff')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -131,6 +133,7 @@ export function ContractBookModal({
   const [addTemplateId, setAddTemplateId] = useState('')
   const [addDocumentName, setAddDocumentName] = useState('')
   const [addTagsStr, setAddTagsStr] = useState('')
+  const [addAudience, setAddAudience] = useState<'staff' | 'customer'>('staff')
   const [addCanonicalUrl, setAddCanonicalUrl] = useState('')
   const [editCanonicalUrl, setEditCanonicalUrl] = useState('')
   const [addBody, setAddBody] = useState('')
@@ -255,6 +258,7 @@ export function ContractBookModal({
     setEditBody(row.book_body_html ?? '')
     setEditBookFormat(parseContractBodyFormat(row.book_body_format))
     setEditTagsStr((row.tags ?? []).join(', '))
+    setEditAudience(row.audience === 'customer' ? 'customer' : 'staff')
     setEditCanonicalUrl(row.canonical_document_url?.trim() ?? '')
     setEditVersionDate(row.book_version_date ?? '')
     setError(null)
@@ -330,6 +334,11 @@ export function ContractBookModal({
           }),
         'update contract book entry',
       )
+      // Audience (Contract Desk): staff packets vs customer job-contract templates — a plain column, not part of the RPC.
+      await withSupabaseRetry(
+        () => supabase.from('contract_template_documents').update({ audience: editAudience }).eq('id', editingId!),
+        'update contract book entry audience',
+      )
       onSaved()
       cancelEdit()
     } catch (e) {
@@ -373,10 +382,11 @@ export function ContractBookModal({
               book_body_format: addBookFormat,
               tags,
               canonical_document_url: canonStored,
+              audience: addAudience,
               book_version_date: addVersionDate.trim() || null,
             })
             .select(
-              'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date',
+              'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date, audience',
             )
             .single(),
         'add contract book entry',
@@ -570,6 +580,13 @@ export function ContractBookModal({
                 />
               </div>
               <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Audience</label>
+                <select value={addAudience} onChange={(e) => setAddAudience(e.target.value === 'customer' ? 'customer' : 'staff')} disabled={addSaving} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
+                  <option value="staff">Staff — packets for people (default)</option>
+                  <option value="customer">Customer — job-contract terms (Contract Desk)</option>
+                </select>
+              </div>
+              <div>
                 <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                   Version date (optional — otherwise follows the last edit)
                 </label>
@@ -665,6 +682,9 @@ export function ContractBookModal({
               const entryChips = (
                 <>
                     <span style={badgeStyle}>{tname}</span>
+                    {row.audience === 'customer' ? (
+                      <span style={{ ...badgeStyle, backgroundColor: 'var(--bg-orange-tint)', color: 'var(--text-orange-800)' }}>Customer contract</span>
+                    ) : null}
                     {(row.tags ?? []).map((tag) => (
                       <span key={tag} style={{ ...badgeStyle, backgroundColor: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
                         {tag}
@@ -934,6 +954,13 @@ export function ContractBookModal({
                           placeholder="e.g. employment, NDA"
                           style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                         />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Audience</label>
+                        <select value={editAudience} onChange={(e) => setEditAudience(e.target.value === 'customer' ? 'customer' : 'staff')} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
+                          <option value="staff">Staff — packets for people (default)</option>
+                          <option value="customer">Customer — job-contract terms (Contract Desk)</option>
+                        </select>
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Version date</label>
