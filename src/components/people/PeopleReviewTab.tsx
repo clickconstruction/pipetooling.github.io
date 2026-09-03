@@ -50,6 +50,20 @@ import type {
 } from './teamSummary/types'
 import { derivePersonTeamSummary } from '../../lib/people/derivePersonTeamSummary'
 import { buildTeamSummaryHtml } from '../../lib/peopleDocuments/buildTeamSummaryHtml'
+import {
+  buildReviewHygiene,
+  buildReviewPersonMath,
+  buildReviewRankedBars,
+  buildReviewVerdict,
+  priorPeriodRange,
+  type ReviewRankBy,
+} from '../../lib/people/reviewRanked'
+import { readReviewViewFromStorage, writeReviewViewToStorage, type PeopleReviewView } from '../../lib/people/reviewViewStorage'
+import { usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
+import { PeopleReviewVerdictStrip } from './review/PeopleReviewVerdictStrip'
+import { PeopleReviewHygieneStrip } from './review/PeopleReviewHygieneStrip'
+import { PeopleReviewRankedList } from './review/PeopleReviewRankedList'
+import { PeopleReviewMathDrawer } from './review/PeopleReviewMathDrawer'
 import type {
   TeamLaborItem,
   TeamLedgerRow,
@@ -304,6 +318,23 @@ export default function PeopleReviewTab({
   const [reviewLaborBreakdownContext, setReviewLaborBreakdownContext] = useState<ReviewLaborBreakdownContext | null>(null)
   const [reviewHoursPayCollapsed, setReviewHoursPayCollapsed] = useState(false)
   const [reviewOnlyPaidInFull, setReviewOnlyPaidInFull] = useState(false)
+
+  // Ranked view (v2.2678, variant C of the refresh): verdict strip + hygiene
+  // strip + ranked profit bars + the per-person math drawer. The table stays
+  // one click away; the choice persists per browser.
+  const [reviewView, setReviewView] = useState<PeopleReviewView>(() => readReviewViewFromStorage())
+  const changeReviewView = useCallback((next: PeopleReviewView) => {
+    setReviewView(next)
+    writeReviewViewToStorage(next)
+  }, [])
+  const [reviewRankBy, setReviewRankBy] = useState<ReviewRankBy>('profit')
+  const [reviewRankedSearch, setReviewRankedSearch] = useState('')
+  // Prior period of the same length, loaded through the same union loader +
+  // derive kernel, so the trend pill compares like with like.
+  const [teamSummaryPriorRows, setTeamSummaryPriorRows] = useState<TeamSummaryRow[] | null>(null)
+  const [teamSummaryPriorLoading, setTeamSummaryPriorLoading] = useState(false)
+  const teamSummaryPriorReqIdRef = useRef(0)
+  const pendingApprovals = usePendingHoursApprovalsNudge(isDev && reviewView === 'ranked')
 
   const handleInlineTogglePerson = useCallback(
     (personName: string) => {
@@ -638,6 +669,72 @@ export default function PeopleReviewTab({
       },
     )
   }, [teamSummaryRows, reviewOverheadRates.fieldHours90d, reviewOverheadRates.officeParts90d, payConfig])
+
+  // ---- ranked view derivations (all from the enriched rows above) ----
+  const reviewSplitPartsRate = useMemo(() => {
+    const fh = reviewOverheadRates.fieldHours90d
+    return fh != null && fh > 0 ? (reviewOverheadRates.officeParts90d ?? 0) / fh : null
+  }, [reviewOverheadRates.fieldHours90d, reviewOverheadRates.officeParts90d])
+  const teamSummaryPriorBreakdowns = useMemo<TeamSummaryBreakdown[] | null>(() => {
+    if (!teamSummaryPriorRows) return null
+    return enrichTeamSummaryRowsForInline(teamSummaryPriorRows, reviewSplitPartsRate, (name) => {
+      const cfg = payConfig[name]
+      if (!cfg) return 'unknown'
+      return cfg.is_salary ? 'salary' : 'hourly'
+    })
+  }, [teamSummaryPriorRows, reviewSplitPartsRate, payConfig])
+  const reviewVerdict = useMemo(
+    () => buildReviewVerdict(teamSummaryBreakdowns, teamSummaryPriorBreakdowns),
+    [teamSummaryBreakdowns, teamSummaryPriorBreakdowns],
+  )
+  const reviewRankedBars = useMemo(
+    () => buildReviewRankedBars(teamSummaryBreakdowns, reviewRankBy, reviewRankedSearch),
+    [teamSummaryBreakdowns, reviewRankBy, reviewRankedSearch],
+  )
+  const reviewPersonMath = useMemo(() => {
+    const b = teamSummarySelectedPersonName
+      ? teamSummaryBreakdowns.find((x) => x.name === teamSummarySelectedPersonName)
+      : undefined
+    return b ? buildReviewPersonMath(b, { partsRate: reviewSplitPartsRate }) : null
+  }, [teamSummaryBreakdowns, teamSummarySelectedPersonName, reviewSplitPartsRate])
+  const reviewHygieneItems = useMemo(
+    () => buildReviewHygiene(teamSummaryBreakdowns, pendingApprovals.approvals),
+    [teamSummaryBreakdowns, pendingApprovals.approvals],
+  )
+
+  // Prior-period rows for the trend pill. Keyed on the CURRENT rows' identity
+  // so every successful main load (period change, paid-only toggle, roster
+  // or realtime refresh) re-runs the comparison against the window just
+  // before it. Untouched: the main load's refresh-deferral choreography.
+  useEffect(() => {
+    if (!isDev || reviewView !== 'ranked' || !teamSummaryRows || showPeopleForReview.length === 0) {
+      teamSummaryPriorReqIdRef.current += 1
+      setTeamSummaryPriorRows(null)
+      setTeamSummaryPriorLoading(false)
+      return
+    }
+    const reqId = ++teamSummaryPriorReqIdRef.current
+    const [start, end] = getReviewDateRange()
+    const [priorStart, priorEnd] = priorPeriodRange(start, end)
+    const priorDays = getDaysInRange(priorStart, priorEnd)
+    setTeamSummaryPriorLoading(true)
+    void (async () => {
+      try {
+        const union = await loadTeamReviewUnion(priorStart, priorEnd, reviewOnlyPaidInFull, payConfig)
+        if (teamSummaryPriorReqIdRef.current !== reqId) return
+        setTeamSummaryPriorRows(
+          showPeopleForReview.map((personName) =>
+            derivePersonTeamSummary(union, personName, payConfig, reviewOnlyPaidInFull, priorDays),
+          ),
+        )
+      } catch {
+        if (teamSummaryPriorReqIdRef.current === reqId) setTeamSummaryPriorRows(null)
+      } finally {
+        if (teamSummaryPriorReqIdRef.current === reqId) setTeamSummaryPriorLoading(false)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDev, reviewView, teamSummaryRows])
 
   useEffect(() => {
     if (!isDev) return
@@ -2229,7 +2326,8 @@ export default function PeopleReviewTab({
           : reviewOverheadRate == null || reviewPartsRate == null
             ? 'Overhead (split): unavailable'
             : `Overhead (split): own office/bid labor + $${reviewPartsRate.toFixed(2)}/field-hr office parts (90-day)`
-        const reviewOverheadMetaClickable = !reviewOverheadLoading && reviewOverheadRate != null
+        // The rate drilldown lives in the table; in the ranked view the meta line is plain text.
+        const reviewOverheadMetaClickable = !reviewOverheadLoading && reviewOverheadRate != null && reviewView === 'table'
         return (
         <div>
           {/* Top section: Team Summary header info on the left (takes
@@ -2360,6 +2458,34 @@ export default function PeopleReviewTab({
                   Only Count Jobs Marked Paid in Full
                 </label>
               </div>
+              <div
+                role="group"
+                aria-label="Review view"
+                style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', fontSize: '0.8rem' }}
+              >
+                {(['ranked', 'table'] as const).map((v) => {
+                  const on = reviewView === v
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => changeReviewView(v)}
+                      style={{
+                        font: 'inherit',
+                        fontWeight: 600,
+                        padding: '0.3rem 0.75rem',
+                        border: 0,
+                        cursor: 'pointer',
+                        background: on ? 'var(--text-link)' : 'var(--surface)',
+                        color: on ? 'var(--surface)' : 'var(--text-700)',
+                      }}
+                    >
+                      {v === 'ranked' ? 'Ranked' : 'Table'}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
@@ -2370,6 +2496,37 @@ export default function PeopleReviewTab({
                   {teamSummaryError}
                 </p>
               ) : teamSummaryRows ? (
+                reviewView === 'ranked' ? (
+                  <>
+                    <PeopleReviewVerdictStrip
+                      verdict={reviewVerdict}
+                      periodLabel={getReviewPeriodLabel()}
+                      priorLoading={teamSummaryPriorLoading}
+                      ratesLoading={reviewOverheadRates.loading}
+                    />
+                    <PeopleReviewHygieneStrip items={reviewHygieneItems} />
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                        gap: '1rem',
+                        alignItems: 'start',
+                      }}
+                    >
+                      <PeopleReviewRankedList
+                        ranked={reviewRankedBars}
+                        rankBy={reviewRankBy}
+                        onRankByChange={setReviewRankBy}
+                        search={reviewRankedSearch}
+                        onSearchChange={setReviewRankedSearch}
+                        selectedName={teamSummarySelectedPersonName}
+                        onTogglePerson={handleInlineTogglePerson}
+                        refreshing={teamSummaryLoading}
+                      />
+                      <PeopleReviewMathDrawer math={reviewPersonMath} />
+                    </div>
+                  </>
+                ) : (
                 <TeamSummaryInline
                   handleRef={teamSummaryInlineRef}
                   breakdowns={teamSummaryBreakdowns}
@@ -2385,6 +2542,7 @@ export default function PeopleReviewTab({
                   showInlineMeta={false}
                   onOpenInNewWindow={() => openTeamSummaryWindow('popup')}
                 />
+                )
               ) : (
                 <div style={{ padding: '0.5rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   {teamSummaryLoading ? 'Loading Team Summary…' : 'Team Summary will appear here.'}
@@ -2461,6 +2619,8 @@ export default function PeopleReviewTab({
                 const overheadBurden = tsRow ? tsRow.overheadBurden : null
                 const profitAfterOverhead = tsRow ? tsRow.profitAfterOverhead : null
                 const profitPerHourAfterOverhead = tsRow ? tsRow.profitPerHourAfterOverhead : null
+                // The ranked view's math drawer replaces this headline card.
+                if (reviewView === 'ranked') return null
                 return (
                   <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, fontSize: '1rem', display: 'inline-grid', gridTemplateColumns: 'max-content max-content', rowGap: '0.5rem', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
