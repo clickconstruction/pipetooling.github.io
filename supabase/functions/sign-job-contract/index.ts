@@ -12,6 +12,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { buildJobContractPdf, contractBodyToPlainText, type PdfLibLike } from '../_shared/jobContractPdf.ts'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import {
   amountCentsFromFields,
   appOrigin,
@@ -188,7 +189,7 @@ serve(async (req) => {
       ]
         .filter(Boolean)
         .join('  ·  ')
-      const stamp = new Date(nowIso).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+      const stamp = new Date(nowIso).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
       const how = mode === 'draw' ? 'drawn' : mode === 'in_person' ? 'in person' : 'typed'
       const pdf = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, {
         heading,
@@ -196,7 +197,7 @@ serve(async (req) => {
         jobAddress: j.job_address ?? null,
         customerName: j.customer_name ?? null,
         recipientName: c.recipient_name,
-        dateLabel: new Date(c.last_sent_at ?? nowIso).toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', year: 'numeric' }),
+        dateLabel: new Date(c.last_sent_at ?? nowIso).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }),
         revision: c.revision,
         templateName: c.template_name,
         scopeLines,
