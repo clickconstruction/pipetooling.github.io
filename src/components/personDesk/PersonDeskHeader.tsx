@@ -55,6 +55,7 @@ export function PersonDeskHeader({
   onClose,
   placeholderName,
   onOpenFlow,
+  hideClose = false,
 }: {
   personKey: PersonKey | null
   user: PersonDeskUserRow | null
@@ -67,6 +68,8 @@ export function PersonDeskHeader({
   placeholderName: string | null
   /** PR 2: the Start / End employment checklists (pay roles). */
   onOpenFlow?: (mode: 'start' | 'end') => void
+  /** PR 3: the page variant has no close button. */
+  hideClose?: boolean
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const { user: authUser } = useAuth()
@@ -227,9 +230,11 @@ export function PersonDeskHeader({
             {[roleLabel, ...trades].filter(Boolean).join(' · ')}
             {personKey?.archived ? ' · archived' : ''}
           </span>
-          <button type="button" aria-label="Close" onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)', padding: '0 0.15rem' }}>
-            ×
-          </button>
+          {hideClose ? null : (
+            <button type="button" aria-label="Close" onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)', padding: '0 0.15rem' }}>
+              ×
+            </button>
+          )}
         </div>
         {personKey ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem', fontSize: '0.75rem', color: 'var(--text-700)', marginTop: '0.2rem' }}>
