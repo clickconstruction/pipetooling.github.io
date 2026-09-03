@@ -27,6 +27,7 @@ import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
+import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import NewReportModal from '../NewReportModal'
 import type { PinnedItem } from '../../lib/pinnedTabs'
@@ -327,6 +328,12 @@ export function DashboardPinnedQuickRow({
   const d22UncodedEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
   const { uncoded: d22UncodedCount } = useSpecSectionUncodedCount(d22UncodedEnabled)
 
+  // Pending hours approvals (v2.2671) — the RPC's internal gate returns the
+  // zero row for anyone without approval powers, so the client enable is just
+  // the office set.
+  const hoursApprovalsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { approvals: hoursApprovals } = usePendingHoursApprovalsNudge(hoursApprovalsEnabled)
+
   // Cleared payments behind conditional lien releases (v2.2582) — office set.
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
@@ -367,6 +374,9 @@ export function DashboardPinnedQuickRow({
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
     lienWatch,
+    hoursApprovalsEnabled,
+    hoursApprovals,
+    hoursApprovalsMinAgeDays: HOURS_APPROVALS_MIN_AGE_DAYS,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -572,6 +582,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages')
             } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
               navigate('/jobs?tab=stages')
+            } else if (item.key === 'hours-approvals') {
+              navigate('/people?tab=hours')
             }
           }}
           onSecondary={(item, key) => {

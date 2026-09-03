@@ -47,6 +47,7 @@ export type NeedsYouItem = {
     | 'lien-notice-window'
     | 'lien-file-window'
     | 'd22-uncoded'
+    | 'hours-approvals'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -84,6 +85,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'team-reviews': 50,
   'roadmap-needs-person': 50,
   'robot-audits': 50,
+  'hours-approvals': 50,
   'lost-bids': 60,
   'd22-uncoded': 60,
 }
@@ -194,6 +196,16 @@ export type NeedsYouInputs = {
     filingDue: { deadline: string; openBalance: number }[]
     serveDue: { serveDue: string }[]
   } | null
+  /**
+   * Closed clock sessions awaiting approval (v2.2671) — null while loading or
+   * when the RPC's internal gate returned the zero row. The item only shows
+   * once the OLDEST pending day is hoursApprovalsMinAgeDays old, so a normal
+   * same-week queue never nags; what it catches is the stall (Aug 2026: three
+   * weeks of zero approvals starved payroll and the Overhead pool).
+   */
+  hoursApprovalsEnabled: boolean
+  hoursApprovals: { sessions: number; totalHours: number; people: number; oldestAgeDays: number } | null
+  hoursApprovalsMinAgeDays: number
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -460,6 +472,30 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'Supply house lists file them under "No code yet" — pin a name once and every bid is fixed, past and future.',
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Pin codes',
+    })
+  }
+
+  if (
+    inputs.hoursApprovalsEnabled &&
+    inputs.hoursApprovals != null &&
+    inputs.hoursApprovals.sessions > 0 &&
+    inputs.hoursApprovals.oldestAgeDays >= inputs.hoursApprovalsMinAgeDays
+  ) {
+    const a = inputs.hoursApprovals
+    const hours = a.totalHours.toLocaleString('en-US', { maximumFractionDigits: 0 })
+    items.push({
+      key: 'hours-approvals',
+      severity: 'amber',
+      kicker: 'Time approvals',
+      title:
+        a.sessions === 1
+          ? 'A clock session is waiting on approval'
+          : `${a.sessions} clock sessions are waiting on approval`,
+      detail:
+        `${a.people === 1 ? 'One person has' : `${a.people} people have`} ${hours}h unapproved — the oldest from ${a.oldestAgeDays} days ago. ` +
+        'Unapproved time is missing from payroll, the Hours grid, and the Overhead numbers — work the queue on People → Hours.',
+      figure: a.sessions > 99 ? '99+' : String(a.sessions),
+      actionLabel: 'Open approvals',
     })
   }
 
