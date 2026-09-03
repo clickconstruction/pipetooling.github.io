@@ -235,8 +235,11 @@ export function HoursBreakdownBody(props: {
             </>
           ) : null}
           <p className="caption">
-            Total = crew ({fmtH(hb.totals.crew)}) + sub labor (
-            {fmtH(hb.totals.subLabor)}) = {fmtH(hb.totals.totalHours)} hrs.
+            On paid jobs = crew ({fmtH(hb.totals.crew)}) + sub labor (
+            {fmtH(hb.totals.subLabor)}) = {fmtH(hb.totals.onPaidJobs ?? hb.totals.crew + hb.totals.subLabor)} hrs.
+            The Hours column and every per-hour rate still divide by the
+            person&rsquo;s {fmtH(hb.totals.totalHours)} hrs in the period, so the
+            toggle changes which jobs earn revenue, not the denominator.
             Each crew line shows <em>(pct) Job # | Job Name</em>; pct is the
             share of the day attributed to that job.
           </p>

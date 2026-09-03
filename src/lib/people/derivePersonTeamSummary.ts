@@ -228,17 +228,19 @@ export function derivePersonTeamSummary(
       : (personHoursRows.find((h) => h.work_date === d)?.hours ?? 0)
   }
   const totalHoursPaidJobs = laborJobs.reduce((s, j) => s + j.hours, 0) + crewJobs.reduce((s, j) => s + j.hours, 0)
-  const totalHours = onlyPaidJobs
-    ? totalHoursPaidJobs
-    : days.reduce((s, d) => s + getHoursForDay(d), 0)
+  // Hours keep ONE basis whatever the paid-only toggle says (v2.2688, audit
+  // finding 12): total = the person's hours in the period (clocked, or the
+  // salaried 8/0 credit), field = total − office/bid. The toggle filters
+  // which JOBS earn revenue; it no longer swaps the hour denominators or
+  // charges the parts burden on office hours. Hours that landed on paid jobs
+  // are still reported (`hoursBreakdown.totals.onPaidJobs`).
+  const totalHours = days.reduce((s, d) => s + getHoursForDay(d), 0)
 
   const overheadBuckets = lookupByPersonName(union.overheadHoursByPerson, personName) ?? { office: 0, bid: 0 }
   const officeHours = overheadBuckets.office
   const bidHours = overheadBuckets.bid
   const overheadHours = officeHours + bidHours
-  const fieldHours = onlyPaidJobs
-    ? totalHours
-    : Math.max(0, totalHours - overheadHours)
+  const fieldHours = Math.max(0, totalHours - overheadHours)
   const profitBreakdownJobs: ProfitAfterOverheadBreakdown['jobs'] = netBreakdownJobs.map((j) => ({
     jobId: j.jobId,
     hcp: j.hcp,
@@ -343,7 +345,7 @@ export function derivePersonTeamSummary(
     onlyPaidJobs,
     dailyRows: dailyRowsBreakdown,
     subLaborRows: subLaborRowsBreakdown,
-    totals: { daily: dailyTotal, crew: crewTotal, subLabor: subLaborTotal, totalHours },
+    totals: { daily: dailyTotal, crew: crewTotal, subLabor: subLaborTotal, totalHours, onPaidJobs: onlyPaidJobs ? totalHoursPaidJobs : undefined },
   }
 
   const hourlyWage = cfg?.hourly_wage ?? 0

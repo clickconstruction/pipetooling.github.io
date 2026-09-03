@@ -282,3 +282,33 @@ describe('derivePersonTeamSummary — v2.2683 cost inputs', () => {
     expect(gus.overheadLaborCost).toBeCloseTo(-(12 * 40))
   })
 })
+
+describe('derivePersonTeamSummary — v2.2687 hour basis under "only paid in full"', () => {
+  it('keeps total and field hours on the period basis and reports hours on paid jobs separately', () => {
+    const union = makeUnion({
+      periodLaborRows: [
+        { id: 'p', job_date: '2026-03-02', address: 'p', job_number: 'PAID', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Hal' },
+        { id: 'u', job_date: '2026-03-02', address: 'u', job_number: 'UNPAID', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Hal' },
+      ],
+      laborItemsByJobId: new Map([
+        ['p', [{ count: 1, hrs_per_unit: 3, is_fixed: true }]],
+        ['u', [{ count: 1, hrs_per_unit: 7, is_fixed: true }]],
+      ]),
+      jobIdByHcp: new Map([['paid', 'job-paid']]),
+      jobsById: new Map([['job-paid', makeLedgerRow({ id: 'job-paid', hcp_number: 'PAID', revenue: 0, pct_complete: 100 })]]),
+      periodHoursRows: [{ person_name: 'Hal', work_date: '2026-03-02', hours: 12 }],
+      overheadHoursByPerson: { Hal: { office: 2, bid: 0 } },
+    })
+    const paidOnly = derivePersonTeamSummary(union, 'Hal', hourlyPayConfig('Hal', 50), true, ['2026-03-02'])
+    const all = derivePersonTeamSummary(union, 'Hal', hourlyPayConfig('Hal', 50), false, ['2026-03-02'])
+    // Same denominators either way: 12 clocked hours, 10 of them field.
+    expect(paidOnly.totalHours).toBe(12)
+    expect(all.totalHours).toBe(12)
+    expect(paidOnly.fieldHours).toBe(10)
+    expect(all.fieldHours).toBe(10)
+    // The toggle only narrows which jobs count; hours on paid jobs are reported, not substituted.
+    expect(paidOnly.hoursBreakdown.totals.onPaidJobs).toBe(3)
+    expect(all.hoursBreakdown.totals.onPaidJobs).toBeUndefined()
+    expect(paidOnly.hoursBreakdown.totals.totalHours).toBe(12)
+  })
+})

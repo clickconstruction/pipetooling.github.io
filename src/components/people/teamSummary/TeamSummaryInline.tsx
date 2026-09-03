@@ -351,13 +351,13 @@ export function TeamSummaryInline(props: {
                 Profit
               </SortableTh>
               <SortableTh sortKey="revPerHour" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
-                Gross<br />Revenue/hr
+                <span title={PER_HOUR_BASIS_TITLE}>Gross<br />Revenue/hr</span>
               </SortableTh>
               <SortableTh sortKey="netPerHour" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
-                Net<br />Revenue/hr
+                <span title={PER_HOUR_BASIS_TITLE}>Net<br />Revenue/hr</span>
               </SortableTh>
               <SortableTh sortKey="profitPerHourAfterOverhead" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
-                Profit/hr<br />(after overhead)
+                <span title={PER_HOUR_BASIS_TITLE}>Profit/hr<br />(after overhead)</span>
               </SortableTh>
             </tr>
           </thead>
@@ -431,6 +431,10 @@ export function TeamSummaryInline(props: {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+/** One denominator for every "/hr" on the Review tab (v2.2688, audit finding 6). */
+const PER_HOUR_BASIS_TITLE =
+  "÷ this person's hours in the period — clocked hours, or 8 h per weekday for salaried people — including office and bid time. The Jobs Worked footer uses the same basis and shows the hours-on-jobs figure separately."
 
 function SortableTh(props: {
   sortKey: TeamSummarySortKey
