@@ -10,6 +10,8 @@ import { PersonDeskAccessSection } from './sections/PersonDeskAccessSection'
 import { PersonDeskTeamSection } from './sections/PersonDeskTeamSection'
 import { PersonDeskHoursSection } from './sections/PersonDeskHoursSection'
 import { PersonDeskPortalSection } from './sections/PersonDeskPortalSection'
+import { PersonDeskPaySection } from './sections/PersonDeskPaySection'
+import { PersonDeskLifecycleModal } from './PersonDeskLifecycleModal'
 import { DESK_Z } from './personDeskShared'
 
 /**
@@ -26,6 +28,7 @@ export function PersonDeskDrawer() {
   const { key, user, person, loading, error } = usePersonDesk(payload, desk.changeKey)
   const [serviceTypeNames, setServiceTypeNames] = useState<Map<string, string>>(() => new Map())
   const [narrow, setNarrow] = useState<boolean>(() => (typeof window !== 'undefined' ? window.innerWidth <= 640 : false))
+  const [flow, setFlow] = useState<'start' | 'end' | null>(null)
 
   const viewer: PersonDeskViewer = useMemo(
     () => ({
@@ -107,6 +110,7 @@ export function PersonDeskDrawer() {
           onChanged={desk.markChanged}
           onClose={desk.close}
           placeholderName={payload.displayName ?? null}
+          onOpenFlow={(m) => setFlow(m)}
         />
         <div style={{ overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '0.7rem 0.75rem 1rem' }}>
           {error ? (
@@ -127,12 +131,24 @@ export function PersonDeskDrawer() {
                 onChanged={desk.markChanged}
               />
               {key.isSub ? <PersonDeskPortalSection personId={key.personId} displayName={displayName} changeKey={desk.changeKey} /> : null}
+              <PersonDeskPaySection personKey={key} viewer={viewer} changeKey={desk.changeKey} onChanged={desk.markChanged} />
               <PersonDeskTeamSection userId={key.userId} displayName={displayName} viewer={viewer} viewerUserId={authUser?.id ?? null} changeKey={desk.changeKey} onChanged={desk.markChanged} />
               <PersonDeskAccessSection user={user} viewer={viewer} viewerUserId={authUser?.id ?? null} serviceTypeNames={serviceTypeNames} onChanged={desk.markChanged} />
             </>
           ) : null}
         </div>
       </div>
+      {flow && key ? (
+        <PersonDeskLifecycleModal
+          mode={flow}
+          personKey={key}
+          viewer={viewer}
+          viewerUserId={authUser?.id ?? null}
+          userEmail={user?.email ?? null}
+          onClose={() => setFlow(null)}
+          onChanged={desk.markChanged}
+        />
+      ) : null}
     </div>
   )
 }
