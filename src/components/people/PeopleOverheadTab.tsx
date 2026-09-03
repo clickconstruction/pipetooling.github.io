@@ -53,6 +53,8 @@ import {
 import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
 import { buildOverheadPoolTrend, type OverheadPoolTrend } from '../../lib/overheadPoolTrend'
 import { OverheadPoolTrendCard } from './OverheadPoolTrendCard'
+import { buildOverheadLensSeries, type OverheadLensKey } from '../../lib/overheadLensSeries'
+import { OverheadLensModal, type OverheadLensDetail } from './OverheadLensModal'
 import {
   fetchOtherJobsPartsByDay,
   fetchOverheadOfficePartsByDay,
@@ -306,6 +308,9 @@ export default function PeopleOverheadTab({
     trend: null,
     loading: false,
   })
+  /** Lens modals (v2.2674): which lens is open + the per-lens history/denominators the same effect computes. */
+  const [overheadLensModal, setOverheadLensModal] = useState<OverheadLensKey | null>(null)
+  const [overheadLensDetail, setOverheadLensDetail] = useState<OverheadLensDetail | null>(null)
   /**
    * Maintenance-hygiene indicators (pending approvals / unpriced hours /
    * unassigned salary time) over the SAME 90-day window as the KPI/lenses —
@@ -915,6 +920,36 @@ export default function PeopleOverheadTab({
           windowEnd: today,
           loading: false,
         })
+        // Lens modals (v2.2674): week-by-week + rolling history per lens from
+        // the maps above, plus the two audit facts the modal states outright —
+        // pending field hours (A/C's missing denominator) and sessions that
+        // sit on BOTH sides (non-office job + bid link).
+        const pendingFieldHours = fieldSessions.reduce((acc, sess) => {
+          if (sess.approved_at || sess.rejected_at || sess.revoked_at || !sess.clocked_out_at) return acc
+          const h = (Date.parse(sess.clocked_out_at) - Date.parse(sess.clocked_in_at)) / 3_600_000
+          return Number.isFinite(h) && h > 0 ? acc + h : acc
+        }, 0)
+        const overlapSessions = sessions.filter(
+          (sess) =>
+            sess.approved_at &&
+            !sess.rejected_at &&
+            !sess.revoked_at &&
+            sess.bid_id &&
+            sess.job_ledger_id &&
+            sess.job_ledger_id !== overheadOfficeJobLedgerId,
+        ).length
+        const lensSeries = (denominatorByDay: ReadonlyMap<string, number>) =>
+          buildOverheadLensSeries({ poolUsdByDay: totalsByDay, denominatorByDay, startYmd: start, endYmd: today })
+        setOverheadLensDetail({
+          series: {
+            A: lensSeries(fieldLabor.laborHoursByDay),
+            B: lensSeries(revenueByDay),
+            C: lensSeries(fieldLabor.laborUsdByDay),
+          },
+          denominators: { fieldHours: fieldHours90, invoicedRevenueUsd: w90.revenueUsd, fieldLaborUsd: fieldLaborUsd90 },
+          pendingFieldHours,
+          overlapSessions,
+        })
         clearOverheadLoadError('90-day averages')
       } catch (e) {
         if (!cancelled) {
@@ -938,6 +973,7 @@ export default function PeopleOverheadTab({
           })
           setOverheadHygiene({ summary: null, loading: false })
           setOverheadPoolTrend({ trend: null, loading: false })
+          setOverheadLensDetail(null)
         }
       }
     })()
@@ -1438,14 +1474,20 @@ export default function PeopleOverheadTab({
           }}
         >
           {overheadLensCards.map((card) => (
-            <div
+            <button
+              type="button"
               key={card.key}
               title={card.title}
+              onClick={() => setOverheadLensModal(card.key as OverheadLensKey)}
               style={{
                 border: '1px solid var(--border)',
                 borderRadius: 6,
                 background: 'var(--bg-page)',
                 padding: '0.6rem 0.75rem',
+                textAlign: 'left',
+                font: 'inherit',
+                color: 'inherit',
+                cursor: 'pointer',
               }}
             >
               <div
@@ -1465,7 +1507,10 @@ export default function PeopleOverheadTab({
               <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)', lineHeight: 1.4 }}>
                 {card.blurb}
               </p>
-            </div>
+              <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-blue-500)' }}>
+                See the math ›
+              </div>
+            </button>
           ))}
         </div>
         <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
@@ -1474,6 +1519,16 @@ export default function PeopleOverheadTab({
         </p>
       </div>
       <OverheadPoolTrendCard trend={overheadPoolTrend.trend} loading={overheadPoolTrend.loading} windowLabel={lensWindowLabel} />
+      {overheadLensModal ? (
+        <OverheadLensModal
+          lens={overheadLensModal}
+          windowLabel={lensWindowLabel}
+          pool={overheadPoolTrend.trend?.totals ?? null}
+          rates={{ A: overheadRateLenses.methodA, B: overheadRateLenses.methodB, C: overheadRateLenses.methodC }}
+          detail={overheadLensDetail}
+          onClose={() => setOverheadLensModal(null)}
+        />
+      ) : null}
       {overheadHygieneCards.length > 0 ? (
         <div
           role="note"
