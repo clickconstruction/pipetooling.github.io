@@ -150,6 +150,8 @@ import {
 import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
 import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
 import { PeopleHoursApprovalsQueueModal } from '../components/people/PeopleHoursApprovalsQueueModal'
+import { PersonDeskPage } from '../components/personDesk/PersonDeskPage'
+import { canOpenPersonDesk } from '../lib/people/personDeskGates'
 import { usePendingHoursApprovalsNudge } from '../hooks/usePendingHoursApprovalsNudge'
 import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import type { ClockSessionRow } from '../types/clockSessions'
@@ -218,6 +220,7 @@ type PeopleTab =
   | 'scoreboard'
   | 'review'
   | 'hr'
+  | 'person'
   | 'users'
   | 'subs'
   | 'overhead'
@@ -818,6 +821,7 @@ export default function People() {
       tab === 'review' ||
       tab === 'scoreboard' ||
       tab === 'hr' ||
+      tab === 'person' ||
       tab === 'feedback' ||
       tab === 'activity'
     ) {
@@ -3178,6 +3182,23 @@ export default function People() {
             HR
           </button>
         )}
+        {canOpenPersonDesk(authRole) && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('person')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'person')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'person')}
+            title="One person, every control — the Person Desk as a page"
+          >
+            Person
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {
@@ -4333,6 +4354,8 @@ export default function People() {
       {activeTab === 'scoreboard' && isDev && <PeopleScoreboardTab />}
       {/* 'hr' follows Scoreboard's pattern: no URL gate (isDev resolves async), render-site gated. */}
       {activeTab === 'hr' && isDev && <PeopleHrTab />}
+      {/* 'person' (v2.2710): the Person Desk as a page; gate mirrors canOpenPersonDesk (office roles). */}
+      {activeTab === 'person' && canOpenPersonDesk(authRole) && <PersonDeskPage />}
       {activeTab === 'review' && isDev && (
         <PeopleReviewTab
           payConfig={payConfig}

@@ -27,6 +27,10 @@ const CRITERIA: unknown[] = [
   { v: 1, bankCategory: { op: 'equals', value: '' } }, // empty → not substantive
   { v: 1, bankCategory: { op: 'equals', value: 7 } }, // invalid value → parse null
   { v: 1, bankCategory: { op: 'equals', value: 'FuelAndGas' }, amount: { max: 0 } },
+  { v: 1, bankTag: { tagId: 't-fuel', categories: ['FuelAndGas', 'VehicleExpenses'] } }, // Variant D tag clause (snapshot path)
+  { v: 1, bankTag: { tagId: 't-fuel' } },
+  { v: 1, bankTag: { tagId: 7 } }, // invalid → parse null
+  { v: 1, bankTag: { tagId: 't-fuel', categories: 'FuelAndGas' } }, // invalid → parse null
   { v: 1, amount: { bogus: true } }, // invalid → parse null
   { v: 1, counterparty: { op: 'startsWith', value: 'x' } }, // invalid op → parse null
   'not-an-object',

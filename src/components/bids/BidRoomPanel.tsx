@@ -5,7 +5,7 @@
  * The room link is permanent (owner decision 8) — revisions are explicit publishes (decision
  * 6), never re-sends.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -41,6 +41,28 @@ export type BidRoomPanelProps = {
   crmCustomerId: string | null
   /** Called after the FIRST link send so the tab stamps bid_version_sends (same as Mark sent). */
   onFirstLinkSent: () => void
+  /**
+   * vv2.2716: controlled mode. When the parent passes `onRoomPresence`, the panel hides itself while
+   * the GC has no room and the controls are closed — the parent shows `BidRoomSetupButton` beside
+   * Mark sent instead, and opens the panel through `open` / `onOpenChange`.
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  onRoomPresence?: (hasRoom: boolean) => void
+}
+
+/** The solid "Setup bid room" button the Cover Letter shows beside Mark sent while a GC has no room yet (vv2.2716). */
+export function BidRoomSetupButton(props: { onClick: () => void; gcShort?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={props.onClick}
+      style={btn('blue')}
+      title={`Open a durable, signable link for ${props.gcShort ?? 'this GC'} — the letter, always current`}
+    >
+      ✍ Setup bid room
+    </button>
+  )
 }
 
 function roomLink(token: string): string {
@@ -68,7 +90,16 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
   const [state, setState] = useState<BidRoomStateSummary | null>(null)
   const [everSent, setEverSent] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [open, setOpen] = useState(false)
+  const [openLocal, setOpenLocal] = useState(false)
+  const open = props.open ?? openLocal
+  const setOpen = (next: boolean | ((v: boolean) => boolean)) => {
+    const v = typeof next === 'function' ? next(open) : next
+    setOpenLocal(v)
+    props.onOpenChange?.(v)
+  }
+  // Presence goes through a ref so the parent's callback identity never re-triggers `load`.
+  const presenceRef = useRef(props.onRoomPresence)
+  presenceRef.current = props.onRoomPresence
   const [note, setNote] = useState('')
   const [email, setEmail] = useState('')
   const [attachUrl, setAttachUrl] = useState('')
@@ -79,6 +110,7 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
     const { data } = await q.maybeSingle()
     const r = (data as RoomRow | null) ?? null
     setRoom(r)
+    presenceRef.current?.(r != null)
     const crmEmail = async () => {
       if (!props.crmCustomerId) return ''
       const { data: c } = await supabase.from('customers').select('contact_info').eq('id', props.crmCustomerId).maybeSingle()
@@ -289,8 +321,11 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
   const answered = state?.outcome != null
   const chipLabel = roomStateChipLabel(state)
 
+  // Controlled mode: no room and nothing open → the parent's Setup button is the whole UI.
+  if (props.onRoomPresence && !room && !open) return null
+
   return (
-    <div style={{ marginTop: '0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
+    <div style={{ marginTop: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.65rem', background: 'var(--surface)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
           ✍ Bid room

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -173,6 +174,12 @@ export default function PeopleHrTab() {
   const [loaded, setLoaded] = useState(false)
 
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
+  // Deep link from the Person Desk (v2.2710): ?tab=hr&person=<people.id> lands on that file.
+  const [hrSearchParams] = useSearchParams()
+  const deepLinkPersonId = hrSearchParams.get('person')
+  useEffect(() => {
+    if (deepLinkPersonId) setSelectedPersonId(deepLinkPersonId)
+  }, [deepLinkPersonId])
   const [fileView, setFileView] = useState<FileView>('summary')
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
