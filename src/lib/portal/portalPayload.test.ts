@@ -134,3 +134,25 @@ describe('formatters', () => {
     expect(portalDaysSinceBilled('2026-09-01', '2026-08-21')).toBeNull() // future dates stay silent
   })
 })
+
+describe('agreements (Contract Desk PR 5)', () => {
+  it('parses signed and sent agreements, drops unknown statuses and non-http links', () => {
+    const p = parsePortalPayload({
+      customerName: 'Michael Palmer',
+      bills: [],
+      agreements: [
+        { jobLabel: 'J922', jobAddress: '138 W Pat Dolan', status: 'signed', templateName: 'Terms', amountCents: 500000, signedAt: '2026-09-03T00:14:00Z', signerName: 'Michael Palmer', sentAt: null, signUrl: 'https://clicktooling.com/contract/sign?t=abc' },
+        { jobLabel: 'J923', status: 'sent', signUrl: 'javascript:alert(1)' },
+        { jobLabel: 'J924', status: 'draft' },
+      ],
+    })
+    expect(p?.agreements).toHaveLength(2)
+    expect(p?.agreements[0]).toMatchObject({ status: 'signed', amountCents: 500000, signerName: 'Michael Palmer' })
+    expect(p?.agreements[1]).toMatchObject({ status: 'sent', signUrl: null, amountCents: null })
+  })
+
+  it('a payload without agreements parses to an empty list', () => {
+    expect(parsePortalPayload({ customerName: 'X', bills: [] })?.agreements).toEqual([])
+  })
+})
+

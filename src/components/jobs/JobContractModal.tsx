@@ -726,7 +726,7 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
           <span style={labelStyle}>Reminders</span>
           <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8rem' }}>
             <input type="checkbox" checked={remindersEnabled} disabled={!editable} onChange={(e) => { touch(); setRemindersEnabled(e.target.checked) }} />
-            Remind by email every 3 days until signed, up to 3 times (arrives with a later release)
+            Remind by email every 3 days until signed, up to 3 times
           </label>
         </div>
 

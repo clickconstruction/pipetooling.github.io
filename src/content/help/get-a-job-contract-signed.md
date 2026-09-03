@@ -69,3 +69,9 @@ The Dashboard's **Needs You** list shows {{chip:yellow|14 live jobs have no cont
 
 Every live job without an agreement is one row: job, address, stage, amount, the customer's email, and {{button:blue|Send}}. Pick the terms once in the footer, then send row by row — or {{button:blue|Send all 9 ready}} for every row with a valid email (it asks once to confirm). Rows with no email get {{button:outline|Fix email}}, which opens the job. Click a job name to open the full Contract modal instead, for careful edits or to record a paper copy. Rows leave the list as they send, and the Dashboard count falls with them.
 
+## Reminders and the customer's account page
+
+Leave **Remind by email every 3 days until signed** ticked when you send and the app follows up by itself — up to three reminders, each carrying the same link, with your address as the reply-to. Signing (or voiding) stops them; a resend restarts the clock. Devs can pause the whole lane from Settings with the `job_contract_reminders_disabled_v1` switch.
+
+Customers with a portal link also see **Your agreements** on their account page: signed contracts with **View signed copy**, and any contract still waiting with **Review & sign** — the same durable link, so nobody has to dig for the email.
+

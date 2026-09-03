@@ -477,6 +477,10 @@ verify_jwt = false
 [functions.send-job-contract]
 verify_jwt = false
 
+# Contract Desk PR 5 (v2.2690): hourly reminder lane — pg_cron with X-Cron-Secret.
+[functions.remind-job-contracts]
+verify_jwt = false
+
 [functions.send-estimate-to-customer]
 verify_jwt = false
 
