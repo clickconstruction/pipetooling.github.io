@@ -112,6 +112,7 @@ export function enrichTeamSummaryRowsForInline(
     bidHours: r.bidHours,
     fieldHours: r.fieldHours,
     hourlyWage: r.hourlyWage,
+    overheadWage: r.overheadWage,
     overheadLaborCost: r.overheadLaborCost,
     overheadSessions: r.overheadSessions,
     gross: r.gross,

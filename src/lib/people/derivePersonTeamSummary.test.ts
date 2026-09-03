@@ -235,3 +235,50 @@ describe('derivePersonTeamSummary', () => {
     expect(row.gross).toBeCloseTo(500, 6)
   })
 })
+
+describe('derivePersonTeamSummary — v2.2683 cost inputs', () => {
+  it('prices sub-labor sheets like the Jobs page: per-line rate overrides and direct $ lines count', () => {
+    const union = makeUnion({
+      periodLaborRows: [
+        { id: 's', job_date: '2026-03-01', address: 'a', job_number: 'J1', labor_rate: 60, distance_miles: 0, assigned_to_name: 'Eve' },
+      ],
+      laborItemsByJobId: new Map([
+        [
+          's',
+          [
+            { count: 2, hrs_per_unit: 3, is_fixed: false }, // 6 h × $60 = 360
+            { count: 1, hrs_per_unit: 2, is_fixed: false, labor_rate: 90 }, // 2 h × $90 = 180
+            { count: 1, hrs_per_unit: 0, is_fixed: true, direct_labor_amount: 900 }, // flat 900
+          ],
+        ],
+      ]),
+      jobIdByHcp: new Map([['j1', 'job-1']]),
+      jobsById: new Map([['job-1', makeLedgerRow({ id: 'job-1', hcp_number: 'J1', revenue: 10000, pct_complete: 100 })]]),
+      // Lifetime labor on the job = this sheet alone, costed the same way.
+      laborCostByHcp: new Map([['j1', 1440]]),
+    })
+    const row = derivePersonTeamSummary(union, 'Eve', hourlyPayConfig('Eve', 50), false, ['2026-03-01'])
+    // Cost 1440 ÷ lifetime 1440 → the whole job's value created is Eve's.
+    expect(row.gross).toBeCloseTo(10000)
+    expect(row.grossBreakdown.jobs[0]?.costInPeriod).toBeCloseTo(1440)
+    // Hours are still hours: 6 + 2 + 0.
+    expect(row.hoursBreakdown.totals.subLabor).toBeCloseTo(8)
+  })
+
+  it('prices office/bid hours at the office rate for dual-rate people, and at the field wage otherwise', () => {
+    const union = makeUnion({
+      overheadHoursByPerson: { Fay: { office: 10, bid: 2 }, Gus: { office: 10, bid: 2 } },
+    })
+    const dual: Record<string, PayConfigRow> = {
+      Fay: { person_name: 'Fay', hourly_wage: 40, office_hourly_wage: 25, is_salary: false, record_hours_but_salary: false },
+      Gus: { person_name: 'Gus', hourly_wage: 40, office_hourly_wage: 25, is_salary: true, record_hours_but_salary: false },
+    }
+    const fay = derivePersonTeamSummary(union, 'Fay', dual, false, ['2026-03-02'])
+    expect(fay.overheadWage).toBe(25)
+    expect(fay.overheadLaborCost).toBeCloseTo(-(12 * 25))
+    // Salaried people never use the dual rate (payroll's gate), even with an office rate on file.
+    const gus = derivePersonTeamSummary(union, 'Gus', dual, false, ['2026-03-02'])
+    expect(gus.overheadWage).toBe(40)
+    expect(gus.overheadLaborCost).toBeCloseTo(-(12 * 40))
+  })
+})

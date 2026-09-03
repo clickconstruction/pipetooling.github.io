@@ -813,9 +813,9 @@ function drilldownTitleFor(
       // to open the modal to see what rate drives the cost column.
       // Falls back to "no wage" when people_pay_config has no row /
       // hourly_wage is null — matches OverheadLaborBody's body copy.
-      const wage = entry.hourlyWage || 0
+      const wage = entry.overheadWage || 0
       const wageSuffix =
-        wage > 0 ? ` · $${wage.toFixed(2)}/hr` : ' · no wage configured'
+        wage > 0 ? ` · $${wage.toFixed(2)}/hr${entry.hourlyWage > 0 && wage !== entry.hourlyWage ? ' office rate' : ''}` : ' · no wage configured'
       return `Overhead labor breakdown — ${entry.name}${wageSuffix}`
     }
     case 'gross':

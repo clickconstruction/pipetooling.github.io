@@ -18,6 +18,7 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 // whole-minute values (e.g. 1:20 stored showed as 1:19:60).
 import { decimalToHms } from '../../lib/people/hoursGridTime'
 import { laborJobMatchesPerson } from '../../lib/people/laborJobPersonMatch'
+import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 import {
   approvedClosedSessionHours,
@@ -1072,9 +1073,9 @@ export default function PeopleReviewTab({
     const allLaborJobIdsForCost = allLaborRowsForCostAllTime.map((r) => r.id)
     const laborItems = (await fetchAllRowsChunkedIn(
       allLaborJobIdsForCost,
-      (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', chunk).order('id').range(f, t),
+      (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount').in('job_id', chunk).order('id').range(f, t),
       'load review labor items',
-    )) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
+    )) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean; labor_rate: number | null; direct_labor_amount: number | null }>
     const itemsByJob = new Map<string, typeof laborItems>()
     for (const i of laborItems) {
       const list = itemsByJob.get(i.job_id) ?? []
@@ -1088,11 +1089,11 @@ export default function PeopleReviewTab({
       const hcp = (r.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
       const items = itemsByJob.get(r.id) ?? []
-      const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
       const rate = r.labor_rate ?? 0
       const miles = Number(r.distance_miles) || 0
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
-      const laborCost = totalHrs * rate + driveCost
+      // Jobs-page costing (v2.2686): line rate overrides + direct $ lines + drive.
+      const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile)
       laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
       if (driveCost > 0) driveCostByHcp.set(hcp, (driveCostByHcp.get(hcp) ?? 0) + driveCost)
     }
@@ -1262,11 +1263,11 @@ export default function PeopleReviewTab({
       const hcp = (r.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
       const items = itemsByJob.get(r.id) ?? []
-      const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
       const rate = r.labor_rate ?? 0
       const miles = Number(r.distance_miles) || 0
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
-      const laborCost = totalHrs * rate + driveCost
+      // Jobs-page costing (v2.2686): line rate overrides + direct $ lines + drive.
+      const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile)
       personSubLaborCostByHcp.set(hcp, (personSubLaborCostByHcp.get(hcp) ?? 0) + laborCost)
       const jobId = jobIdByHcp.get(hcp)
       if (!jobId) continue
@@ -1372,7 +1373,8 @@ export default function PeopleReviewTab({
       const rate = r.labor_rate ?? 0
       const miles = Number(r.distance_miles) || 0
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
-      const laborCost = totalHrs * rate + driveCost
+      // Jobs-page costing (v2.2686): line rate overrides + direct $ lines + drive.
+      const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile)
       const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0) + (cardChargesByJobId.get(jobId) ?? 0) : 0
       const totalBill = job?.revenue != null ? Number(job.revenue) : 0
       const pctComplete = job?.pct_complete ?? null
@@ -1538,9 +1540,9 @@ export default function PeopleReviewTab({
     const allLaborJobIds = allLaborRows.map((r) => r.id)
     const allLaborItems = (await fetchAllRowsChunkedIn(
       allLaborJobIds,
-      (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', chunk).order('id').range(f, t),
+      (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount').in('job_id', chunk).order('id').range(f, t),
       'load review lifetime labor items',
-    )) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
+    )) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean; labor_rate: number | null; direct_labor_amount: number | null }>
     const itemsByLaborJobId = new Map<string, typeof allLaborItems>()
     for (const i of allLaborItems) {
       const list = itemsByLaborJobId.get(i.job_id) ?? []
@@ -1900,15 +1902,15 @@ export default function PeopleReviewTab({
     const laborItemsRes = {
       data: await fetchAllRowsChunkedIn(
         allTimeLaborJobIds,
-        (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', chunk).order('id').range(f, t),
+        (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount').in('job_id', chunk).order('id').range(f, t),
         'load team summary labor items',
       ),
     }
-    const laborItems = (laborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
+    const laborItems = (laborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean; labor_rate: number | null; direct_labor_amount: number | null }>
     const laborItemsByJobId = new Map<string, TeamLaborItem[]>()
     for (const i of laborItems) {
       const list = laborItemsByJobId.get(i.job_id) ?? []
-      list.push({ count: i.count, hrs_per_unit: i.hrs_per_unit, is_fixed: i.is_fixed })
+      list.push({ count: i.count, hrs_per_unit: i.hrs_per_unit, is_fixed: i.is_fixed, labor_rate: i.labor_rate, direct_labor_amount: i.direct_labor_amount })
       laborItemsByJobId.set(i.job_id, list)
     }
 
@@ -1918,11 +1920,8 @@ export default function PeopleReviewTab({
       const hcp = (r.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
       const items = laborItemsByJobId.get(r.id) ?? []
-      const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
-      const rate = r.labor_rate ?? 0
-      const miles = Number(r.distance_miles) || 0
-      const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
-      const laborCost = totalHrs * rate + driveCost
+      // Jobs-page costing (v2.2686): line rate overrides + direct $ lines + drive.
+      const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile)
       laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
     }
 

@@ -1155,14 +1155,19 @@ export function OverheadLaborBody(props: { entry: TeamSummaryBreakdown }) {
   const bidHrs = entry.bidHours || 0
   const fieldHrs = entry.fieldHours || 0
   const overheadHrs = officeHrs + bidHrs
-  const wage = entry.hourlyWage || 0
+  // Office/bid hours are priced at the office rate when dual-rate applies
+  // (v2.2686) — the same wage the Overhead tab's pool uses for this person.
+  const wage = entry.overheadWage || 0
+  const dualRate = wage > 0 && entry.hourlyWage > 0 && wage !== entry.hourlyWage
   const overheadLaborCost = entry.overheadLaborCost || 0
   const src = entry.payConfigSource
   const srcLabel =
     src === 'salary'
       ? 'Salaried (weekday hrs × hourly_wage from people_pay_config)'
       : src === 'hourly'
-        ? 'Hourly (people_hours / clock sessions × hourly_wage)'
+        ? dualRate
+          ? 'Hourly with an office rate (office/bid hrs × office_hourly_wage)'
+          : 'Hourly (people_hours / clock sessions × hourly_wage)'
         : 'Unknown (no people_pay_config row — wage treated as $0)'
   const officeCost = -(officeHrs * wage)
   const bidCost = -(bidHrs * wage)
@@ -1171,8 +1176,9 @@ export function OverheadLaborBody(props: { entry: TeamSummaryBreakdown }) {
     <>
       <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div>
-          <strong>Hourly wage:</strong>{' '}
+          <strong>{dualRate ? 'Office rate:' : 'Hourly wage:'}</strong>{' '}
           {wage > 0 ? `$${wage.toFixed(2)}/hr` : <span style={dashStyle}>not configured</span>}
+          {dualRate && <span style={{ color: 'var(--text-muted)' }}> (field wage ${entry.hourlyWage.toFixed(2)}/hr)</span>}
         </div>
         <div style={{ marginTop: '0.5rem', fontSize: '1.05rem', textAlign: 'center' }}>
           <strong>Overhead labor: {fmtMoney(overheadLaborCost)}</strong>{' '}

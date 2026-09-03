@@ -101,7 +101,10 @@ export type TeamSummaryRow = {
   officeHours: number
   bidHours: number
   fieldHours: number
+  /** Field wage (`hourly_wage`). */
   hourlyWage: number
+  /** Wage the office/bid hours are priced at: `office_hourly_wage` when dual-rate applies, else `hourlyWage`. */
+  overheadWage: number
   overheadLaborCost: number
   hoursBreakdown: HoursBreakdown
   grossBreakdown: GrossRevenueBreakdown
@@ -131,6 +134,7 @@ export type TeamSummaryBreakdown = {
   bidHours: number
   fieldHours: number
   hourlyWage: number
+  overheadWage: number
   overheadLaborCost: number
   overheadSessions: OverheadSessionLine[]
   gross: number
