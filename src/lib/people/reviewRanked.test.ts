@@ -54,6 +54,9 @@ function row(over: Partial<TeamSummaryBreakdown> & { name: string }): TeamSummar
     fieldHours: 0,
     hourlyWage: 50,
     overheadWage: 50,
+    allocatedParts: over.allocatedParts ?? 0,
+    allocatedFuel: over.allocatedFuel ?? 0,
+    allocatedLabor: over.allocatedLabor ?? Math.max(0, gross - net - (over.allocatedParts ?? 0)),
     overheadSessions: [],
     gross,
     net,
@@ -126,7 +129,8 @@ describe('buildReviewVerdict', () => {
     expect(v.none.names).toEqual(['Micah'])
     const shareSum = v.segments.reduce((s, seg) => s + seg.share, 0)
     expect(shareSum).toBeCloseTo(1, 5)
-    expect(v.segments.map((s) => s.key)).toEqual(['costs', 'overheadLabor', 'burden', 'profit'])
+    expect(v.segments.map((s) => s.key)).toEqual(['costs', 'fuel', 'overheadLabor', 'burden', 'profit'])
+    expect(v.fuel).toBe(0)
     expect(v.trend).toBeNull()
   })
   it('leaves profit null until the overhead rate lands, and compares against the prior period when given', () => {
@@ -169,7 +173,10 @@ describe('buildReviewPersonMath', () => {
     const m = buildReviewPersonMath(malachi, { partsRate: 5 })
     const by = Object.fromEntries(m.lines.map((l) => [l.key, l.usd]))
     expect(by.gross).toBe(49063)
-    expect(by.costs).toBe(-(49063 - 23326))
+    // row() fixtures carry no parts/fuel split, so everything between gross and net is labor.
+    expect(by.parts).toBe(-0)
+    expect(by.fuel).toBe(-0)
+    expect(by.labor).toBe(-(49063 - 23326))
     expect(by.net).toBe(23326)
     expect(by.overheadLabor).toBe(-604)
     expect(by.burden).toBe(-828)

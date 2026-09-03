@@ -7,7 +7,7 @@ import * as sharedMatcher from '../../supabase/functions/_shared/accountingLabel
 // pre-tags Mercury transactions in mercury-webhook. If this fails, the two
 // implementations diverged — reconcile them.
 
-type Tx = { amount: number | string | null; counterparty_name: string | null; raw: unknown }
+type Tx = { amount: number | string | null; counterparty_name: string | null; raw: unknown; mercury_category?: unknown }
 
 const CRITERIA: unknown[] = [
   { v: 1 }, // no substantive clauses → never matches
@@ -22,6 +22,11 @@ const CRITERIA: unknown[] = [
   { v: 1, bankDescription: { op: 'contains', value: 'fuel' } },
   { v: 1, bankDescription: { op: 'equals', value: 'FUEL PURCHASE' } },
   { v: 1, amount: { min: -100, max: -10 }, counterparty: { op: 'contains', value: 'shell' } },
+  { v: 1, bankCategory: { op: 'equals', value: 'FuelAndGas' } }, // v2.2700 bank-category clause
+  { v: 1, bankCategory: { op: 'contains', value: 'fuel' } },
+  { v: 1, bankCategory: { op: 'equals', value: '' } }, // empty → not substantive
+  { v: 1, bankCategory: { op: 'equals', value: 7 } }, // invalid value → parse null
+  { v: 1, bankCategory: { op: 'equals', value: 'FuelAndGas' }, amount: { max: 0 } },
   { v: 1, amount: { bogus: true } }, // invalid → parse null
   { v: 1, counterparty: { op: 'startsWith', value: 'x' } }, // invalid op → parse null
   'not-an-object',
@@ -35,6 +40,10 @@ const TXS: Tx[] = [
   { amount: -15, counterparty_name: 'SHELL', raw: { bankDescription: 'Fuel' } },
   { amount: '-50', counterparty_name: 'shell oil co', raw: null },
   { amount: null, counterparty_name: 'Shell', raw: { bankDescription: 123 } },
+  { amount: -60.1, counterparty_name: 'QuikTrip', raw: {}, mercury_category: 'FuelAndGas' },
+  { amount: -60.1, counterparty_name: 'QuikTrip', raw: {}, mercury_category: { name: 'fuelandgas' } },
+  { amount: -60.1, counterparty_name: 'QuikTrip', raw: {}, mercury_category: null },
+  { amount: 12, counterparty_name: 'Refund', raw: {}, mercury_category: 'FuelAndGas' },
 ]
 
 describe('accountingLabelRuleMatch shared/app parity', () => {

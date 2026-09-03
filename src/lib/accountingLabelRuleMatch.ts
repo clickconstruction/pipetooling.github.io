@@ -7,12 +7,27 @@ export type AccountingLabelRuleCriteriaV1 = {
   amount?: { min?: number; max?: number }
   counterparty?: { op: 'contains' | 'equals'; value: string }
   bankDescription?: { op: 'contains' | 'equals'; value: string }
+  /** Mercury's own category on the transaction (`mercury_transactions.mercury_category`, e.g. "FuelAndGas"). v2.2700. */
+  bankCategory?: { op: 'contains' | 'equals'; value: string }
 }
 
 export type AccountingLabelRuleMatchTx = Pick<
   Database['public']['Tables']['mercury_transactions']['Row'],
   'amount' | 'counterparty_name' | 'raw'
->
+> & {
+  /** Optional so older call sites keep compiling; a `bankCategory` clause never matches when it is absent. */
+  mercury_category?: Json | null
+}
+
+/** `mercury_category` is jsonb holding a JSON string (occasionally null or an object with `name`). */
+export function mercuryCategoryFromColumn(v: unknown): string | null {
+  if (typeof v === 'string') return v.trim() || null
+  if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+    const name = (v as Record<string, unknown>).name
+    if (typeof name === 'string') return name.trim() || null
+  }
+  return null
+}
 
 function isRecord(x: unknown): x is Record<string, unknown> {
   return x !== null && typeof x === 'object' && !Array.isArray(x)
@@ -29,6 +44,7 @@ export function accountingRuleEffectiveClauseCount(c: AccountingLabelRuleCriteri
   if (a != null && (a.min !== undefined || a.max !== undefined)) n += 1
   if (c.counterparty != null && c.counterparty.value.trim().length > 0) n += 1
   if (c.bankDescription != null && c.bankDescription.value.trim().length > 0) n += 1
+  if (c.bankCategory != null && c.bankCategory.value.trim().length > 0) n += 1
   return n
 }
 
@@ -72,6 +88,15 @@ export function parseAccountingLabelRuleCriteria(raw: Json): AccountingLabelRule
     if (op !== 'contains' && op !== 'equals') return null
     if (typeof value !== 'string') return null
     out.bankDescription = { op, value }
+  }
+  const bc = raw.bankCategory
+  if (bc !== undefined) {
+    if (!isRecord(bc)) return null
+    const op = bc.op
+    const value = bc.value
+    if (op !== 'contains' && op !== 'equals') return null
+    if (typeof value !== 'string') return null
+    out.bankCategory = { op, value }
   }
   return out
 }
@@ -137,6 +162,10 @@ export function matchAccountingLabelRuleCriteria(
   if (bd != null && bd.value.trim().length > 0) {
     const bankLine = mercuryBankDescriptionFromRaw(tx.raw)
     if (!matchStringClause(bankLine, bd.op, bd.value)) return false
+  }
+  const bc = criteria.bankCategory
+  if (bc != null && bc.value.trim().length > 0) {
+    if (!matchStringClause(mercuryCategoryFromColumn(tx.mercury_category), bc.op, bc.value)) return false
   }
   return true
 }

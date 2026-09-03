@@ -122,7 +122,7 @@ export function derivePersonTeamSummary(
     return { jobId: c.job_id, hours, laborCost }
   })
 
-  const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number }>()
+  const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number; partsCost: number; fuelCost: number }>()
   const laborJobIdsSeen = new Set<string>()
   for (const r of laborRowsFiltered) {
     const hcp = (r.job_number ?? '').trim().toLowerCase()
@@ -138,7 +138,7 @@ export function derivePersonTeamSummary(
     const pctComplete = job?.pct_complete ?? null
     const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
     const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
-    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob })
+    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, fuelCost: union.fuelChargesByJobId.get(jobId) ?? 0 })
   }
   for (const jobId of crewJobIds) {
     if (allocationJobsMap.has(jobId)) continue
@@ -151,7 +151,7 @@ export function derivePersonTeamSummary(
     const pctComplete = j?.pct_complete ?? null
     const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
     const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
-    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob })
+    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, fuelCost: union.fuelChargesByJobId.get(jobId) ?? 0 })
   }
 
   const costOnJobInPeriod = new Map<string, number>()
@@ -164,22 +164,29 @@ export function derivePersonTeamSummary(
 
   let allocatedRevenue = 0
   let allocatedProfit = 0
+  // The person's share of each job's cost buckets, on the same ratio — so
+  // gross − parts − fuel − labor = net for every person (v2.2700).
+  let allocatedParts = 0
+  let allocatedFuel = 0
+  let allocatedLabor = 0
   const grossBreakdownJobs: GrossRevenueBreakdown['jobs'] = []
   const netBreakdownJobs: NetRevenueBreakdown['jobs'] = []
-  for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob }] of allocationJobsMap) {
+  for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, fuelCost }] of allocationJobsMap) {
     const costInPeriod = costOnJobInPeriod.get(jobId) ?? 0
     const ratio = totalLaborOnJob > 0 ? costInPeriod / totalLaborOnJob : (costInPeriod > 0 ? 1 : 0)
     const jobAllocated = valueCreated * ratio
     const jobAllocatedNet = revenueBeforeOverhead * ratio
     allocatedRevenue += jobAllocated
     allocatedProfit += jobAllocatedNet
+    allocatedParts += partsCost * ratio
+    allocatedFuel += fuelCost * ratio
+    allocatedLabor += totalLaborOnJob * ratio
 
     const job = union.jobsById.get(jobId)
     const hcp = (job?.hcp_number ?? '').trim().toUpperCase() || 'Unknown'
     const jobName = job?.job_name ?? ''
     const totalBill = job?.revenue != null ? Number(job.revenue) : 0
     const pctRaw = job?.pct_complete
-    const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0) + (union.cardChargesByJobId.get(jobId) ?? 0)
     grossBreakdownJobs.push({
       jobId,
       hcp,
@@ -199,6 +206,7 @@ export function derivePersonTeamSummary(
       jobName,
       valueCreated,
       partsCost,
+      fuelCost,
       totalLaborOnJob,
       revenueBeforeOverhead,
       costInPeriod,
@@ -416,6 +424,9 @@ export function derivePersonTeamSummary(
     personName,
     profit: allocatedProfit,
     gross: allocatedRevenue,
+    allocatedParts,
+    allocatedFuel,
+    allocatedLabor,
     revPerHour: totalHours > 0 ? allocatedRevenue / totalHours : 0,
     profitPerHour: totalHours > 0 ? allocatedProfit / totalHours : 0,
     totalHours,

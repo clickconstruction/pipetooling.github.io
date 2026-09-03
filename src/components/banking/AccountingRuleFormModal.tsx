@@ -28,9 +28,39 @@ export type AccountingRuleFormState = {
   counterpartyValue: string
   bankOp: 'contains' | 'equals'
   bankValue: string
+  /** Mercury's own category on the transaction (e.g. FuelAndGas) — v2.2700. */
+  categoryOp: 'contains' | 'equals'
+  categoryValue: string
 }
 
 export const RULE_NAME_MAX = 200
+
+/** Mercury's category vocabulary as seen on this org's transactions (a hint list, not a constraint). */
+export const MERCURY_BANK_CATEGORY_SUGGESTIONS: readonly string[] = [
+  'FuelAndGas',
+  'VehicleExpenses',
+  'Retail',
+  'ProfessionalServices',
+  'Fees',
+  'Software',
+  'Insurance',
+  'Utilities',
+  'InternetAndTelephone',
+  'GovernmentServices',
+  'Grocery',
+  'GroundTransportation',
+  'Restaurants',
+  'Lodging',
+  'Electronics',
+  'Clothing',
+  'Medical',
+  'Advertising',
+  'BooksAndNewspaper',
+  'Education',
+  'AlcoholAndBars',
+  'Parking',
+  'Other',
+]
 
 /** Derives default rule name from counterparty criterion (`"{trimmed} -"`). Empty input yields empty name. */
 export function suggestedRuleNameFromCounterparty(value: string): string {
@@ -94,6 +124,10 @@ export function ruleRowToForm(
     base.bankOp = parsed.bankDescription.op
     base.bankValue = parsed.bankDescription.value
   }
+  if (parsed.bankCategory) {
+    base.categoryOp = parsed.bankCategory.op
+    base.categoryValue = parsed.bankCategory.value
+  }
   return base
 }
 
@@ -109,6 +143,8 @@ export function emptyRuleForm(): AccountingRuleFormState {
     counterpartyValue: '',
     bankOp: 'contains',
     bankValue: '',
+    categoryOp: 'equals',
+    categoryValue: '',
   }
 }
 
@@ -134,6 +170,9 @@ function formToCriteria(form: AccountingRuleFormState): AccountingLabelRuleCrite
   }
   if (form.bankValue.trim() !== '') {
     c.bankDescription = { op: form.bankOp, value: form.bankValue }
+  }
+  if (form.categoryValue.trim() !== '') {
+    c.bankCategory = { op: form.categoryOp, value: form.categoryValue.trim() }
   }
   return c
 }
@@ -287,7 +326,7 @@ export function AccountingRuleFormModal({
     }
     const c = formToCriteria(form)
     if (accountingRuleEffectiveClauseCount(c) === 0) {
-      showToast('Add at least one criterion (amount, counterparty, or bank description).', 'error')
+      showToast('Add at least one criterion (amount, counterparty, bank description, or bank category).', 'error')
       return null
     }
     const { personId, userId } = parseBankingAttributionValue(form.attribution)
@@ -573,6 +612,34 @@ export function AccountingRuleFormModal({
                 placeholder="text"
                 style={{ flex: '1 1 12rem', padding: '0.4rem 0.55rem' }}
               />
+            </div>
+          </fieldset>
+          <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem' }}>
+            <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Bank category</legend>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <select
+                value={form.categoryOp}
+                onChange={(e) => setForm((f) => ({ ...f, categoryOp: e.target.value as 'contains' | 'equals' }))}
+                style={{ padding: '0.35rem' }}
+              >
+                <option value="equals">equals</option>
+                <option value="contains">contains</option>
+              </select>
+              <input
+                value={form.categoryValue}
+                onChange={(e) => setForm((f) => ({ ...f, categoryValue: e.target.value }))}
+                placeholder="e.g. FuelAndGas"
+                list="accounting-rule-bank-categories"
+                style={{ flex: '1 1 12rem', padding: '0.4rem 0.55rem' }}
+              />
+              <datalist id="accounting-rule-bank-categories">
+                {MERCURY_BANK_CATEGORY_SUGGESTIONS.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+              The category Mercury put on the transaction — the one the Category Review tab groups by. "FuelAndGas → Fuel / Gas" is the usual rule.
             </div>
           </fieldset>
           <div

@@ -293,7 +293,7 @@ export function TransactionDetailModal({
   const matchingRules = useMemo(() => {
     if (!transaction) return []
     return matchingAccountingRulesForTx(
-      { amount: transaction.amount, counterparty_name: transaction.counterparty_name, raw: transaction.raw },
+      { amount: transaction.amount, counterparty_name: transaction.counterparty_name, raw: transaction.raw, mercury_category: transaction.mercury_category },
       rules,
     )
   }, [transaction, rules])

@@ -3,6 +3,7 @@ import {
   accountingRuleEffectiveClauseCount,
   defaultAccountingLabelRuleCriteriaV1,
   matchAccountingLabelRuleCriteria,
+  mercuryCategoryFromColumn,
   parseAccountingLabelRuleCriteria,
   type AccountingLabelRuleCriteriaV1,
   type AccountingLabelRuleMatchTx,
@@ -120,5 +121,34 @@ describe('matchAccountingLabelRuleCriteria', () => {
       counterparty: { op: 'contains', value: 'über' },
     }
     expect(matchAccountingLabelRuleCriteria(tx({ counterparty_name: 'Shop Über Alles' }), c)).toBe(true)
+  })
+})
+
+describe('bankCategory clause (v2.2700)', () => {
+  const fuelRule = parseAccountingLabelRuleCriteria({ v: 1, bankCategory: { op: 'equals', value: 'FuelAndGas' } })!
+  it('parses, counts as a substantive clause, and matches the jsonb category case-insensitively', () => {
+    expect(fuelRule.bankCategory).toEqual({ op: 'equals', value: 'FuelAndGas' })
+    expect(accountingRuleEffectiveClauseCount(fuelRule)).toBe(1)
+    expect(matchAccountingLabelRuleCriteria({ amount: -60, counterparty_name: 'QuikTrip', raw: {}, mercury_category: 'FuelAndGas' }, fuelRule)).toBe(true)
+    expect(matchAccountingLabelRuleCriteria({ amount: -60, counterparty_name: 'QuikTrip', raw: {}, mercury_category: 'fuelandgas' }, fuelRule)).toBe(true)
+    expect(matchAccountingLabelRuleCriteria({ amount: -60, counterparty_name: 'QuikTrip', raw: {}, mercury_category: { name: 'FuelAndGas' } }, fuelRule)).toBe(true)
+    expect(matchAccountingLabelRuleCriteria({ amount: -60, counterparty_name: 'Lowes', raw: {}, mercury_category: 'Retail' }, fuelRule)).toBe(false)
+    expect(matchAccountingLabelRuleCriteria({ amount: -60, counterparty_name: 'QuikTrip', raw: {}, mercury_category: null }, fuelRule)).toBe(false)
+    expect(matchAccountingLabelRuleCriteria({ amount: -60, counterparty_name: 'QuikTrip', raw: {} }, fuelRule)).toBe(false)
+  })
+  it('combines with the other clauses and treats an empty value as absent', () => {
+    const c = parseAccountingLabelRuleCriteria({ v: 1, bankCategory: { op: 'contains', value: 'fuel' }, amount: { max: 0 } })!
+    expect(matchAccountingLabelRuleCriteria({ amount: -5, counterparty_name: null, raw: null, mercury_category: 'FuelAndGas' }, c)).toBe(true)
+    expect(matchAccountingLabelRuleCriteria({ amount: 5, counterparty_name: null, raw: null, mercury_category: 'FuelAndGas' }, c)).toBe(false)
+    const empty = parseAccountingLabelRuleCriteria({ v: 1, bankCategory: { op: 'equals', value: '  ' } })!
+    expect(accountingRuleEffectiveClauseCount(empty)).toBe(0)
+    expect(parseAccountingLabelRuleCriteria({ v: 1, bankCategory: { op: 'equals', value: 3 } })).toBeNull()
+    expect(parseAccountingLabelRuleCriteria({ v: 1, bankCategory: { op: 'startsWith', value: 'x' } })).toBeNull()
+  })
+  it('reads the column in its usual shapes', () => {
+    expect(mercuryCategoryFromColumn('Retail')).toBe('Retail')
+    expect(mercuryCategoryFromColumn({ name: ' Fees ' })).toBe('Fees')
+    expect(mercuryCategoryFromColumn(null)).toBeNull()
+    expect(mercuryCategoryFromColumn(['x'])).toBeNull()
   })
 })
