@@ -32,6 +32,7 @@ import {
   type ListSectionKey,
   type ProspectLastCall,
 } from '../lib/prospects/prospectListGrouping'
+import { findRetaggableNote, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
@@ -934,6 +935,13 @@ export default function Prospects() {
   const convertPickerPool = [...prospectListProspects, ...followUpProspects.filter((p) => !prospectListProspects.some((lp) => lp.id === p.id))]
   const convertSearchResults = searchConvertProspects(convertPickerPool, convertSearchQuery)
   const convertSuggestions = suggestRecentlyAnswered(convertPickerPool, prospectLastCallMap, Date.now())
+  // The caller's own fresh plain note on the current prospect — Didn't Answer /
+  // Answered will retag it into the call (see callLogState.ts), and the
+  // composer says so while that holds.
+  const retaggableNote =
+    authUser?.id && currentProspect
+      ? findRetaggableNote(comments.filter((c) => c.prospect_id === currentProspect.id), authUser.id, Date.now())
+      : null
 
   function pickConvertProspect(p: Prospect) {
     setConvertProspectId(p.id)
@@ -1597,22 +1605,56 @@ export default function Prospects() {
     setSaving(false)
   }
 
+  // Where the call row comes from: the typed text, or — with an empty
+  // composer — the caller's own fresh plain note, retagged into the call
+  // (callers type the result and press Enter, which files a plain note; the
+  // outcome button then used to add a boilerplate "Contacted" beside it).
+  // prospect_comments has select/insert/delete policies but no UPDATE, so a
+  // retag is insert-then-delete: the new row carries the note's text and its
+  // original timestamp, and the old row goes only once the new one is in.
+  async function writeCallOutcome(prospectId: string, type: CallInteractionType, fallbackText: string): Promise<boolean> {
+    if (!authUser?.id) return false
+    const typed = commentInputValue.trim()
+    const retag = typed
+      ? null
+      : findRetaggableNote(comments.filter((c) => c.prospect_id === prospectId), authUser.id, Date.now())
+    const { error } = await supabase.from('prospect_comments').insert({
+      prospect_id: prospectId,
+      created_by: authUser.id,
+      comment_text: retag ? retag.comment_text : typed || fallbackText,
+      interaction_type: type,
+      ...(retag?.created_at ? { created_at: retag.created_at } : {}),
+    })
+    if (error) {
+      showToast(error.message, 'error')
+      return false
+    }
+    if (retag) {
+      const { error: delErr } = await supabase.from('prospect_comments').delete().eq('id', retag.id)
+      if (delErr) showToast(`Logged the call, but the note it replaced could not be removed: ${delErr.message}`, 'error')
+    }
+    return true
+  }
+
+  // The called-ids set (never-called chip + queue order) and the Prospect
+  // List's last-call map were only rebuilt on a full reload, so the chip
+  // outlived the call that should have cleared it.
+  function markCalledLocally(prospectId: string, type: CallInteractionType, nowIso: string) {
+    setCalledProspectIds((prev) => withCalledProspect(prev, prospectId))
+    setProspectLastCallMap((prev) => withLastCall<ProspectLastCall>(prev, prospectId, { interaction_type: type, created_at: nowIso }))
+  }
+
   async function handleDidntAnswer() {
     if (!currentProspect || !authUser?.id || saving) return
     setSaving(true)
-    const text = commentInputValue.trim() || 'Prospect did not answer'
-    const { error } = await supabase.from('prospect_comments').insert({
-      prospect_id: currentProspect.id,
-      created_by: authUser.id,
-      comment_text: text,
-      interaction_type: 'didnt_answer',
-    })
-    if (!error) {
+    const ok = await writeCallOutcome(currentProspect.id, 'didnt_answer', 'Prospect did not answer')
+    if (ok) {
       const now = new Date().toISOString()
       await supabase.from('prospects').update({ last_contact: now }).eq('id', currentProspect.id)
       setFollowUpProspects((prev) =>
         prev.map((p) => (p.id === currentProspect.id ? { ...p, last_contact: now } : p))
       )
+      markCalledLocally(currentProspect.id, 'didnt_answer', now)
       await loadComments(currentProspect.id)
       setCommentInputValue('')
       if (didntAnswerMoveNext && followUpProspects.length > 1) {
@@ -1625,14 +1667,8 @@ export default function Prospects() {
   async function handleAnswered() {
     if (!currentProspect || !authUser?.id || saving) return
     setSaving(true)
-    const text = commentInputValue.trim() || 'Contacted'
-    const { error } = await supabase.from('prospect_comments').insert({
-      prospect_id: currentProspect.id,
-      created_by: authUser.id,
-      comment_text: text,
-      interaction_type: 'answered',
-    })
-    if (!error) {
+    const ok = await writeCallOutcome(currentProspect.id, 'answered', 'Contacted')
+    if (ok) {
       const now = new Date().toISOString()
       // Auto-warm (v2.2458): a conversation is what warmth measures, so an
       // Answered bumps it by one — no more manual counter on the workstation.
@@ -1644,6 +1680,7 @@ export default function Prospects() {
       setProspectListProspects((prev) =>
         prev.map((p) => (p.id === currentProspect.id ? { ...p, last_contact: now, warmth_count: newWarmth } : p))
       )
+      markCalledLocally(currentProspect.id, 'answered', now)
       await loadComments(currentProspect.id)
       setCommentInputValue('')
     }
@@ -2017,7 +2054,7 @@ export default function Prospects() {
                       )}
                       {!calledProspectIds.has(currentProspect.id) && (
                         <span
-                          title="No Didn't Answer / Answered has ever been recorded on this prospect"
+                          title="No call logged yet — only Didn't Answer / Answered count as calls; plain notes and emails don't"
                           style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}
                         >
                           never called
@@ -2149,12 +2186,12 @@ export default function Prospects() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
                   <h3 style={{ margin: 0, fontSize: '1rem' }}>Comments</h3>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Didn&apos;t Answer / Answered above log the call with your comment attached
+                    Didn&apos;t Answer / Answered above log the call with your comment attached — Enter alone saves a note, not a call
                   </span>
                 </div>
                 <textarea
                   ref={setCommentInputRef}
-                  placeholder="Type a comment and press Enter to add, or click Didn't Answer / Answered to add with that tag"
+                  placeholder="Type what happened, then click Didn't Answer / Answered above to log the call. Enter saves it as a plain note."
                   value={commentInputValue}
                   onChange={(e) => setCommentInputValue(e.target.value)}
                   onKeyDown={(e) => {
@@ -2174,6 +2211,11 @@ export default function Prospects() {
                     boxSizing: 'border-box',
                   }}
                 />
+                {retaggableNote && (
+                  <p style={{ margin: '-0.25rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
+                    Saved as a note, not a call. If that was the call, click Didn&apos;t Answer or Answered above — it tags this note instead of adding a second one.
+                  </p>
+                )}
                 {/* Quick notes - below textarea, above comments list */}
                 {canAccessFollowUp && (
                   <div style={{ marginBottom: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
