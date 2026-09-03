@@ -56,7 +56,6 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Takeoff assembly | ✅ 2026-08-09 | ✅ |
 | Job contract: chip → modal → Copy link (`get-a-job-contract-signed.gif`, desktop, 1.8 MB, Chrome recording as dev on Job 922 — the minted link was voided afterwards) | ✅ 2026-09-03 | ✅ |
 | Signed agreement view: green chip → record → scroll to the framed signature block → Share ▾ → Email a copy… (`get-a-job-contract-signed-view.gif`, desktop, 2.6 MB, 15 frames; re-recorded 2026-09-03 for the v2.2724 signature block, Chrome as dev on Job 1005, sheet cancelled) | ✅ 2026-09-03 | ✅ |
-| Signed agreement view: green chip → record → Share ▾ → Email a copy… (`get-a-job-contract-signed-view.gif`, desktop, 1.7 MB, Chrome recording as dev on Job 1005; the sheet was cancelled, nothing sent) | ✅ 2026-09-03 | ✅ |
 | Onboard a new subcontractor (assign packet + compliance panel) | ✅ 2026-09-03 (two clips, `onboard-a-new-subcontractor.gif` + `-compliance.gif`; captured from a dev account — no read-only training account exists yet) | ✅ |
 
 (The one existing recording, `settings-basics.gif` in `settings-basics.md`, predates this plan and stays.)
