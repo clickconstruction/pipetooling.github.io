@@ -47,7 +47,23 @@ Profit after overhead **$21,894** · ÷ 176 assumed hours = **$124/hr**
 
 **What moves it** lists the things that would change that number the most: jobs with no % complete and how much of his gross rides on them, jobs with no bill amount, one job carrying most of the total, the worst job in the period, hours that landed on no job, and crew assignments with zero hours. **Watch-outs** are the standing caveats — revenue uses today's % complete, so a period's number moves when a job progresses later, and only a person's own office time is charged as overhead here.
 
-Below the drawer, the person's **Jobs Worked**, **Hours and Pay**, **Reports Filed** and **Tasks** sections are unchanged.
+## Jobs worked, per job
+
+Below the drawer, **Jobs Worked** lists one line per job, best profit first: your hours and labor on it, your share of the job's lifetime labor, your revenue and profit, and the per-hour rates. The heading says how many day rows sit behind the lines and how many of those carry zero hours. Two chips call out jobs that distort the math: {{chip:yellow|no bill}} (labor there is pure loss until a bill amount is set) and {{chip:yellow|% assumed}} (no % complete on the ledger, so the whole bill is treated as earned).
+
+Click a job line to open its days. Each day row is what it always was — click it again for the full breakdown of that day's revenue, costs, and the three overhead methods.
+
+## Tasks that pile up
+
+**Tasks outstanding** folds a recurring item into one line instead of listing every missed instance:
+
+:::example A recurring item, collapsed
+↻ **Review PipeTooling Jobs** · weekly · 34 open · **29 missed** since 2026-02-18 · 5 upcoming — next 2026-09-09
+:::
+
+One-off tasks still show one per line with their scheduled date. The heading tells you how many lines the list folded down to.
+
+**Hours and Pay** and **Reports Filed** are unchanged.
 
 ## When you want the columns
 
