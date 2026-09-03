@@ -58,6 +58,7 @@ import { PartsUnattributedMercuryListModal } from '../components/jobs/PartsUnatt
 import { PartsUnattributedAllJobsModal } from '../components/jobs/PartsUnattributedAllJobsModal'
 import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
 import { useJobsMercuryAllocations } from '../hooks/useJobsMercuryAllocations'
+import { useJobSummaryView } from '../hooks/useJobSummaryView'
 import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -312,6 +313,7 @@ export default function Jobs() {
   )
   const {
     mercuryCardChargesByJobId,
+    mercuryInvoiceLinkedChargesByJobId,
     partsTabMercuryLoadedRef,
     partsTabMercuryAllocationsByJobId,
     partsUnattribFlowJobIdRef,
@@ -1339,7 +1341,10 @@ export default function Jobs() {
         const invoicesFromSupplyHouses = invoiceAmountByJob[job.id] ?? 0
         const billedMaterialsSum = (job.materials ?? []).reduce((s, m) => s + Number(m.amount ?? 0), 0)
         const cardCharges = mercuryCardChargesByJobId.get(job.id) ?? 0
-        const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
+        // A card charge linked to a supply-house invoice is the same purchase the
+        // invoice allocation already counts — count it once (v2.2692).
+        const cardChargesLinkedToInvoices = Math.min(cardCharges, mercuryInvoiceLinkedChargesByJobId.get(job.id) ?? 0)
+        const partsCost = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges - cardChargesLinkedToInvoices
         const totalBill = job.revenue != null ? Number(job.revenue) : 0
         const profit = totalBill - partsCost - laborCost
         const teamLaborRow = teamLaborData.find((r) => r.jobId === job.id)
@@ -1356,6 +1361,7 @@ export default function Jobs() {
           invoicesFromSupplyHouses,
           billedMaterialsSum,
           cardCharges,
+          cardChargesLinkedToInvoices,
           teamLaborRow,
           subLaborJobs,
           tallyPartsForJob,
@@ -1380,7 +1386,18 @@ export default function Jobs() {
     driveTimePerMile,
     invoiceAmountByJob,
     mercuryCardChargesByJobId,
+    mercuryInvoiceLinkedChargesByJobId,
   ])
+
+  // Job Summary ledger view (v2.2692): prefs + the job day ledger + enriched rows;
+  // page-side so the tab stays presentational.
+  const jobSummaryView = useJobSummaryView({
+    enabled: activeTab === 'job-summary',
+    userId: authUser?.id,
+    rows: jobSummaryData,
+    reportPctByJobId: jobSummaryReportPctByJobId,
+    search: jobSummarySearch,
+  })
 
   const subLaborOutstandingByPerson = useMemo(
     () =>
@@ -1824,6 +1841,7 @@ export default function Jobs() {
           jobSummaryMinHcpExclusive={jobSummaryMinHcpExclusive}
           setJobSummaryMinHcpExclusive={setJobSummaryMinHcpExclusive}
           jobSummaryData={jobSummaryData}
+          view={jobSummaryView}
           jobSummarySearch={jobSummarySearch}
           setJobSummarySearch={setJobSummarySearch}
           expandedJobSummaryJobIds={expandedJobSummaryJobIds}

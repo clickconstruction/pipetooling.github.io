@@ -33,11 +33,7 @@ import {
   type TallyLineForPersonRollup,
 } from '../../lib/partsPerPersonCostSummary'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
-import {
-  formatJobSummaryPercentComplete,
-  jobInvoicesAllPaidWithAmount,
-  resolveJobSummaryPercentComplete,
-} from '../../lib/jobSummaryPercentComplete'
+import { formatJobSummaryPercentComplete } from '../../lib/jobSummaryPercentComplete'
 import {
   deriveStagesBillingActivityDetail,
   deriveStagesFieldReferenceYmd,
@@ -56,6 +52,9 @@ import {
   JobSummaryDrilldownTeamLaborByWorkDate,
 } from './JobSummaryCostCellDrilldownModal'
 import JobSummaryChargesTimelineChart from './JobSummaryChargesTimelineChart'
+import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedgerToolbar'
+import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
+import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
 import type { TallyPartRow } from '../../types/tallyPart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
@@ -359,12 +358,16 @@ export type JobSummaryRow = {
   invoicesFromSupplyHouses: number
   billedMaterialsSum: number
   cardCharges: number
+  /** Card charges also linked to a supply-house invoice — already inside `invoicesFromSupplyHouses`, so subtracted from `partsCost` (v2.2692). */
+  cardChargesLinkedToInvoices: number
   teamLaborRow: TeamLaborRow | undefined
   subLaborJobs: LaborJob[]
   tallyPartsForJob: TallyPartRow[]
 }
 
 export type JobsJobSummaryTabProps = {
+  /** Ledger view (v2.2692): prefs, the job day ledger, enriched + filtered + sorted rows, totals. */
+  view: JobSummaryViewBundle<JobSummaryRow>
   error: string | null
   jobSummaryLedgerError: string | null
   jobSummaryLedgerLoading: boolean
@@ -424,6 +427,7 @@ export type JobsJobSummaryTabProps = {
 }
 
 export default function JobsJobSummaryTab({
+  view,
   error,
   jobSummaryLedgerError,
   jobSummaryLedgerLoading,
@@ -444,7 +448,6 @@ export default function JobsJobSummaryTab({
   jobSummaryInvoiceLinesByJobId,
   jobSummaryMercuryAllocationsByJobId,
   jobSummaryReportsByJobId,
-  jobSummaryReportPctByJobId,
   jobThreadStatsByJobId,
   onOpenJobDetail,
   onOpenEditJob,
@@ -469,54 +472,47 @@ export default function JobsJobSummaryTab({
           {jobSummaryLedgerError && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{jobSummaryLedgerError}</p>
           )}
-          <div style={{ marginBottom: '1rem' }}>
-            <input
-              type="search"
-              placeholder="Search HCP, job name, address…"
-              value={jobSummarySearch}
-              onChange={(e) => setJobSummarySearch(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-            />
-          </div>
+          <JobSummaryLedgerToolbar view={view} search={jobSummarySearch} setSearch={setJobSummarySearch} showMoney={showTeamLaborAndProfit} />
           {/* Job Summary uses jobSummaryLedgerJobs, not the Stages/Billing/Parts jobs list — do not gate on jobsListLoading or it stays true when users open this tab first. */}
           {tallyPartsLoading || laborJobsLoading || (jobSummaryLedgerJobs === null && jobSummaryLedgerLoading) ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : jobSummaryData.length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
+          ) : view.rows.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)' }}>
+              No jobs match — try <strong>All</strong> under Show, a wider window under Worked in, or clear the search.
+            </p>
           ) : (
             <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job #</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Team Labor</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Sub Labor</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Parts Cost</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total Bill</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Revenue before Overhead</th>
-                    <th
+                    <JobSummarySortHeader label="Job #" sortKey="job" view={view} align="left" />
+                    <th style={{ padding: '0.6rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                    <th style={{ padding: '0.6rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
+                    <JobSummarySortHeader label={view.totals.earnedRows > 0 ? 'Revenue*' : 'Revenue'} sortKey="revenue" view={view} title="Contract revenue on the job; in-progress jobs show earned revenue (contract × % complete)" />
+                    <JobSummarySortHeader label="Labor" sortKey="labor" view={view} title="Team labor from payroll crew-days × wage" />
+                    <JobSummarySortHeader label="Subs" sortKey="subs" view={view} title="Sub labor sheets matched to this job" />
+                    <JobSummarySortHeader label="Parts" sortKey="parts" view={view} title="Tally + supply invoices + billed materials + card charges (internal transfers excluded; card charges linked to an invoice counted once)" />
+                    <JobSummarySortHeader label="Gross" sortKey="gross" view={view} title="Revenue − labor − subs − parts" />
+                    <JobSummarySortHeader label="Margin" sortKey="margin" view={view} title="Gross ÷ revenue" />
+                    <JobSummarySortHeader label="Hours · days" sortKey="hours" view={view} title="Approved field hours and days worked inside the window" />
+                    <JobSummarySortHeader label="Overhead" sortKey="overhead" view={view} title={JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.title} />
+                    <JobSummarySortHeader label="True profit" sortKey="trueProfit" view={view} title="Gross − overhead share" />
+                    <JobSummarySortHeader label="True %" sortKey="trueMargin" view={view} title="True profit ÷ revenue" />
+                    <JobSummarySortHeader
+                      label="%"
+                      sortKey="pct"
+                      view={view}
                       title="Percent complete — 100% when all invoices are paid; otherwise latest field report %, or the job's % complete field when no report has one"
-                      style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}
-                    >
-                      %
-                    </th>
+                    />
                   </tr>
                 </thead>
                 <tbody>
-                  {jobSummaryData
-                    .filter(({ job }) => {
-                      const q = jobSummarySearch.trim().toLowerCase()
-                      if (!q) return true
-                      const hcp = (job.hcp_number ?? '').toLowerCase()
-                      const click = (job.click_number ?? '').toLowerCase()
-                      const name = (job.job_name ?? '').toLowerCase()
-                      const addr = (job.job_address ?? '').toLowerCase()
-                      return hcp.includes(q) || click.includes(q) || name.includes(q) || addr.includes(q)
-                    })
+                  {view.rows
                     .flatMap(
-                      (summaryRow) => {
+                      (enriched) => {
+                        const summaryRow = enriched.row
                         const {
                           job,
                           subLaborCost,
@@ -597,6 +593,10 @@ export default function JobsJobSummaryTab({
                             </td>
                             <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
                             <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }} title={enriched.flags.includes('earned') ? `Earned: $${formatCurrency(enriched.contractUsd)} contract × ${enriched.flags.includes('assumed-50') ? '50% (no % yet — assumed)' : `${enriched.pct}%`}` : undefined}>
+                              {enriched.revenueUsd === 0 ? '—' : `$${formatCurrency(enriched.revenueUsd)}`}
+                              {enriched.flags.includes('earned') ? <span style={{ marginLeft: 4, fontSize: '0.68rem', color: 'var(--text-muted)' }}>earned{enriched.flags.includes('assumed-50') ? ' ½?' : ''}</span> : null}
+                            </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                               {!showTeamLaborAndProfit || teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}
                             </td>
@@ -606,34 +606,35 @@ export default function JobsJobSummaryTab({
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                               {partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                              {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
-                            </td>
-                            <td
-                              style={{
-                                padding: '0.75rem',
-                                textAlign: 'right',
-                                fontWeight: 500,
-                                color: showTeamLaborAndProfit && profit < 0 ? '#b91c1c' : undefined,
-                              }}
-                            >
-                              {showTeamLaborAndProfit ? `$${formatCurrency(profit)}` : '—'}
+                            <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, color: showTeamLaborAndProfit && enriched.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>
+                              {showTeamLaborAndProfit ? `$${formatCurrency(enriched.grossUsd)}` : '—'}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
-                              {formatJobSummaryPercentComplete(
-                                resolveJobSummaryPercentComplete(
-                                  jobSummaryReportPctByJobId.get(job.id) ?? null,
-                                  job.pct_complete,
-                                  { invoicesAllPaidWithAmount: jobInvoicesAllPaidWithAmount(job.invoices) },
-                                ),
-                              )}
+                              {showTeamLaborAndProfit && enriched.marginPct != null ? `${Math.round(enriched.marginPct)}%` : '—'}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: enriched.hoursInWindow > 0 ? 'var(--text-700)' : 'var(--text-faint)' }} title={enriched.priorHours > 0 ? `+${enriched.priorHours.toFixed(1)} h before the window — widen the window to charge them` : undefined}>
+                              {view.ledger == null ? (view.ledgerLoading ? '…' : '—') : `${enriched.hoursInWindow.toFixed(1)} h · ${enriched.daysInWindow} d`}
+                              {enriched.priorHours > 0 ? <span aria-hidden style={{ marginLeft: 3, color: 'var(--text-amber-800)' }}>+</span> : null}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
+                              {!showTeamLaborAndProfit ? '—' : enriched.overheadUsd == null ? (view.ledgerLoading ? '…' : '—') : `$${formatCurrency(enriched.overheadUsd)}`}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 700, color: showTeamLaborAndProfit && enriched.trueProfitUsd != null && enriched.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>
+                              {!showTeamLaborAndProfit ? '—' : enriched.trueProfitUsd == null ? (view.ledgerLoading ? '…' : '—') : `$${formatCurrency(enriched.trueProfitUsd)}`}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
+                              {showTeamLaborAndProfit && enriched.trueMarginPct != null ? `${Math.round(enriched.trueMarginPct)}%` : '—'}
+                            </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
+                              {formatJobSummaryPercentComplete(enriched.pct)}
                             </td>
                           </tr>
                         )
                         if (!expanded) return [mainRow]
+                        const overheadMethodLabel = JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.label ?? 'Day-share'
                         const detailRow = (
                           <tr key={`${job.id}-summary-detail`}>
-                            <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                            <td colSpan={14} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
                               <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
                                 <JobSummaryExpandedHeader
                                   job={job}
@@ -700,6 +701,60 @@ export default function JobsJobSummaryTab({
                                   mileageCost={mileageCost}
                                   timePerMile={timePerMile}
                                 />
+                                {showTeamLaborAndProfit && enriched.overheadUsd != null ? (
+                                  <details style={{ margin: '0.5rem 0 0.75rem' }} onClick={(e) => e.stopPropagation()}>
+                                    <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-700)' }}>
+                                      Overhead — the math: ${formatCurrency(enriched.overheadUsd)} by {overheadMethodLabel}
+                                      {view.prefs.method === 'day' ? ` over ${enriched.daysInWindow} ${enriched.daysInWindow === 1 ? 'day' : 'days'}` : ''}
+                                      {' → true profit '}
+                                      <strong style={{ color: enriched.trueProfitUsd != null && enriched.trueProfitUsd < 0 ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
+                                        ${formatCurrency(enriched.trueProfitUsd ?? 0)}
+                                      </strong>
+                                    </summary>
+                                    <div style={jobSummaryCostSectionBodyStyle}>
+                                      {view.prefs.method === 'day' ? (
+                                        enriched.overheadLines.length === 0 ? (
+                                          <p style={{ margin: '0.35rem 0', color: 'var(--text-muted)' }}>No approved field hours on this job inside the window, so no overhead is charged.</p>
+                                        ) : (
+                                          <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', marginTop: '0.35rem' }}>
+                                            <thead>
+                                              <tr style={{ color: 'var(--text-muted)' }}>
+                                                <th style={{ textAlign: 'left', padding: '0.2rem 0.6rem 0.2rem 0' }}>Day</th>
+                                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Job h</th>
+                                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Of field h</th>
+                                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Day’s pool</th>
+                                                <th style={{ textAlign: 'right', padding: '0.2rem 0 0.2rem 0.6rem' }}>Share</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {enriched.overheadLines.map((l) => (
+                                                <tr key={l.ymd}>
+                                                  <td style={{ padding: '0.15rem 0.6rem 0.15rem 0', whiteSpace: 'nowrap' }}>{formatWorkDateYmdWeekdayLongFriendly(l.ymd)}</td>
+                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{l.jobHours.toFixed(1)}</td>
+                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{l.fieldHours.toFixed(1)}</td>
+                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(l.poolUsd)}</td>
+                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0 0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>${formatCurrency(l.shareUsd)}</td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        )
+                                      ) : (
+                                        <p style={{ margin: '0.35rem 0', color: 'var(--text-700)' }}>
+                                          {view.prefs.method === 'A'
+                                            ? `${enriched.hoursInWindow.toFixed(1)} field h × $${(view.ledger?.rates.methodA ?? 0).toFixed(2)}/h (pool ÷ field hours over the window)`
+                                            : view.prefs.method === 'B'
+                                              ? `$${formatCurrency(enriched.revenueUsd)} revenue × ${((view.ledger?.rates.methodB ?? 0) * 100).toFixed(1)}% (pool ÷ invoiced revenue over the window)`
+                                              : `field labor $ × $${(view.ledger?.rates.methodC ?? 0).toFixed(2)} per $1 (pool ÷ field labor $ over the window)`}
+                                        </p>
+                                      )}
+                                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        Pool = office labor + bid labor + office parts (internal transfers excluded), the same pool People → Overhead shows. Only approved, closed field sessions inside the window count
+                                        {enriched.priorHours > 0 ? `; ${enriched.priorHours.toFixed(1)} h before the window are not charged.` : '.'}
+                                      </p>
+                                    </div>
+                                  </details>
+                                ) : null}
                                 {(() => {
                                   const teamBreakdownLite = (teamLaborRow?.breakdown ?? []).map((b) => ({
                                     personName: b.personName,
@@ -2801,6 +2856,28 @@ export default function JobsJobSummaryTab({
                         return [mainRow, detailRow]
                       })}
                 </tbody>
+                <tfoot>
+                  <tr style={{ background: 'var(--bg-subtle)', fontWeight: 700, borderTop: '2px solid var(--border-strong)' }}>
+                    <td colSpan={3} style={{ padding: '0.6rem 0.75rem' }}>
+                      {view.totals.jobs} {view.totals.jobs === 1 ? 'job' : 'jobs'}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>${formatCurrency(view.totals.revenueUsd)}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit ? `$${formatCurrency(view.totals.laborUsd)}` : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>${formatCurrency(view.totals.subsUsd)}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>${formatCurrency(view.totals.partsUsd)}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', color: showTeamLaborAndProfit && view.totals.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>
+                      {showTeamLaborAndProfit ? `$${formatCurrency(view.totals.grossUsd)}` : '—'}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.marginPct != null ? `${Math.round(view.totals.marginPct)}%` : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{view.ledger ? `${view.totals.hours.toFixed(1)} h` : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.overheadUsd != null ? `$${formatCurrency(view.totals.overheadUsd)}` : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', color: showTeamLaborAndProfit && view.totals.trueProfitUsd != null && view.totals.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>
+                      {showTeamLaborAndProfit && view.totals.trueProfitUsd != null ? `$${formatCurrency(view.totals.trueProfitUsd)}` : '—'}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.trueMarginPct != null ? `${Math.round(view.totals.trueMarginPct)}%` : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem' }} />
+                  </tr>
+                </tfoot>
               </table>
             </div>
           )}
