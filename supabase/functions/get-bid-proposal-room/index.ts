@@ -8,6 +8,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
+import { publicEventGate } from '../_shared/publicEventThrottle.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,11 +41,35 @@ serve(async (req) => {
       if (!raw || body.event !== 'option_viewed') return json({ ok: true })
       const { data: room } = await admin.from('bid_proposal_rooms').select('id, closed_at').eq('public_token', raw).maybeSingle()
       if (!room || room.closed_at) return json({ ok: true })
+      // v2.2697: the key must be one of the room's CURRENT options (the estimate endpoint
+      // always checked; this one took any string), then the same throttle as estimates —
+      // duplicate inside the dedupe window or an IP over the cap is dropped, still 200.
+      const optionKey = String(body.optionKey ?? '').trim()
+      const { data: rev } = await admin
+        .from('bid_proposal_room_revisions')
+        .select('payload')
+        .eq('room_id', room.id)
+        .order('rev_number', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      const payload = rev ? parseSharedBidRoomPayload(rev.payload) : null
+      const chosen = payload?.options.find((o) => o.key === optionKey)
+      if (!chosen) return json({ ok: true })
+      const ip = clientIp(req)
+      const gate = await publicEventGate(admin, {
+        table: 'bid_proposal_room_events',
+        subjectColumn: 'room_id',
+        subjectId: room.id,
+        eventType: 'option_viewed',
+        optionKey: chosen.key,
+        clientIp: ip,
+      })
+      if (!gate.record) return json({ ok: true })
       await admin.from('bid_proposal_room_events').insert({
         room_id: room.id,
         event_type: 'option_viewed',
-        metadata: { option_key: String(body.optionKey ?? '') },
-        client_ip: clientIp(req),
+        metadata: { option_key: chosen.key, option_name: chosen.name },
+        client_ip: ip,
         user_agent: req.headers.get('user-agent'),
       })
       return json({ ok: true })
