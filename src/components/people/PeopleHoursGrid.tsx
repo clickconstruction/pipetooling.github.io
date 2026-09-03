@@ -1,4 +1,5 @@
 import { type Dispatch, type RefObject, type SetStateAction, useRef, useState } from 'react'
+import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import type { UserRow } from '../../hooks/usePeopleRoster'
 import { HOURS_GRID_FIRST_COL_LABEL } from '../../constants/hoursGridFirstCol'
 import { decimalToHms, hmsToDecimal } from '../../lib/people/hoursGridTime'
@@ -239,7 +240,7 @@ export function PeopleHoursGrid({
                       ▼
                     </button>
                   </span>
-                  <span style={{ minWidth: 0 }}>{personName}</span>
+                  <PersonNameDoor name={personName} payName={personName} userId={users.find((x) => (x.name ?? '').trim() === personName.trim())?.id ?? null} style={{ minWidth: 0 }} />
                 </div>
               </td>
               {hoursDays.map((d) => {

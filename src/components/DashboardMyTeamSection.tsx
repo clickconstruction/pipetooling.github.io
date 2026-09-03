@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useMemo, useState } from 'react'
+import { PersonNameDoor } from './personDesk/PersonNameDoor'
 import { Link } from 'react-router-dom'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import {
@@ -842,7 +843,7 @@ export default function DashboardMyTeamSection({
                                       const jobTruncated = Boolean(jobFull && jobFull.length > JOB_LABEL_DISPLAY_MAX)
                                       return (
                                         <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                                          <td style={teamHoursTdStyle}>{personName}</td>
+                                          <td style={teamHoursTdStyle}><PersonNameDoor name={personName} userId={s.user_id} /></td>
                                           <td style={teamHoursTdStyle}>{formatClockActivityWorkDayLabel(s.work_date)}</td>
                                           <td style={teamHoursTdNum}>
                                             <span style={{ fontWeight: 600 }}>{hrs.toFixed(2)}h</span>
@@ -878,7 +879,7 @@ export default function DashboardMyTeamSection({
                                   const jobTruncated = Boolean(jobFull && jobFull.length > JOB_LABEL_DISPLAY_MAX)
                                   return (
                                     <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                                      <td style={teamHoursTdStyle}>{personName}</td>
+                                      <td style={teamHoursTdStyle}><PersonNameDoor name={personName} userId={s.user_id} /></td>
                                       <td style={teamHoursTdStyle}>{formatClockActivityWorkDayLabel(s.work_date)}</td>
                                       <td style={teamHoursTdNum}>
                                         <span style={{ fontWeight: 600 }}>{hrs.toFixed(2)}h</span>

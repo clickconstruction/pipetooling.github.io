@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } from 'react'
+import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { checkGoogleDriveAttachmentUrl } from '../../lib/checkGoogleDriveAttachmentUrl'
@@ -1963,7 +1964,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                             >
                               <td style={{ padding: '0.75rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                  <span>{personName}</span>
+                                  <PersonNameDoor name={personName} payName={personName} />
                                   {statusCounts.unsent > 0 ? <ContractStatusChip status="unsent" label={`${statusCounts.unsent} unsent`} /> : null}
                                   {statusCounts.sent > 0 ? <ContractStatusChip status="sent" label={`${statusCounts.sent} waiting`} /> : null}
                                   {statusCounts.signed > 0 ? <ContractStatusChip status="signed" label={`${statusCounts.signed} signed`} /> : null}

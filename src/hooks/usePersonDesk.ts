@@ -30,7 +30,7 @@ const PERSON_SELECT = 'id, name, email, kind, archived_at, account_user_id'
  * under the pay name. `changeKey` refetches after a section writes.
  */
 export function usePersonDesk(
-  args: { userId?: string | null; personId?: string | null } | null,
+  args: { userId?: string | null; personId?: string | null; payName?: string | null } | null,
   changeKey: number,
 ): PersonDeskData {
   const [user, setUser] = useState<PersonDeskUserRow | null>(null)
@@ -44,9 +44,10 @@ export function usePersonDesk(
 
   const userId = args?.userId ?? null
   const personId = args?.personId ?? null
+  const payName = args?.payName ?? null
 
   useEffect(() => {
-    if (!userId && !personId) {
+    if (!userId && !personId && !payName) {
       setUser(null)
       setPerson(null)
       setKey(null)
@@ -60,12 +61,27 @@ export function usePersonDesk(
         let u: PersonDeskUserRow | null = null
         let p: PersonKeyPersonRow | null = null
 
-        if (personId) {
-          const { data, error: e } = await supabase.from('people').select(PERSON_SELECT).eq('id', personId).maybeSingle()
+        // Name-keyed door (PR 4): the pay identity is the account name first, then the roster name.
+        let resolvedUserId = userId
+        let resolvedPersonId = personId
+        if (!resolvedUserId && !resolvedPersonId && payName && !payName.includes('"')) {
+          const { data: byUser } = await supabase.from('users').select('id').is('archived_at', null).eq('name', payName).limit(2)
+          const users = (byUser ?? []) as Array<{ id: string }>
+          if (users.length === 1) resolvedUserId = users[0]!.id
+          else {
+            const { data: byPerson } = await supabase.from('people').select('id').is('archived_at', null).eq('name', payName).limit(2)
+            const rows = (byPerson ?? []) as Array<{ id: string }>
+            if (rows.length === 1) resolvedPersonId = rows[0]!.id
+          }
+          if (!resolvedUserId && !resolvedPersonId) throw new Error(`No account or roster row is named "${payName}" — open them from People → Users to link or create one.`)
+        }
+
+        if (resolvedPersonId) {
+          const { data, error: e } = await supabase.from('people').select(PERSON_SELECT).eq('id', resolvedPersonId).maybeSingle()
           if (e) throw e
           p = (data as PersonKeyPersonRow | null) ?? null
         }
-        const accountId = userId ?? p?.account_user_id ?? null
+        const accountId = resolvedUserId ?? p?.account_user_id ?? null
         if (accountId) {
           const { data, error: e } = await supabase.from('users').select(USER_SELECT).eq('id', accountId).maybeSingle()
           if (e) throw e
@@ -115,7 +131,7 @@ export function usePersonDesk(
     return () => {
       cancelled = true
     }
-  }, [userId, personId, changeKey, localBump])
+  }, [userId, personId, payName, changeKey, localBump])
 
   return { key, user, person, loading, error, reload }
 }

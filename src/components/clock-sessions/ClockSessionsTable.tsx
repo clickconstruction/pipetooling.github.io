@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { useMemo, useState } from 'react'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -309,7 +310,7 @@ function ClockSessionCard({
           }}
         >
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>{personName}</div>
+            <div style={{ fontWeight: 600 }}><PersonNameDoor name={personName} userId={s.user_id} /></div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)', marginTop: '0.25rem' }}>
               {formatClockActivityWorkDayLabel(s.work_date)}
             </div>
@@ -532,7 +533,7 @@ export function ClockSessionsTable({
               const personName = s.users?.name?.trim() ?? 'Unknown'
               return (
                 <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                  <td style={tdStyle}>{personName}</td>
+                  <td style={tdStyle}><PersonNameDoor name={personName} userId={s.user_id} /></td>
                   <td style={tdStyle}>{formatClockActivityWorkDayLabel(s.work_date)}</td>
                   <td style={tdStyle}>
                     <SessionTimeLocationBlock

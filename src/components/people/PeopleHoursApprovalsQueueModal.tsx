@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { AssignSessionJobPopover } from '../clock-sessions'
 import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
@@ -340,7 +341,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
             style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '0.5rem', border: 'none', background: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', flexWrap: 'wrap' }}
           >
             <span aria-hidden style={{ color: 'var(--text-muted)', width: '0.8rem', display: 'inline-block', alignSelf: 'center' }}>{collapsed ? '▸' : '▾'}</span>
-            <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)' }}>{p.name}</span>
+            <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)' }}><PersonNameDoor name={p.name} userId={p.userId} /></span>
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {p.count} session{p.count === 1 ? '' : 's'} · {formatHoursShort(p.hours)} · {p.weeks.length} week{p.weeks.length === 1 ? '' : 's'} · oldest {dayLabel(p.oldestWorkDate)}
               {p.oldestAgeDays >= 7 ? ` (${p.oldestAgeDays}d)` : ''}

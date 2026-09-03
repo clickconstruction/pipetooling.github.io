@@ -11,6 +11,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
+import { PersonNameDoor } from './personDesk/PersonNameDoor'
 import { Link } from 'react-router-dom'
 
 const QuickAssignSheet = lazy(() => import('./dispatchMode/QuickAssignSheet'))
@@ -1699,19 +1700,26 @@ export function DashboardTeamActiveClockStrip({
                         </button>
                       )
                     })() : null}
-                    {userReviewModal ? (
-                      <button
-                        type="button"
-                        onClick={() => openUserReview(s.user_id, personName(s))}
-                        title="View day schedule, transactions, and add blocks"
-                        aria-label={`User review for ${personName(s)}`}
-                        style={{ ...stripNameAsScheduleButtonStyle, whiteSpace: 'nowrap' }}
-                      >
-                        {personName(s)}
-                      </button>
-                    ) : (
-                      <span style={{ whiteSpace: 'nowrap' as const }}>{personName(s)}</span>
-                    )}
+                    <PersonNameDoor
+                      name={personName(s)}
+                      userId={s.user_id}
+                      style={{ ...stripNameAsScheduleButtonStyle, whiteSpace: 'nowrap', textDecoration: 'underline dotted' }}
+                      fallback={
+                        userReviewModal ? (
+                          <button
+                            type="button"
+                            onClick={() => openUserReview(s.user_id, personName(s))}
+                            title="View day schedule, transactions, and add blocks"
+                            aria-label={`User review for ${personName(s)}`}
+                            style={{ ...stripNameAsScheduleButtonStyle, whiteSpace: 'nowrap' }}
+                          >
+                            {personName(s)}
+                          </button>
+                        ) : (
+                          <span style={{ whiteSpace: 'nowrap' as const }}>{personName(s)}</span>
+                        )
+                      }
+                    />
                     {shouldShowSalaryStripNameSuffix(s) ? (
                       <span style={stripSalaryNameSuffix} title="Salary schedule">
                         (s)
