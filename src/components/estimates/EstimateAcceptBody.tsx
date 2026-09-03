@@ -11,7 +11,7 @@ import SignaturePad from 'signature_pad'
 import EstimateCustomerDocument from './EstimateCustomerDocument'
 import EstimateCustomerAttachmentCard from './EstimateCustomerAttachmentCard'
 import type { CustomerAttachmentPayload } from '@/lib/estimateCustomerAttachment'
-import EstimateTermsHeaderNotice from './EstimateTermsHeaderNotice'
+import { estimateTermsPageHref } from '../../lib/estimateTermsPageHref'
 import type { EstimateCustomerExperienceClient } from '@/lib/estimateCustomerExperience'
 import type { EstimateAcceptHeaderBrand } from '@/lib/estimateAcceptHeaderBrand'
 import EstimateOptionsPicker from './EstimateOptionsPicker'
@@ -310,6 +310,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
             : cx.docLineItemsHeading
         }
         termsHeading={cx.docTermsHeading}
+        termsPageHref={estimateTermsPageHref()}
         totalLabel={cx.docTotalLabel}
         headerBrand={headerBrand}
         beforeLineItems={
@@ -371,9 +372,6 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
       ) : null}
 
       <AcceptPageFooterBlock text={cx.acceptPageFooter} />
-      <div style={{ marginTop: '1.5rem' }}>
-        <EstimateTermsHeaderNotice />
-      </div>
 
       {acceptModalOpen ? (
         <div

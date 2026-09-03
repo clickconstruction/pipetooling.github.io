@@ -136,6 +136,8 @@ export type EstimateCustomerDocumentProps = {
   validThroughPrefix?: string
   lineItemsHeading?: string
   termsHeading?: string
+  /** When set, a 'together with our Terms and Conditions' line links the company terms page under the terms body. */
+  termsPageHref?: string | null
   /** Label before amount, e.g. "Total"; colon and space added before currency */
   totalLabel?: string
   /** Top-right logo on acceptance document */
@@ -158,6 +160,7 @@ export default function EstimateCustomerDocument({
   validThroughPrefix = 'Expires on: ',
   lineItemsHeading = 'Line items',
   termsHeading = 'Terms',
+  termsPageHref = null,
   totalLabel = 'Total',
   headerBrand = null,
   changeOrder = null,
@@ -278,21 +281,35 @@ export default function EstimateCustomerDocument({
         </p>
       </section>
 
-      {termsBody ? (
+      {termsBody || termsPageHref ? (
         <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1.1rem' }}>
           <h2 style={{ fontSize: '1.1rem' }}>{termsHeading}</h2>
-          <div
-            style={{
-              whiteSpace: 'pre-wrap',
-              background: 'var(--bg-subtle)',
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '1rem',
-              fontSize: '0.9rem',
-            }}
-          >
-            {termsBody}
-          </div>
+          {termsBody ? (
+            /* v2.2728: a quiet pull-quote instead of an input-looking box — the
+               terms are prose the customer agreed to, not a field. */
+            <blockquote
+              style={{
+                margin: 0,
+                padding: '0.15rem 0 0.15rem 1rem',
+                borderLeft: '3px solid var(--text-orange-700)',
+                whiteSpace: 'pre-wrap',
+                fontSize: '0.95rem',
+                lineHeight: 1.55,
+                color: 'var(--text-strong)',
+              }}
+            >
+              {termsBody}
+            </blockquote>
+          ) : null}
+          {termsPageHref ? (
+            <p style={{ margin: termsBody ? '0.75rem 0 0' : 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              {termsBody ? 'These apply together with our ' : 'This estimate is subject to our '}
+              <a href={termsPageHref} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                Terms and Conditions ↗
+              </a>
+              .
+            </p>
+          ) : null}
         </section>
       ) : null}
     </div>
