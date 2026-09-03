@@ -55,7 +55,7 @@ The link never dies: it shows the signed record afterwards, a polite note if you
 
 Once a job reads {{chip:green|✍ Signed}}, the chip opens the **Signed agreement** view instead of the send form — the same view whether the customer signed a contract you sent, uploaded paper, or accepted an estimate online. It shows who signed, when and how, the document exactly as signed, and where it was signed from. The signature closes the document in a slim **Signed electronically** frame with a short record ID (like `E84-9F3A2C`) — the same block on the office record, the customer's page, the printed copy and the PDF. {{button:blue|Share ▾}} holds every door: **Copy link** to the customer's page (contracts), **Email a copy…** (the signed PDF to the customer, the GC, a lender or a teammate — tap a chip or type addresses, add a note), **Text link**, **Download PDF**, **Print**, and for estimate-sourced signatures **Open estimate**. The footer shows who last received a copy, and the job's activity keeps every share. Need a fresh agreement because the scope moved? **Start a new agreement…** opens the send form; a new signature supersedes the old one.
 
-{{gif:get-a-job-contract-signed-view.gif|A signed chip opens the Signed agreement view — the customer's accepted estimate with the audit facts, then Share ▾ and Email a copy… with the signed PDF attached}}
+{{gif:get-a-job-contract-signed-view.gif|A signed chip opens the Signed agreement view — the customer's accepted estimate closing with the framed signature block (mark, record ID, name and time, consent line), then Share ▾ and Email a copy… with the signed PDF attached}}
 
 ## Already signed on paper?
 
