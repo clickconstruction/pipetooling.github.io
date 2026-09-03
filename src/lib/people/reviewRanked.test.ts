@@ -56,6 +56,10 @@ function row(over: Partial<TeamSummaryBreakdown> & { name: string }): TeamSummar
     overheadWage: 50,
     allocatedParts: over.allocatedParts ?? 0,
     allocatedByTag: over.allocatedByTag ?? {},
+    vehicleArrangement: over.vehicleArrangement ?? 'none',
+    vehicleRate: over.vehicleRate ?? null,
+    vehicleTruckName: over.vehicleTruckName ?? null,
+    vehicleCost: over.vehicleCost ?? 0,
     allocatedLabor: over.allocatedLabor ?? Math.max(0, gross - net - (over.allocatedParts ?? 0)),
     overheadSessions: [],
     gross,
@@ -276,5 +280,35 @@ describe('cost-line tags (v2.2725)', () => {
     expect(by['tag:t-gov']).toBe(-120)
     expect(by.labor).toBe(-3000)
     expect(m.lines.find((l) => l.key === 'tag:t-fuel')?.label).toBe('− ⛽ Fuel & gas')
+  })
+})
+
+describe('wheels on labor (v2.2735)', () => {
+  it('draws the vehicle deal as a drawer line, a verdict segment and a bar chip', () => {
+    const company = row({ name: 'Mal', totalHours: 176, fieldHours: 165.5, gross: 49063, net: 23326, overheadLaborCost: -604, overheadBurden: -828, vehicleArrangement: 'company', vehicleRate: 8.32, vehicleTruckName: '2019 Ford F-150', vehicleCost: -(165.5 * 8.32), profitAfterOverhead: 23326 - 604 - 828 - 165.5 * 8.32 })
+    const own = row({ name: 'Mic', totalHours: 148, fieldHours: 148, gross: 20000, net: 12000, overheadBurden: -740, vehicleArrangement: 'own_fuel_paid', vehicleRate: 6.1, vehicleCost: -(148 * 6.1), profitAfterOverhead: 12000 - 740 - 148 * 6.1 })
+    const none = row({ name: 'Tau', totalHours: 85, gross: 687, net: 367, overheadLaborCost: -1367, overheadBurden: -19 })
+    const v = buildReviewVerdict([company, own, none], null)
+    expect(v.wheels.company).toBeCloseTo(165.5 * 8.32)
+    expect(v.wheels.own).toBeCloseTo(148 * 6.1)
+    expect(v.segments.map((s) => s.key)).toEqual(['costs', 'overheadLabor', 'burden', 'wheelsCompany', 'wheelsOwn', 'profit'])
+    expect(v.segments.reduce((s, seg) => s + seg.share, 0)).toBeCloseTo(1, 5)
+    const m = buildReviewPersonMath(company, { partsRate: 5 })
+    const wheels = m.lines.find((l) => l.key === 'wheels')!
+    expect(wheels.label).toBe('− 🚚 2019 Ford F-150')
+    expect(wheels.usd).toBeCloseTo(-1376.96)
+    expect(wheels.why).toContain('165.5 field h × $8.32')
+    const own_ = buildReviewPersonMath(own, { partsRate: 5 }).lines.find((l) => l.key === 'wheels')!
+    expect(own_.label).toBe('− 🚗 Own-vehicle fuel')
+    expect(buildReviewPersonMath(none, { partsRate: 5 }).lines.some((l) => l.key === 'wheels')).toBe(false)
+    const bars = buildReviewRankedBars([company, own, none], 'profit').bars
+    expect(bars.find((b) => b.name === 'Mal')?.vehicle).toEqual({ arrangement: 'company', rate: 8.32, truckName: '2019 Ford F-150' })
+    expect(bars.find((b) => b.name === 'Tau')?.vehicle).toBeNull()
+  })
+  it('still writes a $0 line when the deal has no rate yet', () => {
+    const r = row({ name: 'New', totalHours: 40, fieldHours: 40, gross: 1000, net: 500, overheadBurden: -200, vehicleArrangement: 'company', vehicleRate: null, vehicleCost: 0 })
+    const l = buildReviewPersonMath(r, { partsRate: 5 }).lines.find((x) => x.key === 'wheels')!
+    expect(l.usd).toBe(0)
+    expect(l.why).toContain('no rate yet')
   })
 })

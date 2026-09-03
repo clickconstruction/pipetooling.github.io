@@ -15,7 +15,7 @@ Open Payroll → {{button:outline|Pay config}} and pick a **Vehicle** for each p
 - {{chip:green|🚚 Company truck}} — the truck they hold on Vehicles is priced all-in: fuel, insurance while on a plan, registration and service, divided by their field hours.
 - **None** — rides along or works in the office. Nothing changes; their fuel stays on the job as parts.
 
-The deal itself does not move any profit number yet. Review starts using these rates in the next release.
+People → Review charges the deal per field hour: the line shows in a person's math drawer, the deal chip sits beside their name on the ranking, and their fuel is kept out of the job purchases so nobody else carries it.
 
 ## Read the Wheels report
 

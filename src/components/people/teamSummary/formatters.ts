@@ -86,8 +86,9 @@ export function enrichTeamSummaryRowsForInline(
     // (no double-count). `partsRate` is null until the 90-day rate loads.
     const overheadBurden =
       partsRate != null ? -(r.fieldHours * partsRate) : null
+    // + the vehicle deal (v2.2735): −(field h × rate), 0 without a deal.
     const profitAfterOverhead =
-      overheadBurden != null ? r.profit + r.overheadLaborCost + overheadBurden : null
+      overheadBurden != null ? r.profit + r.overheadLaborCost + overheadBurden + r.vehicleCost : null
     const profitPerHourAfterOverhead =
       profitAfterOverhead != null && r.totalHours > 0
         ? profitAfterOverhead / r.totalHours
@@ -115,6 +116,10 @@ export function enrichTeamSummaryRowsForInline(
     overheadWage: r.overheadWage,
     allocatedParts: r.allocatedParts,
     allocatedByTag: r.allocatedByTag,
+    vehicleArrangement: r.vehicleArrangement,
+    vehicleRate: r.vehicleRate,
+    vehicleTruckName: r.vehicleTruckName,
+    vehicleCost: r.vehicleCost,
     allocatedLabor: r.allocatedLabor,
     overheadLaborCost: r.overheadLaborCost,
     overheadSessions: r.overheadSessions,

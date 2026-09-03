@@ -13,6 +13,10 @@ import type {
   CrewJobRow,
 } from '../../utils/teamLabor'
 import type { CategoryTagRow } from '../banking/categoryTags'
+import type { VehicleArrangement } from './wheels'
+
+/** Wheels on Labor (v2.2735): a person's vehicle deal and the $/field-hour it implies (90-day, override wins). */
+export type TeamReviewVehicle = { arrangement: VehicleArrangement; rate: number | null; truckName: string | null; note: string }
 
 export type TeamLedgerRow = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }
 /**
@@ -62,6 +66,13 @@ export type TeamReviewUnion = {
   tagChargesByJobId: Map<string, ReadonlyMap<string, number>>
   /** The cost-line tags, in manager order — the drawer / verdict draw one line per tag. */
   costLineTags: CategoryTagRow[]
+  /**
+   * People with a vehicle deal (arrangement ≠ none), by pay-config name. Their
+   * fuel-tag card charges are kept OUT of the job card sums above — the deal
+   * prices them per field hour instead (own vehicle → labor side, company
+   * truck → burden side). Empty when Wheels could not load.
+   */
+  vehicleByPersonName: Record<string, TeamReviewVehicle>
   hoursMap: Record<string, number>
   crewByDatePerson: Record<string, CrewJobRow>
   overheadHoursByPerson: Record<string, { office: number; bid: number }>

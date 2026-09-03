@@ -116,6 +116,13 @@ export type TeamSummaryRow = {
   hourlyWage: number
   /** Wage the office/bid hours are priced at: `office_hourly_wage` when dual-rate applies, else `hourlyWage`. */
   overheadWage: number
+  /** Wheels on Labor (v2.2735): the person's vehicle deal; `none` when they have no deal. */
+  vehicleArrangement: 'none' | 'own_fuel_paid' | 'company'
+  /** $/field hour the deal implies (own: fuel ÷ field h; company: the truck all-in), override wins; null when unknown. */
+  vehicleRate: number | null
+  vehicleTruckName: string | null
+  /** −(field hours × vehicleRate), 0 when there is no deal or no rate. Stored negative like the other overhead costs. */
+  vehicleCost: number
   overheadLaborCost: number
   hoursBreakdown: HoursBreakdown
   grossBreakdown: GrossRevenueBreakdown
@@ -151,6 +158,13 @@ export type TeamSummaryBreakdown = {
   gross: number
   allocatedParts: number
   allocatedByTag: Record<string, number>
+  /** Wheels on Labor (v2.2735): the person's vehicle deal; `none` when they have no deal. */
+  vehicleArrangement: 'none' | 'own_fuel_paid' | 'company'
+  /** $/field hour the deal implies (own: fuel ÷ field h; company: the truck all-in), override wins; null when unknown. */
+  vehicleRate: number | null
+  vehicleTruckName: string | null
+  /** −(field hours × vehicleRate), 0 when there is no deal or no rate. Stored negative like the other overhead costs. */
+  vehicleCost: number
   allocatedLabor: number
   /** Net Revenue (before overhead). Stored under `net` for backward-compat
    * with the iframe code that this component replaces. */

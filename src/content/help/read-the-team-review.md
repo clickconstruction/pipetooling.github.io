@@ -47,10 +47,15 @@ Gross revenue **$49,063** — 18 jobs, each job's bill × % complete, then his s
 Net revenue **$23,326**
 − Own office / bid wages **−$604** — 10.5 h of office and bid sessions
 − Parts burden **−$828** — 165.5 field h × $5.00
-Profit after overhead **$21,894** · ÷ 176 assumed hours = **$124/hr**
+− 🚚 2019 Ford F-150 **−$1,377** — 165.5 field h × $8.32 (fuel + insurance + registration + service ÷ the holder's field hours, 90-day)
+Profit after overhead **$20,517** · ÷ 176 assumed hours = **$117/hr**
 :::
 
 **What moves it** lists the things that would change that number the most: jobs with no % complete and how much of his gross rides on them, jobs with no bill amount, one job carrying most of the total, the worst job in the period, hours that landed on no job, and crew assignments with zero hours. **Watch-outs** are the standing caveats — revenue uses today's % complete, so a period's number moves when a job progresses later, and only a person's own office time is charged as overhead here.
+
+### The vehicle deal
+
+Each person's **Vehicle** on Pay config decides one more line. {{chip:green|🚚 $8.32/h}} means a company truck: the truck they hold is priced all-in per field hour. {{chip:blue|🚗 $6.10/h}} means their own vehicle with fuel paid: their fuel per field hour, as part of employing them. Either way their fuel-tag card charges leave the job purchases, so nobody else carries them. The chip sits beside the name on every ranked bar; the rates come from People → Vehicles → Wheels.
 
 ## Jobs worked, per job
 

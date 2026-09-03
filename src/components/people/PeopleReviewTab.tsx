@@ -36,7 +36,10 @@ import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
 import { loadOfficePartsUsdByDayExcludingInternalTransfer } from '../../lib/overheadPartsBucketLoader'
 import { costLineTags, sumTagChargesByJob } from '../../lib/mercuryTagSplit'
 import { fetchLabelIdByTxId, useCategoryTags } from '../../lib/banking/categoryTagsData'
-import type { CategoryTagLookups } from '../../lib/banking/categoryTags'
+import { categoryTagForCharge, type CategoryTagLookups } from '../../lib/banking/categoryTags'
+import { loadWheelsSnapshot } from '../../lib/people/wheelsData'
+import { fetchAttributionsByMercuryTxIds } from '../../lib/fetchMercuryRelationsByTxIds'
+import type { TeamReviewVehicle } from '../../lib/people/teamReviewTypes'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import type {
   CrewJobAssignment,
@@ -2100,8 +2103,51 @@ export default function PeopleReviewTab({
     for (const row of (materialsRes.data ?? []) as Array<{ job_id: string; amount: number }>) {
       billedMaterialsByJobId.set(row.job_id, (billedMaterialsByJobId.get(row.job_id) ?? 0) + Number(row.amount ?? 0))
     }
+    const cardRowsAll = cardChargeRows as Array<{ job_id: string; amount: number; mercury_transaction_id: string | null }>
+    const cardTxIds = [...new Set(cardRowsAll.map((r) => r.mercury_transaction_id).filter((id): id is string => !!id))]
+
+    // Wheels on Labor (v2.2735): people with a vehicle deal are priced per
+    // field hour (own vehicle → labor side, company truck → burden side), so
+    // their fuel-tag card charges leave the job purchase sums — otherwise the
+    // fuel would count twice and land on co-workers by labor share.
+    const vehicleByPersonName: Record<string, TeamReviewVehicle> = {}
+    const wheels = await loadWheelsSnapshot({ todayYmd: denverCalendarDayKey(Date.now()), users }).catch(() => null)
+    if (wheels) {
+      for (const r of wheels.rows) {
+        if (r.arrangement === 'none') continue
+        vehicleByPersonName[r.name] = { arrangement: r.arrangement, rate: r.effectiveRate, truckName: r.truck?.name ?? null, note: r.note }
+      }
+    }
+    const nameByUserId = new Map(users.map((u) => [u.id, u.name]))
+
+    let labelIdByTxId = new Map<string, string>()
+    const categoryByTxId = new Map<string, unknown>()
+    const excludedTxIds = new Set<string>()
+    if (cardTxIds.length > 0 && tagLookups.tagsById.size > 0) {
+      const [labels, categoryRows, attributions] = await Promise.all([
+        fetchLabelIdByTxId(cardTxIds).catch(() => new Map<string, string>()),
+        fetchAllRowsChunkedIn(
+          cardTxIds,
+          (chunk, f, t) => supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(f, t),
+          'load team summary card categories',
+        ).catch(() => [] as unknown[]),
+        Object.keys(vehicleByPersonName).length > 0 ? fetchAttributionsByMercuryTxIds(cardTxIds, 'review wheels').catch(() => []) : Promise.resolve([]),
+      ])
+      labelIdByTxId = labels
+      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
+      const fuelTagId = wheels?.fuelTag?.id ?? null
+      if (fuelTagId) {
+        for (const a of attributions) {
+          const name = a.user_id ? nameByUserId.get(a.user_id) : null
+          if (!name || !vehicleByPersonName[name]) continue
+          const cat = categoryByTxId.get(a.mercury_transaction_id)
+          const tag = categoryTagForCharge(tagLookups, labelIdByTxId.get(a.mercury_transaction_id) ?? null, typeof cat === 'string' ? cat : null)
+          if (tag?.id === fuelTagId) excludedTxIds.add(a.mercury_transaction_id)
+        }
+      }
+    }
+    const cardRows = excludedTxIds.size > 0 ? cardRowsAll.filter((r) => !r.mercury_transaction_id || !excludedTxIds.has(r.mercury_transaction_id)) : cardRowsAll
     const cardChargesByJobId = new Map<string, number>()
-    const cardRows = cardChargeRows as Array<{ job_id: string; amount: number; mercury_transaction_id: string | null }>
     for (const row of cardRows) {
       cardChargesByJobId.set(row.job_id, (cardChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
     }
@@ -2109,18 +2155,7 @@ export default function PeopleReviewTab({
     // tag, else its bank category's tag; only tags flagged "show as cost line"
     // become lines. Same classifier Jobs → Job Summary uses.
     const tagChargesByJobId = new Map<string, ReadonlyMap<string, number>>()
-    const cardTxIds = [...new Set(cardRows.map((r) => r.mercury_transaction_id).filter((id): id is string => !!id))]
-    if (cardTxIds.length > 0 && tagLookups.tagsById.size > 0) {
-      const [labelIdByTxId, categoryRows] = await Promise.all([
-        fetchLabelIdByTxId(cardTxIds).catch(() => new Map<string, string>()),
-        fetchAllRowsChunkedIn(
-          cardTxIds,
-          (chunk, f, t) => supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(f, t),
-          'load team summary card categories',
-        ).catch(() => [] as unknown[]),
-      ])
-      const categoryByTxId = new Map<string, unknown>()
-      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
+    if (cardRows.length > 0 && tagLookups.tagsById.size > 0) {
       for (const [jobId, perTag] of sumTagChargesByJob(cardRows, labelIdByTxId, categoryByTxId, tagLookups)) tagChargesByJobId.set(jobId, perTag)
     }
 
@@ -2143,6 +2178,7 @@ export default function PeopleReviewTab({
       cardChargesByJobId,
       tagChargesByJobId,
       costLineTags: costLineTags(tagLookups),
+      vehicleByPersonName,
       hoursMap,
       crewByDatePerson,
       overheadHoursByPerson,
