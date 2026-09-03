@@ -5,7 +5,7 @@ import {
   PUBLIC_EVENT_IP_CAP,
   PUBLIC_EVENT_DEDUPE_MS,
   PUBLIC_EVENT_CAP_WINDOW_MS,
-} from '../../supabase/functions/_shared/publicEventThrottle'
+} from '../../supabase/functions/_shared/publicEventThrottleDecision'
 
 describe('decidePublicEvent', () => {
   it('records a fresh event', () => {

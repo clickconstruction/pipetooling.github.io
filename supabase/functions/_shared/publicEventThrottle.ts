@@ -3,7 +3,8 @@
  * estimate acceptance page and in the bid room. Both endpoints are deliberately best-effort
  * (always 200, never block browsing), which also meant anyone holding a link — a replaying
  * mail scanner, a forwarded link, a stuck tab — could insert without bound and litter the
- * activity feed the office reads. Two gates, both pure so they are unit-tested from src/lib:
+ * activity feed the office reads. The decision is pure and lives in
+ * publicEventThrottleDecision.ts (unit-tested from src/lib); this file only counts and calls it:
  *
  *   duplicate — the identical event (same subject, option, IP) inside DEDUPE_MS is dropped;
  *               a person re-tapping the same card within half a minute is one signal.
@@ -11,19 +12,15 @@
  *               dropped; four options × a curious human never approaches it, a loop does.
  */
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  PUBLIC_EVENT_CAP_WINDOW_MS,
+  PUBLIC_EVENT_DEDUPE_MS,
+  decidePublicEvent,
+  type PublicEventGateDecision,
+} from './publicEventThrottleDecision.ts'
 
-export const PUBLIC_EVENT_DEDUPE_MS = 30_000
-export const PUBLIC_EVENT_IP_CAP = 60
-export const PUBLIC_EVENT_CAP_WINDOW_MS = 10 * 60_000
-
-export type PublicEventGateDecision = { record: true; reason: 'ok' } | { record: false; reason: 'duplicate' | 'rate_cap' }
-
-/** The decision, given the two counts. Pure. */
-export function decidePublicEvent(counts: { identicalRecent: number; fromIpInWindow: number }): PublicEventGateDecision {
-  if (counts.identicalRecent > 0) return { record: false, reason: 'duplicate' }
-  if (counts.fromIpInWindow >= PUBLIC_EVENT_IP_CAP) return { record: false, reason: 'rate_cap' }
-  return { record: true, reason: 'ok' }
-}
+export { PUBLIC_EVENT_CAP_WINDOW_MS, PUBLIC_EVENT_DEDUPE_MS, PUBLIC_EVENT_IP_CAP, decidePublicEvent } from './publicEventThrottleDecision.ts'
+export type { PublicEventGateDecision } from './publicEventThrottleDecision.ts'
 
 /**
  * Run the two counts against an events table and decide. `subjectColumn` is the FK that
