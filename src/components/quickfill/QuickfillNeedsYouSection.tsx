@@ -120,6 +120,10 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
     lienWatch,
+    // Hours approvals are people-desk work — a Dashboard concern, not billing.
+    hoursApprovalsEnabled: false,
+    hoursApprovals: null,
+    hoursApprovalsMinAgeDays: 0,
   })
 
   useEffect(() => {

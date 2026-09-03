@@ -36,6 +36,9 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     demandDeadlineOverdue: null,
     lienWatchEnabled: true,
     lienWatch: null,
+    hoursApprovalsEnabled: true,
+    hoursApprovals: null,
+    hoursApprovalsMinAgeDays: 3,
     ...overrides,
   }
 }
@@ -410,5 +413,32 @@ describe('buildNeedsYouItems', () => {
     expect(items[1]?.title).toBe('One purchase needs a job')
     expect(items[2]?.title).toBe('One lost bid has no reason recorded')
     expect(items[2]?.detail.startsWith('work them')).toBe(true)
+  })
+
+  it('hours-approvals: appears only once the oldest pending day crosses the age gate', () => {
+    const pending = { sessions: 152, totalHours: 799.1, people: 12, oldestAgeDays: 19 }
+    // Quiet: disabled, loading, empty, or a fresh queue.
+    expect(buildNeedsYouItems(inputs({ hoursApprovalsEnabled: false, hoursApprovals: pending }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ hoursApprovals: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ hoursApprovals: { ...pending, sessions: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ hoursApprovals: { ...pending, oldestAgeDays: 2 } }))).toEqual([])
+    // At the gate it shows, amber, with the count as the figure.
+    const items = buildNeedsYouItems(inputs({ hoursApprovals: pending }))
+    expect(items).toHaveLength(1)
+    expect(items[0]?.key).toBe('hours-approvals')
+    expect(items[0]?.severity).toBe('amber')
+    expect(items[0]?.figure).toBe('99+')
+    expect(items[0]?.title).toBe('152 clock sessions are waiting on approval')
+    expect(items[0]?.detail).toContain('12 people have 799h unapproved')
+    expect(items[0]?.detail).toContain('19 days ago')
+  })
+
+  it('hours-approvals: singular copy reads naturally', () => {
+    const items = buildNeedsYouItems(
+      inputs({ hoursApprovals: { sessions: 1, totalHours: 7.5, people: 1, oldestAgeDays: 3 } }),
+    )
+    expect(items[0]?.title).toBe('A clock session is waiting on approval')
+    expect(items[0]?.detail.startsWith('One person has 8h unapproved')).toBe(true)
+    expect(items[0]?.figure).toBe('1')
   })
 })
