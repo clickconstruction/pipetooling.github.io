@@ -825,7 +825,7 @@ export function BidsPricingTab({
   /** The ▾ beside Solve — holds the rarely-used "Price unpriced only" (batch 2, artifact 11c68afc). */
   const [solveMenuOpen, setSolveMenuOpen] = useState(false)
   const solveMenuRef = useRef<HTMLSpanElement | null>(null)
-  // v2.2385 (Wendi): the whole solver folds behind a blue "Solve ›" — open, its
+  // v2.2385 (Wendi): the whole solver folds behind a blue "Solver ›" — open, its
   // controls (slider back inline, margin box, target total, Solve) sit inside a
   // blue ring so they read as one unit; ‹ folds them away. Device preference,
   // folded by default. This replaces v2.2378's slider-behind-▾ popover.
@@ -1926,7 +1926,7 @@ export function BidsPricingTab({
     {
       anchor: 'workbench-solver',
       title: 'Solve to a number',
-      body: 'Press the blue Solve › to unfold the solver — its blue ring holds the 20–95 slider (re-prices live as you drag), the typed margin, and the whole-bid target total; ‹ folds it away, and your choice is remembered. Hand-set prices on no-cost rows stack on top. The ▾ beside Solve holds "Price unpriced only". Apply writes the drafts; Discard throws them away.',
+      body: 'Press the blue Solver › to unfold the solver — its blue ring holds the 20–95 slider (re-prices live as you drag), the typed margin, and the whole-bid target total; ‹ folds it away, and your choice is remembered. Hand-set prices on no-cost rows stack on top. The ▾ beside Solver holds "Price unpriced only". Apply writes the drafts; Discard throws them away.',
     },
     {
       anchor: 'workbench-rows',
@@ -3525,7 +3525,7 @@ export function BidsPricingTab({
                         const rightCluster = (children: React.ReactNode) => (
                           <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '0 1 auto', minWidth: 0 }}>{children}</span>
                         )
-                        // Margin brush (v2.2401, Wendi): the brush lives LEFT of Solve › — its own
+                        // Margin brush (v2.2401, Wendi): the brush lives LEFT of Solver › — its own
                         // purple ring when armed, mirroring the solver's blue one.
                         // Font Awesome Free "brush" (fontawesome.com/license/free, CC BY 4.0) — same glyph as the armed cursor.
                         const brushGlyph = (
@@ -3639,7 +3639,7 @@ export function BidsPricingTab({
                                     title="Open the solver — margin, target total, Solve"
                                     style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.32rem 0.75rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1 }}
                                   >
-                                    Solve ›
+                                    Solver ›
                                   </button>
                                   {restoredChip}
                                   {previewControl}
@@ -4312,7 +4312,7 @@ export function BidsPricingTab({
                                   )}
                                 </td>
                                 {/* v2.2401: the Apply-margin column retired — the margin brush (strip, left
-                                    of Solve ›) is the per-row/per-sweep way to price at a margin here. */}
+                                    of Solver ›) is the per-row/per-sweep way to price at a margin here. */}
                                 <td style={{ padding: '0.35rem 0.5rem 0.35rem 0.2rem', borderBottom: '1px solid var(--border)' }}>
                                   <button
                                     type="button"
