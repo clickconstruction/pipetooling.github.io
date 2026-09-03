@@ -369,6 +369,9 @@ export type JobSummaryRow = {
 export type JobsJobSummaryTabProps = {
   /** Ledger view (v2.2692): prefs, the job day ledger, enriched + filtered + sorted rows, totals. */
   view: JobSummaryViewBundle<JobSummaryRow>
+  /** Days view → Session notes door (v2.2699): office roles only; `users` resolves people in the modal's search. */
+  canOpenSessionNotes: boolean
+  users: ReadonlyArray<{ id: string; name: string | null }>
   error: string | null
   jobSummaryLedgerError: string | null
   jobSummaryLedgerLoading: boolean
@@ -429,6 +432,8 @@ export type JobsJobSummaryTabProps = {
 
 export default function JobsJobSummaryTab({
   view,
+  canOpenSessionNotes,
+  users,
   error,
   jobSummaryLedgerError,
   jobSummaryLedgerLoading,
@@ -489,6 +494,9 @@ export default function JobsJobSummaryTab({
                 )
               }
               showMoney={showTeamLaborAndProfit}
+              canOpenSessionNotes={canOpenSessionNotes}
+              users={users}
+              jobs={jobSummaryLedgerAllJobs ?? []}
             />
           ) : tallyPartsLoading || laborJobsLoading || (jobSummaryLedgerJobs === null && jobSummaryLedgerLoading) ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>

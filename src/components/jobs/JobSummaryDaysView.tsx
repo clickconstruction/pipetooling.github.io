@@ -1,5 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import type { JobDayLedger } from '../../lib/jobs/jobDayLedger'
+import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
+import SessionNotesModal from './SessionNotesModal'
 import { buildJobDaysChartSeries, buildJobDaysRows, orderJobDaysRows, summarizeJobDays } from '../../lib/jobs/jobDaysConcurrency'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -19,6 +21,10 @@ type Props = {
   jobLabelById: ReadonlyMap<string, JobSummaryDaysJobLabel>
   /** Pay lockdown: pool $ / per job-day only for dev, master, controller. */
   showMoney: boolean
+  /** Click a day → Session notes pinned to it, grouped by job (v2.2699). Office roles only. */
+  canOpenSessionNotes: boolean
+  users: ReadonlyArray<{ id: string; name: string | null }>
+  jobs: ReadonlyArray<SessionNotesJobIdentity>
 }
 
 /** Saturated series colors for the keyed jobs (status/action colors stay literal per the theme rule); "other" uses a muted token. */
@@ -41,8 +47,9 @@ function jobLabel(jobLabelById: ReadonlyMap<string, JobSummaryDaysJobLabel>, led
   return jobLabelById.get(jobId) ?? ledger?.jobLabels?.get(jobId) ?? { number: jobId.slice(0, 8), name: '' }
 }
 
-export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError, jobLabelById, showMoney }: Props) {
+export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError, jobLabelById, showMoney, canOpenSessionNotes, users, jobs }: Props) {
   const [includeQuiet, setIncludeQuiet] = useState(false)
+  const [sessionNotesDay, setSessionNotesDay] = useState<string | null>(null)
   const rows = useMemo(() => (ledger ? buildJobDaysRows(ledger) : []), [ledger])
   const summary = useMemo(() => summarizeJobDays(rows), [rows])
   const series = useMemo(() => buildJobDaysChartSeries(rows, SERIES_COLORS.length), [rows])
@@ -188,8 +195,13 @@ export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError,
           <input type="checkbox" checked={includeQuiet} onChange={(e) => setIncludeQuiet(e.target.checked)} />
           Show days with nothing on them
         </label>
-        <span style={{ color: 'var(--text-muted)' }}>Newest first · people are distinct names with approved time that day</span>
+        <span style={{ color: 'var(--text-muted)' }}>
+          Newest first · people are distinct names with approved time that day{canOpenSessionNotes ? ' · click a day for its session notes' : ''}
+        </span>
       </div>
+      {sessionNotesDay ? (
+        <SessionNotesModal initialJob={null} initialDay={sessionNotesDay} initialGroupBy="job" users={users} jobs={jobs} onClose={() => setSessionNotesDay(null)} />
+      ) : null}
 
       <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 720 }}>
@@ -207,7 +219,21 @@ export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError,
           <tbody>
             {ordered.map((r) => (
               <tr key={r.ymd}>
-                <td style={{ ...td, textAlign: 'left' }}>{formatStagesNextDateLabel(r.ymd)}</td>
+                <td style={{ ...td, textAlign: 'left' }}>
+                  {canOpenSessionNotes ? (
+                    <button
+                      type="button"
+                      onClick={() => setSessionNotesDay(r.ymd)}
+                      title="Open Session notes for this day, grouped by job"
+                      aria-label={`Session notes for ${formatStagesNextDateLabel(r.ymd)}`}
+                      style={{ border: 'none', background: 'transparent', padding: 0, font: 'inherit', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {formatStagesNextDateLabel(r.ymd)} <span aria-hidden style={{ color: 'var(--text-faint)' }}>›</span>
+                    </button>
+                  ) : (
+                    formatStagesNextDateLabel(r.ymd)
+                  )}
+                </td>
                 <td style={{ ...td, fontWeight: 700, color: r.jobs ? 'var(--text-strong)' : 'var(--text-faint)' }}>{r.jobs}</td>
                 <td style={{ ...td, color: r.people ? undefined : 'var(--text-faint)' }}>{r.people}</td>
                 <td style={{ ...td, color: r.fieldHours ? undefined : 'var(--text-faint)' }}>{r.fieldHours.toFixed(1)}</td>
