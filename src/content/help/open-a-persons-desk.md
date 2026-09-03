@@ -11,6 +11,8 @@ Everything about one person used to live on a different tab: their role on Manag
 
 Tap a person's **name** on **People → Users** or **People → Subs** (it's underlined with dots). The drawer slides in from the right; on a phone it fills the screen. Press **Esc** or tap outside to close. A link like `/people?tab=users&person=u:<id>` opens it directly.
 
+Or open the **People → Person** tab: the same desk as a page, with a roster rail on the left. The rail's dots say who needs you — {{chip:yellow|amber}} for sessions waiting, paperwork unsent or expiring, or a missing roster row; {{chip:red|red}} for expired paperwork — and a **Needs attention** group at the top lists them first. On a phone the rail and the desk take turns.
+
 ## The header
 
 - **Identity dots.** A person can be three things at once: a **login** (their account), a **roster row** (what the HR file, portal and paperwork hang off), and a **pay name** (what wages and hours key on). A green dot means that piece exists; a hollow amber one means it doesn't. The Desk keeps working either way — sections that need the missing piece say so.
@@ -24,6 +26,10 @@ Tap a person's **name** on **People → Users** or **People → Subs** (it's und
 - **Portal & paperwork** (subs only) — the portal on/off state with the globe to manage it, the Agreement / COI / W-9 chips, open work orders, and how many Sub Labor sheets are linked to them.
 - **Team & alerts** — who approves their hours ({{button:outline|Assign a leader}} / Remove; a dev can set Full vs Strip), and, if you are their leader, the **Alert me on in/out** switch. Devs also see their Dispatch and Estimator inbox membership here.
 - **Pay & schedule** (pay roles) — wage and office rate ({{button:outline|Edit}}), the **Salaried** switch (turning it off shows the same warning Employment does: history is safe, pay becomes hours × wage, today's auto-sessions go, and the workday template is cleared), **also record hours** for salaried people, employment start → end, upcoming **time off** with {{button:outline|Add}}, {{button:outline|Workday schedule…}} for salaried people, and Money: the last pay report with a {{chip:green|paid}} or {{chip:yellow|unpaid}} chip, open offsets, and {{button:outline|Ledger}} · {{button:outline|Payroll}} · {{button:outline|Add offset}}.
+- **Field** — the truck they hold with {{button:outline|To motor pool}}, or **Hand off…** any vehicle to them; the housing they occupy with {{button:outline|End occupancy}} or **Assign…** a unit; their licenses with expiry chips and the {{button:outline|Hours log}}.
+- **Paperwork** (contracts roles) — every document on file with its state ({{chip:red|unsent}}, {{chip:blue|sent}}, {{chip:green|signed}}, {{chip:yellow|expiring}}), the **clock-in nag** switch per unsigned document, and the packet: pick one and {{button:outline|Assign}} to create its documents as unsent. Sending and uploading a signed copy stay on Contracts, one tap away.
+- **Records** — the HR file's freshness and pending reports with {{button:outline|Open file}} (dev), write-ups and attendance incidents in the last 90 days, and {{button:outline|Rate}} into Team → Review.
+- **Schedule** — today's schedule blocks and clock, the same view the Day · week · month button opens.
 - **Access & account** — role, trades, last sign-in with {{button:outline|Send sign-in email}}, training mode, and Active / Archived with {{button:red|Archive…}} (which runs through the Active Accounts row so customers can be reassigned on the way out).
 
 ## End employment
@@ -48,4 +54,4 @@ A controller sees the role and the training-mode switch with a {{chip:gray|dev o
 
 ## What's coming
 
-Pay & schedule, employment dates, paperwork, vehicles, housing, licenses, write-ups and the HR file join the drawer next, along with **End employment** and **Start employment** checklists and a name-is-the-door pass across the rest of the app.
+A name-is-the-door pass across the rest of the app (the Hours grid, the clock strip, Crew Day, Contracts, Schedule Dispatch) and a `/` quick sheet from any page.
