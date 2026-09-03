@@ -270,6 +270,41 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
         </div>
       )}
 
+      {/* Your agreements (Contract Desk PR 5): signed records and open signing links. */}
+      {payload.agreements.length > 0 ? (
+        <div data-screen-only style={{ margin: '1.4rem 0 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1rem 1.3rem' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>
+            Your agreements
+          </div>
+          {payload.agreements.map((a, i) => (
+            <div
+              key={i}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 0', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, fontSize: 13.5 }}
+            >
+              <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                <div style={{ fontWeight: 700 }}>{a.jobLabel}</div>
+                <div style={{ color: MUTED, fontSize: 12.5 }}>
+                  {[a.jobAddress, a.templateName, a.amountCents != null ? formatPortalUsd(a.amountCents / 100) : null].filter(Boolean).join(' · ')}
+                </div>
+                <div style={{ color: a.status === 'signed' ? INK : COPPER, fontSize: 12.5, fontWeight: 600, marginTop: 2 }}>
+                  {a.status === 'signed'
+                    ? `✍ Signed${a.signerName ? ` by ${a.signerName}` : ''}${a.signedAt ? ` · ${new Date(a.signedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`
+                    : 'Waiting for your signature'}
+                </div>
+              </div>
+              {a.signUrl ? (
+                <a
+                  href={a.signUrl}
+                  style={{ display: 'inline-block', border: `1px solid ${a.status === 'signed' ? INK : COPPER}`, background: a.status === 'signed' ? CARD : COPPER, color: a.status === 'signed' ? INK : '#fff', fontSize: 12.5, fontWeight: 600, padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                >
+                  {a.status === 'signed' ? 'View signed copy' : 'Review & sign'}
+                </a>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
     </>
   )
 }

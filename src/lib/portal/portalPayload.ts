@@ -48,6 +48,20 @@ export type PortalPayload = {
   requestToken: string | null
   /** The company's short portal address (merged view only) — powers the footer QR. */
   slug: string | null
+  /** Job contracts (Contract Desk PR 5): signed records and open signing links. */
+  agreements: PortalAgreement[]
+}
+
+export type PortalAgreement = {
+  jobLabel: string
+  jobAddress: string | null
+  status: 'sent' | 'signed'
+  templateName: string | null
+  amountCents: number | null
+  signedAt: string | null
+  signerName: string | null
+  sentAt: string | null
+  signUrl: string | null
 }
 
 function str(v: unknown, fallback = ''): string {
@@ -112,6 +126,25 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       })
     }
   }
+  const agreements: PortalAgreement[] = []
+  if (Array.isArray(r.agreements)) {
+    for (const a of r.agreements as Array<Record<string, unknown>>) {
+      if (a == null || typeof a !== 'object') continue
+      const status = a.status === 'signed' ? 'signed' : a.status === 'sent' ? 'sent' : null
+      if (!status) continue
+      agreements.push({
+        jobLabel: str(a.jobLabel, 'Job'),
+        jobAddress: typeof a.jobAddress === 'string' && a.jobAddress.trim() ? a.jobAddress : null,
+        status,
+        templateName: typeof a.templateName === 'string' && a.templateName.trim() ? a.templateName : null,
+        amountCents: typeof a.amountCents === 'number' && Number.isFinite(a.amountCents) ? Math.round(a.amountCents) : null,
+        signedAt: typeof a.signedAt === 'string' && a.signedAt ? a.signedAt : null,
+        signerName: typeof a.signerName === 'string' && a.signerName.trim() ? a.signerName : null,
+        sentAt: typeof a.sentAt === 'string' && a.sentAt ? a.sentAt : null,
+        signUrl: typeof a.signUrl === 'string' && /^https?:\/\//.test(a.signUrl) ? a.signUrl : null,
+      })
+    }
+  }
   return {
     company: {
       name: str(companyRaw.name, 'Click Plumbing and Electrical'),
@@ -128,6 +161,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     requestableProperties,
     requestToken: typeof r.requestToken === 'string' && r.requestToken.trim() ? r.requestToken : null,
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
+    agreements,
   }
 }
 

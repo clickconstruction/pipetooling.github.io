@@ -103,6 +103,7 @@ when_to_read:
    - [send-job-contract](#send-job-contract)
    - [get-job-contract](#get-job-contract)
    - [sign-job-contract](#sign-job-contract)
+   - [remind-job-contracts](#remind-job-contracts)
    - [get-rfq-quote-page](#get-rfq-quote-page)
    - [submit-rfq-quote](#submit-rfq-quote)
    - [send-rfq-email](#send-rfq-email)
@@ -992,6 +993,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `GET /functions/v1/customer-portal?token=<opaque>` or `GET /functions/v1/customer-portal?slug=<address>`
 
+**v2.2690 (Contract Desk PR 5)**: the payload gains `agreements[]` — the customer's `job_contracts` that are `sent` or `signed` (never drafts or voided): job label/address, template, frozen amount, signed stamp + signer, and `signUrl` (the same durable `/contract/sign?t=` link) so the portal's **Your agreements** card can offer *Review & sign* / *View signed copy*.
+
 **Auth**: none (`verify_jwt = false` in `config.toml` — the link IS the capability, minted/rotated by `mint_customer_portal_link`). Service-role reads; never returns costs, notes, or other customers' data.
 
 **View counting** (v2.2341, migration `20260826160132`): each validated load appends a `public_page_views` row (`surface='portal'`, `entity_id` = customer id, `via` token/slug) via the service role, fire-and-forget — measurement can never fail the statement. No anon-writable path; reads are dev-only RLS. (Estimate-accept views were already counted separately — see `get-estimate-for-customer` → Audit.)
@@ -1179,6 +1182,20 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false`; the token is the credential.
 
 **Behavior**: Only a `sent` row at the CURRENT `revision` can be signed — 409 `stale_revision` / `already_signed` (the page refreshes to the current version), 410 `voided` / `expired`. Validates the drawn PNG (magic bytes, ≤512 KiB) and stores it in the private `job-contract-documents` bucket at `<contract_id>/<uuid>.png` (upload failure degrades to a typed record). Conditional update (`status = 'sent'` and the revision) writes `status = 'signed'`, `signed_at`, `signer_printed_name`, `signer_mode` (type | draw | in_person), `signer_consented_at`, `signer_ip`, `signer_user_agent`, `signer_signature_storage_path`, clears `next_reminder_at`; logs a `signed` event; the bridge trigger writes `contract_signed`. Best-effort emails: the customer a confirmation carrying the same durable link (CC list honored), the contract's creator + the job's master a notice linking to the job.
+
+---
+
+### remind-job-contracts
+
+**Purpose**: The reminder lane for contracts out for signature (Contract Desk PR 5, v2.2690).
+
+**Endpoint**: `POST /functions/v1/remind-job-contracts` — `{}` (optional `dry_run: true`); `X-Cron-Secret` header (or `cron_secret` in the body) must match.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `RESEND_API_KEY`, `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false`; the cron secret is the credential. Scheduled hourly (`:23`) by pg_cron job `job-contract-reminders` (migration `20260903154024`).
+
+**Behavior**: Kill switch `app_settings` `job_contract_reminders_disabled_v1 = '1'` → `{ skipped: 'disabled' }`. Otherwise drains up to 50 `job_contracts` rows that are `sent`, `reminders_enabled`, not voided, `next_reminder_at <= now()` and `reminder_count < 3`. Rows with no token, an invalid email, or an expired link get `next_reminder_at` cleared (never re-queue). Each remaining row gets a Resend email ("Reminder: please sign — …", the durable link, reply-to = the contract's creator, CC list honored; the third says it is the last automatic reminder), then `reminder_count + 1` and `next_reminder_at` +3 days (null after the third), and a `reminded` event. An email failure leaves the row untouched to retry next hour.
 
 ---
 

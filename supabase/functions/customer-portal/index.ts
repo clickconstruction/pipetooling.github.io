@@ -214,6 +214,57 @@ serve(async (req) => {
       ownerNames,
     })
 
+    // Your agreements (Contract Desk PR 5): the customer's job contracts —
+    // signed ones as a record, sent ones with the same durable signing link.
+    // Never drafts, never voided; amount from the frozen fields.
+    const agreements: Array<{
+      jobLabel: string
+      jobAddress: string | null
+      status: 'sent' | 'signed'
+      templateName: string | null
+      amountCents: number | null
+      signedAt: string | null
+      signerName: string | null
+      sentAt: string | null
+      signUrl: string | null
+    }> = []
+    if (jobs.length > 0) {
+      const jobById = new Map(jobs.map((j) => [j.id, j]))
+      const { data: conRaw } = await admin
+        .from('job_contracts')
+        .select('job_id, status, template_name, public_token, fields, signed_at, signer_printed_name, last_sent_at, voided_at')
+        .in('job_id', jobs.map((j) => j.id))
+        .in('status', ['sent', 'signed'])
+        .is('voided_at', null)
+        .order('signed_at', { ascending: false })
+      const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+      for (const c of (conRaw ?? []) as Array<{
+        job_id: string
+        status: string
+        template_name: string | null
+        public_token: string | null
+        fields: unknown
+        signed_at: string | null
+        signer_printed_name: string | null
+        last_sent_at: string | null
+      }>) {
+        const j = jobById.get(c.job_id)
+        if (!j) continue
+        const amt = c.fields && typeof c.fields === 'object' ? (c.fields as { amount_cents?: unknown }).amount_cents : null
+        agreements.push({
+          jobLabel: jobLabel(j),
+          jobAddress: j.job_address ?? null,
+          status: c.status === 'signed' ? 'signed' : 'sent',
+          templateName: c.template_name,
+          amountCents: typeof amt === 'number' && Number.isFinite(amt) ? Math.round(amt) : null,
+          signedAt: c.signed_at,
+          signerName: c.signer_printed_name,
+          sentAt: c.last_sent_at,
+          signUrl: c.public_token ? `${origin}/contract/sign?t=${encodeURIComponent(c.public_token)}` : null,
+        })
+      }
+    }
+
     const requestableJobs = jobs
       .filter((j) => j.status !== 'paid')
       .slice(0, 100)
@@ -244,6 +295,7 @@ serve(async (req) => {
       // token are the same capability — both open this exact statement).
       requestToken: link.token ?? null,
       slug,
+      agreements,
     })
   } catch (e) {
     console.error('customer-portal error', e)
