@@ -2,7 +2,7 @@
 title: see which paid jobs still owe my supply houses
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment
+keywords: job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment, on job account, owner, lien, secured
 ---
 **Materials → Job Accounts** lines up every job's money in both directions: what the customer has paid you, and what you've paid (or still owe) your supply houses for that job's materials. Jobs where the customer's money already arrived but a house is still owed sort to the top — that's money you're holding that belongs onward.
 
@@ -12,13 +12,14 @@ keywords: job accounts, supply house, invoices, owed, held, paid, materials, pay
 - {{chip:blue|Floating out of pocket}} — the reverse: you already paid houses on jobs the customer hasn't paid yet.
 - {{chip:green|Settled}} — paid both ways, nothing held.
 - {{chip:gray|Unallocated invoices}} — unpaid invoices not tied to any job or bid. They're missing from every job's numbers, so allocate them: each invoice's **Jobs** field lives on the Supply Houses tab.
+- **On job accounts** (teal, appears once any invoice is flagged) — owed dollars riding on a house's **job account**: if they go unpaid, the house bills the property owner, not you. The Holding tile also splits into *Your account* vs *Job accounts* so you can see how much of what you're holding is really your exposure. Flag invoices when you enter them — see [mark an invoice as on a job account](?g=mark-an-invoice-on-a-job-account).
 
 ## Read a job row
 
 Every row has two bars on the same scale:
 
 - **In** — the blue fill is what the customer has paid, against the full bar of what you billed.
-- **Out** — gray is what you've already paid houses; the colored part is what's still owed, shaded from green (not due yet) through amber and red (past due), matching the aging table on Supply Houses.
+- **Out** — gray is what you've already paid houses; the colored part is what's still owed, shaded from green (not due yet) through amber and red (past due), matching the aging table on Supply Houses. A **teal-striped** slice is owed money on a job account — it stays out of the past-due colors because collecting it is the house's problem, not yours. Rows with any show a teal "$X on job acct" note, and the expanded statement badges each house's share.
 
 The chip tells you where the job stands: {{chip:yellow|Owe suppliers}}, {{chip:blue|Floating}}, {{chip:gray|Awaiting customer}}, or {{chip:green|Settled}}. Use the filter chips above the list to see one group at a time.
 

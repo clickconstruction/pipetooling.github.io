@@ -26,6 +26,7 @@ function invoice(overrides: Partial<JobAccountsInvoiceInput> & { id: string }): 
     amount: 100,
     is_paid: false,
     due_date: null,
+    on_job_account: false,
     ...overrides,
   }
 }
@@ -188,5 +189,79 @@ describe('buildJobAccountsView', () => {
     // represented in any row — but it is job-allocated in the DB, so it does
     // not count as unallocated either (allocation hygiene, not missing data).
     expect(view.unallocatedCount).toBe(0)
+  })
+
+  describe('on_job_account', () => {
+    it('splits owed into job-account vs aging buckets without changing suppliersOwed', () => {
+      const view = buildJobAccountsView(
+        [job({ id: 'a', revenue: 1000, payments_made: 1000 })],
+        [
+          invoice({ id: 'ja', amount: 60, due_date: '2026-08-15', on_job_account: true }),
+          invoice({ id: 'own', amount: 40, due_date: '2026-08-15' }),
+        ],
+        [alloc('ja', 'a'), alloc('own', 'a')],
+        HOUSES,
+        [],
+        TODAY,
+      )
+      const row = view.rows[0]!
+      expect(row.suppliersOwed).toBeCloseTo(100)
+      expect(row.owedOnJobAccount).toBeCloseTo(60)
+      // Job-account dollars stay out of the past-due heat — the house's
+      // collection path is the owner, not us.
+      expect(row.owedBuckets.past1_30).toBeCloseTo(40)
+      expect(row.houses[0]!.owed).toBeCloseTo(100)
+      expect(row.houses[0]!.owedOnJobAccount).toBeCloseTo(60)
+      expect(view.onJobAccountTotal).toBeCloseTo(60)
+      expect(view.onJobAccountJobs).toBe(1)
+      expect(view.holdingTotal).toBeCloseTo(100)
+      expect(view.holdingOnJobAccount).toBeCloseTo(60)
+    })
+
+    it('paid job-account invoices contribute nothing to the job-account split', () => {
+      const view = buildJobAccountsView(
+        [job({ id: 'a', revenue: 1000, payments_made: 1000 })],
+        [invoice({ id: 'ja-paid', amount: 80, is_paid: true, on_job_account: true })],
+        [alloc('ja-paid', 'a')],
+        HOUSES,
+        [],
+        TODAY,
+      )
+      const row = view.rows[0]!
+      expect(row.suppliersPaid).toBeCloseTo(80)
+      expect(row.owedOnJobAccount).toBe(0)
+      expect(view.onJobAccountTotal).toBe(0)
+      expect(view.onJobAccountJobs).toBe(0)
+    })
+
+    it('caps the holding job-account slice at held (job-account-first attribution)', () => {
+      // Customer paid only 50 of 1000; all 200 owed is on the job account.
+      // held = 50, so the secured slice of holding is 50, not 200.
+      const view = buildJobAccountsView(
+        [job({ id: 'a', revenue: 1000, payments_made: 50 })],
+        [invoice({ id: 'ja', amount: 200, on_job_account: true })],
+        [alloc('ja', 'a')],
+        HOUSES,
+        [],
+        TODAY,
+      )
+      expect(view.holdingTotal).toBeCloseTo(50)
+      expect(view.holdingOnJobAccount).toBeCloseTo(50)
+      expect(view.onJobAccountTotal).toBeCloseTo(200)
+    })
+
+    it('counts awaiting_customer job-account dollars in the view total but not holding', () => {
+      const view = buildJobAccountsView(
+        [job({ id: 'a', revenue: 1000, payments_made: 0 })],
+        [invoice({ id: 'ja', amount: 120, on_job_account: true })],
+        [alloc('ja', 'a')],
+        HOUSES,
+        [],
+        TODAY,
+      )
+      expect(view.rows[0]!.status).toBe('awaiting_customer')
+      expect(view.onJobAccountTotal).toBeCloseTo(120)
+      expect(view.holdingOnJobAccount).toBe(0)
+    })
   })
 })

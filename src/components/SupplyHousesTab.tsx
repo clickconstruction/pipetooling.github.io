@@ -136,6 +136,7 @@ export function SupplyHousesTab({
   const [invoicePurchaseOrderNumber, setInvoicePurchaseOrderNumber] = useState('')
   const [invoiceLink, setInvoiceLink] = useState('')
   const [invoiceIsPaid, setInvoiceIsPaid] = useState(false)
+  const [invoiceOnJobAccount, setInvoiceOnJobAccount] = useState(false)
   const [invoiceJobAllocations, setInvoiceJobAllocations] = useState<InvoiceJobAllocation[]>([])
   const [invoiceJobSearchModal, setInvoiceJobSearchModal] = useState(false)
   const [invoiceJobSearchText, setInvoiceJobSearchText] = useState('')
@@ -147,6 +148,39 @@ export function SupplyHousesTab({
   )
   const { jobEvidence: invoiceJobEvidence, evidenceMode: invoiceJobEvidenceMode } =
     useJobBidSearchEvidence(invoiceJobResultsUnified)
+  /** Job accounts are per property — the flag applies only when the invoice is allocated to exactly one job. */
+  const invoiceSingleAllocatedJobId =
+    invoiceJobAllocations.length === 1 ? (invoiceJobAllocations[0]?.job_id ?? null) : null
+  /** Latest v2.1605 share-packet record for the allocated job, keyed so we fetch once per job. */
+  const [invoiceJobAccountShare, setInvoiceJobAccountShare] = useState<
+    { contact_label: string; sent_at: string; sent_by_name: string } | null
+  >(null)
+  const [invoiceJobAccountShareJobId, setInvoiceJobAccountShareJobId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!invoiceFormOpen || !invoiceSingleAllocatedJobId) {
+      setInvoiceJobAccountShare(null)
+      setInvoiceJobAccountShareJobId(null)
+      return
+    }
+    if (invoiceJobAccountShareJobId === invoiceSingleAllocatedJobId) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('supply_house_job_accounts')
+        .select('contact_label, sent_at, sent_by_name')
+        .eq('job_id', invoiceSingleAllocatedJobId)
+        .order('sent_at', { ascending: false })
+        .limit(1)
+      if (cancelled) return
+      setInvoiceJobAccountShare(
+        (data?.[0] as { contact_label: string; sent_at: string; sent_by_name: string } | undefined) ?? null,
+      )
+      setInvoiceJobAccountShareJobId(invoiceSingleAllocatedJobId)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [invoiceFormOpen, invoiceSingleAllocatedJobId, invoiceJobAccountShareJobId])
   const [invoiceJobDetailsMap, setInvoiceJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string; job_address: string }>>({})
   const [supplyHouseJobDetailsMap, setSupplyHouseJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string }>>({})
   const [savingInvoice, setSavingInvoice] = useState(false)
@@ -544,6 +578,7 @@ export function SupplyHousesTab({
     setInvoiceAmount('')
     setInvoiceLink('')
     setInvoiceIsPaid(false)
+    setInvoiceOnJobAccount(false)
     setInvoicePurchaseOrderNumber('')
     setInvoiceJobAllocations([])
     setInvoiceFormOpen(true)
@@ -557,6 +592,8 @@ export function SupplyHousesTab({
     setInvoiceAmount(inv.amount.toString())
     setInvoiceLink(inv.link ?? '')
     setInvoiceIsPaid(inv.is_paid)
+    // === true: pre-migration rows fetched before the column existed read as undefined.
+    setInvoiceOnJobAccount(inv.on_job_account === true)
     setInvoicePurchaseOrderNumber(inv.purchase_order_number ?? '')
     setInvoiceJobAllocations((inv as SupplyHouseInvoiceWithAllocations).job_allocations ?? [])
     setInvoiceFormOpen(true)
@@ -609,6 +646,9 @@ export function SupplyHousesTab({
     }
     setSavingInvoice(true)
     setError(null)
+    // Per-property flag: forced off unless the invoice is allocated to exactly one job.
+    const effectiveOnJobAccount = invoiceOnJobAccount && invoiceSingleAllocatedJobId != null
+    const priorOnJobAccount = editingInvoice ? editingInvoice.on_job_account === true : false
     const payload = {
       supply_house_id: selectedSupplyHouseForDetail.id,
       invoice_number: invoiceNumber.trim(),
@@ -618,6 +658,9 @@ export function SupplyHousesTab({
       link: invoiceLink.trim() || null,
       is_paid: invoiceIsPaid,
       purchase_order_number: invoicePurchaseOrderNumber.trim() || null,
+      // Sent only when it changes, so untouched saves keep working in the
+      // merge-to-db-push window before the column exists in prod.
+      ...(effectiveOnJobAccount !== priorOnJobAccount ? { on_job_account: effectiveOnJobAccount } : {}),
     }
     let invoiceId: string | null = null
     if (editingInvoice) {
@@ -1069,6 +1112,14 @@ export function SupplyHousesTab({
                                                 </td>
                                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(inv.amount)}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
+                                                  {inv.on_job_account === true && (
+                                                    <span
+                                                      title="On the house's job account — if this goes unpaid, the house bills the property owner, not you."
+                                                      style={{ marginRight: '0.35rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap' }}
+                                                    >
+                                                      Job acct
+                                                    </span>
+                                                  )}
                                                   {inv.job_allocations && inv.job_allocations.length > 0
                                                     ? inv.job_allocations
                                                         .map((a) => {
@@ -1322,6 +1373,45 @@ export function SupplyHousesTab({
                   </div>
                 )}
               </div>
+              <div style={{ marginBottom: '1rem', border: '1px solid #99f6e4', background: 'var(--surface)', borderRadius: 6, padding: '0.6rem 0.7rem' }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: invoiceSingleAllocatedJobId ? 'pointer' : 'not-allowed' }}>
+                  <input
+                    type="checkbox"
+                    checked={invoiceOnJobAccount && invoiceSingleAllocatedJobId != null}
+                    disabled={!invoiceSingleAllocatedJobId}
+                    onChange={(e) => setInvoiceOnJobAccount(e.target.checked)}
+                    style={{ marginTop: 2, accentColor: '#0f766e' }}
+                  />
+                  <span>
+                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: invoiceSingleAllocatedJobId ? 'var(--text-base)' : 'var(--text-muted)' }}>
+                      On job account
+                    </span>
+                    <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      {selectedSupplyHouseForDetail.name} bills the property owner if this invoice goes unpaid — not you.
+                    </span>
+                  </span>
+                </label>
+                {!invoiceSingleAllocatedJobId && (
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {invoiceJobAllocations.length === 0
+                      ? 'Allocate a job first — job accounts are per property.'
+                      : 'Job accounts are per property — available when the invoice is allocated to a single job.'}
+                  </div>
+                )}
+                {invoiceOnJobAccount && invoiceSingleAllocatedJobId && (
+                  invoiceJobAccountShareJobId !== invoiceSingleAllocatedJobId ? null : invoiceJobAccountShare ? (
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }}>
+                      <strong>Job account on file</strong> — packet sent to {invoiceJobAccountShare.contact_label}{' '}
+                      {new Date(invoiceJobAccountShare.sent_at).toLocaleDateString()} by {invoiceJobAccountShare.sent_by_name}.
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
+                      <strong>No job-account setup on record for this job.</strong> If the house opened one anyway, keep this
+                      checked — or send the packet from Job Detail → Share with supply house (storefront icon).
+                    </div>
+                  )
+                )}
+              </div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Due Date</label>
                 <input type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
@@ -1447,6 +1537,14 @@ export function SupplyHousesTab({
                           }}
                         />
                         <span>{inv.invoice_number}</span>
+                        {inv.on_job_account === true && (
+                          <span
+                            title="On the house's job account — if this goes unpaid, the house bills the property owner, not you."
+                            style={{ padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap' }}
+                          >
+                            Job acct
+                          </span>
+                        )}
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{formatYmdLocal(inv.invoice_date)}</span>
                         <span style={{ marginLeft: 'auto' }}>${formatCurrency(inv.amount)}</span>
                         {inv.is_paid && (
