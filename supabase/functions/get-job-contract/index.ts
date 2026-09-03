@@ -98,6 +98,11 @@ serve(async (req) => {
       const { data: signed } = await admin.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(c.signer_signature_storage_path, 3600)
       signatureUrl = signed?.signedUrl ?? null
     }
+    let signedPdfUrl: string | null = null
+    if (c.signed_pdf_path) {
+      const { data: pdf } = await admin.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(c.signed_pdf_path, 3600)
+      signedPdfUrl = pdf?.signedUrl ?? null
+    }
 
     if (c.status === 'sent') {
       const nowIso = new Date().toISOString()
@@ -135,6 +140,7 @@ serve(async (req) => {
         signer_mode: c.signer_mode,
         signer_consented_at: c.signer_consented_at,
         signature_url: signatureUrl,
+        signed_pdf_url: signedPdfUrl,
       },
       issuer,
       brand: 'plum',

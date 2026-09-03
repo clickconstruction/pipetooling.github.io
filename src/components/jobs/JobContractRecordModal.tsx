@@ -32,11 +32,13 @@ export default function JobContractRecordModal({ open, onClose, row, job }: JobC
   const { showToast } = useToastContext()
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
   const [paperUrl, setPaperUrl] = useState<string | null>(null)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || !row) {
       setSignatureUrl(null)
       setPaperUrl(null)
+      setPdfUrl(null)
       return
     }
     let cancelled = false
@@ -49,6 +51,10 @@ export default function JobContractRecordModal({ open, onClose, row, job }: JobC
         if (row.paper_upload_path) {
           const { data } = await supabase.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(row.paper_upload_path, 3600)
           if (!cancelled) setPaperUrl(data?.signedUrl ?? null)
+        }
+        if (row.signed_pdf_path) {
+          const { data } = await supabase.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(row.signed_pdf_path, 3600)
+          if (!cancelled) setPdfUrl(data?.signedUrl ?? null)
         }
       } catch {
         /* the record still reads without the images */
@@ -91,6 +97,16 @@ export default function JobContractRecordModal({ open, onClose, row, job }: JobC
       maxWidthDesktop={820}
       footer={
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+          {pdfUrl ? (
+            <a
+              href={pdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ padding: '0.4rem 0.8rem', borderRadius: 6, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: 'white', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none' }}
+            >
+              Download signed PDF
+            </a>
+          ) : null}
           {!isPaper ? (
             <button
               type="button"

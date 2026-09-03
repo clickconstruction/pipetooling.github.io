@@ -40,6 +40,7 @@ type ContractFetch = {
     signer_mode: string | null
     signer_consented_at: string | null
     signature_url: string | null
+    signed_pdf_url: string | null
   }
   issuer: JobContractIssuer | null
   brand: string | null
@@ -288,6 +289,18 @@ export default function JobContractSign() {
               <EstimateAcceptTypedSignatureLine printedName={signedName} consentAtIso={signedAt} />
             )}
             <p style={{ margin: '0.4rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>{auditLine}</p>
+            {c.signed_pdf_url ? (
+              <a
+                href={c.signed_pdf_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'inline-block', marginTop: '0.8rem', padding: '0.55rem 1rem', borderRadius: 8, border: '1.5px solid var(--text-orange-700)', color: 'var(--text-orange-700)', fontWeight: 700, fontSize: '0.9rem', textDecoration: 'none' }}
+              >
+                Download signed PDF
+              </a>
+            ) : justSigned ? (
+              <p style={{ margin: '0.6rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>Your signed PDF is in the confirmation email; reload this page for a download link.</p>
+            ) : null}
           </div>
         ) : (
           <div style={{ marginTop: '1.2rem', borderTop: '1px solid var(--border-rule)', paddingTop: '0.9rem' }}>

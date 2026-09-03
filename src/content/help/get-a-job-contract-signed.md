@@ -45,7 +45,7 @@ The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the modal sh
 
 ## What the customer sees
 
-One page on their phone: your letterhead, the job address, the work in plain words, the contract amount and payment line, and the terms one tap away. They type their full name (or switch to **Draw** and sign with a finger), tick the agreement box, and press a button that names the amount — {{button:blue|Sign agreement — $5,000.00}}. The page then shows the signed record and emails them a copy; you and the job's master get an email too, and the row turns {{chip:green|✍ Signed Sep 2 · M. Palmer}}.
+One page on their phone: your letterhead, the job address, the work in plain words, the contract amount and payment line, and the terms one tap away. They type their full name (or switch to **Draw** and sign with a finger), tick the agreement box, and press a button that names the amount — {{button:blue|Sign agreement — $5,000.00}}. The page then shows the signed record with **Download signed PDF**, and emails them the signed agreement as a PDF; you and the job's master get an email too, and the row turns {{chip:green|✍ Signed Sep 2 · M. Palmer}}.
 
 The link never dies: it shows the signed record afterwards, a polite note if you voided the contract, and asks them to reply for a fresh one only if 90 days pass without a signature (every resend restarts that clock).
 
