@@ -18,15 +18,15 @@ key_sections:
 
 ## Status
 
-**PRs 1–4 built (2026-09-04).** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
+**PRs 1–5 built (2026-09-04); the W-9 is published in the Subs packet and was filled and signed end to end by the test sub.** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
 
 | # | PR | Version | Landed as |
 |---|---|---|---|
 | 1 | Schema + kernel + PDF executor + agent scripts (migration `20260904220000`, pushed) | v2.2788 | #2525 |
-| 2 | Form Studio (dev-only tab in the Contract library) + Book entry + import/export (migration `20260904230000`) | v2.2794 | PR 2 |
-| 3 | Fill-on-the-document signer mode + `accept-contract` fills/flattens/files (4 fns redeploy) | v2.2797 | PR 3 |
-| 4 | Staff record: facts card, Open PDF (gated + logged, new fn `open-contract-form-pdf`), Person Desk line | v2.2798 | PR 4 |
-| 5 | The W-9 itself, mapped in the studio; added to the Subs packet | — | — |
+| 2 | Form Studio (dev-only tab in the Contract library) + Book entry + import/export (migration `20260904230000`, pushed) | v2.2794 | #2530 |
+| 3 | Fill-on-the-document signer mode + `accept-contract` fills/flattens/files (4 fns redeployed 2026-09-04) | v2.2797 | #2534 |
+| 4 | Staff record: facts card, Open PDF (gated + logged, new fn `open-contract-form-pdf`), Person Desk line | v2.2798 | #2535 |
+| 5 | The W-9 itself (`docs/forms/w9-2024-03.schema.json`), published into the Subs packet, end-to-end tested with the test sub; signer page shows only pages with boxes | v2.2799 | PR 5 |
 | 6 | Enter from paper; new-revision flow; Spanish labels in the lens | — | — |
 
 ## Why (ground truth, 2026-09-04)

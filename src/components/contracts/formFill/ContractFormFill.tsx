@@ -121,7 +121,9 @@ export function ContractFormFill({
     }
   }
 
-  const pages = schema.pages.length > 0 ? schema.pages : [firstPage]
+  // Only pages that carry a box are shown (the W-9's five instruction pages stay out of the way); page 1 always.
+  const allPages = schema.pages.length > 0 ? schema.pages : [firstPage]
+  const pages = allPages.map((page, i) => ({ page, pageNo: i + 1 })).filter(({ pageNo }) => pageNo === 1 || schema.boxes.some((b) => b.page === pageNo))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -146,10 +148,10 @@ export function ContractFormFill({
         ) : !pdf ? (
           <p style={{ margin: 0, padding: '1rem', color: MUTED, fontSize: '0.875rem' }}>Loading the form…</p>
         ) : (
-          pages.map((page, i) => (
-            <div key={i} style={{ position: 'relative', width: page.width * scale, height: page.height * scale, margin: `${i === 0 ? 0 : 10}px auto 0`, boxShadow: '0 1px 4px rgba(0,0,0,.18)', background: CARD }}>
-              <PdfPageCanvas bytes={pdf} page={i + 1} scale={scale} />
-              <FormFillOverlay schema={schema} pageNo={i + 1} scale={scale} values={values} lang={lang} focusedKey={focusedKey} errors={errors} todayLabel={todayLabel} signature={signature} onFocus={focusBox} onText={setText} onToggle={toggle} />
+          pages.map(({ page, pageNo }, i) => (
+            <div key={pageNo} style={{ position: 'relative', width: page.width * scale, height: page.height * scale, margin: `${i === 0 ? 0 : 10}px auto 0`, boxShadow: '0 1px 4px rgba(0,0,0,.18)', background: CARD }}>
+              <PdfPageCanvas bytes={pdf} page={pageNo} scale={scale} />
+              <FormFillOverlay schema={schema} pageNo={pageNo} scale={scale} values={values} lang={lang} focusedKey={focusedKey} errors={errors} todayLabel={todayLabel} signature={signature} onFocus={focusBox} onText={setText} onToggle={toggle} />
             </div>
           ))
         )}
