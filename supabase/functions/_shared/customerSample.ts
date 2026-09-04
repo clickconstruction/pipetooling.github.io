@@ -1,6 +1,6 @@
 /**
  * Sample data for "What customers see" (Settings → dev-only, v2.2758+): the one fixture every
- * public edge function serves when a signed-in staff user asks for the sample token, and the
+ * public edge function serves for the sample token (no sign-in — it is invented data), and the
  * one the app's email builders render in the browser. Dependency-free so `src/lib/customerSample.ts`
  * can re-export it into the app — one fixture, no mirror.
  *
@@ -27,9 +27,6 @@ export function sampleStateFromToken(token: string | null | undefined): SampleSt
   if (t === SAMPLE_TOKEN_GC) return 'gc'
   return null
 }
-
-/** Roles that may view sample surfaces — the office side of the app (never customers/subs). */
-export const SAMPLE_VIEWER_ROLES: ReadonlySet<string> = new Set(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
 
 export const SAMPLE_HOMEOWNER = {
   name: 'Sam Sample',

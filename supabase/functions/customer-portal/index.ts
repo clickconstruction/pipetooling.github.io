@@ -2,7 +2,6 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { authorizeSampleViewer } from '../_shared/sampleViewer.ts'
 import { sampleCustomerPortalResponse } from '../_shared/customerSampleFixtures.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import {
@@ -60,12 +59,10 @@ serve(async (req) => {
     const rawToken = url.searchParams.get('token')?.trim()
     const rawSlug = url.searchParams.get('slug')?.trim().toLowerCase()
 
-    // What customers see (Settings dev tab): the sample token renders the fixture for a signed-in
-    // office user — the homeowner's statement, or `sample-gc` for the contractor's view. No rows.
+    // What customers see (Settings dev tab): the sample token renders the hard-coded sample
+    // customer — the homeowner's statement, or `sample-gc` for the contractor's view. No rows.
     const sample = sampleStateFromToken(rawToken)
     if (sample) {
-      const gate = await authorizeSampleViewer(req)
-      if (!gate.ok) return jsonResponse({ error: gate.error }, gate.status)
       return jsonResponse(sampleCustomerPortalResponse(PORTAL_COMPANY, sample, todayYmdInAppTz(), Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'))
     }
 

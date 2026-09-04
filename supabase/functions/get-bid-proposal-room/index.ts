@@ -10,7 +10,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { publicEventGate } from '../_shared/publicEventThrottle.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { authorizeSampleViewer } from '../_shared/sampleViewer.ts'
 import { BID_COVER_LETTER_EXCLUSIONS_KEY, BID_COVER_LETTER_TERMS_KEY, sampleBidRoomResponse } from '../_shared/customerSampleFixtures.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
@@ -87,8 +86,6 @@ serve(async (req) => {
     // cover-letter defaults for a signed-in office user. No room, no room_view logged.
     const sample = sampleStateFromToken(raw)
     if (sample) {
-      const gate = await authorizeSampleViewer(req)
-      if (!gate.ok) return json({ error: gate.error }, gate.status)
       const { data: rows } = await admin.from('app_settings').select('key, value_text').in('key', [BID_COVER_LETTER_TERMS_KEY, BID_COVER_LETTER_EXCLUSIONS_KEY])
       return json(sampleBidRoomResponse((rows ?? []) as { key: string; value_text: string | null }[], sample, new Date().toISOString(), todayYmdInAppTz()))
     }
