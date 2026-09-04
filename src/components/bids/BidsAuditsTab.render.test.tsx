@@ -87,7 +87,8 @@ describe('BidsAuditsTab', () => {
     expect(ptLink.getAttribute('href')).toBe('/bids?tab=counts&bidId=bid-405')
     expect(ptLink.getAttribute('target')).toBe('_blank')
 
-    expect(screen.getByText(/Wet tables owner-furnished\?/)).toBeTruthy()
+    // Notes land on a second query after the audit rows render — wait for them.
+    expect(await screen.findByText(/Wet tables owner-furnished\?/)).toBeTruthy()
     expect(screen.getByPlaceholderText('Type your answer…')).toBeTruthy()
     expect(screen.getByText('Waste footage way low.')).toBeTruthy()
     expect(screen.getByText(/Learned: developed-length multiplier/)).toBeTruthy()
@@ -107,8 +108,10 @@ describe('BidsAuditsTab', () => {
     renderWithProviders(<BidsAuditsTab authUser={null} myRole="superintendent" />)
     await waitFor(() => expect(screen.getByText(/ZZ Twin MPH CASA LINDA/)).toBeTruthy())
 
-    // Content still renders…
-    expect(screen.getByText(/Wet tables owner-furnished\?/)).toBeTruthy()
+    // Content still renders… The audit row lands first; the auto-expand is an
+    // effect tick later and the notes come back on a second query, so wait for
+    // the note text itself (v2.2753 — this read raced on a loaded CI runner).
+    expect(await screen.findByText(/Wet tables owner-furnished\?/)).toBeTruthy()
     expect(screen.getByText('Waste footage way low.')).toBeTruthy()
 
     // …but every write surface is gone: answer box, composer, Finish audit.
