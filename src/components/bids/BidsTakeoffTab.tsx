@@ -36,6 +36,7 @@ import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { TakeoffViewPills, TakeoffNewViewPlaceholder } from './TakeoffViewPills'
 import { readStoredTakeoffView, writeStoredTakeoffView, type TakeoffView } from '../../lib/bids/takeoffView'
+import { bookFillMessage, fillFromBookLabel, planBookFill } from '../../lib/bids/takeoffBookFill'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -392,6 +393,7 @@ export function BidsTakeoffTab({
     applyRoughAddAssemblyTemplate,
     insertRoughBundleLine,
     applyRoughAddAssemblyBundle,
+    fillRowsFromAssemblies,
   } = useTakeoffRoughLines<MaterialPartWithType>({
     selectedBidForTakeoff,
     selectedBidVersionId,
@@ -407,6 +409,26 @@ export function BidsTakeoffTab({
     setRoughAddAssemblyExpanding,
     closeRoughAddAssemblyModal,
   })
+
+  // Fill from book under Combined (v2.2776): the bid's selected book loads its
+  // entries onto the tab (the admin section used to be the only loader), and
+  // the matcher runs live so the button can say how many fixtures it would fill.
+  const bookEntriesSyncedForRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return
+    if (!selectedTakeoffBookVersionId || bookEntriesSyncedForRef.current === selectedTakeoffBookVersionId) return
+    bookEntriesSyncedForRef.current = selectedTakeoffBookVersionId
+    if (takeoffBookEntriesVersionId === selectedTakeoffBookVersionId) return
+    setTakeoffBookEntriesVersionId(selectedTakeoffBookVersionId)
+    void loadTakeoffBookEntries(selectedTakeoffBookVersionId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedBidForTakeoff?.id, selectedTakeoffBookVersionId])
+  const takeoffIsRough = normalizeMaterialsModel(selectedBidForTakeoff?.materials_model) === 'rough'
+  const bookFillPlan = useMemo(() => {
+    if (!takeoffIsRough || !selectedTakeoffBookVersionId || takeoffBookEntriesVersionId !== selectedTakeoffBookVersionId) return null
+    return planBookFill(takeoffCountRows, takeoffRoughPartLines, takeoffBookEntries)
+  }, [takeoffIsRough, selectedTakeoffBookVersionId, takeoffBookEntriesVersionId, takeoffCountRows, takeoffRoughPartLines, takeoffBookEntries])
+  const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates, takeoffIsRough)
 
   useEffect(() => {
     roughQtyNumpadLineIdRef.current = roughQtyNumpadLineId
@@ -585,8 +607,25 @@ export function BidsTakeoffTab({
   async function applyTakeoffBookTemplates() {
     if (!selectedBidForTakeoff || takeoffCountRows.length === 0 || !selectedTakeoffBookVersionId) return
     if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough') {
-      setTakeoffBookApplyMessage('Switch to Exact takeoffs to apply fixture assemblies from the takeoff book.')
-      setTimeout(() => setTakeoffBookApplyMessage(null), 4000)
+      // Combined (v2.2776): expand every matched assembly into part lines on the fixtures that have none.
+      if (!bookFillPlan || bookFillPlan.fillable.length === 0) {
+        setTakeoffBookApplyMessage(
+          bookFillPlan && bookFillPlan.matched > 0 ? 'Every fixture this book matches already has lines.' : 'No entry in this book matches these fixtures yet.',
+        )
+        setTimeout(() => setTakeoffBookApplyMessage(null), 4000)
+        return
+      }
+      setApplyingTakeoffBookTemplates(true)
+      setError(null)
+      try {
+        const result = await fillRowsFromAssemblies(bookFillPlan.fillable.map((m) => ({ countRowId: m.countRowId, templateIds: m.templateIds })))
+        setTakeoffBookApplyMessage(bookFillMessage(result))
+        setTimeout(() => setTakeoffBookApplyMessage(null), 6000)
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Failed to fill from the book'), 'error')
+      } finally {
+        setApplyingTakeoffBookTemplates(false)
+      }
       return
     }
     setTakeoffBookApplyMessage(null)
@@ -1554,18 +1593,19 @@ export function BidsTakeoffTab({
                     <button
                       type="button"
                       onClick={() => applyTakeoffBookTemplates()}
-                      disabled={applyingTakeoffBookTemplates}
+                      disabled={bookFillButton.disabled}
+                      title={bookFillButton.title || undefined}
                       style={{
                         padding: '0.35rem 0.75rem',
-                        background: applyingTakeoffBookTemplates ? '#9ca3af' : '#3b82f6',
+                        background: bookFillButton.disabled ? '#9ca3af' : '#3b82f6',
                         color: 'white',
                         border: 'none',
                         borderRadius: 4,
-                        cursor: applyingTakeoffBookTemplates ? 'wait' : 'pointer',
+                        cursor: applyingTakeoffBookTemplates ? 'wait' : bookFillButton.disabled ? 'default' : 'pointer',
                         fontSize: '0.875rem',
                       }}
                     >
-                      {applyingTakeoffBookTemplates ? 'Applying…' : 'Apply Matching Fixture Assemblies'}
+                      {bookFillButton.label}
                     </button>
                     {takeoffBookApplyMessage && (
                       <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>

@@ -409,6 +409,71 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     return () => { cancelled = true }
   }, [takeoffRoughPartLines, takeoffAddTemplateParts, supabase])
 
+  /**
+   * Fill from book (v2.2776): expand each matched assembly into priced part
+   * lines on its fixture — the same lines Add assembly → expand would make,
+   * but quiet (one summary for the caller) and sequenced per row so several
+   * assemblies on one fixture stack in book order. Rows are persisted as
+   * they complete, so a failure mid-way leaves the earlier fixtures filled.
+   */
+  async function fillRowsFromAssemblies(
+    fills: ReadonlyArray<{ countRowId: string; templateIds: ReadonlyArray<string> }>,
+  ): Promise<{ fixturesFilled: number; linesAdded: number; partsWithoutPrice: number; emptyAssemblies: number }> {
+    const result = { fixturesFilled: 0, linesAdded: 0, partsWithoutPrice: 0, emptyAssemblies: 0 }
+    if (!selectedBidForTakeoff?.id) return result
+    const allPartIds = new Set<string>()
+    for (const fill of fills) {
+      const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === fill.countRowId)
+      let seq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
+      const rowLines: TakeoffRoughPartLineRow[] = []
+      for (const templateId of fill.templateIds) {
+        const expanded = await expandTemplate(supabase, templateId, 1)
+        if (expanded.length === 0) {
+          result.emptyAssemblies += 1
+          continue
+        }
+        const mergedQty = new Map<string, number>()
+        for (const { part_id, quantity } of expanded) {
+          mergedQty.set(part_id, (mergedQty.get(part_id) ?? 0) + quantity)
+        }
+        const partIds = Array.from(mergedQty.keys())
+        const priceMap = await fetchLowestPartPricesBatch(supabase, partIds)
+        for (const [partId, qty] of mergedQty) {
+          seq += 1
+          const low = priceMap.get(partId)
+          if (low == null) result.partsWithoutPrice += 1
+          allPartIds.add(partId)
+          rowLines.push({
+            id: crypto.randomUUID(),
+            countRowId: fill.countRowId,
+            partId,
+            quantity: Math.max(0.0001, Number(qty) || 0.0001),
+            unitPrice: low != null ? low.price : 0,
+            sourceMaterialPartPriceId: low != null ? low.priceId : null,
+            sourceTemplateId: templateId,
+            sequenceOrder: seq,
+            isSaved: false,
+          })
+        }
+      }
+      if (rowLines.length === 0) continue
+      setTakeoffRoughPartLines((prev) => [...prev, ...rowLines])
+      for (const line of rowLines) {
+        await persistTakeoffRoughPartLine(line)
+      }
+      result.fixturesFilled += 1
+      result.linesAdded += rowLines.length
+    }
+    if (
+      allPartIds.size > 0 &&
+      activeTab === 'takeoffs' &&
+      normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough'
+    ) {
+      void refreshTakeoffRoughCatalogLowest(Array.from(allPartIds))
+    }
+    return result
+  }
+
   return {
     persistTakeoffRoughPartLine,
     setRoughPartLinePartAndCatalogPrice,
@@ -421,5 +486,6 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     applyRoughAddAssemblyTemplate,
     insertRoughBundleLine,
     applyRoughAddAssemblyBundle,
+    fillRowsFromAssemblies,
   }
 }
