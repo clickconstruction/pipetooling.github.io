@@ -45,9 +45,10 @@ export type JobRunRow = {
   paidYmd: string | null
 }
 
+/** Working → Billed first: the default since v2.2749 (owner's call — the office's "open on the board" count). */
 export const JOB_RUN_DEFINITIONS: ReadonlyArray<{ key: JobRunDefinition; label: string; title: string }> = [
-  { key: 'worked', label: 'first → last work', title: 'A job runs from its first approved field day to its last (to today while still open); long idle stretches split the run' },
   { key: 'status', label: 'Working → Billed', title: 'A job runs from its Working status move to its Billed or Paid move — open on the board, touched or not' },
+  { key: 'worked', label: 'first → last work', title: 'A job runs from its first approved field day to its last (to today while still open); long idle stretches split the run' },
 ]
 
 export const JOB_RUN_GAP_OPTIONS: ReadonlyArray<{ key: number; label: string; title: string }> = [

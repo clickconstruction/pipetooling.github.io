@@ -44,8 +44,8 @@ Your pick is remembered on this device.
 
 Two definitions, one click apart:
 
-- **first → last work** (default) — a job runs from its first approved field day to its last, and to today while it's still open. The **Gap** setting decides what a pause does: with {{chip:blue|7d}}, a stretch of more than 7 idle days splits the run, so a paused job isn't counted while nobody is on it. {{chip:gray|none}} counts only days with approved hours; {{chip:gray|14d}} bridges longer pauses.
-- **Working → Billed** — a job runs from the moment it was moved to Working until it was moved to Billed (or Paid), touched or not. This is "open on the board" and runs higher and longer.
+- **first → last work** — a job runs from its first approved field day to its last, and to today while it's still open. The **Gap** setting decides what a pause does: with {{chip:blue|7d}}, a stretch of more than 7 idle days splits the run, so a paused job isn't counted while nobody is on it. {{chip:gray|none}} counts only days with approved hours; {{chip:gray|14d}} bridges longer pauses.
+- **Working → Billed** (default) — a job runs from the moment it was moved to Working until it was moved to Billed (or Paid), touched or not. This is "open on the board", the way the office counts, and it runs higher and longer than the worked span.
 
 :::example One paused job
 Mission Hills had hours every week in May, nothing for ten days in June, then hours again. With the gap at 7d it shows as two runs and isn't counted during the pause; with 14d it's one run straight through.
