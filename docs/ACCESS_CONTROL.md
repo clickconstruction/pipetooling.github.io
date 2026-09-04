@@ -1177,3 +1177,7 @@ SELECT * FROM master_shares WHERE viewing_master_id = auth.uid();
 2. JWT token not expired (sign out/in to refresh)
 3. User has required role for function
 4. Service role key configured (for admin functions)
+
+## Bid Board job chips (v2.2741)
+
+The J#### chip in the Bid Board's Links column (the job made from a bid's signed proposal) renders only for `dev`, `master_technician`, `assistant`, and `controller` — the roles that can open Jobs. Estimators, primaries and superintendents never see it; the `jobs_ledger` lookup is skipped for them (`canSeeBidBoardJobLinks`).

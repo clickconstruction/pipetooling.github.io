@@ -669,6 +669,11 @@ export default function CreateJobFromEstimateModal({
           >
             {isCO ? `Apply change order #${estimate.estimate_number}` : 'Create job from estimate'}
           </h2>
+          {estimate?.bid_id && !isCO ? (
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              This is a signed bid-room proposal — the job will be linked to its bid automatically, so its contract chip shows the GC’s signature and the Bid Board shows the job.
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => onClose()}
