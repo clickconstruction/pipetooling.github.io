@@ -27,6 +27,8 @@
 | [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md) | Bids system: all tabs, workflow, schema. |
 | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | Decomposition map of `src/pages/Bids.tsx` (per-tab state/coupling, extraction status). |
 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | Same map for `src/pages/People.tsx`. |
+| [`CONTRACT_FORMS.md`](./CONTRACT_FORMS.md) | Contract Forms: a Book entry that is an uploaded PDF with dev-placed entry boxes the signer fills as the real page; FormSchema reference, agent draft→preview workflow, out-of-band storage. |
+| [`CONTRACT_FORMS_PLAN.md`](./CONTRACT_FORMS_PLAN.md) | Build plan + status for Contract Forms (schema/kernel → Form Studio → fill-on-page signing → staff record → the W-9). |
 | [`HR_FILES.md`](./HR_FILES.md) | Dev-only People → HR employee files: schema, access model, and the agent writing convention. |
 | [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | Same map for `src/pages/Dashboard.tsx` (section-based, not tabbed). |
 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | Same map for `src/pages/Jobs.tsx` (Stages board + job-mutation engine mapped in depth). |
