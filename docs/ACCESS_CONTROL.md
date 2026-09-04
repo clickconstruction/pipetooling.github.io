@@ -1178,6 +1178,10 @@ SELECT * FROM master_shares WHERE viewing_master_id = auth.uid();
 3. User has required role for function
 4. Service role key configured (for admin functions)
 
+## Bid Board job chips (v2.2741)
+
+The J#### chip in the Bid Board's Links column (the job made from a bid's signed proposal) renders only for `dev`, `master_technician`, `assistant`, and `controller` — the roles that can open Jobs. Estimators, primaries and superintendents never see it; the `jobs_ledger` lookup is skipped for them (`canSeeBidBoardJobLinks`).
+
 ## Signed agreements stream (v2.2743)
 
 Default recipients of the "Signed — …" email (customer accepted an estimate / GC signed a bid-room proposal) are every active, non-twin `dev`, `master_technician`, `assistant`, and `controller`, filtered to the estimate master's org scope; an explicit list in `app_settings.signed_agreements_notify_recipients_v1` replaces the default. Editing the card (recipients, auto-create switches) writes `app_settings`, which is dev-only under RLS. The auto-create RPC runs as the estimate's `master_user_id`, so the job owner rules are theirs.

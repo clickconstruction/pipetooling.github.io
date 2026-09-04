@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { bidBoardJobLinkLabel, type BidBoardJobLink } from '../../lib/bids/bidBoardJobLinks'
 import { perGcSentSummary, type GcPacket } from '../../lib/bids/gcPackets'
 import { BidBoardGcLines, gcRowsWorthShowing } from './BidBoardGcRows'
 import type { BidRoomStateSummary } from '../../lib/bids/bidRoomState'
@@ -43,6 +45,8 @@ type BidsBidBoardTabProps = {
   bids: BidWithBuilder[]
   authUser: { id: string } | null
   isDev: boolean
+  /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
+  jobsByBidId?: Map<string, BidBoardJobLink>
   ledgerPrefixMap: ReturnType<typeof useLedgerPrefixMap>
   bidPreview: ReturnType<typeof useBidPreview> | null
   sectionOpen: BidBoardSectionOpenState
@@ -110,6 +114,8 @@ export type BidBoardJumpTabKey = 'counts' | 'takeoffs' | 'labor' | 'pricing' | '
 
 /** Font Awesome 640-viewbox paths reused across the table and phone cards. */
 const BID_BOARD_ICON_PATHS = {
+  /** v2.2741: briefcase — the job made from this bid. */
+  job: 'M10 4h4a2 2 0 0 1 2 2v1h3a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a1 1 0 0 1 1-1h3V6a2 2 0 0 1 2-2zm0 3h4V6h-4v1zM6 9v3h12V9H6zm0 5v4h12v-4h-5v1H11v-1H6z',
   takeoffs: 'M64 192 L64 448 L576 448 L576 192 L492 192 L492 288 L452 288 L452 192 L368 192 L368 288 L328 288 L328 192 L244 192 L244 288 L204 288 L204 192 L148 192 L148 288 L108 288 L108 192 Z',
   labor: 'M320 96 C302.3 96 288 110.3 288 128 L288 134.7 C215.4 149.5 160 213.9 160 291.2 L160 352 L128 352 C110.3 352 96 366.3 96 384 C96 401.7 110.3 416 128 416 L512 416 C529.7 416 544 401.7 544 384 C544 366.3 529.7 352 512 352 L480 352 L480 291.2 C480 213.9 424.6 149.5 352 134.7 L352 128 C352 110.3 337.7 96 320 96 Z M96 448 L544 448 L544 480 C544 497.7 529.7 512 512 512 L128 512 C110.3 512 96 497.7 96 480 Z',
   pricing: 'M96 64 L272 64 C284.7 64 296.9 69.1 305.9 78.1 L545.9 318.1 C564.6 336.8 564.6 367.2 545.9 385.9 L407.8 524 C389.1 542.7 358.7 542.7 340 524 L100 284 C91 275 85.9 262.8 85.9 250.1 L85.9 112 C85.9 85.5 107.4 64 133.9 64 Z M256 200 A48 48 0 1 0 160 200 A48 48 0 1 0 256 200 Z',
@@ -155,6 +161,7 @@ export function BidsBidBoardTab({
   bids,
   authUser,
   isDev,
+  jobsByBidId,
   ledgerPrefixMap,
   bidPreview,
   sectionOpen,
@@ -622,9 +629,38 @@ export function BidsBidBoardTab({
     if (bid.plans_link) links.push({ href: bid.plans_link, title: 'Job plans', d: BID_BOARD_ICON_PATHS.plans })
     if (bid.count_tooling_plans_link) links.push({ href: bid.count_tooling_plans_link, title: 'CountTooling plans', d: BID_BOARD_ICON_PATHS.countTool })
     if (bid.bid_submission_link) links.push({ href: bid.bid_submission_link, title: 'Bid submission', d: BID_BOARD_ICON_PATHS.bidSend })
-    if (links.length === 0) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+    const job = jobsByBidId?.get(bid.id) ?? null
+    if (links.length === 0 && !job) return <span style={{ color: 'var(--text-muted)' }}>—</span>
     return (
       <span style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center', justifyContent: 'center' }}>
+        {job ? (
+          <Link
+            to={`/jobs?edit=${job.jobId}`}
+            title={`Open job ${bidBoardJobLinkLabel(job.hcpNumber)} — made from this bid's signed proposal`}
+            aria-label={`Open job ${bidBoardJobLinkLabel(job.hcpNumber)}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.1rem 0.45rem 0.1rem 0.35rem',
+              borderRadius: 9999,
+              border: '1px solid var(--border-green)',
+              background: 'var(--bg-green-tint)',
+              color: 'var(--text-green-700)',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums',
+              letterSpacing: '0.01em',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              lineHeight: 1.3,
+            }}
+          >
+            <BidBoardIcon d={BID_BOARD_ICON_PATHS.job} size={13} />
+            {bidBoardJobLinkLabel(job.hcpNumber)}
+          </Link>
+        ) : null}
         {links.map((l) => (
           <a
             key={l.title}

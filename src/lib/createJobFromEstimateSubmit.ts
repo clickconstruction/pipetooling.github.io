@@ -24,6 +24,8 @@ export type EstimateForCreateJob = Pick<
   // CO money train PR 4: the modal speaks change-order (title, apply-to-job lead path).
   | 'doc_kind'
   | 'estimate_number'
+  // v2.2741: a signed bid-room proposal carries its bid; the job inherits it (DB trigger) and the modal says so.
+  | 'bid_id'
 >
 
 export type CreateJobFixtureRpcRow = {

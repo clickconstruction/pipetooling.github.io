@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { canSeeBidBoardJobLinks, indexJobsByBidId, type BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
 import { supabase } from '../lib/supabase'
 import { fromDatetimeLocal } from '../utils/datetimeLocal'
 import {
@@ -413,6 +414,29 @@ export default function Bids() {
     () => partitionBidsByScope(bids, twinUserIds),
     [bids, twinUserIds],
   )
+
+  // v2.2741: J#### chips on the board — only for roles that can open Jobs (estimators can't).
+  const [jobsByBidId, setJobsByBidId] = useState<Map<string, BidBoardJobLink>>(() => new Map())
+  const boardBidIdsKey = useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id).sort().join(','), [peopleBids, robotBids])
+  useEffect(() => {
+    if (!canSeeBidBoardJobLinks(myRole) || !boardBidIdsKey) {
+      setJobsByBidId(new Map())
+      return
+    }
+    let cancelled = false
+    const ids = boardBidIdsKey.split(',')
+    void (async () => {
+      const out: Array<{ id: string; hcp_number: string | null; bid_id: string | null; created_at: string | null }> = []
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data } = await supabase.from('jobs_ledger').select('id, hcp_number, bid_id, created_at').in('bid_id', ids.slice(i, i + 200))
+        if (data) out.push(...(data as typeof out))
+      }
+      if (!cancelled) setJobsByBidId(indexJobsByBidId(out))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [myRole, boardBidIdsKey])
 
   // Robot readiness (v2.2530): source bid id → its twin copy, for the board icon's
   // "robot bid exists" state. Pairing is stamped by twin-mcp at open time.
@@ -3295,6 +3319,7 @@ export default function Bids() {
           bids={activeTab === 'robot-board' ? robotBids : peopleBids}
           authUser={authUser}
           isDev={myRole === 'dev'}
+          jobsByBidId={jobsByBidId}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}
           sectionOpen={activeTab === 'robot-board' ? robotBoardSectionOpen : bidBoardSectionOpen}

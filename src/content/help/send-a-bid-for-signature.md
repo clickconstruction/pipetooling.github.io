@@ -37,6 +37,10 @@ Under the document, the GC types their full name, checks the agreement, and pres
 
 **When they pass**: *Not moving forward? Tell us why* offers Price / Went with another sub / Project died, plus a note — their answer marks the packet Lost with that reason and lands in **Why we lost**, in their own words.
 
+## From signature to job
+
+When the job is ready, open the signed record in the Estimates **Ledger** and press {{button:blue|Create job}} (or **Link existing job** if the job already exists). The job is tied to the bid automatically: **Jobs → Stages** shows {{chip:green|Signed · Bid room proposal}} on its contract chip and opens the GC's signature, Edit job shows the bid, and the **Bid Board**'s Links column gets a {{chip:green|J1234}} chip that opens the job (assistants, masters, controllers and devs — estimators don't see jobs).
+
 ## Change orders, same link
 
 Once the job is moving, change orders join the room. Draft a CO from **Bids → Change Order** as usual, add its cost lines, and press {{button:gray|Publish to bid room}} instead of emailing a fresh link — the CO appears in the GC's room under the signed proposal, with its cost, reason, and schedule impact, and its own **Review & sign**. The room chip stays amber ({{chip:yellow|✍ signed · CO awaiting}}) until every document is answered, and each CO keeps its own signature record. Six weeks in, the GC is still using the one link they bookmarked on bid day.

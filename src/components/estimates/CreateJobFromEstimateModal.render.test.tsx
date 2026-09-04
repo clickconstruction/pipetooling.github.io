@@ -37,6 +37,7 @@ function estimateRow(overrides: Partial<EstimateForCreateJob>): EstimateForCreat
     ],
     doc_kind: 'estimate',
     estimate_number: 52,
+    bid_id: null,
     ...overrides,
   }
 }

@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, primary, estimator, subcon
 keywords: task, add task, assign, checklist, crew, team, send task, todo
 order: 40
 ---
-The **＋ Task button** in the top bar (the checkmark icon) opens the Add-task dialog from anywhere in the app. Type what needs doing, pick who does it, and {{button:blue|Send}} — the task lands on each person's **Checklist → Today** list on its day. As soon as you start typing, a {{button:blue|Send}} button also appears at the top of the dialog — same as the one at the bottom, just closer to your thumb.
+The **＋ Task button** in the top bar (the checkmark icon) opens the Add-task dialog from anywhere in the app. Type what needs doing, pick who does it, and {{button:blue|Send}} — the task lands on each person's **Checklist → Today** list on its day. As soon as you start typing, a {{button:blue|Send}} button also appears at the top of the dialog — same as the one at the bottom, just closer to your thumb. Tapping outside the dialog leaves it open, so a stray tap never loses your draft — use the × in the top corner or **Cancel** to close it.
 
 ## Pick the people
 
