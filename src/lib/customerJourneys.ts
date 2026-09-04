@@ -11,7 +11,7 @@
  */
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract'
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string }
@@ -163,9 +163,17 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: SUB_PORTAL_SAMPLE_PATH },
         },
         {
+          id: 'sub-contract-email',
+          label: 'Contract email',
+          sublabel: 'People → Contracts → Send for signature',
+          when: 'On hire',
+          reflects: ['Your opening message and subject (typed per send)', 'Sender name and email (the Reply-To)', 'The sub\'s portal address, when they have one'],
+          render: { kind: 'email', email: 'contract' },
+        },
+        {
           id: 'sub-contract',
           label: 'Contract to sign',
-          sublabel: 'Paperwork → Sign, or a texted link',
+          sublabel: 'the link in that email, or Paperwork → Sign',
           when: 'On hire',
           reflects: ['Signing page chrome and the agree checkbox wording'],
           render: { kind: 'page', path: CONTRACT_SAMPLE_PATH },
