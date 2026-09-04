@@ -58,4 +58,6 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Signed agreement view: green chip → record → scroll to the framed signature block → Share ▾ → Email a copy… (`get-a-job-contract-signed-view.gif`, desktop, 2.6 MB, 15 frames; re-recorded 2026-09-03 for the v2.2724 signature block, Chrome as dev on Job 1005, sheet cancelled) | ✅ 2026-09-03 | ✅ |
 | Onboard a new subcontractor (assign packet + compliance panel) | ✅ 2026-09-03 (two clips, `onboard-a-new-subcontractor.gif` + `-compliance.gif`; captured from a dev account — no read-only training account exists yet) | ✅ |
 
+| Schedule Dispatch phone moves: grip tap → day chip → "Moved to Fri 9/4." → press-and-hold → Move sheet → back to Thu (`schedule-dispatch-move-by-thumb.gif`, phone width, 500×1000, ~0.5 MB, 8 keyframes via Playwright + ffmpeg as dev on Isiah's J878 — the block was moved to Friday and back on camera, ending where it started) | ✅ 2026-09-03 | ✅ |
+
 (The one existing recording, `settings-basics.gif` in `settings-basics.md`, predates this plan and stays.)

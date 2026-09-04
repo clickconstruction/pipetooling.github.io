@@ -66,6 +66,8 @@ Every block has a **dotted grip** on its left edge. **Drag the grip** to any oth
 
 Dragging needs a mouse-sized grip and a drop target under your finger, so on a phone the board gives you two tap paths instead. Both keep the block's times, move linked crew copies together, and warn about an overlap exactly like a drag.
 
+{{gif:schedule-dispatch-move-by-thumb.gif|Tap the grip, tap Fri — moved. Then press and hold the block, pick Thu, and Move to Thu brings it back}}
+
 - **Tap the grip** {{chip:blue|⠿}} on the block. A blue bar appears with this week's days — tap {{button:outline|Fri 9/4}} and the block moves there for the same person, or tap any person's cell on the grid to move it to that person and day. {{button:outline|Cancel}} keeps it where it is.
 - **Press and hold the block** (about half a second, anywhere on the job text) to open the **Move block** sheet: pick a day, any date from the picker, and the person, then hit {{button:blue|Move to Fri 9/4 · Paige}} — the button names exactly what will change. This works on a computer too.
 
