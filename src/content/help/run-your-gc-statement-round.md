@@ -2,7 +2,7 @@
 title: run your weekly GC statement round
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: gc statement, round, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off
+keywords: gc statement, round, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app
 ---
 Every GC that owes **$10,000 or more** joins the weekly **statement round**: a to-do for one person to email that GC their outstanding statement — personally, from their own inbox. The app never emails a GC on its own. Two gates keep it honest: a manager **certifies** each GC's numbers first, and the sender marks **Sent it** so the app knows it happened.
 
@@ -34,9 +34,20 @@ Open **GC Review** (the Billed Awaiting Payment section tools). The **Weekly sta
 {{button:blue|Start round →}} walks your GCs one at a time. For each:
 
 1. {{button:outline|Preview statement}} — see exactly what the GC will see.
-2. {{button:outline|Copy for email}} — copies the statement as a real table. Paste it into your own Gmail or Outlook, add a personal line on top, and send from your own address.
+2. {{button:outline|Copy for email}} — copies the statement as a real table. Paste it into your own Gmail or Outlook, add a personal line on top, and send from your own address. Or {{button:outline|Send from the app…}} — the Draft Message dialog opens for that GC, the app sends it, and the GC is marked sent for you the moment it goes out.
 3. {{button:blue|Sent it ✓}} — tells the app it went out. A short form opens: pick **how** ({{chip:blue|Email}} {{chip:gray|Text}} {{chip:gray|Call}} {{chip:gray|In person}} {{chip:gray|Other}}) and add an optional note, then {{button:blue|Save mark}}. This stamps the GC's last-sent pill and the week's progress, same as an app send.
 4. **Skip** defers that GC for the week.
+
+## Where your round finds you
+
+You don't have to go looking for it:
+
+- **Dashboard.** While anything in your round is certified and waiting, the Needs you card shows {{chip:blue|2 GCs are waiting on your statement}} with a {{button:blue|Start round}} button that opens GC Review right on your first GC.
+- **Email.** In GC Review's Weekly statement rounds panel, tap {{button:outline|Email me my round…}}, pick the weekday mornings you send (Mon–Fri chips) and a time, and {{button:blue|Save}}. Each morning you'll get your round as it stands at send time — the GCs, amounts, and a **Start round →** link — plus how many GCs still wait on certification. {{button:outline|Preview}} shows today's email; {{button:outline|Email me a test}} sends a [TEST] copy. It lists under {{icon:gear}} **Settings → Your account → My email schedule** with your other emails, and **Edit** / **Stop emailing** live in the same panel. A manager can set it up for another sender from the picker below it.
+
+:::example Nothing waiting?
+The email still comes, saying so — a quiet morning shouldn't look like a broken subscription.
+:::
 
 ## Sent it another way? Mark it from the GC
 

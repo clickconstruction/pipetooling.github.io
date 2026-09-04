@@ -5,7 +5,7 @@ file: REPORT_SUBSCRIPTIONS.md
 type: Architecture/Reference
 purpose: Names and defines the app's recurring/scheduled report-email pattern — streams, request tables, cron dispatchers, fresh-at-send builds, and the My Email Schedule surface — and the checklist for adding a new stream
 audience: Developers, AI Agents
-last_updated: 2026-08-07
+last_updated: 2026-09-04
 key_sections:
   - name: "What the system is"
   - name: "The five pieces"
@@ -48,6 +48,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `payment_forecast` | scheduled report | `payment_forecast_email_requests` (v2.2223; internal `recipient_user_id`; share UI v2.2226) | `payment-forecast-email-dispatch` | ✅ recipient-scoped (v2.2223) | — (scheduled report) |
 | `ct_roster_audit` | fixed weekly audit | none — fixed dev stream, no request table or share UI (v2.2438) | `ct-roster-audit` (weekly cron, Mon 13:00 UTC) | — | — (dev infra audit; always sends, all-clear = heartbeat) |
 | `crew_day` | scheduled report | `crew_day_email_requests` (v2.2603; internal `recipient_user_id`; **per-recipient payload** — `get_crew_day_payload_for_user` rebuilds for the recipient; **office-only on both sides since v2.2615** — superintendents neither schedule nor receive (owner decision: the dashboard Crew Day section is their window); emailed day = the send's Chicago day) | `crew-day-email-dispatch` | ✅ recipient-scoped | — (scheduled report) |
+| `statement_round` | scheduled report | `statement_round_email_requests` (v2.2771; internal `recipient_user_id`; **per-recipient payload** — `get_statement_round_for_user` rebuilds the sender's round; office-only both sides; requester OR recipient may cancel) | `statement-round-email-dispatch` | ✅ recipient-scoped | — (scheduled report) |
 
 ## Design rules
 
@@ -75,3 +76,7 @@ Built 2026-08-06 as the pattern's second full stream (v2.1425–v2.1428): payloa
 ## The Payment forecast stream (`payment_forecast`) — SHIPPED
 
 Built 2026-08-24 (v2.2223 schema + v2.2225 dispatcher + v2.2226 UI): the Stages **Payment forecast** modal (v2.1925) as an email. Distinctives vs. the billed report: the payload RPC (`get_payment_forecast_email_payload`) returns **ingredients** (open billed rows + pay-speed medians + promised dates — the speed/promise RPCs' gates block service-role callers, so their SQL is inlined) and the **bucketing runs in the dispatcher** via `supabase/functions/_shared/paymentForecastCore.ts`, a Deno port of the client kernels (`billedExpectedPay.ts`/`billedPaymentForecast.ts` are the source of truth — change them, change the port). Email leads with **Past expected** (the follow-up queue); CTA deep-links `?tab=stages&forecast=1` (opens the modal). Share UI: **Email…** on the modal header (`PaymentForecastShareModal`, sender roles dev/master/assistant-like); recipients internal office-capable incl. primary. Empty board still sends a one-liner. Cron co-rides the :04 lane (see the checklist's lane note).
+
+## The Statement round stream (`statement_round`) — SHIPPED
+
+Built 2026-09-04 (v2.2771): the GC Review personal round (v2.2072) as a morning email to its sender. Distinctives: the payload RPC (`get_statement_round_for_user`) is a **server-side mirror of a client kernel** (`buildStatementRound` / `gcGroupCertStatus`) built on top of `get_gc_statement_email_payload`, which gained `row_key` per row for the certification snapshot diff; fidelity checked against the GC Review panel per sender before first dispatch. The scheduling UI is not a share modal but an **"Email me my round…"** block inside GC Review's Weekly statement rounds panel: weekday chips + a Central time → one `repeat_weekly` chain per weekday (the v2.1430 standing-copies shape, kernel `statementRoundEmail.ts`), Preview / Email me a test via the dispatcher's JWT modes, Edit / Stop emailing; certifier roles can set it up for another sender. Lists on the recipient's My email schedule. The same RPC, self-scoped (`get_my_statement_round`), powers the Dashboard Needs You row. Cron co-rides the :02 lane.

@@ -35,6 +35,7 @@ export type NeedsYouItem = {
     | 'tally-team'
     | 'lost-bids'
     | 'team-reviews'
+    | 'statement-round'
     | 'roadmap-needs-person'
     | 'job-followups'
     | 'gc-review-weekly'
@@ -85,6 +86,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lien-notice-window': 40,
   'lien-file-window': 40,
   'team-reviews': 50,
+  'statement-round': 30,
   'roadmap-needs-person': 50,
   'robot-audits': 50,
   'hours-approvals': 50,
@@ -150,6 +152,14 @@ export type NeedsYouInputs = {
    * enabled=false — its dedicated GC weekly station already carries this.
    */
   gcReviewEnabled: boolean
+  /**
+   * The signed-in sender's personal statement round (v2.2771): certified GCs
+   * assigned to them and not yet marked sent. Null = nothing waiting (or the
+   * hook is disabled / still loading). The action opens GC Review straight
+   * into the round overlay (`?round=1`).
+   */
+  statementRoundEnabled?: boolean
+  statementRound?: { count: number; total: number; gcNames: string[] } | null
   gcReviewStatus: GcReviewWeekStatus | null
   /** Parent computes both from the clock (gcReviewNudgeState/gcReviewWeekdayIndex) — the builder stays pure. */
   gcReviewNudge: GcReviewNudgeState | null
@@ -444,6 +454,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${breakdown ? `${breakdown} — ` : ''}review them one card at a time.`,
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Start review',
+    })
+  }
+
+  if (inputs.statementRoundEnabled && inputs.statementRound && inputs.statementRound.count > 0) {
+    const r = inputs.statementRound
+    const preview = r.gcNames.slice(0, 3).join(', ')
+    const more = r.gcNames.length > 3 ? ` +${r.gcNames.length - 3} more` : ''
+    items.push({
+      key: 'statement-round',
+      severity: 'blue',
+      kicker: 'Statement round',
+      title: r.count === 1 ? 'One GC is waiting on your statement' : `${r.count} GCs are waiting on your statement`,
+      detail: `${preview}${more} · $${Math.round(r.total).toLocaleString('en-US')} certified and ready — a personal email from you.`,
+      figure: r.count > 99 ? '99+' : String(r.count),
+      actionLabel: 'Start round',
     })
   }
 

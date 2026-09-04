@@ -1149,6 +1149,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       navigate({ search: p.toString() }, { replace: true })
     }
   }, [searchParams, navigate])
+  /** `?round=1` deep link (v2.2771): the Dashboard Needs You row + the round email open GC Review straight into the round overlay. */
+  const roundParamConsumedRef = useRef(false)
+  useEffect(() => {
+    if (roundParamConsumedRef.current) return
+    if (searchParams.get('round') === '1') {
+      roundParamConsumedRef.current = true
+      setGcReviewStartRound(true)
+      setGcReviewModalOpen(true)
+      const p = new URLSearchParams(searchParams)
+      p.delete('round')
+      navigate({ search: p.toString() }, { replace: true })
+    }
+  }, [searchParams, navigate])
   /** `?chase=1` deep link (v2.2025): open payment follow-up call mode directly. */
   const chaseParamConsumedRef = useRef(false)
   useEffect(() => {

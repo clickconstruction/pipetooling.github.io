@@ -24,6 +24,7 @@ import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
 import { useSpecSectionUncodedCount } from '../../hooks/useSpecSectionUncodedCount'
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
+import { useStatementRoundNudge } from '../../hooks/useStatementRoundNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
@@ -317,6 +318,8 @@ export function DashboardPinnedQuickRow({
   )
   const { nudges: roadmapNudges } = useRoadmapNeedsNameNudges(hideBanners ? undefined : authUserId, role)
   const { status: gcReviewStatus } = useGcReviewWeekNudge(!hideBanners && officeEligible)
+  // The sender's own statement round (v2.2771) — certified GCs waiting on THEM.
+  const { nudge: statementRound } = useStatementRoundNudge(!hideBanners && Boolean(authUserId) && officeEligible)
   const gcReviewNudge = gcReviewStatus != null ? gcReviewNudgeState(gcReviewStatus) : null
   const bulkDelete = useBulkDeleteNudge(hideBanners ? undefined : authUserId)
   const claimDev = useClaimDevAttemptsNudge(hideBanners ? undefined : authUserId)
@@ -364,6 +367,8 @@ export function DashboardPinnedQuickRow({
     jobFollowupCount,
     jobFollowupStageCounts,
     gcReviewEnabled: officeEligible,
+    statementRoundEnabled: officeEligible,
+    statementRound,
     gcReviewStatus,
     gcReviewNudge,
     gcReviewIsWednesday: gcReviewWeekdayIndex() === 3,
@@ -580,6 +585,8 @@ export function DashboardPinnedQuickRow({
               )
             } else if (item.key === 'gc-review-weekly') {
               navigate('/jobs?tab=stages&gcReview=1')
+            } else if (item.key === 'statement-round') {
+              navigate('/jobs?tab=stages&round=1')
             } else if (item.key === 'bulk-delete') {
               navigate('/settings?tab=settings-data#settings-recently-deleted')
             } else if (item.key === 'claim-dev') {

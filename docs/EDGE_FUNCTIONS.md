@@ -155,6 +155,7 @@ when_to_read:
    - [payment-forecast-email-dispatch](#payment-forecast-email-dispatch)
    - [money-waiting-email-dispatch](#money-waiting-email-dispatch)
    - [crew-day-email-dispatch](#crew-day-email-dispatch)
+   - [statement-round-email-dispatch](#statement-round-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-lien-release-email](#send-lien-release-email)
    - [send-lien-filing-email](#send-lien-filing-email)
@@ -2703,6 +2704,22 @@ interface SendPhysicalInvoiceEmailBody {
 **Cron**: pg_cron **`crew-day-email-dispatch`** at **`4-59/5 * * * *`** — co-rides the :04 lane (v2.1919 stagger; co-tenants no-op cheaply on empty ticks), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`.
+
+---
+
+### statement-round-email-dispatch
+
+**Purpose** (v2.2771): The **"Your statement round"** email — the `statement_round` stream. The GC Review personal round (v2.2072) as a morning note for its sender: every GC certified this week, assigned to the recipient, and not yet marked sent — amount, job count, age, certifier — with one **Start round →** link (`/jobs?tab=stages&round=1`, opens GC Review straight into the round overlay), plus the held-on-certification count. The payload is **per-recipient**: `get_statement_round_for_user(p_user_id)` (migration `20260904201238`, service-role only) mirrors `buildStatementRound` server-side (GC groups ≥ $10,000 from `get_gc_statement_email_payload`, cert status by snapshot diff, this week's marks, sender = standing sender else Account Man), rebuilt **at send time**. An empty round still sends a one-liner (a silent skip reads as a broken subscription).
+
+**Endpoint**: `POST /functions/v1/statement-round-email-dispatch`
+
+**Modes** (crew-day skeleton): `preview` / `test_send` (caller JWT; the caller's own round; office roles dev/master_technician/assistant/controller) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `statement_round_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard; archived / email-less / ineligible recipients stamp and never send). No `send_now` — the round is the recipient's own work list, not something to push at someone.
+
+**Deploy**: `supabase functions deploy statement-round-email-dispatch --no-verify-jwt`. Requires migration `20260904201238` (row_key on the statement payload, round RPCs, table, pg_cron, schedule-surface branches).
+
+**Cron**: pg_cron **`statement-round-email-dispatch`** at **`2-57/5 * * * *`** — co-rides the :02 lane with `gc-statement-email-dispatch` (one tenant there vs four on :04 at the time; the stagger's goal is breaking the everyone-at-once volley), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (deep link; falls back to `https://clicktooling.com`).
 
 ---
 
