@@ -11015,6 +11015,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "people_labor_jobs_stage_changed_by_fkey"
+            columns: ["stage_changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "people_labor_jobs_step_id_fkey"
             columns: ["step_id"]
             isOneToOne: false
@@ -17879,7 +17886,10 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
-      get_statement_round_for_user: { Args: { p_user_id: string }; Returns: Json }
+      get_statement_round_for_user: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       get_supply_house_price_counts: {
         Args: never
         Returns: {
@@ -19388,6 +19398,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      sub_sheet_stage_label: { Args: { p_stage: string }; Returns: string }
       subcontractor_can_read_jobs_ledger_row: {
         Args: { p_job_id: string }
         Returns: boolean
