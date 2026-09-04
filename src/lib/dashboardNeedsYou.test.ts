@@ -455,3 +455,21 @@ describe('buildNeedsYouItems', () => {
     expect(items[0]?.figure).toBe('1')
   })
 })
+
+describe('statement round (v2.2771)', () => {
+  it('lists the ready GCs with the total and opens the round; silent when empty or disabled', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        statementRoundEnabled: true,
+        statementRound: { count: 2, total: 96257.27, gcNames: ['RMC- Dudley Mason', 'Knight Contracting'] },
+      }),
+    )
+    const sr = items.find((i) => i.key === 'statement-round')
+    expect(sr?.title).toBe('2 GCs are waiting on your statement')
+    expect(sr?.detail).toBe('RMC- Dudley Mason, Knight Contracting · $96,257 certified and ready — a personal email from you.')
+    expect(sr?.figure).toBe('2')
+    expect(sr?.actionLabel).toBe('Start round')
+    expect(buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ statementRoundEnabled: false, statementRound: { count: 1, total: 5, gcNames: ['x'] } }))).toEqual([])
+  })
+})

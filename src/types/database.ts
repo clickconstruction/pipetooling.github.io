@@ -13748,6 +13748,57 @@ export type Database = {
           },
         ]
       }
+      statement_round_email_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          recipient_user_id: string
+          repeat_weekly: boolean
+          requested_by: string
+          send_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id: string
+          repeat_weekly?: boolean
+          requested_by: string
+          send_at: string
+          sent_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id?: string
+          repeat_weekly?: boolean
+          requested_by?: string
+          send_at?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "statement_round_email_requests_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "statement_round_email_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       step_commitments: {
         Row: {
           accepted_at: string | null
@@ -17766,6 +17817,7 @@ export type Database = {
       get_my_partner_jobs: { Args: never; Returns: Json }
       get_my_partner_ledger: { Args: { p_weeks?: number }; Returns: Json }
       get_my_partner_summary: { Args: never; Returns: Json }
+      get_my_statement_round: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_paid_profit_stats: { Args: never; Returns: Json }
       get_partner_bid_estimating_hours: {
@@ -17827,6 +17879,7 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
+      get_statement_round_for_user: { Args: { p_user_id: string }; Returns: Json }
       get_supply_house_price_counts: {
         Args: never
         Returns: {

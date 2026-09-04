@@ -61,6 +61,13 @@ import {
 import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
 import GcReviewCertifyModal from './GcReviewCertifyModal'
 import GcStatementMarkSentForm from './GcStatementMarkSentForm'
+import { groupStatementRoundChains, planStatementRoundChainEdit, type StatementRoundRequestRow } from '../../lib/statementRoundEmail'
+import {
+  applyStatementRoundChainPlan,
+  fetchStatementRoundEmailPreview,
+  listPendingStatementRoundRequests,
+  sendStatementRoundEmailTest,
+} from '../../lib/statementRoundEmailClient'
 import GcStatementSendHistoryModal from './GcStatementSendHistoryModal'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
@@ -327,6 +334,23 @@ export function JobsGcReviewModal({
   const [roundSentFormOpen, setRoundSentFormOpen] = useState(false)
   const [markSentGroup, setMarkSentGroup] = useState<GcReviewGroup | null>(null)
   const [historyGc, setHistoryGc] = useState<{ id: string; name: string } | null>(null)
+  /** Send from the app inside the round (v2.2771): which GC's Draft Message came from the overlay, so the overlay comes back after. */
+  const [emailFromRoundGcId, setEmailFromRoundGcId] = useState<string | null>(null)
+  /** "Email me my round" (v2.2771, statement_round stream): pending chains + the edit form. */
+  const [roundEmailRows, setRoundEmailRows] = useState<StatementRoundRequestRow[]>([])
+  const [roundEmailOpen, setRoundEmailOpen] = useState(false)
+  const [roundEmailRecipient, setRoundEmailRecipient] = useState('')
+  const [roundEmailWeekdays, setRoundEmailWeekdays] = useState<number[]>([1, 3])
+  const [roundEmailTime, setRoundEmailTime] = useState('07:00')
+  const [roundEmailBusy, setRoundEmailBusy] = useState(false)
+  const [roundEmailError, setRoundEmailError] = useState<string | null>(null)
+  const [roundEmailNotice, setRoundEmailNotice] = useState<string | null>(null)
+  const refreshRoundEmailRows = useCallback(() => {
+    void listPendingStatementRoundRequests().then(setRoundEmailRows, () => setRoundEmailRows([]))
+  }, [])
+  useEffect(() => {
+    if (open) refreshRoundEmailRows()
+  }, [open, refreshRoundEmailRows])
   const refreshRoundMarks = useCallback(() => {
     void listGcStatementRoundMarks(certWeekStart).then(setRoundMarks, () => setRoundMarks([]))
   }, [certWeekStart])
@@ -481,6 +505,14 @@ export function JobsGcReviewModal({
   useEffect(() => {
     if (open && startInRound) setRoundOpen(true)
   }, [open, startInRound])
+  useEffect(() => {
+    // Send from the app (v2.2771): the Draft Message dialog stacks under the round overlay,
+    // so the overlay steps aside while it is open and comes back when it closes.
+    if (emailDialogGroup == null && emailFromRoundGcId != null) {
+      setEmailFromRoundGcId(null)
+      setRoundOpen(true)
+    }
+  }, [emailDialogGroup, emailFromRoundGcId])
   const certProgress = gcReviewWeekProgress(roundRollup.groups, certsByGc, mergedLastSent, certWeekStart)
   /** Portal links per GC (v2.2151): the globe on the row, the Share item, and the Draft Message card all read this. */
   const gcIdsForPortal = useMemo(() => rollup.groups.filter((g) => !g.isNoGc && g.gcId).map((g) => g.gcId as string), [rollup.groups])
@@ -547,6 +579,46 @@ export function JobsGcReviewModal({
       setRoundError(e instanceof Error ? e.message : 'Could not undo — try again.')
     }
     setRoundBusy(false)
+  }
+  const roundEmailChains = groupStatementRoundChains(roundEmailRows)
+  const myRoundEmailChain = authUser?.id ? roundEmailChains.find((c) => c.recipientUserId === authUser.id) ?? null : null
+  const roundEmailPickableUsers = users
+    .filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role) && (u.email ?? '').includes('@'))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  function openRoundEmailForm(recipientUserId: string) {
+    const current = roundEmailChains.find((c) => c.recipientUserId === recipientUserId) ?? null
+    setRoundEmailRecipient(recipientUserId)
+    setRoundEmailWeekdays(current ? current.weekdays : [1, 3])
+    setRoundEmailTime(current ? current.timeHm : '07:00')
+    setRoundEmailError(null)
+    setRoundEmailNotice(null)
+    setRoundEmailOpen(true)
+  }
+  async function saveRoundEmail(desiredWeekdays: number[]) {
+    if (!authUser?.id || !roundEmailRecipient) return
+    const current = roundEmailChains.find((c) => c.recipientUserId === roundEmailRecipient) ?? null
+    const plan = planStatementRoundChainEdit({
+      requestedBy: authUser.id,
+      recipientUserId: roundEmailRecipient,
+      desiredWeekdays,
+      desiredTimeHm: roundEmailTime,
+      current,
+    })
+    if (!plan.ok) {
+      setRoundEmailError(plan.error)
+      return
+    }
+    setRoundEmailBusy(true)
+    setRoundEmailError(null)
+    try {
+      await applyStatementRoundChainPlan(plan)
+      refreshRoundEmailRows()
+      setRoundEmailOpen(false)
+      setRoundEmailNotice(desiredWeekdays.length === 0 ? 'Round email cancelled.' : 'Round email saved — it lists in Settings → My email schedule too.')
+    } catch (e) {
+      setRoundEmailError(e instanceof Error ? e.message : 'Could not save — try again.')
+    }
+    setRoundEmailBusy(false)
   }
   async function assignSender(gcId: string, userId: string | null) {
     setRoundError(null)
@@ -868,6 +940,147 @@ export function JobsGcReviewModal({
               stamps the last-sent pill and the week’s progress.
             </p>
             {roundError ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
+            {/* Email me my round (v2.2771): the statement_round stream — a morning email of your round, rebuilt at send time. */}
+            {authUser?.id ? (
+              <div style={{ marginTop: '0.6rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', fontSize: '0.8125rem' }}>
+                {!roundEmailOpen ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span aria-hidden>✉</span>
+                    {myRoundEmailChain ? (
+                      <>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          Your round is emailed to you {formatWeekdays(myRoundEmailChain.weekdays)} · {formatMinutes(parseHhMm(myRoundEmailChain.timeHm) ?? 0)} · weekly
+                        </span>
+                        <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}>
+                          Edit
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>Get your round by email on the mornings you send — nothing to open, just the list.</span>
+                        <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.15rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          Email me my round…
+                        </button>
+                      </>
+                    )}
+                    {roundEmailChains.filter((c) => c.recipientUserId !== authUser?.id).map((c) => (
+                      <span key={c.recipientUserId} style={{ width: '100%', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        {userNameById(c.recipientUserId)} gets theirs {formatWeekdays(c.weekdays)} · {formatMinutes(parseHhMm(c.timeHm) ?? 0)}
+                        {canCertify ? (
+                          <button type="button" onClick={() => openRoundEmailForm(c.recipientUserId)} style={{ marginLeft: '0.4rem', font: 'inherit', fontSize: '0.7rem', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer' }}>
+                            edit
+                          </button>
+                        ) : null}
+                      </span>
+                    ))}
+                    {canCertify && roundEmailPickableUsers.some((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id)) ? (
+                      <select
+                        aria-label="Set up the round email for another sender"
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value) openRoundEmailForm(e.target.value)
+                        }}
+                        style={{ width: '100%', font: 'inherit', fontSize: '0.75rem', padding: '0.1rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)' }}
+                      >
+                        <option value="">Set it up for another sender…</option>
+                        {roundEmailPickableUsers
+                          .filter((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id))
+                          .map((u) => (
+                            <option key={u.id} value={u.id}>
+                              {u.name}
+                            </option>
+                          ))}
+                      </select>
+                    ) : null}
+                    {roundEmailNotice ? <span style={{ width: '100%', color: 'var(--text-green-700)', fontSize: '0.75rem' }}>{roundEmailNotice}</span> : null}
+                  </div>
+                ) : (
+                  <form
+                    aria-label="Round email schedule"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      void saveRoundEmail(roundEmailWeekdays)
+                    }}
+                    style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
+                  >
+                    <div style={{ fontWeight: 600 }}>
+                      {roundEmailRecipient === authUser?.id ? 'Email me my round' : `Email ${userNameById(roundEmailRecipient)} their round`}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      {[1, 2, 3, 4, 5].map((dow) => {
+                        const on = roundEmailWeekdays.includes(dow)
+                        return (
+                          <button
+                            key={dow}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => setRoundEmailWeekdays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow].sort((a, b) => a - b)))}
+                            style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', fontWeight: on ? 700 : 500, borderRadius: 999, border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-100)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
+                          >
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dow]}
+                          </button>
+                        )
+                      })}
+                      <input
+                        type="time"
+                        value={roundEmailTime}
+                        onChange={(e) => setRoundEmailTime(e.target.value)}
+                        aria-label="Send time (Central)"
+                        style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
+                      />
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Central · weekly · rebuilt fresh at send time</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={roundEmailBusy}
+                        onClick={() => {
+                          setRoundEmailError(null)
+                          void fetchStatementRoundEmailPreview().then(
+                            (html) => {
+                              if (!openHtmlPreviewWindow(html)) setRoundEmailError('Allow pop-ups to preview the email.')
+                            },
+                            (e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Preview failed'),
+                          )
+                        }}
+                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        type="button"
+                        disabled={roundEmailBusy}
+                        onClick={() => {
+                          setRoundEmailError(null)
+                          void sendStatementRoundEmailTest().then(
+                            () => setRoundEmailNotice('Test sent to your address.'),
+                            (e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Test send failed'),
+                          )
+                        }}
+                        title="Sends YOUR round to your own address, [TEST]-prefixed"
+                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                      >
+                        Email me a test
+                      </button>
+                      <span style={{ flex: 1 }} />
+                      {roundEmailChains.some((c) => c.recipientUserId === roundEmailRecipient) ? (
+                        <button type="button" disabled={roundEmailBusy} onClick={() => void saveRoundEmail([])} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: 'none', background: 'none', color: 'var(--text-red-700)', cursor: 'pointer' }}>
+                          Stop emailing
+                        </button>
+                      ) : null}
+                      <button type="button" disabled={roundEmailBusy} onClick={() => setRoundEmailOpen(false)} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}>
+                        Cancel
+                      </button>
+                      <button type="submit" disabled={roundEmailBusy} style={{ padding: '0.25rem 0.8rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', opacity: roundEmailBusy ? 0.6 : 1 }}>
+                        {roundEmailBusy ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                    {roundEmailError ? <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundEmailError}</p> : null}
+                    {roundEmailNotice ? <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-green-700)' }}>{roundEmailNotice}</p> : null}
+                  </form>
+                )}
+              </div>
+            ) : null}
           </div>
         ) : null}
         {pendingSends.length > 0 ? (
@@ -1488,6 +1701,12 @@ export function JobsGcReviewModal({
                     setEmailSending(false)
                     if (res.ok) {
                       setEmailDialogGroup(null)
+                      // An app send of a GC in the round counts as its Sent it (v2.2771) — the mark keeps the
+                      // round honest; app sends already stamped the last-sent pill.
+                      const inRound = g.gcId ? roundItems.find((it) => it.gcId === g.gcId) : undefined
+                      if (g.gcId && inRound && inRound.state !== 'sent') {
+                        void markRound(g.gcId, 'sent', { channel: 'email', note: 'Sent from the app' })
+                      }
                     } else {
                       setEmailError(res.error || 'Send failed — try again.')
                     }
@@ -1570,6 +1789,20 @@ export function JobsGcReviewModal({
                           style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer' }}
                         >
                           Copy for email
+                        </button>
+                        <button
+                          type="button"
+                          disabled={roundBusy}
+                          onClick={() => {
+                            // Draft Message (v2.2771): the app sends and marks the round for you.
+                            setEmailFromRoundGcId(current.gcId)
+                            setRoundOpen(false)
+                            openEmailDialogForGroup(current.group)
+                          }}
+                          title="Draft and send this statement from the app — it marks the round sent for you"
+                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                        >
+                          Send from the app…
                         </button>
                         <button
                           type="button"
