@@ -135,7 +135,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
   // ---- load chart geometry ----
   const W = 1000
   const H = 250
-  const L = 36
+  const L = 48
   const R = 12
   const T = 16
   const B = 30
@@ -258,6 +258,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
               </text>
             </g>
           ))}
+          <AxisTitle x={11} y={T + plotH / 2} label="jobs running that day" />
           {areaPaths.map((p) => (
             <path key={p.band} d={p.d} fill={BAND_COLOR[p.band]} opacity={0.82} />
           ))}
@@ -393,7 +394,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
 function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningWeeklySeries; dayYmds: readonly string[]; todayYmd: string; ticks: ReadonlyArray<{ index: number; label: string }> }) {
   const W = 1000
   const H = 250
-  const L = 36
+  const L = 48
   const R = 12
   const T = 16
   const B = 30
@@ -420,6 +421,7 @@ function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningW
             </text>
           </g>
         ))}
+        <AxisTitle x={11} y={T + plotH / 2} label="jobs touched that week" />
         {hw ? (
           <HoverGuide
             x={L + dayIndex(hw.weekStartYmd) * iw}
@@ -508,5 +510,14 @@ function HoverGuide({ x, width, top, height, plotLeft, plotRight, label }: { x: 
         {label}
       </text>
     </g>
+  )
+}
+
+/** Rotated y-axis title in the left gutter (v2.2791) — says what the numbers count. */
+function AxisTitle({ x, y, label }: { x: number; y: number; label: string }) {
+  return (
+    <text transform={`rotate(-90 ${x} ${y})`} x={x} y={y} textAnchor="middle" fontSize={10} fill="var(--text-muted)" style={{ pointerEvents: 'none' }}>
+      {label}
+    </text>
   )
 }

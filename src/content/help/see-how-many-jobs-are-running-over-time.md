@@ -14,7 +14,7 @@ Go to **Jobs → Job Summary** and switch **View** to {{chip:blue|Timeline}}. It
 
 ## Reading the chart
 
-The chart is the number of jobs running on each day, stacked by how the job stands today:
+The chart is the number of jobs running on each day — the axis up the left says so ("jobs running that day", or "jobs touched that week" on the weekly roll-up) — stacked by how the job stands today:
 
 - {{chip:blue|working}} — still open
 - {{chip:yellow|billed, awaiting payment}} — finished and billed
