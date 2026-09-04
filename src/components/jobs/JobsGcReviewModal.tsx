@@ -271,7 +271,8 @@ export function JobsGcReviewModal({
   onOpenJobDetail,
   startInRound,
 }: JobsGcReviewModalProps) {
-  const [includeCollections, setIncludeCollections] = useState(false)
+  /** Collections jobs ride along by default (v2.2764, owner call); untick to see active billing only. */
+  const [includeCollections, setIncludeCollections] = useState(true)
   const [groupBy, setGroupBy] = useState<GcReviewGroupBy>('gc')
   /** Email… dialog state — one group at a time; To/Subject editable before Send. */
   const [emailDialogGroup, setEmailDialogGroup] = useState<GcReviewGroup | null>(null)
@@ -448,6 +449,14 @@ export function JobsGcReviewModal({
     () => buildGcReviewRollup(billedActiveRows, collectionsRows, { includeCollections: false, groupBy: 'gc' }),
     [billedActiveRows, collectionsRows],
   )
+  /**
+   * Certification basis (v2.2764): certify status, the Certify checklist, and
+   * the week strip all read the active-only GC group, never the displayed one —
+   * so the Include Collections toggle (now on by default) can't flip a certified
+   * GC to "changed since certified", and a certification never snapshots
+   * collections rows. A GC with only collections jobs has nothing to certify.
+   */
+  const certGroupByGc = useMemo(() => new Map(roundRollup.groups.flatMap((g) => (!g.isNoGc && g.gcId ? [[g.gcId, g] as const] : []))), [roundRollup])
   const roundGcIds = useMemo(
     () => roundRollup.groups.flatMap((g) => (!g.isNoGc && g.gcId ? [g.gcId] : [])),
     [roundRollup],
@@ -472,7 +481,7 @@ export function JobsGcReviewModal({
   useEffect(() => {
     if (open && startInRound) setRoundOpen(true)
   }, [open, startInRound])
-  const certProgress = gcReviewWeekProgress(rollup.groups, certsByGc, mergedLastSent, certWeekStart)
+  const certProgress = gcReviewWeekProgress(roundRollup.groups, certsByGc, mergedLastSent, certWeekStart)
   /** Portal links per GC (v2.2151): the globe on the row, the Share item, and the Draft Message card all read this. */
   const gcIdsForPortal = useMemo(() => rollup.groups.filter((g) => !g.isNoGc && g.gcId).map((g) => g.gcId as string), [rollup.groups])
   const { links: portalLinks, refresh: refreshPortalLinks } = useGcPortalLinks(gcIdsForPortal, open && !byDevelopment)
@@ -685,8 +694,19 @@ export function JobsGcReviewModal({
             </span>
           </div>
         )}
-        {rollup.groups.length > 0 ? (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          {/* Include Collections sits left of Share all, on by default (v2.2764). Certification ignores it — see certGroupByGc. */}
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <input
+              type="checkbox"
+              checked={includeCollections}
+              onChange={() => setIncludeCollections((p) => !p)}
+              style={{ margin: 0 }}
+            />
+            Include Collections ({rollup.collectionsCount} · ${formatCurrency(rollup.collectionsTotal)})
+          </label>
+          {rollup.groups.length > 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button
               type="button"
               onClick={() => {
@@ -735,17 +755,7 @@ export function JobsGcReviewModal({
               <span aria-hidden>🖨</span> Print all
             </button>
           </div>
-        ) : null}
-        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={includeCollections}
-              onChange={() => setIncludeCollections((p) => !p)}
-              style={{ margin: 0 }}
-            />
-            Include Collections ({rollup.collectionsCount} · ${formatCurrency(rollup.collectionsTotal)})
-          </label>
+          ) : null}
         </div>
         {/* Personal statement rounds (v2.2072): GCs ≥ threshold, certify-gated,
             emailed personally by the assigned sender who then marks Sent it. */}
@@ -964,9 +974,9 @@ export function JobsGcReviewModal({
                       )
                     })()
                   : null}
-                {!byDevelopment && !g.isNoGc && g.gcId
+                {!byDevelopment && !g.isNoGc && g.gcId && certGroupByGc.has(g.gcId)
                   ? (() => {
-                      const status = gcGroupCertStatus(g, certsByGc.get(g.gcId))
+                      const status = gcGroupCertStatus(certGroupByGc.get(g.gcId!)!, certsByGc.get(g.gcId!))
                       if (status.state === 'certified') {
                         return (
                           <span
@@ -994,14 +1004,15 @@ export function JobsGcReviewModal({
                 {!g.isNoGc ? (
                   /* Right-side action group: Certify sits with Share (owner call, v2.2047). */
                   <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                    {!byDevelopment && g.gcId && canCertify
+                    {!byDevelopment && g.gcId && canCertify && certGroupByGc.has(g.gcId)
                       ? (() => {
-                          const status = gcGroupCertStatus(g, certsByGc.get(g.gcId!))
+                          const certGroup = certGroupByGc.get(g.gcId!)!
+                          const status = gcGroupCertStatus(certGroup, certsByGc.get(g.gcId!))
                           if (status.state === 'changed') {
                             return (
                               <button
                                 type="button"
-                                onClick={() => setCertifyGroup(g)}
+                                onClick={() => setCertifyGroup(certGroup)}
                                 title={`Re-certify ${g.gcName} — the group changed after sign-off`}
                                 style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #f59e0b', borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                               >
@@ -1013,7 +1024,7 @@ export function JobsGcReviewModal({
                           return (
                             <button
                               type="button"
-                              onClick={() => setCertifyGroup(g)}
+                              onClick={() => setCertifyGroup(certGroup)}
                               title={`Certify ${g.gcName} — review each bill and attest the group is accurate`}
                               style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' }}
                             >
