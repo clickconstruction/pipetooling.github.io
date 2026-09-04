@@ -125,6 +125,8 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
   const [paperSignerName, setPaperSignerName] = useState('')
   const [paperFile, setPaperFile] = useState<File | null>(null)
   const [paperLink, setPaperLink] = useState('')
+  /** The green "linked" line only after a paste / Enter / blur — typing keeps the input mounted (v2.2744). */
+  const [paperLinkCommitted, setPaperLinkCommitted] = useState(false)
   const [paperAttachOpen, setPaperAttachOpen] = useState(false)
   const [paperBusy, setPaperBusy] = useState(false)
   const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
@@ -179,6 +181,7 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
     setPaperSignedOn(todayYmdInAppTz())
     setPaperFile(null)
     setPaperLink('')
+    setPaperLinkCommitted(false)
     setPaperAttachOpen(false)
     setRecordRow(null)
     setRecipientName((job.customer_name ?? '').trim())
@@ -820,13 +823,13 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
         >
           <div style={{ fontSize: '0.85rem', display: 'grid', gap: '0.7rem' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Already signed outside the app? Paste the Google Doc and the job reads signed. Nothing is sent to the customer.</div>
-            {isHttpUrl(paperLink) ? (
+            {paperLinkCommitted && isHttpUrl(paperLink) ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.5rem 0.7rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border)', color: 'var(--text-green-800)', fontSize: '0.8rem' }}>
                 <span aria-hidden style={{ width: 16, height: 20, borderRadius: 3, background: 'var(--text-link)', flexShrink: 0 }} />
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   <b>{isGoogleDocsUrl(paperLink) ? 'Google Doc linked' : 'Link filed'}</b> · {shortDocumentLabel(paperLink)}
                 </span>
-                <button type="button" onClick={() => setPaperLink('')} style={{ ...btn, padding: '0.15rem 0.5rem', fontSize: '0.72rem', borderColor: 'transparent', background: 'transparent', color: 'var(--text-muted)' }}>
+                <button type="button" onClick={() => { setPaperLink(''); setPaperLinkCommitted(false) }} style={{ ...btn, padding: '0.15rem 0.5rem', fontSize: '0.72rem', borderColor: 'transparent', background: 'transparent', color: 'var(--text-muted)' }}>
                   change
                 </button>
               </div>
@@ -840,11 +843,14 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
                     style={{ ...inputStyle, marginTop: '0.4rem' }}
                     value={paperLink}
                     onChange={(e) => setPaperLink(e.target.value)}
+                    onBlur={() => { if (isHttpUrl(paperLink)) setPaperLinkCommitted(true) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && isHttpUrl(paperLink)) { e.preventDefault(); setPaperLinkCommitted(true) } }}
                     onPaste={(e) => {
                       const t = e.clipboardData.getData('text')
                       if (t) {
                         e.preventDefault()
                         setPaperLink(t.trim())
+                        setPaperLinkCommitted(isHttpUrl(t))
                       }
                     }}
                     placeholder="https://docs.google.com/document/d/…"
@@ -860,7 +866,7 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
                 </div>
               </div>
             )}
-            {isHttpUrl(paperLink) && !isGoogleDocsUrl(paperLink) ? (
+            {paperLinkCommitted && isHttpUrl(paperLink) && !isGoogleDocsUrl(paperLink) ? (
               <div style={{ fontSize: '0.74rem', color: 'var(--text-orange-800)', background: 'var(--bg-orange-tint)', borderRadius: 6, padding: '0.3rem 0.5rem' }}>
                 That isn&apos;t a Google link. It will be filed as-is — paste the doc&apos;s Share link if you have one.
               </div>
