@@ -12,7 +12,9 @@ const corsHeaders = {
 
 interface NotificationRequest {
   template_type: string
-  step_id: string
+  /** One anchor is required: a workflow step, or (v2.2786) a Sub Labor sheet for sheet work orders. */
+  step_id?: string
+  labor_job_id?: string
   recipient_email: string
   recipient_name: string
   recipient_user_id?: string
@@ -119,6 +121,7 @@ serve(async (req) => {
     const {
       template_type,
       step_id,
+      labor_job_id,
       recipient_email,
       recipient_name,
       recipient_user_id,
@@ -128,9 +131,9 @@ serve(async (req) => {
       variables = {},
     }: NotificationRequest = await req.json()
 
-    if (!template_type || !step_id || !recipient_email || !recipient_name) {
+    if (!template_type || (!step_id && !labor_job_id) || !recipient_email || !recipient_name) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: template_type, step_id, recipient_email, recipient_name' }),
+        JSON.stringify({ error: 'Missing required fields: template_type, step_id or labor_job_id, recipient_email, recipient_name' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -202,7 +205,7 @@ serve(async (req) => {
             title: push_title || subject,
             body: push_body || body.substring(0, 200),
             url: push_url || variables.workflow_link || '/',
-            tag: `workflow-${step_id}`,
+            tag: `workflow-${step_id ?? labor_job_id}`,
           })
 
           webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
@@ -231,19 +234,21 @@ serve(async (req) => {
     if (recipient_user_id && adminClient) {
       let workflowId: string | null = null
       let projectId: string | null = null
-      const { data: stepRow } = await adminClient
-        .from('project_workflow_steps')
-        .select('workflow_id')
-        .eq('id', step_id)
-        .single()
-      if (stepRow?.workflow_id) {
-        workflowId = stepRow.workflow_id
-        const { data: wfRow } = await adminClient
-          .from('project_workflows')
-          .select('project_id')
-          .eq('id', stepRow.workflow_id)
+      if (step_id) {
+        const { data: stepRow } = await adminClient
+          .from('project_workflow_steps')
+          .select('workflow_id')
+          .eq('id', step_id)
           .single()
-        if (wfRow?.project_id) projectId = wfRow.project_id
+        if (stepRow?.workflow_id) {
+          workflowId = stepRow.workflow_id
+          const { data: wfRow } = await adminClient
+            .from('project_workflows')
+            .select('project_id')
+            .eq('id', stepRow.workflow_id)
+            .single()
+          if (wfRow?.project_id) projectId = wfRow.project_id
+        }
       }
       const channel = pushSent > 0 ? 'both' : 'email'
       await adminClient.from('notification_history').insert({
@@ -252,7 +257,7 @@ serve(async (req) => {
         title: subject,
         body_preview: body.substring(0, 200),
         channel,
-        step_id,
+        step_id: step_id ?? null,
         workflow_id: workflowId,
         project_id: projectId,
       })

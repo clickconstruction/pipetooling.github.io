@@ -19,7 +19,8 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildLaborFormSubSheetHtml } from '../../lib/jobsDocuments/subLaborSheet'
 import { resolvedLaborInvoiceLink } from '../../lib/jobs/jobAddressUrls'
 import { SubSheetPortalFieldsBox } from './SubSheetPortalFieldsBox'
-import type { SubSheetStage } from '../../lib/subSheetStage'
+import { normalizeSubSheetStage, type SubSheetStage } from '../../lib/subSheetStage'
+import { SubSheetWorkOrderPanel } from './SubSheetWorkOrderPanel'
 import {
   resolveSubLaborJobByNumber,
   subLaborAssignPickerRows,
@@ -1967,6 +1968,23 @@ function JobsSubLaborFormModalInner(
                   initialHoldReason={
                     (editingLaborJob as { pay_hold_reason?: string | null }).pay_hold_reason ?? null
                   }
+                />
+              )}
+              {editingLaborJob && (
+                <SubSheetWorkOrderPanel
+                  laborJobId={editingLaborJob.id}
+                  sheet={{ job_number: editingLaborJob.job_number, address: laborAddress || editingLaborJob.address, assigned_to_name: editingLaborJob.assigned_to_name }}
+                  sheetTotal={editSummary?.total ?? 0}
+                  sheetOpen={editSummary?.due ?? 0}
+                  sheetStage={normalizeSubSheetStage(editingLaborJob.stage)}
+                  defaultServiceTypeId={
+                    (laborPickedJobId ? jobs.find((j) => j.id === laborPickedJobId)?.service_type_id : null) ??
+                    jobs.find((j) => (j.hcp_number ?? '').trim().toLowerCase() === (editingLaborJob.job_number ?? '').trim().toLowerCase())?.service_type_id ??
+                    null
+                  }
+                  serviceTypes={serviceTypes.map((t) => ({ id: t.id, name: t.name }))}
+                  authUserId={authUserId}
+                  onChanged={() => void loadLaborJobs()}
                 />
               )}
               {editingLaborJob && (

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import {
   SUB_SHEET_STAGES,
@@ -66,6 +67,36 @@ export default function JobsSubLaborTab({
 }: JobsSubLaborTabProps) {
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
   const [stageMenuJobId, setStageMenuJobId] = useState<string | null>(null)
+  /** Sheet-anchored work orders (v2.2786): one chip per sheet under the stage cell. */
+  const [workOrdersBySheet, setWorkOrdersBySheet] = useState<Record<string, SheetWorkOrderChipInfo>>({})
+  const laborJobIdsKey = useMemo(() => laborJobs.map((j) => j.id).sort().join(','), [laborJobs])
+  useEffect(() => {
+    const ids = laborJobIdsKey ? laborJobIdsKey.split(',') : []
+    if (ids.length === 0) {
+      setWorkOrdersBySheet({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const next: Record<string, SheetWorkOrderChipInfo> = {}
+      for (let i = 0; i < ids.length; i += 300) {
+        const { data, error } = await supabase
+          .from('step_commitments')
+          .select('labor_job_id, status, signed_at, accepted_at, offered_at, amount')
+          .in('labor_job_id', ids.slice(i, i + 300))
+          .is('step_id', null)
+          .neq('status', 'cancelled')
+        if (error) return
+        for (const r of (data ?? []) as Array<{ labor_job_id: string | null; status: string; signed_at: string | null; accepted_at: string | null; offered_at: string | null; amount: number }>) {
+          if (r.labor_job_id) next[r.labor_job_id] = { status: r.status, signedAt: r.signed_at ?? r.accepted_at, offeredAt: r.offered_at, amount: Number(r.amount) }
+        }
+      }
+      if (!cancelled) setWorkOrdersBySheet(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [laborJobIdsKey])
   useEffect(() => {
     if (!stageMenuJobId) return
     const close = () => setStageMenuJobId(null)
@@ -327,6 +358,7 @@ export default function JobsSubLaborTab({
                           void onSetLaborJobStage(job.id, stage)
                         }}
                       />
+                      {workOrdersBySheet[job.id] ? <SheetWorkOrderChip info={workOrdersBySheet[job.id]!} /> : null}
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
                       {totalCost > 0 ? (
@@ -579,5 +611,35 @@ function SubSheetStageCell({
         </div>
       )}
     </div>
+  )
+}
+
+type SheetWorkOrderChipInfo = { status: string; signedAt: string | null; offeredAt: string | null; amount: number }
+
+/** "✍ Signed Sep 4" / "Awaiting signature" / "Draft work order" / "Declined" under the stage chip (v2.2786). */
+function SheetWorkOrderChip({ info }: { info: SheetWorkOrderChipInfo }) {
+  const signed = info.status === 'accepted' || info.status === 'approved' || info.status === 'settled'
+  const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
+  const label = signed
+    ? `✍ Signed${info.signedAt ? ` ${fmt(info.signedAt)}` : ''}`
+    : info.status === 'offered'
+      ? 'Awaiting signature'
+      : info.status === 'declined'
+        ? 'Declined'
+        : 'Draft work order'
+  const tone = signed
+    ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }
+    : info.status === 'offered'
+      ? { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+      : info.status === 'declined'
+        ? { background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }
+        : { background: 'var(--bg-muted)', color: 'var(--text-muted)' }
+  return (
+    <span
+      title={`Work order · $${info.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}${info.offeredAt ? ` · sent ${fmt(info.offeredAt)}` : ''}`}
+      style={{ ...tone, display: 'inline-block', marginTop: 4, fontSize: '0.66rem', fontWeight: 650, borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap' }}
+    >
+      {label}
+    </span>
   )
 }
