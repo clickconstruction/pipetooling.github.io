@@ -140,6 +140,19 @@ describe('fuel family split (card purchases only)', () => {
     const s = splitFuelFamily(rows)
     expect(s.card.map((r) => r.id)).toEqual(['a', 'd'])
     expect(s.offCard).toEqual({ usd: 37277, n: 2, top: [{ counterparty: 'HAJOCA CORPORATI', usd: 36737 }, { counterparty: 'Cash App', usd: 540 }] })
+    expect(s.companyCard).toEqual({ usd: 0, n: 0, byCard: [] })
+  })
+  it('sets company-card purchases aside as management tools, by card', () => {
+    const s = splitFuelFamily(
+      [
+        { id: 'a', amount: -60, kind: 'debitCardTransaction', counterparty: 'QuikTrip', hasCard: true, cardId: 'card-mal' },
+        { id: 'g', amount: -147.04, kind: 'debitCardTransaction', counterparty: 'One Step Gps', hasCard: true, cardId: 'card-gps' },
+        { id: 't', amount: -107.17, kind: 'debitCardTransaction', counterparty: 'Tesla', hasCard: true, cardId: 'card-tesla' },
+      ],
+      new Set(['card-gps', 'card-tesla']),
+    )
+    expect(s.card.map((r) => r.id)).toEqual(['a'])
+    expect(s.companyCard).toEqual({ usd: 254.21, n: 2, byCard: [{ cardId: 'card-gps', usd: 147.04 }, { cardId: 'card-tesla', usd: 107.17 }] })
   })
   it('lists unattributed card fuel by card with the nickname when there is one', () => {
     const out = unattributedFuelByCard(

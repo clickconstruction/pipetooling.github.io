@@ -28,7 +28,7 @@ Malachi · {{chip:green|🚚 $8.32/h}} · 2019 Ford F-150 · fuel $3,018 · 496.
 
 The line above the table averages the two deals, which is the comparison that tells you whether paying fuel on a personal truck is cheaper than running one of your own.
 
-- **Fuel** is every debit-card purchase in the ⛽ Fuel & gas tag attributed to the person. Card fuel with no person on it is listed by card above the table — link each card to its person in Banking → Sorting → {{button:outline|User Card Link}} (set the auto-assign user) and it fills in for past and future purchases. A payment that was not on a card never counts as fuel; if one is filed under a vehicle label, the **Not counted** line names it so you can fix the label.
+- **Fuel** is every debit-card purchase in the ⛽ Fuel & gas tag attributed to the person. Card fuel with no person on it is listed by card above the table — each name is a door to Banking → Debit cards, where you link the card to its person (past and future purchases fill in) or mark it a company card. Company-card purchases (GPS, charging, subscriptions) are management tools, never fuel; they show as **Not fuel** with the card names. A payment that was not on a card never counts as fuel; if one is filed under a vehicle label, the **Not counted** line names it so you can fix the label.
 - **Field hours** are approved clock sessions on jobs, the same hours the parts burden divides by.
 - **Override** lets you type a flat $/field hour for a person; blank goes back to the computed rate.
 
