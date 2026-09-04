@@ -8,6 +8,7 @@ import {
   isStatementSendChannel,
   mergeMarksIntoLastSent,
   sendChannelLabel,
+  senderRoundQueue,
   summarizeStatementRound,
   type RoundMarkRow,
 } from './gcStatementRounds'
@@ -169,5 +170,28 @@ describe('send channels (v2.2761)', () => {
   it('a text-message mark merges into last-sent like an email', () => {
     const m = { ...mark('a', 'sent', '2026-08-21T10:00:00Z'), channel: 'text', note: 'texted Dave' }
     expect(mergeMarksIntoLastSent({ a: '2026-08-20T09:00:00Z' }, [m])).toEqual({ a: '2026-08-21T10:00:00Z' })
+  })
+})
+
+describe('senderRoundQueue (v2.2792)', () => {
+  it('walks ready first by amount, then held, then marks; tallies assigned-only', () => {
+    const senders = new Map([['a', 'u2'], ['b', 'u2'], ['c', 'u2'], ['d', 'u2'], ['e', 'u9']])
+    const items = buildStatementRound({
+      groups: [group('a', 20000), group('b', 46000), group('c', 15000), group('d', 30000), group('e', 12000)],
+      certsByGc: new Map([
+        ['a', { ...cert(20000), gc_customer_id: 'a' }],
+        ['b', { ...cert(46000), gc_customer_id: 'b' }],
+        ['c', { ...cert(15000), gc_customer_id: 'c' }],
+        ['e', { ...cert(12000), gc_customer_id: 'e' }],
+      ]),
+      marks: [mark('c', 'sent')],
+      senders,
+      accountMen: new Map(),
+    })
+    const q = senderRoundQueue(items, 'u2')
+    expect(q.queue.map((i) => `${i.gcId}:${i.state}`)).toEqual(['b:ready', 'a:ready', 'd:needs_certify', 'c:sent'])
+    expect(q.sent).toBe(1)
+    expect(q.assigned).toBe(4)
+    expect(senderRoundQueue(items, 'nobody').queue).toEqual([])
   })
 })

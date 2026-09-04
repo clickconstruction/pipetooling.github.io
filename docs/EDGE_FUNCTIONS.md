@@ -2723,7 +2723,7 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Endpoint**: `POST /functions/v1/statement-round-email-dispatch`
 
-**Modes** (crew-day skeleton): `preview` / `test_send` (caller JWT; the caller's own round; office roles dev/master_technician/assistant/controller) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `statement_round_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard; archived / email-less / ineligible recipients stamp and never send). No `send_now` — the round is the recipient's own work list, not something to push at someone.
+**Modes** (crew-day skeleton): `preview` / `test_send` (caller JWT; office roles dev/master_technician/assistant/controller; `preview` also takes `recipient_user_id` to render a colleague's round for the sender card, v2.2792 — `test_send` stays caller-only) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `statement_round_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard; archived / email-less / ineligible recipients stamp and never send). No `send_now` — the round is the recipient's own work list, not something to push at someone.
 
 **Deploy**: `supabase functions deploy statement-round-email-dispatch --no-verify-jwt`. Requires migration `20260904201238` (row_key on the statement payload, round RPCs, table, pg_cron, schedule-surface branches).
 

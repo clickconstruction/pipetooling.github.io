@@ -76,3 +76,17 @@ export async function setGcStatementSender(gcCustomerId: string, userId: string 
   const { error } = await supabase.from('customers').update({ statement_sender_user_id: userId }).eq('id', gcCustomerId)
   if (error) throw new Error(error.message)
 }
+
+/** The newest sent mark a person filed, any week (v2.2781, the sender card's "last activity"). */
+export async function latestGcStatementMarkBy(userId: string): Promise<RoundMarkRow | null> {
+  const { data, error } = await supabase
+    .from('gc_statement_round_marks')
+    .select(MARK_COLUMNS)
+    .eq('acted_by', userId)
+    .eq('action', 'sent')
+    .order('acted_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as RoundMarkRow
+}
