@@ -1,23 +1,22 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { supabase } from '../../lib/supabase'
 import { loadPOItemsSummary } from '../../lib/bids/poItemsSummary'
-import { loadPartsCatalog, loadPartsByIds, missingPartIds, mergeCatalogParts } from '../../lib/materials/partsCatalog'
+import { loadPartsCatalog } from '../../lib/materials/partsCatalog'
+import { useTakeoffPartsCatalog } from '../../hooks/useTakeoffPartsCatalog'
+import { useTakeoffRoughLines } from '../../hooks/useTakeoffRoughLines'
 import { SortableRoughPartLineRow, type PartType } from './SortableRoughPartLineRow'
 import { TakeoffBookAdminSection } from './TakeoffBookAdminSection'
 import { BidsTakeoffMaterialsSummarySection } from './BidsTakeoffMaterialsSummarySection'
 import { TakeoffPartPricesModal } from './TakeoffPartPricesModal'
 import { TakeoffBundleBreakdownModal } from './TakeoffBundleBreakdownModal'
 import { TakeoffAssemblyAuthoringModals, type TakeoffNewTemplateItemDraft } from './TakeoffAssemblyAuthoringModals'
-import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../../lib/materialPOUtils'
-import {
-  fetchLowestPartPrice,
-  fetchLowestPartPricesBatch,
-} from '../../lib/materialPartCatalogPrice'
-import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { addExpandedPartsToPO, expandTemplate } from '../../lib/materialPOUtils'
+import { fetchLowestPartPricesBatch } from '../../lib/materialPartCatalogPrice'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import { buildRoughTakeoffBreakdownHtml, buildExactTakeoffBreakdownHtml } from '../../lib/bidDocuments/takeoffBreakdown'
 import { bidDisplayName } from '../../lib/bids/bidFormatting'
@@ -60,7 +59,6 @@ import type {
 } from '../../lib/bids/bidPricingEngineTypes'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
-type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
 interface ServiceType {
   id: string
@@ -215,7 +213,6 @@ export function BidsTakeoffTab({
   const roughPartLinesSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const [takeoffSearchQuery, setTakeoffSearchQuery] = useState('')
-  const [reorderingRoughPartLine, setReorderingRoughPartLine] = useState(false)
   const [takeoffRoughPartPickerLineId, setTakeoffRoughPartPickerLineId] = useState<string | null>(null)
   const [takeoffRoughPartSearchQuery, setTakeoffRoughPartSearchQuery] = useState('')
   const [roughAddAssemblyModalCountRowId, setRoughAddAssemblyModalCountRowId] = useState<string | null>(null)
@@ -250,7 +247,6 @@ export function BidsTakeoffTab({
     { top: number; left: number; width: number } | null
   >(null)
   const [takeoffCreatedPOId, setTakeoffCreatedPOId] = useState<string | null>(null)
-  const [takeoffTemplatePreviewCache, setTakeoffTemplatePreviewCache] = useState<Record<string, { part_name: string; quantity: number }[] | 'loading' | null>>({})
   const [takeoffPreviewModalTemplateId, setTakeoffPreviewModalTemplateId] = useState<string | null>(null)
   const [takeoffPreviewModalTemplateName, setTakeoffPreviewModalTemplateName] = useState<string | null>(null)
   const [takeoffExistingPOItems, setTakeoffExistingPOItems] = useState<Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> | 'loading' | null>(null)
@@ -272,7 +268,6 @@ export function BidsTakeoffTab({
   const [takeoffNewTemplateApplyPriceIndex, setTakeoffNewTemplateApplyPriceIndex] = useState<number | null>(null)
 
   type MaterialPartWithType = MaterialPart & { part_types?: PartType | null }
-  const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<MaterialPartWithType[]>([])
   // Old / New 1 / New 2 (v2.2768, docs/TAKEOFFS_REFRESH_PLAN.md): per-device, default Old until retirement.
   const [takeoffView, setTakeoffView] = useState<TakeoffView>(() =>
     readStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
@@ -291,8 +286,6 @@ export function BidsTakeoffTab({
   const bidsPartFormIsEditRef = useRef(false)
   /** Rough-line origin captured when the form was opened; see openBidsPartFormForCreate. */
   const bidsPartFormRoughLineIdRef = useRef<string | null>(null)
-  const [supplyHouses, setSupplyHouses] = useState<SupplyHouse[]>([])
-  const [partTypes, setPartTypes] = useState<PartType[]>([])
 
   /**
    * @param roughLineId Rough-part-line origin captured AT CLICK TIME (v2.1395).
@@ -351,44 +344,69 @@ export function BidsTakeoffTab({
   const [editTemplateNewItemPartId, setEditTemplateNewItemPartId] = useState('')
 
 
-  async function loadPartTypes() {
-    if (!selectedServiceTypeId) {
-      setPartTypes([])
-      return
-    }
-    
-    const { data, error } = await supabase
-      .from('part_types')
-      .select('*')
-      .eq('service_type_id', selectedServiceTypeId)
-      .order('sequence_order', { ascending: true })
-    
-    if (error) {
-      console.error('Failed to load part types:', error)
-      setPartTypes([])
-      return
-    }
-    
-    setPartTypes((data as unknown as PartType[]) ?? [])
-  }
 
-  async function loadSupplyHouses() {
-    const { data, error } = await supabase
-      .from('supply_houses')
-      .select('*')
-      .order('name')
-    if (error) {
-      console.error('Failed to load supply houses:', error)
-      return
-    }
-    setSupplyHouses((data as SupplyHouse[]) ?? [])
-  }
+  // T8 seam (v2.2770): the parts catalog + supply houses / part types + the exact-model preview cache.
+  const {
+    takeoffAddTemplateParts,
+    setTakeoffAddTemplateParts,
+    supplyHouses,
+    partTypes,
+    takeoffTemplatePreviewCache,
+    setTakeoffTemplatePreviewCache,
+  } = useTakeoffPartsCatalog<MaterialPartWithType>({
+    activeTab,
+    selectedServiceTypeId,
+    selectedBidForTakeoff,
+    takeoffMappings,
+    takeoffAddTemplateModalOpen,
+    addPartsToTemplateModalOpen,
+    editTemplateModalOpen,
+  })
 
-  useEffect(() => {
-    void loadPartTypes()
-    void loadSupplyHouses()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedServiceTypeId])
+  const refreshTakeoffRoughCatalogLowest = useCallback(async (partIds: string[]) => {
+    const unique = Array.from(new Set(partIds.filter(Boolean)))
+    if (unique.length === 0) return
+    try {
+      const map = await fetchLowestPartPricesBatch(supabase, unique)
+      setTakeoffRoughCatalogLowestByPartId((prev) => {
+        const next = { ...prev }
+        for (const [pid, row] of map) {
+          next[pid] = { price: row.price, supplyHouseName: row.supplyHouseName }
+        }
+        return next
+      })
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to load catalog prices'), 'error')
+    }
+  }, [showToast])
+
+
+  // T9 seam (v2.2770): the Combined persistence engine — every rough-line write goes through here.
+  const {
+    setRoughPartLinePartAndCatalogPrice,
+    resetRoughLineToCatalogPrice,
+    updateTakeoffRoughPartLine,
+    addTakeoffRoughPartLine,
+    removeTakeoffRoughPartLine,
+    handleRoughPartLinesDragEnd,
+    applyRoughAddAssemblyTemplate,
+    insertRoughBundleLine,
+    applyRoughAddAssemblyBundle,
+  } = useTakeoffRoughLines<MaterialPartWithType>({
+    selectedBidForTakeoff,
+    selectedBidVersionId,
+    activeTab,
+    takeoffRoughPartLines,
+    setTakeoffRoughPartLines,
+    takeoffAddTemplateParts,
+    setTakeoffAddTemplateParts,
+    materialTemplates,
+    setError,
+    showToast,
+    refreshTakeoffRoughCatalogLowest,
+    setRoughAddAssemblyExpanding,
+    closeRoughAddAssemblyModal,
+  })
 
   useEffect(() => {
     roughQtyNumpadLineIdRef.current = roughQtyNumpadLineId
@@ -779,129 +797,6 @@ export function BidsTakeoffTab({
     }
   }
 
-  async function persistTakeoffRoughPartLine(line: TakeoffRoughPartLineRow) {
-    if (!selectedBidForTakeoff?.id) return
-    const isBundle = line.partId == null && line.sourceTemplateId != null
-    if (!isBundle && !line.partId?.trim()) return
-    const q = Math.max(0.0001, Number(line.quantity) || 0.0001)
-    const up = Math.max(0, Number(line.unitPrice) || 0)
-    const src = line.sourceMaterialPartPriceId
-    if (line.isSaved) {
-      const { error } = await supabase
-        .from('bids_takeoff_rough_part_lines')
-        .update({
-          part_id: line.partId,
-          quantity: q,
-          unit_price: up,
-          sequence_order: line.sequenceOrder,
-          source_material_part_price_id: src,
-          source_template_id: line.sourceTemplateId ?? null,
-        })
-        .eq('id', line.id)
-      if (error) {
-        console.error('Failed to update rough part line:', error)
-        setError(`Failed to save rough part line: ${error.message}`)
-      }
-    } else {
-      const { data, error } = await supabase
-        .from('bids_takeoff_rough_part_lines')
-        .insert({
-          bid_id: selectedBidForTakeoff.id,
-          bid_version_id: selectedBidVersionId,
-          count_row_id: line.countRowId,
-          part_id: line.partId,
-          quantity: q,
-          unit_price: up,
-          sequence_order: line.sequenceOrder,
-          source_material_part_price_id: src,
-          source_template_id: line.sourceTemplateId ?? null,
-        })
-        .select('id')
-        .single()
-      if (error) {
-        console.error('Failed to insert rough part line:', error)
-        setError(`Failed to save rough part line: ${error.message}`)
-        return
-      }
-      const newId = (data as { id: string }).id
-      setTakeoffRoughPartLines((prev) =>
-        prev.map((l) => (l.id === line.id ? { ...l, id: newId, isSaved: true } : l))
-      )
-    }
-  }
-
-  async function setRoughPartLinePartAndCatalogPrice(lineId: string, partId: string) {
-    let low: Awaited<ReturnType<typeof fetchLowestPartPrice>> = null
-    try {
-      low = await fetchLowestPartPrice(supabase, partId)
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to load catalog price'), 'error')
-    }
-    const unitPrice = low != null ? low.price : 0
-    const sourceMaterialPartPriceId = low != null ? low.priceId : null
-    if (!low) {
-      showToast('No catalog price for this part. Add prices in Materials or use Catalog prices.', 'info')
-    }
-    setTakeoffRoughPartLines((prev) => {
-      const mapped = prev.map((l) =>
-        l.id === lineId ? { ...l, partId, unitPrice, sourceMaterialPartPriceId, sourceTemplateId: null } : l
-      )
-      const line = mapped.find((l) => l.id === lineId)
-      if (line?.partId?.trim()) {
-        queueMicrotask(() => {
-          void persistTakeoffRoughPartLine(line)
-        })
-      }
-      return mapped
-    })
-  }
-
-  async function resetRoughLineToCatalogPrice(lineId: string) {
-    const line = takeoffRoughPartLines.find((l) => l.id === lineId)
-    const partId = line?.partId
-    if (!partId?.trim()) return
-    let low: Awaited<ReturnType<typeof fetchLowestPartPrice>> = null
-    try {
-      low = await fetchLowestPartPrice(supabase, partId)
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to load catalog price'), 'error')
-      return
-    }
-    if (!low) {
-      showToast('No catalog price to reset to.', 'info')
-      return
-    }
-    updateTakeoffRoughPartLine(lineId, {
-      unitPrice: low.price,
-      sourceMaterialPartPriceId: low.priceId,
-    })
-  }
-
-
-  function updateTakeoffRoughPartLine(
-    lineId: string,
-    updates: Partial<
-      Pick<
-        TakeoffRoughPartLineRow,
-        'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId' | 'sourceTemplateId'
-      >
-    >
-  ) {
-    setTakeoffRoughPartLines((prev) => {
-      const mapped = prev.map((l) => (l.id === lineId ? { ...l, ...updates } : l))
-      const line = mapped.find((l) => l.id === lineId)
-      // Persist parts (partId set) and assembly-bundle lines (partId null + sourceTemplateId),
-      // matching persistTakeoffRoughPartLine's own isBundle guard.
-      const persistable = !!line && (!!line.partId?.trim() || (line.partId == null && !!line.sourceTemplateId))
-      if (persistable && line) {
-        queueMicrotask(() => {
-          void persistTakeoffRoughPartLine(line)
-        })
-      }
-      return mapped
-    })
-  }
-
   useEffect(() => {
     if (!roughQtyNumpadLineId) return
     const closeOnScroll = () => {
@@ -982,38 +877,6 @@ export function BidsTakeoffTab({
     roughQtyNumpadOriginalRef.current = null
   }
 
-  function addTakeoffRoughPartLine(countRowId: string) {
-    const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
-    const maxSeq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
-    setTakeoffRoughPartLines((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        countRowId,
-        partId: '',
-        quantity: 1,
-        unitPrice: 0,
-        sourceMaterialPartPriceId: null,
-        sourceTemplateId: null,
-        sequenceOrder: maxSeq + 1,
-        isSaved: false,
-      },
-    ])
-  }
-
-  async function removeTakeoffRoughPartLine(lineId: string) {
-    const line = takeoffRoughPartLines.find((l) => l.id === lineId)
-    setTakeoffRoughPartLines((prev) => prev.filter((l) => l.id !== lineId))
-    if (line?.isSaved) {
-      const { error } = await supabase.from('bids_takeoff_rough_part_lines').delete().eq('id', lineId)
-      if (error) {
-        console.error('Failed to delete rough part line:', error)
-        setTakeoffRoughPartLines((prev) => [...prev, line])
-        setError(`Failed to remove line: ${error.message}`)
-      }
-    }
-  }
-
   function closeTakeoffRemoveConfirm() {
     setTakeoffRemoveConfirm(null)
   }
@@ -1024,54 +887,6 @@ export function BidsTakeoffTab({
     setTakeoffRemoveConfirm(null)
     if (target.kind === 'rough_line') void removeTakeoffRoughPartLine(target.lineId)
     else void removeTakeoffMapping(target.mappingId)
-  }
-
-  async function handleRoughPartLinesDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id || reorderingRoughPartLine) return
-    const activeId = String(active.id)
-    const overId = String(over.id)
-    const activeLine = takeoffRoughPartLines.find((l) => l.id === activeId)
-    const overLine = takeoffRoughPartLines.find((l) => l.id === overId)
-    if (!activeLine || !overLine || activeLine.countRowId !== overLine.countRowId) return
-
-    const sorted = takeoffRoughPartLines
-      .filter((l) => l.countRowId === activeLine.countRowId)
-      .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
-    const oldIndex = sorted.findIndex((l) => l.id === activeId)
-    const newIndex = sorted.findIndex((l) => l.id === overId)
-    if (oldIndex < 0 || newIndex < 0) return
-
-    const reordered = arrayMove(sorted, oldIndex, newIndex)
-    const withSeq: TakeoffRoughPartLineRow[] = reordered.map((l, i) => ({ ...l, sequenceOrder: i }))
-
-    const prevSnapshot = takeoffRoughPartLines.map((l) => ({ ...l }))
-    setReorderingRoughPartLine(true)
-    setTakeoffRoughPartLines((prev) => {
-      const map = new Map(withSeq.map((l) => [l.id, l]))
-      return prev.map((l) => (map.has(l.id) ? map.get(l.id)! : l))
-    })
-    try {
-      const saved = withSeq.filter((l) => l.isSaved)
-      const unsavedWithPart = withSeq.filter((l) => !l.isSaved && (l.partId?.trim() || l.sourceTemplateId))
-      await Promise.all(
-        saved.map((l) =>
-          withSupabaseRetry(
-            async () =>
-              await supabase.from('bids_takeoff_rough_part_lines').update({ sequence_order: l.sequenceOrder }).eq('id', l.id),
-            'reorder rough part line'
-          )
-        )
-      )
-      for (const l of unsavedWithPart) {
-        await persistTakeoffRoughPartLine(l)
-      }
-    } catch (e) {
-      setTakeoffRoughPartLines(prevSnapshot)
-      showToast(formatErrorMessage(e, 'Failed to save line order'), 'error')
-    } finally {
-      setReorderingRoughPartLine(false)
-    }
   }
 
   async function createPOFromTakeoff() {
@@ -1314,150 +1129,6 @@ export function BidsTakeoffTab({
     return Array.from(new Set(ids)).sort().join(',')
   }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, takeoffRoughPartLines])
 
-  const refreshTakeoffRoughCatalogLowest = useCallback(async (partIds: string[]) => {
-    const unique = Array.from(new Set(partIds.filter(Boolean)))
-    if (unique.length === 0) return
-    try {
-      const map = await fetchLowestPartPricesBatch(supabase, unique)
-      setTakeoffRoughCatalogLowestByPartId((prev) => {
-        const next = { ...prev }
-        for (const [pid, row] of map) {
-          next[pid] = { price: row.price, supplyHouseName: row.supplyHouseName }
-        }
-        return next
-      })
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to load catalog prices'), 'error')
-    }
-  }, [showToast])
-
-  async function applyRoughAddAssemblyTemplate(countRowId: string, templateId: string) {
-    if (!selectedBidForTakeoff?.id) return
-    setRoughAddAssemblyExpanding(true)
-    setError(null)
-    try {
-      const expanded = await expandTemplate(supabase, templateId, 1)
-      if (expanded.length === 0) {
-        showToast('This assembly has no parts to add.', 'info')
-        return
-      }
-      const mergedQty = new Map<string, number>()
-      for (const { part_id, quantity } of expanded) {
-        mergedQty.set(part_id, (mergedQty.get(part_id) ?? 0) + quantity)
-      }
-      const partIds = Array.from(mergedQty.keys())
-      const priceMap = await fetchLowestPartPricesBatch(supabase, partIds)
-
-      const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
-      let maxSeq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
-
-      const newLines: TakeoffRoughPartLineRow[] = []
-      for (const [partId, qty] of mergedQty) {
-        maxSeq += 1
-        const low = priceMap.get(partId)
-        newLines.push({
-          id: crypto.randomUUID(),
-          countRowId,
-          partId,
-          quantity: Math.max(0.0001, Number(qty) || 0.0001),
-          unitPrice: low != null ? low.price : 0,
-          sourceMaterialPartPriceId: low != null ? low.priceId : null,
-          sourceTemplateId: templateId,
-          sequenceOrder: maxSeq,
-          isSaved: false,
-        })
-      }
-
-      const missingPrice = newLines.filter((l) => !priceMap.has(l.partId ?? ''))
-      if (missingPrice.length > 0) {
-        showToast(
-          `${missingPrice.length} part(s) have no catalog price; set prices in Materials or edit lines.`,
-          'info'
-        )
-      }
-
-      setTakeoffRoughPartLines((prev) => [...prev, ...newLines])
-
-      for (const line of newLines) {
-        await persistTakeoffRoughPartLine(line)
-      }
-
-      if (
-        activeTab === 'takeoffs' &&
-        selectedBidForTakeoff?.id &&
-        normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough'
-      ) {
-        void refreshTakeoffRoughCatalogLowest(partIds)
-      }
-
-      showToast(`Added ${newLines.length} part line(s) from assembly.`, 'success')
-      closeRoughAddAssemblyModal()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to add assembly'), 'error')
-    } finally {
-      setRoughAddAssemblyExpanding(false)
-    }
-  }
-
-  /** Add an assembly as a single opaque BUNDLE line, priced at its lowest supply-house price. */
-  /**
-   * Append one assembly-bundle rough line (partId=null, sourceTemplateId set) to a
-   * count row at the given unit price and persist it. Returns the new line so callers
-   * can chain. Shared by "Add as bundle" and Save-as-Assembly's bundle override.
-   */
-  async function insertRoughBundleLine(
-    countRowId: string,
-    templateId: string,
-    unitPrice: number,
-  ): Promise<TakeoffRoughPartLineRow> {
-    const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
-    const maxSeq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
-    const newLine: TakeoffRoughPartLineRow = {
-      id: crypto.randomUUID(),
-      countRowId,
-      partId: null,
-      quantity: 1,
-      unitPrice: Math.max(0, Number(unitPrice) || 0),
-      sourceMaterialPartPriceId: null,
-      sourceTemplateId: templateId,
-      sequenceOrder: maxSeq + 1,
-      isSaved: false,
-    }
-    setTakeoffRoughPartLines((prev) => [...prev, newLine])
-    await persistTakeoffRoughPartLine(newLine)
-    return newLine
-  }
-
-  async function applyRoughAddAssemblyBundle(countRowId: string | null, templateId: string) {
-    if (!countRowId || !selectedBidForTakeoff?.id) return
-    setRoughAddAssemblyExpanding(true)
-    setError(null)
-    try {
-      const { data: priceRows } = await supabase
-        .from('material_template_prices')
-        .select('id, price')
-        .eq('template_id', templateId)
-        .order('price', { ascending: true })
-        .limit(1)
-      const lowest = (priceRows ?? [])[0]
-      const unitPrice = lowest ? Math.max(0, Number(lowest.price) || 0) : 0
-
-      await insertRoughBundleLine(countRowId, templateId, unitPrice)
-
-      const asmName = materialTemplates.find((t) => t.id === templateId)?.name ?? 'Assembly'
-      if (lowest) {
-        showToast(`Added "${asmName}" as a bundle ($${unitPrice.toFixed(2)}).`, 'success')
-      } else {
-        showToast(`Added "${asmName}" as a bundle at $0 — set a supply-house price in Materials → Assembly Book.`, 'info')
-      }
-      closeRoughAddAssemblyModal()
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to add assembly bundle'), 'error')
-    } finally {
-      setRoughAddAssemblyExpanding(false)
-    }
-  }
-
   useEffect(() => {
     if (!takeoffRoughCatalogLowestPartIdsKey) {
       setTakeoffRoughCatalogLowestByPartId({})
@@ -1552,42 +1223,7 @@ export function BidsTakeoffTab({
     refreshTakeoffRoughCatalogLowest,
   ])
 
-  useEffect(() => {
-    if (activeTab !== 'takeoffs' || !selectedServiceTypeId || !selectedBidForTakeoff?.id) return
-    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return
-    void (async () => {
-      try {
-        setTakeoffAddTemplateParts(await loadPartsCatalog<MaterialPartWithType>(supabase, selectedServiceTypeId))
-      } catch (e) {
-        console.error('Failed to load the parts catalog:', e)
-      }
-    })()
-  }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, selectedServiceTypeId, supabase])
 
-  // Rows must never render blank because their part is missing from the loaded
-  // list (v2.2755): whatever the catalog load dropped — or a part from another
-  // service type — is fetched by id and merged in. Ids already tried are not
-  // re-requested, so a part RLS hides can't loop the effect.
-  const roughLineMissingPartTriedRef = useRef<Set<string>>(new Set())
-  useEffect(() => {
-    if (takeoffAddTemplateParts.length === 0) return
-    const missing = missingPartIds(takeoffRoughPartLines, takeoffAddTemplateParts).filter(
-      (id) => !roughLineMissingPartTriedRef.current.has(id),
-    )
-    if (missing.length === 0) return
-    for (const id of missing) roughLineMissingPartTriedRef.current.add(id)
-    let cancelled = false
-    void (async () => {
-      try {
-        const found = await loadPartsByIds<MaterialPartWithType>(supabase, missing)
-        if (cancelled || found.length === 0) return
-        setTakeoffAddTemplateParts((prev) => mergeCatalogParts(prev, found))
-      } catch (e) {
-        console.error('Failed to load parts referenced by takeoff rows:', e)
-      }
-    })()
-    return () => { cancelled = true }
-  }, [takeoffRoughPartLines, takeoffAddTemplateParts, supabase])
 
   useEffect(() => {
     if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return
@@ -1603,22 +1239,6 @@ export function BidsTakeoffTab({
     return () => { cancelled = true }
   }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, supabase, materialTemplates])
 
-  useEffect(() => {
-    const idsToLoad = Array.from(
-      new Set(takeoffMappings.map((m) => m.templateId).filter(Boolean))
-    ).filter((id) => takeoffTemplatePreviewCache[id] === undefined)
-    if (idsToLoad.length === 0) return
-    setTakeoffTemplatePreviewCache((prev) => {
-      const next = { ...prev }
-      for (const id of idsToLoad) next[id] = 'loading'
-      return next
-    })
-    for (const tid of idsToLoad) {
-      getTemplatePartsPreview(supabase, tid)
-        .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [tid]: res })))
-        .catch(() => setTakeoffTemplatePreviewCache((p) => ({ ...p, [tid]: null })))
-    }
-  }, [takeoffMappings, takeoffTemplatePreviewCache])
 
   useEffect(() => {
     if (!takeoffExistingPOId.trim()) {
@@ -1635,24 +1255,6 @@ export function BidsTakeoffTab({
     return () => { cancelled = true }
   }, [takeoffExistingPOId])
 
-  useEffect(() => {
-    if (!takeoffAddTemplateModalOpen && !addPartsToTemplateModalOpen && !editTemplateModalOpen) return
-    if (!selectedServiceTypeId) {
-      setTakeoffAddTemplateParts([])
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const rows = await loadPartsCatalog<MaterialPartWithType>(supabase, selectedServiceTypeId)
-        if (!cancelled) setTakeoffAddTemplateParts(rows)
-      } catch (e) {
-        console.error('Failed to load the parts catalog:', e)
-        if (!cancelled) setTakeoffAddTemplateParts([])
-      }
-    })()
-    return () => { cancelled = true }
-  }, [takeoffAddTemplateModalOpen, addPartsToTemplateModalOpen, editTemplateModalOpen, selectedServiceTypeId])
 
 
   function applyBundleQuoteToLine(lineId: string, price: number, supplyHouseName: string) {
