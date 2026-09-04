@@ -2,7 +2,7 @@
 title: see what customers see
 category: Office
 roles: dev
-keywords: what customers see, customer view, sample customer, estimate email preview, bid room preview, journeys, settings, customer experience, sample data
+keywords: what customers see, customer view, sample customer, estimate email preview, bid room preview, contract email preview, journeys, settings, customer experience, sample data
 order: 65
 ---
 **Settings → What customers see** shows every email and page a customer, a general contractor or a subcontractor gets, rendered live with sample data, in the order they meet them. Use it after you change a Setting — the estimate copy, the public terms, the footer, the bid cover-letter defaults — to see every surface follow.
@@ -17,6 +17,12 @@ Each strip is one audience. Each step names what sends it (*Estimates → Send t
 
 - A step with a small picture is **live**: the real page, or the real email, at phone width.
 - **Sent by another system** means it is not built by this app (the bill email comes from Stripe).
+
+:::example The subcontractor's strip
+{{chip:gray|Portal link, texted}} → {{chip:gray|Sub portal}} → {{chip:gray|Contract email}} → {{chip:gray|Contract to sign}} → {{chip:gray|Signed}}
+:::
+
+The **Contract email** is the one People → Contracts → **Send for signature** sends, built by the same code: it shows the default opening line, **you** as the sender, and the sample sub's portal address. The real send lets you type your own opening message and subject.
 
 ## Open a step large
 

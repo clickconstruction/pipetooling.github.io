@@ -69,7 +69,7 @@ export function SettingsWhatCustomersSeeTab() {
       sender: user?.email ? { name: profileName?.trim() || '', email: user.email, phone: senderPhone } : null,
     }
     const out: SampleEmails = {}
-    for (const id of ['estimate', 'bid-room', 'bid-room-revised'] as const) out[id] = buildSampleEmail(id, ctx)
+    for (const id of ['estimate', 'bid-room', 'bid-room-revised', 'contract'] as const) out[id] = buildSampleEmail(id, ctx)
     return out
   }, [rows, origin, user?.email, profileName, senderPhone])
 

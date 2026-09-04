@@ -20,6 +20,10 @@ describe('customerJourneys (What customers see)', () => {
     expect(findStep(journeys, 'homeowner', 'estimate-thankyou')?.render).toEqual({ kind: 'page', path: `/estimate/accept?t=${SAMPLE_TOKEN_DONE}` })
     expect(findStep(journeys, 'gc', 'gc-portal')?.render).toEqual({ kind: 'page', path: `/portal?t=${SAMPLE_TOKEN_GC}` })
     expect(findStep(journeys, 'sub', 'sub-contract')?.render).toEqual({ kind: 'page', path: `/contract/accept?t=${SAMPLE_TOKEN}` })
+    // The contract email comes right before the page it links to (v2.2777).
+    const subIds = journeys.find((j) => j.id === 'sub')!.steps.map((s) => s.id)
+    expect(subIds.indexOf('sub-contract-email')).toBe(subIds.indexOf('sub-contract') - 1)
+    expect(findStep(journeys, 'sub', 'sub-contract-email')?.render).toEqual({ kind: 'email', email: 'contract' })
     // Every surface now renders — no step is left for a later release.
     expect(journeys.flatMap((j) => j.steps).some((s) => s.render.kind === 'soon')).toBe(false)
   })

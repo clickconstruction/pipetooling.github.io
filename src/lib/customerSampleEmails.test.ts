@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleBidRoomEmail, buildSampleEmail, buildSampleEstimateEmail, type SampleEmailContext } from './customerSampleEmails'
+import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleBidRoomEmail, buildSampleContractEmail, buildSampleEmail, buildSampleEstimateEmail, type SampleEmailContext } from './customerSampleEmails'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER } from './customerSample'
 
 const ctx: SampleEmailContext = {
@@ -35,6 +35,17 @@ describe('sample emails (What customers see)', () => {
     const r = buildSampleBidRoomEmail(ctx, true)
     expect(r.subject).toContain('Revised')
     expect(r.html).toContain('What changed in revision 2:')
+  })
+  it('the contract email is the send function\'s builder over the sample agreement, sub and viewer', () => {
+    const m = buildSampleContractEmail(ctx)
+    expect(m.subject).toBe('Please sign: Subcontractor agreement (sample) · Click Plumbing and Electrical')
+    expect(m.html).toContain('For Sam Plumber')
+    expect(m.html).toContain('Sent to you by Wendi Douglas')
+    expect(m.html).toContain('href="https://clicktooling.com/contract/accept?t=sample"')
+    expect(m.html).toContain('works until Sep 18, 2026')
+    expect(m.html).toContain('my.clickplumbing.com/sams-plumbing keeps your jobs')
+    expect(m.replyTo).toBe('wendi@clickplumbing.com')
+    expect(buildSampleEmail('contract', { ...ctx, sender: null }).html).toContain('Sent to you by Click Plumbing and Electrical')
   })
   it('falls back to the fixture text when a setting is blank', () => {
     const m = buildSampleBidRoomEmail({ ...ctx, rows: [] }, false)

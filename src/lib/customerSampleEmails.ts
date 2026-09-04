@@ -8,8 +8,10 @@ import { ESTIMATE_PUBLIC_TERMS_KEY, sampleBidRoomResponse, type AppSettingRow } 
 import { BID_COVER_LETTER_EXCLUSIONS_KEY, BID_COVER_LETTER_TERMS_KEY } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { parseSharedBidRoomPayload } from '../../supabase/functions/_shared/bidRoomPayload'
 import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } from './estimateCustomerExperience'
-import { SAMPLE_BID, SAMPLE_ESTIMATE, SAMPLE_HOMEOWNER, ymdPlusDays } from './customerSample'
-import { BID_ROOM_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { buildContractSigningEmail, type ContractSigningEmail } from './contractSigningEmail'
+import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
+import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
+import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
 
 export type { AppSettingRow }
 
@@ -69,7 +71,28 @@ export function buildSampleBidRoomEmail(ctx: SampleEmailContext, revised: boolea
   })
 }
 
+/**
+ * The contract-for-signature email (v2.2777): the send function's own builder over the sample
+ * agreement, from the signed-in viewer, with the link's 14-day expiry and the sample sub's portal
+ * address — the default opening line, since the per-send message is typed at send time.
+ */
+export function buildSampleContractEmail(ctx: SampleEmailContext): ContractSigningEmail {
+  return buildContractSigningEmail({
+    documentName: SAMPLE_CONTRACT.documentName,
+    personName: SAMPLE_SUB.contact,
+    acceptUrl: `${ctx.origin}${CONTRACT_SAMPLE_PATH}`,
+    expiresYmd: ymdPlusDays(ctx.todayYmd, 14),
+    sentYmd: ctx.todayYmd,
+    subjectOverride: '',
+    introPlain: '',
+    sender: ctx.sender ? { name: ctx.sender.name, email: ctx.sender.email } : null,
+    portalUrl: `${PORTAL_SHORT_ORIGIN}${SAMPLE_SUB.portalSlug}`,
+    officePhone: null,
+  })
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
+  if (id === 'contract') return buildSampleContractEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
