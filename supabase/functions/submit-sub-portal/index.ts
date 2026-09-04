@@ -18,6 +18,10 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
  *  - sign_link      → mints a fresh /contract/accept token for one of the
  *                     sub's own unsigned documents (send-contract-for-signature
  *                     mint pattern, no email)
+ *  - mark_work_done → v2.2767: the sub says one of their own sheets is done —
+ *                     stage working → walkthrough (source = portal, optional
+ *                     note), the stage trigger posts to the job's Activity
+ *                     feed, and a dispatch note tells the office to walk it
  */
 
 const corsHeaders = {
@@ -232,6 +236,61 @@ serve(async (req) => {
         return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
       }
       return jsonResponse({ ok: true, signPath: `/contract/accept?t=${rawToken}` })
+    }
+
+    // ── mark_work_done: the sub's one button on a job card ────────────────
+    if (kind === 'mark_work_done') {
+      const laborJobId = typeof body.laborJobId === 'string' && /^[0-9a-f-]{36}$/.test(body.laborJobId) ? body.laborJobId : null
+      if (!laborJobId) return jsonResponse({ error: 'Bad request' }, 400)
+      const note = typeof body.note === 'string' ? body.note.trim().slice(0, 300) : ''
+      // The sheet must be one of THIS person's (junction-first, the same
+      // scoping the statement uses) — never another sub's money.
+      const { data: junction } = await admin
+        .from('people_labor_job_assignees')
+        .select('labor_job_id')
+        .eq('labor_job_id', laborJobId)
+        .eq('person_id', link.person_id)
+        .maybeSingle()
+      if (!junction) return jsonResponse({ error: 'Not found' }, 404)
+      const { data: sheet } = await admin
+        .from('people_labor_jobs')
+        .select('id, stage, job_number, address')
+        .eq('id', laborJobId)
+        .maybeSingle()
+      const sheetRow = sheet as { id: string; stage: string | null; job_number: string | null; address: string | null } | null
+      if (!sheetRow) return jsonResponse({ error: 'Not found' }, 404)
+      if ((sheetRow.stage ?? 'working') !== 'working') {
+        return jsonResponse({ error: 'This job is already past the work stage — call the office if something changed.' }, 409)
+      }
+      const nowIso = new Date().toISOString()
+      const { data: moved, error: moveErr } = await admin
+        .from('people_labor_jobs')
+        .update({
+          stage: 'walkthrough',
+          stage_changed_at: nowIso,
+          stage_changed_by: null,
+          stage_source: 'portal',
+          stage_note: note || null,
+        })
+        .eq('id', sheetRow.id)
+        .eq('stage', 'working')
+        .select('id')
+      if (moveErr || !moved || moved.length === 0) {
+        console.error('sub portal mark_work_done failed', moveErr)
+        return jsonResponse({ error: 'Something went wrong. Please try again.' }, moveErr ? 500 : 409)
+      }
+      const where = [sheetRow.job_number, sheetRow.address].map((v) => (v ?? '').trim()).filter(Boolean).join(' ')
+      await insertDispatchNote(admin, link, `Ready to walk — ${personName} · ${where || 'sub sheet'}`, {
+        kind: 'sub_work_done',
+        personId: link.person_id,
+        personName,
+        laborJobId: sheetRow.id,
+        jobNumber: sheetRow.job_number,
+        address: sheetRow.address,
+        note: note || null,
+        markedAt: nowIso,
+      })
+      return jsonResponse({ ok: true, stage: 'walkthrough', stageChangedOn: todayYmdInAppTz() })
     }
 
     // ── accept_offer / decline_offer ──────────────────────────────────────

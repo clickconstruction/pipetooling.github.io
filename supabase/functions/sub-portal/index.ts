@@ -22,7 +22,8 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 /**
  * Sub portal payload (sub-portal train): resolves a sub portal link token OR
  * a custom address slug and returns ONLY that person's Work & Pay statement —
- * sheets with line items and open balances, the payment ledger (memos are
+ * sheets with line items, open balances and their stage (working →
+ * walkthrough → customer_pay, v2.2767), the payment ledger (memos are
  * sub-visible unless hidden), open work offers, and paperwork STATUS (never
  * document contents). No auth: the link is the capability.
  *
@@ -161,7 +162,7 @@ serve(async (req) => {
     if (laborJobIds.length > 0) {
       const { data: sheetsRaw } = await admin
         .from('people_labor_jobs')
-        .select('id, address, job_number, job_date, labor_rate, portal_status, payable_after, pay_hold_reason')
+        .select('id, address, job_number, job_date, labor_rate, stage, stage_changed_at, stage_source, payable_after, pay_hold_reason')
         .in('id', laborJobIds)
         .limit(500)
       sheetRows = (sheetsRaw ?? []) as SubSheetRow[]

@@ -240,12 +240,14 @@ export default function Jobs() {
     loadLaborJobs,
     deleteLaborJob,
     updateLaborJobDate,
+    setLaborJobStage,
     recordLaborJobPayment,
     recordLaborJobBackcharge,
     deleteLaborJobPayment,
     updateLaborJobPayment,
   } = useSubLaborLedger({
     authUserId: authUser?.id,
+    authUserName: authProfileName,
     setError,
     // Keep the open Edit Sub Labor modal in sync after each ledger reload.
     onLaborJobsReloaded: (mappedJobs) => {
@@ -1764,6 +1766,7 @@ export default function Jobs() {
           onEditLaborJob={(job) => subLaborFormRef.current?.openEdit(job)}
           onPrintJobSubSheet={printJobSubSheet}
           onUpdateLaborJobDate={updateLaborJobDate}
+          onSetLaborJobStage={setLaborJobStage}
           onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
           onOpenBackcharge={(target) => subLaborPaymentModalsRef.current?.openBackcharge(target)}
         />

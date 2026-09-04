@@ -21,7 +21,9 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       id: 'demo-s1',
       jobNumber: 'J-1482',
       address: '1208 Brazos St',
-      status: 'in_progress',
+      stage: 'working',
+      stageChangedOn: null,
+      stageSource: null,
       items: [
         { label: '14 × Top out fixtures — 3.5 hr each @ $58/hr', amount: 2842 },
         { label: 'Water heater set (fixed price)', amount: 278 },
@@ -37,7 +39,9 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       id: 'demo-s2',
       jobNumber: 'J-1477',
       address: '894 Lamar Blvd',
-      status: 'complete',
+      stage: 'walkthrough',
+      stageChangedOn: '2026-09-01',
+      stageSource: 'portal',
       items: [
         { label: '18 × Trim set fixtures — 2.4 hr each @ $58/hr', amount: 2505.6 },
         { label: 'Final walk & punch (fixed price)', amount: 54.4 },

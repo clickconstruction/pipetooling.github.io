@@ -12,11 +12,16 @@ export type SubPortalCompany = {
   email: string
 }
 
+export type SubPortalSheetStage = 'working' | 'walkthrough' | 'customer_pay'
+
 export type SubPortalSheet = {
   id: string
   jobNumber: string | null
   address: string | null
-  status: 'in_progress' | 'complete' | null
+  /** v2.2767: working → walkthrough → customer_pay; paid sheets leave the list. */
+  stage: SubPortalSheetStage
+  stageChangedOn: string | null
+  stageSource: 'office' | 'portal' | 'auto' | null
   items: Array<{ label: string; amount: number }>
   agreed: number
   paid: number
@@ -85,7 +90,8 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
   const r = raw as Record<string, unknown>
   const id = str(r.id)
   if (!id) return null
-  const statusRaw = str(r.status)
+  const stageRaw = str(r.stage)
+  const sourceRaw = str(r.stageSource)
   const items = Array.isArray(r.items)
     ? r.items
         .map((it) => {
@@ -100,7 +106,9 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
     id,
     jobNumber: strOrNull(r.jobNumber),
     address: strOrNull(r.address),
-    status: statusRaw === 'in_progress' || statusRaw === 'complete' ? statusRaw : null,
+    stage: stageRaw === 'walkthrough' || stageRaw === 'customer_pay' ? stageRaw : 'working',
+    stageChangedOn: strOrNull(r.stageChangedOn),
+    stageSource: sourceRaw === 'office' || sourceRaw === 'portal' || sourceRaw === 'auto' ? sourceRaw : null,
     items,
     agreed: num(r.agreed),
     paid: num(r.paid),

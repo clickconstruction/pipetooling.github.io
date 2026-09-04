@@ -2,60 +2,108 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import {
+  SUB_SHEET_STAGES,
+  SUB_SHEET_STAGE_HINT,
+  SUB_SHEET_STAGE_LABEL,
+  normalizeSubSheetStage,
+  normalizeSubSheetStageSource,
+  subSheetStageStamp,
+  type SubSheetStage,
+} from '../../lib/subSheetStage'
+import type { SetSubSheetStageResult, SubPortalOfficeWriteResult } from '../../types/database-functions'
 
 /**
- * "Shown on the sub's portal" box (sub-portal train) — the three per-sheet
- * fields the portal's job card reads: status override, payable-after date,
- * and the plain-words hold reason the sub reads verbatim. Self-contained:
- * saves through the set_sub_sheet_portal_fields RPC (office-gated), so the
+ * "Shown on the sub's portal" box — the stage the sheet is at (v2.2767:
+ * working → walkthrough → customer_pay, either direction), the payable-after
+ * date, and the plain-words hold reason the sub reads verbatim. Self-
+ * contained: the stage saves through set_sub_sheet_stage and the two pay
+ * fields through set_sub_sheet_portal_fields (both office-gated), so the
  * 2.5k-line form modal only mounts it.
- *
- * Initial values arrive via props (the sheet row, cast by the caller — the
- * columns land with the sub-portal migration; until it applies, fields start
- * blank and save reports the friendly error).
  */
 
 export type SubSheetPortalFieldsBoxProps = {
   laborJobId: string
-  initialStatus: string | null
+  contractorName: string | null
+  initialStage: string | null
+  initialStageChangedAt: string | null
+  initialStageSource: string | null
+  initialStageNote: string | null
+  initialStageChangedByName: string | null
   initialPayableAfter: string | null
   initialHoldReason: string | null
+  /** Lets the parent patch its row after a save (the ledger chip reads it). */
+  onStageSaved?: (stage: SubSheetStage) => void
 }
 
 export function SubSheetPortalFieldsBox({
   laborJobId,
-  initialStatus,
+  contractorName,
+  initialStage,
+  initialStageChangedAt,
+  initialStageSource,
+  initialStageNote,
+  initialStageChangedByName,
   initialPayableAfter,
   initialHoldReason,
+  onStageSaved,
 }: SubSheetPortalFieldsBoxProps) {
   const { showToast } = useToastContext()
-  const [status, setStatus] = useState('')
+  const [stage, setStage] = useState<SubSheetStage>('working')
+  const [savedStage, setSavedStage] = useState<SubSheetStage>('working')
   const [payableAfter, setPayableAfter] = useState('')
   const [holdReason, setHoldReason] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setStatus(initialStatus === 'in_progress' || initialStatus === 'complete' ? initialStatus : '')
+    const s = normalizeSubSheetStage(initialStage)
+    setStage(s)
+    setSavedStage(s)
     setPayableAfter(initialPayableAfter ?? '')
     setHoldReason(initialHoldReason ?? '')
     setDirty(false)
-  }, [laborJobId, initialStatus, initialPayableAfter, initialHoldReason])
+  }, [laborJobId, initialStage, initialPayableAfter, initialHoldReason])
+
+  const stamp = subSheetStageStamp({
+    source: normalizeSubSheetStageSource(initialStageSource),
+    changedAt: initialStageChangedAt,
+    changedByName: initialStageChangedByName,
+    contractorName,
+  })
 
   async function save() {
     setSaving(true)
     try {
+      if (stage !== savedStage) {
+        const { data, error } = (await withSupabaseRetry(
+          () =>
+            supabase.rpc('set_sub_sheet_stage' as never, {
+              p_labor_job_id: laborJobId,
+              p_stage: stage,
+              p_note: null,
+            } as never),
+          'set sub sheet stage',
+        )) as { data: unknown; error: { message: string } | null }
+        const errMsg = error?.message ?? (data as SetSubSheetStageResult | null)?.error
+        if (errMsg) {
+          showToast(`Could not move the stage: ${errMsg}`, 'error')
+          return
+        }
+        setSavedStage(stage)
+        onStageSaved?.(stage)
+      }
       const { data, error } = (await withSupabaseRetry(
         () =>
           supabase.rpc('set_sub_sheet_portal_fields' as never, {
             p_labor_job_id: laborJobId,
-            p_portal_status: status || null,
+            p_portal_status: null,
             p_payable_after: payableAfter || null,
             p_pay_hold_reason: holdReason.trim() || null,
           } as never),
         'set sub sheet portal fields',
       )) as { data: unknown; error: { message: string } | null }
-      const errMsg = error?.message ?? (data as { error?: string } | null)?.error
+      const errMsg = error?.message ?? (data as SubPortalOfficeWriteResult | null)?.error
       if (errMsg) {
         showToast(`Could not save portal fields: ${errMsg}`, 'error')
       } else {
@@ -93,25 +141,53 @@ export function SubSheetPortalFieldsBox({
       <div style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--text-blue-700)', letterSpacing: '0.05em' }}>
         SHOWN ON THE SUB&#8217;S PORTAL
       </div>
-      <div style={{ display: 'flex', gap: '0.7rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 150 }}>
-          <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 }}>
-            Status
-          </label>
-          <select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value)
-              setDirty(true)
-            }}
-            disabled={saving}
-            style={inputStyle}
-          >
-            <option value="">Auto (from linked step)</option>
-            <option value="in_progress">In progress</option>
-            <option value="complete">Work complete</option>
-          </select>
+      <div style={{ marginTop: '0.6rem' }}>
+        <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 }}>
+          Stage
+        </label>
+        <div role="radiogroup" aria-label="Sheet stage" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', flexWrap: 'wrap' }}>
+          {SUB_SHEET_STAGES.map((s, i) => {
+            const on = stage === s
+            return (
+              <button
+                key={s}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                title={SUB_SHEET_STAGE_HINT[s]}
+                disabled={saving}
+                onClick={() => {
+                  setStage(s)
+                  setDirty(true)
+                }}
+                style={{
+                  padding: '0.4rem 0.7rem',
+                  fontSize: '0.8rem',
+                  fontWeight: on ? 700 : 500,
+                  border: 'none',
+                  borderLeft: i === 0 ? 'none' : '1px solid var(--border-strong)',
+                  background: on ? 'var(--bg-violet-100)' : 'var(--surface)',
+                  color: on ? 'var(--text-violet-700)' : 'var(--text-700)',
+                  cursor: saving ? 'wait' : 'pointer',
+                }}
+              >
+                {SUB_SHEET_STAGE_LABEL[s]}
+              </button>
+            )
+          })}
         </div>
+        <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+          {stamp ? (
+            <>
+              Last moved by {stamp}
+              {initialStageNote ? <> · &#8220;{initialStageNote}&#8221;</> : null}
+            </>
+          ) : (
+            'Paid sets itself when the balance hits $0. Every move writes a line on the job’s Activity feed.'
+          )}
+        </p>
+      </div>
+      <div style={{ display: 'flex', gap: '0.7rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 150 }}>
           <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 }}>
             Payable after
@@ -144,7 +220,7 @@ export function SubSheetPortalFieldsBox({
           style={inputStyle}
         />
         <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-          Leave blank and the portal simply shows the open balance with no promise.
+          Leave blank and the stage sentence speaks for itself.
         </p>
       </div>
       {dirty && (

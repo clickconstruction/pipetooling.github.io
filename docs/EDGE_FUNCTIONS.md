@@ -1018,6 +1018,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Sample** (v2.2760, What customers see): `token=sample` skips link and slug resolution — no sign-in (v2.2763 dropped the office-JWT gate); returns Sam's Plumbing's fixture statement from `_shared/customerSampleFixtures.ts` with `payRun` from the live `sub_pay_run_day` / `sub_pay_explainer` settings. No person, no rows.
 
+**Stages** (v2.2767): each sheet carries `stage` (`working` | `walkthrough` | `customer_pay`), `stageChangedOn` (YMD of the last move) and `stageSource` (`office` | `portal` | `auto`) — read from `people_labor_jobs.stage*`; unknown values normalize to `working`. The old `status` field is gone (paid sheets never appear: open = $0 leaves the list).
+
 **Endpoint**: `GET /functions/v1/sub-portal?token=<opaque>` or `GET /functions/v1/sub-portal?slug=<address>`
 
 **Dates** (v2.2703): the sheet window's "today" is the Central civil day (`todayYmdInAppTz()`).
@@ -1028,9 +1030,11 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-sub-portal
 
-**Purpose**: Everything a sub can DO from the portal, token-authenticated like submit-portal-request. Four kinds: `availability` (rate-limited 5/hour per link → `dispatch_requests` with `pending_payload.source='sub_portal'` + `notify-dispatch-request` fan-out); `accept_offer` — **sign-to-accept**: validates the `offered` + unexpired commitment belongs to the link's person, validates/stores a drawn signature PNG (magic bytes, 512 KB cap, `contract-signer-signatures` bucket under `commitments/<id>/`, compensating delete on failure), transitions `offered → accepted` while stamping the full signature record of truth on the row (`signed_at`, `signer_printed_name`, `signer_signature_mode` type|draw, `signer_signature_storage_path`, `signer_consented_at`, `signer_ip`, `signer_user_agent`), then drops a "signed & accepted" dispatch note; `decline_offer` (`offered → declined` with the required reason + dispatch note); `sign_link` — mints a fresh 14-day `/contract/accept` token for one of the sub's own `unsent`/`sent` `person_contract_documents` (send-contract-for-signature mint pattern, no email; the newest link wins).
+**Purpose**: Everything a sub can DO from the portal, token-authenticated like submit-portal-request. Five kinds (the fifth, `mark_work_done`, below): `availability` (rate-limited 5/hour per link → `dispatch_requests` with `pending_payload.source='sub_portal'` + `notify-dispatch-request` fan-out); `accept_offer` — **sign-to-accept**: validates the `offered` + unexpired commitment belongs to the link's person, validates/stores a drawn signature PNG (magic bytes, 512 KB cap, `contract-signer-signatures` bucket under `commitments/<id>/`, compensating delete on failure), transitions `offered → accepted` while stamping the full signature record of truth on the row (`signed_at`, `signer_printed_name`, `signer_signature_mode` type|draw, `signer_signature_storage_path`, `signer_consented_at`, `signer_ip`, `signer_user_agent`), then drops a "signed & accepted" dispatch note; `decline_offer` (`offered → declined` with the required reason + dispatch note); `sign_link` — mints a fresh 14-day `/contract/accept` token for one of the sub's own `unsent`/`sent` `person_contract_documents` (send-contract-for-signature mint pattern, no email; the newest link wins).
 
 **Endpoint**: `POST /functions/v1/submit-sub-portal` — `{ token, kind, ... }` (`website` is the honeypot on availability).
+
+**`mark_work_done`** (v2.2767): `{ token, kind: 'mark_work_done', laborJobId, note? }` — the sub's "My work here is done" button. The sheet must be one of the link's person's (`people_labor_job_assignees`) and at `working` (404 / 409 otherwise); moves it to `walkthrough` with `stage_source = 'portal'`, `stage_changed_by = NULL` and the trimmed note (≤300 chars) — the `people_labor_jobs_stage_to_activity` trigger posts the job's Activity line — then drops a **"Ready to walk — <sub> · <job> <address>"** dispatch note (`pending_payload.kind = 'sub_work_done'`, same `notify-dispatch-request` fan-out as availability). Returns `{ ok, stage: 'walkthrough', stageChangedOn }`.
 
 **Dates** (v2.2703): offer expiry compares against the Central civil day (`todayYmdInAppTz()`), not the UTC date.
 

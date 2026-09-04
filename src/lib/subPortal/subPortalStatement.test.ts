@@ -24,7 +24,9 @@ function sheet(over: Partial<SubSheetRow> & { id: string }): SubSheetRow {
     job_number: 'J-1482',
     job_date: '2026-08-20',
     labor_rate: 58,
-    portal_status: null,
+    stage: null,
+    stage_changed_at: null,
+    stage_source: null,
     payable_after: null,
     pay_hold_reason: null,
     ...over,
@@ -72,7 +74,7 @@ describe('subLineLaborCost', () => {
 describe('buildSubSheets', () => {
   it('builds the job card: items, agreed/paid/backcharges/open', () => {
     const sheets = buildSubSheets(
-      [sheet({ id: 's1', portal_status: 'in_progress', payable_after: '2026-09-05', pay_hold_reason: 'Friday pay run' })],
+      [sheet({ id: 's1', stage: 'walkthrough', stage_changed_at: '2026-09-04T20:12:00Z', stage_source: 'portal', payable_after: '2026-09-05', pay_hold_reason: 'Friday pay run' })],
       [item({ job_id: 's1' }), item({ job_id: 's1', fixture: 'Water heater set', is_fixed: true, hrs_per_unit: 0, direct_labor_amount: 278, sequence_order: 1 })],
       [payment({ job_id: 's1' }), payment({ job_id: 's1', amount: -180, memo: 'Restock', sequence_order: 1 })],
     )
@@ -82,7 +84,9 @@ describe('buildSubSheets', () => {
     expect(s.paid).toBe(1500)
     expect(s.backcharges).toBe(180)
     expect(s.open).toBe(1440)
-    expect(s.status).toBe('in_progress')
+    expect(s.stage).toBe('walkthrough')
+    expect(s.stageChangedOn).toBe('2026-09-04')
+    expect(s.stageSource).toBe('portal')
     expect(s.payableAfter).toBe('2026-09-05')
     expect(s.payHoldReason).toBe('Friday pay run')
     expect(s.items.map((i) => i.label)).toEqual([
@@ -98,13 +102,15 @@ describe('buildSubSheets', () => {
     expect(s!.open).toBe(0)
   })
 
-  it('normalizes unknown portal_status to null and sorts items by sequence', () => {
+  it('normalizes an unknown stage to working and sorts items by sequence', () => {
     const [s] = buildSubSheets(
-      [sheet({ id: 's1', portal_status: 'weird' })],
+      [sheet({ id: 's1', stage: 'weird', stage_source: 'sub' })],
       [item({ job_id: 's1', fixture: 'B', sequence_order: 2 }), item({ job_id: 's1', fixture: 'A', sequence_order: 1 })],
       [],
     )
-    expect(s!.status).toBeNull()
+    expect(s!.stage).toBe('working')
+    expect(s!.stageChangedOn).toBeNull()
+    expect(s!.stageSource).toBeNull()
     expect(s!.items[0]!.label).toContain('A')
   })
 })

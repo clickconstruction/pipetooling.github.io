@@ -89,6 +89,49 @@ const STRINGS = {
   yourName: { en: 'Your name', es: 'Su nombre' },
   namePlaceholder: { en: 'Your full legal name', es: 'Su nombre legal completo' },
   cancel: { en: 'Cancel', es: 'Cancelar' },
+  // ── Sub sheet stages (v2.2767): the tracker rail, its sentence, the sub's one button ──
+  railWork: { en: 'Work', es: 'Trabajo' },
+  railWalk: { en: 'Walk-through', es: 'Revisión' },
+  railCustomer: { en: 'Customer pays', es: 'El cliente paga' },
+  railPaid: { en: "You're paid", es: 'Le pagamos' },
+  chipWalk: { en: 'Walk-through next', es: 'Sigue la revisión' },
+  chipCustomer: { en: 'Customer to pay', es: 'Falta el pago del cliente' },
+  stageWorkingLine: {
+    en: "Finish up, then tell us below and we'll come walk it.",
+    es: 'Termine el trabajo, avísenos abajo y pasamos a revisarlo.',
+  },
+  stageWalkPortalLine: {
+    en: "You told us the work's done {date}. We'll schedule the walk-through and let you know.",
+    es: 'Nos avisó que el trabajo quedó listo el {date}. Programaremos la revisión y le avisamos.',
+  },
+  stageWalkOfficeLine: {
+    en: "Work's done — our walk-through is next.",
+    es: 'Trabajo terminado — sigue nuestra revisión.',
+  },
+  stageCustomerLine: {
+    en: "Passed the walk-through{date}. The customer's payment is the last thing between you and this money — it queues for the next pay run the day it lands.",
+    es: 'Pasó la revisión{date}. El pago del cliente es lo único que falta — el día que llega, entra a la siguiente corrida de pago.',
+  },
+  workDoneButton: { en: '✓ My work here is done', es: '✓ Ya terminé este trabajo' },
+  workDoneTitle: { en: 'Done with the work at {where}?', es: '¿Terminó el trabajo en {where}?' },
+  workDoneBody: {
+    en: "We'll schedule the walk-through and move this toward payment. Anything we should know before we come out?",
+    es: 'Programaremos la revisión y avanzamos hacia su pago. ¿Algo que debamos saber antes de ir?',
+  },
+  workDonePlaceholder: {
+    en: 'e.g. Cleanout is behind the water heater — gate code 4471',
+    es: 'p. ej. La limpieza está detrás del calentador — código del portón 4471',
+  },
+  workDoneConfirm: { en: '✓ Yes, ready for the walk-through', es: '✓ Sí, listo para la revisión' },
+  workDoneNotYet: { en: 'Not yet', es: 'Todavía no' },
+  workDoneFootnote: {
+    en: "This tells our office today's date and your name — it doesn't change what you're owed.",
+    es: 'Esto le avisa a la oficina la fecha de hoy y su nombre — no cambia lo que se le debe.',
+  },
+  workDoneThanks: {
+    en: "Thanks — we'll schedule the walk-through and let you know.",
+    es: 'Gracias — programaremos la revisión y le avisamos.',
+  },
 } as const
 
 export type SubPortalStringKey = keyof typeof STRINGS

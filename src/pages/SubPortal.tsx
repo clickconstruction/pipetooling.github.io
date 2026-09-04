@@ -147,6 +147,18 @@ export default function SubPortal() {
         }
         [data-print-only]{display:none !important}
         @media print { [data-print-only]{display:block !important} }
+        /* Sub sheet stage rail (v2.2767): four dots, one lit */
+        .sp-rail{display:grid;grid-template-columns:repeat(4,1fr);position:relative;margin:10px 0 2px;z-index:0}
+        .sp-rail::before{content:'';position:absolute;left:12.5%;right:12.5%;top:7px;height:2px;background:${HAIR}}
+        .sp-st{position:relative;text-align:center;font-size:10.5px;letter-spacing:.02em;color:${FAINT};line-height:1.25;padding:0 2px}
+        .sp-st i{display:block;width:14px;height:14px;border-radius:50%;background:${CARD};border:2px solid ${HAIR};margin:0 auto 5px;font-style:normal;font-size:9px;line-height:10px;color:#fff;box-sizing:border-box}
+        .sp-st.done{color:${PAPER_GREEN}}
+        .sp-st.done i{background:${PAPER_GREEN};border-color:${PAPER_GREEN}}
+        .sp-st.now{color:${COPPER};font-weight:700}
+        .sp-st.now i{background:${COPPER};border-color:${COPPER};box-shadow:0 0 0 3px #f6e6d8}
+        .sp-st.done::after,.sp-st.now::after{content:'';position:absolute;top:7px;left:-50%;width:100%;height:2px;background:${PAPER_GREEN};z-index:-1}
+        .sp-st:first-child::after{display:none}
+        @media (max-width:400px){.sp-st{font-size:9.5px}}
       `}</style>
       <div style={{ maxWidth: 730, margin: '0 auto' }}>
         <div data-screen-only style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 8 }}>
@@ -334,7 +346,9 @@ function SubPortalStatement({
       {payload.sheets.length === 0 ? (
         <p style={{ fontSize: 13.5, color: MUTED, marginTop: 12 }}>{t('noOpenJobs')}</p>
       ) : (
-        payload.sheets.map((sheet) => <SheetCard key={sheet.id} sheet={sheet} lang={lang} t={t} />)
+        payload.sheets.map((sheet) => (
+          <SheetCard key={sheet.id} sheet={sheet} lang={lang} t={t} submitToken={submitToken} preparedOn={payload.preparedOn} />
+        ))
       )}
 
       {/* Offers — screen only: a stale printed offer is a liability */}
@@ -510,10 +524,91 @@ function SubPortalStatement({
   )
 }
 
-function SheetCard({ sheet, lang, t }: { sheet: SubPortalSheet; lang: SubPortalLang; t: T }) {
+type WorkDoneUi = { kind: 'idle' } | { kind: 'asking' } | { kind: 'sending' } | { kind: 'done' }
+
+/**
+ * One job card (v2.2767 stages): line items, the Agreed · Paid · Open row,
+ * the four-dot tracker rail with its plain-words sentence, the office's
+ * pay-when line, and — only while the sheet is waiting on work — the sub's
+ * one button: "My work here is done" (optional note → the office walks it).
+ */
+function SheetCard({
+  sheet,
+  lang,
+  t,
+  submitToken,
+  preparedOn,
+}: {
+  sheet: SubPortalSheet
+  lang: SubPortalLang
+  t: T
+  submitToken: string
+  preparedOn: string
+}) {
+  const [stage, setStage] = useState(sheet.stage)
+  const [stageChangedOn, setStageChangedOn] = useState(sheet.stageChangedOn)
+  const [stageSource, setStageSource] = useState(sheet.stageSource)
+  const [ui, setUi] = useState<WorkDoneUi>({ kind: 'idle' })
+  const [note, setNote] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
   const payWhenParts: string[] = []
   if (sheet.payableAfter) payWhenParts.push(t('payableAfter', { date: formatSubPortalDate(sheet.payableAfter, lang) }))
   if (sheet.payHoldReason) payWhenParts.push(sheet.payHoldReason)
+
+  const stageIndex = stage === 'working' ? 0 : stage === 'walkthrough' ? 1 : 2
+  const railLabels = [t('railWork'), t('railWalk'), t('railCustomer'), t('railPaid')]
+  const chip =
+    stage === 'working'
+      ? { label: t('inProgress'), bg: '#e7effa', fg: '#1d4e89' }
+      : stage === 'walkthrough'
+        ? { label: t('chipWalk'), bg: '#f6e6d8', fg: COPPER }
+        : { label: t('chipCustomer'), bg: '#f6e6d8', fg: COPPER }
+  const changedLabel = stageChangedOn ? formatSubPortalDate(stageChangedOn, lang) : null
+  const sentence =
+    stage === 'working'
+      ? t('stageWorkingLine')
+      : stage === 'walkthrough'
+        ? stageSource === 'portal' && changedLabel
+          ? t('stageWalkPortalLine', { date: changedLabel })
+          : t('stageWalkOfficeLine')
+        : t('stageCustomerLine', { date: changedLabel ? (lang === 'es' ? ` el ${changedLabel}` : ` ${changedLabel}`) : '' })
+
+  async function markWorkDone() {
+    setUi({ kind: 'sending' })
+    setError(null)
+    const finish = (on: string) => {
+      setStage('walkthrough')
+      setStageChangedOn(on)
+      setStageSource('portal')
+      setUi({ kind: 'done' })
+    }
+    // Nothing is saved in sample mode — the walkthrough just shows the answered state.
+    if (sampleStateFromToken(submitToken)) {
+      finish(preparedOn)
+      return
+    }
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/submit-sub-portal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: submitToken, kind: 'mark_work_done', laborJobId: sheet.id, note: note.trim() }),
+      })
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; stageChangedOn?: string; error?: string } | null
+      if (res.ok && json?.ok) {
+        finish(typeof json.stageChangedOn === 'string' && json.stageChangedOn ? json.stageChangedOn : preparedOn)
+        return
+      }
+      setError(json?.error ?? 'Something went wrong. Please try again, or call the office.')
+      setUi({ kind: 'asking' })
+    } catch {
+      setError('Something went wrong. Please check your connection.')
+      setUi({ kind: 'asking' })
+    }
+  }
+
+  const where = sheet.address ?? sheet.jobNumber ?? t('workOrder')
+
   return (
     <div style={cardStyle} data-avoid-break>
       <div
@@ -531,23 +626,21 @@ function SheetCard({ sheet, lang, t }: { sheet: SubPortalSheet; lang: SubPortalL
           <span style={{ fontWeight: 700 }}>{sheet.jobNumber ?? t('workOrder')}</span>
           {sheet.address ? <span style={{ color: MUTED }}> · {sheet.address}</span> : null}
         </div>
-        {sheet.status ? (
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.07em',
-              textTransform: 'uppercase',
-              borderRadius: 999,
-              padding: '3px 9px',
-              background: sheet.status === 'complete' ? '#e8f3ea' : '#e7effa',
-              color: sheet.status === 'complete' ? PAPER_GREEN : '#1d4e89',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {sheet.status === 'complete' ? t('workComplete') : t('inProgress')}
-          </span>
-        ) : null}
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.07em',
+            textTransform: 'uppercase',
+            borderRadius: 999,
+            padding: '3px 9px',
+            background: chip.bg,
+            color: chip.fg,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {chip.label}
+        </span>
       </div>
       <div style={{ padding: '0.65rem 0.9rem 0.8rem' }}>
         {sheet.items.map((item, i) => (
@@ -582,10 +675,71 @@ function SheetCard({ sheet, lang, t }: { sheet: SubPortalSheet; lang: SubPortalL
             </div>
           ))}
         </div>
+
+        {/* The tracker rail: what stands between the sub and this money */}
+        <div className="sp-rail" role="list" aria-label={railLabels.join(' → ')}>
+          {railLabels.map((label, i) => (
+            <div key={label} role="listitem" className={`sp-st${i < stageIndex ? ' done' : i === stageIndex ? ' now' : ''}`} aria-current={i === stageIndex ? 'step' : undefined}>
+              <i aria-hidden>{i < stageIndex ? '✓' : ''}</i>
+              {label}
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 8, fontSize: 12.5, color: MUTED, borderTop: `1px solid ${HAIR}`, paddingTop: 8, lineHeight: 1.5 }}>
+          {ui.kind === 'done' ? <strong style={{ color: PAPER_GREEN }}>{t('workDoneThanks')}</strong> : sentence}
+        </div>
         {payWhenParts.length > 0 && (
-          <div style={{ marginTop: 8, fontSize: 12, color: MUTED, borderTop: `1px solid ${HAIR}`, paddingTop: 7, lineHeight: 1.5 }}>
+          <div style={{ marginTop: 6, fontSize: 12, color: MUTED, lineHeight: 1.5 }}>
             <strong style={{ color: PAPER_GREEN }}>{payWhenParts[0]}</strong>
             {payWhenParts.length > 1 ? <> — {payWhenParts.slice(1).join(' — ')}</> : null}
+          </div>
+        )}
+
+        {stage === 'working' && ui.kind === 'idle' && (
+          <div data-screen-only>
+            <button
+              type="button"
+              onClick={() => setUi({ kind: 'asking' })}
+              style={{ background: PAPER_GREEN, color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 10 }}
+            >
+              {t('workDoneButton')}
+            </button>
+          </div>
+        )}
+        {stage === 'working' && (ui.kind === 'asking' || ui.kind === 'sending') && (
+          <div data-screen-only style={{ marginTop: 10, borderTop: `1px solid ${HAIR}`, paddingTop: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5 }}>{t('workDoneTitle', { where })}</div>
+            <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2, lineHeight: 1.5 }}>{t('workDoneBody')}</div>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value.slice(0, 300))}
+              placeholder={t('workDonePlaceholder')}
+              disabled={ui.kind === 'sending'}
+              style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, background: 'var(--surface)', color: INK, padding: '0.5rem 0.6rem', fontSize: 13.5, fontFamily: 'inherit', minHeight: 56, marginTop: 8 }}
+            />
+            {error ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{error}</div> : null}
+            <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                type="button"
+                disabled={ui.kind === 'sending'}
+                onClick={() => void markWorkDone()}
+                style={{ background: PAPER_GREEN, color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 700, cursor: ui.kind === 'sending' ? 'wait' : 'pointer' }}
+              >
+                {ui.kind === 'sending' ? '…' : t('workDoneConfirm')}
+              </button>
+              <button
+                type="button"
+                disabled={ui.kind === 'sending'}
+                onClick={() => {
+                  setUi({ kind: 'idle' })
+                  setError(null)
+                }}
+                style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                {t('workDoneNotYet')}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: FAINT, marginTop: 8 }}>{t('workDoneFootnote')}</div>
           </div>
         )}
       </div>

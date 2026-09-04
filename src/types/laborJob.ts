@@ -16,6 +16,14 @@ export type LaborJob = {
   /** Optional project/step anchors (RUN_SUBS_PLAN PR 0.3); set by commitment settlement in Phase 2. */
   project_id?: string | null
   step_id?: string | null
+  /** Sub sheet stage (v2.2767): working | walkthrough | customer_pay; paid is derived from the balance. */
+  stage?: string | null
+  stage_changed_at?: string | null
+  stage_changed_by?: string | null
+  stage_source?: string | null
+  stage_note?: string | null
+  /** Resolved display name of stage_changed_by (office moves only). */
+  stage_changed_by_name?: string | null
   /** Project name resolved for anchored sheets (display only). */
   project_name?: string | null
   items?: Array<{
