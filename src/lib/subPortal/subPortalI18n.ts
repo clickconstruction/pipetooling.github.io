@@ -75,19 +75,6 @@ const STRINGS = {
     en: "We keep these on every job's file so builders never hold up your payment over paperwork.",
     es: 'Guardamos estos documentos en el expediente de cada trabajo para que los constructores nunca detengan su pago por papeleo.',
   },
-  tearLabel: { en: 'tell us your availability', es: 'díganos su disponibilidad' },
-  moreWork: { en: 'Looking for more work?', es: '¿Busca más trabajo?' },
-  moreWorkBody: {
-    en: "Tell us when you're free and how many hands you have — we'll match you to what's coming.",
-    es: 'Díganos cuándo está libre y cuántas manos tiene — lo conectamos con lo que viene.',
-  },
-  availabilityPlaceholder: {
-    en: 'e.g. Free after Sep 20, two of us, prefer south Austin',
-    es: 'p. ej. Libre después del 20 sep, somos dos, preferimos el sur de Austin',
-  },
-  phonePlaceholder: { en: 'Best phone number', es: 'Mejor número de teléfono' },
-  sendToOffice: { en: 'Send to the office', es: 'Enviar a la oficina' },
-  sentToOffice: { en: "Sent — we'll be in touch.", es: 'Enviado — nos pondremos en contacto.' },
   yourPage: { en: 'Your page, any time', es: 'Su página, a cualquier hora' },
   yourPageBody: {
     en: 'Bookmark it or scan the code — it always shows your latest jobs, pay, and paperwork.',

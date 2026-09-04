@@ -49,4 +49,4 @@ Every sub's pay lives on **sheets**: line items (fixtures × hours × rate, or f
 
 ## 6 · What comes back to you
 
-Sub activity arrives in the **dispatch inbox**: signed-and-accepted work orders, declines with reasons, and availability notes subs send from their portal ("free after the 20th, two of us"). Treat those like any other dispatch item — they're subs telling you how to keep them busy.
+Sub activity arrives in the **dispatch inbox**: signed-and-accepted work orders and declines with reasons. Treat those like any other dispatch item — they're subs telling you how to keep them busy.
