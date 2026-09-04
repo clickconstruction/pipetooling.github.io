@@ -115,7 +115,8 @@ import {
   parseAcceptHeaderBrand,
   type EstimateAcceptHeaderBrand,
 } from '../lib/estimateAcceptHeaderBrand'
-import { buildEstimateEmailHtml } from '../lib/estimateEmailHtmlPreview'
+import { buildEstimateLetterheadEmail, estimateEmailCompanyName } from '../lib/estimateEmailLetterhead'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import {
   formatEstimateListUpdatedLines,
   formatEstimateUpdatedRelativeCompact,
@@ -164,7 +165,8 @@ const SEND_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Mirrors the live EMAIL_FROM edge-function secret (sender the customer sees) —
 // if that secret changes, update this label (and supabase/functions/_shared/emailFrom.ts) with it.
-const ESTIMATE_EMAIL_FROM_LABEL = 'ClickTooling <team@noreply.clicktooling.com>'
+/** The verified sending address; the display name is the brand's company (send-estimate-to-customer). */
+const ESTIMATE_EMAIL_FROM_ADDRESS = 'team@noreply.clicktooling.com'
 
 const PREVIEW_EMAIL_ACCEPT_URL = 'https://example.com/estimate/accept?t=preview'
 
@@ -352,8 +354,8 @@ const CX_OVERRIDE_SECTIONS: [CxOverrideSectionConfig, CxOverrideSectionConfig, C
   {
     title: 'Email',
     description:
-      'Templates may include {{accept_url}}, {{title}}, and {{estimate_number}}. Leave blank to use organization defaults (dev: Settings → Estimate customer experience defaults).',
-    keys: ['email_subject_template', 'email_body_template'],
+      'The body template may include {{title}} and {{estimate_number}}. Its first paragraph opens the email; the rest sign it off below the button (a paragraph holding {{accept_url}} is replaced by the button). The subject is built for you: "Estimate #N — title — total · company". Leave blank to use organization defaults (dev: Settings → Estimate customer experience defaults).',
+    keys: ['email_body_template'],
   },
   {
     title: 'Acceptance page',
@@ -462,10 +464,6 @@ const estimatesPageShellCss = `
   }
   .${ESTIMATES_PAGE_CLASS}.estimates-page-shell--detail {
     max-width: min(900px, 100%);
-  }
-  .${ESTIMATES_PAGE_CLASS} .estimate-email-html-preview-root img {
-    max-width: 100%;
-    height: auto;
   }
   @media (max-width: 640px) {
     .${ESTIMATES_PAGE_CLASS} {
@@ -3357,19 +3355,45 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     previewEmailTitle,
   ])
 
-  const customerEmailPreviewHtml = useMemo(() => {
-    if (!staffResolvedExperience) return ''
-    const body = staffResolvedExperience.emailBody
+  /** The exact email the customer gets — same builder as send-estimate-to-customer (v2.2747). */
+  const customerEmailPreview = useMemo(() => {
+    if (!row || !staffResolvedExperience) return null
     const brand = acceptanceDocHeaderBrand
-    if (!brand) return buildEstimateEmailHtml(body)
-    const rel = acceptHeaderBrandImageSrc(brand)
-    const imageUrl =
-      typeof window !== 'undefined' ? new URL(rel, window.location.origin).href : rel
-    return buildEstimateEmailHtml(body, {
-      imageUrl,
-      imageAlt: acceptHeaderBrandLabel(brand),
+    const rel = brand ? acceptHeaderBrandImageSrc(brand) : null
+    const brandImageUrl = rel ? (typeof window !== 'undefined' ? new URL(rel, window.location.origin).href : rel) : null
+    const options = isDraft ? syncedEstimateOptions : normalizeEstimateOptionsFromJson(row.options_snapshot)
+    const sentAt = !isDraft && row.sent_at ? new Date(row.sent_at) : new Date()
+    const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }).format(sentAt)
+    return buildEstimateLetterheadEmail({
+      docKind: isChangeOrderDocKind(row.doc_kind) ? 'change_order' : 'estimate',
+      estimateNumber: row.estimate_number,
+      title: previewEmailTitle,
+      totalCents: isDraft ? totalCents : row.total_cents,
+      validUntilYmd: isDraft ? validUntil.trim() || null : row.valid_until,
+      forAddress: acceptancePreviewForLine,
+      acceptUrl: acceptUrlForTemplatePreview,
+      brand,
+      brandImageUrl,
+      bodyText: staffResolvedExperience.emailBody,
+      options: options.map((o) => ({ name: o.name, recommended: o.recommended, totalCents: estimateOptionTotalCents(o) })),
+      footerLines: staffResolvedExperience.acceptPageFooter.split('\n'),
+      sender: user?.email ? { name: profileName?.trim() || '', email: user.email } : null,
+      dateLabel,
     })
-  }, [staffResolvedExperience, acceptanceDocHeaderBrand])
+  }, [
+    row,
+    staffResolvedExperience,
+    acceptanceDocHeaderBrand,
+    isDraft,
+    syncedEstimateOptions,
+    previewEmailTitle,
+    totalCents,
+    validUntil,
+    acceptancePreviewForLine,
+    acceptUrlForTemplatePreview,
+    user?.email,
+    profileName,
+  ])
 
   const cxTemplateDefaults = useMemo(
     () => mergeEstimateExperienceStrings(appCxSettings, {}, { docKind: row?.doc_kind }),
@@ -6190,7 +6214,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             </button>
           </div>
 
-          {customerPreviewTab === 'email' && staffResolvedExperience && (
+          {customerPreviewTab === 'email' && customerEmailPreview && (
             <>
               <div
                 style={{
@@ -6202,39 +6226,25 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 }}
               >
                 <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
-                  <strong>From:</strong> {ESTIMATE_EMAIL_FROM_LABEL}
+                  <strong>From:</strong> {estimateEmailCompanyName(acceptanceDocHeaderBrand)} &lt;{ESTIMATE_EMAIL_FROM_ADDRESS}&gt;
+                  {customerEmailPreview.replyTo ? <> · <strong>Reply-To:</strong> {customerEmailPreview.replyTo}</> : null}
                 </p>
                 <p style={{ margin: '0 0 0.5rem' }}>
                   <strong>To:</strong> {previewEmailTo}
                 </p>
                 <p style={{ margin: '0 0 0.5rem' }}>
-                  <strong>Subject:</strong> {staffResolvedExperience.emailSubject}
+                  <strong>Subject:</strong> {customerEmailPreview.subject}
                 </p>
-                <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>HTML preview</p>
+                <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>What the customer sees</p>
                 <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  Matches the HTML email (centered logo when an acceptance page logo is selected).
+                  Built by the same code that sends it. The logo appears when an acceptance page logo is selected.
                 </p>
-                <div
-                  style={{
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    overflowX: 'auto',
-                  }}
-                >
-                  <div
-                    className="estimate-email-html-preview-root"
-                    style={{
-                      margin: 0,
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 6,
-                      padding: '0.75rem',
-                      fontFamily: 'system-ui, sans-serif',
-                    }}
-                    // eslint-disable-next-line react/no-danger -- HTML is generated only via buildEstimateEmailHtml (escaped plain body)
-                    dangerouslySetInnerHTML={{ __html: customerEmailPreviewHtml }}
-                  />
-                </div>
+                <iframe
+                  title="Estimate email preview"
+                  sandbox=""
+                  srcDoc={customerEmailPreview.html}
+                  style={{ width: '100%', height: 640, border: '1px solid var(--border)', borderRadius: 6 }}
+                />
                 <p style={{ margin: '0.75rem 0 0.35rem', fontWeight: 600 }}>Plain text</p>
                 <pre
                   style={{
@@ -6247,7 +6257,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     padding: '0.75rem',
                   }}
                 >
-                  {staffResolvedExperience.emailBody}
+                  {customerEmailPreview.text}
                 </pre>
               </div>
               {isDraft ? renderCxDraftSectionFields(CX_OVERRIDE_SECTIONS[0]) : null}
