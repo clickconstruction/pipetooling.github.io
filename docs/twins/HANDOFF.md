@@ -96,8 +96,8 @@ session artifacts; this is its doc home):
   (`FEEDBACK_LOOP.md` step 0); those seven still owe their paste.
 - **A shadow was audited unsealed**: b418 and b419 were opened before v2.2543 stamped
   `twin_source_bid_id`, so the tab could not hold them; Wendi audited b418 (live, unsent
-  Take 5 Brownsville) in the open. A six-row pairing backfill is prepared in the
-  v2.2795 fragment and awaits the owner's run; b418's scorecard is auditor-exposed.
+  Take 5 Brownsville) in the open. The six unstamped bids were paired by hand the
+  same day (SQL in the v2.2795 fragment); b418's scorecard is auditor-exposed.
 
 ### As of 2026-09-01
 

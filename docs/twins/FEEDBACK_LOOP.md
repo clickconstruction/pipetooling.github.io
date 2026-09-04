@@ -32,8 +32,8 @@ count. Each card:
   set (`open_shadow` stamps it since v2.2543). The two shadows opened before
   that deploy on 2026-08-31 lacked the pairing, and b418 (Take 5 Brownsville —
   live, unsent) was audited in the open on 2026-09-04: the auditor saw the
-  robot's rows before her own number existed. A pairing backfill for the six
-  unstamped robot bids is prepared (v2.2795 fragment) and awaits the owner;
+  robot's rows before her own number existed. The six unstamped robot bids
+  (b418, b419, b411–b414) were paired by hand the same day (v2.2795 fragment);
   read b418's eventual scorecard as **auditor-exposed**. On a shadow, confirm
   the pairing via `get_work_state` before you heartbeat `done`.
 - **Receipts** render indented under each note: 🤖 → "Learned: …" with the
