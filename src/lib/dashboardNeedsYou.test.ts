@@ -306,6 +306,7 @@ describe('buildNeedsYouItems', () => {
     expect(one[0]?.severity).toBe('blue')
     expect(one[0]?.title).toBe('A payment cleared behind a conditional release')
     expect(one[0]?.detail).toContain('$2,200')
+    expect(one[0]?.detail).toContain('Open the list')
     expect(one[0]?.actionLabel).toBe('Issue release')
     const many = buildNeedsYouItems(inputs({ lienUnconditionalOwed: { count: 3, total: 5400 } }))
     expect(many[0]?.title).toBe('3 payments cleared behind conditional releases')

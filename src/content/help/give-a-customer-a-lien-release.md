@@ -75,3 +75,14 @@ Once a release is minted, the app keeps it in sight:
 :::example The follow-through
 A conditional release only takes effect when the check clears — and once it does, the customer is owed the **unconditional** version. When a payment recorded on the job covers a conditional release, an **Issue unconditional** button appears next to it in Bill Customer, prefilled from the original. A {{chip:blue|Needs you}} card on your Dashboard counts any that are waiting, so none get forgotten.
 :::
+
+## Work the cleared releases from the Dashboard
+
+When the **Needs you** card says a payment cleared behind a conditional release, {{button:blue|Issue release}} opens a list rather than the Pipeline board. Every waiting release is a row: the job, the customer, the conditional release with its amount and issue date, and the check that cleared it — oldest cleared first, with the total owed at the bottom.
+
+- {{button:green|Issue unconditional}} opens the Release of Lien window already on the **Unconditional · progress** form with the covered bill lines selected and the amount filled from the applied payments. Mint it (print, PDF, or request signature) and the row disappears; the card count falls with it.
+- The **job name** opens the Job window (Job · Edit · Bill) for context. The list stays open underneath, so closing the window puts you right back.
+- **View release** reopens the original conditional document so you can check the amount and through-date first.
+
+The same list opens from the Needs you section in Quickfill on a phone, with each row as a card and a full-width button.
+

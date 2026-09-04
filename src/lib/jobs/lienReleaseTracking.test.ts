@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
+  appliedByInvoiceIdFromPayments,
+  buildLienUnconditionalQueue,
   computeLienUnconditionalOwed,
   isLienWaiverFormType,
+  lienQueuePaymentLabel,
   lienReleaseClearance,
   lienReleaseFieldsFromSnapshot,
   lienReleaseFormLabel,
   lienReleasesOwingUnconditional,
   liveLienReleases,
   type JobLienReleaseRow,
+  type LienQueuePayment,
 } from './lienReleaseTracking'
 
 function release(partial: Partial<JobLienReleaseRow>): JobLienReleaseRow {
@@ -151,5 +155,84 @@ describe('lienReleasesOwingUnconditional', () => {
       voided_at: '2026-08-21T00:00:00Z',
     })
     expect(lienReleasesOwingUnconditional([cleared, voided], paid).map((r) => r.id)).toEqual(['c1'])
+  })
+})
+
+describe('buildLienUnconditionalQueue (the Dashboard queue)', () => {
+  const jobs = new Map([
+    ['job-1', { id: 'job-1', hcp_number: '1042', click_number: 'C77', job_name: 'Mission Hills — Bldg C', customer_name: 'Harvey Builders', job_address: '4410 Mission Hills Dr' }],
+    ['job-2', { id: 'job-2', hcp_number: '', click_number: 'C88', job_name: 'Lakeline Medical', customer_name: null, job_address: '' }],
+  ])
+  const payment = (p: Partial<LienQueuePayment> & { invoice_id: string; amount: number }): LienQueuePayment => ({
+    id: `p-${p.invoice_id}`,
+    paid_on: null,
+    payment_type: null,
+    reference_number: null,
+    created_at: '2026-09-01T12:00:00Z',
+    ...p,
+  })
+
+  it('one row per owed release with job identity and the clearing payment, oldest cleared first', () => {
+    const releases = [
+      release({ id: 'r1', job_id: 'job-1', invoice_ids: ['inv-1'], amount: 408, created_at: '2026-08-22T12:00:00Z' }),
+      release({ id: 'r2', job_id: 'job-2', invoice_ids: ['inv-2'], amount: 3200, created_at: '2026-08-14T12:00:00Z' }),
+    ]
+    const payments = [
+      payment({ invoice_id: 'inv-1', amount: 408, paid_on: '2026-09-01', payment_type: 'check', reference_number: '4471' }),
+      payment({ invoice_id: 'inv-2', amount: 3200, paid_on: '2026-08-29', payment_type: 'ach' }),
+    ]
+    const rows = buildLienUnconditionalQueue(releases, payments, jobs)
+    expect(rows.map((r) => r.releaseId)).toEqual(['r2', 'r1'])
+    const r1 = rows[1]!
+    expect(r1.jobNumber).toBe('1042')
+    expect(r1.jobName).toBe('Mission Hills — Bldg C')
+    expect(r1.customerName).toBe('Harvey Builders')
+    expect(r1.issuedOn).toBe('2026-08-22')
+    expect(r1.clearedOn).toBe('2026-09-01')
+    expect(r1.clearedBy).toBe('Check #4471')
+    expect(r1.appliedTotal).toBe(408)
+    expect(r1.invoiceIds).toEqual(['inv-1'])
+    const r2 = rows[0]!
+    expect(r2.jobNumber).toBe('C88')
+    expect(r2.customerName).toBe('')
+    expect(r2.clearedBy).toBe('Ach')
+  })
+
+  it('agrees with computeLienUnconditionalOwed: same releases, same total', () => {
+    const releases = [
+      release({ id: 'r1', job_id: 'job-1', invoice_ids: ['inv-1'], amount: 500 }),
+      release({ id: 'r2', job_id: 'job-1', invoice_ids: ['inv-9'], amount: 700 }), // not cleared
+      release({ id: 'r3', job_id: 'job-2', invoice_ids: [], amount: 900 }), // no snapshot — skipped
+    ]
+    const payments = [payment({ invoice_id: 'inv-1', amount: 500 })]
+    const rows = buildLienUnconditionalQueue(releases, payments, jobs)
+    const owed = computeLienUnconditionalOwed(releases, appliedByInvoiceIdFromPayments(payments))
+    expect(rows.map((r) => r.releaseId)).toEqual(['r1'])
+    expect(rows.length).toBe(owed.count)
+    expect(rows.reduce((s, r) => s + r.amount, 0)).toBe(owed.total)
+  })
+
+  it('drops a release once an unconditional follow-up covers its lines', () => {
+    const releases = [
+      release({ id: 'r1', job_id: 'job-1', invoice_ids: ['inv-1'], amount: 500, created_at: '2026-08-01T00:00:00Z' }),
+      release({ id: 'u1', job_id: 'job-1', form_type: 'unconditional_progress', invoice_ids: ['inv-1'], amount: 500, created_at: '2026-08-05T00:00:00Z' }),
+    ]
+    expect(buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 500 })], jobs)).toEqual([])
+  })
+
+  it('falls back to the payment created date and a plain label when the row is bare; unknown jobs get empty identity', () => {
+    const releases = [release({ id: 'r1', job_id: 'job-x', invoice_ids: ['inv-1'], amount: 100 })]
+    const rows = buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, created_at: '2026-09-03T04:00:00Z' })], jobs)
+    expect(rows[0]?.clearedOn).toBe('2026-09-03')
+    expect(rows[0]?.clearedBy).toBe('Payment')
+    expect(rows[0]?.jobNumber).toBe('')
+    expect(rows[0]?.jobName).toBe('')
+  })
+
+  it('lienQueuePaymentLabel: type + reference, either alone, or "Payment"', () => {
+    expect(lienQueuePaymentLabel({ payment_type: 'check', reference_number: '12' })).toBe('Check #12')
+    expect(lienQueuePaymentLabel({ payment_type: 'wire', reference_number: null })).toBe('Wire')
+    expect(lienQueuePaymentLabel({ payment_type: null, reference_number: '9' })).toBe('#9')
+    expect(lienQueuePaymentLabel({ payment_type: '  ', reference_number: '' })).toBe('Payment')
   })
 })
