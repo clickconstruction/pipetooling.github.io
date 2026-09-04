@@ -16,6 +16,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { formatContractStamp, jobContractSigningUrl, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import { isGoogleDocsUrl, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
 import { buildJobContractRecordHtml, JobContractRecordBody, useJobContractRecordUrls, type JobContractRecordJob } from './JobContractRecordModal'
 import JobContractShareSheet, { type ShareTarget } from './JobContractShareSheet'
 
@@ -161,7 +162,7 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
   const howLine = (() => {
     if (isContract) {
       const m = row?.signer_mode
-      return m === 'paper' ? 'Signed on paper, uploaded by the office' : m === 'draw' ? 'Drawn on their phone' : m === 'in_person' ? 'Signed in person on our device' : 'Typed on their phone'
+      return m === 'paper' ? (row?.signed_document_url ? `Signed outside the app · filed as a ${isGoogleDocsUrl(row.signed_document_url) ? 'Google Doc' : 'link'}` : 'Signed on paper, uploaded by the office') : m === 'draw' ? 'Drawn on their phone' : m === 'in_person' ? 'Signed in person on our device' : 'Typed on their phone'
     }
     return estimateRow?.acceptor_signature_storage_path ? 'Drawn on the estimate page' : 'Typed on the estimate page'
   })()
@@ -269,7 +270,26 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
                 <span style={k}>customer&apos;s page</span>
               </button>
             ) : null}
-            {shareTarget && (isContract ? row?.signer_mode !== 'paper' || !!row?.paper_upload_path : true) ? (
+            {row?.signed_document_url ? (
+              <>
+                <a role="menuitem" style={menuItem} href={row.signed_document_url} target="_blank" rel="noopener noreferrer" onClick={() => setMenuOpen(false)}>
+                  <span>Open the signed {isGoogleDocsUrl(row.signed_document_url) ? 'Google Doc' : 'document'} ↗</span>
+                  <span style={k}>{shortDocumentLabel(row.signed_document_url)}</span>
+                </a>
+                <button
+                  type="button"
+                  role="menuitem"
+                  style={menuItem}
+                  onClick={() => {
+                    void navigator.clipboard.writeText(row.signed_document_url!).then(() => showToast('Document link copied.', 'success')).catch(() => window.prompt('Copy the link:', row.signed_document_url!))
+                    setMenuOpen(false)
+                  }}
+                >
+                  <span>Copy {isGoogleDocsUrl(row.signed_document_url) ? 'Google Doc' : 'document'} link</span>
+                </button>
+              </>
+            ) : null}
+            {shareTarget && (isContract ? row?.signer_mode !== 'paper' || !!row?.paper_upload_path || !!row?.signed_document_url : true) ? (
               <button
                 type="button"
                 role="menuitem"
@@ -280,7 +300,7 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
                 }}
               >
                 <span>Email a copy…</span>
-                <span style={k}>PDF attached</span>
+                <span style={k}>{isContract && row?.signer_mode === 'paper' && !row?.paper_upload_path ? 'the link' : 'PDF attached'}</span>
               </button>
             ) : null}
             {signLink && phone ? (
@@ -422,7 +442,8 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
         signerName={signerName}
         signerEmail={isContract ? row?.recipient_email ?? job.customer_email ?? null : estimateRow?.customer_email ?? job.customer_email ?? null}
         contractRow={isContract ? row : null}
-        filenameHint={pdfFilename}
+        filenameHint={isContract && row?.signer_mode === 'paper' && !row?.paper_upload_path && row?.signed_document_url ? shortDocumentLabel(row.signed_document_url) : pdfFilename}
+        attachmentKind={isContract && row?.signer_mode === 'paper' && !row?.paper_upload_path && row?.signed_document_url ? 'link' : 'pdf'}
         onShared={() => {
           if (job?.id) void loadLastShare(job.id)
         }}

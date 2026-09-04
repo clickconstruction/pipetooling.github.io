@@ -42,6 +42,7 @@ export default function JobContractShareSheet({
   signerEmail,
   contractRow,
   filenameHint,
+  attachmentKind = 'pdf',
   onShared,
 }: {
   open: boolean
@@ -52,6 +53,8 @@ export default function JobContractShareSheet({
   signerEmail: string | null
   contractRow?: JobContractRow | null
   filenameHint: string
+  /** 'link' = a filed Google Doc goes as a link, not an attachment (v2.2744). */
+  attachmentKind?: 'pdf' | 'link'
   onShared?: (to: string[]) => void
 }) {
   const { showToast } = useToastContext()
@@ -146,9 +149,12 @@ export default function JobContractShareSheet({
           <textarea style={{ ...input, minHeight: 60, resize: 'vertical' }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional — a line above the attachment" />
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)', borderRadius: 7, fontSize: '0.8rem' }}>
-          <span aria-hidden>📎</span>
+          <span aria-hidden>{attachmentKind === 'link' ? '🔗' : '📎'}</span>
           <b>{filenameHint}</b>
-          <span style={{ color: 'var(--text-muted)' }}>· the copy the customer received{signerName ? `, signed by ${signerName}` : ''}</span>
+          <span style={{ color: 'var(--text-muted)' }}>
+            {attachmentKind === 'link' ? '· sent as a link to the signed document' : '· the copy the customer received'}
+            {signerName ? `, signed by ${signerName}` : ''}
+          </span>
         </div>
         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Replies come to you. Sending a copy never changes the agreement or the customer&apos;s link, and the job&apos;s activity records who got it.</div>
       </div>

@@ -6432,6 +6432,7 @@ export type Database = {
           send_count: number
           sent_at: string | null
           signed_at: string | null
+          signed_document_url: string | null
           signed_pdf_path: string | null
           signer_consented_at: string | null
           signer_ip: string | null
@@ -6479,6 +6480,7 @@ export type Database = {
           send_count?: number
           sent_at?: string | null
           signed_at?: string | null
+          signed_document_url?: string | null
           signed_pdf_path?: string | null
           signer_consented_at?: string | null
           signer_ip?: string | null
@@ -6526,6 +6528,7 @@ export type Database = {
           send_count?: number
           sent_at?: string | null
           signed_at?: string | null
+          signed_document_url?: string | null
           signed_pdf_path?: string | null
           signer_consented_at?: string | null
           signer_ip?: string | null

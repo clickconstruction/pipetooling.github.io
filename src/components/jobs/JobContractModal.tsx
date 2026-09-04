@@ -11,6 +11,7 @@ import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { JOB_CONTRACT_BUCKET } from './JobContractRecordModal'
@@ -23,6 +24,9 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForD
 import {
   buildJobContractDocumentHtml,
   buildJobContractPrefill,
+  isGoogleDocsUrl,
+  isHttpUrl,
+  shortDocumentLabel,
   DEFAULT_JOB_CONTRACT_TERMS_PLAIN,
   EMPTY_JOB_CONTRACT_FIELDS,
   formatContractMoney,
@@ -120,6 +124,8 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
   const [paperSignedOn, setPaperSignedOn] = useState('')
   const [paperSignerName, setPaperSignerName] = useState('')
   const [paperFile, setPaperFile] = useState<File | null>(null)
+  const [paperLink, setPaperLink] = useState('')
+  const [paperAttachOpen, setPaperAttachOpen] = useState(false)
   const [paperBusy, setPaperBusy] = useState(false)
   const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
   /** Channel of the live row's latest send event: 'email' = the customer was emailed, 'link' = only minted/copied. */
@@ -170,8 +176,10 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
     setLastLink(null)
     setMessage('')
     setPaperOpen(false)
-    setPaperSignedOn('')
+    setPaperSignedOn(todayYmdInAppTz())
     setPaperFile(null)
+    setPaperLink('')
+    setPaperAttachOpen(false)
     setRecordRow(null)
     setRecipientName((job.customer_name ?? '').trim())
     setRecipientEmail((job.customer_email ?? '').trim())
@@ -524,7 +532,12 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
     if (!job || paperBusy) return
     const name = paperSignerName.trim() || recipientName.trim() || (job.customer_name ?? '').trim()
     if (!name) {
-      showToast('Enter who signed the paper copy.', 'error')
+      showToast('Enter who signed the contract.', 'error')
+      return
+    }
+    const link = paperLink.trim()
+    if (!isHttpUrl(link) && !paperFile) {
+      showToast('Paste the Google Doc link, or attach a scan.', 'error')
       return
     }
     setPaperBusy(true)
@@ -538,6 +551,7 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
         signer_mode: 'paper',
         signer_consented_at: null,
         paper_signed_on: paperSignedOn || null,
+        signed_document_url: isHttpUrl(link) ? link : null,
         recorded_by: authUser?.id ?? null,
         public_token: null,
         next_reminder_at: null,
@@ -572,7 +586,7 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
       hydratedRef.current = false
       setLiveRow(null)
       await loadRows()
-      showToast('Signed paper contract recorded.', 'success')
+      showToast('Signed contract filed — the job now reads signed.', 'success')
       dispatchChanged()
       onChanged?.()
     } catch {
@@ -581,6 +595,8 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
       setPaperBusy(false)
     }
   }
+
+  const paperReady = isHttpUrl(paperLink) || paperFile != null
 
   if (!open || !job) return null
 
@@ -649,8 +665,8 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
       footer={footer}
       maxWidthDesktop={760}
       headerAction={
-        <button type="button" style={btn} disabled={busy != null} onClick={() => setPaperOpen(true)} title="Already signed on paper? File the signed contract without sending anything">
-          <span aria-hidden>⤴</span> Upload signed contract
+        <button type="button" style={btn} disabled={busy != null} onClick={() => setPaperOpen(true)} title="Already signed outside the app? File the Google Doc (or a scan) without sending anything">
+          <span aria-hidden>📄</span> File a signed contract
         </button>
       }
     >
@@ -786,29 +802,95 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
         ) : null}
       </div>
       {paperOpen ? (
-        <ResponsiveModalShell title="Upload signed contract" onRequestClose={() => setPaperOpen(false)} maxWidthDesktop={520} zIndex={1300}
+        <ResponsiveModalShell
+          title="File a signed contract"
+          onRequestClose={() => setPaperOpen(false)}
+          maxWidthDesktop={540}
+          zIndex={1300}
           footer={
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button type="button" style={btn} disabled={paperBusy} onClick={() => setPaperOpen(false)}>
                 Cancel
               </button>
-              <button type="button" style={btnPrimary} disabled={paperBusy} onClick={() => void recordPaper()}>
-                {paperBusy ? 'Recording…' : paperFile ? 'Upload & record as signed' : 'Record as signed on paper'}
+              <button type="button" style={{ ...btnPrimary, opacity: paperReady ? 1 : 0.55 }} disabled={paperBusy || !paperReady} onClick={() => void recordPaper()} title={paperReady ? undefined : 'Paste the Google Doc link, or attach a scan'}>
+                {paperBusy ? 'Recording…' : 'Record as signed'}
               </button>
             </div>
           }
         >
-          <div style={{ fontSize: '0.85rem', display: 'grid', gap: '0.5rem' }}>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Already have a signed contract for this job? File it here — nothing is sent to the customer; the job simply reads signed.</div>
+          <div style={{ fontSize: '0.85rem', display: 'grid', gap: '0.7rem' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Already signed outside the app? Paste the Google Doc and the job reads signed. Nothing is sent to the customer.</div>
+            {isHttpUrl(paperLink) ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.5rem 0.7rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border)', color: 'var(--text-green-800)', fontSize: '0.8rem' }}>
+                <span aria-hidden style={{ width: 16, height: 20, borderRadius: 3, background: 'var(--text-link)', flexShrink: 0 }} />
+                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <b>{isGoogleDocsUrl(paperLink) ? 'Google Doc linked' : 'Link filed'}</b> · {shortDocumentLabel(paperLink)}
+                </span>
+                <button type="button" onClick={() => setPaperLink('')} style={{ ...btn, padding: '0.15rem 0.5rem', fontSize: '0.72rem', borderColor: 'transparent', background: 'transparent', color: 'var(--text-muted)' }}>
+                  change
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '0.7rem 0.85rem', borderRadius: 10, border: '1.5px dashed var(--text-link)', background: 'var(--bg-blue-tint)' }}>
+                <span aria-hidden style={{ width: 30, height: 38, borderRadius: 4, background: 'var(--text-link)', flexShrink: 0, marginTop: 2 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.88rem' }}>Paste the Google Doc link</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Share → Copy link in Google Docs, then paste it here.</div>
+                  <input
+                    style={{ ...inputStyle, marginTop: '0.4rem' }}
+                    value={paperLink}
+                    onChange={(e) => setPaperLink(e.target.value)}
+                    onPaste={(e) => {
+                      const t = e.clipboardData.getData('text')
+                      if (t) {
+                        e.preventDefault()
+                        setPaperLink(t.trim())
+                      }
+                    }}
+                    placeholder="https://docs.google.com/document/d/…"
+                    inputMode="url"
+                    aria-label="Google Doc link"
+                    autoFocus
+                  />
+                  {paperLink.trim() && !isHttpUrl(paperLink) ? (
+                    <div style={{ marginTop: '0.35rem', fontSize: '0.74rem', color: 'var(--text-orange-800)', background: 'var(--bg-orange-tint)', borderRadius: 6, padding: '0.3rem 0.5rem' }}>
+                      That isn&apos;t a link yet — paste the doc&apos;s Share link, or attach a file below.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+            {isHttpUrl(paperLink) && !isGoogleDocsUrl(paperLink) ? (
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-orange-800)', background: 'var(--bg-orange-tint)', borderRadius: 6, padding: '0.3rem 0.5rem' }}>
+                That isn&apos;t a Google link. It will be filed as-is — paste the doc&apos;s Share link if you have one.
+              </div>
+            ) : null}
             <div style={rowStyle}>
               <span style={labelStyle}>Signed by</span>
               <input style={inputStyle} value={paperSignerName} onChange={(e) => setPaperSignerName(e.target.value)} placeholder={recipientName.trim() || job.customer_name || 'Customer name'} />
               <span style={labelStyle}>Signed on</span>
-              <input style={{ ...inputStyle, maxWidth: 180 }} type="date" value={paperSignedOn} onChange={(e) => setPaperSignedOn(e.target.value)} aria-label="Date the paper copy was signed" />
-              <span style={labelStyle}>Scan / photo</span>
-              <input type="file" accept="image/png,image/jpeg,application/pdf" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.8rem' }} />
+              <input style={{ ...inputStyle, maxWidth: 180 }} type="date" value={paperSignedOn} onChange={(e) => setPaperSignedOn(e.target.value)} aria-label="Date the contract was signed" />
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>A scan or photo is optional — the record stands on its own; the file is kept with the job when you attach one.</div>
+            {paperAttachOpen ? (
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', display: 'grid', gap: '0.35rem', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <b>Scan or photo</b>
+                  <button type="button" onClick={() => { setPaperAttachOpen(false); setPaperFile(null) }} style={{ ...btn, padding: '0.1rem 0.4rem', fontSize: '0.7rem', borderColor: 'transparent', background: 'transparent', color: 'var(--text-muted)' }}>
+                    optional · hide
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input type="file" accept="image/png,image/jpeg,application/pdf" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.78rem' }} />
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>PNG, JPG or PDF · kept with the job</span>
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'right' }}>
+                <button type="button" onClick={() => setPaperAttachOpen(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-faint)', textDecoration: 'underline dotted', cursor: 'pointer' }}>
+                  Have a scan or photo instead?
+                </button>
+              </div>
+            )}
           </div>
         </ResponsiveModalShell>
       ) : null}
