@@ -22,12 +22,12 @@ export type DebitCardDirectory = {
   roleByCard: Record<string, DebitCardRole>
 }
 
-/** Nicknames + roles, keyed by lower-cased card id. `card_role` is read through a cast until database.ts is regenerated. */
+/** Nicknames + roles, keyed by lower-cased card id. */
 export async function loadDebitCardDirectory(): Promise<DebitCardDirectory> {
   const rows = await withSupabaseRetry(async () => await supabase.from('mercury_debit_card_nicknames').select('*'), 'load debit card directory')
   const nicknameByCard: Record<string, string> = {}
   const roleByCard: Record<string, DebitCardRole> = {}
-  for (const r of (rows ?? []) as Array<{ mercury_debit_card_id: string; nickname: string; card_role?: unknown }>) {
+  for (const r of rows ?? []) {
     const id = String(r.mercury_debit_card_id).toLowerCase()
     nicknameByCard[id] = r.nickname
     roleByCard[id] = parseDebitCardRole(r.card_role)
@@ -41,7 +41,7 @@ export async function saveDebitCardRole(cardId: string, role: DebitCardRole): Pr
     async () =>
       await supabase
         .from('mercury_debit_card_nicknames')
-        .update({ card_role: role, updated_at: new Date().toISOString() } as never)
+        .update({ card_role: role, updated_at: new Date().toISOString() })
         .eq('mercury_debit_card_id', cardId.toLowerCase()),
     'save debit card role',
   )
