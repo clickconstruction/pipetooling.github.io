@@ -43,7 +43,27 @@ const audits = [
     updated_at: '2026-08-22T20:00:00Z',
     bids: { id: 'bid-300', bid_number: '300', project_name: 'Old Backtest', selected_bid_version_id: null },
   },
+  {
+    // v2.2796: the robot opened this audit before pasting counts — no PT rows at all.
+    id: 'a3',
+    bid_id: 'bid-422',
+    ct_project_id: 'ct-3',
+    ct_view_url: 'https://counttooling.com/app/?t=tok3',
+    status: 'pending',
+    requested_at: '2026-08-31T23:16:00Z',
+    completed_at: null,
+    completed_by: null,
+    digested_at: null,
+    created_by: null,
+    created_at: '2026-08-31T23:16:00Z',
+    updated_at: '2026-08-31T23:16:00Z',
+    bids: { id: 'bid-422', bid_number: '422', project_name: 'ZZ Twin AISD GARCIA SCHOOL RENOVATION (backtest)', selected_bid_version_id: null },
+  },
 ]
+
+// Only bid-405 has rows in PipeTooling; the tab filters by bid_id client-side.
+const countRows = [{ id: 'r1', fixture: 'WC-1', count: 3, bid_version_id: null, bid_id: 'bid-405' }]
+const assignments = [{ bid_id: 'bid-405', count_row_id: 'r1', price_book_entry_id: null, unit_price_override: 1000 }]
 
 const notes: Array<Partial<BidAuditNoteRow> & { audit_id: string }> = [
   { id: 'q1', audit_id: 'a1', bid_id: 'bid-405', section: 'general', kind: 'question', body: 'Wet tables owner-furnished?', parent_id: null, created_at: '2026-08-30T20:01:00Z', author_id: null, digested_at: null, digest_outcome: null },
@@ -57,10 +77,12 @@ function tableResult(table: string): unknown {
   const data =
     table === 'bid_audits' ? audits :
     table === 'bid_audit_notes' ? notes :
+    table === 'bids_count_rows' ? countRows :
+    table === 'bid_pricing_assignments' ? assignments :
     []
   const chain: Record<string, unknown> = {}
   const self = () => chain
-  for (const m of ['select', 'order', 'limit', 'in', 'eq', 'insert', 'update']) chain[m] = self
+  for (const m of ['select', 'order', 'limit', 'in', 'eq', 'insert', 'update', 'range']) chain[m] = self
   chain.then = (resolve: (v: unknown) => unknown) => Promise.resolve({ data, error: null }).then(resolve)
   return chain
 }
@@ -102,6 +124,14 @@ describe('BidsAuditsTab', () => {
     // Digested history is collapsed behind the toggle.
     expect(screen.queryByText('Old Backtest')).toBeNull()
     expect(screen.getByText(/Show digested audits \(1\)/)).toBeTruthy()
+
+    // v2.2796: the audit with no PT count rows is a "Robot still working" row —
+    // never "draft $0 · −100% vs ours" — and it did not steal the auto-expand.
+    expect(screen.getByText('Robot still working')).toBeTruthy()
+    expect(screen.getByText('no counts in PipeTooling yet')).toBeTruthy()
+    expect(screen.getAllByText(/draft \$3,000/).length).toBeGreaterThan(0) // the priced card, not $0
+    expect(screen.queryByText(/draft \$0\b/)).toBeNull()
+    expect(screen.queryByText(/-100\.0% vs ours/)).toBeNull()
   })
 
   it('read-only roles (write RLS mirror) see the card without composers or Finish audit', async () => {

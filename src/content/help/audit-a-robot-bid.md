@@ -13,6 +13,7 @@ When a robot estimator finishes a draft bid, it asks for your audit. Everything 
 3. Open it. Audits show as one-line rows — bid, status, draft total, how far the robot landed from our number, question count, and age. **One card is open at a time**; tap any row to open it (finishing an audit opens the next one for you).
 4. The open card starts with the robot's own confession — 🤖 **Where I'm least sure** — so you can check its suspicions first, then a comparison strip (its draft, our number, the difference) and a **system scoreboard**: waste + vent, water, gas, med-gas, and fixtures, robot vs ours with a ratio, so you see *where* the money diverges before touching a row.
 5. A shadow bid shows a {{chip:gray|🔒}} row instead of a card: the whole audit stays locked until our own bid goes out — even seeing the robot's takeoff early could sway your number. It opens by itself once we send.
+6. A {{chip:gray|Robot still working}} row means the robot opened the audit before pasting its counts into the bid, so there is no draft to price yet. It doesn't count toward your pending number; you can still open it to answer its questions, and the verdict rows appear once the counts land.
 
 ## Look the bid over (two quick links)
 
