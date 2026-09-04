@@ -100,9 +100,11 @@ export type PeopleContractsTabProps = {
   canDeletePeopleContracts: boolean
   /** The signed-in staff member — the send email's Reply-To and "reach" line (v2.2773). */
   currentUserId?: string | null
+  /** Contract Forms (v2.2794): devs see the Forms tab in the Contract library. */
+  isDev?: boolean
 }
 
-export default function PeopleContractsTab({ people, users, archivedPeople, archivedUserNames, canDeletePeopleContracts, currentUserId }: PeopleContractsTabProps) {
+export default function PeopleContractsTab({ people, users, archivedPeople, archivedUserNames, canDeletePeopleContracts, currentUserId, isDev = false }: PeopleContractsTabProps) {
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const [contractsHelpModalOpen, setContractsHelpModalOpen] = useState(false)
@@ -140,6 +142,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     canonical_document_url?: string | null
     updated_at: string
     book_version_date: string | null
+    form_template_id?: string | null
   }
   type PersonContractAssignment = { id: string; person_name: string; template_id: string }
   type PersonContractDocument = {
@@ -161,6 +164,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     contract_lineage_id: string
     lineage_version: number
     supersedes_person_contract_document_id: string | null
+    form_template_id?: string | null
   }
 
   /** One table row: a specific version row, or placeholder when template lists doc but no person row yet. */
@@ -600,7 +604,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       supabase
         .from('contract_template_documents')
         .select(
-          'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date, audience',
+          'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date, audience, form_template_id',
         )
         .order('template_id')
         .order('sequence_order'),
@@ -608,7 +612,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       supabase
         .from('person_contract_documents')
         .select(
-          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, signer_last_viewed_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, applied_version_date, contract_lineage_id, lineage_version, supersedes_person_contract_document_id',
+          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, signer_last_viewed_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, applied_version_date, contract_lineage_id, lineage_version, supersedes_person_contract_document_id, form_template_id',
         ),
     ])
     setContractsLoading(false)
@@ -3354,6 +3358,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
           assignments={personContractAssignments}
           personDocuments={personContractDocuments}
           canDeletePeopleContracts={canDeletePeopleContracts}
+          isDev={isDev}
           onSaved={() => void loadContracts()}
           onQuickSend={(documentName) => {
             setContractsError(null)

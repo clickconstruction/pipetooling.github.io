@@ -3322,6 +3322,105 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_form_pdf_opens: {
+        Row: {
+          id: string
+          opened_at: string
+          opened_by: string | null
+          person_contract_document_id: string
+        }
+        Insert: {
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          person_contract_document_id: string
+        }
+        Update: {
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          person_contract_document_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_form_pdf_opens_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_form_pdf_opens_person_contract_document_id_fkey"
+            columns: ["person_contract_document_id"]
+            isOneToOne: false
+            referencedRelation: "person_contract_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_form_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          page_count: number
+          pdf_sha256: string | null
+          pdf_storage_path: string
+          published_at: string | null
+          revision_label: string
+          schema: Json
+          status: string
+          superseded_by_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          page_count?: number
+          pdf_sha256?: string | null
+          pdf_storage_path: string
+          published_at?: string | null
+          revision_label?: string
+          schema?: Json
+          status?: string
+          superseded_by_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          page_count?: number
+          pdf_sha256?: string | null
+          pdf_storage_path?: string
+          published_at?: string | null
+          revision_label?: string
+          schema?: Json
+          status?: string
+          superseded_by_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_form_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_form_templates_superseded_by_id_fkey"
+            columns: ["superseded_by_id"]
+            isOneToOne: false
+            referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_template_documents: {
         Row: {
           audience: string
@@ -3331,6 +3430,7 @@ export type Database = {
           canonical_document_url: string | null
           created_at: string | null
           document_name: string
+          form_template_id: string | null
           id: string
           sequence_order: number
           tags: string[]
@@ -3345,6 +3445,7 @@ export type Database = {
           canonical_document_url?: string | null
           created_at?: string | null
           document_name: string
+          form_template_id?: string | null
           id?: string
           sequence_order?: number
           tags?: string[]
@@ -3359,6 +3460,7 @@ export type Database = {
           canonical_document_url?: string | null
           created_at?: string | null
           document_name?: string
+          form_template_id?: string | null
           id?: string
           sequence_order?: number
           tags?: string[]
@@ -3366,6 +3468,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "contract_template_documents_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "contract_template_documents_template_id_fkey"
             columns: ["template_id"]
@@ -11168,6 +11277,11 @@ export type Database = {
           doc_type: string
           document_name: string
           expires_at: string | null
+          form_hints: Json | null
+          form_pdf_storage_path: string | null
+          form_source: string | null
+          form_template_id: string | null
+          form_values: Json | null
           id: string
           lineage_version: number
           note: string | null
@@ -11202,6 +11316,11 @@ export type Database = {
           doc_type?: string
           document_name: string
           expires_at?: string | null
+          form_hints?: Json | null
+          form_pdf_storage_path?: string | null
+          form_source?: string | null
+          form_template_id?: string | null
+          form_values?: Json | null
           id?: string
           lineage_version?: number
           note?: string | null
@@ -11236,6 +11355,11 @@ export type Database = {
           doc_type?: string
           document_name?: string
           expires_at?: string | null
+          form_hints?: Json | null
+          form_pdf_storage_path?: string | null
+          form_source?: string | null
+          form_template_id?: string | null
+          form_values?: Json | null
           id?: string
           lineage_version?: number
           note?: string | null
@@ -11266,6 +11390,13 @@ export type Database = {
             columns: ["applied_contract_template_document_id"]
             isOneToOne: false
             referencedRelation: "contract_template_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_form_template_id_fkey"
+            columns: ["form_template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_form_templates"
             referencedColumns: ["id"]
           },
           {

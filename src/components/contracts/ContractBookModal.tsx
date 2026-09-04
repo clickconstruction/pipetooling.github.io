@@ -23,6 +23,8 @@ export type ContractBookTemplateDocument = {
   updated_at?: string | null
   book_version_date?: string | null
   audience?: string | null
+  /** Contract Forms (v2.2794): set = this entry is a fillable form; the signer fills the template's PDF. */
+  form_template_id?: string | null
   id: string
   template_id: string
   document_name: string

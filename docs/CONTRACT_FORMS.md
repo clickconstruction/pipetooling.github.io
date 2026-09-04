@@ -100,6 +100,10 @@ npm run forms:preview -- ~/Desktop/W9.pdf /tmp/w9.json --out /tmp/w9-preview.pdf
 
 The IRS W-9 fixture used by the tests lives at `src/test/fixtures/fw9-2024-03.pdf` (a US government work).
 
+## The Form Studio (dev-only)
+
+People → Contracts → Contract library → **Forms** (`src/components/contracts/formStudio/`). `FormStudio` lists `contract_form_templates` and creates one from an uploaded PDF (`readPdfFields` → optional `mergeDraftedFields` → `createFormTemplate`, which uploads to the private bucket and inserts the row). `FormStudioEditor` renders the page (`PdfPageCanvas`, pdf.js) under `FormBoxLayer` (drag / resize / multi-select) beside `FormBoxInspector`; every schema change goes through `src/lib/forms/formStudioState.ts`. Toolbar: add by type, Import PDF fields, Merge → digits, Import / Export JSON (the same `FormSchema` the scripts produce), Replace PDF, Preview filled PDF (client-side `fillFormPdf`), Save, Publish (packet + document name + audience → one Book entry per template via `publishFormTemplate`). Guide: `build-a-fillable-form.md`.
+
 ## Fill semantics
 
 - **Bound** box (`bind`): the PDF's own field is set (`setText` / `check`), so it renders with the form's native appearance and lands exactly. Binds the PDF lacks are reported in `skipped`, never thrown — a schema drafted against another revision degrades visibly instead of crashing a signing.
@@ -109,7 +113,7 @@ The IRS W-9 fixture used by the tests lives at `src/test/fixtures/fw9-2024-03.pd
 
 ## Storage (out-of-band)
 
-Buckets and their `storage.objects` policies are created in the Dashboard / via psql, like every other bucket here, and recorded below.
+Buckets and their `storage.objects` policies are created out-of-band, like every other bucket here (done 2026-09-04 through the management API's `database/query` endpoint), and recorded below.
 
 ```sql
 insert into storage.buckets (id, name, public) values ('contract-form-templates', 'contract-form-templates', false) on conflict (id) do nothing;
@@ -135,4 +139,7 @@ create policy "Devs manage contract form templates" on storage.objects
 | `src/lib/forms/*.test.ts` | Kernel tests + real-PDF fill tests |
 | `scripts/forms/{inspect,draft,preview}.ts` | Agent workflow (vite-node) |
 | `public/fonts/GreatVibes-Regular.ttf` (+ OFL) | Typed-signature face embedded in PDFs; excluded from the SW precache |
-| `supabase/migrations/20260904220000_contract_form_templates.sql` | Schema |
+| `supabase/migrations/20260904220000_contract_form_templates.sql` | Schema (PR 1) |
+| `supabase/migrations/20260904230000_contract_form_templates_doc_type.sql` | Form doc type → person copies (PR 2) |
+| `src/components/contracts/formStudio/*` | Form Studio (PR 2) |
+| `src/lib/forms/formStudioState.ts`, `src/lib/forms/formTemplateRepo.ts` | Studio kernel + data access (PR 2) |

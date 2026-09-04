@@ -14,6 +14,7 @@ import {
   type ContractBookTemplateDocument,
 } from './ContractBookModal'
 import { ContractScopeLibraryTab } from './ContractScopeLibraryTab'
+import { FormStudio } from './formStudio/FormStudio'
 
 /**
  * Contract library (v2.1411): one modal for the whole contracts library —
@@ -42,10 +43,11 @@ export function ContractLibraryModal({
   canDeletePeopleContracts,
   onSaved,
   onQuickSend,
+  isDev = false,
 }: {
   open: boolean
   onClose: () => void
-  initialTab?: 'documents' | 'packets' | 'scope'
+  initialTab?: 'documents' | 'packets' | 'scope' | 'forms'
   templates: ContractBookTemplate[]
   templateDocuments: ContractBookTemplateDocument[]
   assignments: PacketAssignmentRow[]
@@ -53,8 +55,10 @@ export function ContractLibraryModal({
   canDeletePeopleContracts: boolean
   onSaved: () => void
   onQuickSend: (documentName: string) => void
+  /** Contract Forms (v2.2794): devs see the Forms tab (the Form Studio). */
+  isDev?: boolean
 }) {
-  const [tab, setTab] = useState<'documents' | 'packets' | 'scope'>(initialTab)
+  const [tab, setTab] = useState<'documents' | 'packets' | 'scope' | 'forms'>(initialTab)
   const [selectedPacketId, setSelectedPacketId] = useState<string | null>(null)
   const [packetMode, setPacketMode] = useState<'view' | 'new'>('view')
   const [packetName, setPacketName] = useState('')
@@ -363,7 +367,7 @@ export function ContractLibraryModal({
 
   if (!open) return null
 
-  const tabButton = (key: 'documents' | 'packets' | 'scope', label: string, count: number | null) => (
+  const tabButton = (key: 'documents' | 'packets' | 'scope' | 'forms', label: string, count: number | null) => (
     <button
       type="button"
       role="tab"
@@ -436,7 +440,10 @@ export function ContractLibraryModal({
           {tabButton('documents', 'Documents', libraryDocs.length + adHocDocNames.length)}
           {tabButton('packets', 'Packets', sortedPackets.length)}
           {tabButton('scope', 'Scope', null)}
+          {isDev ? tabButton('forms', 'Forms', templateDocuments.filter((d) => d.form_template_id).length) : null}
         </div>
+
+        {tab === 'forms' && isDev ? <FormStudio packets={templates} bookEntries={templateDocuments} onSaved={onSaved} /> : null}
 
         {tab === 'documents' ? (
           <div role="tabpanel">

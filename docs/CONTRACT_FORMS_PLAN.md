@@ -18,12 +18,12 @@ key_sections:
 
 ## Status
 
-**PR 1 built (2026-09-04).** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
+**PRs 1–2 built (2026-09-04).** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
 
 | # | PR | Version | Landed as |
 |---|---|---|---|
-| 1 | Schema + kernel + PDF executor + agent scripts (migration `20260904220000`) | v2.2788 | this PR |
-| 2 | Form Studio (dev-only tab in the Contract library) + Book entry + import/export | — | — |
+| 1 | Schema + kernel + PDF executor + agent scripts (migration `20260904220000`, pushed) | v2.2788 | #2525 |
+| 2 | Form Studio (dev-only tab in the Contract library) + Book entry + import/export (migration `20260904230000`) | v2.2794 | PR 2 |
 | 3 | Fill-on-the-document signer mode + `accept-contract` fills/flattens/files | — | — |
 | 4 | Staff record: facts card, Open PDF (gated + logged), Person Desk line | — | — |
 | 5 | The W-9 itself, mapped in the studio; added to the Subs packet | — | — |
