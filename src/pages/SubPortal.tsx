@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import type { CSSProperties, FormEvent } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
@@ -74,6 +76,8 @@ export default function SubPortal() {
   const token = params.get('t')?.trim() ?? ''
   const slug = (slugParam ?? '').trim().toLowerCase()
   const demoMode = import.meta.env.DEV && params.get('demo') === '1'
+  // What customers see (v2.2760): the sample token renders the fixture for a signed-in office user.
+  const sample = sampleStateFromToken(token)
   const [lang, setLang] = useState<SubPortalLang>('en')
   const [state, setState] = useState<PageState>({ kind: 'loading' })
 
@@ -96,7 +100,7 @@ export default function SubPortal() {
     void (async () => {
       try {
         const query = token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`
-        const res = await fetch(`${supabaseUrl}/functions/v1/sub-portal?${query}`)
+        const res = await fetch(`${supabaseUrl}/functions/v1/sub-portal?${query}`, sample ? { headers: await publicFunctionHeaders(sample) } : undefined)
         const body: unknown = await res.json().catch(() => null)
         if (cancelled) return
         const payload = parseSubPortalPayload(body)
@@ -118,7 +122,7 @@ export default function SubPortal() {
     return () => {
       cancelled = true
     }
-  }, [token, slug, demoMode])
+  }, [token, slug, demoMode, sample])
 
   const submitToken = state.kind === 'ready' ? (state.payload.requestToken ?? token) : token
 
@@ -165,6 +169,7 @@ export default function SubPortal() {
           </button>
         </div>
 
+        {sample ? <SampleModeBanner /> : null}
         {/* Letterhead */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', padding: '0.2rem 0 1.1rem' }}>
           <div>
@@ -632,6 +637,8 @@ function OfferCard({
   }, [payload.documents, lang, t])
 
   async function post(body: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
+    // Nothing is saved in sample mode — the walkthrough just shows the answered state.
+    if (sampleStateFromToken(submitToken)) return { ok: true }
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/submit-sub-portal`, {
         method: 'POST',
@@ -841,6 +848,11 @@ function DocRow({
   })()
 
   async function openSigningPage() {
+    if (sampleStateFromToken(submitToken)) {
+      // The sample agreement lives on the same sample token.
+      window.location.href = `/contract/accept?t=${submitToken}`
+      return
+    }
     setOpening(true)
     setError(null)
     try {
@@ -921,6 +933,10 @@ function AvailabilityCard({ t, submitToken }: { t: T; submitToken: string }) {
     if (status === 'sending') return
     setStatus('sending')
     setError(null)
+    if (sampleStateFromToken(submitToken)) {
+      setStatus('sent')
+      return
+    }
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/submit-sub-portal`, {
         method: 'POST',

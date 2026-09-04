@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import type { CSSProperties, FormEvent } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
@@ -33,6 +35,8 @@ export default function CustomerPortal() {
   const { slug: slugParam } = useParams<{ slug?: string }>()
   const token = params.get('t')?.trim() ?? ''
   const slug = (slugParam ?? '').trim().toLowerCase()
+  // What customers see (v2.2760): the sample token renders the fixture for a signed-in office user.
+  const sample = sampleStateFromToken(token)
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'error'; message: string }
@@ -48,7 +52,7 @@ export default function CustomerPortal() {
     void (async () => {
       try {
         const query = token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`
-        const res = await fetch(`${supabaseUrl}/functions/v1/customer-portal?${query}`)
+        const res = await fetch(`${supabaseUrl}/functions/v1/customer-portal?${query}`, sample ? { headers: await publicFunctionHeaders(sample) } : undefined)
         const body: unknown = await res.json().catch(() => null)
         if (cancelled) return
         const payload = parsePortalPayload(body)
@@ -70,7 +74,7 @@ export default function CustomerPortal() {
     return () => {
       cancelled = true
     }
-  }, [token, slug])
+  }, [token, slug, sample])
 
   const today = useMemo(() => {
     const d = new Date()
@@ -88,6 +92,7 @@ export default function CustomerPortal() {
   return (
     <div data-theme="light" style={{ minHeight: '100vh', background: PAPER, color: INK, fontFamily: `-apple-system, 'Segoe UI', Roboto, sans-serif`, padding: '2rem 1rem 4rem' }}>
       <div style={{ maxWidth: 730, margin: '0 auto' }}>
+        {sample ? <SampleModeBanner /> : null}
         {/* Letterhead */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', padding: '0.5rem 0 1.1rem' }}>
           <div>
@@ -654,6 +659,11 @@ function RequestCard({
       return
     }
     setStatus('sending')
+    if (sampleStateFromToken(token)) {
+      // Nothing is saved in sample mode — the walkthrough just shows the sent state.
+      setStatus('sent')
+      return
+    }
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/submit-portal-request`, {
         method: 'POST',

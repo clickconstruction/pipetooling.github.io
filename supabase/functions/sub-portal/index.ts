@@ -1,6 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { authorizeSampleViewer } from '../_shared/sampleViewer.ts'
+import { sampleSubPortalResponse } from '../_shared/customerSampleFixtures.ts'
 import {
   buildSubDocuments,
   buildSubOffers,
@@ -57,13 +60,26 @@ serve(async (req) => {
     const url = new URL(req.url)
     const rawToken = url.searchParams.get('token')?.trim()
     const rawSlug = url.searchParams.get('slug')?.trim().toLowerCase()
-    if ((!rawToken || rawToken.length < 16 || rawToken.length > 128) && !rawSlug) {
+    const sample = sampleStateFromToken(rawToken)
+    if (!sample && (!rawToken || rawToken.length < 16 || rawToken.length > 128) && !rawSlug) {
       return jsonResponse({ error: 'Missing token' }, 400)
     }
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
       auth: { persistSession: false },
     })
+
+    // What customers see (Settings dev tab): the sample token renders Sam's Plumbing's statement
+    // for a signed-in office user, over the live pay-run settings. No person, no rows.
+    if (sample) {
+      const gate = await authorizeSampleViewer(req)
+      if (!gate.ok) return jsonResponse({ error: gate.error }, gate.status)
+      const { data: sampleSettings } = await admin.from('app_settings').select('key, value_text').in('key', ['sub_pay_run_day', 'sub_pay_explainer'])
+      const m = new Map(((sampleSettings ?? []) as Array<{ key: string; value_text: string | null }>).map((r) => [r.key, r.value_text]))
+      const day = (m.get('sub_pay_run_day') ?? '').trim() || null
+      const today = todayYmdInAppTz()
+      return jsonResponse(sampleSubPortalResponse(PORTAL_COMPANY, today, { day, nextRun: nextPayRunYmd(today, day), explainer: (m.get('sub_pay_explainer') ?? '').trim() || null }))
+    }
 
     let link: { person_id: string; revoked_at: string | null; token?: string | null } | null = null
 

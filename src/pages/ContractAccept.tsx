@@ -1,4 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
+import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import { Link, useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
@@ -43,6 +45,8 @@ type LoadPayload = {
 export default function ContractAccept() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
+  // What customers see (v2.2760): the sample token renders the sample agreement for a signed-in office user.
+  const sample = sampleStateFromToken(token)
   const { user, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(true)
@@ -108,7 +112,7 @@ export default function ContractAccept() {
           `${supabaseUrl}/functions/v1/get-contract-for-signer?token=${encodeURIComponent(token)}`,
           {
             signal: ac.signal,
-            headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+            headers: await publicFunctionHeaders(sample),
           },
         )
         const json = (await res.json()) as LoadPayload & {
@@ -149,12 +153,19 @@ export default function ContractAccept() {
     }
     void load()
     return () => ac.abort()
-  }, [token])
+  }, [token, sample])
 
   async function submitAccept(p: EstimateAcceptSubmitPayload) {
     if (!token) return
     if (!agreed) {
       setError('Please confirm that you agree to the contract.')
+      return
+    }
+    if (sample) {
+      // Nothing is saved in sample mode — the walkthrough just moves on to the thank-you.
+      setThankYouTitle('Thank you')
+      setThankYouBody('')
+      setDone(true)
       return
     }
     setSubmitting(true)
@@ -222,6 +233,7 @@ export default function ContractAccept() {
       >
         <div className="auth-public-landing__signin-stack auth-public-landing__signin-stack--wide">
           <div className="auth-public-landing__signin-box auth-public-landing__estimate-thankyou-inner">
+            {sample ? <SampleModeBanner /> : null}
             <EstimateCustomerThankYou
               title={thankYouTitle}
               body={thankYouBody}
@@ -283,6 +295,7 @@ export default function ContractAccept() {
     >
       <div className="auth-public-landing__signin-stack auth-public-landing__signin-stack--wide">
         <div className="auth-public-landing__signin-box" style={{ maxWidth: 720 }}>
+          {sample ? <SampleModeBanner /> : null}
           <h1 style={{ fontSize: '1.35rem', marginTop: 0 }}>{payload.document_name}</h1>
 
           {canonical ? (

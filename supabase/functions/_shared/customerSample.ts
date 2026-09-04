@@ -15,13 +15,16 @@
 export const SAMPLE_TOKEN = 'sample'
 /** `?t=sample-done` — after the customer signed / accepted (the thank-you, the signed banner). */
 export const SAMPLE_TOKEN_DONE = 'sample-done'
+/** `?t=sample-gc` — the portal as a general contractor sees it (properties they GC, tagged). */
+export const SAMPLE_TOKEN_GC = 'sample-gc'
 
-export type SampleState = 'live' | 'done'
+export type SampleState = 'live' | 'done' | 'gc'
 
 export function sampleStateFromToken(token: string | null | undefined): SampleState | null {
   const t = (token ?? '').trim()
   if (t === SAMPLE_TOKEN) return 'live'
   if (t === SAMPLE_TOKEN_DONE) return 'done'
+  if (t === SAMPLE_TOKEN_GC) return 'gc'
   return null
 }
 
@@ -48,6 +51,20 @@ export const SAMPLE_SUB = {
   contact: 'Sam Plumber',
   email: 'sam@samsplumbing.example.com',
   portalSlug: 'sams-plumbing',
+} as const
+
+/** The paper a sub signs on hire — a short, plainly-sample agreement body. */
+export const SAMPLE_CONTRACT = {
+  id: 'sample-contract',
+  documentName: 'Subcontractor agreement (sample)',
+  bodyHtml:
+    '<h2>Subcontractor agreement</h2>' +
+    '<p>This sample agreement is between <strong>Click Plumbing and Electrical</strong> (the Company) and <strong>Sam\'s Plumbing LLC</strong> (the Subcontractor).</p>' +
+    '<h3>1. Scope</h3><p>The Subcontractor performs plumbing rough-in, top-out and trim on jobs the Company assigns, to the plans, the code and the Company\'s standards.</p>' +
+    '<h3>2. Pay</h3><p>Work is paid per the agreed sheet for each job. Payments run weekly once the work passes inspection; final payments on builder jobs release when the builder accepts the work.</p>' +
+    '<h3>3. Paperwork</h3><p>The Subcontractor keeps a current W-9 and certificate of insurance on file with the Company and uploads renewals before they expire.</p>' +
+    '<h3>4. Safety and conduct</h3><p>The Subcontractor follows site safety rules, leaves work areas clean, and reports damage or problems the same day.</p>' +
+    '<p><em>This is sample text shown in Settings → What customers see. It is not a real agreement.</em></p>',
 } as const
 
 export type SampleLineItem = { line_item: string; description: string; quantity: number; unit_price_cents: number; amount_cents: number }
