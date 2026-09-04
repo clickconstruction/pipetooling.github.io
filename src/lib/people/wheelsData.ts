@@ -12,6 +12,7 @@ import { fetchAllRowsChunkedIn } from '../supabasePaging'
 import type { Json } from '../../types/database'
 import { fetchLabelIdByTxId, loadCategoryTags } from '../banking/categoryTagsData'
 import { fetchAttributionsByMercuryTxIds } from '../fetchMercuryRelationsByTxIds'
+import { loadDebitCardDirectory } from '../banking/debitCards'
 import { currentInsurancePeriod, currentPossession, isMotorPoolPossession, vehicleDisplayName, type FleetInsurancePeriod, type FleetPossession } from '../vehicleFleet'
 import {
   buildWheelsRows,
@@ -55,6 +56,8 @@ export type WheelsSnapshot = {
   unattributedCards: Array<{ cardId: string | null; label: string; usd: number; n: number }>
   /** Fuel-family rows with no debit card (ACH supplier payments…) — shown as a label check, never counted. v2.2739 */
   offCardFuelFamily: { usd: number; n: number; top: Array<{ counterparty: string; usd: number }> }
+  /** Purchases on company cards (management tools) — not fuel; by card nickname. v2.2750 */
+  companyCardSpend: { usd: number; n: number; byCard: Array<{ cardId: string; label: string; usd: number }> }
 }
 
 type PayConfigLite = { person_name: string; vehicle_arrangement?: unknown; vehicle_rate_override?: number | null }
@@ -115,22 +118,27 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
       if (card) cardIdByTx.set(r.id, card)
     }
   }
+  // Company cards (v2.2750) are management tools — never anyone's fuel.
+  const directory = await loadDebitCardDirectory().catch(() => ({ nicknameByCard: {}, roleByCard: {} }))
+  const companyCardIds = new Set(Object.entries(directory.roleByCard).filter(([, role]) => role === 'company').map(([id]) => id))
   const split = splitFuelFamily(
-    familyRows.map<FuelFamilyTx>((r) => ({ id: r.id, amount: r.amount, kind: r.kind, counterparty: r.counterparty_name, hasCard: cardIdByTx.has(r.id) })),
+    familyRows.map<FuelFamilyTx>((r) => ({ id: r.id, amount: r.amount, kind: r.kind, counterparty: r.counterparty_name, hasCard: cardIdByTx.has(r.id), cardId: cardIdByTx.get(r.id) ?? null })),
+    companyCardIds,
   )
   const fuelTx = split.card
-  const [attributions, nicknameRows] = await Promise.all([
-    fuelTx.length > 0 ? fetchAttributionsByMercuryTxIds(fuelTx.map((r) => r.id), 'wheels') : Promise.resolve([]),
-    withSupabaseRetry(async () => await supabase.from('mercury_debit_card_nicknames').select('mercury_debit_card_id, nickname'), 'wheels card nicknames').catch(() => []),
-  ])
+  const attributions = fuelTx.length > 0 ? await fetchAttributionsByMercuryTxIds(fuelTx.map((r) => r.id), 'wheels') : []
   const userByTx = new Map<string, string>()
   for (const a of attributions) if (a.user_id) userByTx.set(a.mercury_transaction_id, a.user_id)
   const charges = fuelTx.map((r) => ({ amount: r.amount, userId: userByTx.get(r.id) ?? null, cardId: cardIdByTx.get(r.id) ?? null }))
   const fuelByUser = sumFuelByUser(charges)
   const unattributedFuelUsd = Math.round(charges.filter((c) => !c.userId).reduce((s, c) => s + Math.abs(c.amount), 0) * 100) / 100
-  const nicknameByCard = new Map<string, string>()
-  for (const r of (nicknameRows ?? []) as Array<{ mercury_debit_card_id: string; nickname: string }>) nicknameByCard.set(r.mercury_debit_card_id.toLowerCase(), r.nickname)
+  const nicknameByCard = new Map<string, string>(Object.entries(directory.nicknameByCard))
   const unattributedCards = unattributedFuelByCard(charges, nicknameByCard)
+  const companyCardSpend = {
+    usd: split.companyCard.usd,
+    n: split.companyCard.n,
+    byCard: split.companyCard.byCard.map((c) => ({ cardId: c.cardId, label: nicknameByCard.get(c.cardId) ?? `card …${c.cardId.replace(/-/g, '').slice(-4)}`, usd: c.usd })),
+  }
 
   const hoursByUser = fieldHoursByUser(sessions)
   const nameById = new Map(input.users.map((u) => [u.id, u.name]))
@@ -174,7 +182,7 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
     override: r.vehicle_rate_override ?? null,
   }))
   const rows = buildWheelsRows(people, fuelByUser, hoursByUser, trucks)
-  return { window, rows, trucks, fuelTag, comparison: wheelsComparison(rows), unattributedFuelUsd, unattributedCards, offCardFuelFamily: split.offCard }
+  return { window, rows, trucks, fuelTag, comparison: wheelsComparison(rows), unattributedFuelUsd, unattributedCards, offCardFuelFamily: split.offCard, companyCardSpend }
 }
 
 /** Manual $/field hour for a person; null clears it so the computed rate applies again. */

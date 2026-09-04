@@ -10,10 +10,10 @@ import type { Database } from '../types/database'
 import { BankingStripeInvoicesPanel } from '../components/BankingStripeInvoicesPanel'
 import { BankingStripeWebhookEventsPanel } from '../components/BankingStripeWebhookEventsPanel'
 import { BankingAccountNicknamesModal } from '../components/BankingAccountNicknamesModal'
-import { BankingDebitCardNicknamesModal } from '../components/BankingDebitCardNicknamesModal'
+import { BankingDebitCardsModal } from '../components/banking/BankingDebitCardsModal'
+import { loadDebitCardDirectory, type DebitCardRole } from '../lib/banking/debitCards'
 import { BankingDebitCardRecentTxModal } from '../components/BankingDebitCardRecentTxModal'
 import { BankingSortingConfigModal } from '../components/BankingSortingConfigModal'
-import { BankingUserCardLinkModal } from '../components/BankingUserCardLinkModal'
 import { BankingMercuryDragSortTab } from '../components/banking/BankingMercuryDragSortTab'
 import { BankingMercuryAccountingTab } from '../components/banking/BankingMercuryAccountingTab'
 import { BankingMercuryUserReviewTab } from '../components/banking/BankingMercuryUserReviewTab'
@@ -198,6 +198,10 @@ export default function Banking() {
   const [nicknameByDebitCard, setNicknameByDebitCard] = useState<Record<string, string>>({})
   const [savingDebitCardNicknameId, setSavingDebitCardNicknameId] = useState<string | null>(null)
   const [debitCardNicknamesModalOpen, setDebitCardNicknamesModalOpen] = useState(false)
+  /** Debit cards (v2.2750): person's card vs company card, keyed by lower-cased card id. */
+  const [roleByDebitCard, setRoleByDebitCard] = useState<Record<string, DebitCardRole>>({})
+  /** Card to open the Debit cards modal on (`?cards=<id>` door from Wheels). */
+  const [highlightDebitCardId, setHighlightDebitCardId] = useState<string | null>(null)
   const [nicknamesMenuOpen, setNicknamesMenuOpen] = useState(false)
   const [ledgerAdvancedMenuOpen, setLedgerAdvancedMenuOpen] = useState(false)
   const [backfillModalOpen, setBackfillModalOpen] = useState(false)
@@ -207,7 +211,6 @@ export default function Banking() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'posted_at', dir: 'desc' })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(defaultBankingSortingConfig)
   const [sortingConfigModalOpen, setSortingConfigModalOpen] = useState(false)
-  const [userCardLinkModalOpen, setUserCardLinkModalOpen] = useState(false)
   const [sortingSort, setSortingSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'posted_at', dir: 'desc' })
   const [allocationsByTxId, setAllocationsByTxId] = useState<Map<string, MercuryJobSplit[]>>(() => new Map())
   const [personIdByTxId, setPersonIdByTxId] = useState<Map<string, string | null>>(() => new Map())
@@ -335,7 +338,6 @@ export default function Banking() {
   useEffect(() => {
     if (bankingView.product !== 'mercury' || bankingView.mercuryTab !== 'sorting') {
       setSortingConfigModalOpen(false)
-      setUserCardLinkModalOpen(false)
     }
   }, [bankingView.product, bankingView.mercuryTab])
 
@@ -723,16 +725,9 @@ export default function Banking() {
   const loadDebitCardNicknames = useCallback(async () => {
     if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     try {
-      const data = await withSupabaseRetry(async () => {
-        return supabase.from('mercury_debit_card_nicknames').select('mercury_debit_card_id, nickname')
-      }, 'load mercury_debit_card_nicknames')
-      const list = (data ?? []) as Pick<
-        Database['public']['Tables']['mercury_debit_card_nicknames']['Row'],
-        'mercury_debit_card_id' | 'nickname'
-      >[]
-      const next: Record<string, string> = {}
-      for (const r of list) next[String(r.mercury_debit_card_id).toLowerCase()] = r.nickname
-      setNicknameByDebitCard(next)
+      const dir = await loadDebitCardDirectory()
+      setNicknameByDebitCard(dir.nicknameByCard)
+      setRoleByDebitCard(dir.roleByCard)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Failed to load debit card nicknames', 'error')
     }
@@ -1054,6 +1049,22 @@ export default function Banking() {
     }
     return Array.from(set).sort()
   }, [rows])
+
+  // Door from Wheels (v2.2750): `?cards=<id>` opens the Debit cards modal on that card, `?cards=1` just opens it.
+  useEffect(() => {
+    const cards = searchParams.get('cards')
+    if (!cards || !canAccessBanking) return
+    setHighlightDebitCardId(cards === '1' ? null : cards.toLowerCase())
+    setDebitCardNicknamesModalOpen(true)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('cards')
+        return next
+      },
+      { replace: true },
+    )
+  }, [searchParams, setSearchParams, canAccessBanking])
 
   const debitCardManageIds = useMemo(() => {
     const ids = new Set<string>([...debitCardIdsFromRows, ...Object.keys(nicknameByDebitCard)])
@@ -1586,23 +1597,6 @@ export default function Banking() {
               ) : null}
               {canAccessBanking ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setUserCardLinkModalOpen(true)}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: 4,
-                      border: '1px solid #059669',
-                      background: 'var(--bg-emerald-tint)',
-                      color: '#047857',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: '0.875rem',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    User Card Link
-                  </button>
                   <BankingNicknamesMenu
                     menuOpen={nicknamesMenuOpen}
                     onMenuOpenChange={setNicknamesMenuOpen}
@@ -2108,19 +2102,28 @@ export default function Banking() {
       ) : null}
 
       {canAccessBanking && (
-        <BankingDebitCardNicknamesModal
+        <BankingDebitCardsModal
           open={debitCardNicknamesModalOpen}
           onClose={() => {
             setRecentTxDebitCardId(null)
+            setHighlightDebitCardId(null)
             setDebitCardNicknamesModalOpen(false)
           }}
           debitCardIds={debitCardManageIds}
           nicknameByDebitCard={nicknameByDebitCard}
+          roleByDebitCard={roleByDebitCard}
           savingNicknameId={savingDebitCardNicknameId}
-          onSave={(id, nickname) => persistDebitCardNickname(id, nickname)}
-          onClear={(id) => clearDebitCardNicknameRow(id)}
+          onSaveNickname={(id, nickname) => persistDebitCardNickname(id, nickname)}
+          onClearNickname={(id) => clearDebitCardNicknameRow(id)}
+          onDirectoryChanged={loadDebitCardNicknames}
+          usersOptions={usersSelectOptions}
+          authUserId={user?.id ?? null}
+          onLinksChanged={() => {
+            void loadMercuryAllocations()
+          }}
           onOpenRecentTransactions={(id) => setRecentTxDebitCardId(id)}
           recentPreviewOpen={recentTxDebitCardId !== null}
+          highlightCardId={highlightDebitCardId}
         />
       )}
 
@@ -2198,21 +2201,6 @@ export default function Banking() {
         />
       )}
 
-      {canAccessBanking ? (
-        <BankingUserCardLinkModal
-          open={userCardLinkModalOpen}
-          onClose={() => setUserCardLinkModalOpen(false)}
-          debitCardIds={debitCardManageIds}
-          nicknameByDebitCard={nicknameByDebitCard}
-          usersOptions={usersSelectOptions}
-          authUserId={user?.id ?? null}
-          onSaved={() => {
-            void loadMercuryAllocations()
-          }}
-          onOpenRecentTransactions={(id) => setRecentTxDebitCardId(id)}
-          recentPreviewOpen={recentTxDebitCardId !== null}
-        />
-      ) : null}
     </div>
   )
 }

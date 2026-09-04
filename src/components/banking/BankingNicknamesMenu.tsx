@@ -1,7 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react'
 
 /**
- * "Nicknames" dropdown (Account nicknames / Debit card nicknames) rendered in
+ * "Nicknames" dropdown (Account nicknames / Debit cards) rendered in
  * the User Sort header tools and the Ledger toolbar. Verbatim module move out
  * of Banking.tsx (in-file component moves; see BANKING_TABS_ARCHITECTURE.md).
  */
@@ -118,7 +118,7 @@ export function BankingNicknamesMenu({
               }}
               style={{ ...itemStyle, borderBottom: 'none' }}
             >
-              Debit card nicknames
+              Debit cards
             </button>
           ) : null}
         </div>

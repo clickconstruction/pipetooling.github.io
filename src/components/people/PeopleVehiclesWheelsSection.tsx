@@ -10,6 +10,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { VEHICLE_ARRANGEMENT_OPTIONS, type VehicleArrangement, type WheelsPersonRow } from '../../lib/people/wheels'
 import { loadWheelsSnapshot, saveVehicleRateOverride, type WheelsSnapshot } from '../../lib/people/wheelsData'
+import { debitCardsHref } from '../../lib/banking/debitCards'
+import { Link } from 'react-router-dom'
 
 /** formatCurrency returns digits only; every money cell here carries the sign. */
 function usd(n: number): string {
@@ -158,9 +160,26 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                   {snap.fuelTag ? ` · fuel = ${snap.fuelTag.icon} ${snap.fuelTag.name} tag` : ' · no fuel tag found — set one up in Banking → Accounting → Tags'}
                 </span>
                 {snap.unattributedCards.length > 0 ? (
-                  <span title="Card fuel with no person attributed. Link the card to a person in Banking → Sorting → User Card Link (auto-assign) and it fills in for past and future purchases.">
+                  <span title="Card fuel with no person attributed. Click a card to name it, mark it a company card, or link it to its person — past and future purchases fill in.">
                     {usd(snap.unattributedFuelUsd)} of fuel has no person on it:{' '}
-                    {snap.unattributedCards.map((c) => `${c.label} ${usd(c.usd)}`).join(' · ')}
+                    {snap.unattributedCards.map((c, i) => (
+                      <span key={c.cardId ?? `nocard-${i}`}>
+                        {i > 0 ? ' · ' : ''}
+                        {c.cardId ? (
+                          <Link to={debitCardsHref(c.cardId)} style={{ color: 'var(--text-link)' }}>
+                            {c.label}
+                          </Link>
+                        ) : (
+                          c.label
+                        )}{' '}
+                        {usd(c.usd)}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+                {snap.companyCardSpend.usd > 0 ? (
+                  <span title="Purchases on cards marked as company cards (management tools). Not fuel, not counted.">
+                    Not fuel: {usd(snap.companyCardSpend.usd)} on company cards ({snap.companyCardSpend.byCard.map((c) => `${c.label} ${usd(c.usd)}`).join(', ')})
                   </span>
                 ) : null}
                 {snap.offCardFuelFamily.usd > 0 ? (

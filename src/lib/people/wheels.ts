@@ -57,13 +57,17 @@ export type FuelFamilyTx = {
   counterparty: string | null
   /** True when the row carries a Mercury debit card (a purchase at the pump / the parts counter). */
   hasCard: boolean
+  /** The card id when known (lower-cased). */
+  cardId?: string | null
 }
 
 export type FuelSplit = {
-  /** Card purchases — the only rows that can be someone's fuel. */
+  /** Purchases on a person's card — the only rows that can be someone's fuel. */
   card: FuelFamilyTx[]
   /** Fuel-family rows with no card (ACH supplier payments, transfers…) — usually a mislabel; shown, never counted. */
   offCard: { usd: number; n: number; top: Array<{ counterparty: string; usd: number }> }
+  /** Purchases on company cards (management tools — GPS, charging, subscriptions): not fuel, shown by card. v2.2750 */
+  companyCard: { usd: number; n: number; byCard: Array<{ cardId: string; usd: number }> }
 }
 
 /**
@@ -71,13 +75,22 @@ export type FuelSplit = {
  * house that someone filed under a vehicle label is not anyone's fill-up;
  * before this split it showed up as "fuel with no person on it".
  */
-export function splitFuelFamily(rows: readonly FuelFamilyTx[]): FuelSplit {
+export function splitFuelFamily(rows: readonly FuelFamilyTx[], companyCardIds: ReadonlySet<string> = new Set()): FuelSplit {
   const card: FuelFamilyTx[] = []
   const byCp = new Map<string, number>()
+  const byCompanyCard = new Map<string, number>()
   let usd = 0
   let n = 0
+  let companyUsd = 0
+  let companyN = 0
   for (const r of rows) {
     if (r.hasCard && r.kind === 'debitCardTransaction') {
+      if (r.cardId && companyCardIds.has(r.cardId)) {
+        companyUsd += Math.abs(r.amount)
+        companyN++
+        byCompanyCard.set(r.cardId, (byCompanyCard.get(r.cardId) ?? 0) + Math.abs(r.amount))
+        continue
+      }
       card.push(r)
       continue
     }
@@ -90,7 +103,8 @@ export function splitFuelFamily(rows: readonly FuelFamilyTx[]): FuelSplit {
     .map(([counterparty, u]) => ({ counterparty, usd: round2(u) }))
     .sort((a, b) => b.usd - a.usd)
     .slice(0, 3)
-  return { card, offCard: { usd: round2(usd), n, top } }
+  const byCard = [...byCompanyCard.entries()].map(([cardId, u]) => ({ cardId, usd: round2(u) })).sort((a, b) => b.usd - a.usd)
+  return { card, offCard: { usd: round2(usd), n, top }, companyCard: { usd: round2(companyUsd), n: companyN, byCard } }
 }
 
 /** Card fuel nobody is attributed to, grouped by card — the list to link. */

@@ -61,7 +61,7 @@ Each section lists: render location (symbol/JSX anchor — line numbers are "as 
 | Stripe `invoices` / `data` | `BankingStripeInvoicesPanel` / `BankingStripeWebhookEventsPanel` | ~11 | **extracted** | none | — | Done |
 | Parent shell: role gate, URL router, data engine, prefs, modals | `export default function Banking()` | ~1,150 after extractions | permanent parent | — | — | Compress via seam hooks (`useBankingMercuryTransactions`, `useBankingMercuryRelations`, `useBankingNicknames`, `useBankingAccountingPrefs`) |
 
-Page-level modals (all stay in the parent unless noted): `BankingAccountNicknamesModal` (dev), `BankingDebitCardNicknamesModal`, `BankingDebitCardRecentTxModal` (opened from both nickname and user-card-link modals), `MercuryBackfillModal` (dev), `MercuryImportCsvModal` (dev/master), `ManualAccountsModal` (dev/master), **`MercuryTransactionAllocationsModal`** (external coupling — see below), `BankingSortingConfigModal` (dev), `BankingUserCardLinkModal`.
+Page-level modals (all stay in the parent unless noted): `BankingAccountNicknamesModal` (dev), `BankingDebitCardsModal (v2.2750; was BankingDebitCardNicknamesModal)`, `BankingDebitCardRecentTxModal` (opened from both nickname and user-card-link modals), `MercuryBackfillModal` (dev), `MercuryImportCsvModal` (dev/master), `ManualAccountsModal` (dev/master), **`MercuryTransactionAllocationsModal`** (external coupling — see below), `BankingSortingConfigModal` (dev), `BankingDebitCardsModal (v2.2750; was BankingUserCardLinkModal)`.
 
 ---
 
@@ -155,7 +155,7 @@ All were props-only (no parent closure), so the moves were verbatim cut/paste (~
 - **Derived memos:** `sortingFiltered` ([`filterMercuryRowsForSorting`](../src/lib/bankingSortingCounts.ts) applies the config slice), `sortingAfterSearch`, `sortingFilteredSorted`, `booksSortingFilteredSorted` (duplicate-excluded), `sortingTotalAmount`, `sortingUnmatchedCounts` ([`countSortingUnmatched`](../src/lib/bankingSortingCounts.ts) — "Without person" / "Not split to jobs" chips).
 - **Handlers:** none exclusive beyond the sort toggler; Refresh/Reload buttons reuse `handleSync` / `loadRowsForActiveView`.
 - **Supabase:** none beyond the shared engine (its config lives in localStorage via [`bankingSortingConfig.ts`](../src/lib/bankingSortingConfig.ts)).
-- **Sub-components:** `BankingMercuryTable` with all four layout flags on (`allocationsAfterCounterparty`, `hideKindColumn`, `debitAndAccountAfterAmount`, `counterpartyNoteCombined`); modals `BankingSortingConfigModal`, `BankingUserCardLinkModal` (extracted).
+- **Sub-components:** `BankingMercuryTable` with all four layout flags on (`allocationsAfterCounterparty`, `hideKindColumn`, `debitAndAccountAfterAmount`, `counterpartyNoteCombined`); modals `BankingSortingConfigModal`, `BankingDebitCardsModal (v2.2750; was BankingUserCardLinkModal)` (extracted).
 - **External coupling:** none.
 - **Extraction status + risk + approach:** Inline. **Low-medium risk — best first tab extraction.** All filtering/counting logic is already in tested libs; the tab is mostly layout. Extract `BankingMercurySortingTab` receiving the memoized row slices (or the inputs to recompute them), `sortingSort` state can move in, `sortingConfig` stays parent-owned (hydration is role-dependent), the two modals can move with the tab **if** the "close on tab leave" effect becomes unmount-natural (it does — the modals only open from this tab's header). The header-tools region currently renders in the page header outside the panel; move it into the tab or pass a `renderHeaderTools` slot — decide at extraction time, preserve placement.
 
@@ -192,14 +192,14 @@ All were props-only (no parent closure), so the moves were verbatim cut/paste (~
 | Modal | Opened from | Key wiring |
 |---|---|---|
 | `BankingAccountNicknamesModal` (dev) | Nicknames menu (User Sort header + Ledger toolbar) | `nicknameManageIds`, drafts + CRUD callbacks |
-| `BankingDebitCardNicknamesModal` | Nicknames menu (both) | `debitCardManageIds`, CRUD callbacks, `onOpenRecentTransactions` |
+| `BankingDebitCardsModal (v2.2750; was BankingDebitCardNicknamesModal)` | Nicknames menu (both) | `debitCardManageIds`, CRUD callbacks, `onOpenRecentTransactions` |
 | `BankingDebitCardRecentTxModal` | debit-card nicknames modal AND user-card-link modal | `recentTxDebitCardId`, `rows`, `DEBIT_CARD_RECENT_TX_CAP = 50`; triggers a raw-hydration effect |
 | `MercuryBackfillModal` (dev) | Ledger Advanced menu | `onSubmit={handleBackfill}` |
 | `MercuryImportCsvModal` (dev/master) | Ledger Advanced menu | `onSubmit={handleImportCsv}` |
 | `ManualAccountsModal` (dev/master) | Ledger Advanced menu | `onChanged` → full reload trio |
 | **`MercuryTransactionAllocationsModal`** | Ledger, User Sort, Drag Sort, Accounting (all via `onEditAllocations` → `openAllocModalForMercuryRow`) | see external coupling below |
 | `BankingSortingConfigModal` (dev) | User Sort header tools | `initialConfig={sortingConfig}`, kind/account/debit choices, `onSave={handleSortingConfigSave}` |
-| `BankingUserCardLinkModal` | User Sort header tools | `debitCardManageIds`, `usersOptions`, `onSaved={loadMercuryAllocations}`, `onOpenRecentTransactions` |
+| `BankingDebitCardsModal (v2.2750; was BankingUserCardLinkModal)` | User Sort header tools | `debitCardManageIds`, `usersOptions`, `onSaved={loadMercuryAllocations}`, `onOpenRecentTransactions` |
 
 **All of these stay in the parent** (each is opened from 2+ tabs or from the shared header) — except `MercuryBackfillModal`/`MercuryImportCsvModal`/`ManualAccountsModal`, which are Ledger-only but whose completion callbacks touch parent loaders, so keep them parent-owned too (open via callback from the extracted Ledger tab).
 
