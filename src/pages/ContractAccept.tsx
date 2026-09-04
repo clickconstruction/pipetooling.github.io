@@ -8,6 +8,9 @@ import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcc
 import { contractBodyHasRenderableDisplay } from '../lib/contractBodyFormat'
 import { ContractBodyDisplay } from '../components/contracts/ContractBodyDisplay'
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
+import { ContractFormFill } from '../components/contracts/formFill/ContractFormFill'
+import { applyPrefill, validateFormValues, type FormPerson, type FormSchema, type FormValues } from '../lib/forms/formSchema'
+import { errorsByBox, fillString, type FillLang } from '../lib/forms/formFillState'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -33,6 +36,15 @@ type ContractThankYouCtaState =
   | { status: 'fetching' }
   | { status: 'signed_in'; pendingCount: number }
 
+/** Contract Forms (v2.2797): a form row — the signer fills the template's PDF instead of reading a body. */
+type FormPayload = {
+  schema: FormSchema
+  templateUrl: string
+  revisionLabel: string | null
+  person: FormPerson
+  todayLabel: string
+}
+
 type LoadPayload = {
   id: string
   person_name: string
@@ -40,6 +52,7 @@ type LoadPayload = {
   signing_body_html: string | null
   signing_body_format: string
   canonical_document_url: string | null
+  form: FormPayload | null
 }
 
 export default function ContractAccept() {
@@ -60,6 +73,9 @@ export default function ContractAccept() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [thankYouCta, setThankYouCta] = useState<ContractThankYouCtaState>({ status: 'waiting_auth' })
+  const [formValues, setFormValues] = useState<FormValues>({})
+  const [formLang, setFormLang] = useState<FillLang>('en')
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
   const showThankYou = done || alreadySigned
 
@@ -115,7 +131,8 @@ export default function ContractAccept() {
             headers: await publicFunctionHeaders(sample),
           },
         )
-        const json = (await res.json()) as LoadPayload & {
+        const json = (await res.json()) as Omit<LoadPayload, 'form'> & {
+          form?: FormPayload | null
           error?: string
           code?: string
           thank_you_title?: string
@@ -144,7 +161,12 @@ export default function ContractAccept() {
           signing_body_format:
             typeof json.signing_body_format === 'string' && json.signing_body_format ? json.signing_body_format : 'html',
           canonical_document_url: json.canonical_document_url ?? null,
+          form: json.form && json.form.schema ? json.form : null,
         })
+        if (json.form && json.form.schema) {
+          setFormValues(applyPrefill(json.form.schema, {}, json.form.person))
+          setFormErrors({})
+        }
       } catch {
         if (!ac.signal.aborted) setError('Could not load contract. Check your connection.')
       } finally {
@@ -168,17 +190,28 @@ export default function ContractAccept() {
       setDone(true)
       return
     }
+    if (payload?.form) {
+      const problems = validateFormValues(payload.form.schema, formValues)
+      if (problems.length > 0) {
+        setFormErrors(errorsByBox(payload.form.schema, formValues))
+        setError(fillString(formLang, 'fixFirst'))
+        return
+      }
+      setFormErrors({})
+    }
     setSubmitting(true)
     setError(null)
     try {
+      const formPart = payload?.form ? { formValues, formLang } : {}
       const body =
         p.mode === 'type'
-          ? { token, printedName: p.printedName, agreedTerms: true as const }
+          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart }
           : {
               token,
               printedName: p.printedName,
               signaturePngBase64: p.signaturePngBase64,
               agreedTerms: true as const,
+              ...formPart,
             }
       const res = await fetch(`${supabaseUrl}/functions/v1/accept-contract`, {
         method: 'POST',
@@ -311,7 +344,24 @@ export default function ContractAccept() {
             </p>
           ) : null}
 
-          {hasRenderableSigningBody ? (
+          {payload.form ? (
+            <ContractFormFill
+              schema={payload.form.schema}
+              templateUrl={payload.form.templateUrl}
+              values={formValues}
+              onValuesChange={(next) => {
+                setFormValues(next)
+                if (Object.keys(formErrors).length > 0) setFormErrors(errorsByBox(payload.form!.schema, next))
+              }}
+              lang={formLang}
+              onLangChange={setFormLang}
+              errors={formErrors}
+              todayLabel={payload.form.todayLabel}
+              signature={printedName.trim() ? { mode: 'type', text: printedName.trim() } : null}
+            />
+          ) : null}
+
+          {hasRenderableSigningBody && !payload.form ? (
             <div
               style={{
                 maxHeight: 'min(50vh, 420px)',
@@ -331,7 +381,7 @@ export default function ContractAccept() {
             </div>
           ) : null}
 
-          {!hasRenderableSigningBody && !canonical ? (
+          {!hasRenderableSigningBody && !canonical && !payload.form ? (
             <p style={{ color: 'var(--text-muted)' }}>No document content was provided for this link.</p>
           ) : null}
 
@@ -343,6 +393,14 @@ export default function ContractAccept() {
             formError={error}
             submitting={submitting}
             onSubmit={(p) => void submitAccept(p)}
+            {...(payload.form
+              ? {
+                  heading: fillString(formLang, 'signHeading'),
+                  disclosure: fillString(formLang, 'disclosure'),
+                  agreeLabel: fillString(formLang, 'agree'),
+                  submitLabel: fillString(formLang, 'submit'),
+                }
+              : {})}
           />
         </div>
       </div>

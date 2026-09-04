@@ -2,6 +2,11 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleContractResponse } from '../_shared/customerSampleFixtures.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
+import type { FormSchema } from '../_shared/formSchema.ts'
+
+const FORM_TEMPLATES_BUCKET = 'contract-form-templates'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -63,7 +68,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('person_contract_documents')
       .select(
-        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name',
+        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -85,6 +90,8 @@ serve(async (req) => {
       person_name: string
       document_name: string
       signer_printed_name: string | null
+      form_template_id: string | null
+      person_id: string | null
     }
 
     if (r.status === 'signed') {
@@ -129,6 +136,35 @@ serve(async (req) => {
       (r.url && String(r.url).trim()) ||
       null
 
+    // Contract Forms (v2.2797): a form row ships its schema, a short-lived URL to the
+    // template PDF, and roster prefill — the signer fills the real page.
+    let form: { schema: FormSchema; templateUrl: string; revisionLabel: string | null; person: { name: string | null; email: string | null; phone: string | null }; todayLabel: string } | null = null
+    if (r.form_template_id) {
+      const { data: tpl } = await admin
+        .from('contract_form_templates')
+        .select('schema, pdf_storage_path, revision_label, status')
+        .eq('id', r.form_template_id)
+        .maybeSingle()
+      const t = tpl as { schema: FormSchema; pdf_storage_path: string; revision_label: string | null; status: string } | null
+      if (t && t.schema) {
+        const { data: signed, error: sErr } = await admin.storage.from(FORM_TEMPLATES_BUCKET).createSignedUrl(t.pdf_storage_path, 900)
+        if (sErr || !signed?.signedUrl) {
+          console.error('form template url', sErr)
+          return new Response(JSON.stringify({ error: 'The form is not available right now.' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+        let person = { name: (r.person_name ?? '').trim() || null, email: null as string | null, phone: null as string | null }
+        if (r.person_id) {
+          const { data: p } = await admin.from('people').select('name, email, phone').eq('id', r.person_id).maybeSingle()
+          const pp = p as { name: string | null; email: string | null; phone: string | null } | null
+          if (pp) person = { name: (pp.name ?? '').trim() || person.name, email: (pp.email ?? '').trim() || null, phone: (pp.phone ?? '').trim() || null }
+        }
+        form = { schema: t.schema, templateUrl: signed.signedUrl, revisionLabel: t.revision_label, person, todayLabel: formatYmdForContractEmail(todayYmdInAppTz()) ?? '' }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         id: r.id,
@@ -137,6 +173,7 @@ serve(async (req) => {
         signing_body_html: r.signing_body_html,
         signing_body_format: r.signing_body_format,
         canonical_document_url: canonical,
+        form,
       }),
       {
         status: 200,

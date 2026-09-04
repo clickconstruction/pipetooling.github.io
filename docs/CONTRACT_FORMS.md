@@ -104,6 +104,10 @@ The IRS W-9 fixture used by the tests lives at `src/test/fixtures/fw9-2024-03.pd
 
 People → Contracts → Contract library → **Forms** (`src/components/contracts/formStudio/`). `FormStudio` lists `contract_form_templates` and creates one from an uploaded PDF (`readPdfFields` → optional `mergeDraftedFields` → `createFormTemplate`, which uploads to the private bucket and inserts the row). `FormStudioEditor` renders the page (`PdfPageCanvas`, pdf.js) under `FormBoxLayer` (drag / resize / multi-select) beside `FormBoxInspector`; every schema change goes through `src/lib/forms/formStudioState.ts`. Toolbar: add by type, Import PDF fields, Merge → digits, Import / Export JSON (the same `FormSchema` the scripts produce), Replace PDF, Preview filled PDF (client-side `fillFormPdf`), Save, Publish (packet + document name + audience → one Book entry per template via `publishFormTemplate`). Guide: `build-a-fillable-form.md`.
 
+## The signer's page (fill on the document)
+
+`/contract/accept?t=…` (`src/pages/ContractAccept.tsx`) asks `get-contract-for-signer`; a form row comes back with `form: { schema, templateUrl, person, todayLabel }` and renders `ContractFormFill` (`src/components/contracts/formFill/`) instead of the prose body: every page via `PdfPageCanvas` at a fit-to-width scale, `FormFillOverlay` inputs at the boxes' rects, a phone lens under 760 px (`lensSequence`, Back / Next, progress, rarely-needed expander), an English / Español toggle (`labelEs` / `helpEs` + `fillString`). Values are prefilled from the roster (`applyPrefill`), validated client-side (`validateFormValues` → `errorsByBox`), and posted to `accept-contract` as `formValues` with the signature; the function validates again, fills, flattens, files, and stores only non-sensitive values. Kernel: `src/lib/forms/formFillState.ts`. Guide: `fill-and-sign-a-form-on-my-phone.md`.
+
 ## Fill semantics
 
 - **Bound** box (`bind`): the PDF's own field is set (`setText` / `check`), so it renders with the form's native appearance and lands exactly. Binds the PDF lacks are reported in `skipped`, never thrown — a schema drafted against another revision degrades visibly instead of crashing a signing.
@@ -142,4 +146,5 @@ create policy "Devs manage contract form templates" on storage.objects
 | `supabase/migrations/20260904220000_contract_form_templates.sql` | Schema (PR 1) |
 | `supabase/migrations/20260904230000_contract_form_templates_doc_type.sql` | Form doc type → person copies (PR 2) |
 | `src/components/contracts/formStudio/*` | Form Studio (PR 2) |
+| `src/components/contracts/formFill/*`, `src/lib/forms/formFillState.ts` | Signer's fill-on-the-document mode (PR 3) |
 | `src/lib/forms/formStudioState.ts`, `src/lib/forms/formTemplateRepo.ts` | Studio kernel + data access (PR 2) |

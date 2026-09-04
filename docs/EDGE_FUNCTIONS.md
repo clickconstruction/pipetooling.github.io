@@ -1329,6 +1329,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Sample** (v2.2760, What customers see): `token=sample` / `sample-done` skips the row lookup — no sign-in (v2.2763 dropped the office-JWT gate); returns the sample agreement (`SAMPLE_CONTRACT`, HTML body) or the 409 `already_signed` shape. No `signer_last_viewed_at` stamp.
 
+**Forms** (v2.2797, Contract Forms): when the row has `form_template_id`, the response also carries `form: { schema, templateUrl, revisionLabel, person: { name, email, phone }, todayLabel }` — the FormSchema, a 15-minute signed URL into the private `contract-form-templates` bucket, roster prefill from `people` (by `person_id`, else the row's `person_name`), and today's label in the company calendar. 503 if the template URL cannot be minted. `signing_body_html` is null for form rows.
+
 **Behavior**: SHA-256 hash of `token`; load row by **`public_token_hash`** where **`status = sent`**; enforce **`public_token_expires_at`**. Returns **`signing_body_html`**, **`canonical_document_url`** (canonical column, else legacy **`url`**), **`document_name`**, **`person_name`** (still used for staff/email context; the public signing page in [`ContractAccept.tsx`](../src/pages/ContractAccept.tsx) does **not** display **For:** **`person_name`**). If **`status = signed`**, responds **409** with **`code: already_signed`** and optional thank-you strings (the app thank-you may use title-only copy; see **`RECENT_FEATURES.md`** v2.368). Since v2.1407, every successful fetch of a viewable `sent` document also stamps **`signer_last_viewed_at = now()`** (best-effort — an update error never blocks the page) for the People → Contracts Agreements compliance panel; requires migration `20260805120000`.
 
 ---
@@ -1341,11 +1343,13 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Dates** (v2.2703): `signed_at` is the Central civil day via `todayYmdInAppTz()` — evening signatures used to be dated tomorrow.
 
-**Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true }`
+**Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true, "formValues"?: Record<string, string | boolean>, "formLang"?: "en" | "es" }`
 
-**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; optional `APP_ORIGIN` (where `/fonts/GreatVibes-Regular.ttf` is fetched for typed signatures; default `https://clicktooling.com`)
 
 **Gateway**: `verify_jwt = false`
+
+**Forms** (v2.2797, Contract Forms): when the row has `form_template_id`, `formValues` are validated against the template's schema (`validateFormValues`; 400 `code: form_invalid` with `problems`), the template PDF is downloaded from `contract-form-templates`, filled by `buildFillPlan` + `fillFormPdf` (bound fields by name, unbound boxes drawn, typed signature in Great Vibes or the drawn PNG, then flattened), uploaded to `contract-form-pdfs/<docId>/signed.pdf`, and the row gets `form_values` (sensitive boxes removed), `form_hints` (last four per sensitive box), `form_pdf_storage_path`, `form_source = 'portal'` with the usual signed fields. Failures after the signature PNG upload remove the PNG (and the PDF if filed). Imports `pdf-lib@1.17.1` and `@pdf-lib/fontkit@1.1.1` from esm.sh.
 
 **Behavior**: Same PNG validation/size limits as **`accept-estimate`**. Idempotent if already **`signed`** (**`200`** + **`alreadySigned: true`**). Captures IP from **`x-forwarded-for`** (first hop) and **`user-agent`**.
 
@@ -1353,7 +1357,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-contract-for-signature
 
-**Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, or **`url`**, mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
+**Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, **`url`**, or **`form_template_id`** (v2.2797: a form row needs no body), mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
 
 **Endpoint**: `POST /functions/v1/send-contract-for-signature`
 

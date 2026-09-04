@@ -21,7 +21,9 @@ function hasSigningContent(row: {
   signing_body_html?: string | null
   canonical_document_url?: string | null
   url?: string | null
+  form_template_id?: string | null
 }): boolean {
+  if (row.form_template_id) return true
   if (row.signing_body_html?.trim()) return true
   if (row.canonical_document_url?.trim()) return true
   if (row.url?.trim()) return true
@@ -134,7 +136,7 @@ serve(async (req) => {
     const { data: docRow, error: docErr } = await admin
       .from('person_contract_documents')
       .select(
-        'id, person_name, document_name, status, signing_body_html, canonical_document_url, url, dashboard_prompt_after_clock_in',
+        'id, person_name, document_name, status, signing_body_html, canonical_document_url, url, dashboard_prompt_after_clock_in, form_template_id',
       )
       .eq('id', person_contract_document_id)
       .single()
