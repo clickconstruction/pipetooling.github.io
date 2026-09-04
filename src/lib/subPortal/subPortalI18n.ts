@@ -132,6 +132,22 @@ const STRINGS = {
     en: "Thanks — we'll schedule the walk-through and let you know.",
     es: 'Gracias — programaremos la revisión y le avisamos.',
   },
+  // ── Sheet work orders (v2.2789): exclusions, referenced documents, confirmations, the signed record ──
+  exclusionsLabel: { en: 'Not included', es: 'No incluido' },
+  attachedByReference: { en: 'Also part of this work order', es: 'También forma parte de esta orden' },
+  versionOf: { en: 'v. {date}', es: 'versión del {date}' },
+  expiresOnShort: { en: 'expires {date}', es: 'vence el {date}' },
+  bondFurnished: { en: 'Performance and payment bond furnished by you.', es: 'Fianza de cumplimiento y pago a su cargo.' },
+  specialProvisionsLabel: { en: 'Special provisions', es: 'Condiciones especiales' },
+  confirmBeforeSigning: { en: 'Please confirm', es: 'Por favor confirme' },
+  acksMissing: { en: 'Tick every box above before signing.', es: 'Marque todas las casillas antes de firmar.' },
+  signDisclosureRefs: {
+    en: 'By signing, you agree to perform this scope for this price under your Master Subcontract Agreement and the documents listed above ({refs}). Typing or drawing your signature has the same force and effect as your written signature.',
+    es: 'Al firmar, usted acepta realizar este alcance por este precio bajo su Contrato Maestro de Subcontratación y los documentos listados arriba ({refs}). Escribir o dibujar su firma tiene la misma validez que su firma manuscrita.',
+  },
+  whatYouAgreedTo: { en: 'What you agreed to', es: 'Lo que usted aceptó' },
+  signedOnBy: { en: 'Signed {date}', es: 'Firmado el {date}' },
+  youConfirmed: { en: 'You confirmed', es: 'Usted confirmó' },
 } as const
 
 export type SubPortalStringKey = keyof typeof STRINGS

@@ -4,6 +4,7 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleSubPortalResponse } from '../_shared/customerSampleFixtures.ts'
 import {
+  attachSheetAgreements,
   buildSubDocuments,
   buildSubOffers,
   buildSubPaymentLines,
@@ -11,6 +12,7 @@ import {
   buildSubTotals,
   nextPayRunYmd,
   addDaysYmd,
+  type SubAgreementRow,
   type SubDocRow,
   type SubItemRow,
   type SubOfferRow,
@@ -178,7 +180,18 @@ serve(async (req) => {
       paymentRows = (paymentsRaw ?? []) as SubPaymentRow[]
     }
 
-    const sheets = buildSubSheets(sheetRows, itemRows, paymentRows)
+    // Signed sheet work orders (v2.2789): "what you agreed to" on each sheet card.
+    let agreementRows: SubAgreementRow[] = []
+    if (laborJobIds.length > 0) {
+      const { data: agreementsRaw } = await admin
+        .from('step_commitments')
+        .select('labor_job_id, amount, signed_at, accepted_at, signer_printed_name, offer_scope_snapshot, signer_acknowledgements')
+        .in('labor_job_id', laborJobIds)
+        .is('step_id', null)
+        .in('status', ['accepted', 'approved', 'settled'])
+      agreementRows = (agreementsRaw ?? []) as SubAgreementRow[]
+    }
+    const sheets = attachSheetAgreements(buildSubSheets(sheetRows, itemRows, paymentRows), agreementRows)
     const totals = buildSubTotals(sheets)
     const openSheets = sheets.filter((s) => s.open > 0)
     const sheetsById = new Map(sheetRows.map((s) => [s.id, s]))
@@ -187,12 +200,13 @@ serve(async (req) => {
     // Open offers with the step name for the card title.
     const { data: offersRaw } = await admin
       .from('step_commitments')
-      .select('id, step_id, amount, notes, offer_scope_snapshot, offer_expires_at, proposed_start, proposed_end')
+      .select('id, step_id, labor_job_id, amount, notes, offer_scope_snapshot, offer_expires_at, proposed_start, proposed_end')
       .eq('person_id', link.person_id)
       .eq('status', 'offered')
       .limit(20)
-    const offerRowsRaw = (offersRaw ?? []) as Array<SubOfferRow & { step_id: string }>
-    const stepIds = [...new Set(offerRowsRaw.map((o) => o.step_id))]
+    const offerRowsRaw = (offersRaw ?? []) as Array<SubOfferRow & { step_id: string | null }>
+    // Sheet work orders (v2.2789) have no step — their title comes from the snapshot's sheet label.
+    const stepIds = [...new Set(offerRowsRaw.map((o) => o.step_id).filter((id): id is string => !!id))]
     const stepNames = new Map<string, string>()
     if (stepIds.length > 0) {
       const { data: steps } = await admin.from('project_workflow_steps').select('id, name').in('id', stepIds)
@@ -201,7 +215,7 @@ serve(async (req) => {
       }
     }
     const offers = buildSubOffers(
-      offerRowsRaw.map((o) => ({ ...o, step_name: stepNames.get(o.step_id) ?? null })),
+      offerRowsRaw.map((o) => ({ ...o, step_name: o.step_id ? stepNames.get(o.step_id) ?? null : null })),
       todayYmd,
     )
 

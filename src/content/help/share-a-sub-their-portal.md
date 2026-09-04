@@ -34,6 +34,8 @@ The portal is a window onto work you already do — it adds no new chores:
 
 When you send a sub a work order offer (from a project step's **Offer to…**, or a Sub Labor sheet's **Work order** box), it appears on their portal with the frozen scope and price. They accept by **signing** — typed or drawn, the same signature form as contracts — under their Master Subcontract Agreement, and the office inbox gets a dispatch note the moment they do. Offers can carry an expiry date; a passed offer asks for a quick reason so you know how to fix it.
 
+A work order sent from a sheet shows more on the card: anything **not included**, and a collapsed **Also part of this work order** list naming General Conditions and the other documents by version date. Before the signature button lights up the sub ticks each **Please confirm** sentence; what they ticked is stored with the signature. Once signed, the sheet card grows a **✍ What you agreed to** line the sub can reopen any time — the scope, the documents, and the boxes they ticked.
+
 ## Walk a sheet through its stages
 
 Every sub sheet sits at one of three stages, and the portal draws them as a four-dot tracker under the job — **Work · Walk-through · Customer pays · You're paid** — with one plain sentence saying what stands between the sub and the money.

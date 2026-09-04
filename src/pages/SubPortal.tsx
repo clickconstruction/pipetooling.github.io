@@ -22,6 +22,7 @@ import {
   type SubPortalDoc,
   type SubPortalOffer,
   type SubPortalPayload,
+  type SubPortalReference,
   type SubPortalSheet,
 } from '../lib/subPortal/subPortalPayload'
 
@@ -68,6 +69,51 @@ const cardStyle: CSSProperties = {
 
 function money(n: number): string {
   return formatPortalUsd(n)
+}
+
+/** v2.2789: the documents a sheet work order incorporates by reference, collapsed under the scope. */
+function ReferencesBlock({ references, exclusions, bond, specialProvisions, lang, t }: {
+  references: SubPortalReference[]
+  exclusions: string[]
+  bond?: 'none' | 'furnished'
+  specialProvisions?: string | null
+  lang: SubPortalLang
+  t: T
+}) {
+  if (references.length === 0 && exclusions.length === 0 && bond !== 'furnished' && !specialProvisions) return null
+  return (
+    <div style={{ marginTop: 8, fontSize: 12.5 }}>
+      {exclusions.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED }}>{t('exclusionsLabel')}</div>
+          {exclusions.map((x, i) => (
+            <div key={i} style={{ color: MUTED, padding: '2px 0', borderBottom: `1px dotted ${HAIR}` }}>{x}</div>
+          ))}
+        </div>
+      )}
+      {(bond === 'furnished' || specialProvisions) && (
+        <div style={{ marginTop: 6, color: MUTED }}>
+          {bond === 'furnished' ? t('bondFurnished') : null}
+          {specialProvisions ? <div><strong>{t('specialProvisionsLabel')}:</strong> {specialProvisions}</div> : null}
+        </div>
+      )}
+      {references.length > 0 && (
+        <details style={{ marginTop: 6 }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600, color: INK }}>{t('attachedByReference')}</summary>
+          <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: MUTED }}>
+            {references.map((r, i) => (
+              <li key={i} style={{ padding: '1px 0' }}>
+                {r.name}
+                {r.versionDate ? (
+                  <span style={{ color: FAINT }}> · {r.kind === 'compliance' ? t('expiresOnShort', { date: formatSubPortalDate(r.versionDate, lang) }) : t('versionOf', { date: formatSubPortalDate(r.versionDate, lang) })}</span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  )
 }
 
 export default function SubPortal() {
@@ -694,6 +740,29 @@ function SheetCard({
             {payWhenParts.length > 1 ? <> — {payWhenParts.slice(1).join(' — ')}</> : null}
           </div>
         )}
+        {sheet.agreement && (
+          <details style={{ marginTop: 8, fontSize: 12.5 }} data-avoid-break>
+            <summary style={{ cursor: 'pointer', fontWeight: 700 }}>
+              ✍ {t('whatYouAgreedTo')}
+              {sheet.agreement.signedOn ? <span style={{ color: MUTED, fontWeight: 400 }}> · {t('signedOnBy', { date: formatSubPortalDate(sheet.agreement.signedOn, lang) })}{sheet.agreement.signerName ? ` · ${sheet.agreement.signerName}` : ''}</span> : null}
+              <span style={{ color: MUTED, fontWeight: 400 }}> · {money(sheet.agreement.amount)}</span>
+            </summary>
+            <div style={{ marginTop: 6 }}>
+              {sheet.agreement.lines.map((line, i) => (
+                <div key={i} style={{ padding: '2px 0', borderBottom: `1px dotted ${HAIR}`, color: MUTED }}>{line.label}</div>
+              ))}
+              <ReferencesBlock references={sheet.agreement.references} exclusions={sheet.agreement.exclusions} lang={lang} t={t} />
+              {sheet.agreement.acknowledgements.length > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED }}>{t('youConfirmed')}</div>
+                  {sheet.agreement.acknowledgements.map((a, i) => (
+                    <div key={i} style={{ color: MUTED, padding: '2px 0' }}>☑ {a}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </details>
+        )}
 
         {stage === 'working' && ui.kind === 'idle' && (
           <div data-screen-only>
@@ -773,6 +842,15 @@ function OfferCard({
   const [agreedTerms, setAgreedTerms] = useState(false)
   const [declineReason, setDeclineReason] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [ticked, setTicked] = useState<Set<number>>(new Set())
+  const allTicked = offer.acknowledgements.every((_, i) => ticked.has(i))
+  const bookRefs = offer.references.filter((r) => r.kind === 'book')
+  const disclosure =
+    bookRefs.length > 0
+      ? t('signDisclosureRefs', {
+          refs: bookRefs.map((r) => (r.versionDate ? `${r.name} ${t('versionOf', { date: formatSubPortalDate(r.versionDate, lang) })}` : r.name)).join(', '),
+        })
+      : t('signDisclosure')
 
   const msaLine = useMemo(() => {
     const msa = payload.documents.find(
@@ -806,12 +884,18 @@ function OfferCard({
   }
 
   async function submitAccept(p: EstimateAcceptSubmitPayload) {
+    if (!allTicked) {
+      setError(t('acksMissing'))
+      setUi({ kind: 'signing' })
+      return
+    }
     setUi({ kind: 'submitting' })
     setError(null)
     const result = await post({
       kind: 'accept_offer',
       printedName: p.printedName,
       agreedTerms: true,
+      acknowledgements: offer.acknowledgements,
       ...(p.mode === 'draw' ? { signaturePngBase64: p.signaturePngBase64 } : {}),
     })
     if (result.ok) {
@@ -857,6 +941,7 @@ function OfferCard({
           </div>
         ))}
       </div>
+      <ReferencesBlock references={offer.references} exclusions={offer.exclusions} bond={offer.bond} specialProvisions={offer.specialProvisions} lang={lang} t={t} />
       {offer.expiresOn ? (
         <div style={{ fontSize: 11, color: FAINT, marginTop: 6 }}>
           {t('offerExpires', { date: formatSubPortalDate(offer.expiresOn, lang) })}
@@ -897,6 +982,30 @@ function OfferCard({
       {(ui.kind === 'signing' || (ui.kind === 'submitting' && !declineReason.trim())) && (
         <div style={{ marginTop: 10, borderTop: `1px solid ${HAIR}` }}>
           <div style={{ fontSize: 12, color: MUTED, marginTop: 10, lineHeight: 1.5 }}>{msaLine}</div>
+          {offer.acknowledgements.length > 0 && (
+            <div style={{ marginTop: 10, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '8px 10px', background: PAPER }}>
+              <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: MUTED, marginBottom: 4 }}>{t('confirmBeforeSigning')}</div>
+              {offer.acknowledgements.map((a, i) => (
+                <label key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, padding: '4px 0', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={ticked.has(i)}
+                    disabled={ui.kind === 'submitting'}
+                    onChange={() =>
+                      setTicked((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(i)) next.delete(i)
+                        else next.add(i)
+                        return next
+                      })
+                    }
+                    style={{ marginTop: 2 }}
+                  />
+                  <span>{a}</span>
+                </label>
+              ))}
+            </div>
+          )}
           <ContractAcceptSignatureForm
             printedName={printedName}
             agreed={agreedTerms}
@@ -906,7 +1015,7 @@ function OfferCard({
             submitting={ui.kind === 'submitting'}
             onSubmit={(p) => void submitAccept(p)}
             heading={t('signToAccept')}
-            disclosure={t('signDisclosure')}
+            disclosure={disclosure}
             agreeLabel={t('signAgreeLabel')}
             submitLabel={t('signSubmit')}
           />

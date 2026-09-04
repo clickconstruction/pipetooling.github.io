@@ -54,6 +54,31 @@ export type SubOfferRow = {
   proposed_start: string | null
   proposed_end: string | null
   step_name: string | null
+  /** v2.2789: sheet-anchored work orders (step_id NULL) carry the sheet they belong to. */
+  labor_job_id?: string | null
+}
+
+/** A signed sheet work order, joined onto its sheet card as "what you agreed to" (v2.2789). */
+export type SubAgreementRow = {
+  labor_job_id: string | null
+  amount: number | null
+  signed_at: string | null
+  accepted_at: string | null
+  signer_printed_name: string | null
+  offer_scope_snapshot: unknown
+  signer_acknowledgements: unknown
+}
+
+export type SubPortalReference = { kind: 'book' | 'setting' | 'compliance'; name: string; versionDate: string | null }
+
+export type SubPortalAgreement = {
+  signedOn: string | null
+  signerName: string | null
+  amount: number
+  lines: Array<{ label: string; amount: number | null }>
+  exclusions: string[]
+  references: SubPortalReference[]
+  acknowledgements: string[]
 }
 
 export type SubDocRow = {
@@ -84,6 +109,8 @@ export type SubPortalSheet = {
   open: number
   payableAfter: string | null
   payHoldReason: string | null
+  /** v2.2789: the signed work order behind this sheet, when one exists. */
+  agreement: SubPortalAgreement | null
 }
 
 export type SubPortalPaymentLine = {
@@ -100,6 +127,13 @@ export type SubPortalOffer = {
   total: number
   startsLabel: string | null
   expiresOn: string | null
+  /** v2.2789 — sheet work orders: exclusions, referenced documents, and the boxes to tick at signing. */
+  anchor: 'sheet' | 'step'
+  exclusions: string[]
+  references: SubPortalReference[]
+  acknowledgements: string[]
+  bond: 'none' | 'furnished'
+  specialProvisions: string | null
 }
 
 export type SubPortalDocState = 'on_file' | 'expiring' | 'action_needed'
@@ -207,8 +241,88 @@ export function buildSubSheets(
       open: round2(agreed - paid - backcharges),
       payableAfter: sheet.payable_after,
       payHoldReason: (sheet.pay_hold_reason ?? '').trim() || null,
+      agreement: null,
     }
   })
+}
+
+/** Join signed sheet work orders onto their sheets (one per sheet; the newest signature wins). */
+export function attachSheetAgreements(sheets: SubPortalSheet[], agreements: SubAgreementRow[]): SubPortalSheet[] {
+  const bySheet = new Map<string, SubAgreementRow>()
+  for (const a of agreements) {
+    if (!a.labor_job_id) continue
+    const prev = bySheet.get(a.labor_job_id)
+    const when = (a.signed_at ?? a.accepted_at ?? '')
+    const prevWhen = prev ? (prev.signed_at ?? prev.accepted_at ?? '') : ''
+    if (!prev || when > prevWhen) bySheet.set(a.labor_job_id, a)
+  }
+  return sheets.map((sheet) => {
+    const a = bySheet.get(sheet.id)
+    if (!a) return sheet
+    const extras = parseScopeExtras(a.offer_scope_snapshot)
+    return {
+      ...sheet,
+      agreement: {
+        signedOn: (a.signed_at ?? a.accepted_at ?? '').slice(0, 10) || null,
+        signerName: (a.signer_printed_name ?? '').trim() || null,
+        amount: round2(Number(a.amount) || 0),
+        lines: parseScopeLines(a.offer_scope_snapshot),
+        exclusions: extras.exclusions,
+        references: extras.references,
+        acknowledgements: parseAcknowledged(a.signer_acknowledgements, extras.acknowledgements),
+      },
+    }
+  })
+}
+
+function parseStringList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map((v) => (typeof v === 'string' ? v.trim() : '')).filter(Boolean)
+}
+
+/** The sheet-work-order extras on a snapshot (v2.2789); a legacy step snapshot yields empty lists. */
+export function parseScopeExtras(snapshot: unknown): {
+  anchor: 'sheet' | 'step'
+  sheetLabel: string | null
+  exclusions: string[]
+  references: SubPortalReference[]
+  acknowledgements: string[]
+  bond: 'none' | 'furnished'
+  specialProvisions: string | null
+} {
+  const o = snapshot != null && typeof snapshot === 'object' ? (snapshot as Record<string, unknown>) : {}
+  const references: SubPortalReference[] = []
+  if (Array.isArray(o.references)) {
+    for (const r of o.references) {
+      if (r == null || typeof r !== 'object') continue
+      const rr = r as Record<string, unknown>
+      const name = typeof rr.name === 'string' ? rr.name.trim() : ''
+      if (!name) continue
+      const kind = rr.kind === 'setting' || rr.kind === 'compliance' ? rr.kind : 'book'
+      const versionDate = typeof rr.versionDate === 'string' && rr.versionDate.trim() ? rr.versionDate.trim() : null
+      references.push({ kind, name, versionDate })
+    }
+  }
+  const sheetLabel = typeof o.sheetLabel === 'string' ? o.sheetLabel.trim() : ''
+  const special = typeof o.specialProvisions === 'string' ? o.specialProvisions.trim() : ''
+  return {
+    anchor: o.anchor === 'sheet' ? 'sheet' : 'step',
+    sheetLabel: sheetLabel || null,
+    exclusions: parseStringList(o.exclusions),
+    references,
+    acknowledgements: parseStringList(o.acknowledgements),
+    bond: o.bond === 'furnished' ? 'furnished' : 'none',
+    specialProvisions: special || null,
+  }
+}
+
+/** What the sub actually ticked ([{text}] rows); falls back to the snapshot's list for pre-v2.2789 rows. */
+function parseAcknowledged(raw: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(raw)) return fallback
+  const out = raw
+    .map((r) => (r != null && typeof r === 'object' && typeof (r as { text?: unknown }).text === 'string' ? ((r as { text: string }).text).trim() : ''))
+    .filter(Boolean)
+  return out.length > 0 ? out : fallback
 }
 
 /**
@@ -277,16 +391,23 @@ export function buildSubOffers(offers: SubOfferRow[], todayYmd: string): SubPort
     })
     .map((o) => {
       const lines = parseScopeLines(o.offer_scope_snapshot)
-      const fallbackLabel = (o.notes ?? '').trim() || (o.step_name ?? '').trim() || 'Work order'
+      const extras = parseScopeExtras(o.offer_scope_snapshot)
+      const fallbackLabel = (o.notes ?? '').trim() || (o.step_name ?? '').trim() || extras.sheetLabel || 'Work order'
       return {
         id: o.id,
-        title: (o.step_name ?? '').trim() || 'Work order',
+        title: (o.step_name ?? '').trim() || extras.sheetLabel || 'Work order',
         lines: lines.length > 0 ? lines : [{ label: fallbackLabel, amount: null }],
         total: round2(Number(o.amount) || 0),
         startsLabel:
           scopeStartsLabel(o.offer_scope_snapshot) ??
           ((o.proposed_start ?? '').trim() ? `Starts ${o.proposed_start}` : null),
         expiresOn: (o.offer_expires_at ?? '').trim() || null,
+        anchor: extras.anchor === 'sheet' || (o.labor_job_id != null && !(o.step_name ?? '').trim()) ? 'sheet' : 'step',
+        exclusions: extras.exclusions,
+        references: extras.references,
+        acknowledgements: extras.acknowledgements,
+        bond: extras.bond,
+        specialProvisions: extras.specialProvisions,
       }
     })
 }
