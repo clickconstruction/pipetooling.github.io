@@ -5,7 +5,7 @@ file: docs/BIDS_TAKEOFF_TAB_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the sub-decomposition of src/components/bids/BidsTakeoffTab.tsx (per PAGE_DECOMPOSITION_PLAYBOOK.md). The tab was extracted from Bids.tsx in 2026-05 but kept growing (5,765 lines at the 2026-07-29 sweep; ~2,958 after decomposition steps T0–T7 — see the Decomposition log) — this map inventories each logical region (state, handlers, supabase tables, modals, coupling) so future extractions can proceed without re-reading the whole file. It goes one level DEEPER than BIDS_TABS_ARCHITECTURE.md, which maps the parent page and stays authoritative for what Bids.tsx passes in.
 audience: Developers, AI Agents
-last_updated: 2026-08-03
+last_updated: 2026-09-04
 ---
 
 ## What this surface is
@@ -193,8 +193,10 @@ Executed with the [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBO
 | T5 | #1001 | v2.1299 | `BidsTakeoffMaterialsSummarySection` (+PO review modal; tax stays controlled prop) |
 | T6 | #1002 | v2.1300 | `TakeoffPartPricesModal` + `TakeoffBundleBreakdownModal` (pointers stay parent-owned) |
 | T7 | #1010 | v2.1306 | `TakeoffAssemblyAuthoringModals` (Add Assembly / Add Parts / Edit Template as one cluster; open pointers + PartFormModal-routed picker states + Save-as-Assembly bridge + seeded drafts stay parent-owned; Edit Template reset/loads → open-edge effect; preview modal stays for T8) |
+| T8 | Takeoffs refresh PR 3 | v2.2770 | `hooks/useTakeoffPartsCatalog.ts` — `takeoffAddTemplateParts` + both paged loads, `supplyHouses`/`partTypes` + mount loads, the exact-model preview cache (the seam only; the Exact body stays inline — By Stage is 1 of 113 new bids and retires with Old) |
+| T9 | Takeoffs refresh PR 3 | v2.2770 | `hooks/useTakeoffRoughLines.ts` — the whole Combined persistence engine (persist/update pair together, add/remove, drag reorder + its state, expand-to-parts, bundle insert/apply, the v2.2755 missing-part fallback); qty-numpad handlers, remove-confirm modal, and the PartForm-routed bridges stay in the tab |
 
-**Remaining (in order):**
+**Remaining (in order):** — the seams below shipped in v2.2770 (`docs/TAKEOFFS_REFRESH_PLAN.md` PR 3); the *bodies* (Exact table, Rough sheet JSX) stay inline until Old retires, when the Exact body goes with it and the Rough sheet becomes New 2's table.
 - **T8 — `useTakeoffPartsCatalog` seam, then the Exact body** (~800 lines, incl. the assembly parts preview modal). Seam owns `takeoffAddTemplateParts` + its two load effects, `supplyHouses`/`partTypes` mount effect, `takeoffTemplatePreviewCache`. Fold in the remaining Stage-A kernels as touched: `computeTakeoffBookMappingsToAdd`, `takeoffPickerFilters` (now passed as props into the T7 cluster — extract to lib and update both call sites), the exact-print row assembler.
 - **T9 — the Rough body, last** (~1,150 lines). The `queueMicrotask` persistence pairs (`updateTakeoffRoughPartLine`/`persistTakeoffRoughPartLine` etc.) must move together or stay together; `takeoffRemoveConfirm` + modal stay tab-level (both models open it).
 
