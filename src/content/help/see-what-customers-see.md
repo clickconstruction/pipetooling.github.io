@@ -5,7 +5,7 @@ roles: dev
 keywords: what customers see, customer view, sample customer, estimate email preview, bid room preview, journeys, settings, customer experience, sample data
 order: 65
 ---
-**Settings → What customers see** shows every email and page a customer or general contractor gets, rendered live with sample data, in the order they meet them. Use it after you change a Setting — the estimate copy, the public terms, the footer, the bid cover-letter defaults — to see every surface follow.
+**Settings → What customers see** shows every email and page a customer, a general contractor or a subcontractor gets, rendered live with sample data, in the order they meet them. Use it after you change a Setting — the estimate copy, the public terms, the footer, the bid cover-letter defaults — to see every surface follow.
 
 ## Read the strips
 
@@ -17,7 +17,6 @@ Each strip is one audience. Each step names what sends it (*Estimates → Send t
 
 - A step with a small picture is **live**: the real page, or the real email, at phone width.
 - **Sent by another system** means it is not built by this app (the bill email comes from Stripe).
-- **Next release** marks a surface this view does not render yet.
 
 ## Open a step large
 
@@ -25,7 +24,7 @@ Each strip is one audience. Each step names what sends it (*Estimates → Send t
 2. Switch {{button:outline|Phone}} / {{button:outline|Desktop}} in the toolbar to see it at either width.
 3. {{button:outline|Open in new tab}} opens a page on its own; emails show their plain-text part underneath.
 
-Pages open with a **sample token** and carry an orange *Sample* strip. You can click through them — pick an option, sign, decline — and nothing is saved. The sample customer is **Sam Sample**, the sample bid is **Cedar Bend Apartments** for **Sample Contracting**; neither exists in the database.
+Pages open with a **sample token** and carry an orange *Sample* strip. You can click through them — pick an option, sign, decline, send a request, accept an offer — and nothing is saved. The sample customer is **Sam Sample**, the sample bid is **Cedar Bend Apartments** for **Sample Contracting**, the sample sub is **Sam's Plumbing LLC**; none of them exist in the database.
 
 ## After a Settings change
 

@@ -7,9 +7,9 @@
  *   page     — the real public page in an iframe, opened with the sample token
  *   email    — the real email builder, run in the browser over the live Settings
  *   external — sent by another system (Stripe); named, not rendered
- *   soon     — a surface this tab does not render yet (the next PR fills it)
+ *   soon     — a surface this tab does not render yet
  */
-import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE } from './customerSample'
+import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 
 export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised'
 
@@ -39,6 +39,11 @@ export const ESTIMATE_SAMPLE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 export const BID_ROOM_SAMPLE_PATH = `/bid-room?t=${SAMPLE_TOKEN}`
 export const BID_ROOM_SAMPLE_DONE_PATH = `/bid-room?t=${SAMPLE_TOKEN_DONE}`
+export const CUSTOMER_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN}`
+export const GC_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN_GC}`
+export const SUB_PORTAL_SAMPLE_PATH = `/sub?t=${SAMPLE_TOKEN}`
+export const CONTRACT_SAMPLE_PATH = `/contract/accept?t=${SAMPLE_TOKEN}`
+export const CONTRACT_SAMPLE_DONE_PATH = `/contract/accept?t=${SAMPLE_TOKEN_DONE}`
 
 export function customerJourneys(): Journey[] {
   return [
@@ -84,8 +89,8 @@ export function customerJourneys(): Journey[] {
           label: 'Portal',
           sublabel: 'my.clickplumbing.com/sam-sample',
           when: 'Any time',
-          reflects: [],
-          render: { kind: 'soon', note: 'The customer portal joins this view in the next release.' },
+          reflects: ['Portal letterhead (portalCompany)', 'Request-a-visit and ask-us-to-bid forms', 'Agreements card'],
+          render: { kind: 'page', path: CUSTOMER_PORTAL_SAMPLE_PATH },
         },
       ],
     },
@@ -131,8 +136,8 @@ export function customerJourneys(): Journey[] {
           label: 'Portal as GC',
           sublabel: 'my.clickplumbing.com/sample-contracting',
           when: 'Any time',
-          reflects: [],
-          render: { kind: 'soon', note: 'The GC view of the customer portal joins this view in the next release.' },
+          reflects: ['Portal letterhead (portalCompany)', 'AS GC tags and owner names', 'Agreements card'],
+          render: { kind: 'page', path: GC_PORTAL_SAMPLE_PATH },
         },
       ],
     },
@@ -142,20 +147,36 @@ export function customerJourneys(): Journey[] {
       subtitle: "Sam's Plumbing LLC · the portal is their whole experience",
       steps: [
         {
+          id: 'sub-portal-text',
+          label: 'Portal link, texted',
+          sublabel: 'People → Subs → 🌐 → Copy link',
+          when: 'Once',
+          reflects: [],
+          render: { kind: 'external', note: 'Staff copy the address and text it themselves — there is no app-built message. The help guide suggests wording.' },
+        },
+        {
           id: 'sub-portal',
           label: 'Sub portal',
           sublabel: 'my.clickplumbing.com/sams-plumbing',
           when: 'Weekly',
-          reflects: [],
-          render: { kind: 'soon', note: 'The sub portal joins this view in the next release.' },
+          reflects: ['Sub pay-run day and explainer (Settings)', 'Portal letterhead (portalCompany)', 'Paperwork states and the insurance-expiry nudge'],
+          render: { kind: 'page', path: SUB_PORTAL_SAMPLE_PATH },
         },
         {
           id: 'sub-contract',
           label: 'Contract to sign',
-          sublabel: 'from the portal, or texted',
+          sublabel: 'Paperwork → Sign, or a texted link',
           when: 'On hire',
-          reflects: [],
-          render: { kind: 'soon', note: 'The contract signing page joins this view in the next release.' },
+          reflects: ['Signing page chrome and the agree checkbox wording'],
+          render: { kind: 'page', path: CONTRACT_SAMPLE_PATH },
+        },
+        {
+          id: 'sub-contract-signed',
+          label: 'Signed',
+          sublabel: 'same page, after signing',
+          when: 'Right after',
+          reflects: ['Contract thank-you and the sign-in prompt'],
+          render: { kind: 'page', path: CONTRACT_SAMPLE_DONE_PATH },
         },
       ],
     },

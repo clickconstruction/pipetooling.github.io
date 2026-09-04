@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { customerJourneys, findStep, firstRenderableStep } from './customerJourneys'
-import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE } from './customerSample'
+import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 
 describe('customerJourneys (What customers see)', () => {
   const journeys = customerJourneys()
@@ -15,9 +15,13 @@ describe('customerJourneys (What customers see)', () => {
     for (const s of pages) {
       const path = (s.render as { path: string }).path
       expect(path.startsWith('/')).toBe(true)
-      expect(path.endsWith(`t=${SAMPLE_TOKEN}`) || path.endsWith(`t=${SAMPLE_TOKEN_DONE}`)).toBe(true)
+      expect(path.endsWith(`t=${SAMPLE_TOKEN}`) || path.endsWith(`t=${SAMPLE_TOKEN_DONE}`) || path.endsWith(`t=${SAMPLE_TOKEN_GC}`)).toBe(true)
     }
     expect(findStep(journeys, 'homeowner', 'estimate-thankyou')?.render).toEqual({ kind: 'page', path: `/estimate/accept?t=${SAMPLE_TOKEN_DONE}` })
+    expect(findStep(journeys, 'gc', 'gc-portal')?.render).toEqual({ kind: 'page', path: `/portal?t=${SAMPLE_TOKEN_GC}` })
+    expect(findStep(journeys, 'sub', 'sub-contract')?.render).toEqual({ kind: 'page', path: `/contract/accept?t=${SAMPLE_TOKEN}` })
+    // Every surface now renders — no step is left for a later release.
+    expect(journeys.flatMap((j) => j.steps).some((s) => s.render.kind === 'soon')).toBe(false)
   })
   it('every renderable step names what it reflects; external and soon steps carry a note', () => {
     for (const s of journeys.flatMap((j) => j.steps)) {
