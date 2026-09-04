@@ -173,6 +173,15 @@ export function sampleSubPortalResponse(company: SamplePortalCompany, todayYmd: 
         open: 1_620,
         payableAfter: ymdPlusDays(todayYmd, 2),
         payHoldReason: 'Top out passed inspection — queued for the next pay run.',
+        agreement: {
+          signedOn: ymdPlusDays(todayYmd, -21),
+          signerName: SAMPLE_SUB.contact,
+          amount: 3_120,
+          lines: [{ label: 'Top out — 14 fixtures per plan sheet P-2', amount: null }, { label: 'Water heater set', amount: null }],
+          exclusions: [],
+          references: [{ kind: 'book', name: 'General Conditions for Subcontractors', versionDate: ymdPlusDays(todayYmd, -80) }],
+          acknowledgements: ['My insurance certificate stays current for the whole job.'],
+        },
       },
       {
         id: 'sample-sheet-2',
@@ -207,6 +216,16 @@ export function sampleSubPortalResponse(company: SamplePortalCompany, todayYmd: 
         total: 4_850,
         startsLabel: 'Starts in two weeks · about 6 working days',
         expiresOn: ymdPlusDays(todayYmd, 8),
+        anchor: 'sheet',
+        exclusions: ['Sales tax on materials when the project carries a tax-exempt certificate.'],
+        references: [
+          { kind: 'book', name: 'General Conditions for Subcontractors', versionDate: ymdPlusDays(todayYmd, -80) },
+          { kind: 'setting', name: 'How pay works here', versionDate: null },
+          { kind: 'compliance', name: 'Insurance requirements (certificate on file)', versionDate: ymdPlusDays(todayYmd, 27) },
+        ],
+        acknowledgements: ["I will bill through the portal by the billing cutoff with the sheet's paperwork.", 'My insurance certificate stays current for the whole job.'],
+        bond: 'none',
+        specialProvisions: null,
       },
     ],
     documents: [

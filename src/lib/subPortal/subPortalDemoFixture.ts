@@ -34,6 +34,15 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       open: 1620,
       payableAfter: '2026-09-04',
       payHoldReason: 'Top out passed inspection Aug 29 — queued for the Friday pay run (Sep 4).',
+      agreement: {
+        signedOn: '2026-08-20',
+        signerName: 'Danny Vasquez',
+        amount: 3120,
+        lines: [{ label: 'Top out — 14 fixtures per plan sheet P-2', amount: null }, { label: 'Water heater set', amount: null }],
+        exclusions: [],
+        references: [{ kind: 'book', name: 'General Conditions for Subcontractors', versionDate: '2026-06-19' }],
+        acknowledgements: ['My insurance certificate stays current for the whole job.'],
+      },
     },
     {
       id: 'demo-s2',
@@ -52,6 +61,7 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       open: 2560,
       payableAfter: '2026-09-09',
       payHoldReason: "Builder's walk-through — scheduled Sep 9. We pay you as soon as the work is accepted.",
+      agreement: null,
     },
   ],
   payments: [
@@ -72,6 +82,19 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       total: 4850,
       startsLabel: 'Starts week of Sep 15 · about 6 working days',
       expiresOn: '2026-09-12',
+      anchor: 'sheet',
+      exclusions: ['Sales tax on materials when the project carries a tax-exempt certificate.'],
+      references: [
+        { kind: 'book', name: 'General Conditions for Subcontractors', versionDate: '2026-06-19' },
+        { kind: 'setting', name: 'How pay works here · pay-run Friday', versionDate: null },
+        { kind: 'compliance', name: 'Insurance requirements (certificate on file)', versionDate: '2026-11-30' },
+      ],
+      acknowledgements: [
+        "I will bill through the portal by the billing cutoff with the sheet's paperwork.",
+        'My insurance certificate stays current for the whole job.',
+      ],
+      bond: 'none',
+      specialProvisions: null,
     },
   ],
   documents: [

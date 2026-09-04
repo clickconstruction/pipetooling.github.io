@@ -29,6 +29,8 @@ export type SubPortalSheet = {
   open: number
   payableAfter: string | null
   payHoldReason: string | null
+  /** v2.2789: the signed work order behind this sheet, when one exists. */
+  agreement: SubPortalAgreement | null
 }
 
 export type SubPortalPaymentLine = {
@@ -38,6 +40,18 @@ export type SubPortalPaymentLine = {
   amount: number
 }
 
+export type SubPortalReference = { kind: 'book' | 'setting' | 'compliance'; name: string; versionDate: string | null }
+
+export type SubPortalAgreement = {
+  signedOn: string | null
+  signerName: string | null
+  amount: number
+  lines: Array<{ label: string; amount: number | null }>
+  exclusions: string[]
+  references: SubPortalReference[]
+  acknowledgements: string[]
+}
+
 export type SubPortalOffer = {
   id: string
   title: string
@@ -45,6 +59,13 @@ export type SubPortalOffer = {
   total: number
   startsLabel: string | null
   expiresOn: string | null
+  /** v2.2789 — sheet work orders: exclusions, referenced documents, the boxes to tick before signing. */
+  anchor: 'sheet' | 'step'
+  exclusions: string[]
+  references: SubPortalReference[]
+  acknowledgements: string[]
+  bond: 'none' | 'furnished'
+  specialProvisions: string | null
 }
 
 export type SubPortalDocDetail =
@@ -85,6 +106,48 @@ const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v)
 const numOrNull = (v: unknown): number | null =>
   typeof v === 'number' && Number.isFinite(v) ? v : null
 
+const strList = (v: unknown): string[] => (Array.isArray(v) ? v.map((x) => (typeof x === 'string' ? x.trim() : '')).filter(Boolean) : [])
+
+function parseLines(raw: unknown): Array<{ label: string; amount: number | null }> {
+  return Array.isArray(raw)
+    ? raw
+        .map((l) => {
+          if (l == null || typeof l !== 'object') return null
+          const label = str((l as Record<string, unknown>).label).trim()
+          if (!label) return null
+          return { label, amount: numOrNull((l as Record<string, unknown>).amount) }
+        })
+        .filter((l): l is { label: string; amount: number | null } => l != null)
+    : []
+}
+
+function parseReferences(raw: unknown): SubPortalReference[] {
+  if (!Array.isArray(raw)) return []
+  const out: SubPortalReference[] = []
+  for (const r of raw) {
+    if (r == null || typeof r !== 'object') continue
+    const rr = r as Record<string, unknown>
+    const name = str(rr.name).trim()
+    if (!name) continue
+    out.push({ kind: rr.kind === 'setting' || rr.kind === 'compliance' ? rr.kind : 'book', name, versionDate: strOrNull(rr.versionDate) })
+  }
+  return out
+}
+
+function parseAgreement(raw: unknown): SubPortalAgreement | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    signedOn: strOrNull(r.signedOn),
+    signerName: strOrNull(r.signerName),
+    amount: num(r.amount),
+    lines: parseLines(r.lines),
+    exclusions: strList(r.exclusions),
+    references: parseReferences(r.references),
+    acknowledgements: strList(r.acknowledgements),
+  }
+}
+
 function parseSheet(raw: unknown): SubPortalSheet | null {
   if (raw == null || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
@@ -116,6 +179,7 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
     open: num(r.open),
     payableAfter: strOrNull(r.payableAfter),
     payHoldReason: strOrNull(r.payHoldReason),
+    agreement: parseAgreement(r.agreement),
   }
 }
 
@@ -132,16 +196,7 @@ function parseOffer(raw: unknown): SubPortalOffer | null {
   const r = raw as Record<string, unknown>
   const id = str(r.id)
   if (!id) return null
-  const lines = Array.isArray(r.lines)
-    ? r.lines
-        .map((l) => {
-          if (l == null || typeof l !== 'object') return null
-          const label = str((l as Record<string, unknown>).label).trim()
-          if (!label) return null
-          return { label, amount: numOrNull((l as Record<string, unknown>).amount) }
-        })
-        .filter((l): l is { label: string; amount: number | null } => l != null)
-    : []
+  const lines = parseLines(r.lines)
   return {
     id,
     title: str(r.title).trim() || 'Work order',
@@ -149,6 +204,12 @@ function parseOffer(raw: unknown): SubPortalOffer | null {
     total: num(r.total),
     startsLabel: strOrNull(r.startsLabel),
     expiresOn: strOrNull(r.expiresOn),
+    anchor: r.anchor === 'sheet' ? 'sheet' : 'step',
+    exclusions: strList(r.exclusions),
+    references: parseReferences(r.references),
+    acknowledgements: strList(r.acknowledgements),
+    bond: r.bond === 'furnished' ? 'furnished' : 'none',
+    specialProvisions: strOrNull(r.specialProvisions),
   }
 }
 

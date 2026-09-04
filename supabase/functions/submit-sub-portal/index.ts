@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { parseScopeExtras } from '../_shared/subPortalStatement.ts'
 
 /**
  * Sub portal intake (sub-portal train): everything a sub can DO from the
@@ -18,6 +19,9 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
  *  - sign_link      → mints a fresh /contract/accept token for one of the
  *                     sub's own unsigned documents (send-contract-for-signature
  *                     mint pattern, no email)
+ *  - accept_offer   → v2.2789: sheet work orders carry acknowledgements in
+ *                     offer_scope_snapshot; every one must come back ticked and
+ *                     is stamped into signer_acknowledgements with the signature
  *  - mark_work_done → v2.2767: the sub says one of their own sheets is done —
  *                     stage working → walkthrough (source = portal, optional
  *                     note), the stage trigger posts to the job's Activity
@@ -301,11 +305,11 @@ serve(async (req) => {
 
       const { data: commitment } = await admin
         .from('step_commitments')
-        .select('id, person_id, status, amount, offer_expires_at, offer_scope_snapshot')
+        .select('id, person_id, status, amount, offer_expires_at, offer_scope_snapshot, labor_job_id, step_id')
         .eq('id', commitmentId)
         .maybeSingle()
       const c = commitment as
-        | { id: string; person_id: string; status: string; amount: number | null; offer_expires_at: string | null }
+        | { id: string; person_id: string; status: string; amount: number | null; offer_expires_at: string | null; offer_scope_snapshot: unknown; labor_job_id: string | null; step_id: string | null }
         | null
       if (!c || c.person_id !== link.person_id) return jsonResponse({ error: 'Not found' }, 404)
       if (c.status !== 'offered') {
@@ -346,6 +350,18 @@ serve(async (req) => {
       if (!printedName) return jsonResponse({ error: 'Please enter your full name.' }, 400)
       if (!agreed) return jsonResponse({ error: 'Please confirm that you agree.' }, 400)
 
+      // v2.2789: the work order's acknowledgements must all come back ticked.
+      const required = parseScopeExtras(c.offer_scope_snapshot).acknowledgements
+      const ticked = Array.isArray(body.acknowledgements)
+        ? (body.acknowledgements as unknown[]).map((v) => (typeof v === 'string' ? v.trim().toLowerCase() : '')).filter(Boolean)
+        : []
+      const missing = required.filter((r) => !ticked.includes(r.trim().toLowerCase()))
+      if (missing.length > 0) {
+        return jsonResponse({ error: 'Please tick every confirmation box before signing.' }, 400)
+      }
+      const nowIsoForAcks = new Date().toISOString()
+      const signerAcknowledgements = required.map((text) => ({ text, acknowledgedAt: nowIsoForAcks }))
+
       let storagePath: string | null = null
       if (hasSig) {
         const bytes = decodeBase64PngBytes(sigRaw)
@@ -380,6 +396,7 @@ serve(async (req) => {
           signer_consented_at: nowIso,
           signer_ip: ipRaw,
           signer_user_agent: ua,
+          signer_acknowledgements: signerAcknowledgements.length > 0 ? signerAcknowledgements : null,
         })
         .eq('id', c.id)
         .eq('status', 'offered')
@@ -392,15 +409,17 @@ serve(async (req) => {
         return jsonResponse({ error: 'Could not record the signature. Please try again.' }, updErr ? 500 : 409)
       }
 
+      const sheetLabel = parseScopeExtras(c.offer_scope_snapshot).sheetLabel
       await insertDispatchNote(
         admin,
         link,
-        `Work order signed & accepted — ${personName} ($${Number(c.amount ?? 0).toFixed(2)})`,
+        `Work order signed & accepted — ${personName} ($${Number(c.amount ?? 0).toFixed(2)})${sheetLabel ? ` · ${sheetLabel}` : ''}`,
         {
           kind: 'sub_offer_accepted',
           personId: link.person_id,
           personName,
           commitmentId: c.id,
+          laborJobId: c.labor_job_id,
           signedAt: nowIso,
         },
       )

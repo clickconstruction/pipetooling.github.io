@@ -2,12 +2,14 @@ import { describe, it, expect } from 'vitest'
 // Deno edge module (supabase/functions/_shared) — dependency-free, tested here.
 import {
   addDaysYmd,
+  attachSheetAgreements,
   buildSubDocuments,
   buildSubOffers,
   buildSubPaymentLines,
   buildSubSheets,
   buildSubTotals,
   nextPayRunYmd,
+  parseScopeExtras,
   subLineLaborCost,
   type SubDocRow,
   type SubItemRow,
@@ -189,6 +191,65 @@ describe('buildSubOffers', () => {
   it('tolerates malformed snapshots', () => {
     const [o] = buildSubOffers([offer({ id: 'c3', offer_scope_snapshot: { lines: [{ nope: 1 }, 'x', { label: ' ok ', amount: 'NaN' }] } })], TODAY)
     expect(o!.lines).toEqual([{ label: 'ok', amount: null }])
+    expect(o!.anchor).toBe('step')
+    expect(o!.references).toEqual([])
+    expect(o!.acknowledgements).toEqual([])
+  })
+  it('sheet work orders (v2.2789): title from the sheet label, extras carried through', () => {
+    const [o] = buildSubOffers(
+      [
+        offer({
+          id: 'c4',
+          step_name: null,
+          labor_job_id: 'sheet-1',
+          offer_scope_snapshot: {
+            anchor: 'sheet',
+            sheetLabel: 'J977 · 415 Springtown Way',
+            lines: [{ label: 'Fixtures per plans', amount: null }],
+            startsLabel: 'Starts Sep 15 → Sep 26',
+            exclusions: ['Sales tax'],
+            references: [{ kind: 'book', documentId: 'd1', name: 'General Conditions', versionDate: '2026-06-19' }, { kind: 'bogus', name: 'Pay', versionDate: '' }, { name: '' }],
+            acknowledgements: ['I will bill through the portal.', ''],
+            bond: 'furnished',
+            specialProvisions: 'Owner supplies fixtures.',
+          },
+        }),
+      ],
+      TODAY,
+    )
+    expect(o!.title).toBe('J977 · 415 Springtown Way')
+    expect(o!.anchor).toBe('sheet')
+    expect(o!.exclusions).toEqual(['Sales tax'])
+    expect(o!.references).toEqual([
+      { kind: 'book', name: 'General Conditions', versionDate: '2026-06-19' },
+      { kind: 'book', name: 'Pay', versionDate: null },
+    ])
+    expect(o!.acknowledgements).toEqual(['I will bill through the portal.'])
+    expect(o!.bond).toBe('furnished')
+    expect(o!.specialProvisions).toBe('Owner supplies fixtures.')
+  })
+})
+
+describe('attachSheetAgreements (v2.2789)', () => {
+  it('joins the newest signed order onto its sheet and reads what was ticked', () => {
+    const sheets = buildSubSheets([sheet({ id: 's1' }), sheet({ id: 's2' })], [item({ job_id: 's1' })], [])
+    const out = attachSheetAgreements(sheets, [
+      { labor_job_id: 's1', amount: 3120, signed_at: '2026-08-01T10:00:00Z', accepted_at: null, signer_printed_name: 'Old', offer_scope_snapshot: { lines: [{ label: 'old' }] }, signer_acknowledgements: null },
+      { labor_job_id: 's1', amount: 3400, signed_at: '2026-08-20T10:00:00Z', accepted_at: null, signer_printed_name: 'Danny Vasquez', offer_scope_snapshot: { lines: [{ label: 'Top out' }], acknowledgements: ['A', 'B'], references: [{ kind: 'book', name: 'GC', versionDate: '2026-06-19' }] }, signer_acknowledgements: [{ text: 'A', acknowledgedAt: 'x' }] },
+      { labor_job_id: null, amount: 1, signed_at: null, accepted_at: null, signer_printed_name: null, offer_scope_snapshot: null, signer_acknowledgements: null },
+    ])
+    expect(out[1]!.agreement).toBeNull()
+    const a = out[0]!.agreement!
+    expect(a.signedOn).toBe('2026-08-20')
+    expect(a.signerName).toBe('Danny Vasquez')
+    expect(a.amount).toBe(3400)
+    expect(a.lines).toEqual([{ label: 'Top out', amount: null }])
+    expect(a.references).toEqual([{ kind: 'book', name: 'GC', versionDate: '2026-06-19' }])
+    expect(a.acknowledgements).toEqual(['A'])
+  })
+  it('parseScopeExtras never throws', () => {
+    expect(parseScopeExtras(null).anchor).toBe('step')
+    expect(parseScopeExtras('x').exclusions).toEqual([])
   })
 })
 
