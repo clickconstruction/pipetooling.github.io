@@ -1177,3 +1177,7 @@ SELECT * FROM master_shares WHERE viewing_master_id = auth.uid();
 2. JWT token not expired (sign out/in to refresh)
 3. User has required role for function
 4. Service role key configured (for admin functions)
+
+## Signed agreements stream (v2.2743)
+
+Default recipients of the "Signed — …" email (customer accepted an estimate / GC signed a bid-room proposal) are every active, non-twin `dev`, `master_technician`, `assistant`, and `controller`, filtered to the estimate master's org scope; an explicit list in `app_settings.signed_agreements_notify_recipients_v1` replaces the default. Editing the card (recipients, auto-create switches) writes `app_settings`, which is dev-only under RLS. The auto-create RPC runs as the estimate's `master_user_id`, so the job owner rules are theirs.

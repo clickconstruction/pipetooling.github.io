@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { notifySignedAgreement } from '../_shared/signedAgreementNotify.ts'
 import { clientIpFromRequest, insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
 
 const SIGNATURE_BUCKET = 'estimate-acceptor-signatures'
@@ -65,106 +65,9 @@ type EstimateFetchRow = {
   options_snapshot: unknown
 }
 
-function escapeHtmlLite(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
 
-/**
- * Org-wide "always notify" recipients for estimate acceptance. Same shape and
- * dev-write RLS as the paid-job-email recipients setting; the client editor is
- * `src/components/estimates/EstimateAcceptedNotifySettingsModal.tsx` and the
- * parse/union kernel is `src/lib/estimateAcceptedNotify.ts` — keep in sync.
- */
-const ESTIMATE_ACCEPTED_NOTIFY_SETTING_KEY = 'estimate_accepted_notify_recipients_v1'
-
-async function loadOrgWideAcceptNotifyIds(admin: ReturnType<typeof createClient>): Promise<string[]> {
-  const { data: setting, error } = await admin
-    .from('app_settings')
-    .select('value_text')
-    .eq('key', ESTIMATE_ACCEPTED_NOTIFY_SETTING_KEY)
-    .maybeSingle()
-  if (error) {
-    console.error('accept-estimate: load org-wide notify setting', error)
-    return []
-  }
-  try {
-    const parsed = JSON.parse(setting?.value_text ?? '[]')
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim())
-  } catch {
-    return []
-  }
-}
-
-/** Best-effort staff emails; failures logged only (customer acceptance already persisted). */
-async function notifyStaffEstimateAccepted(params: {
-  admin: ReturnType<typeof createClient>
-  masterUserId: string
-  candidateIds: string[] | null | undefined
-  estimateNumber: number
-  title: string
-  acceptorPrintedName: string
-  /** Estimate Options (v2.2460): '"Replace 50-gal" · $3,400.00' when an option was chosen. */
-  acceptedOptionLabel?: string | null
-}): Promise<void> {
-  // Union: this estimate's own picks first, then the org-wide always-notify
-  // list. The eligibility RPC below still filters whatever comes out.
-  const perEstimate = (params.candidateIds ?? []).filter((x) => typeof x === 'string' && x.trim().length > 0)
-  const orgWide = await loadOrgWideAcceptNotifyIds(params.admin)
-  const ids = [...new Set([...perEstimate, ...orgWide].map((x) => x.trim()))]
-  if (ids.length === 0) return
-
-  const resendApiKey = Deno.env.get('RESEND_API_KEY')
-  if (!resendApiKey) {
-    console.warn('accept-estimate: RESEND_API_KEY not set; skipping staff notify')
-    return
-  }
-
-  const origin = (Deno.env.get('ESTIMATE_PUBLIC_ORIGIN') ?? 'https://pipetooling.github.io').replace(/\/$/, '')
-
-  const { data: eligible, error: rpcErr } = await params.admin.rpc('estimate_accept_notify_filter_eligible_user_ids', {
-    p_master_user_id: params.masterUserId,
-    p_candidate_ids: ids,
-  })
-  if (rpcErr) {
-    console.error('accept-estimate: estimate_accept_notify_filter_eligible_user_ids', rpcErr)
-    return
-  }
-  const eligibleArr = Array.isArray(eligible) ? (eligible as string[]) : []
-  if (eligibleArr.length === 0) return
-
-  const { data: userRows, error: usersErr } = await params.admin
-    .from('users')
-    .select('id, email, name')
-    .in('id', eligibleArr)
-  if (usersErr) {
-    console.error('accept-estimate: notify users select', usersErr)
-    return
-  }
-
-  const quote = Number(params.estimateNumber)
-  const acceptor = params.acceptorPrintedName.trim()
-  const titleTrim = params.title.trim()
-  const optLine = params.acceptedOptionLabel ? ` — chose ${params.acceptedOptionLabel}` : ''
-  const subject = `Quote #${quote} accepted — ${acceptor}`
-  const appLink = `${origin}/estimates/${quote}`
-  const textPlain =
-    `${acceptor} accepted estimate #${quote}${titleTrim ? `: ${titleTrim}` : ''}${optLine}.\n\n` +
-    `Open in ClickTooling: ${appLink}\n`
-  const htmlBody =
-    `<p><strong>${escapeHtmlLite(acceptor)}</strong> accepted <strong>Quote #${quote}</strong>` +
-    `${titleTrim ? `: ${escapeHtmlLite(titleTrim)}` : ''}${optLine ? escapeHtmlLite(optLine) : ''}.</p>` +
-    `<p><a href="${appLink}">Open estimate in ClickTooling</a></p>`
-
-  for (const u of userRows ?? []) {
-    const em = typeof u.email === 'string' ? u.email.trim() : ''
-    if (!em) continue
-    const r = await sendEmailViaResend(em, subject, textPlain, htmlBody, resendApiKey)
-    if (!r.success) {
-      console.error('accept-estimate: staff notify Resend', { to: em, error: r.error })
-    }
-  }
-}
+// v2.2743: staff notice + optional auto-create live in _shared/signedAgreementNotify.ts
+// (the Signed agreements stream). The estimate's own picks still ride along as extras.
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -412,14 +315,22 @@ serve(async (req) => {
     // sent -> customer_accepted audit: DB trigger estimates_audit_customer_accepted_trigger (same txn as UPDATE).
 
     try {
-      await notifyStaffEstimateAccepted({
+      await notifySignedAgreement({
         admin,
+        kind: 'estimate',
+        estimateId: row.id,
         masterUserId: row.master_user_id,
-        candidateIds: row.accept_notify_user_ids,
-        estimateNumber: row.estimate_number,
-        title: row.title ?? '',
-        acceptorPrintedName: printedName,
-        acceptedOptionLabel,
+        extraRecipientIds: row.accept_notify_user_ids,
+        origin: (Deno.env.get('ESTIMATE_PUBLIC_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, ''),
+        email: {
+          estimateNumber: row.estimate_number,
+          title: row.title ?? '',
+          projectAddress: (row as { for_address?: string | null }).for_address ?? null,
+          customerName: null,
+          signerName: printedName,
+          optionName: acceptedOptionLabel ?? null,
+          totalCents: Number((row as { total_cents?: number | null }).total_cents ?? 0),
+        },
       })
     } catch (notifyErr) {
       console.error('accept-estimate: notify staff failed (non-fatal)', notifyErr)

@@ -1146,6 +1146,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `POST /functions/v1/sign-bid-room` — `{ token, revision_id, action: 'sign'|'decline', … }` (sign: `optionKey`, `printedName`, `agreedTerms`, optional `signaturePngBase64`; decline: `category`?, `note`?)
 
+**Staff notice** (v2.2743): a signed proposal goes through `notifySignedAgreement` (auto-create when `signed_agreements_auto_create_job_bids` is on; "Signed — …" letter to the stream list). Declines and change orders keep the short plain-text notice to the room's master + creator.
+
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional staff notify), `APP_ORIGIN`
 
 **Gateway**: `verify_jwt = false`; the room token is the credential.
@@ -1251,6 +1253,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Purpose**: Record Approach A acceptance (typed name + `agreedTerms: true`); sets `customer_accepted` and audit fields.
 
 **Endpoint**: `POST /functions/v1/accept-estimate`
+
+**Staff notice** (v2.2743): after the acceptance is saved, `notifySignedAgreement` (`_shared/signedAgreementNotify.ts`) runs — optional auto-create via `auto_create_job_from_signed_estimate` when `signed_agreements_auto_create_job_estimates` is on, then the "Signed — …" letter to `signed_agreement_notify_recipients` ∪ the estimate's own picks. Replaces the old per-estimate + org-wide notify.
 
 **Expiry** (v2.2703): same end-of-Central-day rule as `get-estimate-for-customer`.
 

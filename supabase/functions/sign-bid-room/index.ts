@@ -10,6 +10,7 @@
  * against an older one returns 409 stale_revision and the page refreshes.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { notifySignedAgreement } from '../_shared/signedAgreementNotify.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { isRoomDeclineCategory, planRoomOutcome, type OutcomeVersionRow } from '../_shared/bidRoomOutcome.ts'
@@ -346,13 +347,30 @@ serve(async (req) => {
       autoLostGcNames.length > 0
         ? ` Also marked Lost — sent, unanswered: ${autoLostGcNames.join(', ')}. (Open the bid to change any of these.)`
         : ''
-    await notifyStaff(
+    // v2.2743: the Signed agreements stream (role-based recipients, optional auto-create job)
+    // replaces the plain-text note to the room's master + creator for signed proposals.
+    const gcName = await gcNamesForVersions(admin, versions, plan.packetVersionIds, bid.customer_id)
+    const notice = await notifySignedAgreement({
       admin,
-      room,
-      bid.project_name ?? '',
-      `signed “${chosen.name.trim() || 'the proposal'}” — ${fmtUsd(chosen.total_cents)}. Packet marked Won.${autoLostLine}`,
-    )
-    return json({ ok: true })
+      kind: 'bid',
+      estimateId,
+      masterUserId: room.master_user_id,
+      origin: (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, ''),
+      email: {
+        estimateNumber: (inserted as { estimate_number: number } | null)?.estimate_number ?? 0,
+        title: bid.project_name ?? payload.project_name ?? 'proposal',
+        projectAddress: payload.project_address || null,
+        customerName: gcName[0] ?? null,
+        signerName: printedName,
+        optionName: chosen.name.trim() || null,
+        totalCents: chosen.total_cents,
+      },
+    })
+    if (autoLostLine) {
+      // The auto-Lost blast radius (v2.2697) still needs saying — keep it as a short follow-up note.
+      await notifyStaff(admin, room, bid.project_name ?? '', `signed “${chosen.name.trim() || 'the proposal'}”.${autoLostLine}`)
+    }
+    return json({ ok: true, job: notice.job })
   } catch (e) {
     console.error(e)
     return json({ error: 'Internal error' }, 500)

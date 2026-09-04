@@ -270,3 +270,10 @@ export const APP_SETTINGS_KEY_TX_COUNTY_EXTRA_MAPPINGS_V1 = 'tx_county_extra_map
 
 /** `app_settings.key` — JSON easter-egg targeting ({ eggs: [...] }); dev writes via Settings → Easter eggs, all authenticated read. Parse/match kernel: src/lib/easterEggsConfig.ts. */
 export const APP_SETTINGS_KEY_EASTER_EGGS = 'easter_eggs_v1' as const
+
+/** v2.2743 — Signed agreements stream (Settings → Emails & reports). JSON array of user ids; empty = role defaults. */
+export const APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS = 'signed_agreements_notify_recipients_v1' as const
+/** v2.2743 — '1' creates the job automatically when a customer accepts an estimate. */
+export const APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_ESTIMATES = 'signed_agreements_auto_create_job_estimates' as const
+/** v2.2743 — '1' creates the job automatically when a GC signs a bid-room proposal. */
+export const APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_BIDS = 'signed_agreements_auto_create_job_bids' as const
