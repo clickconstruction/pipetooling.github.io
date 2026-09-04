@@ -22,7 +22,7 @@ function makeUnion(partial: Partial<TeamReviewUnion>): TeamReviewUnion {
     billedMaterialsByJobId: new Map(),
     cardChargesByJobId: new Map(),
     tagChargesByJobId: new Map(),
-    costLineTags: [],
+    costLineTags: [], vehicleByPersonName: {},
     hoursMap: {},
     crewByDatePerson: {},
     overheadHoursByPerson: {},

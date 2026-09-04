@@ -11,6 +11,8 @@ const FIXED_SEGMENT_COLOR: Record<string, string> = {
   costs: 'var(--text-faint)',
   overheadLabor: '#8b5cf6',
   burden: '#f59e0b',
+  wheelsCompany: '#0f766e',
+  wheelsOwn: '#4338ca',
   profit: '#15803d',
 }
 /** Tag segments take their family ink; the fixed four keep their colors. */

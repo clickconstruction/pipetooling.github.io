@@ -21,6 +21,10 @@ function makeRow(overrides: Partial<TeamSummaryRow>): TeamSummaryRow {
     overheadWage: 0,
     allocatedParts: 0,
     allocatedByTag: {},
+    vehicleArrangement: 'none' as const,
+    vehicleRate: null,
+    vehicleTruckName: null,
+    vehicleCost: 0,
     allocatedLabor: 0,
     overheadLaborCost: 0,
     hoursBreakdown: {

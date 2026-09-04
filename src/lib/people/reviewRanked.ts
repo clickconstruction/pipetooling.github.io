@@ -98,6 +98,8 @@ export type ReviewVerdict = {
   costs: number
   /** The team's share of each cost-line tag's card charges, in manager order. */
   byTag: Array<{ tag: CategoryTagRow; usd: number }>
+  /** Wheels on Labor (v2.2735): vehicle deals priced per field hour — company trucks and own-vehicle fuel, as positive costs. */
+  wheels: { company: number; own: number }
   /** Stored positive (a cost). */
   overheadLabor: number
   /** Positive; null until the 90-day rate loads. */
@@ -130,6 +132,7 @@ export function buildReviewVerdict(
   const usdByTag = new Map<string, number>()
   let overheadLabor = 0
   let burden: number | null = 0
+  const wheels = { company: 0, own: 0 }
   const field = { count: 0, profit: 0 as number | null, fieldHours: 0 }
   const office = { count: 0, overheadHours: 0, overheadLabor: 0, profit: 0 as number | null }
   const none: string[] = []
@@ -138,6 +141,8 @@ export function buildReviewVerdict(
     net += r.net
     for (const t of costLineTags) usdByTag.set(t.id, (usdByTag.get(t.id) ?? 0) + (r.allocatedByTag[t.id] ?? 0))
     overheadLabor += -r.overheadLaborCost
+    if (r.vehicleArrangement === 'company') wheels.company += -r.vehicleCost
+    else if (r.vehicleArrangement === 'own_fuel_paid') wheels.own += -r.vehicleCost
     if (burden != null) burden = r.overheadBurden == null ? null : burden + -r.overheadBurden
     const group = classifyReviewPerson(r)
     if (group === 'field') {
@@ -165,6 +170,8 @@ export function buildReviewVerdict(
     for (const t of byTag) segments.push({ key: `tag:${t.tag.id}`, color: t.tag.color, icon: t.tag.icon, label: t.tag.name, usd: t.usd, share: share(t.usd) })
     segments.push({ key: 'overheadLabor', label: 'Overhead labor', usd: overheadLabor, share: share(overheadLabor) })
     segments.push({ key: 'burden', label: 'Parts burden', usd: burden, share: share(burden) })
+    if (wheels.company > 0) segments.push({ key: 'wheelsCompany', icon: '🚚', label: 'Company trucks', usd: wheels.company, share: share(wheels.company) })
+    if (wheels.own > 0) segments.push({ key: 'wheelsOwn', icon: '🚗', label: 'Own-vehicle fuel', usd: wheels.own, share: share(wheels.own) })
     segments.push({ key: 'profit', label: 'Profit', usd: profit, share: share(profit) })
   }
 
@@ -177,6 +184,7 @@ export function buildReviewVerdict(
     net,
     costs,
     byTag,
+    wheels,
     overheadLabor,
     burden,
     profit,
@@ -217,6 +225,8 @@ export type ReviewRankedBar = {
   widthPct: number
   /** Secondary text: hours and the non-ranked headline. */
   sub: string
+  /** The vehicle deal chip (v2.2735); null when the person has no deal. */
+  vehicle: { arrangement: 'own_fuel_paid' | 'company'; rate: number | null; truckName: string | null } | null
 }
 
 export type ReviewRankedBars = {
@@ -290,6 +300,7 @@ export function buildReviewRankedBars(
       startPct,
       widthPct,
       sub: subParts.join(' · '),
+      vehicle: r.vehicleArrangement === 'none' ? null : { arrangement: r.vehicleArrangement, rate: r.vehicleRate, truckName: r.vehicleTruckName },
     }
   })
   return { bars, zeroPct }
@@ -318,6 +329,36 @@ export type ReviewPersonMath = {
   perHour: { profit: number | null; hours: number; basis: 'assumed' | 'clocked' }
   levers: ReviewLever[]
   watchouts: string[]
+}
+
+/**
+ * The vehicle deal as a drawer line (v2.2735). Own vehicle: fuel per field
+ * hour, on the labor side of the story. Company truck: the truck all-in.
+ * A deal with no rate yet still gets a line, at $0, saying why.
+ */
+function wheelsLines(b: TeamSummaryBreakdown): ReviewMathLine[] {
+  if (b.vehicleArrangement === 'none') return []
+  const rateText = b.vehicleRate != null ? `${fmtH1(b.fieldHours)} field h × $${b.vehicleRate.toFixed(2)}` : 'no rate yet — see People → Vehicles → Wheels'
+  if (b.vehicleArrangement === 'company') {
+    return [
+      {
+        key: 'wheels',
+        label: `− 🚚 ${b.vehicleTruckName ?? 'Company truck'}`,
+        why: `${rateText} (fuel + insurance + registration + service ÷ the holder's field hours, 90-day; their fuel is kept out of the job purchases above)`,
+        usd: b.vehicleCost,
+        kind: 'out',
+      },
+    ]
+  }
+  return [
+    {
+      key: 'wheels',
+      label: '− 🚗 Own-vehicle fuel',
+      why: `${rateText} (their fuel-tag card charges ÷ field hours, 90-day — part of employing them, kept out of the job purchases above)`,
+      usd: b.vehicleCost,
+      kind: 'out',
+    },
+  ]
 }
 
 export function buildReviewPersonMath(
@@ -393,6 +434,7 @@ export function buildReviewPersonMath(
       usd: b.overheadBurden,
       kind: 'out',
     },
+    ...wheelsLines(b),
     { key: 'profit', label: 'Profit after overhead', why: '', usd: b.profitAfterOverhead, kind: 'total' },
   ]
 

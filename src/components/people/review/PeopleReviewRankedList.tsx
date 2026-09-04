@@ -10,6 +10,7 @@ import {
   type ReviewRankedBars,
 } from '../../../lib/people/reviewRanked'
 import { fmtMoney } from '../teamSummary/formatters'
+import { VehicleArrangementChip } from '../PeopleVehiclesWheelsSection'
 
 const RANK_OPTIONS: ReviewRankBy[] = ['profit', 'profitPerHour', 'gross', 'net']
 
@@ -112,6 +113,11 @@ export function PeopleReviewRankedList({
                 {b.group === 'office' && <small style={{ color: 'var(--text-muted)', fontWeight: 400 }}> office</small>}
                 {b.group === 'none' && <small style={{ color: 'var(--text-muted)', fontWeight: 400 }}> no time</small>}
                 {b.salaried && b.group === 'field' && <small style={{ color: 'var(--text-muted)', fontWeight: 400 }}> (s)</small>}
+                {b.vehicle ? (
+                  <span style={{ marginLeft: 6, verticalAlign: 1 }} title={b.vehicle.truckName ?? undefined}>
+                    <VehicleArrangementChip arrangement={b.vehicle.arrangement} rate={b.vehicle.rate} />
+                  </span>
+                ) : null}
               </button>
               <div
                 style={{ position: 'relative', height: 16, background: 'var(--bg-muted)', borderRadius: 3, overflow: 'hidden' }}

@@ -375,6 +375,14 @@ export function derivePersonTeamSummary(
   // as a cost (red `negStyle`, `-$X` via `fmtMoney`) and flows naturally
   // into the footer total + per-bucket drilldown rows.
   const overheadLaborCost = -(overheadHours * overheadWage)
+  // Wheels on Labor (v2.2735): the vehicle deal priced per field hour. Own
+  // vehicle → fuel ÷ field h (their fuel is no longer shared to their jobs);
+  // company truck → the truck's all-in rate. 0 with no deal or no rate.
+  const vehicle = union.vehicleByPersonName[personName] ?? union.vehicleByPersonName[personName.trim()]
+  const vehicleArrangement = vehicle?.arrangement ?? 'none'
+  const vehicleRate = vehicleArrangement === 'none' ? null : (vehicle?.rate ?? null)
+  const vehicleTruckName = vehicle?.truckName ?? null
+  const vehicleCost = vehicleRate != null ? -(fieldHours * vehicleRate) : 0
 
   // Build the per-session display list for the Overhead-hours-breakdown
   // modal. Times are formatted in the company TZ; bid metadata is
@@ -443,6 +451,10 @@ export function derivePersonTeamSummary(
     hourlyWage,
     overheadWage,
     overheadLaborCost,
+    vehicleArrangement,
+    vehicleRate,
+    vehicleTruckName,
+    vehicleCost,
     hoursBreakdown,
     grossBreakdown,
     netBreakdown,

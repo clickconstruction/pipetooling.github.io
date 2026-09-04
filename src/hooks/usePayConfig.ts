@@ -93,9 +93,8 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         person_id: raw.person_id ?? null,
         hourly_wage: raw.hourly_wage ?? null,
         office_hourly_wage: raw.office_hourly_wage ?? null,
-        // Columns from 20260903233954 (v2.2733); read through a cast until database.ts is regenerated after the push.
-        vehicle_arrangement: parseVehicleArrangement((raw as { vehicle_arrangement?: unknown }).vehicle_arrangement),
-        vehicle_rate_override: (raw as { vehicle_rate_override?: number | null }).vehicle_rate_override ?? null,
+        vehicle_arrangement: parseVehicleArrangement(raw.vehicle_arrangement),
+        vehicle_rate_override: raw.vehicle_rate_override ?? null,
         is_salary: !!raw.is_salary,
         record_hours_but_salary: !!raw.record_hours_but_salary,
       }

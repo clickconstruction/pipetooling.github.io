@@ -146,7 +146,7 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
 /** Manual $/field hour for a person; null clears it so the computed rate applies again. */
 export async function saveVehicleRateOverride(personName: string, override: number | null): Promise<void> {
   await withSupabaseRetry(
-    async () => await supabase.from('people_pay_config').update({ vehicle_rate_override: override } as never).eq('person_name', personName),
+    async () => await supabase.from('people_pay_config').update({ vehicle_rate_override: override }).eq('person_name', personName),
     'wheels save rate override',
   )
 }
