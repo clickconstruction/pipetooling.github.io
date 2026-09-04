@@ -35,9 +35,12 @@ import {
   GC_ROUND_THRESHOLD,
   buildStatementRound,
   deriveGcAccountMen,
+  describeRoundMark,
   mergeMarksIntoLastSent,
+  sendChannelLabel,
   summarizeStatementRound,
   type RoundMarkRow,
+  type StatementSendChannel,
 } from '../../lib/jobs/gcStatementRounds'
 import {
   deleteGcStatementRoundMark,
@@ -57,6 +60,8 @@ import {
 } from '../../lib/jobs/gcReviewCertification'
 import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
 import GcReviewCertifyModal from './GcReviewCertifyModal'
+import GcStatementMarkSentForm from './GcStatementMarkSentForm'
+import GcStatementSendHistoryModal from './GcStatementSendHistoryModal'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
 import { buildTeammateEmailChips } from '../../lib/teammateEmailChips'
@@ -317,6 +322,10 @@ export function JobsGcReviewModal({
   const [roundBusy, setRoundBusy] = useState(false)
   const [roundError, setRoundError] = useState<string | null>(null)
   const [assigningGcId, setAssigningGcId] = useState<string | null>(null)
+  /** Mark sent with channel + note (v2.2761): the round overlay's inline form, the Share → Mark sent… dialog, and the send-history dialog. */
+  const [roundSentFormOpen, setRoundSentFormOpen] = useState(false)
+  const [markSentGroup, setMarkSentGroup] = useState<GcReviewGroup | null>(null)
+  const [historyGc, setHistoryGc] = useState<{ id: string; name: string } | null>(null)
   const refreshRoundMarks = useCallback(() => {
     void listGcStatementRoundMarks(certWeekStart).then(setRoundMarks, () => setRoundMarks([]))
   }, [certWeekStart])
@@ -486,10 +495,12 @@ export function JobsGcReviewModal({
   }
   const authUserName = users.find((u) => u.id === authUser?.id)?.name ?? ''
   const userNameById = (id: string | null) => (id ? users.find((u) => u.id === id)?.name || '—' : 'nobody assigned')
-  async function markRound(gcId: string, action: 'sent' | 'skipped') {
-    if (!authUser?.id) return
+  /** Returns true on success so callers can close their form. A sent mark carries how + note (v2.2761); a skip carries neither. */
+  async function markRound(gcId: string, action: 'sent' | 'skipped', how?: { channel: StatementSendChannel; note: string }): Promise<boolean> {
+    if (!authUser?.id) return false
     setRoundBusy(true)
     setRoundError(null)
+    let ok = false
     try {
       await upsertGcStatementRoundMark({
         week_start: certWeekStart,
@@ -497,13 +508,26 @@ export function JobsGcReviewModal({
         action,
         acted_by: authUser.id,
         acted_by_name: authUserName,
+        channel: action === 'sent' ? (how?.channel ?? 'email') : null,
+        note: action === 'sent' ? (how?.note ?? '') : null,
       })
       refreshRoundMarks()
+      ok = true
     } catch (e) {
       setRoundError(e instanceof Error ? e.message : 'Could not save the mark — try again.')
     }
     setRoundBusy(false)
+    return ok
   }
+  /** This week's sent mark for a GC, when it is what the last-sent pill is showing (v2.2761). */
+  const thisWeekSentMark = (gcId: string): RoundMarkRow | null => {
+    const m = roundMarks.find((r) => r.gc_customer_id === gcId && r.action === 'sent')
+    return m && mergedLastSent[gcId] === m.acted_at ? m : null
+  }
+  const markWhenLabel = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+    ' ' +
+    new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
   async function undoRoundMark(gcId: string) {
     setRoundBusy(true)
     setRoundError(null)
@@ -788,7 +812,13 @@ export function JobsGcReviewModal({
                 <span
                   role={it.mark && canCertify ? 'button' : undefined}
                   tabIndex={it.mark && canCertify ? 0 : undefined}
-                  title={it.mark && canCertify ? 'click to undo this mark' : undefined}
+                  title={
+                    it.mark && it.mark.action === 'sent'
+                      ? `${describeRoundMark(it.mark, markWhenLabel(it.mark.acted_at))}${canCertify ? '\nClick to undo this mark' : ''}`
+                      : it.mark && canCertify
+                        ? 'click to undo this mark'
+                        : undefined
+                  }
                   onClick={it.mark && canCertify && !roundBusy ? () => void undoRoundMark(it.gcId) : undefined}
                   style={{
                     fontSize: '0.6875rem',
@@ -812,7 +842,7 @@ export function JobsGcReviewModal({
                   }}
                 >
                   {it.state === 'sent'
-                    ? `sent ✓ ${it.mark ? new Date(it.mark.acted_at).toLocaleDateString('en-US', { weekday: 'short' }) : ''} by ${it.mark?.acted_by_name || '—'}`
+                    ? `sent ✓ ${it.mark ? new Date(it.mark.acted_at).toLocaleDateString('en-US', { weekday: 'short' }) : ''} by ${it.mark?.acted_by_name || '—'} · ${sendChannelLabel(it.mark?.channel).toLowerCase()}${it.mark?.note?.trim() ? ' ✎' : ''}`
                     : it.state === 'skipped'
                       ? 'skipped this week'
                       : it.state === 'ready'
@@ -909,19 +939,31 @@ export function JobsGcReviewModal({
                     <CustomerPortalGlobeButton customerId={g.gcId} customerName={g.gcName} size={14} />
                   </span>
                 ) : null}
-                {!g.isNoGc && g.gcId && mergedLastSent[g.gcId] ? (
-                  gcReviewSentThisWeek(mergedLastSent[g.gcId], certWeekStart) && !byDevelopment ? (
-                    <span
-                      style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }}
-                    >
-                      Sent {new Date(mergedLastSent[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      last sent {new Date(mergedLastSent[g.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
-                  )
-                ) : null}
+                {!g.isNoGc && g.gcId && mergedLastSent[g.gcId]
+                  ? (() => {
+                      // Last-sent pill (v2.2761): names the channel when this week's mark is what it shows, and opens the send history.
+                      const gcId = g.gcId
+                      const mark = thisWeekSentMark(gcId)
+                      const when = new Date(mergedLastSent[gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                      const suffix = mark ? ` · ${sendChannelLabel(mark.channel).toLowerCase()}` : ''
+                      const thisWeek = gcReviewSentThisWeek(mergedLastSent[gcId], certWeekStart) && !byDevelopment
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setHistoryGc({ id: gcId, name: g.gcName })}
+                          title={`${mark ? describeRoundMark(mark, markWhenLabel(mark.acted_at)) + '\n' : ''}See every send on record for ${g.gcName}`}
+                          style={
+                            thisWeek
+                              ? { display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit' }
+                              : { padding: 0, border: 'none', background: 'none', fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit', textDecoration: 'underline dotted' }
+                          }
+                        >
+                          {thisWeek ? 'Sent' : 'last sent'} {when}
+                          {suffix}
+                        </button>
+                      )
+                    })()
+                  : null}
                 {!byDevelopment && !g.isNoGc && g.gcId
                   ? (() => {
                       const status = gcGroupCertStatus(g, certsByGc.get(g.gcId))
@@ -1056,6 +1098,19 @@ export function JobsGcReviewModal({
                           >
                             Print
                           </button>
+                          {!byDevelopment && g.gcId && canCertify ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShareMenuGroupKey(null)
+                                setMarkSentGroup(g)
+                              }}
+                              title={`Record that ${g.gcName} got their statement another way — text, call, in person — with a note for later`}
+                              style={gcShareMenuItemStyle}
+                            >
+                              Mark sent…
+                            </button>
+                          ) : null}
                           {!byDevelopment ? (
                             <>
                               <div style={{ height: 1, background: 'var(--border)', margin: '0.25rem 0.2rem' }} />
@@ -1507,9 +1562,10 @@ export function JobsGcReviewModal({
                         </button>
                         <button
                           type="button"
-                          disabled={roundBusy}
-                          onClick={() => void markRound(current.gcId, 'sent')}
-                          style={{ marginLeft: 'auto', padding: '0.3rem 0.8rem', fontSize: '0.78rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', opacity: roundBusy ? 0.6 : 1 }}
+                          disabled={roundBusy || roundSentFormOpen}
+                          onClick={() => setRoundSentFormOpen(true)}
+                          aria-expanded={roundSentFormOpen}
+                          style={{ marginLeft: 'auto', padding: '0.3rem 0.8rem', fontSize: '0.78rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', opacity: roundBusy || roundSentFormOpen ? 0.6 : 1 }}
                         >
                           Sent it ✓
                         </button>
@@ -1522,9 +1578,25 @@ export function JobsGcReviewModal({
                           Skip
                         </button>
                       </div>
+                      {roundSentFormOpen ? (
+                        <div style={{ marginTop: '0.6rem' }}>
+                          <GcStatementMarkSentForm
+                            gcName={current.gcName}
+                            actorName={authUserName}
+                            busy={roundBusy}
+                            onSave={(channel, note) => {
+                              void markRound(current.gcId, 'sent', { channel, note }).then((ok) => {
+                                if (ok) setRoundSentFormOpen(false)
+                              })
+                            }}
+                            onCancel={() => setRoundSentFormOpen(false)}
+                          />
+                        </div>
+                      ) : null}
                       <p style={{ margin: '0.55rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
                         Copy pastes the statement as a real table into your Gmail — add a personal line on top and send from
-                        your own address. “Sent it” stamps the last-sent pill and the week’s progress.
+                        your own address. “Sent it” asks how it went out (email, text, call…) and takes a note, then stamps the
+                        last-sent pill and the week’s progress.
                       </p>
                       {roundError ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
                     </>
@@ -1877,6 +1949,42 @@ export function JobsGcReviewModal({
           onOpenJobDetail={onOpenJobDetail}
         />
       )}
+      {markSentGroup && markSentGroup.gcId && authUser?.id ? (
+        // Share → Mark sent… (v2.2761): any GC, any amount — a text, a call, an in-person handoff, with a note for posterity.
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Mark ${markSentGroup.gcName} statement sent`}
+          onClick={() => (roundBusy ? undefined : setMarkSentGroup(null))}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 64 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(520px, 92vw)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}>
+            <div style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.15rem' }}>{markSentGroup.gcName}</div>
+            <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              {markSentGroup.jobCount} job{markSentGroup.jobCount === 1 ? '' : 's'} · ${formatCurrency(markSentGroup.subtotal)} outstanding
+              {mergedLastSent[markSentGroup.gcId] ? ` · last sent ${new Date(mergedLastSent[markSentGroup.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ' · never sent'}
+            </p>
+            <GcStatementMarkSentForm
+              gcName={markSentGroup.gcName}
+              actorName={authUserName}
+              defaultChannel="text"
+              busy={roundBusy}
+              onSave={(channel, note) => {
+                const gcId = markSentGroup.gcId
+                if (!gcId) return
+                void markRound(gcId, 'sent', { channel, note }).then((ok) => {
+                  if (ok) setMarkSentGroup(null)
+                })
+              }}
+              onCancel={() => setMarkSentGroup(null)}
+            />
+            {roundError ? <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
+          </div>
+        </div>
+      ) : null}
+      {historyGc ? (
+        <GcStatementSendHistoryModal gcId={historyGc.id} gcName={historyGc.name} appLastSentAt={lastSentByGcId[historyGc.id] ?? null} onClose={() => setHistoryGc(null)} />
+      ) : null}
     </div>
   )
 }

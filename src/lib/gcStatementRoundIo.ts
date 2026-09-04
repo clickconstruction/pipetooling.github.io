@@ -6,13 +6,28 @@
  */
 
 import { supabase } from './supabase'
-import type { RoundMarkRow } from './jobs/gcStatementRounds'
+import type { RoundMarkRow, StatementSendChannel } from './jobs/gcStatementRounds'
+
+const MARK_COLUMNS = 'gc_customer_id, week_start, action, acted_by, acted_by_name, acted_at, channel, note'
 
 export async function listGcStatementRoundMarks(weekStartYmd: string): Promise<RoundMarkRow[]> {
+  const { data, error } = await supabase.from('gc_statement_round_marks').select(MARK_COLUMNS).eq('week_start', weekStartYmd)
+  if (error) return []
+  return (data ?? []) as RoundMarkRow[]
+}
+
+/**
+ * Send history for one GC (v2.2761): every week's sent mark, newest first —
+ * the posterity view behind the last-sent pill. Skips are left out.
+ */
+export async function listGcStatementSentHistory(gcCustomerId: string, limit = 60): Promise<RoundMarkRow[]> {
   const { data, error } = await supabase
     .from('gc_statement_round_marks')
-    .select('gc_customer_id, week_start, action, acted_by, acted_by_name, acted_at')
-    .eq('week_start', weekStartYmd)
+    .select(MARK_COLUMNS)
+    .eq('gc_customer_id', gcCustomerId)
+    .eq('action', 'sent')
+    .order('acted_at', { ascending: false })
+    .limit(limit)
   if (error) return []
   return (data ?? []) as RoundMarkRow[]
 }
@@ -23,10 +38,15 @@ export async function upsertGcStatementRoundMark(row: {
   action: 'sent' | 'skipped'
   acted_by: string
   acted_by_name: string
+  /** v2.2761 — how it went out; a skip carries no channel. */
+  channel?: StatementSendChannel | null
+  /** v2.2761 — optional note, trimmed; empty stores NULL. */
+  note?: string | null
 }): Promise<void> {
+  const note = row.note?.trim() || null
   const { error } = await supabase
     .from('gc_statement_round_marks')
-    .upsert({ ...row, acted_at: new Date().toISOString() }, { onConflict: 'week_start,gc_customer_id' })
+    .upsert({ ...row, channel: row.channel ?? null, note, acted_at: new Date().toISOString() }, { onConflict: 'week_start,gc_customer_id' })
   if (error) throw new Error(error.message)
 }
 

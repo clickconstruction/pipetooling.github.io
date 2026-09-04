@@ -13,6 +13,26 @@ import { gcGroupCertStatus, type GcReviewCertRow } from './gcReviewCertification
 /** Outstanding (non-collections) threshold for joining the weekly round. */
 export const GC_ROUND_THRESHOLD = 10000
 
+/** How a statement went out (v2.2761). Rows from before the column read as email. */
+export type StatementSendChannel = 'email' | 'text' | 'call' | 'in_person' | 'other'
+
+export const STATEMENT_SEND_CHANNELS: ReadonlyArray<{ value: StatementSendChannel; label: string }> = [
+  { value: 'email', label: 'Email' },
+  { value: 'text', label: 'Text' },
+  { value: 'call', label: 'Call' },
+  { value: 'in_person', label: 'In person' },
+  { value: 'other', label: 'Other' },
+]
+
+export function isStatementSendChannel(v: unknown): v is StatementSendChannel {
+  return typeof v === 'string' && STATEMENT_SEND_CHANNELS.some((c) => c.value === v)
+}
+
+/** Display label for a stored channel; null/unknown (pre-v2.2761 rows) read as Email. */
+export function sendChannelLabel(channel: string | null | undefined): string {
+  return STATEMENT_SEND_CHANNELS.find((c) => c.value === channel)?.label ?? 'Email'
+}
+
 export type RoundMarkRow = {
   gc_customer_id: string
   week_start: string
@@ -20,6 +40,20 @@ export type RoundMarkRow = {
   acted_by: string | null
   acted_by_name: string
   acted_at: string
+  /** v2.2761 — null on rows written before the column existed (those were emails). */
+  channel: string | null
+  /** v2.2761 — optional free text from whoever marked it sent. */
+  note: string | null
+}
+
+/**
+ * Tooltip for a sent mark: who, when, how, and the note if any. Dates are
+ * formatted by the caller so the kernel stays timezone-free.
+ */
+export function describeRoundMark(mark: Pick<RoundMarkRow, 'acted_by_name' | 'channel' | 'note'>, whenLabel: string): string {
+  const head = `Marked sent by ${mark.acted_by_name || '—'} · ${whenLabel} · ${sendChannelLabel(mark.channel).toLowerCase()}`
+  const note = mark.note?.trim()
+  return note ? `${head}\nNote: ${note}` : head
 }
 
 export type StatementRoundState = 'needs_certify' | 'needs_sender' | 'ready' | 'sent' | 'skipped'
