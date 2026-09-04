@@ -56,6 +56,7 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 | Takeoff assembly | ✅ 2026-08-09 | ✅ |
 | Job contract: chip → modal → Copy link (`get-a-job-contract-signed.gif`, desktop, 1.8 MB, Chrome recording as dev on Job 922 — the minted link was voided afterwards) | ✅ 2026-09-03 | ✅ |
 | Signed agreement view: green chip → record → scroll to the framed signature block → Share ▾ → Email a copy… (`get-a-job-contract-signed-view.gif`, desktop, 2.6 MB, 15 frames; re-recorded 2026-09-03 for the v2.2724 signature block, Chrome as dev on Job 1005, sheet cancelled) | ✅ 2026-09-03 | ✅ |
+| File a signed contract: chip → modal → File a signed contract → paste the Google Doc link → green linked line → Record as signed lit (`get-a-job-contract-signed-file.gif`, desktop, 2.4 MB, 11 s at 8 fps; Playwright video → ffmpeg on Job 922 as dev, sheet cancelled before Record — Claude in Chrome was disconnected, so no click overlays) | ✅ 2026-09-04 | ✅ |
 | Onboard a new subcontractor (assign packet + compliance panel) | ✅ 2026-09-03 (two clips, `onboard-a-new-subcontractor.gif` + `-compliance.gif`; captured from a dev account — no read-only training account exists yet) | ✅ |
 
 | Schedule Dispatch phone moves: grip tap → day chip → "Moved to Fri 9/4." → press-and-hold → Move sheet → back to Thu (`schedule-dispatch-move-by-thumb.gif`, phone width, 500×1000, ~0.5 MB, 8 keyframes via Playwright + ffmpeg as dev on Isiah's J878 — the block was moved to Friday and back on camera, ending where it started) | ✅ 2026-09-03 | ✅ |

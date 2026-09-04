@@ -65,6 +65,8 @@ Most signed contracts live in Google Docs. Open the Contract modal and press {{b
 
 Have a paper scan instead? The small **Have a scan or photo instead?** link under the date opens a file field. A record needs the link or a file — not just a name and date.
 
+{{gif:get-a-job-contract-signed-file.gif|From the Pipeline row: the chip opens the Contract modal, File a signed contract opens the sheet, the pasted Google Doc link turns into the green linked line, and Record as signed lights up}}
+
 ## Where else it shows
 
 - **Bill Customer** and **View bill** — a strip at the top says whether an agreement is behind the bill, with {{button:blue|Send contract}} or {{button:outline|View record}} right there. Billing is when the office most often notices a missing contract.
