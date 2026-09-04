@@ -20,7 +20,19 @@ key_sections:
 
 ## Status
 
-**Planned, awaiting go** (2026-09-04). Mockups approved in principle: owner picked **B → New 1** and **C → New 2** from the "Takeoffs Refresh" canvas (three directions drawn on BP396's real fixtures); Old is today's tab, untouched. Nothing below is built. Versions are claimed per PR with `npm run claim` at build time — never pre-assigned here.
+**PRs 1–7 built (2026-09-04)** — the parallel run is live; PR 8 (a week of real use, coverage re-measured) and PR 9 (retire Old) remain. Owner picked **B → New 1** and **C → New 2** from the "Takeoffs Refresh" canvas; Old is today's tab, untouched and still the default.
+
+| # | PR | Version | Landed as |
+|---|---|---|---|
+| 1 | Pills + Old | v2.2768 | #2504 |
+| 2 | Substrate A — kernels | v2.2769 | #2505 |
+| 3 | Substrate B — hooks (T8/T9) | v2.2770 | #2507 |
+| 4 | Fixture-history RPC (migration `20260904202321`, pushed) | v2.2774 | #2510 |
+| 5 | Fill from book under Combined | v2.2776 | #2513 |
+| 6 | New 1 — one fixture at a time | v2.2778 | #2517 |
+| 7 | New 2 — cost rail | v2.2781 | this PR |
+
+Versions are claimed per PR with `npm run claim` at build time — never pre-assigned here.
 
 ## Why (ground truth, 2026-09-04)
 

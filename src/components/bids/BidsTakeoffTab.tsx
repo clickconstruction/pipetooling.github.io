@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
@@ -34,8 +34,13 @@ import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assembl
 import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
-import { TakeoffViewPills, TakeoffNewViewPlaceholder, TakeoffByStageNotice } from './TakeoffViewPills'
+import { TakeoffViewPills, TakeoffByStageNotice } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
+import { TakeoffCostRailView } from './TakeoffCostRailView'
+import { RfqComposeModal } from './RfqComposeModal'
+import { bidPackageLabel } from '../../lib/bidPackageLabel'
+import { useTakeoffFixtureHistory } from '../../hooks/useTakeoffFixtureHistory'
+import type { CopyFromBidCandidate } from '../../lib/bids/takeoffFixtureHistory'
 import { summarizeTakeoffCoverage } from '../../lib/bids/takeoffCoverage'
 import { planRememberForBook } from '../../lib/bids/takeoffBookLearn'
 import { rememberFixtureForBook } from '../../lib/bids/takeoffBookLearnWrite'
@@ -437,6 +442,41 @@ export function BidsTakeoffTab({
   const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates, takeoffIsRough)
   // New 1 / New 2 substrate (v2.2778): coverage is the same math the Labor tab and Workbench use.
   const takeoffCoverage = useMemo(() => summarizeTakeoffCoverage(takeoffCountRows, takeoffRoughPartLines), [takeoffCountRows, takeoffRoughPartLines])
+  // Shared by New 1 / New 2 (v2.2781): one fixture-history call per bid, only while a new view is up.
+  const takeoffHistory = useTakeoffFixtureHistory({
+    bidId: takeoffView !== 'old' && takeoffIsRough ? selectedBidForTakeoff?.id ?? null : null,
+    serviceTypeId: selectedServiceTypeId,
+    countRows: takeoffCountRows,
+  })
+  const takeoffPartNameById = useMemo(() => new Map(takeoffAddTemplateParts.map((p) => [p.id, p.name])), [takeoffAddTemplateParts])
+  // New 2's "Request quotes" door reuses the Pricing tab's RfqComposeModal (plan decision 7).
+  const [takeoffRfqScope, setTakeoffRfqScope] = useState<{ lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string } | null>(null)
+  const [takeoffOpenRfqHouseIds, setTakeoffOpenRfqHouseIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!takeoffRfqScope || !selectedBidForTakeoff?.id) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('bid_rfqs').select('supply_house_id, status').eq('bid_id', selectedBidForTakeoff.id).eq('status', 'sent')
+      if (cancelled) return
+      setTakeoffOpenRfqHouseIds(new Set(((data ?? []) as Array<{ supply_house_id: string | null }>).map((r) => r.supply_house_id).filter((x): x is string => !!x)))
+    })()
+    return () => { cancelled = true }
+  }, [takeoffRfqScope, selectedBidForTakeoff?.id])
+
+  async function copyFixturesFromBid(candidate: CopyFromBidCandidate) {
+    let added = 0
+    let noPrice = 0
+    try {
+      for (const f of candidate.fills) {
+        const r = await copyLinesToRow(f.countRowId, f.source.lines)
+        added += r.linesAdded
+        noPrice += r.partsWithoutPrice
+      }
+      showToast(added > 0 ? `Copied ${added} line${added === 1 ? '' : 's'} onto ${candidate.fills.length} fixture${candidate.fills.length === 1 ? '' : 's'} from B${candidate.bidNumber ?? '?'}${noPrice > 0 ? ` · ${noPrice} without a catalog price` : ''}.` : 'Nothing to copy.', added > 0 ? 'success' : 'info')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to copy from the previous bid'), 'error')
+    }
+  }
 
   async function applyBookToFixture(countRowId: string, templateIds: string[]) {
     try {
@@ -1418,7 +1458,7 @@ export function BidsTakeoffTab({
    * through it, New 1 one fixture at a time (v2.2778). One drag context, the
    * same header, rows, and add-line footer, so the views cannot drift apart.
    */
-  const renderRoughLinesTable = (rowsToRender: BidCountRow[]) => (
+  const renderRoughLinesTable = (rowsToRender: BidCountRow[], opts?: { suggestionFor?: (row: BidCountRow) => ReactNode }) => (
                   <DndContext
                     sensors={roughPartLinesSensors}
                     collisionDetection={closestCenter}
@@ -1536,6 +1576,7 @@ export function BidsTakeoffTab({
                                       >
                                         Add assembly
                                       </span>
+                                      {opts?.suggestionFor?.(row)}
                                     </div>
                                   </td>
                                 </tr>
@@ -1650,6 +1691,22 @@ export function BidsTakeoffTab({
 
   return (
     <>
+        {selectedBidForTakeoff && takeoffRfqScope ? (
+          <RfqComposeModal
+            open
+            onClose={() => setTakeoffRfqScope(null)}
+            onSent={() => {
+              setTakeoffRfqScope(null)
+              showToast('Quote request sent — picked prices land back on these lines.', 'success')
+            }}
+            bidId={selectedBidForTakeoff.id}
+            bidVersionId={selectedBidVersionId}
+            bidLabel={bidPackageLabel(selectedBidForTakeoff, ledgerPrefixMap)}
+            scope={takeoffRfqScope}
+            openRfqHouseIds={takeoffOpenRfqHouseIds}
+            plansLink={selectedBidForTakeoff.plans_link ?? null}
+          />
+        ) : null}
         {takeoffRemoveConfirm != null && (
           <div
             role="dialog"
@@ -1798,7 +1855,6 @@ export function BidsTakeoffTab({
                 takeoffIsRough ? (
                   <TakeoffFocusView
                     bidId={selectedBidForTakeoff.id}
-                    serviceTypeId={selectedServiceTypeId}
                     countRows={takeoffCountRows}
                     lines={takeoffRoughPartLines}
                     coverage={takeoffCoverage}
@@ -1813,12 +1869,38 @@ export function BidsTakeoffTab({
                     onFillAll={() => void applyTakeoffBookTemplates()}
                     onSheetView={() => switchTakeoffView('new2')}
                     showToast={showToast}
+                    history={takeoffHistory}
                   />
                 ) : (
                   <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
                 )
               ) : takeoffView === 'new2' ? (
-                <TakeoffNewViewPlaceholder view="new2" onBackToOld={() => switchTakeoffView('old')} />
+                takeoffIsRough ? (
+                  <TakeoffCostRailView
+                    countRows={takeoffCountRows}
+                    lines={takeoffRoughPartLines}
+                    coverage={takeoffCoverage}
+                    bookPlan={bookFillPlan}
+                    bookVersions={takeoffBookVersions}
+                    selectedBookVersionId={selectedTakeoffBookVersionId}
+                    onSelectBook={(id) => {
+                      setSelectedTakeoffBookVersionId(id)
+                      saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, id)
+                    }}
+                    materialTemplates={materialTemplates}
+                    partNameById={takeoffPartNameById}
+                    history={takeoffHistory}
+                    renderLinesTable={renderRoughLinesTable}
+                    fillButton={bookFillButton}
+                    onFillAll={() => void applyTakeoffBookTemplates()}
+                    onApplyBook={applyBookToFixture}
+                    onCopyFromBid={copyFixturesFromBid}
+                    onRequestQuotes={(scope) => setTakeoffRfqScope(scope)}
+                    onFocusView={() => switchTakeoffView('new1')}
+                  />
+                ) : (
+                  <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
+                )
               ) : (
               <>
               {(() => {

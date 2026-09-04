@@ -492,6 +492,9 @@ Both Fixture and Count show:
 ### Purpose
 Map fixture counts to material assemblies, creating purchase orders for the bid. Supports multiple assemblies per fixture and staged material breakdowns.
 
+### Three views (parallel run since v2.2768 — `docs/TAKEOFFS_REFRESH_PLAN.md`)
+**Old / New 1 / New 2** pills beside the bid title (per-device `bids_takeoff_view_v1`, default Old until retirement). **Old** is the tab as documented below. **New 1** ([`TakeoffFocusView`](../src/components/bids/TakeoffFocusView.tsx), v2.2778) walks a Combined takeoff one fixture at a time — rail with done / to-do / $0 dots, the book entry and the last bids that costed the same fixture (`takeoff_fixture_history`, v2.2774) with **Use these lines**, the same line editor, **Remember for the book**, Done → next uncosted. **New 2** ([`TakeoffCostRailView`](../src/components/bids/TakeoffCostRailView.tsx), v2.2781) keeps the sheet with the book's suggestion inline and adds the rail: what Pricing sees, **Needs a price** → RFQ, **Copy fixtures from a previous bid**, the book's coverage. Both share the coverage strip (`summarizeTakeoffCoverage` — the Labor/Workbench materials number), `useTakeoffRoughLines` (one persistence path), and `renderRoughLinesTable` (Old's own line editor). By Stage bids stay in Old.
+
 ### Takeoff Book System
 
 The Takeoff Book provides standardized mappings from fixture names to material assemblies and stages.
