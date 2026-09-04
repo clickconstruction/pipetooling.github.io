@@ -29,7 +29,7 @@ Jobs **created from a bid** inherit the bid's GC/Builder automatically, and link
 
 On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button (next to Accounts Receivable). It groups everything awaiting payment by GC: each General Contractor's customers, when each was billed out, how many days ago, and the GC's outstanding total. Jobs without a GC gather in a **No GC set** bucket at the bottom, so the grand total always matches the section header — and that bucket doubles as your list of jobs to go set GCs on: **click any job** in the report to open Edit Job right on top, set the GC (or fix anything else), and the report refreshes itself when you save.
 
-- Tick **Include Collections** to fold hard-to-collect jobs into the view (marked with a red chip).
+- **Include Collections** (left of {{button:blue|Share all}}) is ticked by default, so hard-to-collect jobs ride along in the view and in Share all / Print all, marked with a red chip. Untick it to see active billing only. Certification and the weekly statement rounds always look at active jobs only, whichever way the box is set.
 
 ## Certify each GC — the Wednesday ritual
 
