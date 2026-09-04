@@ -9,7 +9,7 @@ Every signature — a customer accepting an estimate, a GC signing a bid-room pr
 
 ## Who gets the email
 
-**Settings → Emails & reports → Signed agreements.** With no one picked, the email goes to every active assistant, master, controller and dev — that is the default, and new people in those roles are covered automatically. Add or remove people on the card to make an explicit list instead. People picked on a single estimate (the estimate's **Estimate accepted emails**) are added on top.
+**Settings → Emails & reports → Signed agreements.** With no one picked, the email goes to every active assistant, master, controller and dev — that is the default, and new people in those roles are covered automatically. Add or remove people on the card to make an explicit list instead. People picked on a single estimate (the estimate's **Estimate accepted emails**) are added on top. Masters always receive, whichever master owns the record; assistants, controllers and devs receive for their own master's records.
 
 :::example What the email says
 **Mark Knight signed the proposal for Hunter Road Sound Studio** · Knight Contracting · 2530 Hunter Rd · Sept 4, 2026 · 9:12 AM — **To Plans · $56,343.00** — {{button:blue|Open the signed record}} {{button:amber|Create the job}}
