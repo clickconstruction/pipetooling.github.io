@@ -23,6 +23,7 @@ export type QuickSendBookRow = BookVersionDateSource & {
   book_body_html: string | null
   book_body_format: string
   canonical_document_url?: string | null
+  form_template_id?: string | null
 }
 
 export type QuickSendPersonRow = {
@@ -73,6 +74,7 @@ export function resolveQuickSendSource(input: {
       hasContractSigningContent({
         signing_body_html: d.book_body_html,
         canonical_document_url: d.canonical_document_url,
+        form_template_id: d.form_template_id,
       }),
   )
   const bestBook = maxEffectiveBookVersionRow(bookRows) ?? bookRows[0] ?? null
