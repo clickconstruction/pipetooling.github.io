@@ -149,6 +149,10 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 ### Developments (v2.1198, `20260801100000_developments_on_jobs.sql`)
 - New `developments` table (named groups of jobs) with RLS mirroring the `customers` table: **SELECT** for the owning master, dev, adopted assistant-likes (`master_assistants` is role-agnostic — covers controller), share viewers (`master_shares`), plus the blanket estimator/primary/superintendent branch; **INSERT/UPDATE** owner/dev/adopted assistant-likes; **DELETE** owner/dev only. Ends with both read-only sweep calls (new table). `jobs_ledger.development_id` is a nullable FK (ON DELETE SET NULL) covered by existing `jobs_ledger` policies.
 
+### Signed form PDFs — dev, controller, pay-approved master (v2.2798, Contract Forms)
+
+A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the page; `contract_form_templates`, dev-only writes, office reads). After signing, the flattened PDF in the private `contract-form-pdfs` bucket is the only place the form's **sensitive** answers (SSN / EIN) exist; the row keeps `form_values` (non-sensitive) and `form_hints` (last four). The row stays readable to the contracts roles as before. **Opening the PDF** goes only through `open-contract-form-pdf`: `dev`, `controller`, or a `master_technician` present in `pay_approved_masters`; each open is logged in `contract_form_pdf_opens` (devs read). No client-side storage policy exists on that bucket. The template bucket `contract-form-templates` has one storage policy: devs manage; the signer page receives a 15-minute signed URL from `get-contract-for-signer`.
+
 ### Contract documents: type/expiry/identity columns (v2.1213, `20260801200000_contract_doc_types_expiry.sql`)
 - `person_contract_documents` gains `doc_type` (agreement|coi|w9|license|other, default agreement), `expires_at`, and `person_id` (FK `people`, resolver backfill + `contract_docs_set_person_id` trigger). **No RLS changes** — column-additive; existing contract-document policies govern who sees the new compliance fields.
 

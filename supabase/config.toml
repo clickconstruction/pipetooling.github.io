@@ -753,3 +753,7 @@ verify_jwt = false
 # token-authenticated like submit-portal-request.
 [functions.submit-sub-portal]
 verify_jwt = false
+
+# Contract Forms (v2.2798): JWT validated in the function body (getUser) + role gate; gateway verify_jwt caused 401s for legitimate sessions on sibling functions.
+[functions.open-contract-form-pdf]
+verify_jwt = false
