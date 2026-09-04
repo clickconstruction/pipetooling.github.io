@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { fetchLowestPartPrice } from '../../lib/materialPartCatalogPrice'
+import { loadPartsCatalog } from '../../lib/materials/partsCatalog'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { STAGE_LABELS, type MaterialsModel, type TakeoffStage } from '../../lib/bids/bidTakeoffHelpers'
 import { formatCurrency } from '../../lib/format'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -62,12 +64,14 @@ export function AssignTakeoffPartModal({
     void (async () => {
       setLoading(true)
       if (isRough) {
-        const { data } = await supabase
-          .from('material_parts')
-          .select('id, name, manufacturer, part_types(name)')
-          .eq('service_type_id', serviceTypeId)
-          .order('name', { ascending: true })
-        if (!cancelled) setParts((data as PartOption[]) ?? [])
+        // Paged (v2.2755): the Plumbing catalog is past PostgREST's 1,000-row cap.
+        let rows: PartOption[] = []
+        try {
+          rows = await loadPartsCatalog<PartOption>(supabase, serviceTypeId, 'id, name, manufacturer, part_types(name)')
+        } catch (e) {
+          if (!cancelled) showToast(formatErrorMessage(e, 'Failed to load parts'), 'error')
+        }
+        if (!cancelled) setParts(rows)
       } else {
         const { data } = await supabase
           .from('material_templates')

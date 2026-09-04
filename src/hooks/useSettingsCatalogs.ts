@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { loadWholePartPricesCatalog } from '../lib/materials/partsCatalog'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import {
@@ -105,15 +106,12 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
     setOrphanError(null)
     setLoadingOrphanPrices(true)
     try {
-      const { data, error } = await supabase
-        .from('material_part_prices')
-        .select('*, material_parts(*), supply_houses(*)')
-      if (error) {
-        setOrphanError(error.message)
-        setOrphanPrices([])
-        return
-      }
-      const rows = (data as any[]) ?? []
+      // Paged (v2.2755): the price table is past PostgREST's 1,000-row cap.
+      const rows = await loadWholePartPricesCatalog<Parameters<typeof classifyOrphanMaterialPrices>[0][number]>(
+        supabase,
+        '*, material_parts(*), supply_houses(*)',
+        { column: 'id' },
+      )
       setOrphanPrices(classifyOrphanMaterialPrices(rows))
     } catch (e) {
       setOrphanError(e instanceof Error ? e.message : 'Failed to load orphaned prices')

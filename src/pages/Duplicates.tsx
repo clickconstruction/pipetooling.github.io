@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { Database } from '../types/database'
 import { nameSimilarity } from '../utils/nameSimilarity'
+import { loadWholePartPricesCatalog, loadWholePartsCatalog } from '../lib/materials/partsCatalog'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
@@ -77,11 +78,24 @@ export default function Duplicates() {
     }
     let cancelled = false
     setLoading(true)
+    // Parts (1,800+) and prices (2,100+) are both past PostgREST's silent
+    // 1,000-row cap, so both load paged (v2.2755) — a truncated list here hid
+    // the very duplicates this page exists to find.
+    const asResult = <T,>(p: Promise<T[]>) =>
+      p.then((data) => ({ data, error: null as { message: string } | null })).catch((e: unknown) => ({
+        data: null as T[] | null,
+        error: { message: e instanceof Error ? e.message : String(e) },
+      }))
     Promise.all([
-      supabase.from('material_parts').select('*').order('name'),
+      asResult(loadWholePartsCatalog<MaterialPart>(supabase)),
       supabase.from('part_types').select('id, name, service_type_id'),
       supabase.from('service_types').select('id, name'),
-      supabase.from('material_part_prices').select('part_id, price, supply_houses(name)').order('price', { ascending: true }),
+      asResult(
+        loadWholePartPricesCatalog<{ part_id: string; price: number; supply_houses: { name: string } | null }>(
+          supabase,
+          'part_id, price, supply_houses(name)',
+        ),
+      ),
     ]).then(([partsRes, ptRes, stRes, pricesRes]) => {
       if (cancelled) return
       if (partsRes.error) {

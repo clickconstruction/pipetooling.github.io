@@ -5,6 +5,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type D
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { supabase } from '../../lib/supabase'
 import { loadPOItemsSummary } from '../../lib/bids/poItemsSummary'
+import { loadPartsCatalog, loadPartsByIds, missingPartIds, mergeCatalogParts } from '../../lib/materials/partsCatalog'
 import { SortableRoughPartLineRow, type PartType } from './SortableRoughPartLineRow'
 import { TakeoffBookAdminSection } from './TakeoffBookAdminSection'
 import { BidsTakeoffMaterialsSummarySection } from './BidsTakeoffMaterialsSummarySection'
@@ -495,13 +496,11 @@ export function BidsTakeoffTab({
     const capturedRoughLineId = bidsPartFormRoughLineIdRef.current
     bidsPartFormRoughLineIdRef.current = null
 
-    const { data } = await supabase
-      .from('material_parts')
-      .select('*, part_types(*)')
-      .eq('service_type_id', selectedServiceTypeId)
-      .order('name', { ascending: true })
-
-    if (data) setTakeoffAddTemplateParts(data as MaterialPartWithType[])
+    try {
+      setTakeoffAddTemplateParts(await loadPartsCatalog<MaterialPartWithType>(supabase, selectedServiceTypeId))
+    } catch (e) {
+      console.error('Failed to reload the parts catalog after a part save:', e)
+    }
 
     // Routing runs even if that catalog reload failed (v2.1395): the part is
     // already saved, and the whole point of "Save & add" is that it lands.
@@ -545,12 +544,11 @@ export function BidsTakeoffTab({
   // skip the picker routing above — intermediate parts just land in the catalog;
   // the final plain Save still routes into whichever picker opened the form.
   async function handleBidsPartFormSaveAndAddAnother(_part: MaterialPart) {
-    const { data } = await supabase
-      .from('material_parts')
-      .select('*, part_types(*)')
-      .eq('service_type_id', selectedServiceTypeId)
-      .order('name', { ascending: true })
-    if (data) setTakeoffAddTemplateParts(data as MaterialPartWithType[])
+    try {
+      setTakeoffAddTemplateParts(await loadPartsCatalog<MaterialPartWithType>(supabase, selectedServiceTypeId))
+    } catch (e) {
+      console.error('Failed to reload the parts catalog after a part save:', e)
+    }
     setBidsPartFormInitialName('')
   }
 
@@ -1548,14 +1546,38 @@ export function BidsTakeoffTab({
     if (activeTab !== 'takeoffs' || !selectedServiceTypeId || !selectedBidForTakeoff?.id) return
     if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return
     void (async () => {
-      const { data, error } = await supabase
-        .from('material_parts')
-        .select('*, part_types(*)')
-        .eq('service_type_id', selectedServiceTypeId)
-        .order('name', { ascending: true })
-      if (!error && data) setTakeoffAddTemplateParts(data as MaterialPartWithType[])
+      try {
+        setTakeoffAddTemplateParts(await loadPartsCatalog<MaterialPartWithType>(supabase, selectedServiceTypeId))
+      } catch (e) {
+        console.error('Failed to load the parts catalog:', e)
+      }
     })()
   }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, selectedServiceTypeId, supabase])
+
+  // Rows must never render blank because their part is missing from the loaded
+  // list (v2.2755): whatever the catalog load dropped — or a part from another
+  // service type — is fetched by id and merged in. Ids already tried are not
+  // re-requested, so a part RLS hides can't loop the effect.
+  const roughLineMissingPartTriedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (takeoffAddTemplateParts.length === 0) return
+    const missing = missingPartIds(takeoffRoughPartLines, takeoffAddTemplateParts).filter(
+      (id) => !roughLineMissingPartTriedRef.current.has(id),
+    )
+    if (missing.length === 0) return
+    for (const id of missing) roughLineMissingPartTriedRef.current.add(id)
+    let cancelled = false
+    void (async () => {
+      try {
+        const found = await loadPartsByIds<MaterialPartWithType>(supabase, missing)
+        if (cancelled || found.length === 0) return
+        setTakeoffAddTemplateParts((prev) => mergeCatalogParts(prev, found))
+      } catch (e) {
+        console.error('Failed to load parts referenced by takeoff rows:', e)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [takeoffRoughPartLines, takeoffAddTemplateParts, supabase])
 
   useEffect(() => {
     if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return
@@ -1610,19 +1632,15 @@ export function BidsTakeoffTab({
       return
     }
     let cancelled = false
-    supabase
-      .from('material_parts')
-      .select('*, part_types(*)')
-      .eq('service_type_id', selectedServiceTypeId)
-      .order('name', { ascending: true })
-      .then(({ data, error }) => {
-        if (cancelled) return
-        if (error) {
-          setTakeoffAddTemplateParts([])
-          return
-        }
-        setTakeoffAddTemplateParts((data as MaterialPart[]) ?? [])
-      })
+    void (async () => {
+      try {
+        const rows = await loadPartsCatalog<MaterialPartWithType>(supabase, selectedServiceTypeId)
+        if (!cancelled) setTakeoffAddTemplateParts(rows)
+      } catch (e) {
+        console.error('Failed to load the parts catalog:', e)
+        if (!cancelled) setTakeoffAddTemplateParts([])
+      }
+    })()
     return () => { cancelled = true }
   }, [takeoffAddTemplateModalOpen, addPartsToTemplateModalOpen, editTemplateModalOpen, selectedServiceTypeId])
 
