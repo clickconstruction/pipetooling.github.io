@@ -156,8 +156,18 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                 <span>
                   {snap.window.start} → {snap.window.end}
                   {snap.fuelTag ? ` · fuel = ${snap.fuelTag.icon} ${snap.fuelTag.name} tag` : ' · no fuel tag found — set one up in Banking → Accounting → Tags'}
-                  {snap.unattributedFuelUsd > 0 ? ` · ${usd(snap.unattributedFuelUsd)} of fuel has no person on it` : ''}
                 </span>
+                {snap.unattributedCards.length > 0 ? (
+                  <span title="Card fuel with no person attributed. Link the card to a person in Banking → Sorting → User Card Link (auto-assign) and it fills in for past and future purchases.">
+                    {usd(snap.unattributedFuelUsd)} of fuel has no person on it:{' '}
+                    {snap.unattributedCards.map((c) => `${c.label} ${usd(c.usd)}`).join(' · ')}
+                  </span>
+                ) : null}
+                {snap.offCardFuelFamily.usd > 0 ? (
+                  <span title="Rows in the fuel tag that were not paid with a debit card — usually a supplier payment filed under a vehicle label. Not counted as anyone's fuel; check the label in Banking → Accounting.">
+                    Not counted: {usd(snap.offCardFuelFamily.usd)} filed under a vehicle label but not on a card ({snap.offCardFuelFamily.top.map((t) => `${t.counterparty} ${usd(t.usd)}`).join(', ')})
+                  </span>
+                ) : null}
                 <button type="button" onClick={() => void load()} disabled={loading} style={{ marginLeft: 'auto', padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
                   {loading ? 'Refreshing…' : 'Refresh'}
                 </button>
@@ -263,7 +273,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                 </div>
               </div>
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>
-                Fuel is every card charge in the fuel tag attributed to the person (Banking → Accounting). Field hours are approved job sessions. A truck's fuel is its holder's fuel; insurance counts only while the truck is on a plan. Wear is not included yet.
+                Fuel is every debit-card purchase in the fuel tag attributed to the person (Banking → Accounting); payments that were not on a card never count. Field hours are approved job sessions. A truck's fuel is its holder's fuel; insurance counts only while the truck is on a plan. Wear is not included yet.
               </p>
             </>
           ) : null}

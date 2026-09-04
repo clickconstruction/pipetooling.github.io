@@ -49,6 +49,74 @@ export function sumFuelByUser(charges: ReadonlyArray<{ amount: number; userId: s
   return m
 }
 
+/** A transaction in the fuel family, before the card test. */
+export type FuelFamilyTx = {
+  id: string
+  amount: number
+  kind: string
+  counterparty: string | null
+  /** True when the row carries a Mercury debit card (a purchase at the pump / the parts counter). */
+  hasCard: boolean
+}
+
+export type FuelSplit = {
+  /** Card purchases — the only rows that can be someone's fuel. */
+  card: FuelFamilyTx[]
+  /** Fuel-family rows with no card (ACH supplier payments, transfers…) — usually a mislabel; shown, never counted. */
+  offCard: { usd: number; n: number; top: Array<{ counterparty: string; usd: number }> }
+}
+
+/**
+ * Only card purchases count as fuel (v2.2739). A $36k ACH to a supply
+ * house that someone filed under a vehicle label is not anyone's fill-up;
+ * before this split it showed up as "fuel with no person on it".
+ */
+export function splitFuelFamily(rows: readonly FuelFamilyTx[]): FuelSplit {
+  const card: FuelFamilyTx[] = []
+  const byCp = new Map<string, number>()
+  let usd = 0
+  let n = 0
+  for (const r of rows) {
+    if (r.hasCard && r.kind === 'debitCardTransaction') {
+      card.push(r)
+      continue
+    }
+    usd += Math.abs(r.amount)
+    n++
+    const cp = (r.counterparty ?? '').trim() || 'Unknown'
+    byCp.set(cp, (byCp.get(cp) ?? 0) + Math.abs(r.amount))
+  }
+  const top = [...byCp.entries()]
+    .map(([counterparty, u]) => ({ counterparty, usd: round2(u) }))
+    .sort((a, b) => b.usd - a.usd)
+    .slice(0, 3)
+  return { card, offCard: { usd: round2(usd), n, top } }
+}
+
+/** Card fuel nobody is attributed to, grouped by card — the list to link. */
+export function unattributedFuelByCard(
+  rows: ReadonlyArray<{ amount: number; cardId: string | null; userId: string | null }>,
+  nicknameByCard: ReadonlyMap<string, string>,
+): Array<{ cardId: string | null; label: string; usd: number; n: number }> {
+  const m = new Map<string, { cardId: string | null; usd: number; n: number }>()
+  for (const r of rows) {
+    if (r.userId) continue
+    const key = r.cardId ?? '(no card)'
+    const e = m.get(key) ?? { cardId: r.cardId, usd: 0, n: 0 }
+    e.usd += Math.abs(r.amount)
+    e.n++
+    m.set(key, e)
+  }
+  return [...m.values()]
+    .map((e) => ({
+      cardId: e.cardId,
+      label: e.cardId ? (nicknameByCard.get(e.cardId) ?? `card …${e.cardId.replace(/-/g, '').slice(-4)}`) : 'no card',
+      usd: round2(e.usd),
+      n: e.n,
+    }))
+    .sort((a, b) => b.usd - a.usd)
+}
+
 export type WheelsSessionRow = {
   user_id: string
   job_ledger_id: string | null

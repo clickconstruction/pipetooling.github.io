@@ -9,6 +9,8 @@ import {
   wheelsComparison,
   wheelsWindow,
   type WheelsTruck,
+  splitFuelFamily,
+  unattributedFuelByCard,
 } from './wheels'
 
 describe('wheels window + arrangement parsing', () => {
@@ -124,5 +126,34 @@ describe('buildWheelsRows', () => {
     )
     expect(wheelsComparison(rows)).toEqual({ ownAvg: 6.1, companyAvg: 8.32 })
     expect(wheelsComparison([])).toEqual({ ownAvg: null, companyAvg: null })
+  })
+})
+
+describe('fuel family split (card purchases only)', () => {
+  it('keeps card purchases and reports off-card rows by counterparty instead of counting them', () => {
+    const rows = [
+      { id: 'a', amount: -60, kind: 'debitCardTransaction', counterparty: 'QuikTrip', hasCard: true },
+      { id: 'b', amount: -36737, kind: 'other', counterparty: 'HAJOCA CORPORATI', hasCard: false },
+      { id: 'c', amount: -540, kind: 'debitCardTransaction', counterparty: 'Cash App', hasCard: false },
+      { id: 'd', amount: -45, kind: 'debitCardTransaction', counterparty: 'Shell', hasCard: true },
+    ]
+    const s = splitFuelFamily(rows)
+    expect(s.card.map((r) => r.id)).toEqual(['a', 'd'])
+    expect(s.offCard).toEqual({ usd: 37277, n: 2, top: [{ counterparty: 'HAJOCA CORPORATI', usd: 36737 }, { counterparty: 'Cash App', usd: 540 }] })
+  })
+  it('lists unattributed card fuel by card with the nickname when there is one', () => {
+    const out = unattributedFuelByCard(
+      [
+        { amount: -50, cardId: 'bb2cfabe-74ac-11f0-bf2b-cf8ecc6de40f', userId: null },
+        { amount: -45.31, cardId: 'bb2cfabe-74ac-11f0-bf2b-cf8ecc6de40f', userId: null },
+        { amount: -30.03, cardId: '11e42d2c-8f7e-11f1-aa2d-7fe8c2f61158', userId: null },
+        { amount: -80, cardId: 'cc31655c-0000-0000-0000-000000000000', userId: 'u1' },
+      ],
+      new Map([['bb2cfabe-74ac-11f0-bf2b-cf8ecc6de40f', 'Jonathan 4692']]),
+    )
+    expect(out).toEqual([
+      { cardId: 'bb2cfabe-74ac-11f0-bf2b-cf8ecc6de40f', label: 'Jonathan 4692', usd: 95.31, n: 2 },
+      { cardId: '11e42d2c-8f7e-11f1-aa2d-7fe8c2f61158', label: 'card …1158', usd: 30.03, n: 1 },
+    ])
   })
 })
