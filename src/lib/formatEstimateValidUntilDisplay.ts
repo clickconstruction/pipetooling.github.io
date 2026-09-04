@@ -28,3 +28,12 @@ export function formatValidUntilForDisplay(isoDate: string): string {
   // en-US yields "Sun, Apr 19, 2026"; product copy wants no comma after weekday
   return s.replace(/^([^,]+),\s*/, '$1 ')
 }
+
+/**
+ * v2.2780: the same date without the weekday — "Apr 19, 2026" — for the one-line places
+ * (the accept page's total card and bottom bar) where "Fri Sep 18, 2026" wrapped.
+ */
+export function formatValidUntilCompact(isoDate: string): string {
+  const full = formatValidUntilForDisplay(isoDate)
+  return full === isoDate.trim() ? full : full.replace(/^[A-Za-z]{3} /, '')
+}

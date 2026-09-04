@@ -16,7 +16,7 @@ import type { EstimateCustomerExperienceClient } from '@/lib/estimateCustomerExp
 import type { EstimateAcceptHeaderBrand } from '@/lib/estimateAcceptHeaderBrand'
 import EstimateOptionsPicker from './EstimateOptionsPicker'
 import { estimateOptionTotalCents, type EstimateOption } from '@/lib/estimates/estimateOptions'
-import { formatValidUntilForDisplay } from '../../lib/formatEstimateValidUntilDisplay'
+import { formatValidUntilCompact } from '../../lib/formatEstimateValidUntilDisplay'
 
 function formatOptionMoney(cents: number): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(cents / 100)
@@ -310,7 +310,8 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     : selectedOption
       ? `Approve "${selectedOption.name.trim() || 'Option'}" — ${formatOptionMoney(estimateOptionTotalCents(selectedOption))}`
       : 'Approve'
-  const validityLine = estimate.valid_until ? `Pricing is good through ${formatValidUntilForDisplay(estimate.valid_until)}.` : null
+  // One line on a 390 px phone: no weekday, short verb (v2.2780).
+  const validityLine = estimate.valid_until ? `Good through ${formatValidUntilCompact(estimate.valid_until)}.` : null
 
   // v2.2772 (owner pick B): the number first — a total card under the title with the Approve
   // door, so a phone shows what the customer is looking at before any scrolling.
