@@ -4,7 +4,10 @@ import type { GcReviewCertRow } from './gcReviewCertification'
 import {
   buildStatementRound,
   deriveGcAccountMen,
+  describeRoundMark,
+  isStatementSendChannel,
   mergeMarksIntoLastSent,
+  sendChannelLabel,
   summarizeStatementRound,
   type RoundMarkRow,
 } from './gcStatementRounds'
@@ -39,6 +42,8 @@ const mark = (gc: string, action: 'sent' | 'skipped', at = '2026-08-20T15:00:00Z
   acted_by: 'u2',
   acted_by_name: 'Malachi',
   acted_at: at,
+  channel: null,
+  note: null,
 })
 
 describe('buildStatementRound', () => {
@@ -135,5 +140,34 @@ describe('mergeMarksIntoLastSent', () => {
     expect(merged.a).toBe('2026-08-20T15:00:00Z')
     expect(merged.b).toBe('2026-08-20T18:00:00Z')
     expect(merged.c).toBeUndefined()
+  })
+})
+
+describe('send channels (v2.2761)', () => {
+  it('labels every channel and reads legacy null / unknown as Email', () => {
+    expect(sendChannelLabel('text')).toBe('Text')
+    expect(sendChannelLabel('in_person')).toBe('In person')
+    expect(sendChannelLabel(null)).toBe('Email')
+    expect(sendChannelLabel('fax')).toBe('Email')
+  })
+
+  it('guards the stored string', () => {
+    expect(isStatementSendChannel('call')).toBe(true)
+    expect(isStatementSendChannel('fax')).toBe(false)
+    expect(isStatementSendChannel(null)).toBe(false)
+  })
+
+  it('describes a mark with and without a note', () => {
+    expect(describeRoundMark({ acted_by_name: 'Malachi', channel: 'text', note: '  ' }, 'Thu, Sep 4')).toBe(
+      'Marked sent by Malachi · Thu, Sep 4 · text',
+    )
+    expect(describeRoundMark({ acted_by_name: '', channel: null, note: 'Dave pays Friday' }, 'Thu, Sep 4')).toBe(
+      'Marked sent by — · Thu, Sep 4 · email\nNote: Dave pays Friday',
+    )
+  })
+
+  it('a text-message mark merges into last-sent like an email', () => {
+    const m = { ...mark('a', 'sent', '2026-08-21T10:00:00Z'), channel: 'text', note: 'texted Dave' }
+    expect(mergeMarksIntoLastSent({ a: '2026-08-20T09:00:00Z' }, [m])).toEqual({ a: '2026-08-21T10:00:00Z' })
   })
 })

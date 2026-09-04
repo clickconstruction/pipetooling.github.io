@@ -5772,8 +5772,10 @@ export type Database = {
           acted_by: string | null
           acted_by_name: string
           action: string
+          channel: string | null
           gc_customer_id: string
           id: string
+          note: string | null
           week_start: string
         }
         Insert: {
@@ -5781,8 +5783,10 @@ export type Database = {
           acted_by?: string | null
           acted_by_name?: string
           action: string
+          channel?: string | null
           gc_customer_id: string
           id?: string
+          note?: string | null
           week_start: string
         }
         Update: {
@@ -5790,8 +5794,10 @@ export type Database = {
           acted_by?: string | null
           acted_by_name?: string
           action?: string
+          channel?: string | null
           gc_customer_id?: string
           id?: string
+          note?: string | null
           week_start?: string
         }
         Relationships: [

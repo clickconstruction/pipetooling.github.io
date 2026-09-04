@@ -2,7 +2,7 @@
 title: run your weekly GC statement round
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: gc statement, round, certify, sent it, personal email, outstanding, weekly, sender, gc review, sign off
+keywords: gc statement, round, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off
 ---
 Every GC that owes **$10,000 or more** joins the weekly **statement round**: a to-do for one person to email that GC their outstanding statement — personally, from their own inbox. The app never emails a GC on its own. Two gates keep it honest: a manager **certifies** each GC's numbers first, and the sender marks **Sent it** so the app knows it happened.
 
@@ -26,7 +26,7 @@ Open **GC Review** (the Billed Awaiting Payment section tools). The **Weekly sta
 
 - {{chip:yellow|certify to release}} — certify this GC (the {{button:blue|Certify}} button on its group) and it moves into its sender's round. A group that **changes after sign-off** drops back here.
 - {{chip:blue|in Malachi's round}} — released, waiting on the sender.
-- {{chip:green|sent ✓ Thu by Malachi}} — done for the week. Click the chip to undo a mis-click.
+- {{chip:green|sent ✓ Thu by Malachi · text}} — done for the week, with how it went out. Hover for the note; click the chip to undo a mis-click.
 - **needs a sender** — nobody is set. Click **assign** to pick one; the assignment sticks week to week. Unassigned GCs default to the Account Man on their jobs.
 
 ## Working your round
@@ -35,8 +35,20 @@ Open **GC Review** (the Billed Awaiting Payment section tools). The **Weekly sta
 
 1. {{button:outline|Preview statement}} — see exactly what the GC will see.
 2. {{button:outline|Copy for email}} — copies the statement as a real table. Paste it into your own Gmail or Outlook, add a personal line on top, and send from your own address.
-3. {{button:blue|Sent it ✓}} — tells the app it went out. This stamps the GC's last-sent pill and the week's progress, same as an app send.
+3. {{button:blue|Sent it ✓}} — tells the app it went out. A short form opens: pick **how** ({{chip:blue|Email}} {{chip:gray|Text}} {{chip:gray|Call}} {{chip:gray|In person}} {{chip:gray|Other}}) and add an optional note, then {{button:blue|Save mark}}. This stamps the GC's last-sent pill and the week's progress, same as an app send.
 4. **Skip** defers that GC for the week.
+
+## Sent it another way? Mark it from the GC
+
+Not every statement goes out in the round, or by email. If you texted a GC their statement, walked one over, or talked it through on a call, record it from the GC's group header: **Share → Mark sent…**. The same form opens (Text is preselected), and the mark counts everywhere a send counts — the last-sent pill, the week's progress, the Dashboard nudges. It works for any GC, including ones under $10,000 that never join a round.
+
+:::example What gets kept
+Every mark keeps **who** marked it, **when**, **how** it went out, and the **note** — for posterity. One mark per GC per week; marking again in the same week replaces that week's mark.
+:::
+
+## Seeing what was sent before
+
+The **last sent Aug 27** pill on each GC's header names the channel when this week's mark is what it shows ("Sent Sep 4 · text"). Click it for the GC's **send history**: every mark on record, newest first — date, how, who, and the note. App-sent statement emails are noted at the bottom.
 
 ## Good to know
 
