@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
 import type { TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
 import type { BookFillPlan } from '../../lib/bids/takeoffBookFill'
@@ -53,6 +53,7 @@ export function TakeoffCostRailView({
   onCopyFromBid,
   onRequestQuotes,
   onFocusView,
+  focusRequest,
 }: {
   countRows: BidCountRow[]
   lines: TakeoffRoughPartLineRow[]
@@ -71,12 +72,17 @@ export function TakeoffCostRailView({
   onCopyFromBid: (candidate: CopyFromBidCandidate) => Promise<void>
   onRequestQuotes: (scope: { lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string }) => void
   onFocusView: () => void
+  /** A cross-tab row jump: show every row so the flash can find it. */
+  focusRequest?: { countRowId: string; nonce: number } | null
 }) {
   const [filter, setFilter] = useState<'all' | 'uncosted' | 'zero'>('all')
   const [busyRow, setBusyRow] = useState<string | null>(null)
   const [pickedBid, setPickedBid] = useState<string | null>(null)
   const [copying, setCopying] = useState(false)
   const [showUnitCosts, setShowUnitCosts] = useState(false)
+  useEffect(() => {
+    if (focusRequest) setFilter('all')
+  }, [focusRequest?.nonce, focusRequest])
 
   const uncosted = useMemo(() => new Set(coverage.uncostedIds), [coverage])
   const zeroRows = useMemo(() => new Set(lines.filter((l) => coverage.zeroPriceLineIds.includes(l.id)).map((l) => l.countRowId)), [lines, coverage])
@@ -86,6 +92,8 @@ export function TakeoffCostRailView({
   )
   const queue = useMemo(() => zeroPriceQueue(countRows, lines, partNameById), [countRows, lines, partNameById])
   const unitCosts = useMemo(() => fixtureUnitCosts(countRows, coverage), [countRows, coverage])
+  // What the Workbench calls "no cost": no lines, or lines that all price at $0.
+  const noCostCount = useMemo(() => coverage.uncostedIds.length + unitCosts.filter((u) => u.unitCost === 0).length, [coverage, unitCosts])
   const candidates = useMemo(() => (history ? buildCopyFromBidPreview(countRows, coverage.uncostedIds, [...history.values()].flat()).slice(0, 3) : []), [history, countRows, coverage])
   const picked = candidates.find((c) => c.bidId === pickedBid) ?? candidates[0] ?? null
   const bookMatched = bookPlan ? bookPlan.matched : 0
@@ -183,9 +191,9 @@ export function TakeoffCostRailView({
                 {coverage.costed} of {coverage.fixtures}
               </span>
             </div>
-            {coverage.uncostedIds.length > 0 ? (
+            {noCostCount > 0 ? (
               <div style={{ padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', fontSize: '0.78rem', fontWeight: 600 }}>
-                {coverage.uncostedIds.length} fixture{coverage.uncostedIds.length === 1 ? '' : 's'} carr{coverage.uncostedIds.length === 1 ? 'ies' : 'y'} no material cost — Pricing shows {coverage.uncostedIds.length === 1 ? 'it' : 'them'} as "No Takeoffs cost"
+                {noCostCount} fixture{noCostCount === 1 ? '' : 's'} carr{noCostCount === 1 ? 'ies' : 'y'} no material cost — Pricing shows {noCostCount === 1 ? 'it' : 'them'} as "no cost"
               </div>
             ) : null}
             <button type="button" onClick={() => setShowUnitCosts((v) => !v)} style={{ ...kv, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-blue-700)', font: 'inherit', fontSize: '0.8rem' }}>

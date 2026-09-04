@@ -30,7 +30,8 @@ key_sections:
 | 4 | Fixture-history RPC (migration `20260904202321`, pushed) | v2.2774 | #2510 |
 | 5 | Fill from book under Combined | v2.2776 | #2513 |
 | 6 | New 1 — one fixture at a time | v2.2778 | #2517 |
-| 7 | New 2 — cost rail | v2.2781 | this PR |
+| 7 | New 2 — cost rail | v2.2781 | #2520 |
+| — | Hardening: shared model toggle, row jumps into New 1 / New 2, smokes, retirement readiness | v2.2784 | this PR |
 
 Versions are claimed per PR with `npm run claim` at build time — never pre-assigned here.
 
@@ -133,6 +134,28 @@ Every build PR, before merge, on a worktree dev server:
 3. As an estimator via `login-as-user` (Wendi's role): the same scenario; confirm RLS lets the write through and the history RPC returns only bids she can see.
 4. Console clean: no `[row-cap]`, no unhandled rejection, no 4xx from a new read.
 5. Pricing cross-check: Workbench "our cost" for the bid equals the coverage strip's materials total.
+
+## Retirement readiness (what is already shared, what still dies with Old)
+
+Audited 2026-09-04 after PR 7 (hardening PR v2.2784). **Shared by every view today** — safe to keep when Old goes: the header (title, pills, Print, ×), the **materials-model toggle** (moved out of the Old branch in the hardening PR — it is the only door that flips a bid between By Stage and Combined), `renderRoughLinesTable` (the whole Combined line editor: drag context, header, rows, add-line footer), every tab-level modal (remove-confirm, qty numpad, Part form, part prices, bundle breakdown, the assembly-authoring cluster, the rough Add-assembly modal, the RFQ compose), the takeoff-book admin section, the materials summary + PO review, `useTakeoffRoughLines`, `useTakeoffPartsCatalog`, `useTakeoffFixtureHistory`, and every kernel. **Still Old-only** — dies with Old: the By Stage editor (mappings table, template picker portal, assembly parts preview modal, `createPOFromTakeoff` / Add to selected PO — 0 uses since June, 151 legacy `exact` bids), Old's own book selector + Apply/Fill row (New 2 has its own selector; New 1 uses the bid's saved book), and Old's "Add fixtures in the Counts tab first" empty state.
+
+Parity checklist (Old feature → where it lives after retirement):
+
+| Old feature | New 1 | New 2 |
+|---|---|---|
+| Add part line / pick / price / qty numpad / reorder / delete | same editor (`renderRoughLinesTable`) | same |
+| Add assembly → expand / bundle, Save as Assembly, bundle breakdown | same modals | same |
+| Catalog prices / reset to catalog / bid override tags | same rows | same |
+| Takeoff book selector | bid's saved book (name shown; change it in New 2 or the admin section) | selector |
+| Apply Matching / Fill from book | Fill from book + per-fixture Apply | Fill from book + inline Apply |
+| Print takeoff breakdown | shared header | shared header |
+| Materials summary + PO review | shared section | shared section |
+| By Stage editor | notice → Old | notice → Old |
+| Cross-tab row jump (Pricing → Takeoffs) | focuses the fixture (hardening PR) | drops the filter (hardening PR) |
+
+Render smokes pin New 1, New 2, and the By Stage notice (hardening PR), so deleting the Old branch cannot silently take a new view down.
+
+**Retirement PR recipe** (the v2.2707 shape): pills → a two-way `Sheet | One at a time` toggle, default the owner picks from the week's use; delete the Old branch JSX, the By Stage editor, `createPOFromTakeoff`, the template picker portal and preview modal (or keep By Stage read-only if the owner wants the 151 legacy bids viewable); abandon `bids_takeoff_view_v1` in place; rewrite the Old-only smoke assertions; `docs/BIDS_SYSTEM.md` "sole views since"; retitle the help guides that say "Old"; architecture map: the Exact dossier becomes history.
 
 ## Retirement criteria
 
