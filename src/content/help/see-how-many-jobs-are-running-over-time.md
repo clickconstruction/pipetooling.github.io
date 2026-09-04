@@ -20,7 +20,7 @@ The chart is the number of jobs running on each day, stacked by how the job stan
 - {{chip:yellow|billed, awaiting payment}} — finished and billed
 - {{chip:green|paid}} — finished and paid
 
-The black line is the 7-day average, the dot marks the **peak**, and the red dashed line is today. Hover any day for its split; click it to open that day's session notes grouped by job.
+The black line is the 7-day average, the dot marks the **peak**, and the red dashed line is today. As you move across the chart a soft band follows the cursor with the day's date and count, so you know what you're pointing at; hover a moment for the full split, and click to open that day's session notes grouped by job.
 
 The tiles above say it in numbers: running today, the average over the window, the peak and when it hit, how many jobs the window holds (finished vs. still open), and the median run length.
 
