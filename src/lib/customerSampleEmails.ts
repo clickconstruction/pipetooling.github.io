@@ -10,6 +10,7 @@ import { parseSharedBidRoomPayload } from '../../supabase/functions/_shared/bidR
 import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } from './estimateCustomerExperience'
 import { buildContractSigningEmail, type ContractSigningEmail } from './contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
+import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
 import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
 
@@ -87,7 +88,7 @@ export function buildSampleContractEmail(ctx: SampleEmailContext): ContractSigni
     introPlain: '',
     sender: ctx.sender ? { name: ctx.sender.name, email: ctx.sender.email } : null,
     portalUrl: `${PORTAL_SHORT_ORIGIN}${SAMPLE_SUB.portalSlug}`,
-    officePhone: null,
+    officePhone: PORTAL_COMPANY.phone || null,
   })
 }
 
