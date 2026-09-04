@@ -21,10 +21,10 @@ Have these from the sub, or know you'll be asking for them:
 Two doors, depending on where the person came from:
 
 - **From the hiring board** — Prospects → **Hiring** → the **Hire** stage. Advancing a candidate offers *Add to the People roster?* — pick **Subcontractor** and their name, phone, and email carry over. The Hire stage also has the company **onboarding checklist** (red → yellow → green boxes per item; devs edit the items under {{icon:gear}} **Onboarding settings**), so you can track the documents you're still waiting on right there.
-- **Straight to People** — People → **Users** → {{button:outline|Manage accounts}} → {{button:blue|Invite via email}} with role **Subcontractor**. They get an email, set a password, and land on their sub dashboard. If they won't click an invite, {{button:outline|Manually add user}} creates the login now with a password you hand them.
+- **Straight to People** — People → **Users** → {{button:blue|+ Add to roster}}, pick **Subcontractor**, and save. That is a roster row with no login, which is all the portal, paperwork and sub sheets need. Tick *Also invite them to sign in* on the same dialog if they should have a login; if they won't click an invite, {{button:outline|Accounts · dev}} → {{button:outline|Manually add user}} creates the login now with a password you hand them.
 
 :::example External vs. account
-A sub added from the hiring board is an **external subcontractor** — a roster entry with no login. That's enough for contracts, sub labor sheets, and work orders. When they get an account later, use {{button:outline|Link account}} on their row under People → Users → External Subcontractors so the two rows fold into one — see [link an external subcontractor to their new account](?g=link-external-person-to-account).
+A sub added from the hiring board or from **Add to roster** is a roster row with no login — it wears a {{chip:gray|no login}} chip on People → Users. That's enough for contracts, sub labor sheets, work orders and the portal. When they get an account later, use **Link account** in the row's ⋯ menu so the two rows fold into one — see [link an external subcontractor to their new account](?g=link-external-person-to-account).
 :::
 
 ## 2. Send the paperwork
@@ -75,8 +75,8 @@ Point them at [get started as a sub or helper](?g=start-here-as-a-sub) — it's 
 | What | Where |
 |---|---|
 | Hiring board and onboarding checklist | Prospects → Hiring → Hire |
-| Create a login / invite | People → Users → Manage accounts |
-| Link an external sub to their login | People → Users → External Subcontractors → Link account |
+| Create a login / invite | People → Users → Add to roster (tick *Also invite*) or Accounts · dev |
+| Link a roster-only sub to their login | People → Users → their row → ⋯ → Link account |
 | Assign packets, send for signature, signed copies | People → Contracts |
 | Contract text, packets, version dates | People → Contracts → Contract library |
 | Document types, expirations, compliance badges | People → Subs → ▶ Documents |

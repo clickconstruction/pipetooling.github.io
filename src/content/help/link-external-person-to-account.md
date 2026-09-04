@@ -5,11 +5,11 @@ roles: dev, master_technician, assistant
 keywords: link account, external subcontractor, duplicate, consolidate, two rows, roster, people
 order: 42
 ---
-An **external subcontractor** is a roster entry without a login. When that person later gets a real account, you end up seeing them twice in People → Users — the account row *and* the external row. Linking fixes that: one click ties the roster entry to the account, and only the account row shows from then on.
+A roster row without a login shows a {{chip:gray|no login}} chip on People → Users. When that person later gets a real account, you end up seeing them twice — the account row *and* the roster row. Linking fixes that: one click ties the roster row to the account, and only the account row shows from then on.
 
 ## Linking the two rows
 
-1. Go to **People → Users** and expand **External Subcontractors** (or the external group under Helpers).
+1. Go to **People → Users**, tap the **No login** filter (or find their row — long groups fold behind *+ N more without a login*), and open the row's **⋯** menu.
 2. On the person's row, click {{button:outline|Link account}}.
 3. Pick their account from the list — it only offers accounts with the matching role that aren't already linked to someone else.
 4. Click {{button:blue|Link}}.
@@ -27,4 +27,4 @@ The external row disappears from the roster, and the person's pay history, crew 
 
 ## Avoiding the duplicate in the first place
 
-If someone needs an account but won't click an email invite, use **People → Users → Manage accounts → Manual add**: it creates the account immediately with a password you set and hand to them — no email confirmation needed. Then link it to their external entry (or just use the same email, and the rows fold together on their own).
+If someone needs an account but won't click an email invite, use **People → Users → Manage accounts → Manual add**: it creates the account immediately with a password you set and hand to them — no email confirmation needed. Then link it to their roster row (or just use the same email, and the rows fold together on their own).
