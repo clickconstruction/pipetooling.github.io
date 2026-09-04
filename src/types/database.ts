@@ -19450,6 +19450,28 @@ export type Database = {
         Args: { p_user_id: string; p_work_date: string }
         Returns: undefined
       }
+      takeoff_fixture_history: {
+        Args: {
+          p_bids_per_key?: number
+          p_exclude_bid_id?: string
+          p_keys: string[]
+          p_service_type_id: string
+        }
+        Returns: {
+          bid_id: string
+          bid_number: string
+          count_row_id: string
+          fixture: string
+          key: string
+          line_count: number
+          lines: Json
+          outcome: string
+          per_unit_cost: number
+          project_name: string
+          sent_on: string
+        }[]
+      }
+      takeoff_fixture_key: { Args: { p_fixture: string }; Returns: string }
       team_feedback_aggregates_by_manager: {
         Args: never
         Returns: {
