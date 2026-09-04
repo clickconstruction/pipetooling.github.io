@@ -901,7 +901,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ```typescript
 interface SendWorkflowNotificationRequest {
   template_type: string
-  step_id: string // real project step id when logging history; may be a placeholder when not inserting notification_history
+  step_id?: string // real project step id when logging history; may be a placeholder when not inserting notification_history
+  labor_job_id?: string // v2.2786: a Sub Labor sheet instead of a step (sheet work orders) — one of the two is required
   recipient_email: string
   recipient_name: string
   recipient_user_id?: string // if set, may send push and insert notification_history (requires valid step linkage for FKs)
@@ -917,6 +918,7 @@ interface SendWorkflowNotificationRequest {
 - `stage_assigned_started`, `stage_assigned_complete`, `stage_assigned_reopened`
 - `stage_me_started`, `stage_me_complete`, `stage_me_reopened`
 - `stage_next_complete_or_approved`, `stage_prior_rejected`
+- `work_order_offered`, `work_order_accepted`, `work_order_declined` (sub work orders; a sheet-anchored offer passes `labor_job_id` — no step lookup, `notification_history.step_id` stays NULL, push tag `workflow-<labor_job_id>`)
 
 #### Example Request
 

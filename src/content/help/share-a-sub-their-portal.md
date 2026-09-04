@@ -32,7 +32,7 @@ The portal is a window onto work you already do — it adds no new chores:
 
 ## Sign to accept work
 
-When you send a sub a work order offer (from a project step's **Offer to…**), it appears on their portal with the frozen scope and price. They accept by **signing** — typed or drawn, the same signature form as contracts — under their Master Subcontract Agreement, and the office inbox gets a dispatch note the moment they do. Offers can carry an expiry date; a passed offer asks for a quick reason so you know how to fix it.
+When you send a sub a work order offer (from a project step's **Offer to…**, or a Sub Labor sheet's **Work order** box), it appears on their portal with the frozen scope and price. They accept by **signing** — typed or drawn, the same signature form as contracts — under their Master Subcontract Agreement, and the office inbox gets a dispatch note the moment they do. Offers can carry an expiry date; a passed offer asks for a quick reason so you know how to fix it.
 
 ## Walk a sheet through its stages
 

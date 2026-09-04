@@ -34,6 +34,7 @@ On any project workflow step, {{button:blue|Offer to…}} a sub: set the **amoun
 - The sub answers from their dashboard or **signs to accept on their portal** — the signature binds that scope at that price under their Master Subcontract Agreement, and a note lands in the dispatch inbox the moment they answer.
 - A decline always carries a reason, so you know whether to re-price, re-window, or offer someone else.
 - When the step completes, {{button:green|Settle}} releases the money into a Sub Labor sheet — the ledger below.
+- No project? A **Sub Labor sheet** can send the same signed work order on its own — the **Work order** box in the sheet editor ticks the trade's scope library and freezes the sheet total as the price. See *send a sub a work order from a sheet*.
 
 ## 4 · Track the money — Jobs → Sub Labor
 

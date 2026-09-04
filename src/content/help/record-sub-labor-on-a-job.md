@@ -31,3 +31,7 @@ New entries no longer ask for miles — the drive-cost math simply isn't applied
 ## Where the sheet stands
 
 The **Stage** column on the ledger says what you're waiting on for each sheet: {{chip:yellow|Waiting on work}} → {{chip:purple|Waiting on walk-through}} → {{chip:blue|Waiting on customer}}, and {{chip:green|Paid}} once the balance is $0. Tap **→** on the chip to advance one stage, or tap the chip to pick any of the three (stepping back is fine). The sub sees the same steps on their portal and can move a sheet to *Waiting on walk-through* themselves by telling you the work is done — the chip then reads *· sub* with their note behind ✎, and the job's Activity feed keeps the history. Details in [share a sub their portal](/help/share-a-sub-their-portal).
+
+## Sending the sub a work order
+
+Editing a sheet also shows a **Work order** box under {{chip:blue|Shown on the sub's portal}}: tick the trade's scope, freeze the sheet total as the price, and send it for the sub to sign on their portal. See *send a sub a work order from a sheet*.

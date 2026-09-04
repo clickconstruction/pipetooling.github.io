@@ -73,6 +73,50 @@ export async function notifyWorkOrderOffered(args: {
   })
 }
 
+/**
+ * Office → sub for a SHEET work order (Sub Work Orders train, v2.2786): same
+ * template as a step offer, but the "project" is the sheet's job label, the
+ * stage reads "Sub work order", and the link is the sub's portal (where they
+ * sign). send-workflow-notification accepts labor_job_id in place of step_id.
+ */
+export async function notifySheetWorkOrderOffered(args: {
+  laborJobId: string
+  sheetLabel: string
+  offeredByName: string
+  recipientName: string
+  recipientEmail: string | null
+  recipientUserId: string | null
+  amount: number
+  proposedStart: string | null
+  proposedEnd: string | null
+  portalUrl: string | null
+}): Promise<void> {
+  if (!args.recipientEmail) return
+  const amount = formatWorkOrderAmount(args.amount)
+  const windowLabel = formatWorkOrderWindow(args.proposedStart, args.proposedEnd)
+  const link = args.portalUrl ?? `${window.location.origin}/dashboard`
+  await invoke({
+    template_type: 'work_order_offered',
+    labor_job_id: args.laborJobId,
+    recipient_email: args.recipientEmail,
+    recipient_name: args.recipientName,
+    recipient_user_id: args.recipientUserId ?? undefined,
+    push_title: 'New work order',
+    push_body: `${args.sheetLabel} — ${amount}, ${windowLabel}`,
+    push_url: link,
+    variables: {
+      name: args.recipientName,
+      email: args.recipientEmail,
+      project_name: args.sheetLabel,
+      stage_name: 'Sub work order',
+      offered_by: args.offeredByName,
+      amount,
+      window: windowLabel,
+      workflow_link: link,
+    },
+  })
+}
+
 /** Sub → office: the answer, addressed with the context the respond RPC returned. */
 export async function notifyWorkOrderAnswered(args: {
   accepted: boolean

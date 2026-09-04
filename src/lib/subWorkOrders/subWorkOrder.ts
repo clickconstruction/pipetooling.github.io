@@ -272,3 +272,28 @@ export function signedAmountDrift(signedAmount: number, sheetTotal: number): { d
   const delta = Math.round((sheetTotal - signedAmount) * 100) / 100
   return { differs: Math.abs(delta) >= 0.01, delta }
 }
+
+/**
+ * The documents a sheet work order incorporates by reference, in the order
+ * the signing page lists them: ticked Contract Book documents (sub audience)
+ * with their version dates, then the pay-schedule wording, then the
+ * insurance requirement stamped with the COI expiry on file.
+ */
+export function buildWorkOrderReferences(input: {
+  bookDocs: Array<{ id: string; document_name: string; book_version_date: string | null }>
+  payRunDay: string | null
+  includePay: boolean
+  coiExpiresOn: string | null
+  includeInsurance: boolean
+}): SubWorkOrderReference[] {
+  const out: SubWorkOrderReference[] = input.bookDocs
+    .filter((d) => d.document_name.trim() !== '')
+    .map((d) => ({ kind: 'book' as const, documentId: d.id, name: d.document_name.trim(), versionDate: (d.book_version_date ?? '').trim() || null }))
+  if (input.includePay) {
+    out.push({ kind: 'setting', documentId: null, name: input.payRunDay ? `How pay works here · pay-run ${input.payRunDay}` : 'How pay works here', versionDate: null })
+  }
+  if (input.includeInsurance) {
+    out.push({ kind: 'compliance', documentId: null, name: 'Insurance requirements (certificate on file)', versionDate: (input.coiExpiresOn ?? '').trim() || null })
+  }
+  return out
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildSheetWorkOrderSnapshot,
+  buildWorkOrderReferences,
   frozenAmountFromSheetTotal,
   generalConditionsStanding,
   parseSubWorkOrderSnapshot,
@@ -159,5 +160,23 @@ describe('frozen amount + drift', () => {
     expect(signedAmountDrift(6400, 6400.004)).toEqual({ differs: false, delta: 0 })
     expect(signedAmountDrift(6400, 6850)).toEqual({ differs: true, delta: 450 })
     expect(signedAmountDrift(6400, 6000)).toEqual({ differs: true, delta: -400 })
+  })
+})
+
+describe('buildWorkOrderReferences', () => {
+  it('lists book docs, then pay, then insurance with the COI expiry', () => {
+    const refs = buildWorkOrderReferences({
+      bookDocs: [{ id: 'gc', document_name: 'General Conditions', book_version_date: '2026-06-19' }, { id: 'x', document_name: '  ', book_version_date: null }],
+      payRunDay: 'Friday',
+      includePay: true,
+      coiExpiresOn: '2027-03-01',
+      includeInsurance: true,
+    })
+    expect(refs).toEqual([
+      { kind: 'book', documentId: 'gc', name: 'General Conditions', versionDate: '2026-06-19' },
+      { kind: 'setting', documentId: null, name: 'How pay works here · pay-run Friday', versionDate: null },
+      { kind: 'compliance', documentId: null, name: 'Insurance requirements (certificate on file)', versionDate: '2027-03-01' },
+    ])
+    expect(buildWorkOrderReferences({ bookDocs: [], payRunDay: null, includePay: false, coiExpiresOn: null, includeInsurance: false })).toEqual([])
   })
 })
