@@ -4,6 +4,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { stubNetPay } from '../lib/payStubDeductions'
 import { fetchSubLaborDueJobRows } from './useSubLaborDueTotal'
 import { localYmdFromDate } from '../lib/payStubPayments'
+import { loadUpcomingClockSessions } from '../lib/upcomingPayrollSessions'
 import {
   buildUpcomingPayrollSummary,
   upcomingPayrollFetchStartYmd,
@@ -261,21 +262,13 @@ export function useDashboardFinancials(
               'dashboard financials stub additional lines',
             )) ?? []) as Array<{ pay_stub_id: string; line_total: number | null }>,
           ),
+          // Paged (v2.2759): a roster window back to the oldest unpaid stub is
+          // past PostgREST's 1,000-row cap, which understated the estimate.
           personNames.length === 0
             ? Promise.resolve([] as UpcomingClockSessionRow[])
-            : withSupabaseRetry(
-                async () =>
-                  await supabase
-                    .from('clock_sessions')
-                    .select('user_id, work_date, clocked_in_at, clocked_out_at')
-                    .in('user_id', rosterIds)
-                    .gte('work_date', upcomingFetchStart)
-                    .is('rejected_at', null)
-                    .is('revoked_at', null),
-                'dashboard financials upcoming sessions',
-              )
-                .then((d) => (d ?? []) as UpcomingClockSessionRow[])
-                .catch(() => [] as UpcomingClockSessionRow[]),
+            : loadUpcomingClockSessions(supabase, rosterIds, upcomingFetchStart).catch(
+                () => [] as UpcomingClockSessionRow[],
+              ),
           // Job allocations per unpaid supply bill — best-effort (the bill modal shows '—' without them).
           chunked(supplyInvoiceIds, async (chunk) =>
             ((await withSupabaseRetry(
