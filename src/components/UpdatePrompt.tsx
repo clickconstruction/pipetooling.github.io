@@ -71,7 +71,9 @@ export function UpdatePrompt() {
     }
   }, [])
 
-  if (!needRefresh) return null
+  // v2.2772: a framed page (Settings → What customers see renders the public pages in iframes)
+  // never shows the pill — the top window owns the reload.
+  if (!needRefresh || (typeof window !== 'undefined' && window.self !== window.top)) return null
 
   return (
     <div

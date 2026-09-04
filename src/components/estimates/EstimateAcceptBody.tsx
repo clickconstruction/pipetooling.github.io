@@ -16,13 +16,14 @@ import type { EstimateCustomerExperienceClient } from '@/lib/estimateCustomerExp
 import type { EstimateAcceptHeaderBrand } from '@/lib/estimateAcceptHeaderBrand'
 import EstimateOptionsPicker from './EstimateOptionsPicker'
 import { estimateOptionTotalCents, type EstimateOption } from '@/lib/estimates/estimateOptions'
+import { formatValidUntilForDisplay } from '../../lib/formatEstimateValidUntilDisplay'
 
 function formatOptionMoney(cents: number): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(cents / 100)
 }
 import { EstimateAcceptTypedSignatureLine } from './EstimateAcceptTypedSignatureLine'
 import { SignedSignatureBlock } from '../SignedSignatureBlock'
-import { isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
+import { formatSignedCentsUsd, isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
 
 const ESTIMATE_ACCEPT_MODAL_TITLE = 'Approve Estimate'
 const ESTIMATE_ACCEPT_NAME_PLACEHOLDER = 'Your name'
@@ -152,6 +153,8 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
   const [acceptMode, setAcceptMode] = useState<'type' | 'draw'>('type')
   const [fieldHint, setFieldHint] = useState<string | null>(null)
   const approveButtonRef = useRef<HTMLButtonElement>(null)
+  // v2.2772: the phone-only bottom bar shows while the Approve button is off-screen.
+  const [approveInView, setApproveInView] = useState(false)
   const dialogPanelRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const padRef = useRef<SignaturePad | null>(null)
@@ -262,6 +265,14 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     cursor: readOnly ? ('default' as const) : ('pointer' as const),
   }
 
+  useEffect(() => {
+    const el = approveButtonRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver((entries) => setApproveInView(entries.some((e) => e.isIntersecting)), { threshold: 0.2 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [showStaffAcceptedInline])
+
 
   function handleInteractiveSubmit() {
     if (readOnly) return
@@ -291,6 +302,49 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
   const selectedOption = optionsActive
     ? options.find((o) => o.key === selectedOptionKey) ?? options.find((o) => o.recommended) ?? options[0] ?? null
     : null
+  const isCo = isChangeOrderDocKind(estimate.doc_kind)
+  const shownTotalCents = selectedOption ? estimateOptionTotalCents(selectedOption) : estimate.total_cents
+  const shownTotal = isCo ? formatSignedCentsUsd(shownTotalCents) : formatOptionMoney(shownTotalCents)
+  const approveLabel = isCo
+    ? 'Approve change order'
+    : selectedOption
+      ? `Approve "${selectedOption.name.trim() || 'Option'}" — ${formatOptionMoney(estimateOptionTotalCents(selectedOption))}`
+      : 'Approve'
+  const validityLine = estimate.valid_until ? `Pricing is good through ${formatValidUntilForDisplay(estimate.valid_until)}.` : null
+
+  // v2.2772 (owner pick B): the number first — a total card under the title with the Approve
+  // door, so a phone shows what the customer is looking at before any scrolling.
+  const summaryCard = (
+    <div
+      data-testid="estimate-summary-card"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr auto',
+        alignItems: 'baseline',
+        gap: '0.35rem 0.75rem',
+        background: 'var(--bg-orange-tint)',
+        border: '1px solid var(--border-orange)',
+        borderRadius: 8,
+        padding: '0.7rem 0.85rem',
+        margin: '0.9rem 0 0',
+      }}
+    >
+      <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-orange-700)' }}>
+        {selectedOption ? `${selectedOption.name.trim() || 'Option'} · ${cx.docTotalLabel}` : cx.docTotalLabel}
+      </span>
+      <span style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{shownTotal}</span>
+      {validityLine ? <span style={{ gridColumn: '1 / -1', fontSize: '0.8rem', color: 'var(--text-700)' }}>{validityLine}</span> : null}
+      {!showStaffAcceptedInline ? (
+        <button
+          type="button"
+          onClick={() => setAcceptModalOpen(true)}
+          style={{ ...approveBtnStyle, gridColumn: '1 / -1', marginTop: '0.35rem', width: '100%', maxWidth: 'none' }}
+        >
+          {approveLabel}
+        </button>
+      ) : null}
+    </div>
+  )
 
   return (
     <>
@@ -313,6 +367,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
         termsPageHref={estimateTermsPageHref()}
         totalLabel={cx.docTotalLabel}
         headerBrand={headerBrand}
+        summary={summaryCard}
         beforeLineItems={
           optionsActive ? (
             <EstimateOptionsPicker
@@ -372,6 +427,35 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
       ) : null}
 
       <AcceptPageFooterBlock text={cx.acceptPageFooter} />
+
+      {variant === 'interactive' && !showStaffAcceptedInline && !acceptModalOpen && !approveInView ? (
+        <div
+          className="estimate-accept-sticky"
+          data-theme="light"
+          style={{
+            position: 'fixed',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 900,
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+            padding: '0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom, 0px))',
+            background: 'var(--surface)',
+            borderTop: '1px solid var(--border)',
+            boxShadow: '0 -6px 16px rgba(0, 0, 0, 0.08)',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{shownTotal}</div>
+            {validityLine ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{validityLine}</div> : null}
+          </div>
+          <button type="button" onClick={() => setAcceptModalOpen(true)} style={{ ...approveBtnStyle, marginTop: 0, padding: '0.55rem 1.1rem', flex: '0 0 auto' }}>
+            {isCo ? 'Approve' : 'Accept'}
+          </button>
+        </div>
+      ) : null}
 
       {acceptModalOpen ? (
         <div

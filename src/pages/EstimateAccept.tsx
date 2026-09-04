@@ -36,6 +36,7 @@ function PublicEstimateShell({ children }: { children: ReactNode }) {
     <AuthPublicLandingLayout
       titleLinkText="Click Plumbing and Electrical"
       titleLinkAriaLabel="Visit Click Plumbing and Electrical (opens in new tab)"
+      compact
     >
       <div className="auth-public-landing__signin-stack auth-public-landing__signin-stack--wide">
         <div className="auth-public-landing__signin-box">{children}</div>

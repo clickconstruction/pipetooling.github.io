@@ -11,17 +11,23 @@ export type AuthPublicLandingLayoutProps = {
   titleLinkText?: string
   /** When the visible title differs from the default, set for a consistent accessible name. */
   titleLinkAriaLabel?: string
+  /**
+   * v2.2772: on phones, shrink the hero to a thin band (small title, no trade tiles) so the
+   * page's own content — an estimate — is on the first screen. Desktop is unchanged.
+   */
+  compact?: boolean
 }
 
 export default function AuthPublicLandingLayout({
   children,
   titleLinkText = DEFAULT_TITLE_LINK_TEXT,
   titleLinkAriaLabel = DEFAULT_TITLE_ARIA_LABEL,
+  compact = false,
 }: AuthPublicLandingLayoutProps) {
   return (
     // Public/customer-facing landing (estimate + contract accept, sign-in):
     // pinned light so customers never see the viewer-side dark theme.
-    <div className="auth-public-landing" data-theme="light">
+    <div className={compact ? 'auth-public-landing auth-public-landing--compact' : 'auth-public-landing'} data-theme="light">
       <div className="container">
         <div className="letter-header">
           <h1>
