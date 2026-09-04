@@ -545,10 +545,9 @@ When applying this entry to a count row with Fixture="WC" and Count=5:
   - Stage dropdown (Rough In, Top Out, Trim Set)
   - Each row stored separately in `takeoff_book_entry_items` table
 
-**Apply Takeoff Book Button**:
-- Applies selected book version to current bid
-- Creates mappings for matching count rows
-- Displays success message with count of mappings created
+**Apply Takeoff Book Button** (label depends on the materials model, v2.2776):
+- **Combined** — reads **Fill from book · N matches** (kernel `src/lib/bids/takeoffBookFill.ts`; matching via `takeoffBookMatch.ts` on the normalized fixture key, so `wc` matches `WC-12`). Expands each matched entry's assemblies into priced part lines on every fixture that has no lines yet (`useTakeoffRoughLines.fillRowsFromAssemblies`); fixtures with lines are never touched; the summary shows beside the button. Disabled at 0 matches with a hover reason. The bid's selected book loads its entries onto the tab for this.
+- **By Stage** — reads **Apply Matching Fixture Assemblies**: applies the selected book version, creating (assembly, stage) mappings for matching count rows, with a success message (unchanged).
 
 **Delete entries**: Delete is available only inside the edit modal for each entry (no in-row delete button).
 
