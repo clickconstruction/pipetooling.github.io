@@ -722,6 +722,8 @@ export default function Workflow() {
     const byStep: Record<string, StepCommitmentRow[]> = {}
     const laborJobIds: string[] = []
     rows.forEach((r) => {
+      // Sheet-anchored work orders (v2.2785) have no step; the `.in('step_id')` query never returns them.
+      if (!r.step_id) return
       ;(byStep[r.step_id] ??= []).push(r)
       if (r.labor_job_id) laborJobIds.push(r.labor_job_id)
     })

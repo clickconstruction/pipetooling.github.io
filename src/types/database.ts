@@ -13833,9 +13833,10 @@ export type Database = {
           signer_printed_name: string | null
           signer_signature_mode: string | null
           signer_signature_storage_path: string | null
+          signer_acknowledgements: Json | null
           signer_user_agent: string | null
           status: string
-          step_id: string
+          step_id: string | null
           updated_at: string
         }
         Insert: {
@@ -13864,9 +13865,10 @@ export type Database = {
           signer_printed_name?: string | null
           signer_signature_mode?: string | null
           signer_signature_storage_path?: string | null
+          signer_acknowledgements?: Json | null
           signer_user_agent?: string | null
           status?: string
-          step_id: string
+          step_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -13895,9 +13897,10 @@ export type Database = {
           signer_printed_name?: string | null
           signer_signature_mode?: string | null
           signer_signature_storage_path?: string | null
+          signer_acknowledgements?: Json | null
           signer_user_agent?: string | null
           status?: string
-          step_id?: string
+          step_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -14174,6 +14177,60 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: true
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_scope_items: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_default: boolean
+          kind: string
+          label: string
+          sequence_order: number
+          service_type_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          kind: string
+          label: string
+          sequence_order?: number
+          service_type_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_default?: boolean
+          kind?: string
+          label?: string
+          sequence_order?: number
+          service_type_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_scope_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_scope_items_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
         ]
@@ -17323,6 +17380,10 @@ export type Database = {
       can_manage_report_email_subscriptions: { Args: never; Returns: boolean }
       can_manage_schedule_share: { Args: never; Returns: boolean }
       can_manage_team_leader_assignments: { Args: never; Returns: boolean }
+      can_access_sub_work_order: {
+        Args: { p_labor_job_id: string; p_step_id: string }
+        Returns: boolean
+      }
       can_modify_people_labor_job: {
         Args: { p_job_id: string }
         Returns: boolean
