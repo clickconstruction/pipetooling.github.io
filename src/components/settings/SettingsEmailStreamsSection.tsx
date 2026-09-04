@@ -20,6 +20,18 @@ import { cancelWeeklyMovementSend } from '../../lib/weeklyMovementEmailRequests'
 import { cancelWeeklyMoneySend } from '../../lib/weeklyMoneyEmailRequests'
 import { formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
 import { emailStreamCardId, type EmailStreamKey } from '../../lib/emailLogStreamLink'
+import {
+  APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_BIDS,
+  APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_ESTIMATES,
+  APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS,
+} from '../../lib/appSettingsKeys'
+import {
+  isSignedAgreementDefaultRole,
+  parseAutoCreateFlag,
+  parseSignedAgreementRecipients,
+  serializeAutoCreateFlag,
+  serializeSignedAgreementRecipients,
+} from '../../lib/signedAgreementsStream'
 
 /**
  * Settings → Email & notifications (v2.1321, dev-only): every recurring and
@@ -219,6 +231,58 @@ export default function SettingsEmailStreamsSection({ focus }: {
   const [portalRecipients, setPortalRecipients] = useState<Array<{ user_id: string; name: string }>>([])
   const [portalPickerUsers, setPortalPickerUsers] = useState<Array<{ id: string; name: string }>>([])
   const [portalAddId, setPortalAddId] = useState('')
+
+  // v2.2743: Signed agreements — explicit recipients (empty = role defaults) + two auto-create switches.
+  const [signedUsers, setSignedUsers] = useState<Array<{ id: string; name: string; role: string }>>([])
+  const [signedRecipientIds, setSignedRecipientIds] = useState<string[]>([])
+  const [signedAutoEstimates, setSignedAutoEstimates] = useState(false)
+  const [signedAutoBids, setSignedAutoBids] = useState(false)
+  const [signedAddId, setSignedAddId] = useState('')
+  const loadSignedStream = useCallback(async () => {
+    const [{ data: rows }, { data: usersRaw }] = await Promise.all([
+      supabase
+        .from('app_settings')
+        .select('key, value_text')
+        .in('key', [
+          APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS,
+          APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_ESTIMATES,
+          APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_BIDS,
+        ]),
+      supabase.from('users').select('id, name, role').is('archived_at', null).order('name'),
+    ])
+    const byKey = new Map(((rows ?? []) as Array<{ key: string; value_text: string | null }>).map((r) => [r.key, r.value_text]))
+    setSignedRecipientIds(parseSignedAgreementRecipients(byKey.get(APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS)))
+    setSignedAutoEstimates(parseAutoCreateFlag(byKey.get(APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_ESTIMATES)))
+    setSignedAutoBids(parseAutoCreateFlag(byKey.get(APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_BIDS)))
+    setSignedUsers(
+      ((usersRaw ?? []) as Array<{ id: string; name: string | null; role: string | null }>).map((u) => ({
+        id: u.id,
+        name: (u.name ?? '').trim() || '—',
+        role: u.role ?? '',
+      })),
+    )
+  }, [])
+  useEffect(() => {
+    void loadSignedStream()
+  }, [loadSignedStream])
+  async function saveSignedRecipients(ids: string[], okMessage: string) {
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({ key: APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS, value_text: serializeSignedAgreementRecipients(ids) }, { onConflict: 'key' })
+    if (error) showToast(formatErrorMessage(error, 'Could not save recipients'), 'error')
+    else {
+      showToast(okMessage, 'success')
+      await loadSignedStream()
+    }
+  }
+  async function saveSignedFlag(key: string, on: boolean, label: string) {
+    const { error } = await supabase.from('app_settings').upsert({ key, value_text: serializeAutoCreateFlag(on) }, { onConflict: 'key' })
+    if (error) showToast(formatErrorMessage(error, 'Could not save the switch'), 'error')
+    else {
+      showToast(`${label} ${on ? 'on' : 'off'}.`, 'success')
+      await loadSignedStream()
+    }
+  }
 
   const loadPortalStream = useCallback(async () => {
     const [{ data: row }, { data: usersRaw }] = await Promise.all([
@@ -513,6 +577,103 @@ export default function SettingsEmailStreamsSection({ focus }: {
           : data.payment_recipients.map((r) => (
               <RecipientChip key={r.user_id} label={r.name} onRemove={() => void removeSettingRecipient(APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS, r.user_id, r.name)} />
             ))}
+      </StreamCard>
+
+      <StreamCard
+        id={emailStreamCardId('signed_agreements')}
+        flash={flashKey === 'signed_agreements'}
+        count={signedRecipientIds.length > 0 ? signedRecipientIds.length : signedUsers.filter((u) => isSignedAgreementDefaultRole(u.role)).length}
+        noun="recipient"
+        open={!!openCards['signed_agreements']}
+        onToggle={() => toggleCard('signed_agreements')}
+        title="Signed agreements"
+        cadence="event — a customer accepts an estimate, or a GC signs a bid-room proposal"
+        manage="one letter: who signed, option + amount, Open the signed record, Create the job (or Open job J#### when created automatically)"
+      >
+        {signedRecipientIds.length === 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Default — everyone who is an assistant, master, controller or dev
+              {(() => {
+                const n = signedUsers.filter((u) => isSignedAgreementDefaultRole(u.role)).length
+                return n > 0 ? ` (${n} right now)` : ''
+              })()}
+              . Add a person to switch to an explicit list.
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+            {signedRecipientIds.map((id) => {
+              const u = signedUsers.find((x) => x.id === id)
+              const name = u?.name ?? 'Unknown user'
+              return (
+                <RecipientChip
+                  key={id}
+                  label={name}
+                  onRemove={() => void saveSignedRecipients(signedRecipientIds.filter((x) => x !== id), `${name} removed.`)}
+                />
+              )
+            })}
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+          <select
+            value={signedAddId}
+            onChange={(e) => setSignedAddId(e.target.value)}
+            aria-label="Add a Signed agreements recipient"
+            style={{ fontSize: '0.78rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: '16rem' }}
+          >
+            <option value="">Add a person…</option>
+            {signedUsers
+              .filter((u) => !signedRecipientIds.includes(u.id))
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                  {u.role ? ` · ${u.role.replace('_', ' ')}` : ''}
+                </option>
+              ))}
+          </select>
+          <button
+            type="button"
+            disabled={!signedAddId}
+            onClick={() => {
+              const u = signedUsers.find((x) => x.id === signedAddId)
+              const base = signedRecipientIds.length > 0 ? signedRecipientIds : signedUsers.filter((x) => isSignedAgreementDefaultRole(x.role)).map((x) => x.id)
+              void saveSignedRecipients([...base, signedAddId], `${u?.name ?? 'Recipient'} added.`)
+              setSignedAddId('')
+            }}
+            style={{ fontSize: '0.78rem', padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: signedAddId ? 'pointer' : 'not-allowed', opacity: signedAddId ? 1 : 0.6 }}
+          >
+            Add
+          </button>
+          {signedRecipientIds.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => void saveSignedRecipients([], 'Back to the role default.')}
+              style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Back to the role default
+            </button>
+          ) : null}
+        </div>
+        <div style={{ display: 'grid', gap: '0.4rem', marginTop: '0.75rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Create jobs automatically</div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-strong)' }}>
+            {toggle(signedAutoEstimates, () => void saveSignedFlag(APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_ESTIMATES, !signedAutoEstimates, 'Auto-create for estimates'), 'Create jobs automatically when a customer accepts an estimate')}
+            <span>
+              when a customer <strong>accepts an estimate</strong>
+            </span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-strong)' }}>
+            {toggle(signedAutoBids, () => void saveSignedFlag(APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_BIDS, !signedAutoBids, 'Auto-create for bid-room proposals'), 'Create jobs automatically when a GC signs a bid-room proposal')}
+            <span>
+              when a GC <strong>signs a bid-room proposal</strong>
+            </span>
+          </label>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>
+            Off: the email carries a one-click <em>Create the job</em>. On: the job is made at signature with the next number and the accepted lines, linked to the bid, and the email says <em>Open job J####</em>. A job already made for the same bid is linked, never duplicated.
+          </span>
+        </div>
       </StreamCard>
 
       <StreamCard

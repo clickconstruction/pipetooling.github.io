@@ -30,12 +30,13 @@ describe('EMAIL_CATALOG', () => {
     if (wf.editable.kind === 'templates') expect(wf.editable.templateTypes).toHaveLength(11)
   })
 
-  it('covers the full inventory: 32 rows, every sender named, no blank subjects', () => {
+  it('covers the full inventory: 34 rows, every sender named, no blank subjects', () => {
     // 33 composition paths from the 2026-09-02 inventory, folded: the 11
     // workflow templates ride one aggregate row, pure variants (resends,
     // reminders, [TEST] twins) ride their parent row. +1 (v2.2664): the
     // § 53.056 notice email (send-lien-filing-email) the inventory missed.
-    expect(EMAIL_CATALOG).toHaveLength(33)
+    // +1 (v2.2743): the Signed agreements staff notice (accept-estimate · sign-bid-room).
+    expect(EMAIL_CATALOG).toHaveLength(34)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

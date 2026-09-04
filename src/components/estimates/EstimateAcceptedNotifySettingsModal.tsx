@@ -7,7 +7,7 @@ import {
   parseEstimateAcceptedNotifyRecipients,
   serializeEstimateAcceptedNotifyRecipients,
 } from '../../lib/estimateAcceptedNotify'
-import { APP_SETTINGS_KEY_ESTIMATE_ACCEPTED_NOTIFY_RECIPIENTS } from '../../lib/appSettingsKeys'
+import { APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS } from '../../lib/appSettingsKeys'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /**
@@ -66,7 +66,7 @@ export default function EstimateAcceptedNotifySettingsModal({ onClose }: { onClo
               supabase
                 .from('app_settings')
                 .select('value_text')
-                .eq('key', APP_SETTINGS_KEY_ESTIMATE_ACCEPTED_NOTIFY_RECIPIENTS)
+                .eq('key', APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS)
                 .maybeSingle(),
             'estimate accepted notify setting',
           ),
@@ -104,7 +104,7 @@ export default function EstimateAcceptedNotifySettingsModal({ onClose }: { onClo
       const ids = users.filter((u) => selectedIds.has(u.id)).map((u) => u.id)
       const { error } = await supabase.from('app_settings').upsert(
         {
-          key: APP_SETTINGS_KEY_ESTIMATE_ACCEPTED_NOTIFY_RECIPIENTS,
+          key: APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS,
           value_text: serializeEstimateAcceptedNotifyRecipients(ids),
         },
         { onConflict: 'key' },
@@ -161,7 +161,7 @@ export default function EstimateAcceptedNotifySettingsModal({ onClose }: { onClo
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Estimate accepted emails</h2>
+          <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Signed agreements emails</h2>
           <button
             type="button"
             onClick={onClose}

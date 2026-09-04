@@ -10,6 +10,7 @@
  * Source of truth for "where": docs/recent-features/v2.2656.md carries the
  * full inventory table with file:line pointers.
  */
+import { buildSignedAgreementEmail } from './signedAgreementEmail'
 import { buildBidRoomLinkEmailPreview } from './bids/bidRoomLinkEmailPreview'
 
 export type EmailCatalogGroup = 'billing' | 'lien' | 'estimates_contracts' | 'bids' | 'digests' | 'team' | 'system'
@@ -172,6 +173,32 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Quote #{{n}} accepted — {{customer}}',
   },
 
+  {
+    id: 'signed_agreement_staff',
+    name: 'Signed agreement — staff notice',
+    group: 'estimates_contracts',
+    audience: 'team',
+    builtWhere: 'server',
+    sender: 'accept-estimate · sign-bid-room',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Signed — {{project}} — $56,343 (Bid room proposal #412)',
+    variants: ['Estimate #N'],
+    preview: ({ origin }) =>
+      buildSignedAgreementEmail({
+        kind: 'bid',
+        estimateNumber: 412,
+        title: 'Hunter Road Sound Studio',
+        projectAddress: '2530 Hunter Rd, San Marcos, TX 78666',
+        customerName: 'Knight Contracting',
+        signerName: 'Mark Knight',
+        optionName: 'To Plans',
+        totalCents: 5_634_300,
+        signedAtLabel: 'Sept 4, 2026 · 9:12 AM',
+        origin,
+        job: null,
+        autoCreateOn: false,
+      }),
+  },
   // ---- Bids & RFQs ----
   {
     id: 'bid_room_link',

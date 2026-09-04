@@ -2433,6 +2433,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [createJobModalOpen, setCreateJobModalOpen] = useState(false)
+  // v2.2743: the Signed agreements email's "Create the job" button lands here with ?createJob=1.
+  const [detailSearchParams, setDetailSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (detailSearchParams.get('createJob') !== '1' || !row) return
+    if (row.status === 'customer_accepted' && !row.job_ledger_id) setCreateJobModalOpen(true)
+    const next = new URLSearchParams(detailSearchParams)
+    next.delete('createJob')
+    setDetailSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row?.id])
   const [unlinkingJob, setUnlinkingJob] = useState(false)
   const [unlinkJobConfirmOpen, setUnlinkJobConfirmOpen] = useState(false)
   const [customerPreviewTab, setCustomerPreviewTab] = useState<'email' | 'page' | 'thankyou'>('email')
