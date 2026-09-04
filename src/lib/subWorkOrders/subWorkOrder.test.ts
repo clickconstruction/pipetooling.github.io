@@ -3,6 +3,7 @@ import {
   buildSheetWorkOrderSnapshot,
   buildWorkOrderReferences,
   frozenAmountFromSheetTotal,
+  generalConditionsCoverage,
   generalConditionsStanding,
   parseSubWorkOrderSnapshot,
   scopeItemsForTrade,
@@ -178,5 +179,22 @@ describe('buildWorkOrderReferences', () => {
       { kind: 'compliance', documentId: null, name: 'Insurance requirements (certificate on file)', versionDate: '2027-03-01' },
     ])
     expect(buildWorkOrderReferences({ bookDocs: [], payRunDay: null, includePay: false, coiExpiresOn: null, includeInsurance: false })).toEqual([])
+  })
+})
+
+describe('generalConditionsCoverage', () => {
+  it('counts each active sub once by their best signed copy', () => {
+    const cov = generalConditionsCoverage({
+      bookVersionDate: '2026-06-19',
+      activeSubIds: ['a', 'b', 'c', 'c'],
+      signed: [
+        { personId: 'a', appliedVersionDate: '2026-03-02' },
+        { personId: 'a', appliedVersionDate: '2026-06-19' },
+        { personId: 'b', appliedVersionDate: '2026-03-02' },
+        { personId: 'zzz', appliedVersionDate: '2026-06-19' },
+        { personId: null, appliedVersionDate: '2026-06-19' },
+      ],
+    })
+    expect(cov).toEqual({ total: 3, current: 1, behind: 1, unsigned: 1 })
   })
 })

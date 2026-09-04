@@ -297,3 +297,32 @@ export function buildWorkOrderReferences(input: {
   }
   return out
 }
+
+/**
+ * How many active subs are on the current version of a sub-audience Book
+ * document (the Scope tab's compliance card). A person counts once — their
+ * best signed copy decides.
+ */
+export function generalConditionsCoverage(input: {
+  bookVersionDate: string | null
+  activeSubIds: string[]
+  signed: Array<{ personId: string | null; appliedVersionDate: string | null }>
+}): { total: number; current: number; behind: number; unsigned: number } {
+  const best = new Map<string, GeneralConditionsStanding>()
+  for (const row of input.signed) {
+    if (!row.personId) continue
+    const standing = generalConditionsStanding({ bookVersionDate: input.bookVersionDate, signedVersionDate: row.appliedVersionDate, signed: true })
+    const prev = best.get(row.personId)
+    if (!prev || (prev !== 'current' && standing === 'current')) best.set(row.personId, standing)
+  }
+  let current = 0
+  let behind = 0
+  let unsigned = 0
+  for (const id of new Set(input.activeSubIds)) {
+    const st = best.get(id)
+    if (st === 'current' || (st && input.bookVersionDate == null)) current++
+    else if (st === 'behind') behind++
+    else unsigned++
+  }
+  return { total: new Set(input.activeSubIds).size, current, behind, unsigned }
+}

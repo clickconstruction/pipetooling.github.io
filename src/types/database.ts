@@ -13828,12 +13828,12 @@ export type Database = {
           retainage_pct: number
           settled_at: string | null
           signed_at: string | null
+          signer_acknowledgements: Json | null
           signer_consented_at: string | null
           signer_ip: string | null
           signer_printed_name: string | null
           signer_signature_mode: string | null
           signer_signature_storage_path: string | null
-          signer_acknowledgements: Json | null
           signer_user_agent: string | null
           status: string
           step_id: string | null
@@ -13860,12 +13860,12 @@ export type Database = {
           retainage_pct?: number
           settled_at?: string | null
           signed_at?: string | null
+          signer_acknowledgements?: Json | null
           signer_consented_at?: string | null
           signer_ip?: string | null
           signer_printed_name?: string | null
           signer_signature_mode?: string | null
           signer_signature_storage_path?: string | null
-          signer_acknowledgements?: Json | null
           signer_user_agent?: string | null
           status?: string
           step_id?: string | null
@@ -13892,12 +13892,12 @@ export type Database = {
           retainage_pct?: number
           settled_at?: string | null
           signed_at?: string | null
+          signer_acknowledgements?: Json | null
           signer_consented_at?: string | null
           signer_ip?: string | null
           signer_printed_name?: string | null
           signer_signature_mode?: string | null
           signer_signature_storage_path?: string | null
-          signer_acknowledgements?: Json | null
           signer_user_agent?: string | null
           status?: string
           step_id?: string | null
@@ -17361,6 +17361,10 @@ export type Database = {
         Args: { step_id_param: string }
         Returns: boolean
       }
+      can_access_sub_work_order: {
+        Args: { p_labor_job_id: string; p_step_id: string }
+        Returns: boolean
+      }
       can_define_task_style_checklist_items: { Args: never; Returns: boolean }
       can_edit_checklist_tech_tree_structure_for_roadmap: {
         Args: { p_roadmap_id: string }
@@ -17380,10 +17384,6 @@ export type Database = {
       can_manage_report_email_subscriptions: { Args: never; Returns: boolean }
       can_manage_schedule_share: { Args: never; Returns: boolean }
       can_manage_team_leader_assignments: { Args: never; Returns: boolean }
-      can_access_sub_work_order: {
-        Args: { p_labor_job_id: string; p_step_id: string }
-        Returns: boolean
-      }
       can_modify_people_labor_job: {
         Args: { p_job_id: string }
         Returns: boolean
