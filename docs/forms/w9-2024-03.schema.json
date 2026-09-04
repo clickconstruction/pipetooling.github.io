@@ -1,0 +1,427 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "width": 611.98,
+      "height": 791.97
+    },
+    {
+      "width": 611.98,
+      "height": 791.97
+    },
+    {
+      "width": 611.98,
+      "height": 791.97
+    },
+    {
+      "width": 611.98,
+      "height": 791.97
+    },
+    {
+      "width": 611.98,
+      "height": 791.97
+    },
+    {
+      "width": 611.98,
+      "height": 791.97
+    }
+  ],
+  "boxes": [
+    {
+      "key": "f1_01",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 58.6,
+        "y": 659.97,
+        "w": 517.4,
+        "h": 14
+      },
+      "order": 10,
+      "label": "Your name, exactly as on your tax return",
+      "bind": "topmostSubform[0].Page1[0].f1_01[0]",
+      "labelEs": "Su nombre, exactamente como aparece en su declaraci\u00f3n de impuestos",
+      "help": "For a one-owner business, this is your own name; the business name goes on line 2.",
+      "helpEs": "Si su negocio tiene un solo due\u00f1o, este es su nombre; el nombre del negocio va en la l\u00ednea 2.",
+      "required": true,
+      "prefill": "person_name",
+      "sample": "Misses Taunya Rachelle"
+    },
+    {
+      "key": "f1_02",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 58.6,
+        "y": 635.97,
+        "w": 517.4,
+        "h": 14
+      },
+      "order": 20,
+      "label": "Business or DBA name, if different",
+      "bind": "topmostSubform[0].Page1[0].f1_02[0]",
+      "labelEs": "Nombre del negocio o DBA, si es distinto",
+      "help": "Leave blank if you work under your own name.",
+      "helpEs": "D\u00e9jelo en blanco si trabaja con su propio nombre.",
+      "sample": ""
+    },
+    {
+      "key": "c1_1_0",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 73,
+        "y": 603.72,
+        "w": 8,
+        "h": 8
+      },
+      "order": 30,
+      "label": "Individual / sole proprietor",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[0]",
+      "group": "c1_1",
+      "labelEs": "Individuo / propietario \u00fanico",
+      "help": "Most one-person shops, including a one-owner LLC that files on a personal return.",
+      "helpEs": "La mayor\u00eda de los negocios de una persona, incluida una LLC de un solo due\u00f1o.",
+      "sample": "true"
+    },
+    {
+      "key": "c1_1_1",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 180,
+        "y": 603.72,
+        "w": 8,
+        "h": 8
+      },
+      "order": 40,
+      "label": "C corporation",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[1]",
+      "group": "c1_1",
+      "labelEs": "Corporaci\u00f3n C"
+    },
+    {
+      "key": "c1_1_2",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 252,
+        "y": 603.72,
+        "w": 8,
+        "h": 8
+      },
+      "order": 50,
+      "label": "S corporation",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[2]",
+      "group": "c1_1",
+      "labelEs": "Corporaci\u00f3n S"
+    },
+    {
+      "key": "c1_1_3",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 324,
+        "y": 603.72,
+        "w": 8,
+        "h": 8
+      },
+      "order": 60,
+      "label": "Partnership",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[3]",
+      "group": "c1_1",
+      "labelEs": "Sociedad"
+    },
+    {
+      "key": "c1_1_4",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 388.8,
+        "y": 603.72,
+        "w": 8,
+        "h": 8
+      },
+      "order": 70,
+      "label": "Trust / estate",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[4]",
+      "group": "c1_1",
+      "labelEs": "Fideicomiso / sucesi\u00f3n"
+    },
+    {
+      "key": "f1_03",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 417.6,
+        "y": 588.97,
+        "w": 28.8,
+        "h": 11
+      },
+      "order": 90,
+      "label": "LLC tax classification letter (C, S, or P)",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].f1_03[0]",
+      "maxLength": 1,
+      "labelEs": "Letra de clasificaci\u00f3n de la LLC (C, S o P)",
+      "advanced": true
+    },
+    {
+      "key": "f1_05",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 543.6,
+        "y": 587.97,
+        "w": 32.4,
+        "h": 12
+      },
+      "order": 130,
+      "label": "Exempt payee code",
+      "bind": "topmostSubform[0].Page1[0].f1_05[0]",
+      "labelEs": "C\u00f3digo de beneficiario exento",
+      "advanced": true
+    },
+    {
+      "key": "c1_1_5",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 73,
+        "y": 590.47,
+        "w": 8,
+        "h": 8
+      },
+      "order": 80,
+      "label": "LLC (enter C, S, or P in the box to the right)",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[5]",
+      "group": "c1_1",
+      "labelEs": "LLC (escriba C, S o P en la casilla a la derecha)",
+      "help": "Only for an LLC taxed as a corporation or partnership. A one-owner LLC checks Individual instead.",
+      "helpEs": "Solo para una LLC gravada como corporaci\u00f3n o sociedad. Una LLC de un solo due\u00f1o marca Individuo."
+    },
+    {
+      "key": "f1_04",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 162.4,
+        "y": 551.97,
+        "w": 284,
+        "h": 12
+      },
+      "order": 110,
+      "label": "Other classification (describe)",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].f1_04[0]",
+      "labelEs": "Otra clasificaci\u00f3n (describa)",
+      "advanced": true
+    },
+    {
+      "key": "f1_06",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 500.6,
+        "y": 551.97,
+        "w": 75.4,
+        "h": 12
+      },
+      "order": 140,
+      "label": "FATCA exemption code",
+      "bind": "topmostSubform[0].Page1[0].f1_06[0]",
+      "labelEs": "C\u00f3digo de exenci\u00f3n FATCA",
+      "advanced": true
+    },
+    {
+      "key": "c1_1_6",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 73,
+        "y": 553.97,
+        "w": 8,
+        "h": 8
+      },
+      "order": 100,
+      "label": "Other",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_1[6]",
+      "group": "c1_1",
+      "labelEs": "Otro",
+      "advanced": true
+    },
+    {
+      "key": "c1_2_0",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 440.6,
+        "y": 520.97,
+        "w": 8,
+        "h": 8
+      },
+      "order": 120,
+      "label": "Has foreign partners, owners, or beneficiaries (line 3b)",
+      "bind": "topmostSubform[0].Page1[0].Boxes3a-b_ReadOrder[0].c1_2[0]",
+      "labelEs": "Tiene socios, due\u00f1os o beneficiarios extranjeros (l\u00ednea 3b)",
+      "advanced": true
+    },
+    {
+      "key": "f1_07",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 58.6,
+        "y": 491.97,
+        "w": 329.45,
+        "h": 14
+      },
+      "order": 150,
+      "label": "Street address (number, street, apt or suite)",
+      "bind": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_07[0]",
+      "labelEs": "Direcci\u00f3n (n\u00famero, calle, apartamento o suite)",
+      "required": true,
+      "sample": "4410 Oak Hollow Dr"
+    },
+    {
+      "key": "f1_09",
+      "type": "constant",
+      "page": 1,
+      "rect": {
+        "x": 389.8,
+        "y": 467.97,
+        "w": 186.2,
+        "h": 38
+      },
+      "order": 200,
+      "label": "",
+      "bind": "topmostSubform[0].Page1[0].f1_09[0]",
+      "text": "Click Plumbing and Electrical\n12925 FM 20, Kingsbury, TX 78638",
+      "fontSize": 9
+    },
+    {
+      "key": "f1_08",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 58.6,
+        "y": 467.97,
+        "w": 329.45,
+        "h": 14
+      },
+      "order": 160,
+      "label": "City, state, and ZIP code",
+      "bind": "topmostSubform[0].Page1[0].Address_ReadOrder[0].f1_08[0]",
+      "labelEs": "Ciudad, estado y c\u00f3digo postal",
+      "required": true,
+      "sample": "Kyle, TX 78640"
+    },
+    {
+      "key": "f1_10",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 58.6,
+        "y": 443.97,
+        "w": 517.4,
+        "h": 14
+      },
+      "order": 170,
+      "label": "Account numbers (optional)",
+      "bind": "topmostSubform[0].Page1[0].f1_10[0]",
+      "labelEs": "N\u00fameros de cuenta (opcional)",
+      "advanced": true
+    },
+    {
+      "key": "ssn",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 417.6,
+        "y": 395.97,
+        "w": 158.4,
+        "h": 24.0
+      },
+      "order": 180,
+      "label": "Social Security number",
+      "labelEs": "N\u00famero de Seguro Social",
+      "help": "Nine digits. Use this if you are an individual or sole proprietor. If your business has an EIN, use that box instead.",
+      "helpEs": "Nueve d\u00edgitos. \u00daselo si es individuo o propietario \u00fanico. Si su negocio tiene un EIN, use esa casilla.",
+      "mask": "###-##-####",
+      "bindSegments": [
+        "topmostSubform[0].Page1[0].f1_11[0]",
+        "topmostSubform[0].Page1[0].f1_12[0]",
+        "topmostSubform[0].Page1[0].f1_13[0]"
+      ],
+      "sensitive": true,
+      "oneOf": "tin",
+      "fontSize": 11
+    },
+    {
+      "key": "ein",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 417.6,
+        "y": 347.97,
+        "w": 144.0,
+        "h": 24.0
+      },
+      "order": 190,
+      "label": "Employer Identification Number (EIN)",
+      "labelEs": "N\u00famero de Identificaci\u00f3n del Empleador (EIN)",
+      "help": "Nine digits. Use this instead of your SSN when your business has one.",
+      "helpEs": "Nueve d\u00edgitos. \u00daselo en lugar de su SSN cuando su negocio tenga uno.",
+      "mask": "##-#######",
+      "bindSegments": [
+        "topmostSubform[0].Page1[0].f1_14[0]",
+        "topmostSubform[0].Page1[0].f1_15[0]"
+      ],
+      "sensitive": true,
+      "oneOf": "tin",
+      "fontSize": 11
+    },
+    {
+      "key": "signature",
+      "type": "signature",
+      "page": 1,
+      "rect": {
+        "x": 131,
+        "y": 196,
+        "w": 250,
+        "h": 16
+      },
+      "order": 210,
+      "label": "Signature",
+      "labelEs": "Firma"
+    },
+    {
+      "key": "date",
+      "type": "date",
+      "page": 1,
+      "rect": {
+        "x": 400,
+        "y": 196,
+        "w": 170,
+        "h": 16
+      },
+      "order": 220,
+      "label": "Date",
+      "labelEs": "Fecha",
+      "dateMode": "today"
+    }
+  ],
+  "groups": [
+    {
+      "key": "c1_1",
+      "label": "Federal tax classification",
+      "exactlyOne": true,
+      "required": true
+    }
+  ],
+  "oneOfs": [
+    {
+      "key": "tin",
+      "label": "Taxpayer identification number (SSN or EIN)",
+      "required": true
+    }
+  ]
+}
