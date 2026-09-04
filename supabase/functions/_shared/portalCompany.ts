@@ -9,6 +9,6 @@ export const PORTAL_COMPANY = {
   // is a tagline now — owner request, v2.2038).
   cityLine: 'Your reliable team is just a click away',
   licenseLine: '',
-  phone: '',
+  phone: '(512) 360-0599',
   email: '',
 }

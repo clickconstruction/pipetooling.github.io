@@ -13,6 +13,7 @@ import {
 } from '../../lib/contractBodyFormat'
 import { buildContractSigningEmail, CONTRACT_SIGNING_EMAIL_DEFAULT_INTRO, contractSigningEmailDefaultSubject } from '../../lib/contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from '../../lib/portal/portalShortOrigin'
+import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { normalizeCustomerAttachmentUrl } from '../../lib/estimateCustomerAttachment'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -1286,7 +1287,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
         introPlain: contractSendIntro,
         sender,
         portalUrl: contractSendPortalUrl,
-        officePhone: null,
+        officePhone: PORTAL_COMPANY.phone || null,
       }),
     }
   }, [contractSendDocId, personContractDocuments, contractSendSubject, contractSendIntro, currentUserId, users, contractSendPortalUrl])
