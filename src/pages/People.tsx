@@ -151,6 +151,7 @@ import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursP
 import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
 import { PeopleHoursApprovalsQueueModal } from '../components/people/PeopleHoursApprovalsQueueModal'
 import { PersonDeskPage } from '../components/personDesk/PersonDeskPage'
+import { useOptionalPersonDesk } from '../contexts/PersonDeskContext'
 import { canOpenPersonDesk } from '../lib/people/personDeskGates'
 import { usePendingHoursApprovalsNudge } from '../hooks/usePendingHoursApprovalsNudge'
 import type { DayEditorSession } from '../lib/myTimeDayTimeline'
@@ -305,6 +306,18 @@ export default function People() {
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [invitingId, setInvitingId] = useState<string | null>(null)
   const [inviteConfirm, setInviteConfirm] = useState<Person | null>(null)
+  /** Add-to-roster follow-ons (v2.2762): invite by email and/or open the new person's desk. */
+  const [rosterFormInviteAfter, setRosterFormInviteAfter] = useState(false)
+  const [rosterFormOpenDeskAfter, setRosterFormOpenDeskAfter] = useState(true)
+  const personDesk = useOptionalPersonDesk()
+  async function handleRosterFormSubmit(e: React.FormEvent) {
+    const wasEditing = Boolean(editing)
+    const saved = await handleSave(e)
+    if (!saved || wasEditing) return
+    if (rosterFormInviteAfter && saved.email?.trim()) setInviteConfirm(saved)
+    if (rosterFormOpenDeskAfter && personDesk?.canOpen) personDesk.open({ personId: saved.id, displayName: saved.name })
+    setRosterFormInviteAfter(false)
+  }
   const [loggingInAsId, setLoggingInAsId] = useState<string | null>(null)
   const [personProjects, setPersonProjects] = useState<Record<string, PersonActiveProject[]>>({})
   /** People Users tab: External Subcontractor rows — expanded IDs show Active projects links */
@@ -4429,45 +4442,79 @@ export default function People() {
       />
 
       {formOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>{editing ? 'Edit person' : `Add ${KIND_LABELS[kind].slice(0, -1)}`}</h2>
-            <form onSubmit={handleSave}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }} onMouseDown={(e) => { if (e.target === e.currentTarget && !saving) closeForm() }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="roster-form-title" style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(480px, 94vw)', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            <div>
+              <h2 id="roster-form-title" style={{ margin: 0, fontSize: '1.125rem' }}>{editing ? 'Edit person' : 'Add to roster'}</h2>
+              {!editing ? (
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                  A roster row, no login. Their portal, paperwork and pay work from this alone. You can invite them to sign in now or later.
+                </p>
+              ) : null}
+            </div>
+            <form onSubmit={handleRosterFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {!editing && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: 4 }}>List</label>
-                  <select value={kind} onChange={(e) => setKind(e.target.value as PersonKind)} disabled={saving} style={{ width: '100%', padding: '0.5rem' }}>
+                <div>
+                  <span style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem', fontWeight: 600 }}>They are a…</span>
+                  <div role="radiogroup" aria-label="Kind" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
                     {KINDS.map((k) => (
-                      <option key={k} value={k}>{KIND_LABELS[k]}</option>
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={kind === k}
+                        disabled={saving}
+                        onClick={() => setKind(k)}
+                        style={{ fontSize: '0.8125rem', fontWeight: 600, borderRadius: 999, padding: '0.15rem 0.65rem', cursor: 'pointer', fontFamily: 'inherit', border: kind === k ? '1px solid #2563eb' : '1px solid var(--border)', background: kind === k ? '#2563eb' : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)' }}
+                      >
+                        {KIND_LABELS[k].replace(/ies$/, 'y').replace(/s$/, '')}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
               )}
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="p-name" style={{ display: 'block', marginBottom: 4 }}>Name *</label>
-                <input id="p-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required disabled={saving} style={{ width: '100%', padding: '0.5rem' }} />
+              <div>
+                <label htmlFor="p-name" style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem', fontWeight: 600 }}>Name *</label>
+                <input id="p-name" type="text" value={name} onChange={(e) => setName(e.target.value)} required disabled={saving} autoFocus style={{ width: '100%', padding: '0.45rem' }} />
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="p-email" style={{ display: 'block', marginBottom: 4 }}>Email</label>
-                <input id="p-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={saving} style={{ width: '100%', padding: '0.5rem' }} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                <div>
+                  <label htmlFor="p-email" style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem', fontWeight: 600 }}>Email</label>
+                  <input id="p-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={saving} style={{ width: '100%', padding: '0.45rem' }} />
+                </div>
+                <div>
+                  <label htmlFor="p-phone" style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem', fontWeight: 600 }}>Phone</label>
+                  <input id="p-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={saving} style={{ width: '100%', padding: '0.45rem' }} />
+                </div>
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="p-phone" style={{ display: 'block', marginBottom: 4 }}>Phone</label>
-                <input id="p-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={saving} style={{ width: '100%', padding: '0.5rem' }} />
+              <div>
+                <label htmlFor="p-notes" style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem', fontWeight: 600 }}>Notes</label>
+                <textarea id="p-notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} rows={2} style={{ width: '100%', padding: '0.45rem' }} />
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="p-notes" style={{ display: 'block', marginBottom: 4 }}>Notes</label>
-                <textarea id="p-notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} rows={2} style={{ width: '100%', padding: '0.5rem' }} />
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
+              {!editing ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8125rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }} title={email.trim() ? undefined : 'Needs an email'}>
+                    <input type="checkbox" checked={rosterFormInviteAfter && Boolean(email.trim())} disabled={saving || !email.trim()} onChange={(e) => setRosterFormInviteAfter(e.target.checked)} />
+                    Also invite them to sign in (sends an email)
+                  </label>
+                  {personDesk?.canOpen ? (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <input type="checkbox" checked={rosterFormOpenDeskAfter} disabled={saving} onChange={(e) => setRosterFormOpenDeskAfter(e.target.checked)} />
+                      Open their desk after saving
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button type="button" onClick={closeForm} disabled={saving}>Cancel</button>
+                <button type="submit" disabled={saving} style={{ background: '#2563eb', color: '#fff', border: '1px solid #2563eb', borderRadius: 4, padding: '0.35rem 0.8rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                  {saving ? 'Saving…' : editing ? 'Save' : `Add${name.trim() ? ` ${name.trim()}` : ''}`}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
       {inviteConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>

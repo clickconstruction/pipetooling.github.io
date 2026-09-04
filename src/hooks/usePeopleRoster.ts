@@ -184,10 +184,11 @@ export function usePeopleRoster(
     return hasDuplicateInPeople || hasDuplicateInUsers
   }
 
-  async function handleSave(e: React.FormEvent) {
+  /** Returns the saved roster row (v2.2762) so the Add dialog can open their desk or send an invite; null on validation failure or error. */
+  async function handleSave(e: React.FormEvent): Promise<Person | null> {
     const deps = depsRef.current
     e.preventDefault()
-    if (!authUserId) return
+    if (!authUserId) return null
     setSaving(true)
     deps.setError(null)
 
@@ -195,7 +196,7 @@ export function usePeopleRoster(
     if (!trimmedName) {
       deps.setError('Name is required')
       setSaving(false)
-      return
+      return null
     }
 
     // Check for duplicate names (case-insensitive)
@@ -203,7 +204,7 @@ export function usePeopleRoster(
     if (isDuplicate) {
       deps.setError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
       setSaving(false)
-      return
+      return null
     }
 
     const canCreatePeopleInRoster =
@@ -211,7 +212,7 @@ export function usePeopleRoster(
     if (!editing && !canCreatePeopleInRoster) {
       deps.setError('You do not have permission to add people to the roster.')
       setSaving(false)
-      return
+      return null
     }
 
     const payload = {
@@ -221,6 +222,7 @@ export function usePeopleRoster(
       phone: phone.trim() || null,
       notes: notes.trim() || null,
     }
+    let saved: Person | null = null
     if (editing) {
       const { error: err } = await supabase.from('people').update(payload).eq('id', editing.id)
       if (err) deps.setError(err.message)
@@ -230,6 +232,7 @@ export function usePeopleRoster(
           await cascadePersonNameInPayTables(oldName, trimmedName)
         }
         setPeople((prev) => prev.map((p) => (p.id === editing.id ? { ...p, ...payload } : p)))
+        saved = { ...editing, ...payload }
         closeForm()
       }
     } else {
@@ -238,9 +241,14 @@ export function usePeopleRoster(
       else if (data) {
         setPeople((prev) => [...prev, data as Person].sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)))
         closeForm()
+        setSaving(false)
+        return data as Person
       }
+      setSaving(false)
+      return null
     }
     setSaving(false)
+    return saved
   }
 
   async function loadArchivedPeople(showAll?: boolean) {

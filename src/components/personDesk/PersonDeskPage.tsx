@@ -3,8 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
-import { buildApprovalsQueue } from '../../lib/people/approvalsQueue'
-import { fetchAllPendingClockSessions } from '../../lib/people/fetchAllPendingClockSessions'
+import { loadRailFacts } from '../../lib/people/loadRailFacts'
 import { buildRailSections, normaliseKind, type RailFacts, type RailPersonInput, type RailRow } from '../../lib/people/deskRailAttention'
 import { parsePersonDeskParam, personDeskParam } from '../../lib/people/personKey'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
@@ -42,13 +41,10 @@ export function PersonDeskPage() {
     void (async () => {
       setLoading(true)
       const todayYmd = denverCalendarDayKey(Date.now())
-      const soon = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)
-      const [usersRes, peopleRes, pending, docsRes, licRes] = await Promise.all([
+      const [usersRes, peopleRes, facts] = await Promise.all([
         supabase.from('users').select('id, name, role, archived_at'),
         supabase.from('people').select('id, name, kind, archived_at, account_user_id'),
-        access.canAccessHours || access.canAccessPay ? fetchAllPendingClockSessions().catch(() => []) : Promise.resolve([]),
-        access.canAccessContracts ? supabase.from('person_contract_documents').select('person_name, status, expires_at').or(`status.eq.unsent,expires_at.lte.${soon}`) : Promise.resolve({ data: [] }),
-        access.canAccessLicenses ? supabase.from('person_licenses').select('person_name, date_of_expiry').lte('date_of_expiry', soon) : Promise.resolve({ data: [] }),
+        loadRailFacts(access, todayYmd),
       ])
       if (cancelled) return
       const users = ((usersRes.data ?? []) as Array<{ id: string; name: string | null; role: string | null; archived_at: string | null }>)
@@ -66,29 +62,8 @@ export function PersonDeskPage() {
         if (seenPerson.has(p.id) || p.account_user_id) continue
         rows.push({ userId: null, personId: p.id, name: p.name.trim(), kind: normaliseKind(p.kind), archived: Boolean(p.archived_at) })
       }
-      const pendingByUserId: RailFacts['pendingByUserId'] = {}
-      const q = buildApprovalsQueue(pending, { todayYmd })
-      for (const person of q.people) pendingByUserId[person.userId] = { count: person.count, hours: person.hours }
-      const unsentDocsByName: Record<string, number> = {}
-      const expiringByName: Record<string, number> = {}
-      const expiredByName: Record<string, number> = {}
-      for (const d of (((docsRes as { data: unknown[] | null }).data) ?? []) as Array<{ person_name: string | null; status: string; expires_at: string | null }>) {
-        const n = (d.person_name ?? '').trim()
-        if (!n) continue
-        if (d.status === 'unsent') unsentDocsByName[n] = (unsentDocsByName[n] ?? 0) + 1
-        if (d.expires_at) {
-          if (d.expires_at < todayYmd) expiredByName[n] = (expiredByName[n] ?? 0) + 1
-          else expiringByName[n] = (expiringByName[n] ?? 0) + 1
-        }
-      }
-      for (const l of (((licRes as { data: unknown[] | null }).data) ?? []) as Array<{ person_name: string; date_of_expiry: string | null }>) {
-        const n = l.person_name.trim()
-        if (!l.date_of_expiry) continue
-        if (l.date_of_expiry < todayYmd) expiredByName[n] = (expiredByName[n] ?? 0) + 1
-        else expiringByName[n] = (expiringByName[n] ?? 0) + 1
-      }
       setPeople(rows)
-      setFacts({ pendingByUserId, unsentDocsByName, expiringByName, expiredByName })
+      setFacts(facts)
       setLoading(false)
     })()
     return () => {
