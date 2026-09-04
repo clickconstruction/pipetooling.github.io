@@ -1044,6 +1044,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
+**Sample** (v2.2758, What customers see): `token=sample` / `sample-done` skips the row lookup — the caller must send an office user's JWT (`_shared/sampleViewer.ts`; 401/403 otherwise) and gets the fixture from `_shared/customerSampleFixtures.ts` laid over the live `app_settings` (estimate copy, `estimate_public_terms_body`); `sample-done` answers the 409 `already_accepted` shape so the page shows the thank-you. No view is logged.
+
 **Behavior**: SHA-256 hash of `token`; load row by `public_token_hash` where `status = sent`; enforce `public_token_expires_at` and `valid_until`. Returns estimate fields plus **`customer_experience`**: public UI strings (accept, thank-you, document labels — omits email subject/body). Uses **`customer_experience_sent`** when set, else merges **`app_settings`** + **`customer_experience_overrides`**. If **`status = customer_accepted`**, responds **409** with `code: already_accepted` and **`customer_experience`** for the thank-you page.
 
 **200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash). Since v2.2460 also includes **`options`** — `estimates.options_snapshot` normalized by [`_shared/estimateOptions.ts`](../supabase/functions/_shared/estimateOptions.ts) (`[]` = single-option estimate); the acceptance page renders the picker from exactly what `accept-estimate` will validate against.
@@ -1077,6 +1079,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
 **Gateway**: `verify_jwt = false`; the plaintext room token (portal-links precedent) is the credential.
+
+**Sample** (v2.2758, What customers see): `t=sample` / `sample-done` skips the room lookup — the caller must send an office user's JWT (`_shared/sampleViewer.ts`) and gets the fixture room (two options, one pending change order; `sample-done` = signed with the CO accepted) with `terms` / `exclusions` read live from the bid cover-letter defaults. No `room_view` is logged.
 
 **Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` — since v2.2697 the key is validated against the room's current revision and the write passes the shared throttle (30 s dedupe, 60/10 min per IP); always 200, invalid or throttled input dropped — browsing must never break. Requires migration `20260828215717`.
 

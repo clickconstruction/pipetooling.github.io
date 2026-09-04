@@ -8,6 +8,8 @@
  * Customer-facing surface: pinned light, the accept flow's orange as the action accent.
  */
 import { useEffect, useState, type ReactNode } from 'react'
+import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
@@ -71,6 +73,8 @@ function publishedLine(rev: RoomFetch['revision']): string {
 export default function BidRoom() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
+  // What customers see (v2.2758): the sample token renders the fixture for a signed-in office user.
+  const sample = sampleStateFromToken(token)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [room, setRoom] = useState<RoomFetch | null>(null)
@@ -96,7 +100,7 @@ export default function BidRoom() {
     void (async () => {
       try {
         const res = await fetch(`${supabaseUrl}/functions/v1/get-bid-proposal-room?t=${encodeURIComponent(token)}`, {
-          headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+          headers: await publicFunctionHeaders(sample),
           signal: ac.signal,
         })
         const json = (await res.json()) as RoomFetch & { error?: string; code?: string }
@@ -127,10 +131,11 @@ export default function BidRoom() {
       }
     })()
     return () => ac.abort()
-  }, [token, reloadNonce])
+  }, [token, reloadNonce, sample])
 
   function selectOption(key: string) {
     setSelectedKey(key)
+    if (sample) return
     void fetch(`${supabaseUrl}/functions/v1/get-bid-proposal-room`, {
       method: 'POST',
       headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
@@ -139,6 +144,8 @@ export default function BidRoom() {
   }
 
   async function post(body: Record<string, unknown>): Promise<boolean> {
+    // Nothing is saved in sample mode — the walkthrough just shows the answered state.
+    if (sample) return true
     setSubmitting(true)
     setFormError(null)
     try {
@@ -221,6 +228,7 @@ export default function BidRoom() {
           Explicit base color: the auth landing shell sets light-on-photo text, and anything
           here without its own color token inherited it — the v2.2477 washed-out-text fix. */}
       <div data-theme="light" style={{ color: 'var(--text-strong)' }}>
+        {sample ? <SampleModeBanner /> : null}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
           <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
             <h1 style={{ margin: 0 }}>Proposal — {payload.project_name || 'your project'}</h1>
