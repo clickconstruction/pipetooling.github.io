@@ -50,7 +50,7 @@ export default defineConfig({
         // Workbox default is 2 MiB; main chunk can exceed 3 MiB as the app grows.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
-        globIgnores: ['**/help/**', '**/easter-eggs/**'],
+        globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**'],
       },
       manifest: {
         name: 'ClickTooling',
