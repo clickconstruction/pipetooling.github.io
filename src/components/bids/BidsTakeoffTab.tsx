@@ -35,6 +35,8 @@ import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assembl
 import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
+import { TakeoffViewPills, TakeoffNewViewPlaceholder } from './TakeoffViewPills'
+import { readStoredTakeoffView, writeStoredTakeoffView, type TakeoffView } from '../../lib/bids/takeoffView'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -271,6 +273,14 @@ export function BidsTakeoffTab({
 
   type MaterialPartWithType = MaterialPart & { part_types?: PartType | null }
   const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<MaterialPartWithType[]>([])
+  // Old / New 1 / New 2 (v2.2768, docs/TAKEOFFS_REFRESH_PLAN.md): per-device, default Old until retirement.
+  const [takeoffView, setTakeoffView] = useState<TakeoffView>(() =>
+    readStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
+  )
+  const switchTakeoffView = (next: TakeoffView) => {
+    setTakeoffView(next)
+    writeStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null, next)
+  }
 
   const [takeoffNewItemPartId, setTakeoffNewItemPartId] = useState('')
 
@@ -1832,6 +1842,7 @@ export function BidsTakeoffTab({
                     previewEnabled={bidPreview != null}
                     onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForTakeoff)}
                   />
+                  <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
@@ -1855,6 +1866,10 @@ export function BidsTakeoffTab({
                   ) : null}
                 </div>
               </div>
+              {takeoffView !== 'old' ? (
+                <TakeoffNewViewPlaceholder view={takeoffView} onBackToOld={() => switchTakeoffView('old')} />
+              ) : (
+              <>
               {(() => {
                 const takeoffMaterialsModel = normalizeMaterialsModel(selectedBidForTakeoff.materials_model)
                 return (
@@ -2551,6 +2566,8 @@ export function BidsTakeoffTab({
                     </p>
                   )}
                 </>
+              )}
+              </>
               )}
             </div>
           )}
