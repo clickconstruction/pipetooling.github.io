@@ -140,9 +140,19 @@ export async function loadJobDayLedger(args: {
       const ymd = denverCalendarDayKey(Date.parse(e.changed_at))
       const span = statusSpansByJob.get(e.job_id)
       if (!span) {
-        if (e.to_status === 'working' || e.to_status === 'ready_to_bill' || e.to_status === 'billed' || e.to_status === 'paid') statusSpansByJob.set(e.job_id, { startYmd: ymd, endYmd: e.to_status === 'billed' || e.to_status === 'paid' ? ymd : null })
-      } else if (span.endYmd == null && (e.to_status === 'billed' || e.to_status === 'paid')) {
-        span.endYmd = ymd
+        if (e.to_status === 'working' || e.to_status === 'ready_to_bill' || e.to_status === 'billed' || e.to_status === 'paid') {
+          const isEnd = e.to_status === 'billed' || e.to_status === 'paid'
+          statusSpansByJob.set(e.job_id, {
+            startYmd: ymd,
+            endYmd: isEnd ? ymd : null,
+            billedYmd: e.to_status === 'billed' ? ymd : null,
+            paidYmd: e.to_status === 'paid' ? ymd : null,
+          })
+        }
+      } else {
+        if (span.endYmd == null && (e.to_status === 'billed' || e.to_status === 'paid')) span.endYmd = ymd
+        if (span.billedYmd == null && e.to_status === 'billed') span.billedYmd = ymd
+        if (span.paidYmd == null && e.to_status === 'paid') span.paidYmd = ymd
       }
     }
     const priorRows = (await fetchAllRowsChunkedIn(

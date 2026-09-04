@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { buildJobDayLedger } from './jobDayLedger'
-import { buildRunningSeries, buildStatusSpans, buildWorkedSpans, jobRunBucket, monthTicks, summarizeJobRuns, ymdToDayNumber } from './jobRunningTimeline'
+import {
+  buildRunningSeries,
+  buildRunningSeriesBy,
+  buildStatusSpans,
+  buildWorkedSpans,
+  colorSegmentsForRow,
+  jobRunBucket,
+  monthTicks,
+  runLengthBand,
+  stateOnDay,
+  summarizeJobRuns,
+  ymdToDayNumber,
+} from './jobRunningTimeline'
 import type { OtherJobsLaborDetailLine } from '../overheadDailyLabor'
 import { ymdAddDays } from '../../utils/dateUtils'
 
@@ -143,5 +155,77 @@ describe('buildRunningSeries + summary', () => {
       { index: 0, label: 'Jul' },
       { index: 5, label: 'Aug' },
     ])
+  })
+})
+
+describe('colorings (v2.2745)', () => {
+  const ledgerWithMoves = buildJobDayLedger({
+    startYmd: '2026-08-01',
+    endYmd: '2026-08-31',
+    officeJobLedgerId: 'office',
+    fieldDetailByDay: detail,
+    poolUsdByDay: new Map(),
+    jobLabels: new Map([['j1', { number: 'J1', name: 'One' }]]),
+    // j1 was billed Aug 4 and paid Aug 22; j2 billed Aug 10 (paid later, outside its run); j3 never billed.
+    statusSpansByJob: new Map([
+      ['j1', { startYmd: '2026-07-20', endYmd: '2026-08-04', billedYmd: '2026-08-04', paidYmd: '2026-08-22' }],
+      ['j2', { startYmd: '2026-08-03', endYmd: '2026-08-10', billedYmd: '2026-08-10', paidYmd: '2026-09-01' }],
+    ]),
+    addDays: ymdAddDays,
+  })
+  const rows = buildWorkedSpans({ ledger: ledgerWithMoves, statusByJob: status, todayYmd: TODAY, gapDays: 7 })
+  const days = ledgerWithMoves.days.map((d) => d.ymd)
+
+  it('rows carry the billed and paid moves', () => {
+    expect(rows[0]).toMatchObject({ jobId: 'j1', billedYmd: '2026-08-04', paidYmd: '2026-08-22' })
+    expect(rows[2]).toMatchObject({ jobId: 'j3', billedYmd: null, paidYmd: null })
+  })
+
+  it('run length bands: 1 day, 2–5, 6+', () => {
+    expect(runLengthBand(1)).toBe('d1')
+    expect(runLengthBand(5)).toBe('d2_5')
+    expect(runLengthBand(6)).toBe('d6p')
+    expect(rows.map((r) => runLengthBand(r.runDays))).toEqual(['d6p', 'd2_5', 'd2_5'])
+  })
+
+  it('state on the day follows the moves, not today’s status', () => {
+    const j1 = rows[0]!
+    expect(stateOnDay(j1, '2026-08-01')).toBe('working')
+    expect(stateOnDay(j1, '2026-08-04')).toBe('billed')
+    expect(stateOnDay(j1, '2026-08-22')).toBe('paid')
+    expect(stateOnDay(rows[2]!, '2026-08-29')).toBe('working')
+  })
+
+  it('the band series splits the same totals three ways', () => {
+    const byStatus = buildRunningSeriesBy(rows, days, TODAY, 'status')
+    const byDay = buildRunningSeriesBy(rows, days, TODAY, 'stateOnDay')
+    const byLen = buildRunningSeriesBy(rows, days, TODAY, 'runLength')
+    for (let i = 0; i < days.length; i++) {
+      expect(byDay.days[i]!.total).toBe(byStatus.days[i]!.total)
+      expect(byLen.days[i]!.total).toBe(byStatus.days[i]!.total)
+    }
+    // Aug 3: j1 (billed today, but still working on Aug 3) + j2 (paid today, working on Aug 3)
+    expect(byStatus.days[2]!.counts).toMatchObject({ billed: 1, paid: 1, working: 0 })
+    expect(byDay.days[2]!.counts).toMatchObject({ working: 2, billed: 0, paid: 0 })
+    // Aug 4: j1 billed that day; j2 still working
+    expect(byDay.days[3]!.counts).toMatchObject({ working: 1, billed: 1 })
+    // Aug 22: j1's second run (20–25) is paid from the 22nd
+    expect(byDay.days[21]!.counts).toMatchObject({ paid: 1 })
+    expect(byLen.days[2]!.counts).toMatchObject({ d6p: 1, d2_5: 1, d1: 0 })
+    expect(byLen.bands).toEqual(['d6p', 'd2_5', 'd1'])
+    expect(byStatus.peak).toEqual(buildRunningSeries(rows, days, TODAY).peak)
+  })
+
+  it('bar pieces split at the Billed and Paid moves for state on the day', () => {
+    const j1 = rows[0]!
+    expect(colorSegmentsForRow(j1, 'status').map((s) => s.band)).toEqual(['billed', 'billed'])
+    expect(colorSegmentsForRow(j1, 'runLength').map((s) => s.band)).toEqual(['d6p', 'd6p'])
+    expect(colorSegmentsForRow(j1, 'stateOnDay')).toEqual([
+      { startYmd: '2026-08-01', endYmd: '2026-08-03', band: 'working' },
+      { startYmd: '2026-08-04', endYmd: '2026-08-05', band: 'billed' },
+      { startYmd: '2026-08-20', endYmd: '2026-08-21', band: 'billed' },
+      { startYmd: '2026-08-22', endYmd: '2026-08-25', band: 'paid' },
+    ])
+    expect(colorSegmentsForRow(rows[2]!, 'stateOnDay')).toEqual([{ startYmd: '2026-08-28', endYmd: '2026-08-31', band: 'working' }])
   })
 })

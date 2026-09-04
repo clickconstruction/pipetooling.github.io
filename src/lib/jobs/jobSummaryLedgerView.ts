@@ -41,6 +41,9 @@ export type JobSummarySortDir = 'asc' | 'desc'
 /** Jobs = the ledger table; Days = jobs carried per day (v2.2695); Timeline = jobs running at once, over time (v2.2711). */
 export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline'
 
+/** Timeline coloring (v2.2745): by today's status, by the state on each day, or by run length. */
+export type JobSummaryTimelineColorBy = 'status' | 'stateOnDay' | 'runLength'
+
 export type JobSummaryViewPrefs = {
   view: JobSummaryViewMode
   status: JobSummaryStatusFilter
@@ -48,6 +51,7 @@ export type JobSummaryViewPrefs = {
   method: JobOverheadMethod
   sortKey: JobSummarySortKey
   sortDir: JobSummarySortDir
+  timelineColorBy: JobSummaryTimelineColorBy
 }
 
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
@@ -59,6 +63,7 @@ export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
   method: 'day',
   sortKey: 'trueProfit',
   sortDir: 'desc',
+  timelineColorBy: 'status',
 }
 
 export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewMode; label: string; title: string }> = [
@@ -100,6 +105,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
       method: METHOD_KEYS.includes(p.method as JobOverheadMethod) ? (p.method as JobOverheadMethod) : JOB_SUMMARY_VIEW_DEFAULTS.method,
       sortKey: SORT_KEYS.includes(p.sortKey as JobSummarySortKey) ? (p.sortKey as JobSummarySortKey) : JOB_SUMMARY_VIEW_DEFAULTS.sortKey,
       sortDir: p.sortDir === 'asc' || p.sortDir === 'desc' ? p.sortDir : JOB_SUMMARY_VIEW_DEFAULTS.sortDir,
+      timelineColorBy: p.timelineColorBy === 'stateOnDay' || p.timelineColorBy === 'runLength' ? p.timelineColorBy : 'status',
     }
   } catch {
     return { ...JOB_SUMMARY_VIEW_DEFAULTS }

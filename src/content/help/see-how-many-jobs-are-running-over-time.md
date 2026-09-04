@@ -26,6 +26,16 @@ The tiles above say it in numbers: running today, the average over the window, t
 
 Open **The N jobs behind this curve** to see every job as a bar from its first running day to its last, sorted by start. An open job's bar reaches today and is marked *open*.
 
+## Color by
+
+The stack's colors are a choice, and the counts never change:
+
+- **status today** — every day of a job takes the color of where the job stands now. Quick to read, but a job paid last week paints its whole run green.
+- **state on the day** — each day is colored by where the job stood then: {{chip:blue|working}} until its bill went out, {{chip:yellow|billed}} until it was paid, {{chip:green|paid}} after. The bars change color at the same moves, so you can also see how long money sat.
+- **run length** — colored by how long the job ran: 6 or more days at the bottom, 2 to 5 days, then 1-day jobs on top. The long-running carry and the service-call churn read as different colors without leaving the chart.
+
+Your pick is remembered on this device.
+
 ## What "running" means
 
 Two definitions, one click apart:
