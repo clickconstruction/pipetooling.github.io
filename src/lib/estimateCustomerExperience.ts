@@ -352,10 +352,19 @@ export function serializableSnapshot(resolved: EstimateCustomerExperienceResolve
 
 export const ESTIMATE_EXPERIENCE_APP_KEY_LIST = Object.values(ESTIMATE_APP_SETTING_KEYS)
 
+/**
+ * The keys the dev Settings form edits. The subject template is no longer sent (v2.2747 — the
+ * Letterhead email builds a fileable subject itself), so the form hides it; the key stays in
+ * the fetch list so old rows read cleanly.
+ */
+export const ESTIMATE_EXPERIENCE_SETTINGS_EDITABLE_KEYS = ESTIMATE_EXPERIENCE_APP_KEY_LIST.filter(
+  (k) => k !== ESTIMATE_APP_SETTING_KEYS.email_subject_template,
+)
+
 /** Dev Settings form labels (app_settings keys). */
 export const ESTIMATE_APP_SETTING_LABELS: Record<string, string> = {
   estimate_email_subject_template: 'Email subject template',
-  estimate_email_body_template: 'Email body template',
+  estimate_email_body_template: 'Email body template (first paragraph opens the email; the rest sign it off)',
   estimate_accept_section_title: 'Accept section title',
   estimate_accept_instructions: 'Accept instructions',
   estimate_accept_name_field_label: 'Name field label',

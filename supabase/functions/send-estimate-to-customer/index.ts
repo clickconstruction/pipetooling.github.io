@@ -6,20 +6,12 @@ import {
   resolveEstimateCustomerExperience,
   serializableSnapshot,
 } from '../_shared/estimateCustomerExperience.ts'
-import {
-  acceptHeaderBrandImageAlt,
-  brandImageAbsoluteUrl,
-  buildEstimateEmailHtml,
-  escapeHtmlForEmail,
-  parseAcceptHeaderBrandForEmail,
-} from '../_shared/estimateEmailBrandImage.ts'
+import { brandImageAbsoluteUrl, parseAcceptHeaderBrandForEmail } from '../_shared/estimateEmailBrandImage.ts'
+import { buildEstimateLetterheadEmail, estimateEmailCompanyName } from '../_shared/estimateEmailLetterhead.ts'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildCustomerAttachmentSentPayload } from '../_shared/estimateCustomerAttachment.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
-import {
-  normalizeSharedEstimateOptions,
-  sharedEstimateOptionTotalCents,
-  type SharedEstimateOption,
-} from '../_shared/estimateOptions.ts'
+import { normalizeSharedEstimateOptions, sharedEstimateOptionTotalCents } from '../_shared/estimateOptions.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -49,6 +41,8 @@ async function sendEmailViaResend(
   textPlain: string,
   htmlBody: string,
   resendApiKey: string,
+  from: string,
+  replyTo: string | null,
 ): Promise<{ success: boolean; error?: string }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -57,11 +51,12 @@ async function sendEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: EMAIL_FROM,
+      from,
       to: [to],
       subject,
       html: htmlBody,
       text: textPlain,
+      ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   })
   if (!resendResponse.ok) {
@@ -69,7 +64,7 @@ async function sendEmailViaResend(
     return { success: false, error: errorData.message || `Resend ${resendResponse.status}` }
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: EMAIL_FROM, subject })
+  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from, subject })
   return { success: true }
 }
 
@@ -143,7 +138,7 @@ serve(async (req) => {
     const { data: est, error: selErr } = await userClient
       .from('estimates')
       .select(
-        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind, options_snapshot',
+        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind, options_snapshot, valid_until, for_address',
       )
       .eq('id', estimate_id)
       .single()
@@ -187,7 +182,41 @@ serve(async (req) => {
       },
       { docKind: (est as { doc_kind?: string | null }).doc_kind ?? null },
     )
-    const sentPayload = serializableSnapshot(resolved)
+
+    // The Letterhead email (v2.2747): built once here, previewed by the same builder in the app.
+    const { data: me } = await admin.from('users').select('name, email').eq('id', user.id).maybeSingle()
+    const sender = me
+      ? {
+          name: String((me as { name?: string | null }).name ?? '').trim(),
+          email: String((me as { email?: string | null }).email ?? '').trim(),
+        }
+      : null
+    const brand = parseAcceptHeaderBrandForEmail((est as { accept_header_brand?: unknown }).accept_header_brand)
+    // Estimate Options (v2.2460, owner decision 5): the email shows every option's price —
+    // the ladder itself is persuasive; the page still does the choosing.
+    const emailOptions = normalizeSharedEstimateOptions((est as { options_snapshot?: unknown }).options_snapshot)
+    const dateLabel = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }).format(new Date())
+    const mail = buildEstimateLetterheadEmail({
+      docKind: (est as { doc_kind?: string | null }).doc_kind === 'change_order' ? 'change_order' : 'estimate',
+      estimateNumber: Number(est.estimate_number ?? 0),
+      title: String(est.title ?? ''),
+      totalCents: Number(est.total_cents ?? 0),
+      validUntilYmd: (est as { valid_until?: string | null }).valid_until ?? null,
+      forAddress: (est as { for_address?: string | null }).for_address ?? null,
+      acceptUrl,
+      brand,
+      brandImageUrl: brand ? brandImageAbsoluteUrl(origin, brand) : null,
+      bodyText: resolved.emailBody,
+      options: emailOptions.map((o) => ({ name: o.name, recommended: o.recommended, totalCents: sharedEstimateOptionTotalCents(o) })),
+      footerLines: resolved.acceptPageFooter.split('\n'),
+      sender,
+      dateLabel,
+    })
+    // From keeps EMAIL_FROM's verified address; only the display name becomes the company the
+    // customer knows (they never met "ClickTooling").
+    const fromAddress = /<([^>]+)>/.exec(EMAIL_FROM)?.[1]?.trim() ?? EMAIL_FROM
+    const fromMailbox = `${estimateEmailCompanyName(brand)} <${fromAddress}>`
+    const sentPayload = serializableSnapshot({ ...resolved, emailSubject: mail.subject })
     const estRow = est as {
       customer_attachment_url?: string | null
       customer_attachment_label?: string | null
@@ -235,56 +264,7 @@ serve(async (req) => {
       )
     }
 
-    const subject = resolved.emailSubject
-    // Estimate Options (v2.2460, owner decision 5): the email shows every option's price —
-    // the ladder itself is persuasive; the page still does the choosing.
-    const emailOptions = normalizeSharedEstimateOptions(
-      (est as { options_snapshot?: unknown }).options_snapshot,
-    )
-    const fmtUsd = (cents: number) =>
-      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100)
-    const optionLineText = (o: SharedEstimateOption) =>
-      `${o.recommended ? '\u2605 ' : ''}${o.name.trim() || 'Option'}${o.recommended ? ' (recommended)' : ''} \u2014 ${fmtUsd(sharedEstimateOptionTotalCents(o))}`
-    const optionsTextBlock =
-      emailOptions.length >= 2
-        ? `\n\nYour options \u2014 choose on the page:\n${emailOptions.map((o) => `  ${optionLineText(o)}`).join('\n')}`
-        : ''
-    const optionsHtmlBlock =
-      emailOptions.length >= 2
-        ? `<div style="margin-top:1rem;border-top:1px solid #e2e7ec;padding-top:0.75rem">` +
-          `<div style="font-weight:600;margin-bottom:0.35rem">Your options &mdash; choose on the page:</div>` +
-          emailOptions
-            .map(
-              (o) =>
-                `<div style="display:flex;justify-content:space-between;max-width:360px;padding:0.15rem 0">` +
-                `<span>${o.recommended ? '&#9733; ' : ''}${escapeHtmlForEmail(o.name.trim() || 'Option')}${o.recommended ? ' (recommended)' : ''}</span>` +
-                `<strong>${fmtUsd(sharedEstimateOptionTotalCents(o))}</strong></div>`,
-            )
-            .join('') +
-          `</div>`
-        : ''
-    const body = resolved.emailBody + optionsTextBlock
-    const brand = parseAcceptHeaderBrandForEmail(
-      (est as { accept_header_brand?: unknown }).accept_header_brand,
-    )
-    const htmlBody =
-      buildEstimateEmailHtml(
-        resolved.emailBody,
-        brand
-          ? {
-              imageUrl: brandImageAbsoluteUrl(origin, brand),
-              imageAlt: acceptHeaderBrandImageAlt(brand),
-            }
-          : undefined,
-      ) + optionsHtmlBlock
-
-    const sent = await sendEmailViaResend(
-      customer_email.trim(),
-      subject,
-      body,
-      htmlBody,
-      resendApiKey,
-    )
+    const sent = await sendEmailViaResend(customer_email.trim(), mail.subject, mail.text, mail.html, resendApiKey, fromMailbox, mail.replyTo)
     if (!sent.success) {
       return new Response(
         JSON.stringify({
