@@ -101,3 +101,16 @@ describe('ChecklistAddModal "Go to checklist" button', () => {
     cleanup()
   })
 })
+
+describe('ChecklistAddModal Send buttons', () => {
+  it('shows a header Send only once a title is typed, beside the footer Send', async () => {
+    const title = await renderOpenModal()
+    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
+    fireEvent.change(title, { target: { value: 'Order the 3/4" copper' } })
+    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(2)
+    fireEvent.change(title, { target: { value: '   ' } })
+    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+    cleanup()
+  })
+})
