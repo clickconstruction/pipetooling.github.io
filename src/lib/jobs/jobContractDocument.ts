@@ -279,3 +279,44 @@ ${sig ? `<div class="audit">${escapeHtml(sig.auditLine)}</div>` : ''}
 ${issuer ? `<div class="foot">${escapeHtml([issuer.tagline, issuer.companyName, issuer.addressText, issuer.phone ? `Ph: ${issuer.phone}` : '', issuer.licenseLine].filter(Boolean).join('\n'))}</div>` : ''}
 </div></body></html>`
 }
+
+/** Google Docs / Drive / Sheets links the office keeps signed contracts in (v2.2744). */
+export function isGoogleDocsUrl(raw: string | null | undefined): boolean {
+  const v = (raw ?? '').trim()
+  if (!v) return false
+  try {
+    const u = new URL(v)
+    if (u.protocol !== 'https:') return false
+    return /(^|\.)docs\.google\.com$/.test(u.hostname) || /(^|\.)drive\.google\.com$/.test(u.hostname)
+  } catch {
+    return false
+  }
+}
+
+export function isHttpUrl(raw: string | null | undefined): boolean {
+  const v = (raw ?? '').trim()
+  if (!v) return false
+  try {
+    const u = new URL(v)
+    return u.protocol === 'https:' || u.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+/** "docs.google.com/document/d/1kX9…Qz4" — enough to recognise the doc without the query string. */
+export function shortDocumentLabel(raw: string | null | undefined): string {
+  const v = (raw ?? '').trim()
+  if (!v) return ''
+  try {
+    const u = new URL(v)
+    const parts = u.pathname.split('/').filter(Boolean)
+    const dIdx = parts.indexOf('d')
+    const id = dIdx >= 0 ? parts[dIdx + 1] ?? '' : parts[parts.length - 1] ?? ''
+    const shortId = id.length > 12 ? `${id.slice(0, 4)}…${id.slice(-3)}` : id
+    const prefix = dIdx >= 0 ? parts.slice(0, dIdx + 1).join('/') : parts.slice(0, -1).join('/')
+    return `${u.hostname}${prefix ? `/${prefix}` : ''}${shortId ? `/${shortId}` : ''}`
+  } catch {
+    return v.length > 48 ? `${v.slice(0, 45)}…` : v
+  }
+}

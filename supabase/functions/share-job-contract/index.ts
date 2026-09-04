@@ -89,6 +89,8 @@ serve(async (req) => {
     let signerName = ''
     let signedAt: string | null = null
     let signLink: string | null = null
+    /** Link-only filed record (Google Doc): emailed as a link, no attachment. */
+    let docLink: string | null = null
 
     if (body.contract_id) {
       const { data: row } = await userClient.from('job_contracts').select('*').eq('id', body.contract_id).maybeSingle()
@@ -113,6 +115,7 @@ serve(async (req) => {
         signed_pdf_path: string | null
         paper_upload_path: string | null
         public_token: string | null
+        signed_document_url: string | null
       }
       if (c.status !== 'signed' || !c.signed_at) return json({ error: 'Only a signed contract can be shared.' }, 409)
       const { data: j } = await userClient.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_name, master_user_id').eq('id', c.job_id).maybeSingle()
@@ -126,12 +129,18 @@ serve(async (req) => {
       filename = `Signed-agreement-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`
       if (c.public_token) signLink = signingUrl(appOrigin(body.public_origin), c.public_token)
       if (c.signer_mode === 'paper') {
-        // Paper: the uploaded copy IS the document.
-        if (!c.paper_upload_path) return json({ error: 'This paper record has no uploaded copy to share.' }, 409)
-        pdf = await fetchBytes(admin, c.paper_upload_path)
-        pdfPath = c.paper_upload_path
-        const ext = c.paper_upload_path.split('.').pop() ?? 'pdf'
-        filename = `Signed-agreement-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.${ext}`
+        // Filed outside the app: the uploaded copy is the document when there is
+        // one; otherwise the filed link (Google Doc) is what gets shared (v2.2744).
+        if (c.paper_upload_path) {
+          pdf = await fetchBytes(admin, c.paper_upload_path)
+          pdfPath = c.paper_upload_path
+          const ext = c.paper_upload_path.split('.').pop() ?? 'pdf'
+          filename = `Signed-agreement-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.${ext}`
+        } else if (c.signed_document_url) {
+          docLink = c.signed_document_url
+        } else {
+          return json({ error: 'This record has no uploaded copy or document link to share.' }, 409)
+        }
       } else {
         pdfPath = c.signed_pdf_path ?? `${c.id}/signed.pdf`
         pdf = c.signed_pdf_path ? await fetchBytes(admin, c.signed_pdf_path) : null
@@ -254,9 +263,10 @@ serve(async (req) => {
       return json({ error: 'contract_id or estimate_id required' }, 400)
     }
 
-    if (!pdf) return json({ error: 'The signed copy could not be loaded.' }, 500)
+    if (!pdf && !docLink) return json({ error: 'The signed copy could not be loaded.' }, 500)
 
     if (mode === 'pdf_url') {
+      if (docLink) return json({ ok: true, pdf_url: null, document_url: docLink, filename: null })
       const { data: signed } = await admin.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(pdfPath, 3600)
       return json({ ok: true, pdf_url: signed?.signedUrl ?? null, filename })
     }
@@ -268,18 +278,21 @@ serve(async (req) => {
     const senderName = ((senderRow as { name?: string | null } | null)?.name ?? '').trim()
     const jobNo = job ? jobNumberLabel(job) : ''
     const subject = `Signed: ${heading}${jobNo ? ` — Job #${jobNo}` : ''}`
-    const intro = `Attached is the signed agreement${signerName ? ` — signed by ${signerName}` : ''}${signedAt ? ` on ${dateOnly(signedAt)}` : ''}.`
-    const text = `${note ? `${note}\n\n` : ''}${intro}${signLink ? `\n\nIt also stays at this link any time:\n${signLink}` : ''}${senderName ? `\n\n— ${senderName}` : ''}\n`
+    const intro = docLink
+      ? `Here is the signed agreement${signerName ? ` — signed by ${signerName}` : ''}${signedAt ? ` on ${dateOnly(signedAt)}` : ''}:`
+      : `Attached is the signed agreement${signerName ? ` — signed by ${signerName}` : ''}${signedAt ? ` on ${dateOnly(signedAt)}` : ''}.`
+    const text = `${note ? `${note}\n\n` : ''}${intro}${docLink ? `\n${docLink}` : ''}${signLink ? `\n\nIt also stays at this link any time:\n${signLink}` : ''}${senderName ? `\n\n— ${senderName}` : ''}\n`
     const html =
       `${note ? `<p>${escapeHtml(note).replace(/\n/g, '<br>')}</p>` : ''}<p>${escapeHtml(intro)}</p>` +
+      (docLink ? `<p><a href="${escapeHtml(docLink)}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Open the signed agreement</a></p><p style="color:#6b7280;font-size:13px">${escapeHtml(docLink)}</p>` : '') +
       (signLink ? `<p style="color:#6b7280;font-size:13px">It also stays at this link any time: <a href="${escapeHtml(signLink)}">${escapeHtml(signLink)}</a></p>` : '') +
       (senderName ? `<p>— ${escapeHtml(senderName)}</p>` : '')
-    const b64 = btoa(String.fromCharCode(...pdf))
+    const b64 = pdf ? btoa(String.fromCharCode(...pdf)) : null
     const [first, ...rest] = to
     const sent = await sendEmailViaResend(first!, subject, text, html, resendKey, {
       ...(senderEmail ? { replyTo: senderEmail } : {}),
       ...(rest.length > 0 ? { cc: rest } : {}),
-      attachments: [{ filename, content: b64 }],
+      ...(b64 ? { attachments: [{ filename, content: b64 }] } : {}),
     })
     if (!sent.success) return json({ error: sent.error || 'Email failed' }, 502)
 
@@ -294,7 +307,7 @@ serve(async (req) => {
         occurred_at: nowIso,
         actor_user_id: user.id,
         summary: `Signed agreement emailed to ${to.join(', ')}`,
-        detail: { source_id: `${contractId ?? body.estimate_id}:shared:${Date.parse(nowIso)}`, contract_id: contractId, estimate_id: body.estimate_id ?? null, to, channel: 'email' },
+        detail: { source_id: `${contractId ?? body.estimate_id}:shared:${Date.parse(nowIso)}`, contract_id: contractId, estimate_id: body.estimate_id ?? null, to, channel: 'email', document_url: docLink },
         financial: true,
       })
     }
