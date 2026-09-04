@@ -34,7 +34,12 @@ import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assembl
 import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
-import { TakeoffViewPills, TakeoffNewViewPlaceholder } from './TakeoffViewPills'
+import { TakeoffViewPills, TakeoffNewViewPlaceholder, TakeoffByStageNotice } from './TakeoffViewPills'
+import { TakeoffFocusView } from './TakeoffFocusView'
+import { summarizeTakeoffCoverage } from '../../lib/bids/takeoffCoverage'
+import { planRememberForBook } from '../../lib/bids/takeoffBookLearn'
+import { rememberFixtureForBook } from '../../lib/bids/takeoffBookLearnWrite'
+import type { TakeoffFixtureHistoryLine } from '../../types/database-functions'
 import { readStoredTakeoffView, writeStoredTakeoffView, type TakeoffView } from '../../lib/bids/takeoffView'
 import { bookFillMessage, fillFromBookLabel, planBookFill } from '../../lib/bids/takeoffBookFill'
 import { MyBidsToggle } from './MyBidsToggle'
@@ -394,6 +399,7 @@ export function BidsTakeoffTab({
     insertRoughBundleLine,
     applyRoughAddAssemblyBundle,
     fillRowsFromAssemblies,
+    copyLinesToRow,
   } = useTakeoffRoughLines<MaterialPartWithType>({
     selectedBidForTakeoff,
     selectedBidVersionId,
@@ -429,6 +435,52 @@ export function BidsTakeoffTab({
     return planBookFill(takeoffCountRows, takeoffRoughPartLines, takeoffBookEntries)
   }, [takeoffIsRough, selectedTakeoffBookVersionId, takeoffBookEntriesVersionId, takeoffCountRows, takeoffRoughPartLines, takeoffBookEntries])
   const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates, takeoffIsRough)
+  // New 1 / New 2 substrate (v2.2778): coverage is the same math the Labor tab and Workbench use.
+  const takeoffCoverage = useMemo(() => summarizeTakeoffCoverage(takeoffCountRows, takeoffRoughPartLines), [takeoffCountRows, takeoffRoughPartLines])
+
+  async function applyBookToFixture(countRowId: string, templateIds: string[]) {
+    try {
+      const r = await fillRowsFromAssemblies([{ countRowId, templateIds }])
+      showToast(r.linesAdded > 0 ? `Added ${r.linesAdded} line${r.linesAdded === 1 ? '' : 's'} from the book${r.partsWithoutPrice > 0 ? ` · ${r.partsWithoutPrice} without a catalog price` : ''}.` : 'The book\'s assembly has no parts.', r.linesAdded > 0 ? 'success' : 'info')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to apply the book'), 'error')
+    }
+  }
+
+  async function useHistoryLinesOnFixture(countRowId: string, sourceLines: TakeoffFixtureHistoryLine[]) {
+    try {
+      const r = await copyLinesToRow(countRowId, sourceLines)
+      showToast(r.linesAdded > 0 ? `Copied ${r.linesAdded} line${r.linesAdded === 1 ? '' : 's'} at today\'s lowest prices${r.partsWithoutPrice > 0 ? ` · ${r.partsWithoutPrice} without a catalog price` : ''}.` : 'Nothing to copy.', r.linesAdded > 0 ? 'success' : 'info')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to copy the lines'), 'error')
+    }
+  }
+
+  /** "Remember for the book" (plan decision 3): Save-as-Assembly + a book entry / alias, additive. */
+  async function rememberFixtureForBookFromRow(row: BidCountRow): Promise<boolean> {
+    if (!selectedTakeoffBookVersionId) {
+      showToast('Pick a takeoff book first.', 'info')
+      return false
+    }
+    const plan = planRememberForBook({
+      fixture: row.fixture,
+      lines: takeoffRoughPartLines.filter((l) => l.countRowId === row.id),
+      existingEntries: takeoffBookEntries,
+      existingAssemblyNames: materialTemplates.map((t) => t.name),
+    })
+    if (plan.kind === 'nothing') return false
+    try {
+      const aliasEntryId = plan.entry.action === 'alias' ? plan.entry.entryId : null
+      const entry = aliasEntryId ? takeoffBookEntries.find((e) => e.id === aliasEntryId) : null
+      await rememberFixtureForBook(supabase, { plan, serviceTypeId: selectedServiceTypeId, bookVersionId: selectedTakeoffBookVersionId, existingAlias: entry?.alias_names })
+      await Promise.all([loadMaterialTemplates(), loadTakeoffBookEntries(selectedTakeoffBookVersionId)])
+      showToast(`Remembered "${plan.key}" in the book${plan.newAssembly ? ` as ${plan.newAssembly.name}` : ''}.`, 'success')
+      return true
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to remember for the book'), 'error')
+      return false
+    }
+  }
 
   useEffect(() => {
     roughQtyNumpadLineIdRef.current = roughQtyNumpadLineId
@@ -1361,6 +1413,241 @@ export function BidsTakeoffTab({
     ? materialTemplates.filter((t) => roughAddAssemblyFilterEntries.some((e) => e.templateId === t.id))
     : materialTemplates
 
+  /**
+   * The Combined line editor for a set of fixtures — Old renders every fixture
+   * through it, New 1 one fixture at a time (v2.2778). One drag context, the
+   * same header, rows, and add-line footer, so the views cannot drift apart.
+   */
+  const renderRoughLinesTable = (rowsToRender: BidCountRow[]) => (
+                  <DndContext
+                    sensors={roughPartLinesSensors}
+                    collisionDetection={closestCenter}
+                    onDragStart={() => {
+                      const id = roughQtyNumpadLineIdRef.current
+                      if (!id) return
+                      const q = resolveRoughQtyOnClose(roughQtyNumpadDraftRef.current, roughQtyNumpadOriginalRef.current)
+                      updateTakeoffRoughPartLine(id, { quantity: q })
+                      setRoughQtyNumpadLineId(null)
+                      setRoughQtyNumpadPos(null)
+                      setRoughQtyNumpadDraft('')
+                      roughQtyNumpadOriginalRef.current = null
+                    }}
+                    onDragEnd={(e) => {
+                      void handleRoughPartLinesDragEnd(e)
+                    }}
+                  >
+                  {/* overflow visible (not hidden): the part-search dropdown is position:absolute
+                      and was clipped at the container edge on the sheet's last rows. */}
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 4 }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
+                        <tr>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part or Assembly</th>
+                          <th
+                            style={{
+                              padding: '0.75rem',
+                              paddingLeft: 'calc(0.75rem + 0.35rem)',
+                              paddingRight: '0.25rem',
+                              textAlign: 'left',
+                              borderBottom: '1px solid var(--border)',
+                            }}
+                          >
+                            Unit price
+                          </th>
+                          <th
+                            style={{
+                              padding: '0.35rem 0.05rem 0.35rem 0.125rem',
+                              textAlign: 'center',
+                              borderBottom: '1px solid var(--border)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Qty
+                          </th>
+                          <th
+                            style={{
+                              padding: '0.35rem 0.5rem 0.35rem 0.05rem',
+                              textAlign: 'right',
+                              borderBottom: '1px solid var(--border)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Line total
+                          </th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rowsToRender.map((row) => {
+                          const linesForRow = takeoffRoughPartLines
+                            .filter((l) => l.countRowId === row.id)
+                            .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
+                          return (
+                            <Fragment key={row.id}>
+                              {linesForRow.length === 0 ? (
+                                <tr id={takeoffRowDomId(row.id)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
+                                  <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
+                                  <td colSpan={5} style={{ padding: '0.75rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                                      <span
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => addTakeoffRoughPartLine(row.id)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            addTakeoffRoughPartLine(row.id)
+                                          }
+                                        }}
+                                        style={{
+                                          color: 'var(--text-blue-700)',
+                                          cursor: 'pointer',
+                                          textDecoration: 'underline',
+                                          textUnderlineOffset: '2px',
+                                        }}
+                                      >
+                                        Add part line
+                                      </span>
+                                      <span
+                                        role={materialTemplates.length === 0 ? undefined : 'button'}
+                                        tabIndex={materialTemplates.length === 0 ? -1 : 0}
+                                        aria-disabled={materialTemplates.length === 0}
+                                        onClick={() => {
+                                          if (materialTemplates.length === 0) return
+                                          setRoughAddAssemblyModalCountRowId(row.id)
+                                          setRoughAddAssemblySearchQuery('')
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (materialTemplates.length === 0) return
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            setRoughAddAssemblyModalCountRowId(row.id)
+                                            setRoughAddAssemblySearchQuery('')
+                                          }
+                                        }}
+                                        style={{
+                                          color: 'var(--text-600)',
+                                          cursor: materialTemplates.length === 0 ? 'not-allowed' : 'pointer',
+                                          textDecoration: materialTemplates.length === 0 ? 'none' : 'underline',
+                                          textUnderlineOffset: '2px',
+                                          opacity: materialTemplates.length === 0 ? 0.5 : 1,
+                                        }}
+                                      >
+                                        Add assembly
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ) : (
+                                <SortableContext items={linesForRow.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+                                  {linesForRow.map((line, lineIdx) => (
+                                    <SortableRoughPartLineRow
+                                      key={line.id}
+                                      line={line}
+                                      lineIdx={lineIdx}
+                                      row={row}
+                                      jumpFlash={rowJumpFlashCountRowId === row.id}
+                                      showSaveAsAssembly={linesForRow.some((l) => l.partId?.trim())}
+                                      onSaveAsAssembly={() => openSaveAsAssemblyFromRough(row.id, row)}
+                                      takeoffAddTemplateParts={takeoffAddTemplateParts}
+                                      takeoffRoughPartPickerLineId={takeoffRoughPartPickerLineId}
+                                      setTakeoffRoughPartPickerLineId={setTakeoffRoughPartPickerLineId}
+                                      takeoffRoughPartSearchQuery={takeoffRoughPartSearchQuery}
+                                      setTakeoffRoughPartSearchQuery={setTakeoffRoughPartSearchQuery}
+                                      takeoffRoughCatalogLowestByPartId={takeoffRoughCatalogLowestByPartId}
+                                      setRoughPartLinePartAndCatalogPrice={setRoughPartLinePartAndCatalogPrice}
+                                      updateTakeoffRoughPartLine={updateTakeoffRoughPartLine}
+                                      resetRoughLineToCatalogPrice={resetRoughLineToCatalogPrice}
+                                      setPartPricesModal={setPartPricesModal}
+                                      onRequestRemoveRoughLine={(lineId) => setTakeoffRemoveConfirm({ kind: 'rough_line', lineId })}
+                                      onOpenBundleBreakdown={(templateId, lineId, assemblyName) => setBundleBreakdownModal({ templateId, lineId, assemblyName })}
+                                      bundlePartLines={line.partId == null && line.sourceTemplateId ? bundlePartsByTemplateId[line.sourceTemplateId] : undefined}
+                                      bundleCollapsed={collapsedBundleLineIds.has(line.id)}
+                                      onToggleBundleCollapsed={() => toggleBundleLineCollapsed(line.id)}
+                                      openBidsPartFormForCreate={openBidsPartFormForCreate}
+                                      onOpenEditTakeoffPart={(partId) => {
+                                        const p = takeoffAddTemplateParts.find((x) => x.id === partId)
+                                        if (p) openBidsPartFormForEdit(p)
+                                      }}
+                                      materialTemplates={materialTemplates}
+                                      filterPartsByQuery={filterPartsByQuery}
+                                      partAssemblyCount={partAssemblyEntriesFor(line.partId).length}
+                                      onShowAssembliesForPart={(partId) => openAssembliesForPart(row.id, partId)}
+                                      roughQtyNumpadLineId={roughQtyNumpadLineId}
+                                      roughQtyNumpadDraft={roughQtyNumpadDraft}
+                                      onRoughQtyFocus={onRoughQtyFocus}
+                                      onRoughQtyBlur={onRoughQtyBlur}
+                                      onRoughQtyInputChange={onRoughQtyInputChange}
+                                      onRoughQtyPadEscape={onRoughQtyPadEscape}
+                                    />
+                                  ))}
+                                </SortableContext>
+                              )}
+                              {linesForRow.length > 0 ? (
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td style={{ padding: '0.75rem' }} />
+                                  <td colSpan={5} style={{ padding: '0.75rem' }}>
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                                      <span
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => addTakeoffRoughPartLine(row.id)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            addTakeoffRoughPartLine(row.id)
+                                          }
+                                        }}
+                                        style={{
+                                          color: 'var(--text-blue-700)',
+                                          cursor: 'pointer',
+                                          textDecoration: 'underline',
+                                          textUnderlineOffset: '2px',
+                                        }}
+                                      >
+                                        Add part line
+                                      </span>
+                                      <span
+                                        role={materialTemplates.length === 0 ? undefined : 'button'}
+                                        tabIndex={materialTemplates.length === 0 ? -1 : 0}
+                                        aria-disabled={materialTemplates.length === 0}
+                                        onClick={() => {
+                                          if (materialTemplates.length === 0) return
+                                          setRoughAddAssemblyModalCountRowId(row.id)
+                                          setRoughAddAssemblySearchQuery('')
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (materialTemplates.length === 0) return
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault()
+                                            setRoughAddAssemblyModalCountRowId(row.id)
+                                            setRoughAddAssemblySearchQuery('')
+                                          }
+                                        }}
+                                        style={{
+                                          color: 'var(--text-600)',
+                                          cursor: materialTemplates.length === 0 ? 'not-allowed' : 'pointer',
+                                          textDecoration: materialTemplates.length === 0 ? 'none' : 'underline',
+                                          textUnderlineOffset: '2px',
+                                          opacity: materialTemplates.length === 0 ? 0.5 : 1,
+                                        }}
+                                      >
+                                        Add assembly
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ) : null}
+                            </Fragment>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  </DndContext>
+  )
+
   return (
     <>
         {takeoffRemoveConfirm != null && (
@@ -1507,8 +1794,31 @@ export function BidsTakeoffTab({
                   ) : null}
                 </div>
               </div>
-              {takeoffView !== 'old' ? (
-                <TakeoffNewViewPlaceholder view={takeoffView} onBackToOld={() => switchTakeoffView('old')} />
+              {takeoffView === 'new1' ? (
+                takeoffIsRough ? (
+                  <TakeoffFocusView
+                    bidId={selectedBidForTakeoff.id}
+                    serviceTypeId={selectedServiceTypeId}
+                    countRows={takeoffCountRows}
+                    lines={takeoffRoughPartLines}
+                    coverage={takeoffCoverage}
+                    bookPlan={bookFillPlan}
+                    bookVersionName={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? null}
+                    materialTemplates={materialTemplates}
+                    renderLinesTable={renderRoughLinesTable}
+                    onApplyBook={applyBookToFixture}
+                    onUseLines={useHistoryLinesOnFixture}
+                    onRemember={rememberFixtureForBookFromRow}
+                    fillButton={bookFillButton}
+                    onFillAll={() => void applyTakeoffBookTemplates()}
+                    onSheetView={() => switchTakeoffView('new2')}
+                    showToast={showToast}
+                  />
+                ) : (
+                  <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
+                )
+              ) : takeoffView === 'new2' ? (
+                <TakeoffNewViewPlaceholder view="new2" onBackToOld={() => switchTakeoffView('old')} />
               ) : (
               <>
               {(() => {
@@ -1948,233 +2258,7 @@ export function BidsTakeoffTab({
                   </>
                   ) : (
                   <>
-                  <DndContext
-                    sensors={roughPartLinesSensors}
-                    collisionDetection={closestCenter}
-                    onDragStart={() => {
-                      const id = roughQtyNumpadLineIdRef.current
-                      if (!id) return
-                      const q = resolveRoughQtyOnClose(roughQtyNumpadDraftRef.current, roughQtyNumpadOriginalRef.current)
-                      updateTakeoffRoughPartLine(id, { quantity: q })
-                      setRoughQtyNumpadLineId(null)
-                      setRoughQtyNumpadPos(null)
-                      setRoughQtyNumpadDraft('')
-                      roughQtyNumpadOriginalRef.current = null
-                    }}
-                    onDragEnd={(e) => {
-                      void handleRoughPartLinesDragEnd(e)
-                    }}
-                  >
-                  {/* overflow visible (not hidden): the part-search dropdown is position:absolute
-                      and was clipped at the container edge on the sheet's last rows. */}
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 4 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: 'var(--bg-subtle)' }}>
-                        <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part or Assembly</th>
-                          <th
-                            style={{
-                              padding: '0.75rem',
-                              paddingLeft: 'calc(0.75rem + 0.35rem)',
-                              paddingRight: '0.25rem',
-                              textAlign: 'left',
-                              borderBottom: '1px solid var(--border)',
-                            }}
-                          >
-                            Unit price
-                          </th>
-                          <th
-                            style={{
-                              padding: '0.35rem 0.05rem 0.35rem 0.125rem',
-                              textAlign: 'center',
-                              borderBottom: '1px solid var(--border)',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            Qty
-                          </th>
-                          <th
-                            style={{
-                              padding: '0.35rem 0.5rem 0.35rem 0.05rem',
-                              textAlign: 'right',
-                              borderBottom: '1px solid var(--border)',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            Line total
-                          </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {takeoffCountRows.map((row) => {
-                          const linesForRow = takeoffRoughPartLines
-                            .filter((l) => l.countRowId === row.id)
-                            .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
-                          return (
-                            <Fragment key={row.id}>
-                              {linesForRow.length === 0 ? (
-                                <tr id={takeoffRowDomId(row.id)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
-                                  <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
-                                  <td colSpan={5} style={{ padding: '0.75rem' }}>
-                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-                                      <span
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => addTakeoffRoughPartLine(row.id)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault()
-                                            addTakeoffRoughPartLine(row.id)
-                                          }
-                                        }}
-                                        style={{
-                                          color: 'var(--text-blue-700)',
-                                          cursor: 'pointer',
-                                          textDecoration: 'underline',
-                                          textUnderlineOffset: '2px',
-                                        }}
-                                      >
-                                        Add part line
-                                      </span>
-                                      <span
-                                        role={materialTemplates.length === 0 ? undefined : 'button'}
-                                        tabIndex={materialTemplates.length === 0 ? -1 : 0}
-                                        aria-disabled={materialTemplates.length === 0}
-                                        onClick={() => {
-                                          if (materialTemplates.length === 0) return
-                                          setRoughAddAssemblyModalCountRowId(row.id)
-                                          setRoughAddAssemblySearchQuery('')
-                                        }}
-                                        onKeyDown={(e) => {
-                                          if (materialTemplates.length === 0) return
-                                          if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault()
-                                            setRoughAddAssemblyModalCountRowId(row.id)
-                                            setRoughAddAssemblySearchQuery('')
-                                          }
-                                        }}
-                                        style={{
-                                          color: 'var(--text-600)',
-                                          cursor: materialTemplates.length === 0 ? 'not-allowed' : 'pointer',
-                                          textDecoration: materialTemplates.length === 0 ? 'none' : 'underline',
-                                          textUnderlineOffset: '2px',
-                                          opacity: materialTemplates.length === 0 ? 0.5 : 1,
-                                        }}
-                                      >
-                                        Add assembly
-                                      </span>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ) : (
-                                <SortableContext items={linesForRow.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-                                  {linesForRow.map((line, lineIdx) => (
-                                    <SortableRoughPartLineRow
-                                      key={line.id}
-                                      line={line}
-                                      lineIdx={lineIdx}
-                                      row={row}
-                                      jumpFlash={rowJumpFlashCountRowId === row.id}
-                                      showSaveAsAssembly={linesForRow.some((l) => l.partId?.trim())}
-                                      onSaveAsAssembly={() => openSaveAsAssemblyFromRough(row.id, row)}
-                                      takeoffAddTemplateParts={takeoffAddTemplateParts}
-                                      takeoffRoughPartPickerLineId={takeoffRoughPartPickerLineId}
-                                      setTakeoffRoughPartPickerLineId={setTakeoffRoughPartPickerLineId}
-                                      takeoffRoughPartSearchQuery={takeoffRoughPartSearchQuery}
-                                      setTakeoffRoughPartSearchQuery={setTakeoffRoughPartSearchQuery}
-                                      takeoffRoughCatalogLowestByPartId={takeoffRoughCatalogLowestByPartId}
-                                      setRoughPartLinePartAndCatalogPrice={setRoughPartLinePartAndCatalogPrice}
-                                      updateTakeoffRoughPartLine={updateTakeoffRoughPartLine}
-                                      resetRoughLineToCatalogPrice={resetRoughLineToCatalogPrice}
-                                      setPartPricesModal={setPartPricesModal}
-                                      onRequestRemoveRoughLine={(lineId) => setTakeoffRemoveConfirm({ kind: 'rough_line', lineId })}
-                                      onOpenBundleBreakdown={(templateId, lineId, assemblyName) => setBundleBreakdownModal({ templateId, lineId, assemblyName })}
-                                      bundlePartLines={line.partId == null && line.sourceTemplateId ? bundlePartsByTemplateId[line.sourceTemplateId] : undefined}
-                                      bundleCollapsed={collapsedBundleLineIds.has(line.id)}
-                                      onToggleBundleCollapsed={() => toggleBundleLineCollapsed(line.id)}
-                                      openBidsPartFormForCreate={openBidsPartFormForCreate}
-                                      onOpenEditTakeoffPart={(partId) => {
-                                        const p = takeoffAddTemplateParts.find((x) => x.id === partId)
-                                        if (p) openBidsPartFormForEdit(p)
-                                      }}
-                                      materialTemplates={materialTemplates}
-                                      filterPartsByQuery={filterPartsByQuery}
-                                      partAssemblyCount={partAssemblyEntriesFor(line.partId).length}
-                                      onShowAssembliesForPart={(partId) => openAssembliesForPart(row.id, partId)}
-                                      roughQtyNumpadLineId={roughQtyNumpadLineId}
-                                      roughQtyNumpadDraft={roughQtyNumpadDraft}
-                                      onRoughQtyFocus={onRoughQtyFocus}
-                                      onRoughQtyBlur={onRoughQtyBlur}
-                                      onRoughQtyInputChange={onRoughQtyInputChange}
-                                      onRoughQtyPadEscape={onRoughQtyPadEscape}
-                                    />
-                                  ))}
-                                </SortableContext>
-                              )}
-                              {linesForRow.length > 0 ? (
-                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <td style={{ padding: '0.75rem' }} />
-                                  <td colSpan={5} style={{ padding: '0.75rem' }}>
-                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-                                      <span
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => addTakeoffRoughPartLine(row.id)}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault()
-                                            addTakeoffRoughPartLine(row.id)
-                                          }
-                                        }}
-                                        style={{
-                                          color: 'var(--text-blue-700)',
-                                          cursor: 'pointer',
-                                          textDecoration: 'underline',
-                                          textUnderlineOffset: '2px',
-                                        }}
-                                      >
-                                        Add part line
-                                      </span>
-                                      <span
-                                        role={materialTemplates.length === 0 ? undefined : 'button'}
-                                        tabIndex={materialTemplates.length === 0 ? -1 : 0}
-                                        aria-disabled={materialTemplates.length === 0}
-                                        onClick={() => {
-                                          if (materialTemplates.length === 0) return
-                                          setRoughAddAssemblyModalCountRowId(row.id)
-                                          setRoughAddAssemblySearchQuery('')
-                                        }}
-                                        onKeyDown={(e) => {
-                                          if (materialTemplates.length === 0) return
-                                          if (e.key === 'Enter' || e.key === ' ') {
-                                            e.preventDefault()
-                                            setRoughAddAssemblyModalCountRowId(row.id)
-                                            setRoughAddAssemblySearchQuery('')
-                                          }
-                                        }}
-                                        style={{
-                                          color: 'var(--text-600)',
-                                          cursor: materialTemplates.length === 0 ? 'not-allowed' : 'pointer',
-                                          textDecoration: materialTemplates.length === 0 ? 'none' : 'underline',
-                                          textUnderlineOffset: '2px',
-                                          opacity: materialTemplates.length === 0 ? 0.5 : 1,
-                                        }}
-                                      >
-                                        Add assembly
-                                      </span>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ) : null}
-                            </Fragment>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  </DndContext>
+                  {renderRoughLinesTable(takeoffCountRows)}
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
                     <button
                       type="button"

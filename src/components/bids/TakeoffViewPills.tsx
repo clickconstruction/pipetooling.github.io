@@ -72,3 +72,16 @@ export function TakeoffNewViewPlaceholder({ view, onBackToOld }: { view: Exclude
     </div>
   )
 }
+
+/** New 1 / New 2 are Combined-only (plan decision 1); a By Stage bid keeps its editor in Old. */
+export function TakeoffByStageNotice({ onBackToOld }: { onBackToOld: () => void }) {
+  return (
+    <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '1.5rem', background: 'var(--bg-subtle)', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+      <span style={{ fontWeight: 700 }}>This bid uses By Stage materials</span>
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>The new views work on Combined takeoffs. Open this bid in Old, or switch it to Combined from the Materials toggle there.</span>
+      <button type="button" onClick={onBackToOld} style={{ marginTop: '0.25rem', padding: '0.45rem 0.9rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+        Open in Old
+      </button>
+    </div>
+  )
+}
