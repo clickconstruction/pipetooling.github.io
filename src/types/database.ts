@@ -10946,6 +10946,11 @@ export type Database = {
           payable_after: string | null
           portal_status: string | null
           project_id: string | null
+          stage: string
+          stage_changed_at: string | null
+          stage_changed_by: string | null
+          stage_note: string | null
+          stage_source: string | null
           step_id: string | null
         }
         Insert: {
@@ -10964,6 +10969,11 @@ export type Database = {
           payable_after?: string | null
           portal_status?: string | null
           project_id?: string | null
+          stage?: string
+          stage_changed_at?: string | null
+          stage_changed_by?: string | null
+          stage_note?: string | null
+          stage_source?: string | null
           step_id?: string | null
         }
         Update: {
@@ -10982,6 +10992,11 @@ export type Database = {
           payable_after?: string | null
           portal_status?: string | null
           project_id?: string | null
+          stage?: string
+          stage_changed_at?: string | null
+          stage_changed_by?: string | null
+          stage_note?: string | null
+          stage_source?: string | null
           step_id?: string | null
         }
         Relationships: [
@@ -19247,6 +19262,10 @@ export type Database = {
           p_payable_after?: string
           p_portal_status?: string
         }
+        Returns: Json
+      }
+      set_sub_sheet_stage: {
+        Args: { p_labor_job_id: string; p_note?: string; p_stage: string }
         Returns: Json
       }
       set_tally_payroll_flag: {

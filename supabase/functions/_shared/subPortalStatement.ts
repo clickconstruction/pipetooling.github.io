@@ -17,7 +17,9 @@ export type SubSheetRow = {
   job_number: string | null
   job_date: string | null
   labor_rate: number | null
-  portal_status: string | null
+  stage: string | null
+  stage_changed_at: string | null
+  stage_source: string | null
   payable_after: string | null
   pay_hold_reason: string | null
 }
@@ -63,11 +65,18 @@ export type SubDocRow = {
   expires_at: string | null
 }
 
+/** v2.2767: working → walkthrough → customer_pay; paid is derived (the card leaves "Your jobs"). */
+export type SubPortalSheetStage = 'working' | 'walkthrough' | 'customer_pay'
+
 export type SubPortalSheet = {
   id: string
   jobNumber: string | null
   address: string | null
-  status: 'in_progress' | 'complete' | null
+  stage: SubPortalSheetStage
+  /** YMD of the last stage move (the sentence's date), null when never moved. */
+  stageChangedOn: string | null
+  /** Who moved it last — 'portal' means the sub said the work was done. */
+  stageSource: 'office' | 'portal' | 'auto' | null
   items: Array<{ label: string; amount: number }>
   agreed: number
   paid: number
@@ -139,8 +148,12 @@ function itemLabel(item: SubItemRow, jobLaborRate: number): string {
   return parts.join(' ')
 }
 
-function normalizePortalStatus(raw: string | null): 'in_progress' | 'complete' | null {
-  return raw === 'in_progress' || raw === 'complete' ? raw : null
+function normalizeStage(raw: string | null): SubPortalSheetStage {
+  return raw === 'walkthrough' || raw === 'customer_pay' ? raw : 'working'
+}
+
+function normalizeStageSource(raw: string | null): 'office' | 'portal' | 'auto' | null {
+  return raw === 'office' || raw === 'portal' || raw === 'auto' ? raw : null
 }
 
 export function buildSubSheets(
@@ -181,7 +194,9 @@ export function buildSubSheets(
       id: sheet.id,
       jobNumber: (sheet.job_number ?? '').trim() || null,
       address: (sheet.address ?? '').trim() || null,
-      status: normalizePortalStatus(sheet.portal_status),
+      stage: normalizeStage(sheet.stage),
+      stageChangedOn: (sheet.stage_changed_at ?? '').slice(0, 10) || null,
+      stageSource: normalizeStageSource(sheet.stage_source),
       items: sheetItems.map((it) => ({
         label: itemLabel(it, rate),
         amount: round2(subLineLaborCost(it, rate)),

@@ -4,6 +4,8 @@ import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import type { LaborJob, LaborJobPayment } from '../types/laborJob'
 import { buildLaborJobNamesByNumber } from '../lib/subLaborLedgerNames'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
+import type { SubSheetStage } from '../lib/subSheetStage'
+import type { SetSubSheetStageResult } from '../types/database-functions'
 
 /**
  * Sub Labor ledger + payments engine (Jobs.tsx decomposition seam — see
@@ -18,10 +20,13 @@ import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
  */
 export function useSubLaborLedger({
   authUserId,
+  authUserName,
   setError,
   onLaborJobsReloaded,
 }: {
   authUserId: string | undefined
+  /** Stamped onto a locally patched row after a stage move (display only). */
+  authUserName?: string | null
   /** Page-global error (Jobs map quirk #7 — one error state shared across tabs). */
   setError: (msg: string | null) => void
   /** Called with the freshly mapped list after each successful reload (the page syncs its open Edit Sub Labor modal). */
@@ -45,15 +50,15 @@ export function useSubLaborLedger({
     if (!authUserId) return
     setLaborJobsLoading(true)
     setError(null)
-    // Anchored select first (project_id/step_id, RUN_SUBS_PLAN PR 0.3); fall
-    // back to the legacy column list if the migration isn't applied yet, so
-    // client and migration deploy in either order.
+    // Full select first (anchors + the v2.2767 stage columns); fall back to
+    // the legacy column list if a migration isn't applied yet, so client and
+    // migration deploy in either order.
     let jobs: LaborJob[] | null = null
     let jobsErr: { message: string } | null = null
     {
       const withAnchors = await supabase
         .from('people_labor_jobs')
-        .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link, project_id, step_id')
+        .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link, project_id, step_id, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason')
         .order('created_at', { ascending: false })
       if (withAnchors.error) {
         const legacy = await supabase
@@ -153,11 +158,21 @@ export function useSubLaborLedger({
           projectNamesById.set(p.id, p.name)
         }
       }
+      // Who moved each sheet's stage last (v2.2767) — office moves only; fail-soft.
+      const moverIds = [...new Set((jobs as LaborJob[]).map((j) => j.stage_changed_by).filter((id): id is string => !!id))]
+      const moverNamesById = new Map<string, string>()
+      if (moverIds.length > 0) {
+        const { data: moverRows } = await supabase.from('users').select('id, name').in('id', moverIds)
+        for (const u of (moverRows ?? []) as Array<{ id: string; name: string | null }>) {
+          if (u.name) moverNamesById.set(u.id, u.name)
+        }
+      }
       const mappedJobs = (jobs as LaborJob[]).map((j) => ({
         ...j,
         items: itemsByJob.get(j.id) ?? [],
         payments: paymentsByJob.get(j.id) ?? [],
         project_name: j.project_id ? projectNamesById.get(j.project_id) ?? null : null,
+        stage_changed_by_name: j.stage_changed_by ? moverNamesById.get(j.stage_changed_by) ?? null : null,
       }))
       setLaborJobs(mappedJobs)
       onLaborJobsReloaded?.(mappedJobs)
@@ -182,6 +197,29 @@ export function useSubLaborLedger({
     }
     await loadLaborJobs()
     setLaborJobDeletingId(null)
+    return true
+  }
+
+  /**
+   * Move a sheet's stage (v2.2767) through the office-gated RPC and patch
+   * the row locally — the trigger posts the Activity line server-side.
+   */
+  async function setLaborJobStage(jobId: string, stage: SubSheetStage) {
+    setError(null)
+    const { data, error: err } = await supabase.rpc('set_sub_sheet_stage' as never, { p_labor_job_id: jobId, p_stage: stage, p_note: null } as never)
+    const res = (data ?? null) as SetSubSheetStageResult | null
+    const msg = err?.message ?? res?.error
+    if (msg) {
+      setError(msg)
+      return false
+    }
+    setLaborJobs((prev) =>
+      prev.map((j) =>
+        j.id === jobId
+          ? { ...j, stage, stage_changed_at: new Date().toISOString(), stage_changed_by: authUserId ?? null, stage_source: 'office', stage_note: null, stage_changed_by_name: authUserName ?? null }
+          : j,
+      ),
+    )
     return true
   }
 
@@ -247,6 +285,7 @@ export function useSubLaborLedger({
     loadLaborJobs,
     deleteLaborJob,
     updateLaborJobDate,
+    setLaborJobStage,
     recordLaborJobPayment,
     recordLaborJobBackcharge,
     deleteLaborJobPayment,

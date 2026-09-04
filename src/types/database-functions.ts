@@ -282,6 +282,14 @@ export interface SubPortalOfficeWriteResult {
   error?: string
 }
 
+/** set_sub_sheet_stage (v2.2767): office stage move on a Sub Labor sheet. */
+export interface SetSubSheetStageResult {
+  ok?: boolean
+  stage?: string
+  unchanged?: boolean
+  error?: string
+}
+
 /**
  * Result of set_customer_portal_slug (portal custom-links train): the saved
  * address, or a friendly error string ("That address is taken — try

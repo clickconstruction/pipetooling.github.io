@@ -2,7 +2,7 @@
 title: record sub labor on a job
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: sub labor, subcontractor, sub sheet, labor book, job picker
+keywords: sub labor, subcontractor, sub sheet, labor book, job picker, stage, walk-through, waiting on customer
 order: 62
 ---
 Sub labor lives on **Jobs → Sub Labor**. Every entry belongs to a job — the New Sub Labor form starts with the standard job search, and everything downstream (the job's profit band, Crew P&L, sub sheets) rolls the cost up to that job automatically.
@@ -27,3 +27,7 @@ New entries no longer ask for miles — the drive-cost math simply isn't applied
 - Sheets from before the picker (a typed number that matches no job, or no number at all) read {{chip:yellow|#H-2291 No job with this number}} and keep their typed **Address** box. Nothing re-links on its own; tap **link** to attach a job.
 
 {{button:outline|Delete}} sits alone on the left, away from {{button:blue|Save}}.
+
+## Where the sheet stands
+
+The **Stage** column on the ledger says what you're waiting on for each sheet: {{chip:yellow|Waiting on work}} → {{chip:purple|Waiting on walk-through}} → {{chip:blue|Waiting on customer}}, and {{chip:green|Paid}} once the balance is $0. Tap **→** on the chip to advance one stage, or tap the chip to pick any of the three (stepping back is fine). The sub sees the same steps on their portal and can move a sheet to *Waiting on walk-through* themselves by telling you the work is done — the chip then reads *· sub* with their note behind ✎, and the job's Activity feed keeps the history. Details in [share a sub their portal](/help/share-a-sub-their-portal).

@@ -19,6 +19,7 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildLaborFormSubSheetHtml } from '../../lib/jobsDocuments/subLaborSheet'
 import { resolvedLaborInvoiceLink } from '../../lib/jobs/jobAddressUrls'
 import { SubSheetPortalFieldsBox } from './SubSheetPortalFieldsBox'
+import type { SubSheetStage } from '../../lib/subSheetStage'
 import {
   resolveSubLaborJobByNumber,
   subLaborAssignPickerRows,
@@ -1187,6 +1188,22 @@ function JobsSubLaborFormModalInner(
   }))
 
   /** v2.1617 wizard: which region renders. Edit mode shows everything (classic form). */
+  /** Stage moved from the portal-fields box (v2.2767): patch the ledger row + the open modal row. */
+  const onLaborJobStageSaved = (stage: SubSheetStage) => {
+    const targetId = editingLaborJob?.id
+    if (!targetId) return
+    const patch = {
+      stage,
+      stage_changed_at: new Date().toISOString(),
+      stage_changed_by: authUserId ?? null,
+      stage_source: 'office',
+      stage_note: null,
+      stage_changed_by_name: null,
+    }
+    setLaborJobs((prev) => prev.map((j) => (j.id === targetId ? { ...j, ...patch } : j)))
+    setEditingLaborJob((prev) => (prev && prev.id === targetId ? { ...prev, ...patch } : prev))
+  }
+
   const laborStepVisible = (n: 1 | 2 | 3): boolean => (editingLaborJob ? true : laborStep === n)
   /** Edit header line (v2.2142): contractor · total · due — same math as the Payments block. */
   const editSummary = editingLaborJob
@@ -1937,9 +1954,13 @@ function JobsSubLaborFormModalInner(
               {editingLaborJob && (
                 <SubSheetPortalFieldsBox
                   laborJobId={editingLaborJob.id}
-                  initialStatus={
-                    (editingLaborJob as { portal_status?: string | null }).portal_status ?? null
-                  }
+                  contractorName={editingLaborJob.assigned_to_name}
+                  initialStage={editingLaborJob.stage ?? null}
+                  initialStageChangedAt={editingLaborJob.stage_changed_at ?? null}
+                  initialStageSource={editingLaborJob.stage_source ?? null}
+                  initialStageNote={editingLaborJob.stage_note ?? null}
+                  initialStageChangedByName={editingLaborJob.stage_changed_by_name ?? null}
+                  onStageSaved={onLaborJobStageSaved}
                   initialPayableAfter={
                     (editingLaborJob as { payable_after?: string | null }).payable_after ?? null
                   }

@@ -1,5 +1,17 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
+import {
+  SUB_SHEET_STAGES,
+  SUB_SHEET_STAGE_HINT,
+  SUB_SHEET_STAGE_LABEL,
+  SUB_SHEET_STAGE_TONE,
+  nextSubSheetStage,
+  normalizeSubSheetStage,
+  normalizeSubSheetStageSource,
+  subSheetStageStamp,
+  type SubSheetStage,
+  type SubSheetStageTone,
+} from '../../lib/subSheetStage'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { lineLaborCost } from '../../lib/peopleLaborJobItemLineCost'
 import { normalizeUrl } from '../../lib/projectsForecastStageLineItems'
@@ -27,6 +39,8 @@ export type JobsSubLaborTabProps = {
   onEditLaborJob: (job: LaborJob) => void
   onPrintJobSubSheet: (job: LaborJob) => void
   onUpdateLaborJobDate: (id: string, date: string | null) => void
+  /** Move a sheet's stage (v2.2767) — either direction; the trigger posts the Activity line. */
+  onSetLaborJobStage: (id: string, stage: SubSheetStage) => void | Promise<unknown>
   /** Seed + open the parent-owned Make Payment modal. */
   onOpenMakePayment: (target: SubLaborPaymentTarget, defaultAmount: string) => void
   /** Seed + open the parent-owned Backcharge modal. */
@@ -46,10 +60,18 @@ export default function JobsSubLaborTab({
   onEditLaborJob,
   onPrintJobSubSheet,
   onUpdateLaborJobDate,
+  onSetLaborJobStage,
   onOpenMakePayment,
   onOpenBackcharge,
 }: JobsSubLaborTabProps) {
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
+  const [stageMenuJobId, setStageMenuJobId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!stageMenuJobId) return
+    const close = () => setStageMenuJobId(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [stageMenuJobId])
   const [showAllOutstanding, setShowAllOutstanding] = useState(false)
   const [showOnlyDue, setShowOnlyDue] = useState(true)
   const [sortBy, setSortBy] = useState<'date' | 'contractor'>('contractor')
@@ -211,13 +233,14 @@ export default function JobsSubLaborTab({
         <p style={{ color: 'var(--text-muted)' }}>{showOnlyDue ? 'No payments due.' : 'No matching jobs.'}</p>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
-          <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
                 <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid var(--border)' }} />
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractor</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Stage</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Due</th>
                 <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid var(--border)' }} />
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
@@ -293,6 +316,18 @@ export default function JobsSubLaborTab({
                         </div>
                       </div>
                     </td>
+                    <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                      <SubSheetStageCell
+                        job={job}
+                        paid={totalCost > 0 && balance <= 0}
+                        menuOpen={stageMenuJobId === job.id}
+                        onToggleMenu={() => setStageMenuJobId((cur) => (cur === job.id ? null : job.id))}
+                        onPick={(stage) => {
+                          setStageMenuJobId(null)
+                          void onSetLaborJobStage(job.id, stage)
+                        }}
+                      />
+                    </td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
                       {totalCost > 0 ? (
                         balance > 0 ? (
@@ -344,7 +379,7 @@ export default function JobsSubLaborTab({
                   ...(expanded
                     ? [
                         <tr key={`${job.id}-expand`}>
-                          <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--surface)', verticalAlign: 'top' }}>
+                          <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--surface)', verticalAlign: 'top' }}>
                             <div onClick={(e) => e.stopPropagation()} style={{ padding: '1rem' }}>
                               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 500 }}>
                                 Total cost: <AmountSmallCents value={totalCost} /> · Paid: <AmountSmallCents value={paid} /> · Backcharges: <AmountSmallCents value={backcharges} />
@@ -437,6 +472,110 @@ export default function JobsSubLaborTab({
               })}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+const STAGE_CHIP_TONES: Record<SubSheetStageTone | 'green', { bg: string; fg: string; border: string }> = {
+  amber: { bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)', border: 'var(--border-amber)' },
+  violet: { bg: 'var(--bg-violet-100)', fg: 'var(--text-violet-700)', border: 'var(--border-violet)' },
+  blue: { bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-700)', border: '#93c5fd' },
+  green: { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-700)', border: '#6ee7b7' },
+}
+
+/**
+ * The stage chip on a ledger row (v2.2767): click the chip for the four
+ * stages (jump or step back), the → advances one. A paid sheet (open ≤ $0)
+ * reads "Paid" and cannot be moved — the stage is moot once the money moved.
+ */
+function SubSheetStageCell({
+  job,
+  paid,
+  menuOpen,
+  onToggleMenu,
+  onPick,
+}: {
+  job: LaborJob
+  paid: boolean
+  menuOpen: boolean
+  onToggleMenu: () => void
+  onPick: (stage: SubSheetStage) => void
+}) {
+  const stage = normalizeSubSheetStage(job.stage)
+  const next = nextSubSheetStage(stage)
+  const stamp = subSheetStageStamp({
+    source: normalizeSubSheetStageSource(job.stage_source),
+    changedAt: job.stage_changed_at ?? null,
+    changedByName: job.stage_changed_by_name ?? null,
+    contractorName: job.assigned_to_name,
+  })
+  const tone = STAGE_CHIP_TONES[paid ? 'green' : SUB_SHEET_STAGE_TONE[stage]]
+  const title = [paid ? 'Paid — the balance is $0' : SUB_SHEET_STAGE_LABEL[stage], stamp ? `last moved by ${stamp}` : null, job.stage_note ? `“${job.stage_note}”` : null]
+    .filter(Boolean)
+    .join(' · ')
+  if (paid) {
+    return (
+      <span title={title} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.75rem', fontWeight: 700, borderRadius: 999, padding: '3px 10px', background: tone.bg, color: tone.fg, border: `1px solid ${tone.border}`, whiteSpace: 'nowrap' }}>
+        Paid
+      </span>
+    )
+  }
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 3px 2px 10px', background: tone.bg, color: tone.fg, border: `1px solid ${tone.border}`, whiteSpace: 'nowrap', fontSize: '0.75rem', fontWeight: 700 }}>
+        <button
+          type="button"
+          title={title}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={onToggleMenu}
+          style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+        >
+          {SUB_SHEET_STAGE_LABEL[stage]}
+          {job.stage_source === 'portal' ? <span style={{ fontWeight: 500, opacity: 0.85 }}> · sub</span> : null}
+        </button>
+        {next ? (
+          <button
+            type="button"
+            title={`Move to ${SUB_SHEET_STAGE_LABEL[next]}`}
+            aria-label={`Move to ${SUB_SHEET_STAGE_LABEL[next]}`}
+            onClick={() => onPick(next)}
+            style={{ background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: 999, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700, color: 'inherit', cursor: 'pointer' }}
+          >
+            →
+          </button>
+        ) : null}
+      </span>
+      {stamp ? (
+        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 3, whiteSpace: 'nowrap' }} title={job.stage_note ?? undefined}>
+          {stamp}
+          {job.stage_note ? ' ✎' : ''}
+        </div>
+      ) : null}
+      {menuOpen && (
+        <div
+          role="menu"
+          onClick={(e) => e.stopPropagation()}
+          style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, marginTop: 4, width: 260, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 8px 24px -10px rgba(0,0,0,0.3)', padding: '0.3rem', fontSize: '0.8125rem' }}
+        >
+          {SUB_SHEET_STAGES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="menuitemradio"
+              aria-checked={s === stage}
+              onClick={() => onPick(s)}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', padding: '0.4rem 0.6rem', borderRadius: 5, border: 'none', background: s === stage ? 'var(--bg-subtle)' : 'transparent', color: 'var(--text-900)', fontWeight: s === stage ? 700 : 500, cursor: 'pointer', font: 'inherit' }}
+            >
+              <span>{SUB_SHEET_STAGE_LABEL[s]}</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.72rem' }}>{SUB_SHEET_STAGE_HINT[s]}</span>
+            </button>
+          ))}
+          <div style={{ borderTop: '1px solid var(--border)', margin: '0.3rem 0.2rem 0', padding: '0.35rem 0.4rem 0.1rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            Paid sets itself at $0 open · every move posts to the job&#8217;s Activity feed
+          </div>
         </div>
       )}
     </div>

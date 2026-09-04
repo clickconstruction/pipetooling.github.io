@@ -55,6 +55,10 @@ describe('SubPortal render smoke', () => {
     expect(screen.getAllByText(/J-1482/).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/14 × Top out fixtures/)).toBeTruthy()
     expect(screen.getByText(/Payable after Sep 9, 2026/)).toBeTruthy()
+    // Stage rail (v2.2767): the working sheet offers the sub's one button; the
+    // walk-through sheet (moved from the portal Sep 1) reads its dated sentence.
+    expect(screen.getByText('✓ My work here is done')).toBeTruthy()
+    expect(screen.getByText(/You told us the work's done Sep 1, 2026/)).toBeTruthy()
 
     // Offer with sign-to-accept
     expect(screen.getByText('Rough-in · 407 E 6th St')).toBeTruthy()
