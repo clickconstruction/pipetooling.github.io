@@ -26,12 +26,26 @@ The tiles above say it in numbers: running today, the average over the window, t
 
 Open **The N jobs behind this curve** to see every job as a bar from its first running day to its last, sorted by start. An open job's bar reaches today and is marked *open*.
 
+## Daily or weekly
+
+**Daily** is one column per day, the view described above. **Weekly** rolls the same runs into company-calendar weeks (Monday to Sunday): each bar is the jobs touched that week, stacked as {{chip:blue|carried over}} (already running before the week began) under {{chip:blue|new this week}}. The spikes from single-visit days average out, and the tiles turn into running this week, average per week, and the peak week. The jobs panel below stays day by day. Your pick is remembered on this device.
+
+## Color by
+
+The stack's colors are a choice, and the counts never change:
+
+- **status today** — every day of a job takes the color of where the job stands now. Quick to read, but a job paid last week paints its whole run green.
+- **state on the day** — each day is colored by where the job stood then: {{chip:blue|working}} until its bill went out, {{chip:yellow|billed}} until it was paid, {{chip:green|paid}} after. The bars change color at the same moves, so you can also see how long money sat.
+- **run length** — colored by how long the job ran: 6 or more days at the bottom, 2 to 5 days, then 1-day jobs on top. The long-running carry and the service-call churn read as different colors without leaving the chart.
+
+Your pick is remembered on this device.
+
 ## What "running" means
 
 Two definitions, one click apart:
 
-- **first → last work** (default) — a job runs from its first approved field day to its last, and to today while it's still open. The **Gap** setting decides what a pause does: with {{chip:blue|7d}}, a stretch of more than 7 idle days splits the run, so a paused job isn't counted while nobody is on it. {{chip:gray|none}} counts only days with approved hours; {{chip:gray|14d}} bridges longer pauses.
-- **Working → Billed** — a job runs from the moment it was moved to Working until it was moved to Billed (or Paid), touched or not. This is "open on the board" and runs higher and longer.
+- **first → last work** — a job runs from its first approved field day to its last, and to today while it's still open. The **Gap** setting decides what a pause does: with {{chip:blue|7d}}, a stretch of more than 7 idle days splits the run, so a paused job isn't counted while nobody is on it. {{chip:gray|none}} counts only days with approved hours; {{chip:gray|14d}} bridges longer pauses.
+- **Working → Billed** (default) — a job runs from the moment it was moved to Working until it was moved to Billed (or Paid), touched or not. This is "open on the board", the way the office counts, and it runs higher and longer than the worked span.
 
 :::example One paused job
 Mission Hills had hours every week in May, nothing for ten days in June, then hours again. With the gap at 7d it shows as two runs and isn't counted during the pause; with 14d it's one run straight through.

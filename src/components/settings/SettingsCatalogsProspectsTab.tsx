@@ -5,7 +5,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import {
   ESTIMATE_APP_SETTING_LABELS,
-  ESTIMATE_EXPERIENCE_APP_KEY_LIST,
+  ESTIMATE_EXPERIENCE_SETTINGS_EDITABLE_KEYS,
   ESTIMATE_EXPERIENCE_FIELD_MAX_LEN,
 } from '../../lib/estimateCustomerExperience'
 import { computeEstimateLineExtendedCents } from '../../lib/estimateLineItemNormalize'
@@ -203,7 +203,7 @@ export default function SettingsCatalogsProspectsTab({
                   <code>{' {{accept_url}}'}</code>,<code>{' {{title}}'}</code>,<code>{' {{estimate_number}}'}</code>.
                 </p>
                 <form onSubmit={saveEstimateCustomerCopyDefaults}>
-                  {ESTIMATE_EXPERIENCE_APP_KEY_LIST.map((appKey) => (
+                  {ESTIMATE_EXPERIENCE_SETTINGS_EDITABLE_KEYS.map((appKey) => (
                     <div key={appKey} style={{ marginBottom: '1rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
                         {ESTIMATE_APP_SETTING_LABELS[appKey] ?? appKey}

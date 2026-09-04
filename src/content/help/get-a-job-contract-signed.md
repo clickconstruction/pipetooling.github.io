@@ -59,9 +59,13 @@ Once a job reads {{chip:green|✍ Signed}}, the chip opens the **Signed agreemen
 
 {{gif:get-a-job-contract-signed-view.gif|A signed chip opens the Signed agreement view — the customer's accepted estimate closing with the framed signature block (mark, record ID, name and time, consent line), then Share ▾ and Email a copy… with the signed PDF attached}}
 
-## Already signed on paper?
+## Already signed? File the Google Doc
 
-Open the Contract modal and press {{button:outline|⤴ Upload signed contract}} in its top-right corner. A small sheet asks who signed and the date; attach a scan or phone photo if you have one, and press {{button:blue|Record as signed on paper}}. Nothing goes to the customer — the row simply reads {{chip:green|✍ On file · paper}} and the copy is filed with the job.
+Most signed contracts live in Google Docs. Open the Contract modal and press {{button:outline|📄 File a signed contract}} in its top-right corner. In Google Docs use **Share → Copy link**, paste it into the box, check who signed and the date (today is filled in), and press {{button:blue|Record as signed}}. Nothing goes to the customer — the row reads {{chip:green|✍ On file · Google Doc}} and the doc opens from the signed record.
+
+Have a paper scan instead? The small **Have a scan or photo instead?** link under the date opens a file field. A record needs the link or a file — not just a name and date.
+
+{{gif:get-a-job-contract-signed-file.gif|From the Pipeline row: the chip opens the Contract modal, File a signed contract opens the sheet, the pasted Google Doc link turns into the green linked line, and Record as signed lights up}}
 
 ## Where else it shows
 

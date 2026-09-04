@@ -5,6 +5,9 @@ import {
   jobContractHeading,
   parseJobContractFields,
   paymentTermsSentence,
+  isGoogleDocsUrl,
+  isHttpUrl,
+  shortDocumentLabel,
 } from './jobContractDocument'
 import { jobContractChips, jobContractSignatureAuditLine, jobContractSigningUrl, jobContractStatus } from './jobContractLifecycle'
 
@@ -103,3 +106,20 @@ describe('lifecycle', () => {
     ).toMatch(/^Signed electronically by Michael Palmer \(drawn\) · Sep 2, 2026, 7:14 PM CT · consent recorded$/)
   })
 })
+
+describe('signed document links (v2.2744)', () => {
+  it('recognises Google Docs and Drive links only', () => {
+    expect(isGoogleDocsUrl('https://docs.google.com/document/d/1kX9abcdefghijQz4/edit?usp=sharing')).toBe(true)
+    expect(isGoogleDocsUrl('https://drive.google.com/file/d/1AbC/view')).toBe(true)
+    expect(isGoogleDocsUrl('https://www.dropbox.com/s/abc/contract.pdf')).toBe(false)
+    expect(isGoogleDocsUrl('http://docs.google.com/x')).toBe(false)
+    expect(isGoogleDocsUrl('not a url')).toBe(false)
+    expect(isHttpUrl('https://www.dropbox.com/s/abc')).toBe(true)
+  })
+  it('shortens the label to the host, path and a trimmed id', () => {
+    expect(shortDocumentLabel('https://docs.google.com/document/d/1kX9abcdefghijQz4/edit?usp=sharing')).toBe('docs.google.com/document/d/1kX9…Qz4')
+    expect(shortDocumentLabel('https://drive.google.com/file/d/short/view')).toBe('drive.google.com/file/d/short')
+    expect(shortDocumentLabel('')).toBe('')
+  })
+})
+

@@ -22,6 +22,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
+import { DashboardLienReleaseQueueModal } from '../dashboard/DashboardLienReleaseQueueModal'
 
 /**
  * Quickfill's "Needs you" station (v2.2350): the SAME card the Dashboard
@@ -56,7 +57,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   const bulkDelete = useBulkDeleteNudge(authUser?.id)
   const claimDev = useClaimDevAttemptsNudge(authUser?.id)
   const lienUnconditionalEnabled = Boolean(authUser?.id) && tallyStaffEligible
-  const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
 
@@ -162,7 +164,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
           } else if (item.key === 'claim-dev') {
             navigate('/settings?tab=settings-people')
           } else if (item.key === 'lien-unconditional') {
-            navigate('/jobs?tab=stages')
+            setLienReleaseQueueOpen(true)
           } else if (item.key === 'demand-deadline') {
             navigate('/jobs?tab=stages')
           } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
@@ -178,6 +180,12 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
             else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
           }
         }}
+      />
+      <DashboardLienReleaseQueueModal
+        open={lienReleaseQueueOpen}
+        onClose={() => setLienReleaseQueueOpen(false)}
+        rows={lienReleaseQueue}
+        onChanged={refetchLienReleasesOwed}
       />
       <DashboardStaleTallyStaffFollowUpModal
         open={staffModalOpen}

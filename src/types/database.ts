@@ -6432,6 +6432,7 @@ export type Database = {
           send_count: number
           sent_at: string | null
           signed_at: string | null
+          signed_document_url: string | null
           signed_pdf_path: string | null
           signer_consented_at: string | null
           signer_ip: string | null
@@ -6479,6 +6480,7 @@ export type Database = {
           send_count?: number
           sent_at?: string | null
           signed_at?: string | null
+          signed_document_url?: string | null
           signed_pdf_path?: string | null
           signer_consented_at?: string | null
           signer_ip?: string | null
@@ -6526,6 +6528,7 @@ export type Database = {
           send_count?: number
           sent_at?: string | null
           signed_at?: string | null
+          signed_document_url?: string | null
           signed_pdf_path?: string | null
           signer_consented_at?: string | null
           signer_ip?: string | null
@@ -9041,16 +9044,19 @@ export type Database = {
       }
       mercury_debit_card_nicknames: {
         Row: {
+          card_role: string
           mercury_debit_card_id: string
           nickname: string
           updated_at: string
         }
         Insert: {
+          card_role?: string
           mercury_debit_card_id: string
           nickname: string
           updated_at?: string
         }
         Update: {
+          card_role?: string
           mercury_debit_card_id?: string
           nickname?: string
           updated_at?: string
@@ -17147,6 +17153,10 @@ export type Database = {
       }
       auto_clock_out_eod_if_due: { Args: never; Returns: undefined }
       auto_clock_out_open_sessions_eod: { Args: never; Returns: undefined }
+      auto_create_job_from_signed_estimate: {
+        Args: { p_estimate_id: string }
+        Returns: string
+      }
       backfill_mercury_auto_attributions_for_debit_card: {
         Args: { p_mercury_debit_card_id: string }
         Returns: number
@@ -19240,6 +19250,10 @@ export type Database = {
       settle_step_commitment: {
         Args: { p_commitment_id: string; p_dry_run?: boolean }
         Returns: Json
+      }
+      signed_agreement_notify_recipients: {
+        Args: { p_master_user_id: string }
+        Returns: string[]
       }
       spec_section_fixture_name_audit: {
         Args: never

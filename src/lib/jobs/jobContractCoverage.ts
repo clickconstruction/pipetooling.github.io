@@ -25,6 +25,8 @@ export type JobContractRowLike = {
   signer_printed_name: string | null
   signer_mode: string | null
   voided_at: string | null
+  /** A Google Doc (or other link) the office filed as the signed contract (v2.2744). */
+  signed_document_url?: string | null
 }
 
 /** A customer-accepted estimates row — the rails every online signature already lands on. */
@@ -56,6 +58,8 @@ export type JobContractCoverage =
   | {
       kind: 'signed'
       source: 'contract' | 'paper' | 'estimate' | 'bid_room'
+      /** Paper/link records: the filed document link, when one was given. */
+      documentUrl?: string | null
       signedAt: string | null
       signerName: string | null
       contractId: string | null
@@ -118,6 +122,7 @@ export function buildJobContractCoverage(
       out.set(job.id, {
         kind: 'signed',
         source: signed.signer_mode === 'paper' ? 'paper' : 'contract',
+        documentUrl: signed.signed_document_url ?? null,
         signedAt: signed.signed_at,
         signerName: signed.signer_printed_name,
         contractId: signed.id,
@@ -221,7 +226,7 @@ export function jobContractChipLabel(cov: JobContractCoverage | null | undefined
   const who = abbreviateSignerName(cov.signerName)
   switch (cov.source) {
     case 'paper':
-      return `✍ On file · paper${when ? ` · ${when}` : ''}`
+      return `✍ On file · ${cov.documentUrl ? 'Google Doc' : 'paper'}${when ? ` · ${when}` : ''}`
     case 'estimate':
       return `✍ Signed · estimate${cov.estimateNumber != null ? ` #${cov.estimateNumber}` : ''}`
     case 'bid_room':
@@ -243,7 +248,7 @@ export function jobContractChipTitle(cov: JobContractCoverage | null | undefined
   const who = (cov.signerName ?? '').trim()
   switch (cov.source) {
     case 'paper':
-      return 'A signed paper contract was uploaded and recorded'
+      return cov.documentUrl ? 'A signed contract was filed as a Google Doc link' : 'A signed paper contract was uploaded and recorded'
     case 'estimate':
       return `The customer accepted estimate${cov.estimateNumber != null ? ` #${cov.estimateNumber}` : ''} online${who ? ` as ${who}` : ''} — that acceptance record is the agreement`
     case 'bid_room':

@@ -15,7 +15,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
-import { buildJobContractDocumentHtml, jobContractHeading, parseJobContractFields } from '../../lib/jobs/jobContractDocument'
+import { buildJobContractDocumentHtml, isGoogleDocsUrl, jobContractHeading, parseJobContractFields, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
 import { formatContractStamp, jobContractSignatureAuditLine, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { signedRecordId } from '../../lib/signedRecordId'
 
@@ -148,15 +148,31 @@ export function JobContractRecordBody({
       ) : null}
       {audit && showFacts ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>{audit}</div> : null}
       {isPaper ? (
-        urls.paperUrl ? (
-          <a href={urls.paperUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem' }}>
-            Open the uploaded signed copy ↗
-          </a>
-        ) : (
-          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {row.paper_upload_path ? 'The uploaded copy could not be loaded.' : 'No file was uploaded — recorded from the paper copy on file.'}
-          </p>
-        )
+        <div style={{ display: 'grid', gap: '0.5rem' }}>
+          {row.signed_document_url ? (
+            <a
+              href={row.signed_document_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.9rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 700, textDecoration: 'none', width: 'fit-content', maxWidth: '100%' }}
+            >
+              <span aria-hidden style={{ width: 20, height: 26, borderRadius: 3, background: 'var(--text-link)', flexShrink: 0 }} />
+              <span style={{ minWidth: 0 }}>
+                Open the signed {isGoogleDocsUrl(row.signed_document_url) ? 'Google Doc' : 'document'} ↗
+                <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortDocumentLabel(row.signed_document_url)}</span>
+              </span>
+            </a>
+          ) : null}
+          {urls.paperUrl ? (
+            <a href={urls.paperUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem' }}>
+              Open the uploaded signed copy ↗
+            </a>
+          ) : !row.signed_document_url ? (
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              {row.paper_upload_path ? 'The uploaded copy could not be loaded.' : 'No file was uploaded — recorded from the paper copy on file.'}
+            </p>
+          ) : null}
+        </div>
       ) : (
         <iframe title="Signed contract" srcDoc={html} style={{ width: '100%', height: '60vh', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }} />
       )}

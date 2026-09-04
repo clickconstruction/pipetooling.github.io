@@ -44,7 +44,15 @@ export type JobDayLedgerJob = {
 export type JobDayLedgerJobLabel = { number: string; name: string; /** jobs_ledger.status at load time (Timeline buckets, v2.2711). */ status?: string | null }
 
 /** Working → Billed/Paid status moves from job_status_events (Timeline's status definition, v2.2711). */
-export type JobDayLedgerStatusSpan = { startYmd: string; endYmd: string | null }
+export type JobDayLedgerStatusSpan = {
+  startYmd: string
+  /** First Billed or Paid move after the start (the status-span end). */
+  endYmd: string | null
+  /** First Billed move (v2.2745, Timeline "state on the day" coloring). */
+  billedYmd?: string | null
+  /** First Paid move (v2.2745). */
+  paidYmd?: string | null
+}
 
 export type JobDayLedger = {
   startYmd: string

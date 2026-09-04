@@ -50,7 +50,7 @@ The **net change** is computed from the lines, so the customer sees exactly how 
 
 ## Sending it for signature
 
-{{button:amber|Send to customer}} works exactly like an estimate: the customer gets an email ("Change order: …") with a private link, reviews the change-order document — description, reason, cost breakdown, net change, schedule impact — and signs it by typing or drawing their name. You get the same accepted notification, and the signature record (name, time, IP) is stored with the change order.
+{{button:amber|Send to customer}} works exactly like an estimate: the customer gets an email (subject "Change order #12 — <title> — $net · Click Plumbing") with a **Review & sign the change order** button, reviews the change-order document — description, reason, cost breakdown, net change, schedule impact — and signs it by typing or drawing their name. You get the same accepted notification, and the signature record (name, time, IP) is stored with the change order.
 
 ## Starting from Bids
 

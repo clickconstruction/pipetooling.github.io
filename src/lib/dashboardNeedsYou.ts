@@ -326,7 +326,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
           : `${n} payments cleared behind conditional releases`,
       detail:
         (n === 1 ? `A check (${money}) has cleared since its` : `${money} in checks have cleared since their`) +
-        " conditional lien release was issued — the customer is owed the unconditional version. Open the release button on each job's Pipeline row and switch to the unconditional form.",
+        " conditional lien release was issued — the customer is owed the unconditional version. Open the list: each row issues its unconditional release, prefilled from the original.",
       figure: String(n),
       actionLabel: n === 1 ? 'Issue release' : 'Issue releases',
     })
