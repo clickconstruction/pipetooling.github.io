@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsDigitalTwin } from '../../hooks/useIsDigitalTwin'
+import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import {
   AUDIT_SECTION_LABELS,
   AUDIT_DIGEST_OUTCOME_LABELS,
@@ -15,6 +16,8 @@ import {
   sortAuditsForTab,
   canWriteBidAudit,
   formatAuditRequestedStamp,
+  isUnpricedAudit,
+  pairTwinReferences,
   type AuditSection,
   type AuditDigestOutcome,
   type BidAuditRow,
@@ -37,6 +40,9 @@ import {
  * robot's own self-assessment, and a coaching strip shows what past notes became.
  * Sealed shadows hold completely — before our own bid goes out, even the robot's
  * takeoff rows could anchor the estimator, so those audits show only a 🔒 row.
+ * Unpriced audits (v2.2796) — the robot opened the audit before pasting its counts
+ * into PipeTooling, so there is nothing to price or diff — show as a "Robot still
+ * working" row instead of "draft $0 · −100% vs ours".
  */
 
 // bid_audits reaches src/types/database.ts only with the post-push gen-types run
@@ -56,6 +62,7 @@ const STATUS_CHIP: Record<BidAuditRow['status'], { bg: string; fg: string; label
   done: { bg: 'var(--bg-blue-tint, var(--bg-muted))', fg: 'var(--text-blue-700, var(--text-700))', label: 'Waiting on robot digest' },
   digested: { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-800)', label: 'Digested' },
 }
+const UNPRICED_CHIP = { bg: 'var(--bg-muted)', fg: 'var(--text-muted)', label: 'Robot still working' }
 
 const linkBtnStyle: React.CSSProperties = {
   display: 'inline-block',
@@ -164,24 +171,29 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
         try {
           const twinIds = list.map((a) => a.bid_id)
           if (!twinIds.length) return
-          const twins = ((await auditDb.from('bids').select('id, twin_source_bid_id').in('id', twinIds)).data ?? []) as Array<{ id: string; twin_source_bid_id: string | null }>
-          const refIds = [...new Set(twins.map((t) => t.twin_source_bid_id).filter((x): x is string => !!x))]
-          const refs = refIds.length
-            ? (((await auditDb.from('bids').select('id, bid_number, bid_value, bid_date_sent, selected_bid_version_id').in('id', refIds)).data ?? []) as Array<{
-                id: string
-                bid_number: string | null
-                bid_value: number | string | null
-                bid_date_sent: string | null
-                selected_bid_version_id: string | null
-              }>)
-            : []
-          const refById = new Map(refs.map((r) => [r.id, r]))
+          const twins = ((await auditDb.from('bids').select('id, bid_number, twin_source_bid_id').in('id', twinIds)).data ?? []) as Array<{ id: string; bid_number: string | null; twin_source_bid_id: string | null }>
+          // Shadows opened before v2.2543 stamped the pairing still carry their
+          // reference on the run row — without it the seal cannot hold (b418).
+          // The staff read is the list_shadow_runs RPC (bid numbers, sealed money
+          // NULL); the direct select is RLS-closed. Fail-soft: no runs, stamps only.
+          const shadowRuns = ((await auditDb.rpc('list_shadow_runs')).data ?? []) as Array<{ shadow_bid_number: string | null; reference_bid_number: string | null; reference_sent_at: string | null }>
+          const pairing = pairTwinReferences(twins, shadowRuns)
+          const refIds = [...new Set([...pairing.values()].map((k) => k.refId).filter((x): x is string => !!x))]
+          const refNumbers = [...new Set([...pairing.values()].filter((k) => !k.refId).map((k) => k.refNumber).filter((x): x is string => !!x))]
+          type RefRow = { id: string; bid_number: string | null; bid_value: number | string | null; bid_date_sent: string | null; selected_bid_version_id: string | null }
+          const REF_COLS = 'id, bid_number, bid_value, bid_date_sent, selected_bid_version_id'
+          const [refsById, refsByNumber] = await Promise.all([
+            refIds.length ? auditDb.from('bids').select(REF_COLS).in('id', refIds).then((r) => (r.data ?? []) as RefRow[]) : Promise.resolve([] as RefRow[]),
+            refNumbers.length ? auditDb.from('bids').select(REF_COLS).in('bid_number', refNumbers).then((r) => (r.data ?? []) as RefRow[]) : Promise.resolve([] as RefRow[]),
+          ])
+          const refById = new Map(refsById.map((r) => [r.id, r]))
+          const refByNumber = new Map(refsByNumber.filter((r) => r.bid_number).map((r) => [r.bid_number as string, r]))
           const out: Record<string, RefInfo> = {}
-          for (const t of twins) {
-            const r = t.twin_source_bid_id ? refById.get(t.twin_source_bid_id) : undefined
+          for (const [twinId, key] of pairing) {
+            const r = key.refId ? refById.get(key.refId) : key.refNumber ? refByNumber.get(key.refNumber) : undefined
             if (!r) continue
             const sent = !!r.bid_date_sent
-            out[t.id] = {
+            out[twinId] = {
               refId: r.id,
               refNumber: r.bid_number,
               refValue: sent && r.bid_value != null ? Number(r.bid_value) : null,
@@ -215,17 +227,23 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
       const open = list.filter((a) => a.status !== 'digested')
       const bidIds = open.map((a) => a.bid_id)
       if (bidIds.length) {
+        // Paged (v2.2796): 15+ open audits × ~60 rows already brushed PostgREST's
+        // silent 1,000-row cap — a truncated load would price the newest audits at $0.
         const [rows, assigns] = await Promise.all([
-          withSupabaseRetry(
-            () => auditDb.from('bids_count_rows').select('id, count, bid_version_id, bid_id').in('bid_id', bidIds),
+          fetchAllRowsChunkedIn<{ id: string; count: number; bid_version_id: string | null; bid_id: string }, string>(
+            bidIds,
+            (chunk, from, to) => auditDb.from('bids_count_rows').select('id, count, bid_version_id, bid_id').in('bid_id', chunk).order('id').range(from, to),
             'load audit count rows',
           ),
-          withSupabaseRetry(
-            () =>
+          fetchAllRowsChunkedIn<{ bid_id: string; count_row_id: string; price_book_entry_id: string | null; unit_price_override: number | null }, string>(
+            bidIds,
+            (chunk, from, to) =>
               auditDb
                 .from('bid_pricing_assignments')
                 .select('bid_id, count_row_id, price_book_entry_id, unit_price_override')
-                .in('bid_id', bidIds),
+                .in('bid_id', chunk)
+                .order('count_row_id')
+                .range(from, to),
             'load audit pricing',
           ),
         ])
@@ -265,9 +283,9 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
     setExpandedId((cur) => {
       const current = audits.find((a) => a.id === cur)
       if (current && !isSealed(current)) return cur
-      return audits.find((a) => a.status === 'pending' && !isSealed(a))?.id ?? null
+      return audits.find((a) => a.status === 'pending' && !isSealed(a) && !isUnpricedAudit(draftByAudit[a.id]))?.id ?? null
     })
-  }, [audits, isSealed])
+  }, [audits, isSealed, draftByAudit])
 
   // Priced active-version rows for the expanded card — the twin's draft AND (once
   // the reference has gone out) the reference bid's rows, so the diff has both sides.
@@ -431,7 +449,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
     .map((a) => {
       const ref = refByBidId[a.bid_id]
       const draft = draftByAudit[a.id]
-      if (!ref?.refValue || !draft) return null
+      if (!ref?.refValue || !draft || isUnpricedAudit(draft)) return null
       return { num: a.bids?.bid_number, pct: ((draft.total - ref.refValue) / ref.refValue) * 100 }
     })
     .filter((x): x is { num: string | null; pct: number } => !!x)
@@ -483,11 +501,13 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
           {visible.map((audit) => {
             const threaded = threadAuditNotes(notesByAudit[audit.id] ?? [])
             const openQ = openQuestionCount(threaded)
-            const chip = STATUS_CHIP[audit.status]
             const draft = draftByAudit[audit.id]
+            // No PT count rows: the robot is still working — never "draft $0 · −100%".
+            const unpriced = isUnpricedAudit(draft)
+            const chip = unpriced && audit.status === 'pending' ? UNPRICED_CHIP : STATUS_CHIP[audit.status]
             const bidLabel = `b${audit.bids?.bid_number ?? '?'} · ${audit.bids?.project_name ?? 'Unknown project'}`
             const ref = refByBidId[audit.bid_id]
-            const deltaPct = ref?.refValue && draft ? ((draft.total - ref.refValue) / ref.refValue) * 100 : null
+            const deltaPct = ref?.refValue && draft && !unpriced ? ((draft.total - ref.refValue) / ref.refValue) * 100 : null
             const feedbackCount = (notesByAudit[audit.id] ?? []).filter((n) => n.kind === 'note' || n.kind === 'answer').length
             // Sealed shadow: hold the whole audit — reviewing the robot's takeoff
             // before our own bid goes out could anchor the estimator's number.
@@ -517,7 +537,11 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                 >
                   <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{bidLabel}</span>
                   <span style={{ padding: '0.1rem 0.55rem', borderRadius: 999, background: chip.bg, color: chip.fg, fontSize: '0.7rem' }}>{chip.label}</span>
-                  {draft ? <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>draft ${Math.round(draft.total).toLocaleString()}</span> : null}
+                  {unpriced ? (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>no counts in PipeTooling yet</span>
+                  ) : draft ? (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>draft ${Math.round(draft.total).toLocaleString()}</span>
+                  ) : null}
                   {deltaNode}
                   {audit.status === 'pending' && openQ > 0 ? (
                     <span style={{ color: 'var(--text-amber-800)', fontSize: '0.78rem' }}>{openQ} question{openQ === 1 ? '' : 's'}</span>
@@ -538,7 +562,9 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
                   <span style={{ fontWeight: 600 }}>{bidLabel}</span>
                   <span style={{ padding: '0.15rem 0.6rem', borderRadius: 999, background: chip.bg, color: chip.fg, fontSize: '0.75rem' }}>{chip.label}</span>
-                  {draft ? (
+                  {unpriced ? (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>no counts in PipeTooling yet</span>
+                  ) : draft ? (
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                       draft ${Math.round(draft.total).toLocaleString()} · {draft.rowCount} rows
                     </span>
@@ -570,12 +596,18 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                   </div>
                 ) : null}
 
+                {unpriced ? (
+                  <div style={{ border: '1px dashed var(--border)', background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.6rem 0.9rem', marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                    🛠 The robot hasn&apos;t pasted its takeoff into this bid&apos;s Counts tab yet, so there is no draft to price or compare.
+                    Its questions are still worth answering; hold the verdicts until the rows land.
+                  </div>
+                ) : null}
                 {/* Comparison strip: the evidence comes to the card. */}
                 <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                   <span style={statBoxStyle}>
                     <span style={statLabelStyle}>Robot draft</span>
-                    <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>{draft ? `$${Math.round(draft.total).toLocaleString()}` : '—'}</span>
-                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{draft ? `${draft.rowCount} rows` : ''}</span>
+                    <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>{draft && !unpriced ? `$${Math.round(draft.total).toLocaleString()}` : '—'}</span>
+                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{draft && !unpriced ? `${draft.rowCount} rows` : unpriced ? 'no rows yet' : ''}</span>
                   </span>
                   <span style={statBoxStyle}>
                     <span style={statLabelStyle}>

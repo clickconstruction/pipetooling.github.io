@@ -210,3 +210,66 @@ export function sortAuditsForTab<T extends { status: AuditStatus; requested_at: 
       : (a.requested_at < b.requested_at ? -1 : 1)
   })
 }
+
+// ---------------------------------------------------------------------------
+// v2.2796 — audits the tab cannot judge yet, and the shadow-seal pairing.
+//
+// Wendi's 2026-09-04 pass found seven pending cards reading "draft $0 · −100%
+// vs ours": the robot's estimate lived in CountTooling and its lock note, never
+// pasted into the Counts tab, so computeAuditDraftTotal had no rows. Those cards
+// drew "we will not do this for free wtf". An audit with no active count rows
+// is UNPRICED — the robot is still working it — and must not count as pending,
+// auto-expand, or feed the delta strip. And b418 (a live, unsent shadow) was
+// audited in the open because its `twin_source_bid_id` predates the v2.2543
+// stamp; twin_shadow_runs carries the pairing for every shadow, so the seal
+// derives from both.
+// ---------------------------------------------------------------------------
+
+/** No active count rows in PipeTooling: the robot hasn't finished STG-5, so there is nothing to judge. */
+export function isUnpricedAudit(draft: { rowCount: number } | undefined | null): boolean {
+  return !!draft && draft.rowCount === 0
+}
+
+export type TwinPairingSource = { id: string; bid_number: string | null; twin_source_bid_id: string | null }
+/** One row of the staff RPC `list_shadow_runs()` — it names bids by NUMBER (the direct select is RLS-closed since v2.2544). */
+export type ShadowRunPairing = { shadow_bid_number: string | null; reference_bid_number: string | null; reference_sent_at?: string | null }
+export type TwinReferenceKey = {
+  /** Set when `bids.twin_source_bid_id` is stamped. */
+  refId: string | null
+  /** The reference's bid number, from the shadow run (always) or unknown for a stamped-only pairing. */
+  refNumber: string | null
+  /** From the shadow run: null = the human bid hasn't gone out (sealed). Undefined when no run row exists. */
+  refSentAt?: string | null
+}
+
+/**
+ * twin bid id → how to find its reference. `bids.twin_source_bid_id` wins; a
+ * shadow run's reference number fills in for shadows opened before the v2.2543
+ * stamp (b418/b419), so the seal can still hold.
+ */
+export function pairTwinReferences(twins: TwinPairingSource[], shadowRuns: ShadowRunPairing[] = []): Map<string, TwinReferenceKey> {
+  const runByShadowNumber = new Map<string, ShadowRunPairing>()
+  for (const r of shadowRuns) if (r.shadow_bid_number && r.reference_bid_number) runByShadowNumber.set(r.shadow_bid_number, r)
+  const out = new Map<string, TwinReferenceKey>()
+  for (const t of twins) {
+    const run = t.bid_number ? runByShadowNumber.get(t.bid_number) : undefined
+    if (t.twin_source_bid_id) {
+      out.set(t.id, { refId: t.twin_source_bid_id, refNumber: run?.reference_bid_number ?? null, refSentAt: run?.reference_sent_at })
+    } else if (run?.reference_bid_number) {
+      out.set(t.id, { refId: null, refNumber: run.reference_bid_number, refSentAt: run.reference_sent_at ?? null })
+    }
+  }
+  return out
+}
+
+/**
+ * The pending count every badge shows (Audits tab label, Needs-you card): pending
+ * audits that are neither sealed (reference unsent) nor unpriced (no PT rows).
+ */
+export function countWorkablePendingAudits(
+  audits: Array<{ status: AuditStatus; bid_id: string }>,
+  sealedBidIds: ReadonlySet<string>,
+  unpricedBidIds: ReadonlySet<string>,
+): number {
+  return audits.filter((a) => a.status === 'pending' && !sealedBidIds.has(a.bid_id) && !unpricedBidIds.has(a.bid_id)).length
+}

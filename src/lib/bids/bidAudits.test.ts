@@ -173,3 +173,56 @@ describe('questionContextLine', () => {
     expect(questionContextLine({ sheet_ref: '  ', context: '' })).toBe(null)
   })
 })
+
+// v2.2796: unpriced audits + the shadow-seal pairing.
+import { isUnpricedAudit, pairTwinReferences, countWorkablePendingAudits } from './bidAudits'
+
+describe('isUnpricedAudit', () => {
+  it('true only when the draft loaded with zero active rows', () => {
+    expect(isUnpricedAudit({ rowCount: 0 })).toBe(true)
+    expect(isUnpricedAudit({ rowCount: 47 })).toBe(false)
+    expect(isUnpricedAudit(undefined)).toBe(false)
+    expect(isUnpricedAudit(null)).toBe(false)
+  })
+
+  it('a bid whose counts never reached PipeTooling totals to zero rows', () => {
+    // b422 on 2026-09-04: estimate in the lock note, nothing pasted.
+    expect(isUnpricedAudit(computeAuditDraftTotal([], null, [], {}))).toBe(true)
+  })
+})
+
+describe('pairTwinReferences', () => {
+  it('uses the stamped pairing and falls back to the shadow run (by bid number)', () => {
+    const map = pairTwinReferences(
+      [
+        { id: 'id-420', bid_number: '420', twin_source_bid_id: 'id-391' },
+        { id: 'id-418', bid_number: '418', twin_source_bid_id: null },
+        { id: 'id-411', bid_number: '411', twin_source_bid_id: null },
+        { id: 'id-419', bid_number: '419', twin_source_bid_id: null },
+      ],
+      [
+        { shadow_bid_number: '418', reference_bid_number: '397', reference_sent_at: null },
+        { shadow_bid_number: '420', reference_bid_number: '391', reference_sent_at: '2026-09-01T15:00:00Z' },
+        { shadow_bid_number: '419', reference_bid_number: null },
+      ],
+    )
+    expect(map.get('id-420')).toEqual({ refId: 'id-391', refNumber: '391', refSentAt: '2026-09-01T15:00:00Z' })
+    expect(map.get('id-418')).toEqual({ refId: null, refNumber: '397', refSentAt: null })
+    expect(map.has('id-411')).toBe(false)
+    expect(map.has('id-419')).toBe(false)
+  })
+})
+
+describe('countWorkablePendingAudits', () => {
+  it('excludes sealed and unpriced pending audits, ignores non-pending', () => {
+    const audits = [
+      { status: 'pending' as const, bid_id: 'ready' },
+      { status: 'pending' as const, bid_id: 'sealed' },
+      { status: 'pending' as const, bid_id: 'unpriced' },
+      { status: 'done' as const, bid_id: 'ready' },
+      { status: 'digested' as const, bid_id: 'ready' },
+    ]
+    expect(countWorkablePendingAudits(audits, new Set(['sealed']), new Set(['unpriced']))).toBe(1)
+    expect(countWorkablePendingAudits(audits, new Set(), new Set())).toBe(3)
+  })
+})
