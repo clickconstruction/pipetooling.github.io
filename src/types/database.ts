@@ -11005,6 +11005,8 @@ export type Database = {
           person_name: string
           record_hours_but_salary: boolean
           show_in_hours: boolean
+          vehicle_arrangement: string
+          vehicle_rate_override: number | null
         }
         Insert: {
           hourly_wage?: number | null
@@ -11014,6 +11016,8 @@ export type Database = {
           person_name: string
           record_hours_but_salary?: boolean
           show_in_hours?: boolean
+          vehicle_arrangement?: string
+          vehicle_rate_override?: number | null
         }
         Update: {
           hourly_wage?: number | null
@@ -11023,6 +11027,8 @@ export type Database = {
           person_name?: string
           record_hours_but_salary?: boolean
           show_in_hours?: boolean
+          vehicle_arrangement?: string
+          vehicle_rate_override?: number | null
         }
         Relationships: [
           {
@@ -18839,6 +18845,14 @@ export type Database = {
           p_work_date: string
         }
         Returns: undefined
+      }
+      person_file_summary_counts: {
+        Args: { p_person_id: string }
+        Returns: {
+          entries: number
+          has_summary: boolean
+          updated_at: string
+        }[]
       }
       post_partner_profit_share: { Args: { p_job_id: string }; Returns: Json }
       preview_merge_customers: {
