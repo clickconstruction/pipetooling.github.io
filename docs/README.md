@@ -61,6 +61,7 @@
 | [`SUPPLY_HOUSE_RFQ_PLAN.md`](./SUPPLY_HOUSE_RFQ_PLAN.md) | Phased plan for supply-house RFQs: shared quotes store, paste-back "Plug in quotes", per-part compare with price memory, then the quote-link lane; lane B (system-sent desk) deferred. |
 | [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) | Staged, tested plan for the Stripe-mode, payments_made-invariant, and person-identity-completion workstreams (with status log). |
 | [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md) | Master build plan for the plans-to-proposal estimator-twin pipeline: five waves across PT/CT/twin-mcp/harness, each ending in a live LIVSTE test gate; RFI sub-plan in `RFI_LOOP_PLAN.md`. |
+| [`TAKEOFFS_REFRESH_PLAN.md`](./TAKEOFFS_REFRESH_PLAN.md) | Build plan for the Bids → Takeoffs refresh: Old / New 1 (one fixture at a time) / New 2 (cost rail) behind pills, shared substrate (fixture key, coverage, book that learns, fixture-history RPC), Fill-from-book under Combined, retirement criteria. |
 | [`WEEKLY_MONEY_PLAN.md`](./WEEKLY_MONEY_PLAN.md) | Build plan for the Weekly Money Movement report (per-job money out/in + earned-value lens), the Moneyfill weekly-close queues, and the weekly_money email stream. |
 | [`CREW_PNL_DATA_FLOW.md`](./CREW_PNL_DATA_FLOW.md) | Crew P&L inputs/transforms/outputs + incident log (partial-data failures). |
 | [`SALARY_CLOCK_SESSIONS.md`](./SALARY_CLOCK_SESSIONS.md) | Salaried auto-session sync behavior runbook. |
@@ -87,4 +88,4 @@
 - Docs ship with features: `RECENT_FEATURES.md` entry per PR, `MIGRATIONS.md` entry per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-08-09
+last_updated: 2026-09-04
