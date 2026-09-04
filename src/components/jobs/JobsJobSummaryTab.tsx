@@ -491,6 +491,8 @@ export default function JobsJobSummaryTab({
               ledgerError={view.ledgerError}
               statusByJob={new Map((jobSummaryLedgerAllJobs ?? []).map((j) => [j.id, j.status]))}
               todayYmd={view.endYmd}
+              colorBy={view.prefs.timelineColorBy}
+              onColorByChange={(timelineColorBy) => view.setPrefs({ timelineColorBy })}
               canOpenSessionNotes={canOpenSessionNotes}
               users={users}
               jobs={jobSummaryLedgerAllJobs ?? []}
