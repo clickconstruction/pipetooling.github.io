@@ -2,6 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { buildContractSigningEmail, clampContractEmailIntro, clampContractEmailSubject } from '../_shared/contractSigningEmail.ts'
+
+/** Short portal address root — mirrors `PORTAL_SHORT_ORIGIN` in src/lib/portal/portalShortOrigin.ts. */
+const PORTAL_SHORT_ORIGIN = 'https://my.clickplumbing.com/'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -30,41 +36,6 @@ function hasSigningContent(row: {
   return false
 }
 
-const MAX_EMAIL_SUBJECT_LEN = 200
-const MAX_EMAIL_INTRO_LEN = 4000
-
-function clampEmailSubject(raw: unknown): string {
-  if (typeof raw !== 'string') return ''
-  const t = raw.trim()
-  return t.length > MAX_EMAIL_SUBJECT_LEN ? t.slice(0, MAX_EMAIL_SUBJECT_LEN) : t
-}
-
-function clampEmailIntro(raw: unknown): string {
-  if (typeof raw !== 'string') return ''
-  const t = raw.trim().replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '')
-  return t.length > MAX_EMAIL_INTRO_LEN ? t.slice(0, MAX_EMAIL_INTRO_LEN) : t
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
-
-/** Split on blank lines into paragraphs; single newlines become `<br>`. */
-function introPlainToHtmlBlocks(intro: string): string {
-  const parts = intro.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
-  if (parts.length === 0) return `<p>${escapeHtml(intro)}</p>`
-  return parts
-    .map((block) => {
-      const withBr = escapeHtml(block).replace(/\n/g, '<br>')
-      return `<p>${withBr}</p>`
-    })
-    .join('')
-}
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -77,6 +48,8 @@ async function sendEmailViaResend(
   textPlain: string,
   htmlBody: string,
   resendApiKey: string,
+  fromMailbox: string,
+  replyTo: string | null,
 ): Promise<{ success: boolean; error?: string }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -85,11 +58,12 @@ async function sendEmailViaResend(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: EMAIL_FROM,
+      from: fromMailbox,
       to: [to],
       subject,
       html: htmlBody,
       text: textPlain,
+      ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   })
   if (!resendResponse.ok) {
@@ -97,7 +71,7 @@ async function sendEmailViaResend(
     return { success: false, error: errorData.message || `Resend ${resendResponse.status}` }
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: EMAIL_FROM, subject })
+  await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: fromMailbox, subject, emailType: 'contract_for_signature' })
   return { success: true }
 }
 
@@ -255,23 +229,56 @@ serve(async (req) => {
       })
     }
 
-    const subjectTrimmed = clampEmailSubject(body.email_subject)
-    const subject =
-      subjectTrimmed || `Sign contract: ${doc.document_name} (${doc.person_name})`
+    // The staff member pressing send: Reply-To and the "reach" line. Best effort — a missing
+    // users row (service accounts) just drops the sender from the email.
+    const { data: senderRow } = await admin.from('users').select('name, email').eq('id', user.id).maybeSingle()
+    const senderName = ((senderRow as { name?: string | null } | null)?.name ?? '').trim()
+    const senderEmail = ((senderRow as { email?: string | null } | null)?.email ?? user.email ?? '').trim()
+    const sender = senderEmail ? { name: senderName, email: senderEmail } : null
 
-    const defaultIntroPlain = 'Please review and sign your contract.'
-    const introTrimmed = clampEmailIntro(body.email_intro_plain)
-    const introPlain = introTrimmed || defaultIntroPlain
+    // The person's live portal address, if they have one: a saved slug AND an unrevoked link.
+    // Read-only — nothing is minted to send an email (the portal's no-mint-on-demand rule).
+    let portalUrl: string | null = null
+    try {
+      const { data: personRows } = await admin
+        .from('people')
+        .select('id')
+        .eq('name', doc.person_name.trim())
+        .is('archived_at', null)
+        .limit(2)
+      const personIds = ((personRows ?? []) as Array<{ id: string }>).map((r) => r.id)
+      if (personIds.length === 1) {
+        const personId = personIds[0]!
+        const [{ data: slugRow }, { data: linkRows }] = await Promise.all([
+          admin.from('sub_portal_slugs').select('slug').eq('person_id', personId).maybeSingle(),
+          admin.from('sub_portal_links').select('id').eq('person_id', personId).is('revoked_at', null).limit(1),
+        ])
+        const slug = ((slugRow as { slug?: string | null } | null)?.slug ?? '').trim()
+        if (slug && (linkRows ?? []).length > 0) portalUrl = `${PORTAL_SHORT_ORIGIN}${slug}`
+      }
+    } catch (e) {
+      console.warn('portal lookup skipped', e)
+    }
 
-    const textPlain =
-      `${introPlain}\n\n` +
-      `Document: ${doc.document_name}\n` +
-      `Open this link to sign:\n${acceptUrl}\n`
-    const introHtml = introPlainToHtmlBlocks(introPlain)
-    const htmlBody =
-      `${introHtml}` +
-      `<p><strong>${escapeHtml(doc.document_name)}</strong> — ${escapeHtml(doc.person_name)}</p>` +
-      `<p><a href="${acceptUrl}">Open signing page</a></p>`
+    const mail = buildContractSigningEmail({
+      documentName: doc.document_name,
+      personName: doc.person_name,
+      acceptUrl,
+      expiresYmd: todayYmdInAppTz(new Date(expiresAt)),
+      sentYmd: todayYmdInAppTz(),
+      subjectOverride: clampContractEmailSubject(body.email_subject),
+      introPlain: clampContractEmailIntro(body.email_intro_plain),
+      sender,
+      portalUrl,
+      officePhone: PORTAL_COMPANY.phone || null,
+    })
+    const subject = mail.subject
+    const textPlain = mail.text
+    const htmlBody = mail.html
+    // From keeps EMAIL_FROM's verified address; only the display name becomes the company the
+    // sub knows (they never met "ClickTooling").
+    const fromAddress = /<([^>]+)>/.exec(EMAIL_FROM)?.[1]?.trim() ?? EMAIL_FROM
+    const fromMailbox = `${mail.fromName} <${fromAddress}>`
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     if (!resendApiKey) {
@@ -286,7 +293,7 @@ serve(async (req) => {
       )
     }
 
-    const sent = await sendEmailViaResend(signer_email.trim(), subject, textPlain, htmlBody, resendApiKey)
+    const sent = await sendEmailViaResend(signer_email.trim(), subject, textPlain, htmlBody, resendApiKey, fromMailbox, mail.replyTo)
     if (!sent.success) {
       return new Response(
         JSON.stringify({

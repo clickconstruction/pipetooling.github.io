@@ -11,7 +11,9 @@ import {
   normalizeContractBodyForSave,
   parseContractBodyFormat,
 } from '../../lib/contractBodyFormat'
-import { buildContractSendEmailPreview } from '../../lib/contractSendEmailPreview'
+import { buildContractSigningEmail, CONTRACT_SIGNING_EMAIL_DEFAULT_INTRO, contractSigningEmailDefaultSubject } from '../../lib/contractSigningEmail'
+import { PORTAL_SHORT_ORIGIN } from '../../lib/portal/portalShortOrigin'
+import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { normalizeCustomerAttachmentUrl } from '../../lib/estimateCustomerAttachment'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatAppliedVersionPlainDate, todayPlainDateInAppTz } from '../../lib/personContractAppliedDate'
@@ -95,9 +97,11 @@ export type PeopleContractsTabProps = {
   /** Names of archived user accounts (RPC get_archived_user_names) — same Archived section. */
   archivedUserNames?: Set<string>
   canDeletePeopleContracts: boolean
+  /** The signed-in staff member — the send email's Reply-To and "reach" line (v2.2773). */
+  currentUserId?: string | null
 }
 
-export default function PeopleContractsTab({ people, users, archivedPeople, archivedUserNames, canDeletePeopleContracts }: PeopleContractsTabProps) {
+export default function PeopleContractsTab({ people, users, archivedPeople, archivedUserNames, canDeletePeopleContracts, currentUserId }: PeopleContractsTabProps) {
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const [contractsHelpModalOpen, setContractsHelpModalOpen] = useState(false)
@@ -212,6 +216,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   const [contractSendEmail, setContractSendEmail] = useState('')
   const [contractSendSubject, setContractSendSubject] = useState('')
   const [contractSendIntro, setContractSendIntro] = useState('')
+  /** The signer's live portal address for the preview's "stays on your page" band; null = none (v2.2773). */
+  const [contractSendPortalUrl, setContractSendPortalUrl] = useState<string | null>(null)
   const [contractSendSaving, setContractSendSaving] = useState(false)
   const [canonicalUrlCheckStatus, setCanonicalUrlCheckStatus] = useState<
     'idle' | 'loading' | 'success' | 'warn' | 'error'
@@ -1225,6 +1231,38 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     personContractDocuments,
   ])
 
+  // The signer's portal address, read the way the send function reads it: one non-archived
+  // roster row with that name, a saved slug, and an unrevoked link. Nothing is minted.
+  useEffect(() => {
+    if (!contractSendModalOpen || !contractSendDocId) return
+    const doc = personContractDocuments.find((d) => d.id === contractSendDocId)
+    const wanted = (doc?.person_name ?? '').trim()
+    const matches = people.filter((p) => (p.name ?? '').trim() === wanted)
+    if (matches.length !== 1) {
+      setContractSendPortalUrl(null)
+      return
+    }
+    const personId = matches[0]!.id
+    let cancelled = false
+    void (async () => {
+      try {
+        const [slugRes, linkRes] = await Promise.all([
+          supabase.from('sub_portal_slugs' as never).select('slug').eq('person_id', personId).maybeSingle(),
+          supabase.from('sub_portal_links' as never).select('id').eq('person_id', personId).is('revoked_at', null).limit(1),
+        ])
+        if (cancelled) return
+        const slug = ((slugRes.data as { slug?: string | null } | null)?.slug ?? '').trim()
+        const live = ((linkRes.data ?? []) as unknown[]).length > 0
+        setContractSendPortalUrl(slug && live ? `${PORTAL_SHORT_ORIGIN}${slug}` : null)
+      } catch {
+        if (!cancelled) setContractSendPortalUrl(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [contractSendModalOpen, contractSendDocId, personContractDocuments, people])
+
   const contractSendEmailPreview = useMemo(() => {
     if (!contractSendDocId) return null
     const doc = personContractDocuments.find((d) => d.id === contractSendDocId)
@@ -1233,18 +1271,25 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       typeof window !== 'undefined'
         ? window.location.origin.replace(/\/$/, '')
         : 'https://pipetooling.github.io'
-    const linkPlaceholder = `${origin}/contract/accept?t=…`
+    const me = currentUserId ? users.find((u) => u.id === currentUserId) : undefined
+    const sender = me?.email ? { name: (me.name ?? '').trim(), email: me.email.trim() } : null
+    const sentYmd = todayYmdInAppTz()
     return {
       kind: 'ok' as const,
-      ...buildContractSendEmailPreview({
+      ...buildContractSigningEmail({
         documentName: doc.document_name,
         personName: doc.person_name,
-        emailSubject: contractSendSubject,
-        emailIntroPlain: contractSendIntro,
-        linkPlaceholder,
+        acceptUrl: `${origin}/contract/accept?t=…`,
+        expiresYmd: ymdAddDays(sentYmd, 14),
+        sentYmd,
+        subjectOverride: contractSendSubject,
+        introPlain: contractSendIntro,
+        sender,
+        portalUrl: contractSendPortalUrl,
+        officePhone: null,
       }),
     }
-  }, [contractSendDocId, personContractDocuments, contractSendSubject, contractSendIntro])
+  }, [contractSendDocId, personContractDocuments, contractSendSubject, contractSendIntro, currentUserId, users, contractSendPortalUrl])
 
   function getContractDocumentUpsertPayload():
     | { error: string }
@@ -3318,7 +3363,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
 
       {contractSendModalOpen && contractSendDocId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 14 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90vw' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(640px, 92vw)', maxHeight: '92vh', overflow: 'auto', boxSizing: 'border-box' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Send for signature</h3>
             {contractsError ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{contractsError}</p> : null}
             <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
@@ -3337,7 +3382,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                 type="text"
                 value={contractSendSubject}
                 onChange={(e) => setContractSendSubject(e.target.value)}
-                placeholder="Default: Sign contract: …"
+                placeholder={`Default: ${contractSigningEmailDefaultSubject(personContractDocuments.find((d) => d.id === contractSendDocId)?.document_name ?? 'your agreement')}`}
                 maxLength={200}
                 style={{ display: 'block', width: '100%', marginTop: '0.25rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontWeight: 400 }}
               />
@@ -3347,7 +3392,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
               <textarea
                 value={contractSendIntro}
                 onChange={(e) => setContractSendIntro(e.target.value)}
-                placeholder="Default: Please review and sign your contract. Leave blank to use the default opening line."
+                placeholder={`Default: ${CONTRACT_SIGNING_EMAIL_DEFAULT_INTRO} Leave blank to use it, or write it in your own words.`}
                 rows={4}
                 maxLength={4000}
                 style={{
@@ -3365,7 +3410,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
               />
             </label>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
-              The email always includes the document name and a link to the signing page after your message.
+              Your message opens the email. The document name, the three signing steps, the button, and the link&rsquo;s expiry date follow it.
             </p>
             {contractSendEmailPreview ? (
               <div style={{ marginTop: '0.75rem' }}>
@@ -3375,26 +3420,29 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                 ) : (
                   <>
                     <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem', lineHeight: 1.45 }}>
-                      <span style={{ fontWeight: 600 }}>Subject: </span>
-                      {contractSendEmailPreview.subject}
+                      <div>
+                        <span style={{ fontWeight: 600 }}>From: </span>
+                        {contractSendEmailPreview.fromName}
+                        {contractSendEmailPreview.replyTo ? (
+                          <>
+                            {' '}· <span style={{ fontWeight: 600 }}>Reply-To: </span>
+                            {contractSendEmailPreview.replyTo}
+                          </>
+                        ) : null}
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: 600 }}>Subject: </span>
+                        {contractSendEmailPreview.subject}
+                      </div>
                     </div>
-                    <div
-                      style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 6,
-                        padding: '0.75rem',
-                        maxHeight: 220,
-                        overflow: 'auto',
-                        fontSize: '0.875rem',
-                        lineHeight: 1.5,
-                        background: 'var(--bg-page)',
-                        color: 'var(--text-strong)',
-                      }}
-                      // eslint-disable-next-line react/no-danger -- app-generated contract email-preview HTML; values are escaped by the tested contractSendEmailPreview builder
-                      dangerouslySetInnerHTML={{ __html: contractSendEmailPreview.htmlBody }}
+                    <iframe
+                      title="Contract email preview"
+                      sandbox=""
+                      srcDoc={contractSendEmailPreview.html}
+                      style={{ width: '100%', height: 420, border: '1px solid var(--border)', borderRadius: 6, background: '#f6f3ec' }}
                     />
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
-                      The signing link is generated when you send.
+                      Built by the same code that sends it. The signing link is generated when you send; the link works for 14 days.
                     </p>
                   </>
                 )}

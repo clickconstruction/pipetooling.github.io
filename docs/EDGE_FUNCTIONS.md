@@ -1342,16 +1342,20 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-contract-for-signature
 
-**Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, or **`url`**, mint token, set **`status = sent`**, email Resend link to **`{public_origin}/contract/accept?t=…`**.
+**Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, or **`url`**, mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
 
 **Endpoint**: `POST /functions/v1/send-contract-for-signature`
 
 **Body**: `{ "person_contract_document_id": string, "signer_email": string, "public_origin"?: string, "email_subject"?: string, "email_intro_plain"?: string }`
 
-- **`email_subject`** (optional): Plain-text subject after trim; max **200** characters (server clamps). If empty, default is **`Sign contract: {document_name} ({person_name})`**.
-- **`email_intro_plain`** (optional): Opening message only (plain text; control characters stripped; max **4000** characters, server clamps). If empty, default first line is **`Please review and sign your contract.`** The email always includes the **document name**, **person name**, and **signing link** after the intro (HTML intro is escaped; newlines / blank lines become paragraphs or `<br>`).
+- **`email_subject`** (optional): Plain-text subject after trim; max **200** characters (server clamps). If empty, default is **`Please sign: {document_name} · Click Plumbing and Electrical`** (v2.2773 — the signer's name is no longer in the subject).
+- **`email_intro_plain`** (optional): Opening message only (plain text; control characters stripped; max **4000** characters, server clamps; blank-line paragraphs, single newlines become `<br>`). If empty, the default opening line is used.
 
-**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional)
+**The email** (v2.2773, "Paper"): built by the shared, dependency-free **`_shared/contractSigningEmail.ts`** (`buildContractSigningEmail`), which the app re-exports for the send dialog's preview — one builder, no mirror. The sub portal's identity: CLICK. letterhead, the document name, "Sent to you by <sender>", the opening message, three signing steps, an ink **Read and sign** button, the raw link + expiry date, a note band naming the signer's portal address when they have one, one Spanish line, and a reach line. **From** is `Click Plumbing and Electrical <EMAIL_FROM's address>`; **Reply-To** is the sender (their `users.email`, else the auth email). Logged to `email_send_log` as `contract_for_signature`.
+
+**Portal lookup** (read-only, service role): exactly one non-archived **`people`** row whose `name` equals `person_name`, a **`sub_portal_slugs`** row, and an unrevoked **`sub_portal_links`** row → `https://my.clickplumbing.com/<slug>`; otherwise the band uses the no-portal wording. Nothing is minted to send an email.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional), `EMAIL_FROM` (address only; the display name is the company)
 
 **Gateway**: `verify_jwt = false`; JWT validated with **`auth.getUser`** in function.
 
