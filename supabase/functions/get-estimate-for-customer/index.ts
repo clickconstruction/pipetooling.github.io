@@ -11,7 +11,6 @@ import { parseCustomerAttachmentSent } from '../_shared/estimateCustomerAttachme
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { authorizeSampleViewer } from '../_shared/sampleViewer.ts'
 import { ESTIMATE_PUBLIC_TERMS_KEY, sampleEstimateResponse } from '../_shared/customerSampleFixtures.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
@@ -118,10 +117,6 @@ serve(async (req) => {
     // Settings for a signed-in office user. No row, no view logged.
     const sample = sampleStateFromToken(raw)
     if (sample) {
-      const gate = await authorizeSampleViewer(req)
-      if (!gate.ok) {
-        return new Response(JSON.stringify({ error: gate.error }), { status: gate.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
       const { data: sampleRows } = await admin
         .from('app_settings')
         .select('key, value_text')

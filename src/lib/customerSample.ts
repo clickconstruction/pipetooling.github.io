@@ -13,7 +13,6 @@ export {
   SAMPLE_TOKEN_DONE,
   SAMPLE_TOKEN_GC,
   SAMPLE_CONTRACT,
-  SAMPLE_VIEWER_ROLES,
   sampleStateFromToken,
   ymdPlusDays,
   type SampleLineItem,

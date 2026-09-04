@@ -1,7 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { authorizeSampleViewer } from '../_shared/sampleViewer.ts'
 import { sampleContractResponse } from '../_shared/customerSampleFixtures.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
@@ -39,14 +38,10 @@ serve(async (req) => {
       })
     }
 
-    // What customers see (Settings dev tab): the sample token renders the sample agreement for a
-    // signed-in office user; `sample-done` answers the 409 the thank-you reads. No row, no stamp.
+    // What customers see (Settings dev tab): the sample token renders the hard-coded sample agreement
+    // for anyone with the link; `sample-done` answers the 409 the thank-you reads. No row, no stamp.
     const sample = sampleStateFromToken(raw)
     if (sample) {
-      const gate = await authorizeSampleViewer(req)
-      if (!gate.ok) {
-        return new Response(JSON.stringify({ error: gate.error }), { status: gate.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
       const sr = sampleContractResponse(sample)
       return new Response(JSON.stringify(sr.body), { status: sr.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }

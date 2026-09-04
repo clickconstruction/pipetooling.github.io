@@ -2,7 +2,6 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { authorizeSampleViewer } from '../_shared/sampleViewer.ts'
 import { sampleSubPortalResponse } from '../_shared/customerSampleFixtures.ts'
 import {
   buildSubDocuments,
@@ -69,11 +68,9 @@ serve(async (req) => {
       auth: { persistSession: false },
     })
 
-    // What customers see (Settings dev tab): the sample token renders Sam's Plumbing's statement
-    // for a signed-in office user, over the live pay-run settings. No person, no rows.
+    // What customers see (Settings dev tab): the sample token renders Sam's Plumbing's hard-coded
+    // statement over the live pay-run settings — no sign-in. No person, no rows.
     if (sample) {
-      const gate = await authorizeSampleViewer(req)
-      if (!gate.ok) return jsonResponse({ error: gate.error }, gate.status)
       const { data: sampleSettings } = await admin.from('app_settings').select('key, value_text').in('key', ['sub_pay_run_day', 'sub_pay_explainer'])
       const m = new Map(((sampleSettings ?? []) as Array<{ key: string; value_text: string | null }>).map((r) => [r.key, r.value_text]))
       const day = (m.get('sub_pay_run_day') ?? '').trim() || null
