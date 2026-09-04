@@ -410,7 +410,8 @@ export function ContractLibraryModal({
           padding: '1.25rem',
           borderRadius: 8,
           minWidth: 320,
-          maxWidth: 'min(96vw, 780px)',
+          // The Form Studio places boxes on a rendered Letter page — give it the room (v2.2794).
+          maxWidth: tab === 'forms' ? 'min(98vw, 1400px)' : 'min(96vw, 780px)',
           maxHeight: 'min(90vh, 100%)',
           overflow: 'auto',
           width: '100%',
@@ -513,7 +514,7 @@ export function ContractLibraryModal({
           </div>
         ) : tab === 'scope' ? (
           <ContractScopeLibraryTab onQuickSend={onQuickSend} canEdit />
-        ) : (
+        ) : tab === 'forms' ? null : (
           <div role="tabpanel" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 240px) minmax(0, 1fr)', gap: '1rem' }}>
             <div>
               <button

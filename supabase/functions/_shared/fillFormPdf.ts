@@ -27,7 +27,11 @@ type FieldLike = {
   getName(): string
   acroField: { getWidgets(): WidgetLike[] }
   getMaxLength?(): number | undefined
-  constructor: { name: string }
+  /** Duck-typed kind detection — class names are mangled in pdf-lib's browser build. */
+  setText?: unknown
+  getText?: unknown
+  check?: unknown
+  isChecked?: unknown
 }
 type TextFieldLike = { setText(t: string): void; setFontSize?(n: number): void; getText(): string | undefined; enableReadOnly?(): void }
 type CheckBoxLike = { check(): void; isChecked(): boolean }
@@ -70,8 +74,8 @@ export async function readPdfFields(lib: FormPdfLibLike, bytes: Uint8Array | Arr
     if (!widget) continue
     const r = widget.getRectangle()
     const pageIdx = pages.findIndex((p) => p.ref === widget.P())
-    const ctor = f.constructor.name
-    const kind: PdfFieldInfo['kind'] = ctor === 'PDFTextField' ? 'text' : ctor === 'PDFCheckBox' ? 'checkbox' : 'other'
+    const kind: PdfFieldInfo['kind'] =
+      typeof f.check === 'function' && typeof f.isChecked === 'function' ? 'checkbox' : typeof f.setText === 'function' && typeof f.getText === 'function' ? 'text' : 'other'
     const maxLength = kind === 'text' && typeof f.getMaxLength === 'function' ? f.getMaxLength() : undefined
     fields.push({
       name: f.getName(),
