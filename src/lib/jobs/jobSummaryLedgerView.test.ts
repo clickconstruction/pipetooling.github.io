@@ -76,6 +76,7 @@ describe('prefs + window', () => {
       sortKey: 'pct',
       sortDir: 'desc',
       timelineColorBy: 'status',
+      timelineGranularity: 'daily',
     })
   })
 
