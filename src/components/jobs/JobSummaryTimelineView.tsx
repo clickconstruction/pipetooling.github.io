@@ -96,7 +96,7 @@ function dayLabel(ymd: string): string {
 }
 
 export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerError, statusByJob, todayYmd, colorBy, onColorByChange, granularity, onGranularityChange, canOpenSessionNotes, users, jobs }: Props) {
-  const [definition, setDefinition] = useState<JobRunDefinition>('worked')
+  const [definition, setDefinition] = useState<JobRunDefinition>('status')
   const [gapDays, setGapDays] = useState(7)
   const [sessionNotesDay, setSessionNotesDay] = useState<string | null>(null)
   const [barsOpen, setBarsOpen] = useState(false)
