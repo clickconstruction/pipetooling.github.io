@@ -30,6 +30,7 @@ import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
+import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
 import NewReportModal from '../NewReportModal'
 import type { PinnedItem } from '../../lib/pinnedTabs'
 import type { UserRole } from '../../hooks/useAuth'
@@ -337,7 +338,8 @@ export function DashboardPinnedQuickRow({
 
   // Cleared payments behind conditional lien releases (v2.2582) — office set.
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { owed: lienUnconditionalOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
@@ -587,7 +589,8 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'd22-uncoded') {
               navigate('/bids?tab=pricing&d22audit=1')
             } else if (item.key === 'lien-unconditional') {
-              navigate('/jobs?tab=stages')
+              // The queue (v2.2751): issue each unconditional follow-up from its row.
+              setLienReleaseQueueOpen(true)
             } else if (item.key === 'demand-deadline') {
               navigate('/jobs?tab=stages')
             } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
@@ -651,6 +654,14 @@ export function DashboardPinnedQuickRow({
           onSaved={() => setNewReportModalOpen(false)}
           authUserId={authUserId ?? null}
           userRole={role}
+        />
+      )}
+      {renderModals && (
+        <DashboardLienReleaseQueueModal
+          open={lienReleaseQueueOpen}
+          onClose={() => setLienReleaseQueueOpen(false)}
+          rows={lienReleaseQueue}
+          onChanged={refetchLienReleasesOwed}
         />
       )}
       {renderModals && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (

@@ -89,29 +89,13 @@ export function computeLienUnconditionalOwed(
   releases: JobLienReleaseRow[],
   appliedByInvoiceId: ReadonlyMap<string, number>,
 ): { count: number; total: number; jobIds: string[] } {
-  const byJob = new Map<string, JobLienReleaseRow[]>()
-  for (const r of releases) {
-    const list = byJob.get(r.job_id)
-    if (list) list.push(r)
-    else byJob.set(r.job_id, [r])
-  }
   let count = 0
   let total = 0
   const jobIds: string[] = []
-  for (const [jobId, rows] of byJob) {
-    const invoiceIds = new Set(rows.flatMap((r) => r.invoice_ids ?? []))
-    const payments = [...invoiceIds].map((invoice_id) => ({
-      invoice_id,
-      amount: appliedByInvoiceId.get(invoice_id) ?? 0,
-    })) as JobWithDetails['payments']
-    const owed = lienReleasesOwingUnconditional(rows, { payments, payments_made: 0 }).filter(
-      (r) => (r.invoice_ids ?? []).length > 0,
-    )
-    if (owed.length > 0) {
-      count += owed.length
-      total += owed.reduce((s, r) => s + Number(r.amount ?? 0), 0)
-      jobIds.push(jobId)
-    }
+  for (const [jobId, owed] of owedLienReleasesByJob(releases, appliedByInvoiceId)) {
+    count += owed.length
+    total += owed.reduce((s, r) => s + Number(r.amount ?? 0), 0)
+    jobIds.push(jobId)
   }
   return { count, total, jobIds }
 }
@@ -152,4 +136,137 @@ export function lienReleaseSnapshotToWaiverFields(row: JobLienReleaseRow): LienW
     signerName: s.signerName ?? '',
     signerTitle: s.signerTitle ?? '',
   }
+}
+
+// ---------- The cleared-releases queue (Needs you → "Issue release") ----------
+
+/** The payment columns the queue needs to say what cleared a release. */
+export type LienQueuePayment = Pick<
+  Database['public']['Tables']['jobs_ledger_payments']['Row'],
+  'id' | 'invoice_id' | 'amount' | 'paid_on' | 'payment_type' | 'reference_number' | 'created_at'
+>
+
+/** The job columns the queue shows on each row. */
+export type LienQueueJob = Pick<
+  Database['public']['Tables']['jobs_ledger']['Row'],
+  'id' | 'hcp_number' | 'click_number' | 'job_name' | 'customer_name' | 'job_address'
+>
+
+/**
+ * One queue row: a cleared conditional release that is still owed its
+ * unconditional follow-up, with the job and the payment that cleared it.
+ */
+export type LienUnconditionalQueueRow = {
+  releaseId: string
+  jobId: string
+  /** HCP number, else Click number, else '' — same precedence as the board. */
+  jobNumber: string
+  jobName: string
+  customerName: string
+  jobAddress: string
+  release: JobLienReleaseRow
+  amount: number
+  /** YYYY-MM-DD the conditional release was issued. */
+  issuedOn: string
+  invoiceIds: string[]
+  /** Sum applied to the covered bill lines. */
+  appliedTotal: number
+  /** YYYY-MM-DD of the newest payment on the covered lines — '' when the date is unknown. */
+  clearedOn: string
+  /** "Check #4471", "ACH", "Payment" — from the newest payment on the covered lines. */
+  clearedBy: string
+}
+
+/** Sum of payments by invoice id — the map `computeLienUnconditionalOwed` expects. */
+export function appliedByInvoiceIdFromPayments(
+  payments: ReadonlyArray<Pick<LienQueuePayment, 'invoice_id' | 'amount'>>,
+): Map<string, number> {
+  const applied = new Map<string, number>()
+  for (const p of payments) {
+    if (!p.invoice_id) continue
+    applied.set(p.invoice_id, (applied.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
+  }
+  return applied
+}
+
+/** Owed releases per job — the shared core of the roll-up and the queue. */
+function owedLienReleasesByJob(
+  releases: JobLienReleaseRow[],
+  appliedByInvoiceId: ReadonlyMap<string, number>,
+): Map<string, JobLienReleaseRow[]> {
+  const byJob = new Map<string, JobLienReleaseRow[]>()
+  for (const r of releases) {
+    const list = byJob.get(r.job_id)
+    if (list) list.push(r)
+    else byJob.set(r.job_id, [r])
+  }
+  const out = new Map<string, JobLienReleaseRow[]>()
+  for (const [jobId, rows] of byJob) {
+    const invoiceIds = new Set(rows.flatMap((r) => r.invoice_ids ?? []))
+    const payments = [...invoiceIds].map((invoice_id) => ({
+      invoice_id,
+      amount: appliedByInvoiceId.get(invoice_id) ?? 0,
+    })) as JobWithDetails['payments']
+    const owed = lienReleasesOwingUnconditional(rows, { payments, payments_made: 0 }).filter(
+      (r) => (r.invoice_ids ?? []).length > 0,
+    )
+    if (owed.length > 0) out.set(jobId, owed)
+  }
+  return out
+}
+
+/** "Check #4471" / "ACH" / "Payment" — how a payment row names itself on the queue. */
+export function lienQueuePaymentLabel(p: Pick<LienQueuePayment, 'payment_type' | 'reference_number'>): string {
+  const type = (p.payment_type ?? '').trim()
+  const ref = (p.reference_number ?? '').trim()
+  const typeLabel = type ? type.charAt(0).toUpperCase() + type.slice(1) : ''
+  if (typeLabel && ref) return `${typeLabel} #${ref}`
+  if (typeLabel) return typeLabel
+  if (ref) return `#${ref}`
+  return 'Payment'
+}
+
+/**
+ * Build the queue the Dashboard's "Issue release" action opens: every cleared
+ * conditional release still owed its unconditional version, one row each,
+ * with job identity and the payment that cleared it. Oldest cleared first,
+ * so the longest-waiting customer sits on top. Same owed set as
+ * `computeLienUnconditionalOwed` — the count on the card and the rows in the
+ * queue can never disagree.
+ */
+export function buildLienUnconditionalQueue(
+  releases: JobLienReleaseRow[],
+  payments: ReadonlyArray<LienQueuePayment>,
+  jobsById: ReadonlyMap<string, LienQueueJob>,
+): LienUnconditionalQueueRow[] {
+  const owedByJob = owedLienReleasesByJob(releases, appliedByInvoiceIdFromPayments(payments))
+  const rows: LienUnconditionalQueueRow[] = []
+  for (const [jobId, owed] of owedByJob) {
+    const job = jobsById.get(jobId)
+    for (const r of owed) {
+      const invoiceIds = r.invoice_ids ?? []
+      const covered = new Set(invoiceIds)
+      const matching = payments.filter((p) => p.invoice_id != null && covered.has(p.invoice_id))
+      const dated = matching
+        .map((p) => ({ p, on: (p.paid_on ?? p.created_at ?? '').slice(0, 10) }))
+        .sort((a, b) => a.on.localeCompare(b.on))
+      const newest = dated[dated.length - 1]
+      rows.push({
+        releaseId: r.id,
+        jobId,
+        jobNumber: (job?.hcp_number ?? '').trim() || (job?.click_number ?? '').trim() || '',
+        jobName: (job?.job_name ?? '').trim(),
+        customerName: (job?.customer_name ?? '').trim(),
+        jobAddress: (job?.job_address ?? '').trim(),
+        release: r,
+        amount: Number(r.amount ?? 0),
+        issuedOn: (r.created_at ?? '').slice(0, 10),
+        invoiceIds,
+        appliedTotal: matching.reduce((s, p) => s + Number(p.amount ?? 0), 0),
+        clearedOn: newest?.on ?? '',
+        clearedBy: newest ? lienQueuePaymentLabel(newest.p) : 'Payment',
+      })
+    }
+  }
+  return rows.sort((a, b) => a.clearedOn.localeCompare(b.clearedOn) || a.issuedOn.localeCompare(b.issuedOn))
 }
