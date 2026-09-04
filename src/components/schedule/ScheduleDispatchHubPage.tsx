@@ -32,7 +32,9 @@ import {
   type AddBlockTimelineSegment,
 } from '../../lib/scheduleDispatchAddBlockTimeline'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
-import { executeScheduleDispatchBlockReassign } from '../../lib/scheduleDispatchDragEnd'
+import { executeScheduleDispatchBlockReassign, moveScheduleDispatchBlockTo } from '../../lib/scheduleDispatchDragEnd'
+import { buildMoveDayChips, moveDayLabel } from '../../lib/scheduleDispatchMoveBlock'
+import ScheduleDispatchMoveBlockSheet from './ScheduleDispatchMoveBlockSheet'
 import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirrorInsert'
 import { fetchDispatchSwimLanes, type DispatchSwimLanesData } from '../../lib/dispatchSwimLanes'
 import {
@@ -50,7 +52,7 @@ import { LinkedScheduleGroupModal } from './LinkedScheduleGroupModal'
 import ManagePersonDayModal from '../dispatchMode/ManagePersonDayModal'
 import { ScheduleDispatchHub } from './ScheduleDispatchHub'
 import { ScheduleShareModal } from './ScheduleShareModal'
-import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
+import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import {
   aggregateWeekSummariesByJob,
   blocksToJobWeekSummaries,
@@ -896,6 +898,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     Record<string, { time_start: string; time_end: string }>
   >({})
   const [cardPlacementMode, setCardPlacementMode] = useState<ScheduleDispatchCardPlacementMode | null>(null)
+  // Press-and-hold Move sheet (phone-first): which block, plus save state.
+  const [moveSheetBlock, setMoveSheetBlock] = useState<JobScheduleBlockRow | null>(null)
+  const [moveSheetSaving, setMoveSheetSaving] = useState(false)
+  const [moveSheetError, setMoveSheetError] = useState<string | null>(null)
   /** Two-stage "copy jobs linked to people" flow (toolbar chains button). */
   const [linkedCopyMode, setLinkedCopyMode] = useState<LinkedCopyMode | null>(null)
   /** Office-wide swim lanes (People grid 'lanes' grouping + Dispatch Settings manager). */
@@ -1055,7 +1061,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   }, [stripPlaceJobFromUrl])
 
   const onStartCardPlacement = useCallback(
-    (source: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => {
+    (source: JobScheduleBlockRow, variant: ScheduleDispatchCardPlacementVariant) => {
       if (!canEdit) return
       if (jobId) {
         if (source.job_id !== jobId) return
@@ -1072,6 +1078,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       setLinkedCopyMode(null)
       stripPlaceJobFromUrl()
       setCardPlacementMode({ sourceBlockId: source.id, variant })
+      if (variant === 'move') {
+        showToast('Tap a day above, or any cell, to move this block there. Cancel to keep it where it is.', 'info')
+        return
+      }
       const extra =
         variant === 'linked'
           ? ' Linked copies stay on the same work day as the source.'
@@ -1086,6 +1096,28 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       if (!cardPlacementMode || !authUser?.id) return
       const placementVariant = cardPlacementMode.variant
       const sourceBlockId = cardPlacementMode.sourceBlockId
+
+      if (placementVariant === 'move') {
+        // Tap-to-move: same kernel as a drop, on either grid.
+        const moved = await moveScheduleDispatchBlockTo(
+          sourceBlockId,
+          { workDate, assigneeUserId },
+          {
+            blockById: jobId ? blockById : hubBlockById,
+            canEdit,
+            showToast,
+            onSuccess: async () => {
+              if (jobId) await load()
+              else await loadHub({ quiet: true })
+            },
+          },
+        )
+        if (moved) {
+          setCardPlacementMode(null)
+          showToast(`Moved to ${moveDayLabel(workDate)}.`, 'success')
+        }
+        return
+      }
 
       if (jobId) {
         const source = blockById.get(sourceBlockId)
@@ -1155,6 +1187,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       cardPlacementMode,
       jobId,
       authUser?.id,
+      canEdit,
       blockById,
       hubBlockById,
       blocks,
@@ -1163,6 +1196,34 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       loadHub,
       showToast,
     ],
+  )
+
+  const saveMoveSheet = useCallback(
+    async (target: { workDate: string; assigneeUserId: string }) => {
+      const b = moveSheetBlock
+      if (!b || !canEdit || moveSheetSaving) return
+      setMoveSheetSaving(true)
+      setMoveSheetError(null)
+      const moved = await moveScheduleDispatchBlockTo(b.id, target, {
+        blockById: hubBlockById,
+        canEdit,
+        showToast: (message, type) => {
+          if (type === 'error') setMoveSheetError(message)
+          else showToast(message, type)
+        },
+        onSuccess: async () => {
+          await loadHub({ quiet: true })
+        },
+      })
+      setMoveSheetSaving(false)
+      if (moved) {
+        setMoveSheetBlock(null)
+        const who = target.assigneeUserId !== b.assignee_user_id ? hubPeopleNameById.get(target.assigneeUserId) : null
+        const day = target.workDate !== b.work_date ? moveDayLabel(target.workDate) : null
+        showToast(`Moved to ${[day, who].filter(Boolean).join(' · ')}.`, 'success')
+      }
+    },
+    [moveSheetBlock, canEdit, moveSheetSaving, hubBlockById, loadHub, showToast, hubPeopleNameById],
   )
 
   const onHubAssignJobCellPick = useCallback(
@@ -2192,17 +2253,64 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               gap: '0.5rem',
             }}
           >
-            <span>
-              Adding a <strong>{cardPlacementMode.variant === 'linked' ? 'linked' : 'solo'}</strong> copy from{' '}
-              {placementSourceBlock
-                ? scheduleFormatWindow(placementSourceBlock.time_start, placementSourceBlock.time_end)
-                : 'this block'}
-              . Click a team member&apos;s day cell
-              {cardPlacementMode.variant === 'linked'
-                ? ` on ${placementSourceBlock?.work_date ?? 'that day'}.`
-                : '.'}{' '}
-              Press Esc to cancel.
-            </span>
+            {cardPlacementMode.variant === 'move' ? (
+              <>
+                <span style={{ flexBasis: '100%' }}>
+                  Moving{' '}
+                  <strong>
+                    {placementSourceBlock ? getHubJobDisplayTitle(scheduleBlockAnchorId(placementSourceBlock)) : 'this block'}
+                  </strong>
+                  {placementSourceBlock
+                    ? ` (${scheduleFormatWindow(placementSourceBlock.time_start, placementSourceBlock.time_end)})`
+                    : ''}
+                  . Tap a day, or a person&apos;s cell.
+                </span>
+                {placementSourceBlock ? (
+                  <div role="group" aria-label="Move to day" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+                    {buildMoveDayChips(visibleDayKeys, placementSourceBlock.work_date).map((chip) => (
+                      <button
+                        key={chip.ymd}
+                        type="button"
+                        disabled={chip.isSource}
+                        aria-label={chip.isSource ? `${chip.weekday} ${chip.date} (where it is now)` : `Move to ${chip.weekday} ${chip.date}`}
+                        onClick={() => void onCardPlacementPickCell(placementSourceBlock.assignee_user_id, chip.ymd)}
+                        style={{
+                          font: 'inherit',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          padding: '0.35rem 0.6rem',
+                          borderRadius: 8,
+                          border: chip.isSource ? '1.5px dashed var(--border-strong)' : '1.5px solid var(--text-link)',
+                          background: chip.isSource ? 'transparent' : 'var(--surface)',
+                          color: chip.isSource ? 'var(--text-muted)' : 'var(--text-link)',
+                          cursor: chip.isSource ? 'default' : 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          lineHeight: 1.15,
+                          minWidth: 46,
+                        }}
+                      >
+                        <span>{chip.weekday}</span>
+                        <span style={{ fontSize: '0.66rem', fontWeight: 500 }}>{chip.date}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <span>
+                Adding a <strong>{cardPlacementMode.variant === 'linked' ? 'linked' : 'solo'}</strong> copy from{' '}
+                {placementSourceBlock
+                  ? scheduleFormatWindow(placementSourceBlock.time_start, placementSourceBlock.time_end)
+                  : 'this block'}
+                . Click a team member&apos;s day cell
+                {cardPlacementMode.variant === 'linked'
+                  ? ` on ${placementSourceBlock?.work_date ?? 'that day'}.`
+                  : '.'}{' '}
+                Press Esc to cancel.
+              </span>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -2370,6 +2478,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           onDragEnd={(e) => void handleHubDragEnd(e)}
         >
           <ScheduleDispatchHub
+            onRequestMoveBlock={(b) => {
+              setMoveSheetError(null)
+              setMoveSheetBlock(b)
+            }}
             weekStart={weekStart}
             visibleDayKeys={visibleDayKeys}
             hideWeekend={hideWeekend}
@@ -2647,6 +2759,25 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             canManage={canEdit}
             addPeople={hubAllPeopleRows.map((r) => ({ userId: r.userId, displayName: r.displayName }))}
             onChanged={() => void loadHub({ quiet: true })}
+          />
+        ) : null}
+        {moveSheetBlock ? (
+          <ScheduleDispatchMoveBlockSheet
+            open
+            title={getHubJobDisplayTitle(scheduleBlockAnchorId(moveSheetBlock))}
+            windowLabel={scheduleFormatWindow(moveSheetBlock.time_start, moveSheetBlock.time_end)}
+            sourceYmd={moveSheetBlock.work_date}
+            sourceUserId={moveSheetBlock.assignee_user_id}
+            visibleDayKeys={visibleDayKeys}
+            people={hubAllPeopleRows}
+            saving={moveSheetSaving}
+            error={moveSheetError}
+            onClose={() => {
+              if (moveSheetSaving) return
+              setMoveSheetBlock(null)
+              setMoveSheetError(null)
+            }}
+            onSave={(target) => void saveMoveSheet(target)}
           />
         ) : null}
         {personDayModal ? (

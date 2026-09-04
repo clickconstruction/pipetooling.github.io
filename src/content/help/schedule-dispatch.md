@@ -62,6 +62,17 @@ Each block can carry **job instructions**: click the pencil ("Edit job instructi
 
 Every block has a **dotted grip** on its left edge. **Drag the grip** to any other person or day cell and the block moves there — its times ride along, linked crew copies move together, and you get a warning if the landing spot overlaps something already scheduled. The grip turns red while a special mode (multi-cell add, linked copy) is active or when you don't have edit rights — tap it and it tells you why.
 
+## Move a block from your phone
+
+Dragging needs a mouse-sized grip and a drop target under your finger, so on a phone the board gives you two tap paths instead. Both keep the block's times, move linked crew copies together, and warn about an overlap exactly like a drag.
+
+- **Tap the grip** {{chip:blue|⠿}} on the block. A blue bar appears with this week's days — tap {{button:outline|Fri 9/4}} and the block moves there for the same person, or tap any person's cell on the grid to move it to that person and day. {{button:outline|Cancel}} keeps it where it is.
+- **Press and hold the block** (about half a second, anywhere on the job text) to open the **Move block** sheet: pick a day, any date from the picker, and the person, then hit {{button:blue|Move to Fri 9/4 · Paige}} — the button names exactly what will change. This works on a computer too.
+
+:::example Moving J1004 from Thursday to Friday
+Tap the grip on J1004, then tap **Fri** in the bar. Done — "Moved to Fri 9/4." Need it on Paige's Friday instead? Press and hold J1004, tap **Fri** and **Paige**, then **Move to Fri 9/4 · Paige**.
+:::
+
 ### Rearranging someone's whole day
 
 Every block also carries a small **clock button** tucked into the top-left corner of the instructions button (the chain link sits top-right, − and + along the bottom). Tap it to open **that person's entire day** in one place — every block with times, a mini timeline, and who else is linked on each one:
