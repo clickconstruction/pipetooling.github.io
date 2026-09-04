@@ -50,6 +50,7 @@ export function TakeoffFocusView({
   onSheetView,
   showToast,
   history,
+  focusRequest,
 }: {
   bidId: string
   countRows: BidCountRow[]
@@ -70,6 +71,8 @@ export function TakeoffFocusView({
   showToast: (message: string, kind?: 'success' | 'error' | 'info') => void
   /** From `useTakeoffFixtureHistory` — null while loading. */
   history: Map<string, TakeoffFixtureHistoryRow[]> | null
+  /** A cross-tab row jump: focus this fixture (nonce so the same row can be requested twice). */
+  focusRequest?: { countRowId: string; nonce: number } | null
 }) {
   const [focusId, setFocusId] = useState<string | null>(() => initialFocusId(countRows, coverage.uncostedIds))
   const [remember, setRemember] = useState(false)
@@ -92,6 +95,11 @@ export function TakeoffFocusView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bidId, countRows, lines.length, coverage.costed])
 
+
+  useEffect(() => {
+    if (focusRequest && countRows.some((r) => r.id === focusRequest.countRowId)) setFocusId(focusRequest.countRowId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequest?.nonce])
 
   const bookMatchedIds = useMemo(() => new Set((bookPlan?.fillable ?? []).map((m) => m.countRowId)), [bookPlan])
   const rail = useMemo(() => focusRailItems(countRows, coverage, bookMatchedIds), [countRows, coverage, bookMatchedIds])

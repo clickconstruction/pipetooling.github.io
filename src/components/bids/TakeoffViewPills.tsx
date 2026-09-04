@@ -40,39 +40,6 @@ export function TakeoffViewPills({ view, onChange }: { view: TakeoffView; onChan
   )
 }
 
-/**
- * Stand-in body for a view that is not built yet (the train's PR 0/1 ships
- * the pills first so the switch, the persistence, and Old's untouched body
- * can be verified on their own). Replaced by the real view in its own PR.
- */
-export function TakeoffNewViewPlaceholder({ view, onBackToOld }: { view: Exclude<TakeoffView, 'old'>; onBackToOld: () => void }) {
-  const meta = TAKEOFF_VIEWS.find((v) => v.id === view)
-  return (
-    <div
-      style={{
-        border: '1px dashed var(--border-strong)',
-        borderRadius: 8,
-        padding: '2rem 1.5rem',
-        background: 'var(--bg-subtle)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.5rem',
-        alignItems: 'flex-start',
-      }}
-    >
-      <span style={{ fontSize: '1rem', fontWeight: 700 }}>{meta?.label} is on its way</span>
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{meta?.title}. Until it lands, Old has everything.</span>
-      <button
-        type="button"
-        onClick={onBackToOld}
-        style={{ marginTop: '0.5rem', padding: '0.45rem 0.9rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
-      >
-        Back to Old
-      </button>
-    </div>
-  )
-}
-
 /** New 1 / New 2 are Combined-only (plan decision 1); a By Stage bid keeps its editor in Old. */
 export function TakeoffByStageNotice({ onBackToOld }: { onBackToOld: () => void }) {
   return (

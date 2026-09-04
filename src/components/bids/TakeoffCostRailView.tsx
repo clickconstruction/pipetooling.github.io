@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
 import type { TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
 import type { BookFillPlan } from '../../lib/bids/takeoffBookFill'
@@ -53,6 +53,7 @@ export function TakeoffCostRailView({
   onCopyFromBid,
   onRequestQuotes,
   onFocusView,
+  focusRequest,
 }: {
   countRows: BidCountRow[]
   lines: TakeoffRoughPartLineRow[]
@@ -71,12 +72,17 @@ export function TakeoffCostRailView({
   onCopyFromBid: (candidate: CopyFromBidCandidate) => Promise<void>
   onRequestQuotes: (scope: { lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string }) => void
   onFocusView: () => void
+  /** A cross-tab row jump: show every row so the flash can find it. */
+  focusRequest?: { countRowId: string; nonce: number } | null
 }) {
   const [filter, setFilter] = useState<'all' | 'uncosted' | 'zero'>('all')
   const [busyRow, setBusyRow] = useState<string | null>(null)
   const [pickedBid, setPickedBid] = useState<string | null>(null)
   const [copying, setCopying] = useState(false)
   const [showUnitCosts, setShowUnitCosts] = useState(false)
+  useEffect(() => {
+    if (focusRequest) setFilter('all')
+  }, [focusRequest?.nonce, focusRequest])
 
   const uncosted = useMemo(() => new Set(coverage.uncostedIds), [coverage])
   const zeroRows = useMemo(() => new Set(lines.filter((l) => coverage.zeroPriceLineIds.includes(l.id)).map((l) => l.countRowId)), [lines, coverage])

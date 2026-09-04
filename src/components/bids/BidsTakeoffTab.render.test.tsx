@@ -123,6 +123,54 @@ describe('BidsTakeoffTab render smoke', () => {
     expect((await screen.findAllByText('Takeoff book')).length).toBeGreaterThan(0)
   })
 
+  // The new views (v2.2778 / v2.2781) — pinned so Old's retirement cannot take them down unnoticed.
+  it('mounts New 1 (one fixture at a time) on a Combined bid', async () => {
+    window.localStorage.setItem('bids_takeoff_view_v1', 'new1')
+    try {
+      renderWithProviders(
+        <BidsTakeoffTab
+          {...makeProps({
+            selectedBidForTakeoff: makeBid({ materials_model: 'rough' }),
+            takeoffCountRows: [{ id: 'row-1', bid_id: 'bid-1', fixture: 'WC-1', count: 2, sequence_order: 1 } as unknown as Props['takeoffCountRows'][number]],
+          })}
+        />,
+      )
+      expect(await screen.findByTestId('takeoff-focus-view')).toBeTruthy()
+      expect(screen.getByTestId('takeoff-coverage-strip')).toBeTruthy()
+      expect(screen.queryByText('Apply Matching Fixture Assemblies')).toBeNull()
+    } finally {
+      window.localStorage.removeItem('bids_takeoff_view_v1')
+    }
+  })
+
+  it('mounts New 2 (cost rail) on a Combined bid', async () => {
+    window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
+    try {
+      renderWithProviders(
+        <BidsTakeoffTab
+          {...makeProps({
+            selectedBidForTakeoff: makeBid({ materials_model: 'rough' }),
+            takeoffCountRows: [{ id: 'row-1', bid_id: 'bid-1', fixture: 'WC-1', count: 2, sequence_order: 1 } as unknown as Props['takeoffCountRows'][number]],
+          })}
+        />,
+      )
+      expect(await screen.findByTestId('takeoff-cost-rail-view')).toBeTruthy()
+      expect(screen.getByText('What Pricing sees')).toBeTruthy()
+    } finally {
+      window.localStorage.removeItem('bids_takeoff_view_v1')
+    }
+  })
+
+  it('shows the By Stage notice on New 1 / New 2 for an exact bid', async () => {
+    window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
+    try {
+      renderWithProviders(<BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: 'exact' }) })} />)
+      expect(await screen.findByText('This bid uses By Stage materials')).toBeTruthy()
+    } finally {
+      window.localStorage.removeItem('bids_takeoff_view_v1')
+    }
+  })
+
   it('mounts with a null materials_model (normalizeMaterialsModel default path)', async () => {
     renderWithProviders(
       <BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: null }) })} />,

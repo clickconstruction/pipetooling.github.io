@@ -442,6 +442,14 @@ export function BidsTakeoffTab({
   const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates, takeoffIsRough)
   // New 1 / New 2 substrate (v2.2778): coverage is the same math the Labor tab and Workbench use.
   const takeoffCoverage = useMemo(() => summarizeTakeoffCoverage(takeoffCountRows, takeoffRoughPartLines), [takeoffCountRows, takeoffRoughPartLines])
+  // A cross-tab row jump (Pricing → Takeoffs) must land in New 1 / New 2 too (v2.2782):
+  // New 1 focuses the fixture, New 2 drops its filter, then the flash finds the row.
+  const [viewFocusRequest, setViewFocusRequest] = useState<{ countRowId: string; nonce: number } | null>(null)
+  useEffect(() => {
+    const id = rowJump?.countRowId
+    if (!id || takeoffView === 'old') return
+    setViewFocusRequest((prev) => ({ countRowId: id, nonce: (prev?.nonce ?? 0) + 1 }))
+  }, [rowJump, takeoffView])
   // Shared by New 1 / New 2 (v2.2781): one fixture-history call per bid, only while a new view is up.
   const takeoffHistory = useTakeoffFixtureHistory({
     bidId: takeoffView !== 'old' && takeoffIsRough ? selectedBidForTakeoff?.id ?? null : null,
@@ -1851,58 +1859,7 @@ export function BidsTakeoffTab({
                   ) : null}
                 </div>
               </div>
-              {takeoffView === 'new1' ? (
-                takeoffIsRough ? (
-                  <TakeoffFocusView
-                    bidId={selectedBidForTakeoff.id}
-                    countRows={takeoffCountRows}
-                    lines={takeoffRoughPartLines}
-                    coverage={takeoffCoverage}
-                    bookPlan={bookFillPlan}
-                    bookVersionName={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? null}
-                    materialTemplates={materialTemplates}
-                    renderLinesTable={renderRoughLinesTable}
-                    onApplyBook={applyBookToFixture}
-                    onUseLines={useHistoryLinesOnFixture}
-                    onRemember={rememberFixtureForBookFromRow}
-                    fillButton={bookFillButton}
-                    onFillAll={() => void applyTakeoffBookTemplates()}
-                    onSheetView={() => switchTakeoffView('new2')}
-                    showToast={showToast}
-                    history={takeoffHistory}
-                  />
-                ) : (
-                  <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
-                )
-              ) : takeoffView === 'new2' ? (
-                takeoffIsRough ? (
-                  <TakeoffCostRailView
-                    countRows={takeoffCountRows}
-                    lines={takeoffRoughPartLines}
-                    coverage={takeoffCoverage}
-                    bookPlan={bookFillPlan}
-                    bookVersions={takeoffBookVersions}
-                    selectedBookVersionId={selectedTakeoffBookVersionId}
-                    onSelectBook={(id) => {
-                      setSelectedTakeoffBookVersionId(id)
-                      saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, id)
-                    }}
-                    materialTemplates={materialTemplates}
-                    partNameById={takeoffPartNameById}
-                    history={takeoffHistory}
-                    renderLinesTable={renderRoughLinesTable}
-                    fillButton={bookFillButton}
-                    onFillAll={() => void applyTakeoffBookTemplates()}
-                    onApplyBook={applyBookToFixture}
-                    onCopyFromBid={copyFixturesFromBid}
-                    onRequestQuotes={(scope) => setTakeoffRfqScope(scope)}
-                    onFocusView={() => switchTakeoffView('new1')}
-                  />
-                ) : (
-                  <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
-                )
-              ) : (
-              <>
+              {/* Materials model (By Stage / Combined) — shared by every view (v2.2782): the only door to flip a bid's model. */}
               {(() => {
                 const takeoffMaterialsModel = normalizeMaterialsModel(selectedBidForTakeoff.materials_model)
                 return (
@@ -1955,6 +1912,60 @@ export function BidsTakeoffTab({
                   </div>
                 )
               })()}
+              {takeoffView === 'new1' ? (
+                takeoffIsRough ? (
+                  <TakeoffFocusView
+                    bidId={selectedBidForTakeoff.id}
+                    countRows={takeoffCountRows}
+                    lines={takeoffRoughPartLines}
+                    coverage={takeoffCoverage}
+                    bookPlan={bookFillPlan}
+                    bookVersionName={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? null}
+                    materialTemplates={materialTemplates}
+                    renderLinesTable={renderRoughLinesTable}
+                    onApplyBook={applyBookToFixture}
+                    onUseLines={useHistoryLinesOnFixture}
+                    onRemember={rememberFixtureForBookFromRow}
+                    fillButton={bookFillButton}
+                    onFillAll={() => void applyTakeoffBookTemplates()}
+                    onSheetView={() => switchTakeoffView('new2')}
+                    showToast={showToast}
+                    history={takeoffHistory}
+                    focusRequest={viewFocusRequest}
+                  />
+                ) : (
+                  <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
+                )
+              ) : takeoffView === 'new2' ? (
+                takeoffIsRough ? (
+                  <TakeoffCostRailView
+                    countRows={takeoffCountRows}
+                    lines={takeoffRoughPartLines}
+                    coverage={takeoffCoverage}
+                    bookPlan={bookFillPlan}
+                    bookVersions={takeoffBookVersions}
+                    selectedBookVersionId={selectedTakeoffBookVersionId}
+                    onSelectBook={(id) => {
+                      setSelectedTakeoffBookVersionId(id)
+                      saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, id)
+                    }}
+                    materialTemplates={materialTemplates}
+                    partNameById={takeoffPartNameById}
+                    history={takeoffHistory}
+                    renderLinesTable={renderRoughLinesTable}
+                    fillButton={bookFillButton}
+                    onFillAll={() => void applyTakeoffBookTemplates()}
+                    onApplyBook={applyBookToFixture}
+                    onCopyFromBid={copyFixturesFromBid}
+                    onRequestQuotes={(scope) => setTakeoffRfqScope(scope)}
+                    onFocusView={() => switchTakeoffView('new1')}
+                    focusRequest={viewFocusRequest}
+                  />
+                ) : (
+                  <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
+                )
+              ) : (
+              <>
               {/* Takeoff book selector (left) + Apply button (right), styled like the Labor tab. */}
               <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div>
