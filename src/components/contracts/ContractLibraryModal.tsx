@@ -13,6 +13,7 @@ import {
   type ContractBookTemplate,
   type ContractBookTemplateDocument,
 } from './ContractBookModal'
+import { ContractScopeLibraryTab } from './ContractScopeLibraryTab'
 
 /**
  * Contract library (v2.1411): one modal for the whole contracts library —
@@ -44,7 +45,7 @@ export function ContractLibraryModal({
 }: {
   open: boolean
   onClose: () => void
-  initialTab?: 'documents' | 'packets'
+  initialTab?: 'documents' | 'packets' | 'scope'
   templates: ContractBookTemplate[]
   templateDocuments: ContractBookTemplateDocument[]
   assignments: PacketAssignmentRow[]
@@ -53,7 +54,7 @@ export function ContractLibraryModal({
   onSaved: () => void
   onQuickSend: (documentName: string) => void
 }) {
-  const [tab, setTab] = useState<'documents' | 'packets'>(initialTab)
+  const [tab, setTab] = useState<'documents' | 'packets' | 'scope'>(initialTab)
   const [selectedPacketId, setSelectedPacketId] = useState<string | null>(null)
   const [packetMode, setPacketMode] = useState<'view' | 'new'>('view')
   const [packetName, setPacketName] = useState('')
@@ -362,7 +363,7 @@ export function ContractLibraryModal({
 
   if (!open) return null
 
-  const tabButton = (key: 'documents' | 'packets', label: string, count: number) => (
+  const tabButton = (key: 'documents' | 'packets' | 'scope', label: string, count: number | null) => (
     <button
       type="button"
       role="tab"
@@ -379,7 +380,7 @@ export function ContractLibraryModal({
         cursor: 'pointer',
       }}
     >
-      {label} <span style={{ fontWeight: 500, color: 'var(--text-faint)' }}>{count}</span>
+      {label}{count == null ? null : <> <span style={{ fontWeight: 500, color: 'var(--text-faint)' }}>{count}</span></>}
     </button>
   )
 
@@ -434,6 +435,7 @@ export function ContractLibraryModal({
         <div role="tablist" aria-label="Contract library sections" style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid var(--border)', marginBottom: '1rem' }}>
           {tabButton('documents', 'Documents', libraryDocs.length + adHocDocNames.length)}
           {tabButton('packets', 'Packets', sortedPackets.length)}
+          {tabButton('scope', 'Scope', null)}
         </div>
 
         {tab === 'documents' ? (
@@ -502,6 +504,8 @@ export function ContractLibraryModal({
               </div>
             ) : null}
           </div>
+        ) : tab === 'scope' ? (
+          <ContractScopeLibraryTab onQuickSend={onQuickSend} canEdit />
         ) : (
           <div role="tabpanel" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 240px) minmax(0, 1fr)', gap: '1rem' }}>
             <div>

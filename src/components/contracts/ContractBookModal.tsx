@@ -125,7 +125,7 @@ export function ContractBookModal({
   const [editDocumentName, setEditDocumentName] = useState('')
   const [editBody, setEditBody] = useState('')
   const [editTagsStr, setEditTagsStr] = useState('')
-  const [editAudience, setEditAudience] = useState<'staff' | 'customer'>('staff')
+  const [editAudience, setEditAudience] = useState<'staff' | 'customer' | 'sub'>('staff')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -133,7 +133,7 @@ export function ContractBookModal({
   const [addTemplateId, setAddTemplateId] = useState('')
   const [addDocumentName, setAddDocumentName] = useState('')
   const [addTagsStr, setAddTagsStr] = useState('')
-  const [addAudience, setAddAudience] = useState<'staff' | 'customer'>('staff')
+  const [addAudience, setAddAudience] = useState<'staff' | 'customer' | 'sub'>('staff')
   const [addCanonicalUrl, setAddCanonicalUrl] = useState('')
   const [editCanonicalUrl, setEditCanonicalUrl] = useState('')
   const [addBody, setAddBody] = useState('')
@@ -258,7 +258,7 @@ export function ContractBookModal({
     setEditBody(row.book_body_html ?? '')
     setEditBookFormat(parseContractBodyFormat(row.book_body_format))
     setEditTagsStr((row.tags ?? []).join(', '))
-    setEditAudience(row.audience === 'customer' ? 'customer' : 'staff')
+    setEditAudience(row.audience === 'customer' ? 'customer' : row.audience === 'sub' ? 'sub' : 'staff')
     setEditCanonicalUrl(row.canonical_document_url?.trim() ?? '')
     setEditVersionDate(row.book_version_date ?? '')
     setError(null)
@@ -581,9 +581,10 @@ export function ContractBookModal({
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Audience</label>
-                <select value={addAudience} onChange={(e) => setAddAudience(e.target.value === 'customer' ? 'customer' : 'staff')} disabled={addSaving} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
+                <select value={addAudience} onChange={(e) => setAddAudience(e.target.value === 'customer' ? 'customer' : e.target.value === 'sub' ? 'sub' : 'staff')} disabled={addSaving} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
                   <option value="staff">Staff — packets for people (default)</option>
                   <option value="customer">Customer — job-contract terms (Contract Desk)</option>
+                  <option value="sub">Subs — General Conditions and exhibits every work order references</option>
                 </select>
               </div>
               <div>
@@ -684,6 +685,8 @@ export function ContractBookModal({
                     <span style={badgeStyle}>{tname}</span>
                     {row.audience === 'customer' ? (
                       <span style={{ ...badgeStyle, backgroundColor: 'var(--bg-orange-tint)', color: 'var(--text-orange-800)' }}>Customer contract</span>
+                    ) : row.audience === 'sub' ? (
+                      <span style={{ ...badgeStyle, backgroundColor: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' }}>For subs</span>
                     ) : null}
                     {(row.tags ?? []).map((tag) => (
                       <span key={tag} style={{ ...badgeStyle, backgroundColor: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
@@ -957,9 +960,10 @@ export function ContractBookModal({
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Audience</label>
-                        <select value={editAudience} onChange={(e) => setEditAudience(e.target.value === 'customer' ? 'customer' : 'staff')} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
+                        <select value={editAudience} onChange={(e) => setEditAudience(e.target.value === 'customer' ? 'customer' : e.target.value === 'sub' ? 'sub' : 'staff')} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
                           <option value="staff">Staff — packets for people (default)</option>
                           <option value="customer">Customer — job-contract terms (Contract Desk)</option>
+                          <option value="sub">Subs — General Conditions and exhibits every work order references</option>
                         </select>
                       </div>
                       <div>
