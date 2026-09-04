@@ -100,6 +100,8 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
   const [gapDays, setGapDays] = useState(7)
   const [sessionNotesDay, setSessionNotesDay] = useState<string | null>(null)
   const [barsOpen, setBarsOpen] = useState(false)
+  /** Hover guide (v2.2775): the day column under the cursor, so the click target is named before the click. */
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
   const mergedStatus = useMemo(() => {
     const m = new Map<string, string | null | undefined>()
@@ -247,7 +249,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
         <WeeklyChart weekly={weekly} dayYmds={dayYmds} todayYmd={todayYmd} ticks={ticks} />
       ) : (
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.5rem 0.25rem' }}>
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Jobs running per day, stacked" style={{ display: 'block' }}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Jobs running per day, stacked" style={{ display: 'block' }} onMouseLeave={() => setHoverIdx(null)}>
           {gridVals.map((v) => (
             <g key={v}>
               <line x1={L} x2={W - R} y1={yOf(v)} y2={yOf(v)} stroke="var(--border)" strokeWidth={1} />
@@ -284,6 +286,17 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
               </text>
             </g>
           ) : null}
+          {hoverIdx != null && series.days[hoverIdx] ? (
+            <HoverGuide
+              x={L + hoverIdx * iw}
+              width={Math.max(1, iw)}
+              top={T}
+              height={plotH}
+              plotLeft={L}
+              plotRight={W - R}
+              label={`${dayLabel(series.days[hoverIdx]!.ymd)} · ${series.days[hoverIdx]!.total} running${canOpenSessionNotes && series.days[hoverIdx]!.total > 0 ? ' · click for notes' : ''}`}
+            />
+          ) : null}
           {series.days.map((d, i) => (
             <rect
               key={d.ymd}
@@ -293,6 +306,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
               height={plotH}
               fill="transparent"
               style={{ cursor: canOpenSessionNotes && d.total > 0 ? 'pointer' : 'default' }}
+              onMouseEnter={() => setHoverIdx(i)}
               onClick={() => {
                 if (canOpenSessionNotes && d.total > 0) setSessionNotesDay(d.ymd)
               }}
@@ -393,9 +407,11 @@ function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningW
   const gridVals: number[] = []
   for (let v = 0; v <= maxY; v += gridStep) gridVals.push(v)
   const thisWeekStart = weekly.weeks.find((w) => todayYmd >= w.weekStartYmd && todayYmd <= w.weekEndYmd)?.weekStartYmd
+  const [hoverWeek, setHoverWeek] = useState<number | null>(null)
+  const hw = hoverWeek != null ? weekly.weeks[hoverWeek] : undefined
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.5rem 0.25rem' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Jobs touched per week, carried over under new that week" style={{ display: 'block' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Jobs touched per week, carried over under new that week" style={{ display: 'block' }} onMouseLeave={() => setHoverWeek(null)}>
         {gridVals.map((v) => (
           <g key={v}>
             <line x1={L} x2={W - R} y1={yOf(v)} y2={yOf(v)} stroke="var(--border)" strokeWidth={1} />
@@ -404,7 +420,18 @@ function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningW
             </text>
           </g>
         ))}
-        {weekly.weeks.map((w) => {
+        {hw ? (
+          <HoverGuide
+            x={L + dayIndex(hw.weekStartYmd) * iw}
+            width={Math.max(2, (dayIndex(hw.weekEndYmd) - dayIndex(hw.weekStartYmd) + 1) * iw)}
+            top={T}
+            height={plotH}
+            plotLeft={L}
+            plotRight={W - R}
+            label={`week of ${dayLabel(hw.weekStartYmd)} · ${hw.total} jobs · ${hw.carried} carried · ${hw.fresh} new`}
+          />
+        ) : null}
+        {weekly.weeks.map((w, wi) => {
           const a = dayIndex(w.weekStartYmd)
           const b = dayIndex(w.weekEndYmd)
           const x = L + a * iw + 1
@@ -413,7 +440,7 @@ function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningW
           const totalTop = yOf(w.total)
           const isThis = w.weekStartYmd === thisWeekStart
           return (
-            <g key={w.weekStartYmd}>
+            <g key={w.weekStartYmd} onMouseEnter={() => setHoverWeek(wi)}>
               {w.carried > 0 ? <rect x={x} y={carriedTop} width={width} height={yOf(0) - carriedTop} fill={WEEK_COLOR.carried} opacity={0.85} rx={1.5} /> : null}
               {w.fresh > 0 ? <rect x={x} y={totalTop} width={width} height={carriedTop - totalTop} fill={WEEK_COLOR.fresh} opacity={0.85} rx={1.5} /> : null}
               {isThis ? <rect x={x} y={T} width={width} height={plotH} fill="none" stroke="var(--text-red-700)" strokeDasharray="3 3" /> : null}
@@ -458,5 +485,28 @@ function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningW
         <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>hover a week for its split · a job counts once per week it was running</span>
       </div>
     </div>
+  )
+}
+
+/**
+ * Hover guide (v2.2775): a soft band over the hovered column with thin edge
+ * lines and a label pill naming the date and count, so the reader sees what
+ * they're about to click. Pointer-events off — the transparent hit rects
+ * beneath keep the hover and the click.
+ */
+function HoverGuide({ x, width, top, height, plotLeft, plotRight, label }: { x: number; width: number; top: number; height: number; plotLeft: number; plotRight: number; label: string }) {
+  const pillW = Math.min(plotRight - plotLeft, label.length * 5.6 + 14)
+  const center = x + width / 2
+  const pillX = Math.max(plotLeft, Math.min(plotRight - pillW, center - pillW / 2))
+  return (
+    <g style={{ pointerEvents: 'none' }}>
+      <rect x={x} y={top} width={width} height={height} fill="var(--text-strong)" opacity={0.08} />
+      <line x1={x} x2={x} y1={top} y2={top + height} stroke="var(--text-muted)" strokeWidth={1} opacity={0.55} />
+      <line x1={x + width} x2={x + width} y1={top} y2={top + height} stroke="var(--text-muted)" strokeWidth={1} opacity={0.55} />
+      <rect x={pillX} y={top + 4} width={pillW} height={18} rx={9} fill="var(--surface)" stroke="var(--border-strong)" />
+      <text x={pillX + pillW / 2} y={top + 16.5} textAnchor="middle" fontSize={10.5} fontWeight={600} fill="var(--text)">
+        {label}
+      </text>
+    </g>
   )
 }
