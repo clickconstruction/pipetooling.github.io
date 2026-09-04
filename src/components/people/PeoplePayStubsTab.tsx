@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { formatCurrency } from '../../lib/format'
+import { loadUpcomingClockSessions } from '../../lib/upcomingPayrollSessions'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type { UserRow } from '../../hooks/usePeopleRoster'
@@ -299,18 +300,9 @@ export default function PeoplePayStubsTab({
     let cancelled = false
     void (async () => {
       try {
-        const data = await withSupabaseRetry(
-          async () =>
-            await supabase
-              .from('clock_sessions')
-              .select('user_id, work_date, clocked_in_at, clocked_out_at')
-              .in('user_id', rosterIds)
-              .gte('work_date', fetchStart)
-              .is('rejected_at', null)
-              .is('revoked_at', null),
-          'load upcoming payroll clock sessions',
-        )
-        if (!cancelled) setUpcomingSessions((data ?? []) as UpcomingClockSessionRow[])
+        // Paged (v2.2759): the roster window is past PostgREST's 1,000-row cap.
+        const data = await loadUpcomingClockSessions(supabase, rosterIds, fetchStart)
+        if (!cancelled) setUpcomingSessions(data)
       } catch {
         // Header stays on the open-balance segment only; the table itself is unaffected.
         if (!cancelled) setUpcomingSessions([])

@@ -18,10 +18,10 @@ import { computeEmploymentStubTotals } from '../../lib/employmentPayTotals'
 import {
   buildUpcomingPayrollSummary,
   upcomingPayrollFetchStartYmd,
-  type UpcomingClockSessionRow,
 } from '../../lib/upcomingPayrollSummary'
 import { localYmdFromDate } from '../../lib/payStubPayments'
 import { formatCurrency } from '../../lib/format'
+import { loadUpcomingClockSessions } from '../../lib/upcomingPayrollSessions'
 
 type EmploymentPersonRow = {
   id: string
@@ -357,17 +357,8 @@ export default function PeopleEmploymentTab({
             lastStubEndByPerson: lastEnd ? { [name]: lastEnd } : {},
             todayYmd,
           })
-          const sessions = ((await withSupabaseRetry(
-            async () =>
-              supabase
-                .from('clock_sessions')
-                .select('user_id, work_date, clocked_in_at, clocked_out_at')
-                .eq('user_id', selectedUserId)
-                .gte('work_date', fetchStart)
-                .is('rejected_at', null)
-                .is('revoked_at', null),
-            'employment pay totals upcoming sessions',
-          )) ?? []) as UpcomingClockSessionRow[]
+          // Same paged read as the Dashboard and Pay stubs (v2.2759).
+          const sessions = await loadUpcomingClockSessions(supabase, [selectedUserId], fetchStart)
           upcoming = buildUpcomingPayrollSummary({
             personNames: [name],
             userIdByPersonName: { [name]: selectedUserId },
