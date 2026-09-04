@@ -160,7 +160,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     builtWhere: 'server',
     sender: 'send-contract-for-signature',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'Sign contract: {{doc}} ({{person}}) — subject/intro editable per send',
+    subjectExample: 'Please sign: {{doc}} · Click Plumbing and Electrical — subject/intro editable per send',
   },
   {
     id: 'estimate_accepted_staff',

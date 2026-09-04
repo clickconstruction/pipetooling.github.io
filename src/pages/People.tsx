@@ -4351,6 +4351,7 @@ export default function People() {
           archivedPeople={archivedPeople}
           archivedUserNames={archivedUserNames}
           canDeletePeopleContracts={canDeletePeopleContracts}
+          currentUserId={authUser?.id ?? null}
         />
       )}
 
