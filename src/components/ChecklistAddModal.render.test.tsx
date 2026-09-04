@@ -114,3 +114,15 @@ describe('ChecklistAddModal Send buttons', () => {
     cleanup()
   })
 })
+
+describe('ChecklistAddModal closing', () => {
+  it('ignores a click on the backdrop and closes from the header ×', async () => {
+    const title = await renderOpenModal()
+    fireEvent.change(title, { target: { value: 'Order the 3/4" copper' } })
+    fireEvent.click(screen.getByRole('dialog'))
+    expect((screen.getByPlaceholderText('What needs to be done?') as HTMLTextAreaElement).value).toBe('Order the 3/4" copper')
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull()
+    cleanup()
+  })
+})
