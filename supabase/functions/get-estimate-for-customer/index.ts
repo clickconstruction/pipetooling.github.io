@@ -10,6 +10,9 @@ import { clientIpFromRequest } from '../_shared/logEstimateCustomerEvent.ts'
 import { parseCustomerAttachmentSent } from '../_shared/estimateCustomerAttachment.ts'
 import { normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { authorizeSampleViewer } from '../_shared/sampleViewer.ts'
+import { ESTIMATE_PUBLIC_TERMS_KEY, sampleEstimateResponse } from '../_shared/customerSampleFixtures.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -110,6 +113,23 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     })
+
+    // What customers see (Settings dev tab): the sample token renders the fixture over the live
+    // Settings for a signed-in office user. No row, no view logged.
+    const sample = sampleStateFromToken(raw)
+    if (sample) {
+      const gate = await authorizeSampleViewer(req)
+      if (!gate.ok) {
+        return new Response(JSON.stringify({ error: gate.error }), { status: gate.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      const { data: sampleRows } = await admin
+        .from('app_settings')
+        .select('key, value_text')
+        .in('key', [...ESTIMATE_EXPERIENCE_APP_KEY_LIST, ESTIMATE_PUBLIC_TERMS_KEY])
+      const r = sampleEstimateResponse((sampleRows ?? []) as { key: string; value_text: string | null }[], sample, todayYmdInAppTz())
+      return new Response(JSON.stringify(r.body), { status: r.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     const tokenHash = await sha256HexFromString(raw)
 
     const { data: row, error } = await admin

@@ -37,6 +37,7 @@ import SettingsAccountSchedulingTab from '../components/settings/SettingsAccount
 import SettingsMyEmailScheduleSection from '../components/settings/SettingsMyEmailScheduleSection'
 import SettingsEmailStreamsSection from '../components/settings/SettingsEmailStreamsSection'
 import { SettingsUsageTab } from '../components/settings/SettingsUsageTab'
+import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhatCustomersSeeTab'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
@@ -1418,6 +1419,10 @@ export default function Settings() {
 
       <SettingsGroup id="settings-usage" hidden={activeSettingsTab !== 'settings-usage'} title={settingsGroupTitle('settings-usage', 'Usage')} description={settingsGroupHint('settings-usage')}>
         {activeSettingsTab === 'settings-usage' && myRole === 'dev' && <SettingsUsageTab />}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-what-customers-see" hidden={activeSettingsTab !== 'settings-what-customers-see'} title={settingsGroupTitle('settings-what-customers-see', 'What customers see')} description={settingsGroupHint('settings-what-customers-see')}>
+        {activeSettingsTab === 'settings-what-customers-see' && myRole === 'dev' && <SettingsWhatCustomersSeeTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>

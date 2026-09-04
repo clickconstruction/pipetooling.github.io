@@ -9,6 +9,10 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { publicEventGate } from '../_shared/publicEventThrottle.ts'
+import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { authorizeSampleViewer } from '../_shared/sampleViewer.ts'
+import { BID_COVER_LETTER_EXCLUSIONS_KEY, BID_COVER_LETTER_TERMS_KEY, sampleBidRoomResponse } from '../_shared/customerSampleFixtures.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,6 +82,16 @@ serve(async (req) => {
     if (req.method !== 'GET') return json({ error: 'Method not allowed' }, 405)
     const raw = token as string | undefined
     if (!raw) return json({ error: 'Missing token' }, 400)
+
+    // What customers see (Settings dev tab): the sample token renders the fixture over the live
+    // cover-letter defaults for a signed-in office user. No room, no room_view logged.
+    const sample = sampleStateFromToken(raw)
+    if (sample) {
+      const gate = await authorizeSampleViewer(req)
+      if (!gate.ok) return json({ error: gate.error }, gate.status)
+      const { data: rows } = await admin.from('app_settings').select('key, value_text').in('key', [BID_COVER_LETTER_TERMS_KEY, BID_COVER_LETTER_EXCLUSIONS_KEY])
+      return json(sampleBidRoomResponse((rows ?? []) as { key: string; value_text: string | null }[], sample, new Date().toISOString(), todayYmdInAppTz()))
+    }
 
     const { data: room } = await admin
       .from('bid_proposal_rooms')

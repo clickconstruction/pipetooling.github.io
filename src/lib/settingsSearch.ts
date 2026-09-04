@@ -26,6 +26,8 @@ export type SettingsSearchEntry = {
 }
 
 export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
+  // What customers see (v2.2758)
+  { label: 'What customers see', keywords: ['customer view', 'sample customer', 'estimate email preview', 'bid room preview', 'portal preview', 'journeys', 'what the customer sees'], tabId: 'settings-what-customers-see' },
   // Notifications
   { label: 'Push notifications', keywords: ['alerts', 'phone notifications', 'enable notifications'], tabId: 'settings-recent-push' },
   { label: 'Recent emails sent', keywords: ['email log', 'sent mail'], tabId: 'settings-recent-push', anchorId: 'settings-recent-emails' },

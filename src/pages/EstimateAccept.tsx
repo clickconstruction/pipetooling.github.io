@@ -1,4 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
@@ -45,6 +47,8 @@ function PublicEstimateShell({ children }: { children: ReactNode }) {
 export default function EstimateAccept() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
+  // What customers see (v2.2758): the sample token renders the fixture for a signed-in office user.
+  const sample = sampleStateFromToken(token)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -77,7 +81,7 @@ export default function EstimateAccept() {
           `${supabaseUrl}/functions/v1/get-estimate-for-customer?token=${encodeURIComponent(token)}`,
           {
             signal: ac.signal,
-            headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+            headers: await publicFunctionHeaders(sample),
           },
         )
         const json = (await res.json()) as {
@@ -144,12 +148,17 @@ export default function EstimateAccept() {
     }
     void load()
     return () => ac.abort()
-  }, [token])
+  }, [token, sample])
 
   async function submitAccept(payload: EstimateAcceptSubmitPayload) {
     if (!token || !estimate) return
     if (!agreed) {
       setError('Please confirm that you agree to the terms.')
+      return
+    }
+    if (sample) {
+      // Nothing is saved in sample mode — the walkthrough just moves on to the thank-you.
+      setDone(true)
       return
     }
     setSubmitting(true)
@@ -203,6 +212,7 @@ export default function EstimateAccept() {
   if (done || alreadyAccepted) {
     return (
       <PublicEstimateShell>
+        {sample ? <SampleModeBanner /> : null}
         <div className="auth-public-landing__estimate-thankyou-inner">
           <EstimateCustomerThankYou title={experience.thankYouTitle} body={experience.thankYouBody} />
         </div>
@@ -223,6 +233,7 @@ export default function EstimateAccept() {
 
   return (
     <PublicEstimateShell>
+      {sample ? <SampleModeBanner /> : null}
       <EstimateAcceptBody
         variant="interactive"
         estimate={{
@@ -247,6 +258,7 @@ export default function EstimateAccept() {
         selectedOptionKey={selectedOptionKey}
         onSelectOption={(key) => {
           setSelectedOptionKey(key)
+          if (sample) return
           // Phase 3 (v2.2462): tell the office which options the customer weighed — the
           // activity feed's "Viewed option — Tankless upgrade" rows. Fire-and-forget;
           // browsing must never depend on it.

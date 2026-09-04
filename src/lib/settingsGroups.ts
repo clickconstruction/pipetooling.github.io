@@ -62,6 +62,9 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev') {
     groups.push({ id: 'settings-emails', label: 'Emails & reports', zone: 'company', pagesHint: 'The scheduled email streams the office receives.' })
   }
+  if (r === 'dev') {
+    groups.push({ id: 'settings-what-customers-see', label: 'What customers see', zone: 'company', pagesHint: 'Every email and page a customer, GC or sub gets — rendered live with sample data, in the order they meet them.' })
+  }
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r) || r === 'estimator') {
     groups.push({ id: 'settings-company', label: 'Company', zone: 'company', pagesHint: 'Company documents, the office address, and the Map.' })
   }
