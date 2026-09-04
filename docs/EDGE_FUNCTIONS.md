@@ -119,6 +119,7 @@ when_to_read:
    - [accept-contract](#accept-contract)
    - [send-contract-for-signature](#send-contract-for-signature)
    - [get-contract-signing-link-for-self](#get-contract-signing-link-for-self)
+   - [open-contract-form-pdf](#open-contract-form-pdf)
    - [check-estimate-attachment-url](#check-estimate-attachment-url)
    - [resolve-ip-geolocation](#resolve-ip-geolocation)
    - [street-view-preview](#street-view-preview)
@@ -1375,6 +1376,22 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Gateway**: `verify_jwt = false`; JWT validated with **`auth.getUser`** in function.
 
 **Optional**: `ESTIMATE_PUBLIC_ORIGIN` if link base should not come from the client.
+
+---
+
+### open-contract-form-pdf
+
+**Purpose**: Mint a short-lived link to a **signed form PDF** (Contract Forms, v2.2798) — the flattened copy in the private `contract-form-pdfs` bucket, the only place a form's sensitive answers exist — for a staff member allowed to see it, and log the open.
+
+**Endpoint**: `POST /functions/v1/open-contract-form-pdf`
+
+**Body**: `{ "person_contract_document_id": string }`
+
+**Gate**: JWT validated in the body (`auth.getUser`; `verify_jwt = false` in `config.toml`). Caller must be `dev`, `controller`, or a `master_technician` with a `pay_approved_masters` row → else **403** `code: forbidden`. The row is then read through the caller's own client (contracts RLS) → **404** when unreadable, unsigned, or without `form_pdf_storage_path`.
+
+**Success** (**200**): `{ "ok": true, "url": string, "expires_in": 300 }` — a 5-minute signed URL with a download filename `<document_name> - <person_name>.pdf`. Inserts `contract_form_pdf_opens (person_contract_document_id, opened_by)`; a logging failure is logged, not fatal.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 
 ---
 

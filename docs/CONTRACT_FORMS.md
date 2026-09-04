@@ -147,4 +147,5 @@ create policy "Devs manage contract form templates" on storage.objects
 | `supabase/migrations/20260904230000_contract_form_templates_doc_type.sql` | Form doc type → person copies (PR 2) |
 | `src/components/contracts/formStudio/*` | Form Studio (PR 2) |
 | `src/components/contracts/formFill/*`, `src/lib/forms/formFillState.ts` | Signer's fill-on-the-document mode (PR 3) |
+| `src/lib/forms/formRecord.ts`, `PersonContractSignedRecordModal.tsx`, `supabase/functions/open-contract-form-pdf/` | Staff record + gated, logged PDF open (PR 4) |
 | `src/lib/forms/formStudioState.ts`, `src/lib/forms/formTemplateRepo.ts` | Studio kernel + data access (PR 2) |

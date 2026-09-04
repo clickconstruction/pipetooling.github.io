@@ -15,6 +15,8 @@ export type PaperworkDocInput = {
   contract_lineage_id: string | null
   lineage_version: number | null
   doc_type?: string | null
+  /** Contract Forms (v2.2798): the signer filled a form; the signed PDF holds the answers. */
+  form_template_id?: string | null
 }
 
 export type PaperworkState = 'unsent' | 'sent' | 'signed' | 'expiring' | 'expired'
@@ -55,6 +57,7 @@ export function buildPaperworkLines(docs: readonly PaperworkDocInput[], todayYmd
         detail = `expires in ${days} day${days === 1 ? '' : 's'}`
       }
     }
+    if (d.form_template_id) detail = `${detail} · form`
     lines.push({ id: d.id, name: d.document_name, state, detail, nag: Boolean(d.dashboard_prompt_after_clock_in) })
   }
   const order: Record<PaperworkState, number> = { expired: 0, unsent: 1, expiring: 2, sent: 3, signed: 4 }

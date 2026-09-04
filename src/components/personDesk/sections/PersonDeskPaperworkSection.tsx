@@ -39,7 +39,7 @@ export function PersonDeskPaperworkSection({ payName, personId, viewer, changeKe
       const [d, t, td, a] = await Promise.all([
         supabase
           .from('person_contract_documents')
-          .select('id, person_name, person_id, document_name, status, signed_at, sent_at, expires_at, dashboard_prompt_after_clock_in, contract_lineage_id, lineage_version, signing_body_html, doc_type')
+          .select('id, person_name, person_id, document_name, status, signed_at, sent_at, expires_at, dashboard_prompt_after_clock_in, contract_lineage_id, lineage_version, signing_body_html, doc_type, form_template_id')
           .or(orParts.join(',')),
         supabase.from('contract_templates').select('id, name').order('sequence_order'),
         supabase.from('contract_template_documents').select('id, template_id, document_name, book_body_html, book_body_format, canonical_document_url'),
