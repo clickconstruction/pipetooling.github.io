@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { fetchPricesForParts } from '../lib/materials/partPrices'
+import { loadPartsCatalog } from '../lib/materials/partsCatalog'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -306,16 +307,9 @@ export function useMaterialsCatalog({
     setError(null)
     
     try {
-      // Fetch all part IDs first
-      const { data: allPartsData, error: partsError } = await supabase
-        .from('material_parts')
-        .select('*, part_types(*)')
-        .eq('service_type_id', serviceType)
-        .order('name')
-      
-      if (partsError) throw partsError
-      
-      const rawPartsList = (allPartsData as any[]) ?? []
+      // Every part, paged past PostgREST's 1,000-row cap (v2.2755) — the
+      // assembly/template pickers read this list and Plumbing is past the cap.
+      const rawPartsList = await loadPartsCatalog<MaterialPart & { part_types?: unknown }>(supabase, serviceType)
       const partsList = rawPartsList.map(p => ({
         ...p,
         part_type: p.part_types
