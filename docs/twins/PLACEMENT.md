@@ -5,13 +5,14 @@ file: docs/twins/PLACEMENT.md
 type: Harness procedure / Skill
 purpose: How an agent turns a substrate + plan-set PDF into a placed, imported CountTooling takeoff — the counters-first procedure, coordinate math, self-checks, and tooling. Wave 3.4 of ESTIMATOR_TWIN_PIPELINE_PLAN.md. The vision model IS the engine; this file is its operating manual (EXTRACTOR.md's sibling) Served by twin-mcp as get_placement_guide (bundled with CALIBRATION.md + EXTRACTOR.md).
 audience: AI Agents, harness operators, Developers
-last_updated: 2026-09-01
+last_updated: 2026-09-04
 key_sections:
   - Tooling
   - The counters-first procedure
   - Coordinate math
   - Self-checks (counters prove out)
   - Import & review
+  - Ask like a junior estimator, not like a model
   - Density tiers pick the pricing posture
   - The small-TI rule
   - Footage is traced by default
@@ -347,6 +348,54 @@ Review the assembler's itemized allowance print before import.
   bids (source named in the ledger note when added). Entry names MATCH the
   tooling-row names exactly (`ft of 1/2" Cold Water`, `3" Sanitary Waste ·
   Tee`) so Workbench matching lines up without aliases.
+- **Site/civil is never ours (audit 2026-09-04, b411)**: sewer and water
+  services, taps and saddles, meters, yard cleanouts, tie-ins to the public
+  main, and any interceptor set on the site sewer are civil scope — EXCLUDED
+  from counts and named as an exclusion in the letter, even when the set
+  carries the civil sheets. The building stops at 5 ft outside the slab. b411
+  rowed ~$14k of site work against a reference that bids none of it ("we do
+  not bid civil/site").
+- **Scheduled = counted (b406)**: a tag on the fixture schedule is a floor.
+  When you cannot find its symbol, carry the scheduled quantity anyway ("idk i
+  just added them in the bid"), flag it with an `RFI:` note — never zero a
+  scheduled item. And read the WHOLE schedule before calling a tag missing:
+  HR-1 on b405 was on it ("it is in the fixture schedule, look again").
+- **Ambiguous ownership on the plumbing sheets → in scope (b407)**: an RPZ, a
+  landlord-boundary device, or a keyed item drawn on the P-sheets with unclear
+  ownership is counted and priced ("assume it is in the scope"); the letter
+  names the assumption. Exclusion is for what a note assigns to others, not
+  for what the plans leave unlabeled.
+- **Sawcut is excluded by default (b408)**: slab fit-outs sometimes need it,
+  but it is normally an exclusion line, not a row. Drop the `ft of Sawcut &
+  Patch` row; write the exclusion.
+- **One plan set, two packages → ask (b408)**: when a set serves core/shell AND
+  a tenant/architectural package, nothing on the drawings tells you the split
+  — "the scope was communicated via phone". Look for a sibling bid on the same
+  address (`get_work_state`, the board search); if one exists, `ask_question`
+  which package is yours BEFORE counting, and state the assumed boundary in
+  the lock note. BT-5 priced $114k of the sibling's scope.
+
+## Ask like a junior estimator, not like a model (audit 2026-09-04)
+
+Wendi answered 16 threads in one pass; the ones she could not use were the
+ones written in twin vocabulary — "letter uplift", "priced under your model",
+"my PEX/PVC-tier draft", "the sweep rule" — and came back "idk what this means
+but youre way too low" / "idk i just added them in the bid". Rules:
+
+- **Plain trade words only.** No tier, model, sweep, uplift, census, developed
+  length, allowance row. Say what is on the sheet and what you did with it.
+- **One ask per question**, answerable with yes/no, a number, or
+  which-of-these. "Do you count the 2" ball valves from the riser or from the
+  plan?" — not a paragraph carrying three sub-questions.
+- **Anchor every one**: `sheet_ref` + a one-line `context` (v2.2535). None of
+  the questions she answered on 2026-09-04 carried an anchor; she hunted for
+  each.
+- **Never ask her to grade your number** ("is ~$250k the right
+  neighborhood?"). The scorecard grades numbers; she answers about the plans
+  and her practice. Ask what she carried and why.
+- **A standing rule goes to doctrine the same day** — "I measure every 1/2in
+  home run", "we do not bid civil/site", "SELF PERFORM" are rules, not bid
+  answers (FEEDBACK_LOOP.md's promotion rule).
 
 ## The pricing model (BT-2 doctrine, 2026-08-30 — mirrored from b376)
 
@@ -362,13 +411,31 @@ keyed b376 rows; ledger note on b405). The shape, so future mirrors keep it:
   price ($130–160/ft); copper water rides its size curve ($22–90/ft). Never
   price buried 4" at the above-slab CI rate — that single row was the BT-2
   price miss ($204/ft vs her $35).
-- **Every bid carries a `Travel & Rentals (per mile from office)` row** with
-  count = `bids.distance_from_office` (book price $80/mi; calibration: her flat
-  $20,000 at 249 mi). Name the distance source in the letter assumptions.
+- **Travel, rentals, and incidentals are HUMAN lines (audit 2026-09-04, b418 +
+  b408)**: the reference rows them as one flat `RENTALS/TRAVEL` line priced by
+  judgment per job — never per mile. The $80/mi book rate (calibrated once:
+  b376, $20k at 249 mi on a $347k job) put $23,464 of travel on a ~$49k
+  Brownsville proto at 293 mi — "charging 50% for traveling is actually crazy
+  work". Until Wendi's bands are recorded (PENDING — the next audit question:
+  what she carries at ~50 / 100 / 200 / 300 mi on a small proto vs a $300k
+  job), carry ONE `Travel & Rentals` row, count 1, priced at the LESSER of
+  $80 × miles and 10% of the building subtotal, and state the building total
+  and the travel line separately in the lock note so the scorecard reads both
+  ways. Incidentals / DSC rows: never — "assessed by humans depending on job".
+- **The schedule's model IS the model — never upsize, and sanity-check the
+  device price (b411 + b418)**: the plan called an OS-25 oil interceptor; the
+  robot rowed an OS-100 at $9,500 ("wrong item and wrong price"). An OS-25 +
+  riser runs ~$1,500; an OS-75 + riser + H-20 cover $4–5k ("should be 4-5
+  thousand") — the robot book's $6,270 / $8,000 / $9,500 interceptor entries
+  are wrong and get re-mirrored at the digest. Rule: any single device priced
+  above ~10% of the building subtotal gets checked against the researched
+  part price (Product price research, below) before it stays.
 - **Demo fixtures price at `Demo Fixture (remove/cap)`** ($500/ea) — the PD-*
   sheet-coverage doctrine feeds this row.
-- **Med gas stays a certified-sub allowance** — outlets/fittings/manifold
-  entries are basis numbers, not self-perform prices; say so in the letter.
+- **Med gas is SELF-PERFORMED** (b405 answer, 2026-09-04: "SELF PERFORM") —
+  price outlets, piping, fittings, manifold, and alarms as installed rows from
+  the robot book, not as a sub allowance; the letter no longer says "by
+  certified sub". (Supersedes the BT-2 allowance rule.)
 - Letter uplift over raw rows is the OWNER's margin decision (b376 sent at
   ~1.84× rows) — the twin never applies it; the draft stops at book-priced rows.
 
@@ -505,6 +572,15 @@ hierarchy:
 2. Where the set is full-raster (Class C) and tracing is impossible, model
    footage and apply the **1.6× correction** — and say so in the import note.
 
+Audit 2026-09-04 confirmations (b405/b407/b408/b409): she **measures every
+1/2" home run** (b408: 719 ft vs the twin's 48 — no per-fixture length rule
+exists); branch mains below the 4" spine default to **3"** by rule of thumb
+(b407 — she sizes by rule, not by ISO label, and says she was off on that
+one); b409's four `[verdict:teach]` rows were all footage the model never
+traced (3" waste 224 ft / $34k, 1" water 118 ft, 2" waste 120 vs 337 ft, 2"
+45s ×13). Every **connect-to-existing / POC carries 10 ft of pipe** at that
+size — "I always drop 10ft just in case" (b405).
+
 ## Vent is riser-shaped, not plan-shaped (BT-19 doctrine, 2026-09-01)
 
 The Hunter Rd triple put twin vent ratios at 0.17×/0.28×/0.54× even with the
@@ -583,6 +659,12 @@ Rules the backtest/shadow scorecard MUST apply before a delta means anything:
   buildings lost to <0.5× the human number; the twin at −20..−34% was still
   ~1.5× the winner. A uniform gap of that shape is a market-posture flag for
   the owner, not a takeoff or tier error.
+- **Under a lost-on-price number is LIGHT, not competitive (b407 correction,
+  2026-09-04)**: BT-4 called $247k vs her $281k loss "inside the competitive
+  band"; her answer was "no, priced too light". A price she lost on is still
+  the number she would defend; landing under it means the takeoff or tiers
+  are short. Report "under the human" as a miss every time — only a bid tab
+  or a loss note bounds the market below her.
 - **Check a reused shell's ledger BEFORE working it** (BT-4/BT-5 rediscovery):
   `open_backtest` with `reused: true` may hand back a shell that already ran
   through STG-6 — read `get_work_state`'s audit ledger first. A scored

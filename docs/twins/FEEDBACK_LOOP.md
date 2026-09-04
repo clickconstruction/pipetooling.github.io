@@ -1,6 +1,6 @@
 ---
 file: docs/twins/FEEDBACK_LOOP.md
-last_updated: 2026-09-01
+last_updated: 2026-09-04
 purpose: The audit loop — how human estimator feedback on twin bids reaches the agent through the Audits tab, and what the agent must do with it. Read at the START of any twin/backtest session, alongside get_answers.
 ---
 
@@ -28,12 +28,33 @@ count. Each card:
 - **Finish audit** → the `audit-finish` edge function: PT status `done` + ledger stamp
   + the twin's CT project flipped to `reviewed` over the bridge
   (`manage-user set_twin_project_review`; fail-soft). Reopen reverses both.
+- **Sealed shadows** are held by the tab only when `bids.twin_source_bid_id` is
+  set (`open_shadow` stamps it since v2.2543). The two shadows opened before
+  that deploy on 2026-08-31 lacked the pairing, and b418 (Take 5 Brownsville —
+  live, unsent) was audited in the open on 2026-09-04: the auditor saw the
+  robot's rows before her own number existed. A pairing backfill for the six
+  unstamped robot bids is prepared (v2.2795 fragment) and awaits the owner;
+  read b418's eventual scorecard as **auditor-exposed**. On a shadow, confirm
+  the pairing via `get_work_state` before you heartbeat `done`.
 - **Receipts** render indented under each note: 🤖 → "Learned: …" with the
   digest-outcome label. When every note has one, the audit is `digested` and the card
   moves to collapsed history.
 
 ## What the twin does at pipeline end (per bid)
 
+0. **Pre-flight — never open an audit the tab cannot price.** The Audits tab
+   computes "draft $" from the bid's PipeTooling count rows × their book
+   assignments (`computeAuditDraftTotal`); a bid whose counts live only in
+   CountTooling and the lock note reads **draft $0 · −100% vs ours**. On
+   2026-09-04 seven audits sat in the queue that way (b422, b424–b429 — the
+   BT-16..19 slate, whose estimates were written into the lock notes and never
+   pasted) and drew the note "we will not do this for free wtf". Before the
+   audit exists: (a) STG-5 is done — counts pasted into the Counts tab and every
+   row book-assigned, so the tab's total equals your lock; (b) `self_assessment`
+   is written (none of the first 22 audits carried one); (c) every question is
+   anchored and in plain trade words (PLACEMENT.md → "Ask like a junior
+   estimator"). `ct_finish_takeoff` opens the audit row at STG-3 for you, so run
+   STG-5 in the same session, before you heartbeat `done`.
 1. Mint a CT view link for its project: CT RPC
    `create_view_link(p_project_id, p_name, p_expires_at: null)` with the twin's CT JWT.
 2. Insert the `bid_audits` row (`status='pending'`, `ct_project_id`, `ct_view_url`) and
@@ -111,12 +132,19 @@ discarding it:
 - Mismatch vs a sparse/flagged reference → digest bucket `reference_quality`
   (above), not doctrine.
 
-## Current state (2026-09-01)
+## Current state (2026-09-04)
 
-- The loop is at volume: **24 audits pending** (the program bottleneck — the Audits
-  tab badge, Scoreboard pill, and the Dashboard Needs-you item v2.2573 all carry the
-  count), 4 sealed shadows awaiting score, 8 scored runs on record. BT-2 (b405, MPH
-  Casa Linda) is still the oldest open card — 4 questions unanswered.
+- **Wendi's first full audit pass landed 2026-09-04 (17:51–18:57)**: seven audits
+  finished (b405, b418, b407, b408, b406, b409, b411) — 16 answers, 6 row notes, 4
+  one-tap `[verdict:teach]` rows — plus one note on b425. Every note is undigested;
+  the doctrine she taught is banked in PLACEMENT.md (site/civil never ours,
+  scheduled = counted, ambiguous device → in scope, sawcut excluded, two packages →
+  ask, travel/rentals are human lines, interceptor prices, med gas self-performed,
+  every 1/2" home run measured, 10 ft per POC, under-a-loss is light, plain-word
+  questions). The twin's next session posts the receipts and re-mirrors the
+  interceptor and travel book entries.
+- Still pending: 15 audits, seven of them the $0 BT-16..19 cards (STG-5 owed), the
+  sealed b419/b420 shadows, and the b422 wage-tier question.
 - Two axes are BLOCKED pending audit answers: institutional (district wage-tier
   multiplier, on the b422 audit) and proto/auto-service (untraced-footage / site-scope
   question).

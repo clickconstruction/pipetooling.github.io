@@ -5,7 +5,7 @@ file: HANDOFF.md
 type: Handoff / State of the program
 purpose: Everything a new operator needs to take over the digital-twins program — what is live, the fleet roadmap and its gates, how to run it day-to-day, where the secrets live, and the prioritized open threads
 audience: The incoming twins operator (a dev), AI agents
-last_updated: 2026-09-01
+last_updated: 2026-09-04
 key_sections:
   - name: "What is live today"
   - name: "The fleet roadmap & gates"
@@ -82,7 +82,24 @@ session artifacts; this is its doc home):
   practice to a draft the owner prices from — the two human gates (takeoff review;
   price-and-send) never delegate.
 
-## Where the program stands (2026-09-01)
+## Where the program stands (2026-09-04)
+
+- **The audit loop closed for the first time.** Wendi finished seven audits on
+  2026-09-04 (b405–b409, b411, b418): 16 answers, 6 row notes, 4 one-tap teach
+  verdicts. Every lesson is banked in `PLACEMENT.md` (scope-call standards, "Ask like
+  a junior estimator", pricing model, footage, reference protocol) and the twin's
+  next session owes the receipts + book re-mirrors (`FEEDBACK_LOOP.md` → Current
+  state). Three of her answers were "idk" — to questions written in twin vocabulary.
+- **Seven audits were unpriceable**: the BT-16..19 slate (b422, b424–b429) opened
+  audits with no PipeTooling count rows, so the tab showed draft $0 / −100% and drew
+  a "we will not do this for free" note. STG-5 is now a pre-flight gate
+  (`FEEDBACK_LOOP.md` step 0); those seven still owe their paste.
+- **A shadow was audited unsealed**: b418 and b419 were opened before v2.2543 stamped
+  `twin_source_bid_id`, so the tab could not hold them; Wendi audited b418 (live, unsent
+  Take 5 Brownsville) in the open. A six-row pairing backfill is prepared in the
+  v2.2795 fragment and awaits the owner's run; b418's scorecard is auditor-exposed.
+
+### As of 2026-09-01
 
 - Fleet: `twin-estimator-1` at **rung 2** (fenced writer), CT seat linked. Missions
   M1–M3 PASS, M4/M6 series through M6-v8 + M5/M5b run (see `missions/estimator.md`
@@ -129,17 +146,19 @@ Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
 
 ## Open threads, prioritized
 
-1. **Audit throughput** — 24 pending is the program's limiting reagent; every blocked
-   axis and undigested note waits on it. (The cockpit's one-tap verdicts exist; the
-   backlog is human hours.)
-2. **Unblock the two blocked axes** — answer the b422 wage-tier multiplier question
+1. **Digest Wendi's 2026-09-04 pass** — 22 undigested notes across seven done audits:
+   post receipts, re-mirror the interceptor + travel book entries, then paste STG-5
+   counts on the seven $0 audits so the next pass can judge them.
+2. **Audit throughput** — 15 pending after the pass; every blocked axis and undigested
+   note waits on it. (The cockpit's one-tap verdicts exist; the backlog is human hours.)
+3. **Unblock the two blocked axes** — answer the b422 wage-tier multiplier question
    (institutional); resolve the proto/auto-service site-scope question.
-3. **Classify the 108 backtest candidates** (Queue lens, after the v2.2594 migration
+4. **Classify the 108 backtest candidates** (Queue lens, after the v2.2594 migration
    is pushed) so backtest slates draw from demand instead of judgment.
-4. **Owner ruling on 836b6c22** (small-TI residual + Take 5 package doctrine).
-5. **Wendi's LIVSTE takeoff to CT cloud** — M4/M6's reference diff has been blocked on
+5. **Owner ruling on 836b6c22** (small-TI residual + Take 5 package doctrine).
+6. **Wendi's LIVSTE takeoff to CT cloud** — M4/M6's reference diff has been blocked on
    it since 08-30; the review-gate walk needs it too.
-6. **Standing earlier threads**: metrics hygiene (`AND NOT is_digital_twin` as twins
+7. **Standing earlier threads**: metrics hygiene (`AND NOT is_digital_twin` as twins
    touch more surfaces), pooled seats if the fleet grows, other roles (Phase 2) only
    by explicit owner decision.
 
