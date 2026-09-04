@@ -130,14 +130,14 @@ describe('buildNeedsYouItems', () => {
     expect(items.map((i) => i.key)).toEqual(['job-followups', 'team-reviews', 'lost-bids'])
     const tr = items[1]
     expect(tr?.title).toBe('Team reviews due')
-    expect(tr?.detail).toBe("Ana, Bo, Cy +1 more haven't had your review in 45+ days — rate them on Team → Review.")
+    expect(tr?.detail).toBe('No review from you in 45+ days.')
     expect(tr?.figure).toBe('4')
   })
 
-  it('team reviews singular copy and empty gate', () => {
+  it('team reviews copy is the same for one person, and empty gate', () => {
     expect(buildNeedsYouItems(inputs())).toEqual([])
     const items = buildNeedsYouItems(inputs({ teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }] }))
-    expect(items[0]?.detail).toBe("Ana hasn't had your review in 30+ days — rate them on Team → Review.")
+    expect(items[0]?.detail).toBe('No review from you in 30+ days.')
   })
 
   it('roadmap nudge shares the people/planning tier and outranks a smaller team-reviews pile', () => {
