@@ -439,3 +439,22 @@
     font-size: 2rem;
   }
 }
+
+/* v2.2772 — compact hero (estimate accept): on phones the photo band is a strip, the trade
+   tiles go, and the estimate itself is on the first screen. Desktop keeps the full hero. */
+@media (max-width: 640px) {
+  .auth-public-landing--compact {
+    padding-top: 0.75rem;
+    align-items: flex-start;
+  }
+  .auth-public-landing--compact .letter-header {
+    margin-bottom: 0.5rem;
+  }
+  .auth-public-landing--compact .letter-header h1 {
+    font-size: 1.15rem;
+    letter-spacing: 0.5px;
+  }
+  .auth-public-landing--compact .letter-content {
+    display: none;
+  }
+}

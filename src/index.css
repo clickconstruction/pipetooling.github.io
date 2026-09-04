@@ -2322,3 +2322,45 @@ body.my-time-boundary-dragging {
 .hr-doc-body th, .hr-doc-body td { border: 1px solid var(--border); padding: 0.3em 0.6em; font-size: 0.84rem; text-align: left; vertical-align: top; }
 .hr-doc-body th { background: var(--bg-page); color: var(--text-strong); }
 .hr-doc-body a { color: var(--text-link); }
+
+/* v2.2772 — estimate document lines: the table on wide screens and in print, one block per line
+   on phones (the three-column table left the name ~150 px on a 390 px phone). */
+.estimate-doc-lines--stack {
+  display: none;
+}
+@media (max-width: 520px) {
+  .estimate-doc-lines--table {
+    display: none;
+  }
+  .estimate-doc-lines--stack {
+    display: block;
+  }
+}
+@media print {
+  .estimate-doc-lines--table {
+    display: block;
+  }
+  .estimate-doc-lines--stack {
+    display: none;
+  }
+}
+@media (max-width: 520px) {
+  .estimate-doc-title {
+    font-size: 1.5rem;
+    line-height: 1.2;
+  }
+}
+/* v2.2772 — the accept page's bottom bar: phones only, and only while the Approve button is off-screen. */
+.estimate-accept-sticky {
+  display: none;
+}
+@media (max-width: 640px) {
+  .estimate-accept-sticky {
+    display: flex;
+  }
+}
+@media print {
+  .estimate-accept-sticky {
+    display: none;
+  }
+}

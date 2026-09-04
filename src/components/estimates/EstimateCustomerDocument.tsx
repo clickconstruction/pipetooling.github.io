@@ -70,12 +70,41 @@ const srOnlyStyle = {
   border: 0,
 }
 
+/**
+ * Phone layout for the lines (v2.2772, owner pick B): one block per line — name, description,
+ * then "qty × unit" and the amount on one row. The three-column table left the name ~150 px on a
+ * 390 px phone, so names wrapped one word per line. Both layouts render; index.css shows one
+ * (`.estimate-doc-lines--stack` under 520 px, the table above it and in print).
+ */
+export function EstimateLineItemsStack({ lines }: { lines: EstimatePublicLineItem[] }) {
+  return (
+    <div className="estimate-doc-lines--stack" role="list">
+      {lines.map((row, i) => {
+        const desc = (row.description ?? '').trim()
+        const amount = row.amount_cents ?? row.quantity * row.unit_price_cents
+        return (
+          <div key={i} role="listitem" style={{ padding: '0.55rem 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-strong)' }}>{(row.line_item ?? '').trim() || '—'}</div>
+            {desc ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 1 }}>{desc}</div> : null}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                {formatQuantityDisplay(row.quantity)} × {formatMoney(row.unit_price_cents)}
+              </span>
+              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-strong)' }}>{formatMoney(amount)}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function EstimateLineItemsTable({ lines }: { lines: EstimatePublicLineItem[] }) {
   if (lines.length === 0) {
     return <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>—</p>
   }
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <div className="estimate-doc-lines--table" style={{ overflowX: 'auto' }}>
       <table
         style={{
           width: '100%',
@@ -146,6 +175,8 @@ export type EstimateCustomerDocumentProps = {
   changeOrder?: EstimateChangeOrderFields | null
   /** Estimate Options (v2.2457): the option picker, slotted between the header block and the line items. */
   beforeLineItems?: ReactNode
+  /** v2.2772: the total-first card under the meta rows (the accept page passes it; records and PDFs don't). */
+  summary?: ReactNode
 }
 
 export default function EstimateCustomerDocument({
@@ -165,6 +196,7 @@ export default function EstimateCustomerDocument({
   headerBrand = null,
   changeOrder = null,
   beforeLineItems = null,
+  summary = null,
 }: EstimateCustomerDocumentProps) {
   const displayTitle = changeOrder ? changeOrderDocDisplayTitle(title) : title
   const lines = normalizeEstimateLineItemsFromJson(lineItemsSnapshot, { allowNegative: changeOrder != null })
@@ -203,7 +235,7 @@ export default function EstimateCustomerDocument({
           marginTop: 0,
         }}
       >
-        <h1 style={{ margin: 0, flex: '1 1 12rem', minWidth: 0 }}>{displayTitle || titleFallback}</h1>
+        <h1 className="estimate-doc-title" style={{ margin: 0, flex: '1 1 12rem', minWidth: 0 }}>{displayTitle || titleFallback}</h1>
         {headerBrand ? (
           <div
             style={{
@@ -251,6 +283,8 @@ export default function EstimateCustomerDocument({
         </p>
       ) : null}
 
+      {summary}
+
       {changeOrder ? (
         <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1.1rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
           <h2 style={{ fontSize: '1.1rem' }}>Change order</h2>
@@ -276,6 +310,7 @@ export default function EstimateCustomerDocument({
       <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1.1rem' }}>
         <h2 style={{ fontSize: '1.1rem' }}>{lineItemsHeading}</h2>
         <EstimateLineItemsTable lines={lines} />
+        {lines.length > 0 ? <EstimateLineItemsStack lines={lines} /> : null}
         <p style={{ fontWeight: 600, textAlign: 'right', width: '100%', marginTop: '0.75rem' }}>
           {totalLabel}: {changeOrder ? formatSignedCentsUsd(totalCents) : formatMoney(totalCents)}
         </p>
