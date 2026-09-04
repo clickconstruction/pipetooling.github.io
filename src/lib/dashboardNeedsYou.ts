@@ -397,14 +397,15 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
 
   if (inputs.teamReviewsOverdue.length > 0) {
     const n = inputs.teamReviewsOverdue.length
-    const preview = inputs.teamReviewsOverdue.slice(0, 3).map((u) => u.name).join(', ')
-    const more = n > 3 ? ` +${n - 3} more` : ''
+    // One line, on purpose (v2.2757): the figure carries the count, the button
+    // carries the destination, and the Rate deck lists who — so the detail
+    // only says why they're here.
     items.push({
       key: 'team-reviews',
       severity: 'blue',
       kicker: 'Team reviews',
       title: 'Team reviews due',
-      detail: `${n === 1 ? `${preview} hasn't` : `${preview}${more} haven't`} had your review in ${inputs.teamReviewCadenceDays}+ days — rate them on Team → Review.`,
+      detail: `No review from you in ${inputs.teamReviewCadenceDays}+ days.`,
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Open Team Review',
     })
