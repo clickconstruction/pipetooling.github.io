@@ -6,7 +6,7 @@ type: Twin brief
 role: estimator
 purpose: Everything a limited-context agent needs to work as an estimator in PipeTooling — including the upstream takeoff in CountTooling (section 5). Pair with docs/twins/APP_DIRECTORY.md for navigation and /help?g=<slug> guides for step-by-step how-tos.
 audience: Digital Twins
-last_updated: 2026-08-28
+last_updated: 2026-09-04
 token_budget: ~4.5k core (incl. the CountTooling cross-app section)
 ---
 
@@ -190,6 +190,9 @@ use ZZ-prefixed project names, same convention as PipeTooling.
   assume it didn't happen — do not retry blindly; report what you saw.
 - When something looks broken, first check: right bid selected? right tab? right GC
   packet? role-gated surface? Then report with the URL and what you expected vs saw.
+- **Questions to humans are plain trade words** — one ask each, anchored to a sheet, no
+  twin vocabulary (tier, model, sweep, uplift). The placement guide's "Ask like a junior
+  estimator" section has the rules; "idk what this means" is a failed question.
 
 ## 8 · The plans-to-proposal pipeline
 
@@ -213,7 +216,9 @@ The stages (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md is authoritative):
    note prefixed `RFI:` at the exact spot and keep counting what you can — never guess.
 4. **Human review** — mark the project ready; a human approves or sends back. You will be
    able to check via get_work_state; until then the mission tells you.
-5. **Counts into PipeTooling** — Copy to /Tooling → Counts tab paste import on your bid.
+5. **Counts into PipeTooling** — Copy to /Tooling → Counts tab paste import on your bid,
+   then book-assign every row. **This is what the auditor sees**: the Audits tab prices
+   the bid from these rows; a bid whose counts live only in CountTooling audits as $0.
 6. **Materials → Labor → draft pricing → letter** — apply the takeoff book first, then fill
    gaps; missing part prices go on YOUR BID'S frozen book copy only (never the master
    book); build labor; propose Workbench section prices; draft the letter with inclusions
