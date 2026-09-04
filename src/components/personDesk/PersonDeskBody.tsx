@@ -10,6 +10,7 @@ import { PersonDeskAccessSection } from './sections/PersonDeskAccessSection'
 import { PersonDeskTeamSection } from './sections/PersonDeskTeamSection'
 import { PersonDeskHoursSection } from './sections/PersonDeskHoursSection'
 import { PersonDeskPortalSection } from './sections/PersonDeskPortalSection'
+import { PersonDeskWorkOrdersSection } from './sections/PersonDeskWorkOrdersSection'
 import { PersonDeskPaySection } from './sections/PersonDeskPaySection'
 import { PersonDeskFieldSection } from './sections/PersonDeskFieldSection'
 import { PersonDeskPaperworkSection } from './sections/PersonDeskPaperworkSection'
@@ -110,6 +111,7 @@ export function PersonDeskBody({
           <>
             <PersonDeskHoursSection userId={key.userId} payName={key.payName} displayName={displayName} viewer={viewer} viewerUserId={viewerUserId} changeKey={changeKey} onChanged={onChanged} />
             {key.isSub ? <PersonDeskPortalSection personId={key.personId} displayName={displayName} changeKey={changeKey} /> : null}
+            {key.isSub ? <PersonDeskWorkOrdersSection personId={key.personId} changeKey={changeKey} /> : null}
             <PersonDeskPaySection personKey={key} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskTeamSection userId={key.userId} displayName={displayName} viewer={viewer} viewerUserId={viewerUserId} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskFieldSection userId={key.userId} payName={key.payName} displayName={displayName} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />

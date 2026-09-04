@@ -24,6 +24,7 @@ The Subs tab is HQ: one row per sub with **compliance pills** (agreement / W-9 /
 
 - The **globe** 🌐 manages their private portal — see the *share a sub their portal* guide.
 - The **unlinked-sheets warning** at the top means money isn't attributed to anyone on the roster — link those sheets so every balance lands on a sub's row.
+- The **Gen. Cond.** pill tracks whether they've signed the current General Conditions from the Contract library — see *review your subs in one place*.
 
 (People → Users is only for login accounts. A roster-only sub with no login is fine — their portal link works without one.)
 

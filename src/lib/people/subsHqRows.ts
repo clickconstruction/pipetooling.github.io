@@ -1,5 +1,6 @@
 import { subLaborJobBalance } from '../subLaborOutstanding'
 import { buildSubComplianceBadges, type ComplianceBadge, type ComplianceDocInput } from './subCompliance'
+import { generalConditionsStanding, type GeneralConditionsStanding } from '../subWorkOrders/subWorkOrder'
 import type { LaborJob } from '../../types/laborJob'
 
 /**
@@ -37,9 +38,21 @@ export type SubsHqCommitmentInput = {
   status: string
   stepName: string | null
   projectName: string | null
+  /** v2.2790: sheet work orders (no step) name their sheet instead. */
+  sheetLabel?: string | null
 }
 
-export type SubsHqDocInput = ComplianceDocInput & { person_id: string | null; person_name: string | null }
+export type SubsHqDocInput = ComplianceDocInput & {
+  person_id: string | null
+  person_name: string | null
+  /** v2.2790: which Contract Book entry + version this copy applied (General Conditions standing). */
+  applied_contract_template_document_id?: string | null
+  applied_version_date?: string | null
+  document_name?: string | null
+}
+
+/** The Contract Book's General Conditions for subs, when one exists (audience = 'sub'). */
+export type SubsHqGeneralConditionsInput = { documentId: string; documentName: string; bookVersionDate: string | null }
 
 export type SubsHqRow = {
   personId: string
@@ -48,9 +61,11 @@ export type SubsHqRow = {
   hasAccount: boolean
   sheetCount: number
   balanceDue: number
-  openCommitments: Array<{ stepName: string | null; projectName: string | null; amount: number; status: string }>
+  openCommitments: Array<{ stepName: string | null; projectName: string | null; sheetLabel: string | null; amount: number; status: string }>
   committedTotal: number
   badges: ComplianceBadge[]
+  /** v2.2790: where they stand against the Book's General Conditions; 'none' when the Book has no such document. */
+  generalConditions: GeneralConditionsStanding
   settledCount: number
   backchargeTotal: number
 }
@@ -85,6 +100,7 @@ export function buildSubsHqRows(input: {
   commitments: SubsHqCommitmentInput[]
   docs: SubsHqDocInput[]
   todayYmd: string
+  generalConditions?: SubsHqGeneralConditionsInput | null
 }): SubsHqResult {
   const activePeople = input.people.filter((p) => !p.archived)
   const usersById = new Map(input.users.map((u) => [u.id, u]))
@@ -112,6 +128,7 @@ export function buildSubsHqRows(input: {
       openCommitments: [],
       committedTotal: 0,
       badges: [],
+      generalConditions: 'none',
       settledCount: 0,
       backchargeTotal: 0,
     }
@@ -176,7 +193,7 @@ export function buildSubsHqRows(input: {
     const row = ensureRow(c.person_id)
     if (!row) continue
     if (OPEN_COMMITMENT_STATUSES.has(c.status)) {
-      row.openCommitments.push({ stepName: c.stepName, projectName: c.projectName, amount: c.amount, status: c.status })
+      row.openCommitments.push({ stepName: c.stepName, projectName: c.projectName, sheetLabel: c.sheetLabel ?? null, amount: c.amount, status: c.status })
       row.committedTotal += c.amount
     } else if (c.status === 'settled') {
       row.settledCount += 1
@@ -190,8 +207,22 @@ export function buildSubsHqRows(input: {
     if (!pid) continue
     ;(docsByPerson.get(pid) ?? docsByPerson.set(pid, []).get(pid)!).push(d)
   }
+  const gc = input.generalConditions ?? null
   for (const row of rowByPerson.values()) {
-    row.badges = buildSubComplianceBadges(docsByPerson.get(row.personId) ?? [], input.todayYmd)
+    const docs = docsByPerson.get(row.personId) ?? []
+    row.badges = buildSubComplianceBadges(docs, input.todayYmd)
+    if (gc) {
+      // Best signed copy of the General Conditions: by applied Book entry first, then by name.
+      const signedCopies = (docs as SubsHqDocInput[]).filter(
+        (d) =>
+          d.status === 'signed' &&
+          (d.applied_contract_template_document_id === gc.documentId ||
+            (d.document_name ?? '').trim().toLowerCase() === gc.documentName.trim().toLowerCase()),
+      )
+      const sortedVersions = signedCopies.map((d) => d.applied_version_date ?? '').sort()
+      const bestVersion = sortedVersions[sortedVersions.length - 1] || null
+      row.generalConditions = generalConditionsStanding({ bookVersionDate: gc.bookVersionDate, signedVersionDate: bestVersion, signed: signedCopies.length > 0 })
+    }
   }
 
   const rows = [...rowByPerson.values()].sort(
