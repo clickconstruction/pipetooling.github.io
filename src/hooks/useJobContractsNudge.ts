@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 import type { JobContractRowLike, SignedEstimateLike } from '../lib/jobs/jobContractCoverage'
 import { CONTRACT_NUDGE_STATUSES, summarizeContractNudge, type ContractNudgeJob, type ContractNudgeSummary } from '../lib/jobs/jobContractNudge'
 
-export type ContractNudge = Pick<ContractNudgeSummary, 'missing' | 'stale'>
+export type ContractNudge = Pick<ContractNudgeSummary, 'missing' | 'stale' | 'byStage' | 'liveTotal'>
 
 export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge | null } {
   const [nudge, setNudge] = useState<ContractNudge | null>(null)
@@ -21,7 +21,7 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
     }
     try {
       const [jobsRes, contractsRes, estimatesRes] = await Promise.all([
-        supabase.from('jobs_ledger').select('id, bid_id, status, revenue').in('status', [...CONTRACT_NUDGE_STATUSES]),
+        supabase.from('jobs_ledger').select('id, bid_id, status, revenue, collections_at').in('status', [...CONTRACT_NUDGE_STATUSES]),
         supabase
           .from('job_contracts')
           .select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at')
@@ -38,9 +38,9 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
         (contractsRes.error ? [] : (contractsRes.data ?? [])) as JobContractRowLike[],
         (estimatesRes.error ? [] : (estimatesRes.data ?? [])) as SignedEstimateLike[],
       )
-      setNudge({ missing: summary.missing, stale: summary.stale })
+      setNudge({ missing: summary.missing, stale: summary.stale, byStage: summary.byStage, liveTotal: summary.liveTotal })
     } catch {
-      setNudge({ missing: { count: 0, jobIds: [], revenueTotal: 0 }, stale: { count: 0, jobIds: [], oldestDays: null } })
+      setNudge(null)
     }
   }, [enabled])
 

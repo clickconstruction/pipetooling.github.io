@@ -78,6 +78,8 @@ import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import JobContractModal from './JobContractModal'
 import JobSignedAgreementModal, { type SignedCoverage } from './JobSignedAgreementModal'
+import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
+import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import JobsContractSweepModal from './JobsContractSweepModal'
 import {
   buildJobContractCoverage,
@@ -810,6 +812,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       }
     : undefined
   /** The contract sweep (PR 4): every live job with nothing on file, one row each. ?contractSweep=1 deep-links it. */
+  // Contract coverage card (v2.2738): company-wide counts per stage — the
+  // board loads Billed/Collections lazily, so the card never reads off loaded rows.
+  const { nudge: contractNudge } = useJobContractsNudge(canSeeJobContracts)
+  const pipelineContractCoverage = useMemo(
+    () => (contractNudge ? { missingCount: contractNudge.missing.count, missingRevenue: contractNudge.missing.revenueTotal, liveTotal: contractNudge.liveTotal, byStage: contractNudge.byStage } : null),
+    [contractNudge],
+  )
   const [contractSweepOpen, setContractSweepOpen] = useState<boolean>(() => {
     try {
       return new URLSearchParams(window.location.search).get('contractSweep') === '1'
@@ -3196,6 +3205,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           {/* The Pipeline money story + Today's Money Opportunities (v2.1915,
               Old/New pills retired v2.2012 — this is the only view now). */}
           <PipelineOverview
+            contractCoverage={canSeeJobContracts ? pipelineContractCoverage : null}
+            onContractStageGap={(stage: ContractStage) => {
+              setStagesContractFilter('missing')
+              focusStagesSection(stage === 'ready_to_bill' ? 'readyToBill' : stage)
+            }}
+            onStartContractSweep={() => setContractSweepOpen(true)}
             stats={cacheHeaderStats}
             canOpenAr={
               authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'

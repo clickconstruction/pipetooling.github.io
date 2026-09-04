@@ -622,9 +622,6 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
         <button type="button" style={btn} disabled={busy != null} onClick={preview}>
           Preview as customer
         </button>
-        <button type="button" style={{ ...btn, borderColor: 'transparent', background: 'transparent' }} disabled={busy != null} onClick={() => setPaperOpen((v) => !v)}>
-          Upload signed copy
-        </button>
         <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
           {!editable ? 'Locked — sent' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Draft saved' : autosaveState === 'error' ? 'Save failed' : ''}
         </span>
@@ -646,7 +643,17 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
   )
 
   return (
-    <ResponsiveModalShell title={`Contract · J${jobNumber}`} onRequestClose={onClose} footer={footer} maxWidthDesktop={760}>
+    <ResponsiveModalShell
+      title={`Contract · J${jobNumber}`}
+      onRequestClose={onClose}
+      footer={footer}
+      maxWidthDesktop={760}
+      headerAction={
+        <button type="button" style={btn} disabled={busy != null} onClick={() => setPaperOpen(true)} title="Already signed on paper? File the signed contract without sending anything">
+          <span aria-hidden>⤴</span> Upload signed contract
+        </button>
+      }
+    >
       <div style={{ fontSize: '0.85rem' }}>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
           {jobContractHeading(job)} · {job.customer_name || '—'}
@@ -749,28 +756,6 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
           </label>
         </div>
 
-        {paperOpen ? (
-          <div style={{ marginTop: '1rem', padding: '0.7rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)' }}>
-            <div style={{ ...sectionHead, margin: '0 0 0.4rem' }}>Already signed on paper</div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>Signed by</span>
-              <input style={inputStyle} value={paperSignerName} onChange={(e) => setPaperSignerName(e.target.value)} placeholder={recipientName.trim() || job.customer_name || 'Customer name'} />
-              <span style={labelStyle}>Signed on</span>
-              <input style={{ ...inputStyle, maxWidth: 180 }} type="date" value={paperSignedOn} onChange={(e) => setPaperSignedOn(e.target.value)} aria-label="Date the paper copy was signed" />
-              <span style={labelStyle}>Scan / photo</span>
-              <input type="file" accept="image/png,image/jpeg,application/pdf" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.8rem' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-              <button type="button" style={btn} disabled={paperBusy} onClick={() => setPaperOpen(false)}>
-                Cancel
-              </button>
-              <button type="button" style={btnPrimary} disabled={paperBusy} onClick={() => void recordPaper()}>
-                {paperBusy ? 'Recording…' : paperFile ? 'Upload & record as signed' : 'Record as signed on paper'}
-              </button>
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Files nothing to the customer — this just puts the agreement on file so the row reads signed.</div>
-          </div>
-        ) : null}
         {historyRows.length > 0 ? (
           <>
             <div style={sectionHead}>History</div>
@@ -800,6 +785,33 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
           </div>
         ) : null}
       </div>
+      {paperOpen ? (
+        <ResponsiveModalShell title="Upload signed contract" onRequestClose={() => setPaperOpen(false)} maxWidthDesktop={520} zIndex={1300}
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button type="button" style={btn} disabled={paperBusy} onClick={() => setPaperOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" style={btnPrimary} disabled={paperBusy} onClick={() => void recordPaper()}>
+                {paperBusy ? 'Recording…' : paperFile ? 'Upload & record as signed' : 'Record as signed on paper'}
+              </button>
+            </div>
+          }
+        >
+          <div style={{ fontSize: '0.85rem', display: 'grid', gap: '0.5rem' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Already have a signed contract for this job? File it here — nothing is sent to the customer; the job simply reads signed.</div>
+            <div style={rowStyle}>
+              <span style={labelStyle}>Signed by</span>
+              <input style={inputStyle} value={paperSignerName} onChange={(e) => setPaperSignerName(e.target.value)} placeholder={recipientName.trim() || job.customer_name || 'Customer name'} />
+              <span style={labelStyle}>Signed on</span>
+              <input style={{ ...inputStyle, maxWidth: 180 }} type="date" value={paperSignedOn} onChange={(e) => setPaperSignedOn(e.target.value)} aria-label="Date the paper copy was signed" />
+              <span style={labelStyle}>Scan / photo</span>
+              <input type="file" accept="image/png,image/jpeg,application/pdf" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.8rem' }} />
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>A scan or photo is optional — the record stands on its own; the file is kept with the job when you attach one.</div>
+          </div>
+        </ResponsiveModalShell>
+      ) : null}
       <JobSignedAgreementModal
         open={recordRow != null}
         onClose={() => setRecordRow(null)}

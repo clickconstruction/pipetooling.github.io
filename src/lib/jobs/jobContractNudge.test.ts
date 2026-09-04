@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeContractNudge } from './jobContractNudge'
+import { contractStageOf, summarizeContractNudge } from './jobContractNudge'
 import type { JobContractRowLike } from './jobContractCoverage'
 
 const NOW = new Date('2026-09-10T12:00:00Z')
@@ -67,3 +67,28 @@ describe('summarizeContractNudge', () => {
     expect(s.missing.count).toBe(0)
   })
 })
+
+describe('byStage', () => {
+  it('splits live jobs per board stage, with billed + collections_at as Collections; Paid is out of scope', () => {
+    const s = summarizeContractNudge(
+      [
+        { id: 'a', bid_id: null, status: 'waiting', revenue: 100 },
+        { id: 'b', bid_id: null, status: 'working', revenue: 200 },
+        { id: 'c', bid_id: null, status: 'billed', revenue: 300 },
+        { id: 'd', bid_id: null, status: 'billed', revenue: 400, collections_at: '2026-09-01T00:00:00Z' },
+        { id: 'p', bid_id: null, status: 'paid', revenue: 900 },
+      ],
+      [contract({ id: 'cb', job_id: 'b', status: 'signed', signed_at: '2026-09-01T00:00:00Z', signer_printed_name: 'X' })],
+      [],
+      NOW,
+    )
+    expect(s.liveTotal).toBe(4)
+    expect(s.byStage.waiting).toEqual({ total: 1, missing: 1, revenueMissing: 100 })
+    expect(s.byStage.working).toEqual({ total: 1, missing: 0, revenueMissing: 0 })
+    expect(s.byStage.billed).toEqual({ total: 1, missing: 1, revenueMissing: 300 })
+    expect(s.byStage.collections).toEqual({ total: 1, missing: 1, revenueMissing: 400 })
+    expect(s.byStage.ready_to_bill).toEqual({ total: 0, missing: 0, revenueMissing: 0 })
+    expect(contractStageOf({ status: 'paid', collections_at: null })).toBeNull()
+  })
+})
+

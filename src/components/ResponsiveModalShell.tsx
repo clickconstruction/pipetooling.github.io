@@ -21,6 +21,7 @@ export default function ResponsiveModalShell({
   onRequestClose,
   children,
   footer,
+  headerAction,
   maxWidthDesktop = 560,
   // Above the app's fixed bottom tab bar (z 1000) so the full-screen sheet truly
   // covers it; below the stacked leaf dialogs (Active Accounts 1200, PartForm 1300).
@@ -30,6 +31,8 @@ export default function ResponsiveModalShell({
   onRequestClose: () => void
   children: ReactNode
   footer?: ReactNode
+  /** Rendered in the sticky title bar, just before the close button (v2.2738: the Contract modal's "Upload signed contract"). */
+  headerAction?: ReactNode
   maxWidthDesktop?: number
   zIndex?: number
 }) {
@@ -74,7 +77,8 @@ export default function ResponsiveModalShell({
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
-          <h2 id={titleId} style={{ margin: 0 }}>{title}</h2>
+          <h2 id={titleId} style={{ margin: 0, flex: 1, minWidth: 0 }}>{title}</h2>
+          {headerAction ? <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>{headerAction}</div> : null}
           <button type="button" onClick={onRequestClose} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
         </div>
         {children}

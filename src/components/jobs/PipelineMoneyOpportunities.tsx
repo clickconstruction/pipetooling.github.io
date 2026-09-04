@@ -10,6 +10,8 @@
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { PipelineFixup, PipelineFixupKey, PipelineMove, PipelineMoveKey } from '../../lib/jobs/pipelineOverview'
 import type { PaymentChaseSummary } from '../../lib/jobs/paymentChase'
+import { PipelineContractCoverageCard, type PipelineContractCoverage } from './PipelineContractCoverageCard'
+import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 
 export type PipelineGcRoundCards = {
   held: { count: number; total: number } | null
@@ -27,6 +29,10 @@ export type PipelineMoneyOpportunitiesProps = {
   gcRound?: PipelineGcRoundCards
   onCertifyRound?: () => void
   onStartRound?: () => void
+  /** Contract coverage card (v2.2738) — Pipeline only; omit to hide. */
+  contractCoverage?: PipelineContractCoverage | null
+  onContractStageGap?: (stage: ContractStage) => void
+  onStartContractSweep?: () => void
   /** Quiet note beside the title (Quickfill: "same as Jobs → Pipeline"). */
   headerNote?: string
   /** Empty-state line when nothing needs a move. */
@@ -43,9 +49,13 @@ export function PipelineMoneyOpportunities({
   gcRound,
   onCertifyRound,
   onStartRound,
+  contractCoverage,
+  onContractStageGap,
+  onStartContractSweep,
   headerNote,
   emptyText = 'nothing needs a move right now — the pipeline is clean ✅',
 }: PipelineMoneyOpportunitiesProps) {
+  const contractCardVisible = contractCoverage != null && contractCoverage.liveTotal > 0 && onContractStageGap != null && onStartContractSweep != null
   const roundHeld = gcRound?.held && gcRound.held.count > 0 ? gcRound.held : null
   const roundReady = gcRound?.ready && gcRound.ready.count > 0 ? gcRound.ready : null
   const gcRoundVisible = roundHeld != null || roundReady != null
@@ -59,13 +69,13 @@ export function PipelineMoneyOpportunities({
           gap: '0.5rem',
           padding: '0.45rem 0.85rem',
           background: 'var(--bg-subtle)',
-          borderBottom: moves.length > 0 || fixups.length > 0 || chase || gcRoundVisible ? '1px solid var(--border)' : 'none',
+          borderBottom: moves.length > 0 || fixups.length > 0 || chase || gcRoundVisible || contractCardVisible ? '1px solid var(--border)' : 'none',
         }}
       >
         <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
           Today&#8217;s Money Opportunities:
         </span>
-        {moves.length === 0 && fixups.length === 0 && !chase && !gcRoundVisible ? (
+        {moves.length === 0 && fixups.length === 0 && !chase && !gcRoundVisible && !contractCardVisible ? (
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{emptyText}</span>
         ) : headerNote ? (
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{headerNote}</span>
@@ -76,6 +86,11 @@ export function PipelineMoneyOpportunities({
           phones — full-width rows left a desert of empty space between
           claim and button on desktop. min(300px, 100%) guards ultra-narrow
           containers from horizontal overflow. */}
+      {contractCardVisible ? (
+        <div style={{ padding: '0.6rem 0.85rem 0' }}>
+          <PipelineContractCoverageCard coverage={contractCoverage} onStageGap={onContractStageGap} onStartSweep={onStartContractSweep} />
+        </div>
+      ) : null}
       {(moves.length > 0 || fixups.length > 0 || chase != null || gcRoundVisible) && (
         <div
           style={{
