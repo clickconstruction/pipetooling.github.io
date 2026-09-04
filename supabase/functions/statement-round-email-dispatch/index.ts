@@ -8,7 +8,7 @@
  * (a silent skip reads as a broken subscription).
  *
  * Modes on POST JSON body:
- * - { mode: 'preview' }   — caller JWT, office role; returns { html } for the caller's own round.
+ * - { mode: 'preview', recipient_user_id? } — caller JWT, office role; returns { html } for the caller's own round, or a colleague's (v2.2781).
  * - { mode: 'test_send' } — same gate; [TEST]-prefixed send to the caller.
  * - cron (no mode)        — X-Cron-Secret; drains statement_round_email_requests,
  *                           repeat_weekly re-enqueues +7d.
@@ -173,7 +173,17 @@ serve(async (req) => {
     if (mode === 'preview' || mode === 'test_send') {
       const me = await requireOffice(req, admin)
       if (me instanceof Response) return me
-      const mail = await buildEmail(admin, me)
+      // Preview another sender's round (v2.2781, the sender card): any office
+      // caller may READ a colleague's round — it is the same data the GC
+      // Review panel shows them — but test sends stay to the caller only.
+      let subject: UserRow = me
+      const previewFor = typeof body.recipient_user_id === 'string' ? body.recipient_user_id.trim() : ''
+      if (mode === 'preview' && previewFor && previewFor !== me.id) {
+        const other = await loadUser(admin, previewFor)
+        if (!other || other.archived_at || !OFFICE_ROLES.has(String(other.role))) return jsonResponse({ error: 'That user cannot hold a round' }, 400)
+        subject = other
+      }
+      const mail = await buildEmail(admin, subject)
       if (mode === 'preview') return jsonResponse({ html: mail.html })
       const email = (me.email ?? '').trim()
       if (!email) return jsonResponse({ error: 'Your account has no email address' }, 400)

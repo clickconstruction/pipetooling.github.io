@@ -69,6 +69,7 @@ import {
   sendStatementRoundEmailTest,
 } from '../../lib/statementRoundEmailClient'
 import GcStatementSendHistoryModal from './GcStatementSendHistoryModal'
+import GcSenderRoundCard from './GcSenderRoundCard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
 import { buildTeammateEmailChips } from '../../lib/teammateEmailChips'
@@ -334,6 +335,8 @@ export function JobsGcReviewModal({
   const [roundSentFormOpen, setRoundSentFormOpen] = useState(false)
   const [markSentGroup, setMarkSentGroup] = useState<GcReviewGroup | null>(null)
   const [historyGc, setHistoryGc] = useState<{ id: string; name: string } | null>(null)
+  /** The sender card (v2.2792): one sender's round as they see it — opens from any rounds chip or the per-sender tally. */
+  const [senderCard, setSenderCard] = useState<{ senderId: string; highlightGcId: string | null } | null>(null)
   /** Send from the app inside the round (v2.2771): which GC's Draft Message came from the overlay, so the overlay comes back after. */
   const [emailFromRoundGcId, setEmailFromRoundGcId] = useState<string | null>(null)
   /** "Email me my round" (v2.2771, statement_round stream): pending chains + the edit form. */
@@ -838,10 +841,22 @@ export function JobsGcReviewModal({
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 GCs over ${GC_ROUND_THRESHOLD.toLocaleString('en-US')} · a personal email from the assigned sender, released once certified
               </span>
-              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {[...roundSummary.senderProgress.entries()]
-                  .map(([uid, p]) => `${userNameById(uid)} ${p.sent}/${p.total} sent`)
-                  .join(' · ') || 'nobody assigned yet'}
+              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', display: 'inline-flex', gap: '0.35rem', alignItems: 'baseline' }}>
+                {roundSummary.senderProgress.size === 0
+                  ? 'nobody assigned yet'
+                  : [...roundSummary.senderProgress.entries()].map(([uid, p], i) => (
+                      <span key={uid}>
+                        {i > 0 ? '· ' : ''}
+                        <button
+                          type="button"
+                          onClick={() => setSenderCard({ senderId: uid, highlightGcId: null })}
+                          title={`See ${userNameById(uid)}’s round as they see it`}
+                          style={{ font: 'inherit', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline dotted' }}
+                        >
+                          {userNameById(uid)} {p.sent}/{p.total} sent
+                        </button>
+                      </span>
+                    ))}
               </span>
               {roundSummary.readyForUser.length > 0 ? (
                 <button
@@ -891,25 +906,34 @@ export function JobsGcReviewModal({
                     </button>
                   ) : null}
                 </span>
-                <span
-                  role={it.mark && canCertify ? 'button' : undefined}
-                  tabIndex={it.mark && canCertify ? 0 : undefined}
+                <button
+                  type="button"
                   title={
                     it.mark && it.mark.action === 'sent'
-                      ? `${describeRoundMark(it.mark, markWhenLabel(it.mark.acted_at))}${canCertify ? '\nClick to undo this mark' : ''}`
-                      : it.mark && canCertify
-                        ? 'click to undo this mark'
-                        : undefined
+                      ? `${describeRoundMark(it.mark, markWhenLabel(it.mark.acted_at))}\nClick to see ${userNameById(it.senderUserId)}’s round`
+                      : it.state === 'needs_sender'
+                        ? canCertify
+                          ? 'Pick who sends this GC their statement'
+                          : undefined
+                        : `See ${userNameById(it.senderUserId)}’s round as they see it`
                   }
-                  onClick={it.mark && canCertify && !roundBusy ? () => void undoRoundMark(it.gcId) : undefined}
+                  onClick={() => {
+                    // The sender card (v2.2792): every chip opens the sender's round; a GC with no sender opens the assign picker instead.
+                    if (it.state === 'needs_sender' || !it.senderUserId) {
+                      if (canCertify) setAssigningGcId(it.gcId)
+                      return
+                    }
+                    setSenderCard({ senderId: it.senderUserId, highlightGcId: it.gcId })
+                  }}
                   style={{
+                    font: 'inherit',
                     fontSize: '0.6875rem',
                     fontWeight: 600,
                     whiteSpace: 'nowrap',
                     borderRadius: 9999,
                     border: '1px solid var(--border)',
                     padding: '0.1rem 0.55rem',
-                    cursor: it.mark && canCertify ? 'pointer' : undefined,
+                    cursor: 'pointer',
                     color:
                       it.state === 'sent'
                         ? 'var(--text-green-800)'
@@ -932,12 +956,13 @@ export function JobsGcReviewModal({
                         : it.state === 'needs_sender'
                           ? 'needs a sender'
                           : 'certify to release'}
-                </span>
+                </button>
               </div>
             ))}
             <p style={{ margin: '0.4rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
               Never sent uncertified — a group that changes after sign-off drops back to “certify to release”. “Sent it”
-              stamps the last-sent pill and the week’s progress.
+              stamps the last-sent pill and the week’s progress. Click any chip to see that sender’s round as they see it
+              (undo a mark from there).
             </p>
             {roundError ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
             {/* Email me my round (v2.2771): the statement_round stream — a morning email of your round, rebuilt at send time. */}
@@ -2226,6 +2251,47 @@ export function JobsGcReviewModal({
           </div>
         </div>
       ) : null}
+      {senderCard
+        ? (() => {
+            const senderUser = users.find((u) => u.id === senderCard.senderId)
+            const sender = { id: senderCard.senderId, name: senderUser?.name || '—' }
+            return (
+              <GcSenderRoundCard
+                sender={sender}
+                items={roundItems}
+                chain={roundEmailChains.find((c) => c.recipientUserId === sender.id) ?? null}
+                heldReason={(gcId) => {
+                  const g = certGroupByGc.get(gcId)
+                  if (!g) return null
+                  const st = gcGroupCertStatus(g, certsByGc.get(gcId)).state
+                  return st === 'changed' ? 'changed' : st === 'uncertified' ? 'uncertified' : null
+                }}
+                highlightGcId={senderCard.highlightGcId}
+                busy={roundBusy}
+                canAct={canCertify}
+                onClose={() => setSenderCard(null)}
+                onPreviewEmail={() => {
+                  setRoundError(null)
+                  void fetchStatementRoundEmailPreview(sender.id).then(
+                    (html) => {
+                      if (!openHtmlPreviewWindow(html)) setRoundError('Allow pop-ups to preview the email.')
+                    },
+                    (e: unknown) => setRoundError(e instanceof Error ? e.message : 'Preview failed'),
+                  )
+                }}
+                onSetupEmail={() => {
+                  setSenderCard(null)
+                  openRoundEmailForm(sender.id)
+                }}
+                onAssign={(gcId) => {
+                  setSenderCard(null)
+                  setAssigningGcId(gcId)
+                }}
+                onUndoMark={(gcId) => void undoRoundMark(gcId)}
+              />
+            )
+          })()
+        : null}
       {historyGc ? (
         <GcStatementSendHistoryModal gcId={historyGc.id} gcName={historyGc.name} appLastSentAt={lastSentByGcId[historyGc.id] ?? null} onClose={() => setHistoryGc(null)} />
       ) : null}

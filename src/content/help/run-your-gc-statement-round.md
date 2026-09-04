@@ -2,7 +2,7 @@
 title: run your weekly GC statement round
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: gc statement, round, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app
+keywords: gc statement, round, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo
 ---
 Every GC that owes **$10,000 or more** joins the weekly **statement round**: a to-do for one person to email that GC their outstanding statement — personally, from their own inbox. The app never emails a GC on its own. Two gates keep it honest: a manager **certifies** each GC's numbers first, and the sender marks **Sent it** so the app knows it happened.
 
@@ -26,8 +26,16 @@ Open **GC Review** (the Billed Awaiting Payment section tools). The **Weekly sta
 
 - {{chip:yellow|certify to release}} — certify this GC (the {{button:blue|Certify}} button on its group) and it moves into its sender's round. A group that **changes after sign-off** drops back here.
 - {{chip:blue|in Malachi's round}} — released, waiting on the sender.
-- {{chip:green|sent ✓ Thu by Malachi · text}} — done for the week, with how it went out. Hover for the note; click the chip to undo a mis-click.
+- {{chip:green|sent ✓ Thu by Malachi · text}} — done for the week, with how it went out. Hover for the note.
 - **needs a sender** — nobody is set. Click **assign** to pick one; the assignment sticks week to week. Unassigned GCs default to the Account Man on their jobs.
+
+## See a round the way its sender sees it
+
+Click any chip in the panel — {{chip:blue|in Malachi's round}}, a sent chip, a held one — or the **Malachi 0/2 sent** tally in the panel header. A card opens with **Malachi's round this week**: his GCs in the order Start round walks them, each with its state (ready · held, changed since certified · sent Wed · email), then how he's being prompted — whether his Dashboard row is showing, his round email schedule (or "not subscribed", with a link to set it up for him), and the last time he marked a statement sent. From the card you can {{button:outline|Preview Malachi's email}} (the round email exactly as it would land in his inbox right now), **reassign** a GC, or **undo** a mark. Nothing on the card sends or marks anything as him — that stays his.
+
+:::example When a chip says "needs a sender"
+Clicking it opens the assign picker instead, since there's no round to show yet.
+:::
 
 ## Working your round
 

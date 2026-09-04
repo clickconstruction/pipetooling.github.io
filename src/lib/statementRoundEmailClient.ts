@@ -28,9 +28,11 @@ function fnError(r: FnResult, fallback: string): string | null {
   return null
 }
 
-/** mode 'preview' — the rendered email HTML for the CALLER's own round. */
-export async function fetchStatementRoundEmailPreview(): Promise<string> {
-  const r = (await supabase.functions.invoke('statement-round-email-dispatch', { body: { mode: 'preview' } })) as FnResult
+/** mode 'preview' — the rendered email HTML for the CALLER's own round, or a colleague's when `recipientUserId` is given (v2.2781). */
+export async function fetchStatementRoundEmailPreview(recipientUserId?: string): Promise<string> {
+  const r = (await supabase.functions.invoke('statement-round-email-dispatch', {
+    body: { mode: 'preview', ...(recipientUserId ? { recipient_user_id: recipientUserId } : {}) },
+  })) as FnResult
   const err = fnError(r, 'Preview failed')
   if (err) throw new Error(err)
   const html = (r.data as { html?: string } | null)?.html
