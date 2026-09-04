@@ -23,7 +23,9 @@ Hover the chip for the full story (who it went to, whether it's been opened).
 
 ## Find the jobs without one
 
-Open the **⋯** menu at the right end of the Pipeline search bar. Under **Filters**, the contract dropdown offers **No contract**, **Contract out for signature**, and **Contract signed**. Pick one and every section follows; a chip in the search bar shows the filter is on — tap its × to clear.
+**Jobs → Pipeline** opens with a card under **Today's money opportunities**: {{chip:yellow|✍ Get contracts signed — 58 live jobs without, $412k of work}}. It counts every stage except Paid in full, and accepted estimates and bid-room signatures already count. One chip per stage shows the gap — tap {{chip:yellow|Working 15}} and the board filters to those jobs and jumps to that section; a stage with nothing missing reads {{chip:green|Ready to Bill ✓}}. {{button:blue|Start the sweep →}} opens the sweep described below. When every live job is covered, the card becomes a single green line.
+
+You can also set the filter by hand: open the **⋯** menu at the right end of the Pipeline search bar. Under **Filters**, the contract dropdown offers **No contract**, **Contract out for signature**, and **Contract signed**. Pick one and every section follows; a chip in the search bar shows the filter is on — tap its × to clear.
 
 ## Send a contract
 
@@ -59,7 +61,7 @@ Once a job reads {{chip:green|✍ Signed}}, the chip opens the **Signed agreemen
 
 ## Already signed on paper?
 
-Open the Contract modal and press {{button:outline|Upload signed copy}}. Enter who signed and the date, attach a scan or phone photo if you have one, and press {{button:blue|Record as signed on paper}}. Nothing goes to the customer — the row simply reads {{chip:green|✍ On file · paper}} and the copy is filed with the job.
+Open the Contract modal and press {{button:outline|⤴ Upload signed contract}} in its top-right corner. A small sheet asks who signed and the date; attach a scan or phone photo if you have one, and press {{button:blue|Record as signed on paper}}. Nothing goes to the customer — the row simply reads {{chip:green|✍ On file · paper}} and the copy is filed with the job.
 
 ## Where else it shows
 

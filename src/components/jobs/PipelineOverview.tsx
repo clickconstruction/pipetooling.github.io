@@ -18,10 +18,16 @@ import {
 import type { StagesHeaderStats } from '../../lib/jobs/stagesHeaderStats'
 import type { PaymentChaseSummary } from '../../lib/jobs/paymentChase'
 import { PipelineMoneyOpportunities, type PipelineGcRoundCards } from './PipelineMoneyOpportunities'
+import type { PipelineContractCoverage } from './PipelineContractCoverageCard'
+import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 
 type SectionKey = 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections'
 
 type PipelineOverviewProps = {
+  /** Contract coverage card (v2.2738). */
+  contractCoverage?: PipelineContractCoverage | null
+  onContractStageGap?: (stage: ContractStage) => void
+  onStartContractSweep?: () => void
   stats: StagesHeaderStats | null
   canOpenAr: boolean
   canSeeCharts: boolean
@@ -134,6 +140,9 @@ function StoryCardBody({ card }: { card: PipelineStoryCard }) {
 }
 
 export function PipelineOverview({
+  contractCoverage,
+  onContractStageGap,
+  onStartContractSweep,
   stats,
   canOpenAr,
   canSeeCharts,
@@ -211,6 +220,9 @@ export function PipelineOverview({
         gcRound={gcRound}
         onCertifyRound={onCertifyRound}
         onStartRound={onStartRound}
+        contractCoverage={contractCoverage}
+        onContractStageGap={onContractStageGap}
+        onStartContractSweep={onStartContractSweep}
       />
     </div>
   )
