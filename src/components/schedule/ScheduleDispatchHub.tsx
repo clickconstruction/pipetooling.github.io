@@ -22,6 +22,7 @@ import {
 } from '../../lib/scheduleDispatchExpectedManpower'
 import { formatCurrency } from '../../lib/format'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
+import { useLongPress } from '../../hooks/useLongPress'
 import { formatFieldMovedFrom } from '../../lib/selfScheduleJobs'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
 import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNoteIcon'
@@ -45,7 +46,7 @@ import { QuickfillScheduleSection } from '../quickfill/QuickfillScheduleSection'
 import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
 import QuickAssignSheet from '../dispatchMode/QuickAssignSheet'
-import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
+import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import {
   SCHEDULE_DISPATCH_TODAY_COLUMN_BG,
   scheduleDispatchDayColumnCellIdleBg,
@@ -533,6 +534,8 @@ function HubPeopleBlockCard({
   onDeleteBlock,
   onRequestEditBlockNote,
   onOpenPersonDay,
+  onRequestMoveBlock,
+  tapGripToMove = false,
 }: {
   block: JobScheduleBlockRow
   linkedCopyStage?: 1 | 2 | null
@@ -549,7 +552,7 @@ function HubPeopleBlockCard({
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   plusMenuOpen: boolean
   onPlusMenuBlockIdChange: (blockId: string | null) => void
-  onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
+  onStartCardPlacement: (b: JobScheduleBlockRow, variant: ScheduleDispatchCardPlacementVariant) => void
   getJobDisplayTitle: (jobId: string) => string
   /** Job address for the card's one-line ellipsized subline; empty string when none. */
   getJobAddress?: (jobId: string) => string
@@ -559,6 +562,10 @@ function HubPeopleBlockCard({
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
   /** Clock button (v2.1817): open the assignee's whole-day Manage modal. */
   onOpenPersonDay?: (b: JobScheduleBlockRow) => void
+  /** Press-and-hold on the card body: open the Move sheet (day + person). */
+  onRequestMoveBlock?: (b: JobScheduleBlockRow) => void
+  /** Phone: a tap on the grip arms Move placement (tap a day chip or a cell). Drag still works. */
+  tapGripToMove?: boolean
 }) {
   const { showToast } = useToastContext()
   const { requirementForBlock } = useDispatchNoteRequirements()
@@ -583,6 +590,12 @@ function HubPeopleBlockCard({
     id: block.id,
     disabled: dragDisabled,
   })
+  // Press-and-hold anywhere on the card body opens the Move sheet; a tap on
+  // the grip (phone) arms Move placement. Both hand off to the same move
+  // kernel the drop uses. Text selection stays available on desktop.
+  const longPressEnabled = canEdit && !!onRequestMoveBlock && !placementPickingActive && !linkedCopyActive
+  const moveLongPress = useLongPress(() => onRequestMoveBlock?.(block), { disabled: !longPressEnabled })
+  const gripTapArmsMove = tapGripToMove && !dragDisabled && !placementPickingActive
 
   const explainDisabledDrag = () => {
     showToast(SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE, 'info')
@@ -652,6 +665,14 @@ function HubPeopleBlockCard({
               },
             }
           : { ...listeners, ...attributes })}
+        {...(gripTapArmsMove
+          ? {
+              onClick: (e: MouseEvent) => {
+                e.stopPropagation()
+                onStartCardPlacement(block, 'move')
+              },
+            }
+          : {})}
         style={{
           flexShrink: 0,
           // v2.1816: the handle was a bare 14px sliver nobody could find —
@@ -671,10 +692,18 @@ function HubPeopleBlockCard({
           outline: 'none',
         }}
         title={
-          dragDisabled ? undefined : 'Drag to move this block to another day or person'
+          dragDisabled
+            ? undefined
+            : gripTapArmsMove
+              ? 'Tap to move this block to another day or person (or drag it)'
+              : 'Drag to move this block to another day or person'
         }
         aria-label={
-          dragDisabled ? disabledStripAriaLabel : 'Drag to move block to another day or person row'
+          dragDisabled
+            ? disabledStripAriaLabel
+            : gripTapArmsMove
+              ? 'Move block: tap, then tap a day or a person row'
+              : 'Drag to move block to another day or person row'
         }
       >
         <span
@@ -693,16 +722,19 @@ function HubPeopleBlockCard({
         </span>
       </div>
       <div
+        {...moveLongPress.handlers}
         style={{
           flex: 1,
           minWidth: 0,
           display: 'flex',
           flexDirection: 'column',
+          ...(longPressEnabled && tapGripToMove ? { WebkitTouchCallout: 'none', userSelect: 'none' } : {}),
         }}
       >
         <button
           type="button"
           onClick={() => {
+            if (moveLongPress.consumeLongPress()) return
             if (placementPickingActive) return
             onOpenHubJobDetail(block, workDate)
           }}
@@ -746,6 +778,7 @@ function HubPeopleBlockCard({
         <button
           type="button"
           onClick={() => {
+            if (moveLongPress.consumeLongPress()) return
             if (placementPickingActive) return
             onOpenJob(scheduleBlockAnchorId(block))
           }}
@@ -1055,6 +1088,8 @@ function HubPeopleDayCell({
   onPlusMenuBlockIdChange,
   onStartCardPlacement,
   onCardPlacementCellPick,
+  onRequestMoveBlock,
+  tapGripToMove = false,
   groupMemberCountByGroupId,
   getJobDisplayTitle,
   getJobAddress,
@@ -1091,8 +1126,11 @@ function HubPeopleDayCell({
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
   onPlusMenuBlockIdChange: (blockId: string | null) => void
-  onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
+  onStartCardPlacement: (b: JobScheduleBlockRow, variant: ScheduleDispatchCardPlacementVariant) => void
   onCardPlacementCellPick: (assigneeUserId: string, workDate: string) => void
+  /** Long-press on a card (phone-first): open the Move sheet for this block. */
+  onRequestMoveBlock?: (b: JobScheduleBlockRow) => void
+  tapGripToMove?: boolean
   groupMemberCountByGroupId: ReadonlyMap<string, number>
   getJobDisplayTitle: (jobId: string) => string
   /** Job address for the card's one-line ellipsized subline; empty string when none. */
@@ -1366,6 +1404,8 @@ function HubPeopleDayCell({
               onDeleteBlock={onDeleteBlock}
               onRequestEditBlockNote={onRequestEditBlockNote}
               onOpenPersonDay={onOpenPersonDay}
+              onRequestMoveBlock={onRequestMoveBlock}
+              tapGripToMove={tapGripToMove}
             />
           )
         })
@@ -1451,8 +1491,10 @@ type HubPeoplePanelProps = {
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
   onPlusMenuBlockIdChange: (blockId: string | null) => void
-  onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
+  onStartCardPlacement: (b: JobScheduleBlockRow, variant: ScheduleDispatchCardPlacementVariant) => void
   onCardPlacementCellPick: (assigneeUserId: string, workDate: string) => void
+  /** Long-press on a card (phone-first): open the Move sheet for this block. */
+  onRequestMoveBlock?: (b: JobScheduleBlockRow) => void
   highlightLinkedGroups: boolean
   onHighlightLinkedGroupsChange: (v: boolean) => void
   linkedGroupAccentByGroupId: ReadonlyMap<string, LinkedGroupCardAccent>
@@ -1532,6 +1574,7 @@ function HubPeoplePanel({
   onPlusMenuBlockIdChange,
   onStartCardPlacement,
   onCardPlacementCellPick,
+  onRequestMoveBlock,
   highlightLinkedGroups,
   onHighlightLinkedGroupsChange,
   linkedGroupAccentByGroupId,
@@ -2370,6 +2413,8 @@ function HubPeoplePanel({
                         onPlusMenuBlockIdChange={onPlusMenuBlockIdChange}
                         onStartCardPlacement={onStartCardPlacement}
                         onCardPlacementCellPick={onCardPlacementCellPick}
+                        onRequestMoveBlock={onRequestMoveBlock}
+                        tapGripToMove={isMobile}
                         groupMemberCountByGroupId={groupMemberCountByGroupId}
                         getJobDisplayTitle={getJobDisplayTitle}
                         getJobAddress={getJobAddress}
@@ -2921,8 +2966,10 @@ type Props = {
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
   onPlusMenuBlockIdChange: (blockId: string | null) => void
-  onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
+  onStartCardPlacement: (b: JobScheduleBlockRow, variant: ScheduleDispatchCardPlacementVariant) => void
   onCardPlacementCellPick: (assigneeUserId: string, workDate: string) => void
+  /** Long-press on a card (phone-first): open the Move sheet for this block. */
+  onRequestMoveBlock?: (b: JobScheduleBlockRow) => void
   highlightLinkedGroups: boolean
   onHighlightLinkedGroupsChange: (v: boolean) => void
   linkedGroupAccentByGroupId: ReadonlyMap<string, LinkedGroupCardAccent>
@@ -3043,6 +3090,7 @@ export function ScheduleDispatchHub({
   onPlusMenuBlockIdChange,
   onStartCardPlacement,
   onCardPlacementCellPick,
+  onRequestMoveBlock,
   highlightLinkedGroups,
   onHighlightLinkedGroupsChange,
   linkedGroupAccentByGroupId,
@@ -3477,6 +3525,7 @@ export function ScheduleDispatchHub({
           onPlusMenuBlockIdChange={onPlusMenuBlockIdChange}
           onStartCardPlacement={onStartCardPlacement}
           onCardPlacementCellPick={onCardPlacementCellPick}
+          onRequestMoveBlock={onRequestMoveBlock}
           highlightLinkedGroups={highlightLinkedGroups}
           onHighlightLinkedGroupsChange={onHighlightLinkedGroupsChange}
           linkedGroupAccentByGroupId={linkedGroupAccentByGroupId}
@@ -3576,6 +3625,7 @@ export function ScheduleDispatchHub({
           onPlusMenuBlockIdChange={onPlusMenuBlockIdChange}
           onStartCardPlacement={onStartCardPlacement}
           onCardPlacementCellPick={onCardPlacementCellPick}
+          onRequestMoveBlock={onRequestMoveBlock}
           highlightLinkedGroups={highlightLinkedGroups}
           onHighlightLinkedGroupsChange={onHighlightLinkedGroupsChange}
           linkedGroupAccentByGroupId={linkedGroupAccentByGroupId}

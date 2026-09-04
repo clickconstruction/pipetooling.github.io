@@ -83,6 +83,8 @@ Update the relevant dossier whenever a region is extracted or its state/handlers
 
 ### Block card + day cell — `HubPeopleBlockCard` + `HubPeopleDayCell`
 
+> **Phone move flows (v2.2736):** the card has two tap entry points beside drag — a grip tap arms `cardPlacementMode.variant = 'move'` when `tapGripToMove` (panel `isMobile`) is set, and a press-and-hold (`useLongPress`, fires on release) calls `onRequestMoveBlock` → the page's `ScheduleDispatchMoveBlockSheet`. Both end in `moveScheduleDispatchBlockTo` (the drop kernel). `onRequestMoveBlock` / `tapGripToMove` thread card ← cell ← panel (BOTH mounts) ← hub.
+
 - **Render location:** `hubPeopleSalarySuffix` const + `function HubPeopleBlockCard` (~358–811); `function HubPeopleDayCell` (~813–1172). Rendered only by `HubPeoplePanel` rows.
 - **Owned local state:** card — `plusButtonRef`; cell — none (all mode arbitration is derived from props). Both are effectively stateless.
 - **Cross-tab/shared props (the coupling):** `cardPlacementMode`, `placementSourceWorkDate`, `plusMenuBlockId` + `onPlusMenuBlockIdChange` (page-owned so only one + menu is open across the grid), `linkedCopyMode` (+ `onLinkedCopyToggleBlock`), `hubMultiCellAddActive` + `hubMultiCellAddSelectedKeys` (+ toggle), `hubAssignJobPlacement` (+ `onHubAssignJobCellPick`), `groupMemberCountByGroupId`, `linkedGroupAccentByGroupId` + `highlightLinkedGroups`, `timeOffInfo` (from `userTimeOffByCell`), `getJobDisplayTitle`/`getJobAddress`, `onOpenJob`/`onOpenHubJobDetail`/`onDeleteBlock`/`onRequestEditBlockNote`/`onOpenLinkedGroup`/`onStartCardPlacement`/`onCardPlacementCellPick`/`onEmptyCellClick`/`onAddJobToScheduleForCell`/`onRequestUndoNotComingIn`/`onMarkNotComingInForCell`, `canEdit`, `scheduleTodayYmd`/`columnFocusDayYmd`, `isBottomRow`.

@@ -53,7 +53,8 @@ const scheduleGridSalarySuffix: CSSProperties = {
   lineHeight: 1.1,
 }
 
-export type ScheduleDispatchCardPlacementMode = { sourceBlockId: string; variant: 'linked' | 'unlinked' }
+export type ScheduleDispatchCardPlacementVariant = 'linked' | 'unlinked' | 'move'
+export type ScheduleDispatchCardPlacementMode = { sourceBlockId: string; variant: ScheduleDispatchCardPlacementVariant }
 
 function ScheduleDispatchBlockCard({
   block,
