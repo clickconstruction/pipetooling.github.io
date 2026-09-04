@@ -2128,18 +2128,24 @@ export default function PeopleReviewTab({
         fetchLabelIdByTxId(cardTxIds).catch(() => new Map<string, string>()),
         fetchAllRowsChunkedIn(
           cardTxIds,
-          (chunk, f, t) => supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(f, t),
+          (chunk, f, t) => supabase.from('mercury_transactions').select('id, mercury_category, kind').in('id', chunk).order('id').range(f, t),
           'load team summary card categories',
         ).catch(() => [] as unknown[]),
         Object.keys(vehicleByPersonName).length > 0 ? fetchAttributionsByMercuryTxIds(cardTxIds, 'review wheels').catch(() => []) : Promise.resolve([]),
       ])
       labelIdByTxId = labels
-      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
+      const kindByTxId = new Map<string, string>()
+      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown; kind: string }>) {
+        categoryByTxId.set(r.id, r.mercury_category)
+        kindByTxId.set(r.id, r.kind)
+      }
       const fuelTagId = wheels?.fuelTag?.id ?? null
       if (fuelTagId) {
         for (const a of attributions) {
           const name = a.user_id ? nameByUserId.get(a.user_id) : null
           if (!name || !vehicleByPersonName[name]) continue
+          // Only card purchases are priced by the deal (v2.2739); an ACH filed under a vehicle label stays on the job.
+          if (kindByTxId.get(a.mercury_transaction_id) !== 'debitCardTransaction') continue
           const cat = categoryByTxId.get(a.mercury_transaction_id)
           const tag = categoryTagForCharge(tagLookups, labelIdByTxId.get(a.mercury_transaction_id) ?? null, typeof cat === 'string' ? cat : null)
           if (tag?.id === fuelTagId) excludedTxIds.add(a.mercury_transaction_id)
