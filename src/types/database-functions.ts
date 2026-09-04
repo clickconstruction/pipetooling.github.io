@@ -307,3 +307,42 @@ export interface MarkCustomerPortalSlugSharedResult {
   slug?: string
   error?: string
 }
+
+/**
+ * Parameters for takeoff_fixture_history (migration 20260904202321, v2.2774):
+ * "what this fixture usually gets" for the Takeoffs refresh.
+ */
+export interface TakeoffFixtureHistoryParams {
+  p_service_type_id: string
+  p_keys: string[]
+  p_exclude_bid_id?: string | null
+  /** Server-clamped to 1–10. */
+  p_bids_per_key?: number
+}
+
+/** One Combined line as the RPC's `lines` jsonb carries it. */
+export interface TakeoffFixtureHistoryLine {
+  id: string
+  part_id: string | null
+  part_name: string | null
+  quantity: number
+  unit_price: number
+  source_template_id: string | null
+  template_name: string | null
+  source_material_part_price_id: string | null
+}
+
+/** One row of takeoff_fixture_history: the best example row of one bid for one key. */
+export interface TakeoffFixtureHistoryRow {
+  key: string
+  bid_id: string
+  bid_number: string | null
+  project_name: string | null
+  sent_on: string | null
+  outcome: string | null
+  count_row_id: string
+  fixture: string | null
+  line_count: number
+  per_unit_cost: number
+  lines: TakeoffFixtureHistoryLine[]
+}
