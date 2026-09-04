@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
-import type { CSSProperties, FormEvent } from 'react'
+import type { CSSProperties } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
@@ -502,8 +502,6 @@ function SubPortalStatement({
         ) : null}
       </div>
 
-      <AvailabilityCard t={t} submitToken={submitToken} />
-
       <div style={{ marginTop: 30, fontSize: 11, color: FAINT, textAlign: 'center' }}>
         {t('footer')}
         {payload.company.phone ? `: ${payload.company.phone}` : ''}
@@ -921,93 +919,3 @@ function DocRow({
   )
 }
 
-function AvailabilityCard({ t, submitToken }: { t: T; submitToken: string }) {
-  const [description, setDescription] = useState('')
-  const [phone, setPhone] = useState('')
-  const [website, setWebsite] = useState('') // honeypot
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  const [error, setError] = useState<string | null>(null)
-
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    if (status === 'sending') return
-    setStatus('sending')
-    setError(null)
-    if (sampleStateFromToken(submitToken)) {
-      setStatus('sent')
-      return
-    }
-    try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/submit-sub-portal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: submitToken, kind: 'availability', description, phone, website }),
-      })
-      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
-      if (json?.ok) {
-        setStatus('sent')
-      } else {
-        setError(json?.error ?? 'Something went wrong. Please try again.')
-        setStatus('error')
-      }
-    } catch {
-      setError('Something went wrong. Please check your connection.')
-      setStatus('error')
-    }
-  }
-
-  return (
-    <div data-screen-only style={{ marginTop: 34, borderTop: `2px dashed ${HAIR}`, paddingTop: 6 }}>
-      <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', color: FAINT, textAlign: 'center' }}>
-        ✂ · · · · · · · · · {t('tearLabel')} · · · · · · · · ·
-      </div>
-      <form
-        onSubmit={(e) => void submit(e)}
-        style={{ background: CARD, border: `1px solid ${HAIR}`, borderRadius: 8, marginTop: 10, padding: '0.9rem 0.95rem' }}
-      >
-        <div style={{ fontWeight: 700, fontSize: 14.5 }}>{t('moreWork')}</div>
-        <p style={{ margin: '3px 0 10px', fontSize: 12.5, color: MUTED, lineHeight: 1.5 }}>{t('moreWorkBody')}</p>
-        {status === 'sent' ? (
-          <div style={{ color: PAPER_GREEN, fontWeight: 700, fontSize: 13.5 }}>{t('sentToOffice')}</div>
-        ) : (
-          <>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('availabilityPlaceholder')}
-              disabled={status === 'sending'}
-              style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, background: 'var(--surface)', color: INK, padding: '0.5rem 0.6rem', fontSize: 13.5, fontFamily: 'inherit', minHeight: 64 }}
-            />
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder={t('phonePlaceholder')}
-              disabled={status === 'sending'}
-              autoComplete="tel"
-              style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, background: 'var(--surface)', color: INK, padding: '0.5rem 0.6rem', fontSize: 13.5, fontFamily: 'inherit', marginTop: 8 }}
-            />
-            {/* Honeypot — hidden from real people */}
-            <input
-              type="text"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              tabIndex={-1}
-              autoComplete="off"
-              aria-hidden
-              style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }}
-            />
-            {error ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{error}</div> : null}
-            <button
-              type="submit"
-              disabled={status === 'sending' || description.trim().length < 5}
-              style={{ marginTop: 10, background: PAPER_GREEN, color: '#fff', border: 'none', borderRadius: 6, padding: '0.55rem 1.2rem', fontSize: 13.5, fontWeight: 700, cursor: status === 'sending' ? 'wait' : 'pointer' }}
-            >
-              {status === 'sending' ? '…' : t('sendToOffice')}
-            </button>
-          </>
-        )}
-      </form>
-    </div>
-  )
-}

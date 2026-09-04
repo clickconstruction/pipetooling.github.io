@@ -70,9 +70,8 @@ describe('SubPortal render smoke', () => {
     expect(screen.getByText(/Expires Nov 30, 2026/)).toBeTruthy()
     expect(screen.getByText('Sign now')).toBeTruthy()
 
-    // Short address + availability card
+    // Short address card
     expect(screen.getAllByText(/dv-mechanical/).length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('Looking for more work?')).toBeTruthy()
   })
 
   it('shows the friendly error when the link is dead', async () => {
