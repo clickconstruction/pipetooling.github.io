@@ -5,7 +5,7 @@ file: TROUBLESHOOTING.md
 type: Troubleshooting guide
 purpose: Common issues and how to resolve them
 audience: Devs + AI agents
-last_updated: 2026-08-02
+last_updated: 2026-09-04
 ---
 
 Common issues and how to resolve them.
@@ -128,6 +128,19 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 4. [Supabase status](https://status.supabase.com) for outages
 
 ---
+
+## `[row-cap]` console error — a list silently stopped at 1,000 rows
+
+**Symptoms**: the browser console shows `[row-cap] <table> returned exactly 1000 rows with no limit — PostgREST's max_rows cap silently truncated it.` Users see the same thing as a *missing data* bug: a search that can't find something that exists, a row that renders blank, a total that is too low, a report that only covers part of the company. Nothing errors.
+
+**Cause**: PostgREST answers every read that sets no `limit` with the first `max_rows` (1,000) rows and a 200. Tables cross the cap quietly as the business grows — `material_parts` (Plumbing) did in June 2026 and the Takeoffs part search lost "DI…" through Z until v2.2755. The tripwire in [`src/lib/supabaseRowCapTripwire.ts`](../src/lib/supabaseRowCapTripwire.ts) (wired into the client in `src/lib/supabase.ts`, v2.2756) inspects every response's `Content-Range` and reports the first hit per table per session.
+
+**Fix** (pick one, at the call site the message's `path` points to):
+1. **Page it** — `fetchAllRows` / `fetchAllRowsChunkedIn` from [`src/lib/supabasePaging.ts`](../src/lib/supabasePaging.ts) with a stable `.order()`; add a regression test with the fake-cap client (pattern: `src/lib/materials/partsCatalog.test.ts`).
+2. **Bound it** — `.limit(n)`, `.in('id', ids)`, or a narrower filter, when the surface only ever needs a slice.
+3. **Prove it isn't capped** — `select('…', { count: 'exact' })`: a known total ≤ 1,000 silences the tripwire, because exactly 1,000 real rows is then a fact, not a symptom.
+
+Never raise `max_rows` instead — it moves the cliff and hides it again.
 
 ## RPC returns 404 (e.g. approve_clock_sessions)
 
