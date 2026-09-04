@@ -474,6 +474,73 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     return result
   }
 
+  /**
+   * Copy a previous bid's lines onto a fixture (docs/TAKEOFFS_REFRESH_PLAN.md
+   * decision 6): part lines re-price to today's lowest catalog price (the
+   * source bid's overrides are NOT carried); bundle lines re-price to the
+   * assembly's lowest supply-house price. Quiet — returns a summary.
+   */
+  async function copyLinesToRow(
+    countRowId: string,
+    source: ReadonlyArray<{ part_id: string | null; quantity: number; source_template_id: string | null }>,
+  ): Promise<{ linesAdded: number; partsWithoutPrice: number }> {
+    const result = { linesAdded: 0, partsWithoutPrice: 0 }
+    if (!selectedBidForTakeoff?.id || source.length === 0) return result
+    const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
+    let seq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
+    const partIds = Array.from(new Set(source.map((l) => l.part_id).filter((id): id is string => !!id)))
+    const priceMap = partIds.length > 0 ? await fetchLowestPartPricesBatch(supabase, partIds) : new Map<string, { price: number; priceId: string }>()
+    const bundleIds = Array.from(new Set(source.filter((l) => !l.part_id && l.source_template_id).map((l) => l.source_template_id as string)))
+    const bundlePrice = new Map<string, number>()
+    for (const tid of bundleIds) {
+      const { data } = await supabase.from('material_template_prices').select('price').eq('template_id', tid).order('price', { ascending: true }).limit(1)
+      const low = (data ?? [])[0] as { price: number } | undefined
+      bundlePrice.set(tid, low ? Math.max(0, Number(low.price) || 0) : 0)
+    }
+    const newLines: TakeoffRoughPartLineRow[] = []
+    for (const src of source) {
+      if (!src.part_id && !src.source_template_id) continue
+      seq += 1
+      if (src.part_id) {
+        const low = priceMap.get(src.part_id)
+        if (low == null) result.partsWithoutPrice += 1
+        newLines.push({
+          id: crypto.randomUUID(),
+          countRowId,
+          partId: src.part_id,
+          quantity: Math.max(0.0001, Number(src.quantity) || 0.0001),
+          unitPrice: low != null ? low.price : 0,
+          sourceMaterialPartPriceId: low != null ? low.priceId : null,
+          sourceTemplateId: src.source_template_id ?? null,
+          sequenceOrder: seq,
+          isSaved: false,
+        })
+      } else {
+        newLines.push({
+          id: crypto.randomUUID(),
+          countRowId,
+          partId: null,
+          quantity: Math.max(0.0001, Number(src.quantity) || 1),
+          unitPrice: bundlePrice.get(src.source_template_id as string) ?? 0,
+          sourceMaterialPartPriceId: null,
+          sourceTemplateId: src.source_template_id,
+          sequenceOrder: seq,
+          isSaved: false,
+        })
+      }
+    }
+    if (newLines.length === 0) return result
+    setTakeoffRoughPartLines((prev) => [...prev, ...newLines])
+    for (const line of newLines) {
+      await persistTakeoffRoughPartLine(line)
+    }
+    result.linesAdded = newLines.length
+    if (partIds.length > 0 && activeTab === 'takeoffs' && normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough') {
+      void refreshTakeoffRoughCatalogLowest(partIds)
+    }
+    return result
+  }
+
   return {
     persistTakeoffRoughPartLine,
     setRoughPartLinePartAndCatalogPrice,
@@ -487,5 +554,6 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     insertRoughBundleLine,
     applyRoughAddAssemblyBundle,
     fillRowsFromAssemblies,
+    copyLinesToRow,
   }
 }
