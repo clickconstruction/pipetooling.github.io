@@ -30,7 +30,8 @@ key_sections:
 | 4 | Fixture-history RPC (migration `20260904202321`, pushed) | v2.2774 | #2510 |
 | 5 | Fill from book under Combined | v2.2776 | #2513 |
 | 6 | New 1 — one fixture at a time | v2.2778 | #2517 |
-| 7 | New 2 — cost rail | v2.2781 | this PR |
+| 7 | New 2 — cost rail | v2.2781 | #2520 |
+| — | Hardening: shared model toggle, row jumps into New 1 / New 2, smokes, retirement readiness | v2.2784 | this PR |
 
 Versions are claimed per PR with `npm run claim` at build time — never pre-assigned here.
 
