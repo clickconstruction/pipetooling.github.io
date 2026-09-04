@@ -329,3 +329,92 @@ export function monthTicks(dayYmds: readonly string[]): Array<{ index: number; l
   if (out.length >= 2 && out[1]!.index - out[0]!.index < 4) out.shift()
   return out
 }
+
+// ---- Weekly roll-up (v2.2746) ----
+
+/** Monday of the week containing `ymd` (UTC day math; the ledger's ymds are company-calendar days already). */
+export function mondayOfYmd(ymd: string): string {
+  const n = ymdToDayNumber(ymd)
+  const dow = new Date(n * 86_400_000).getUTCDay() // 0 = Sunday
+  const back = dow === 0 ? 6 : dow - 1
+  return dayNumberToYmd(n - back)
+}
+
+export type JobRunningWeek = {
+  /** The Monday (clipped to the window's first day for a partial first week). */
+  weekStartYmd: string
+  /** Sunday, clipped to the window's last day. */
+  weekEndYmd: string
+  /** Jobs that were already running before this week began. */
+  carried: number
+  /** Jobs whose run began inside this week. */
+  fresh: number
+  total: number
+  jobIds: string[]
+}
+
+export type JobRunningWeeklySeries = {
+  weeks: JobRunningWeek[]
+  peak: { weekStartYmd: string; total: number } | null
+  currentTotal: number
+  /** Mean total over the weeks in the window. */
+  averageTotal: number
+}
+
+/**
+ * Jobs touched per week, split into carried over (running before the week) and
+ * new that week. A job counts once per week however many of its segments fall
+ * inside it; "carried" follows the job's first run day, so a job that paused and
+ * resumed reads as carried, not new.
+ */
+export function bucketRunningWeekly(rows: readonly JobRunRow[], dayYmds: readonly string[], todayYmd: string): JobRunningWeeklySeries {
+  if (dayYmds.length === 0) return { weeks: [], peak: null, currentTotal: 0, averageTotal: 0 }
+  const first = dayYmds[0]!
+  const last = dayYmds[dayYmds.length - 1]!
+  const weeks: JobRunningWeek[] = []
+  const byStart = new Map<string, JobRunningWeek>()
+  let cursor = mondayOfYmd(first)
+  while (cursor <= last) {
+    const monday = cursor
+    const sunday = dayNumberToYmd(ymdToDayNumber(monday) + 6)
+    const w: JobRunningWeek = {
+      weekStartYmd: monday < first ? first : monday,
+      weekEndYmd: sunday > last ? last : sunday,
+      carried: 0,
+      fresh: 0,
+      total: 0,
+      jobIds: [],
+    }
+    weeks.push(w)
+    byStart.set(monday, w)
+    cursor = dayNumberToYmd(ymdToDayNumber(monday) + 7)
+  }
+  for (const r of rows) {
+    const seen = new Set<string>()
+    for (const seg of r.segments) {
+      let m = mondayOfYmd(seg.startYmd)
+      const endMonday = mondayOfYmd(seg.endYmd)
+      while (m <= endMonday) {
+        const w = byStart.get(m)
+        if (w && !seen.has(m)) {
+          seen.add(m)
+          if (r.startYmd < m) w.carried += 1
+          else w.fresh += 1
+          w.total += 1
+          w.jobIds.push(r.jobId)
+        }
+        m = dayNumberToYmd(ymdToDayNumber(m) + 7)
+      }
+    }
+  }
+  let peak: JobRunningWeeklySeries['peak'] = null
+  for (const w of weeks) if (!peak || w.total > peak.total) peak = { weekStartYmd: w.weekStartYmd, total: w.total }
+  if (peak && peak.total === 0) peak = null
+  const current = byStart.get(mondayOfYmd(todayYmd)) ?? weeks[weeks.length - 1]
+  return {
+    weeks,
+    peak,
+    currentTotal: current?.total ?? 0,
+    averageTotal: weeks.length > 0 ? weeks.reduce((s, w) => s + w.total, 0) / weeks.length : 0,
+  }
+}

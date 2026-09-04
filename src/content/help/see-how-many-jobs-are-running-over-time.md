@@ -26,6 +26,10 @@ The tiles above say it in numbers: running today, the average over the window, t
 
 Open **The N jobs behind this curve** to see every job as a bar from its first running day to its last, sorted by start. An open job's bar reaches today and is marked *open*.
 
+## Daily or weekly
+
+**Daily** is one column per day, the view described above. **Weekly** rolls the same runs into company-calendar weeks (Monday to Sunday): each bar is the jobs touched that week, stacked as {{chip:blue|carried over}} (already running before the week began) under {{chip:blue|new this week}}. The spikes from single-visit days average out, and the tiles turn into running this week, average per week, and the peak week. The jobs panel below stays day by day. Your pick is remembered on this device.
+
 ## Color by
 
 The stack's colors are a choice, and the counts never change:

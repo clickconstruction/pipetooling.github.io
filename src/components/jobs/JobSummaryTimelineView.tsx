@@ -5,6 +5,7 @@ import {
   JOB_RUN_COLOR_BY_OPTIONS,
   JOB_RUN_DEFINITIONS,
   JOB_RUN_GAP_OPTIONS,
+  bucketRunningWeekly,
   buildRunningSeriesBy,
   buildStatusSpans,
   buildWorkedSpans,
@@ -15,6 +16,7 @@ import {
   type JobRunColorBy,
   type JobRunDefinition,
   type JobRunRow,
+  type JobRunningWeeklySeries,
 } from '../../lib/jobs/jobRunningTimeline'
 import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
@@ -39,10 +41,20 @@ type Props = {
   todayYmd: string
   colorBy: JobRunColorBy
   onColorByChange: (c: JobRunColorBy) => void
+  /** Daily columns or Monday-keyed weekly bars (v2.2746). */
+  granularity: TimelineGranularity
+  onGranularityChange: (g: TimelineGranularity) => void
   canOpenSessionNotes: boolean
   users: ReadonlyArray<{ id: string; name: string | null }>
   jobs: ReadonlyArray<SessionNotesJobIdentity>
 }
+
+export type TimelineGranularity = 'daily' | 'weekly'
+const GRANULARITY_OPTIONS: ReadonlyArray<{ key: TimelineGranularity; label: string; title: string }> = [
+  { key: 'daily', label: 'Daily', title: 'One column per day' },
+  { key: 'weekly', label: 'Weekly', title: 'One bar per week (Monday to Sunday): jobs carried over from before under jobs that started that week' },
+]
+const WEEK_COLOR = { carried: '#2563eb', fresh: '#0891b2' } as const
 
 /** Saturated band colors (literal per the theme rule). */
 const BAND_COLOR: Record<JobRunBand, string> = {
@@ -83,7 +95,7 @@ function dayLabel(ymd: string): string {
   return formatStagesNextDateLabel(ymd)
 }
 
-export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerError, statusByJob, todayYmd, colorBy, onColorByChange, canOpenSessionNotes, users, jobs }: Props) {
+export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerError, statusByJob, todayYmd, colorBy, onColorByChange, granularity, onGranularityChange, canOpenSessionNotes, users, jobs }: Props) {
   const [definition, setDefinition] = useState<JobRunDefinition>('worked')
   const [gapDays, setGapDays] = useState(7)
   const [sessionNotesDay, setSessionNotesDay] = useState<string | null>(null)
@@ -104,8 +116,10 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
   }, [ledger, mergedStatus, todayYmd, definition, gapDays])
   const dayYmds = useMemo(() => (ledger ? ledger.days.map((d) => d.ymd) : []), [ledger])
   const series = useMemo(() => buildRunningSeriesBy(rows, dayYmds, todayYmd, colorBy), [rows, dayYmds, todayYmd, colorBy])
+  const weekly = useMemo(() => bucketRunningWeekly(rows, dayYmds, todayYmd), [rows, dayYmds, todayYmd])
   const summary = useMemo(() => summarizeJobRuns(rows), [rows])
   const ticks = useMemo(() => monthTicks(dayYmds), [dayYmds])
+  const isWeekly = granularity === 'weekly'
   const hasMoves = useMemo(() => rows.some((r) => r.billedYmd != null || r.paidYmd != null), [rows])
 
   if (!ledger) {
@@ -167,7 +181,8 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Segmented label="Running =" value={definition} options={JOB_RUN_DEFINITIONS} onChange={setDefinition} />
         {definition === 'worked' ? <Segmented label="Gap" value={gapDays} options={JOB_RUN_GAP_OPTIONS} onChange={setGapDays} /> : null}
-        <Segmented label="Color by" value={colorBy} options={JOB_RUN_COLOR_BY_OPTIONS} onChange={onColorByChange} />
+        <Segmented label="Show" value={granularity} options={GRANULARITY_OPTIONS} onChange={onGranularityChange} />
+        {isWeekly ? null : <Segmented label="Color by" value={colorBy} options={JOB_RUN_COLOR_BY_OPTIONS} onChange={onColorByChange} />}
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {definition === 'worked'
             ? 'A job runs from its first approved field day to its last; still-open jobs run to today. A pause longer than the gap splits the run.'
@@ -179,21 +194,43 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
       ) : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
-        <div style={tile}>
-          <div style={tileK}>Running today</div>
-          <div style={tileV}>{series.todayTotal}</div>
-          <div style={tileS}>jobs open right now</div>
-        </div>
-        <div style={tile}>
-          <div style={tileK}>Average</div>
-          <div style={tileV}>{series.averageTotal.toFixed(1)}</div>
-          <div style={tileS}>jobs running per day, every day in the window</div>
-        </div>
-        <div style={tile}>
-          <div style={tileK}>Peak</div>
-          <div style={tileV}>{series.peak ? series.peak.total : '—'}</div>
-          <div style={tileS}>{series.peak ? `on ${dayLabel(series.peak.ymd)}` : 'no runs in the window'}</div>
-        </div>
+        {isWeekly ? (
+          <>
+            <div style={tile}>
+              <div style={tileK}>Running this week</div>
+              <div style={tileV}>{weekly.currentTotal}</div>
+              <div style={tileS}>jobs touched since Monday</div>
+            </div>
+            <div style={tile}>
+              <div style={tileK}>Average per week</div>
+              <div style={tileV}>{weekly.averageTotal.toFixed(1)}</div>
+              <div style={tileS}>jobs touched per week, every week in the window</div>
+            </div>
+            <div style={tile}>
+              <div style={tileK}>Peak week</div>
+              <div style={tileV}>{weekly.peak ? weekly.peak.total : '—'}</div>
+              <div style={tileS}>{weekly.peak ? `week of ${dayLabel(weekly.peak.weekStartYmd)}` : 'no runs in the window'}</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={tile}>
+              <div style={tileK}>Running today</div>
+              <div style={tileV}>{series.todayTotal}</div>
+              <div style={tileS}>jobs open right now</div>
+            </div>
+            <div style={tile}>
+              <div style={tileK}>Average</div>
+              <div style={tileV}>{series.averageTotal.toFixed(1)}</div>
+              <div style={tileS}>jobs running per day, every day in the window</div>
+            </div>
+            <div style={tile}>
+              <div style={tileK}>Peak</div>
+              <div style={tileV}>{series.peak ? series.peak.total : '—'}</div>
+              <div style={tileS}>{series.peak ? `on ${dayLabel(series.peak.ymd)}` : 'no runs in the window'}</div>
+            </div>
+          </>
+        )}
         <div style={tile}>
           <div style={tileK}>Jobs in window</div>
           <div style={tileV}>{summary.jobs}</div>
@@ -206,6 +243,9 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
         </div>
       </div>
 
+      {isWeekly ? (
+        <WeeklyChart weekly={weekly} dayYmds={dayYmds} todayYmd={todayYmd} ticks={ticks} />
+      ) : (
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.5rem 0.25rem' }}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Jobs running per day, stacked" style={{ display: 'block' }}>
           {gridVals.map((v) => (
@@ -276,6 +316,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
           <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>hover a day for its split{canOpenSessionNotes ? ' · click it for that day’s session notes' : ''}</span>
         </div>
       </div>
+      )}
 
       <details open={barsOpen} onToggle={(e) => setBarsOpen((e.currentTarget as HTMLDetailsElement).open)} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.4rem 0.6rem' }}>
         <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-700)', fontSize: '0.85rem' }}>
@@ -330,6 +371,92 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
       </details>
 
       {sessionNotesDay ? <SessionNotesModal initialJob={null} initialDay={sessionNotesDay} initialGroupBy="job" users={users} jobs={jobs} onClose={() => setSessionNotesDay(null)} /> : null}
+    </div>
+  )
+}
+
+/** Weekly roll-up (v2.2746): one bar per Monday-keyed week — carried over under new that week. */
+function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningWeeklySeries; dayYmds: readonly string[]; todayYmd: string; ticks: ReadonlyArray<{ index: number; label: string }> }) {
+  const W = 1000
+  const H = 250
+  const L = 36
+  const R = 12
+  const T = 16
+  const B = 30
+  const plotH = H - T - B
+  const n = Math.max(1, dayYmds.length)
+  const iw = (W - L - R) / n
+  const dayIndex = (ymd: string) => Math.max(0, Math.min(n - 1, dayYmds.indexOf(ymd)))
+  const maxY = Math.max(4, Math.ceil(((weekly.peak?.total ?? 0) + 1) / 4) * 4)
+  const yOf = (v: number) => T + plotH * (1 - v / maxY)
+  const gridStep = maxY <= 12 ? 2 : maxY <= 40 ? 8 : Math.ceil(maxY / 5)
+  const gridVals: number[] = []
+  for (let v = 0; v <= maxY; v += gridStep) gridVals.push(v)
+  const thisWeekStart = weekly.weeks.find((w) => todayYmd >= w.weekStartYmd && todayYmd <= w.weekEndYmd)?.weekStartYmd
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.5rem 0.25rem' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Jobs touched per week, carried over under new that week" style={{ display: 'block' }}>
+        {gridVals.map((v) => (
+          <g key={v}>
+            <line x1={L} x2={W - R} y1={yOf(v)} y2={yOf(v)} stroke="var(--border)" strokeWidth={1} />
+            <text x={L - 6} y={yOf(v) + 4} textAnchor="end" fontSize={10} fill="var(--text-muted)">
+              {v}
+            </text>
+          </g>
+        ))}
+        {weekly.weeks.map((w) => {
+          const a = dayIndex(w.weekStartYmd)
+          const b = dayIndex(w.weekEndYmd)
+          const x = L + a * iw + 1
+          const width = Math.max(2, (b - a + 1) * iw - 2)
+          const carriedTop = yOf(w.carried)
+          const totalTop = yOf(w.total)
+          const isThis = w.weekStartYmd === thisWeekStart
+          return (
+            <g key={w.weekStartYmd}>
+              {w.carried > 0 ? <rect x={x} y={carriedTop} width={width} height={yOf(0) - carriedTop} fill={WEEK_COLOR.carried} opacity={0.85} rx={1.5} /> : null}
+              {w.fresh > 0 ? <rect x={x} y={totalTop} width={width} height={carriedTop - totalTop} fill={WEEK_COLOR.fresh} opacity={0.85} rx={1.5} /> : null}
+              {isThis ? <rect x={x} y={T} width={width} height={plotH} fill="none" stroke="var(--text-red-700)" strokeDasharray="3 3" /> : null}
+              {w.total > 0 ? (
+                <text x={x + width / 2} y={totalTop - 4} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--text-700)">
+                  {w.total}
+                </text>
+              ) : null}
+              <rect x={x} y={T} width={width} height={plotH} fill="transparent">
+                <title>{`week of ${dayLabel(w.weekStartYmd)} → ${dayLabel(w.weekEndYmd)} · ${w.total} jobs touched (${w.carried} carried over · ${w.fresh} new this week)`}</title>
+              </rect>
+            </g>
+          )
+        })}
+        {ticks.map((t) => (
+          <g key={t.index}>
+            <line x1={L + t.index * iw} x2={L + t.index * iw} y1={T + plotH} y2={T + plotH + 5} stroke="var(--border-strong)" />
+            <text x={L + t.index * iw + 3} y={T + plotH + 16} fontSize={10} fill="var(--text-muted)">
+              {t.label}
+            </text>
+          </g>
+        ))}
+        {weekly.peak ? (
+          <text x={L + dayIndex(weekly.peak.weekStartYmd) * iw + 2} y={T - 4} fontSize={10} fontWeight={700} fill="var(--text-strong)">
+            peak {weekly.peak.total} · week of {dayLabel(weekly.peak.weekStartYmd).replace(/^\w+ /, '')}
+          </text>
+        ) : null}
+      </svg>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-700)', padding: '0.35rem 0.25rem 0.2rem' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <i style={{ display: 'inline-block', width: 12, height: 8, borderRadius: 2, background: WEEK_COLOR.carried }} />
+          carried over from before the week
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <i style={{ display: 'inline-block', width: 12, height: 8, borderRadius: 2, background: WEEK_COLOR.fresh }} />
+          started that week
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <i style={{ display: 'inline-block', width: 12, height: 8, border: '1px dashed var(--text-red-700)', borderRadius: 2 }} />
+          this week
+        </span>
+        <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>hover a week for its split · a job counts once per week it was running</span>
+      </div>
     </div>
   )
 }

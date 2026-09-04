@@ -3,10 +3,12 @@ import { buildJobDayLedger } from './jobDayLedger'
 import {
   buildRunningSeries,
   buildRunningSeriesBy,
+  bucketRunningWeekly,
   buildStatusSpans,
   buildWorkedSpans,
   colorSegmentsForRow,
   jobRunBucket,
+  mondayOfYmd,
   monthTicks,
   runLengthBand,
   stateOnDay,
@@ -227,5 +229,47 @@ describe('colorings (v2.2745)', () => {
       { startYmd: '2026-08-22', endYmd: '2026-08-25', band: 'paid' },
     ])
     expect(colorSegmentsForRow(rows[2]!, 'stateOnDay')).toEqual([{ startYmd: '2026-08-28', endYmd: '2026-08-31', band: 'working' }])
+  })
+})
+
+describe('weekly roll-up (v2.2746)', () => {
+  const rows = buildWorkedSpans({ ledger, statusByJob: status, todayYmd: TODAY, gapDays: 7 })
+  const days = ledger.days.map((d) => d.ymd)
+
+  it('finds Mondays', () => {
+    expect(mondayOfYmd('2026-08-01')).toBe('2026-07-27') // Saturday → the Monday before
+    expect(mondayOfYmd('2026-08-03')).toBe('2026-08-03') // a Monday
+    expect(mondayOfYmd('2026-08-09')).toBe('2026-08-03') // Sunday → same week's Monday
+  })
+
+  it('buckets runs into Monday-keyed weeks, clipped to the window, split carried vs new', () => {
+    const s = bucketRunningWeekly(rows, days, TODAY)
+    expect(s.weeks.map((w) => `${w.weekStartYmd}→${w.weekEndYmd}`)).toEqual([
+      '2026-08-01→2026-08-02',
+      '2026-08-03→2026-08-09',
+      '2026-08-10→2026-08-16',
+      '2026-08-17→2026-08-23',
+      '2026-08-24→2026-08-30',
+      '2026-08-31→2026-08-31',
+    ])
+    // Week of Jul 27 (clipped to Aug 1–2): j1 starts Aug 1 → new.
+    expect(s.weeks[0]).toMatchObject({ fresh: 1, carried: 0, total: 1 })
+    // Week of Aug 3: j1 carried (started Aug 1), j2 new (starts Aug 3).
+    expect(s.weeks[1]).toMatchObject({ carried: 1, fresh: 1, total: 2 })
+    // Week of Aug 10: nothing runs (inside j1's pause).
+    expect(s.weeks[2]).toMatchObject({ total: 0 })
+    // Week of Aug 17: j1 resumes Aug 20 — carried, not new (its run began Aug 1).
+    expect(s.weeks[3]).toMatchObject({ carried: 1, fresh: 0, total: 1 })
+    // Week of Aug 24: j1 through Aug 25 (carried) + j3 starts Aug 28 (new).
+    expect(s.weeks[4]).toMatchObject({ carried: 1, fresh: 1, total: 2 })
+    // Week of Aug 31 (clipped to one day): j3 carried.
+    expect(s.weeks[5]).toMatchObject({ carried: 1, fresh: 0, total: 1 })
+    expect(s.peak).toEqual({ weekStartYmd: '2026-08-03', total: 2 })
+    expect(s.currentTotal).toBe(1)
+    expect(s.averageTotal).toBeCloseTo(7 / 6, 6)
+  })
+
+  it('is empty for an empty window', () => {
+    expect(bucketRunningWeekly(rows, [], TODAY)).toEqual({ weeks: [], peak: null, currentTotal: 0, averageTotal: 0 })
   })
 })

@@ -52,6 +52,8 @@ export type JobSummaryViewPrefs = {
   sortKey: JobSummarySortKey
   sortDir: JobSummarySortDir
   timelineColorBy: JobSummaryTimelineColorBy
+  /** Timeline granularity (v2.2746): one column per day, or one bar per Monday-keyed week. */
+  timelineGranularity: 'daily' | 'weekly'
 }
 
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
@@ -64,6 +66,7 @@ export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
   sortKey: 'trueProfit',
   sortDir: 'desc',
   timelineColorBy: 'status',
+  timelineGranularity: 'daily',
 }
 
 export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewMode; label: string; title: string }> = [
@@ -106,6 +109,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
       sortKey: SORT_KEYS.includes(p.sortKey as JobSummarySortKey) ? (p.sortKey as JobSummarySortKey) : JOB_SUMMARY_VIEW_DEFAULTS.sortKey,
       sortDir: p.sortDir === 'asc' || p.sortDir === 'desc' ? p.sortDir : JOB_SUMMARY_VIEW_DEFAULTS.sortDir,
       timelineColorBy: p.timelineColorBy === 'stateOnDay' || p.timelineColorBy === 'runLength' ? p.timelineColorBy : 'status',
+      timelineGranularity: p.timelineGranularity === 'weekly' ? 'weekly' : 'daily',
     }
   } catch {
     return { ...JOB_SUMMARY_VIEW_DEFAULTS }
