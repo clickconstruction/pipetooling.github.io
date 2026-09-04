@@ -1,0 +1,9 @@
+# 20260904202321_takeoff_fixture_history — "what this fixture usually gets" RPC (v2.2774)
+
+Takeoffs refresh PR 4 (`docs/TAKEOFFS_REFRESH_PLAN.md`, decision 5). Two functions, no tables:
+
+- **`public.takeoff_fixture_key(text)`** — `IMMUTABLE STRICT`. The fixture-name normalizer mirrored from `src/lib/bids/takeoffFixtureKey.ts` (lowercase · trim · collapse whitespace · strip one trailing plan tag `-12` / `_3a` / ` 2`, the space form only when the rest holds no digit · never for `ft of …` / `px of …` · a bare tag stays). **Keep the two in step**: the client keys its own rows with the TS version and passes the keys in; a drift shows up as "no history" for a name that plainly has some.
+- **`public.takeoff_fixture_history(p_service_type_id uuid, p_keys text[], p_exclude_bid_id uuid = NULL, p_bids_per_key int = 3)`** — `STABLE SECURITY INVOKER`, `LANGUAGE sql`. For each key: count rows on other bids of the service type (adopted bids excluded), on each bid's **active version** (`cr.bid_version_id IS NOT DISTINCT FROM b.selected_bid_version_id`), joined to their Combined lines; one example row per (key, bid) — the row with the most lines — then the last N bids per key by `COALESCE(bid_date_sent, created_at)` desc. Returns `(key, bid_id, bid_number, project_name, sent_on, outcome, count_row_id, fixture, line_count, per_unit_cost, lines jsonb)`; `lines` carries `id, part_id, part_name, quantity, unit_price, source_template_id, template_name, source_material_part_price_id` in sequence order. `p_bids_per_key` is clamped to 1–10. Deterministic ORDER BY (key, bid rank).
+- RLS runs as the caller on `bids`, `bids_count_rows`, `bids_takeoff_rough_part_lines`, `material_parts`, `material_templates`; grants: `authenticated`, `service_role`.
+
+Idempotent (`CREATE OR REPLACE`), additive, no table → no read-only re-apply calls. Applied with `supabase db push` after the PR merged; types regenerated after the push.
