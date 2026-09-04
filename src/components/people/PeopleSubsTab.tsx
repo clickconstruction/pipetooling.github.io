@@ -5,6 +5,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { buildSubsHqRows, groupUnattributedSheets, type SubsHqResult, type UnattributedGroup } from '../../lib/people/subsHqRows'
 import { suggestSubSheetAssignee } from '../../lib/people/subSheetNameSuggestion'
 import type { ComplianceBadge } from '../../lib/people/subCompliance'
+import { parseSubWorkOrderSnapshot } from '../../lib/subWorkOrders/subWorkOrder'
 import SubPortalGlobeButton from './SubPortalGlobeButton'
 import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 
@@ -28,6 +29,8 @@ import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 type DocRow = {
   id: string
   document_name: string
+  applied_contract_template_document_id?: string | null
+  applied_version_date?: string | null
   doc_type: string
   status: string
   expires_at: string | null
@@ -67,11 +70,21 @@ export default function PeopleSubsTab() {
       supabase.from('users').select('id, name, email').eq('role', 'subcontractor'),
       supabase.from('people_labor_jobs').select('id, assigned_to_name, address, job_number, labor_rate'),
       supabase.from('people_labor_job_assignees').select('labor_job_id, person_id'),
-      supabase.from('step_commitments').select('person_id, amount, status, step_id'),
+      supabase.from('step_commitments').select('person_id, amount, status, step_id, labor_job_id, offer_scope_snapshot'),
       supabase
         .from('person_contract_documents')
-        .select('id, document_name, doc_type, status, expires_at, person_id, person_name'),
+        .select('id, document_name, doc_type, status, expires_at, person_id, person_name, applied_contract_template_document_id, applied_version_date'),
     ])
+    // v2.2790: the Book's General Conditions for subs (audience = 'sub'), for the Gen. Cond. pill.
+    const { data: subBookDocs } = await supabase
+      .from('contract_template_documents')
+      .select('id, document_name, book_version_date')
+      .eq('audience', 'sub')
+      .order('sequence_order', { ascending: true })
+    const gcDoc =
+      ((subBookDocs ?? []) as Array<{ id: string; document_name: string; book_version_date: string | null }>).find((d) => /general conditions/i.test(d.document_name)) ??
+      ((subBookDocs ?? []) as Array<{ id: string; document_name: string; book_version_date: string | null }>)[0] ??
+      null
     const firstError = peopleRes.error ?? usersRes.error ?? sheetsRes.error ?? assigneesRes.error
     if (firstError) {
       setError(firstError.message)
@@ -100,10 +113,11 @@ export default function PeopleSubsTab() {
     // Commitments enriched with step/project names (fail-soft pre-migration).
     const commitmentRows = commitmentsRes.error
       ? []
-      : ((commitmentsRes.data ?? []) as Array<{ person_id: string; amount: number; status: string; step_id: string }>)
+      : ((commitmentsRes.data ?? []) as Array<{ person_id: string; amount: number; status: string; step_id: string | null; labor_job_id: string | null; offer_scope_snapshot: unknown }>)
     const stepInfo = new Map<string, { stepName: string; projectName: string | null }>()
-    if (commitmentRows.length > 0) {
-      const stepIds = [...new Set(commitmentRows.map((c) => c.step_id))]
+    const sheetLabelById = new Map(sheetRows.map((sh) => [sh.id, [sh.job_number, sh.address].filter(Boolean).join(' · ') || sh.assigned_to_name]))
+    if (commitmentRows.some((c) => c.step_id)) {
+      const stepIds = [...new Set(commitmentRows.map((c) => c.step_id).filter((id): id is string => !!id))]
       const { data: stepRows } = await supabase
         .from('project_workflow_steps')
         .select('id, name, project_workflows(projects(name))')
@@ -147,11 +161,22 @@ export default function PeopleSubsTab() {
           person_id: c.person_id,
           amount: Number(c.amount),
           status: c.status,
-          stepName: stepInfo.get(c.step_id)?.stepName ?? null,
-          projectName: stepInfo.get(c.step_id)?.projectName ?? null,
+          stepName: c.step_id ? stepInfo.get(c.step_id)?.stepName ?? null : null,
+          projectName: c.step_id ? stepInfo.get(c.step_id)?.projectName ?? null : null,
+          sheetLabel: !c.step_id && c.labor_job_id ? parseSubWorkOrderSnapshot(c.offer_scope_snapshot).sheetLabel ?? sheetLabelById.get(c.labor_job_id) ?? 'Sub sheet' : null,
         })),
-        docs: docRows.map((d) => ({ person_id: d.person_id, person_name: d.person_name, doc_type: d.doc_type ?? 'agreement', status: d.status, expires_at: d.expires_at ?? null })),
+        docs: docRows.map((d) => ({
+          person_id: d.person_id,
+          person_name: d.person_name,
+          doc_type: d.doc_type ?? 'agreement',
+          status: d.status,
+          expires_at: d.expires_at ?? null,
+          applied_contract_template_document_id: d.applied_contract_template_document_id ?? null,
+          applied_version_date: d.applied_version_date ?? null,
+          document_name: d.document_name,
+        })),
         todayYmd,
+        generalConditions: gcDoc ? { documentId: gcDoc.id, documentName: gcDoc.document_name, bookVersionDate: gcDoc.book_version_date } : null,
       }),
     )
 
@@ -474,7 +499,14 @@ export default function PeopleSubsTab() {
                   ) : (
                     row.openCommitments.map((c, i) => (
                       <div key={i} style={{ whiteSpace: 'nowrap' }}>
-                        {c.stepName ?? 'Step'}
+                        {c.sheetLabel ? (
+                          <>
+                            {c.sheetLabel}
+                            <span style={{ color: 'var(--text-muted)' }}> · sheet</span>
+                          </>
+                        ) : (
+                          c.stepName ?? 'Step'
+                        )}
                         {c.projectName ? <span style={{ color: 'var(--text-muted)' }}> @ {c.projectName}</span> : null}{' '}
                         <span style={{ fontVariantNumeric: 'tabular-nums' }}>{money(c.amount)}</span>{' '}
                         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({c.status})</span>
@@ -492,6 +524,27 @@ export default function PeopleSubsTab() {
                         {b.label}
                       </span>
                     ))}
+                    {row.generalConditions !== 'none' && (
+                      <span
+                        title={
+                          row.generalConditions === 'current'
+                            ? 'Signed the current General Conditions'
+                            : row.generalConditions === 'behind'
+                              ? 'Signed an older General Conditions than the Contract Book — send the update from the library'
+                              : 'Never signed the General Conditions — the portal asks at their next work order'
+                        }
+                        style={{
+                          ...BADGE_STYLE[row.generalConditions === 'current' ? 'ok' : row.generalConditions === 'behind' ? 'expiring' : 'missing'],
+                          fontSize: '0.7rem',
+                          fontWeight: 650,
+                          borderRadius: 999,
+                          padding: '0.08rem 0.5rem',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Gen. Cond. {row.generalConditions === 'current' ? '✓' : row.generalConditions === 'behind' ? 'behind' : 'unsigned'}
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td style={{ padding: '0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>

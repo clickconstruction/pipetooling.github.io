@@ -129,6 +129,27 @@ describe('buildSubsHqRows', () => {
     expect(behar.settledCount).toBe(1)
     expect(behar.badges.find((b) => b.key === 'agreement')?.state).toBe('ok')
     expect(behar.badges.find((b) => b.key === 'coi')?.state).toBe('expiring')
+    expect(behar.generalConditions).toBe('none')
+  })
+
+  it('v2.2790: sheet work orders carry their sheet label; General Conditions standing reads the best signed copy', () => {
+    const result = buildSubsHqRows({
+      people: [BEHAR, KYLE],
+      users: [],
+      sheets: [],
+      assignees: [],
+      commitments: [{ person_id: 'p-behar', amount: 6400, status: 'offered', stepName: null, projectName: null, sheetLabel: 'J977 · 415 Springtown Way' }],
+      docs: [
+        { person_id: 'p-behar', person_name: null, doc_type: 'other', status: 'signed', expires_at: null, applied_contract_template_document_id: 'gc-doc', applied_version_date: '2026-03-02', document_name: 'General Conditions' },
+        { person_id: 'p-behar', person_name: null, doc_type: 'other', status: 'signed', expires_at: null, applied_contract_template_document_id: null, applied_version_date: '2026-06-19', document_name: 'general conditions ' },
+      ],
+      todayYmd: TODAY,
+      generalConditions: { documentId: 'gc-doc', documentName: 'General Conditions', bookVersionDate: '2026-06-19' },
+    })
+    const behar = result.rows.find((r) => r.personId === 'p-behar')!
+    expect(behar.openCommitments[0]!.sheetLabel).toBe('J977 · 415 Springtown Way')
+    expect(behar.generalConditions).toBe('current')
+    expect(result.rows.find((r) => r.personId === 'p-kyle')!.generalConditions).toBe('unsigned')
   })
 
   it('every active sub gets a row (compliance gaps visible), archived people are ignored', () => {

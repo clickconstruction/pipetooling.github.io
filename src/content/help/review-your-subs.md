@@ -2,7 +2,7 @@
 title: review your subs in one place
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: subs, subcontractor, balance, compliance, coi, w9, agreement, work orders, track record
+keywords: subs, subcontractor, balance, compliance, coi, w9, agreement, work orders, track record, general conditions, sheet work order
 order: 80
 ---
 **People → Subs** is one row per subcontractor: what they're working on, what you owe them, whether their paperwork is current, and how they've performed.
@@ -45,3 +45,9 @@ The panel shows **#892** assigned to "MIke Rodrigez" with $1,240 open → tap {{
 :::
 
 The panel shows the three biggest balances first — **Show all N sheets** expands the rest. It disappears entirely once every sheet is linked.
+
+## Sheet work orders and General Conditions
+
+- **Open work orders** now include work orders sent from a Sub Labor sheet — they read as the sheet's job (`J977 · 415 Springtown Way · sheet`) instead of a step at a project.
+- A fourth compliance pill, {{chip:green|Gen. Cond. ✓}}, appears once the Contract library holds a document for subs (General Conditions). {{chip:yellow|Gen. Cond. behind}} means they signed an older version than the library's current one; {{chip:gray|Gen. Cond. unsigned}} means they never have. Send the update from **Contract library → Scope → Documents for subs**.
+- Opening a sub's **Person desk** shows a **Work orders** section: every offer and signed agreement for that person, sheet or step, with a door to where it lives.

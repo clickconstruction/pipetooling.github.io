@@ -600,7 +600,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       supabase
         .from('contract_template_documents')
         .select(
-          'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date',
+          'id, template_id, document_name, sequence_order, book_body_html, book_body_format, tags, canonical_document_url, updated_at, book_version_date, audience',
         )
         .order('template_id')
         .order('sequence_order'),
