@@ -1,4 +1,4 @@
-# 20260904202939_statement_round_client_row_keys.sql (v2.2771)
+# 20260904202939_statement_round_client_row_keys.sql (v2.2779)
 
 Re-creates `get_statement_round_for_user(p_user_id)` (from `20260904201238`, same PR) so the certification snapshot diff uses the **client's** row keys.
 
