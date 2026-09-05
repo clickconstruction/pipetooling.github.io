@@ -141,8 +141,10 @@ discarding it:
   scheduled = counted, ambiguous device → in scope, sawcut excluded, two packages →
   ask, travel/rentals are human lines, interceptor prices, med gas self-performed,
   every 1/2" home run measured, 10 ft per POC, under-a-loss is light, plain-word
-  questions). The twin's next session posts the receipts and re-mirrors the
-  interceptor and travel book entries.
+  questions). **Digested the same evening** (run `digest:2026-09-04`, credential
+  bc18d402): 24 receipts posted as the twin, every note stamped (19 doctrine,
+  3 books, 2 bid_only), all seven audits `digested`; 🤖 Robot Default
+  `Oil Interceptor` $6,270 → $1,500 and `Sand-Oil Interceptor` $9,500 → $4,500.
 - Still pending: 15 audits, seven of them the $0 BT-16..19 cards (STG-5 owed), the
   sealed b419/b420 shadows, and the b422 wage-tier question.
 - Two axes are BLOCKED pending audit answers: institutional (district wage-tier
