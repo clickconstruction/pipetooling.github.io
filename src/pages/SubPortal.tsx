@@ -17,6 +17,7 @@ import {
   type SubPortalLang,
   type SubPortalStringKey,
 } from '../lib/subPortal/subPortalI18n'
+import { isSubPortalSheetQueued, subPortalRailStep } from '../lib/subPortal/subPortalRail'
 import {
   parseSubPortalPayload,
   type SubPortalDoc,
@@ -393,7 +394,15 @@ function SubPortalStatement({
         <p style={{ fontSize: 13.5, color: MUTED, marginTop: 12 }}>{t('noOpenJobs')}</p>
       ) : (
         payload.sheets.map((sheet) => (
-          <SheetCard key={sheet.id} sheet={sheet} lang={lang} t={t} submitToken={submitToken} preparedOn={payload.preparedOn} />
+          <SheetCard
+            key={sheet.id}
+            sheet={sheet}
+            lang={lang}
+            t={t}
+            submitToken={submitToken}
+            preparedOn={payload.preparedOn}
+            payRunDayLabel={payRunDayLabel}
+          />
         ))
       )}
 
@@ -584,12 +593,14 @@ function SheetCard({
   t,
   submitToken,
   preparedOn,
+  payRunDayLabel,
 }: {
   sheet: SubPortalSheet
   lang: SubPortalLang
   t: T
   submitToken: string
   preparedOn: string
+  payRunDayLabel: string | null
 }) {
   const [stage, setStage] = useState(sheet.stage)
   const [stageChangedOn, setStageChangedOn] = useState(sheet.stageChangedOn)
@@ -602,17 +613,22 @@ function SheetCard({
   if (sheet.payableAfter) payWhenParts.push(t('payableAfter', { date: formatSubPortalDate(sheet.payableAfter, lang) }))
   if (sheet.payHoldReason) payWhenParts.push(sheet.payHoldReason)
 
-  const stageIndex = stage === 'working' ? 0 : stage === 'walkthrough' ? 1 : 2
+  // The fourth dot (v2.2843): Waiting on customer + a payable-after date = the
+  // office has promised a pay run; the calendar is all that is left.
+  const queued = isSubPortalSheetQueued({ stage, payableAfter: sheet.payableAfter })
+  const stageIndex = subPortalRailStep({ stage, payableAfter: sheet.payableAfter })
   const railLabels = [t('railWork'), t('railWalk'), t('railCustomer'), t('railPaid')]
-  const chip =
-    stage === 'working'
+  const chip = queued
+    ? { label: payRunDayLabel ? t('chipQueued', { day: payRunDayLabel }) : t('chipQueuedNoDay'), bg: '#e8f3ea', fg: PAPER_GREEN }
+    : stage === 'working'
       ? { label: t('inProgress'), bg: '#e7effa', fg: '#1d4e89' }
       : stage === 'walkthrough'
         ? { label: t('chipWalk'), bg: '#f6e6d8', fg: COPPER }
         : { label: t('chipCustomer'), bg: '#f6e6d8', fg: COPPER }
   const changedLabel = stageChangedOn ? formatSubPortalDate(stageChangedOn, lang) : null
-  const sentence =
-    stage === 'working'
+  const sentence = queued
+    ? t('stageQueuedLine')
+    : stage === 'working'
       ? t('stageWorkingLine')
       : stage === 'walkthrough'
         ? stageSource === 'portal' && changedLabel

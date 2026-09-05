@@ -45,6 +45,7 @@ Every sub sheet sits at one of three stages, and the portal draws them as a four
 | {{chip:yellow|Waiting on work}} | "Finish up, then tell us below and we'll come walk it." |
 | {{chip:purple|Waiting on walk-through}} | "You told us the work's done Sep 4. We'll schedule the walk-through and let you know." |
 | {{chip:blue|Waiting on customer}} | "Passed the walk-through Sep 6. The customer's payment is the last thing between you and this money…" |
+| {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: "Queued for the pay run — the date is right below." |
 | {{chip:green|Paid}} | The card leaves *Your jobs* — Paid sets itself when the balance hits $0. |
 
 Move a sheet from the **Stage** column on **Jobs → Sub Labor**: the **→** on the chip advances one stage, and clicking the chip opens all three so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.

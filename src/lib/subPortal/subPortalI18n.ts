@@ -132,6 +132,13 @@ const STRINGS = {
     en: "Thanks — we'll schedule the walk-through and let you know.",
     es: 'Gracias — programaremos la revisión y le avisamos.',
   },
+  // v2.2843: the fourth dot — a sheet at Waiting on customer with a payable-after date
+  chipQueued: { en: 'Queued for {day}', es: 'En la corrida del {day}' },
+  chipQueuedNoDay: { en: 'Payment queued', es: 'Pago en cola' },
+  stageQueuedLine: {
+    en: 'Queued for the pay run — the date is right below.',
+    es: 'En cola para la corrida de pago — la fecha está justo abajo.',
+  },
   // ── Sheet work orders (v2.2789): exclusions, referenced documents, confirmations, the signed record ──
   exclusionsLabel: { en: 'Not included', es: 'No incluido' },
   attachedByReference: { en: 'Also part of this work order', es: 'También forma parte de esta orden' },
