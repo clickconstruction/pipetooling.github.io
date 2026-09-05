@@ -95,7 +95,7 @@ export default function CrewFeedbackSettingsForm({ row, onSaved }: Props) {
         <label style={labelStyle}>
           <span>Worked-with lookback (days)</span>
           <input type="number" min={1} max={90} value={lookback} onChange={(e) => setLookback(e.target.value)} style={inputStyle} />
-          <small style={helpStyle}>Approved clock sessions on the same job, same day, inside this window make someone a teammate card.</small>
+          <small style={helpStyle}>Clock sessions (pending or approved) on the same job, same day, inside this window make someone a teammate card.</small>
         </label>
       </div>
       <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.875rem' }}>
