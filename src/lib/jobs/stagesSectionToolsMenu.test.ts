@@ -109,11 +109,18 @@ describe('buildStagesSectionToolsMenu', () => {
     expect(paidGroup?.items.map((i) => i.key)).toEqual(['paid-profit-chart'])
   })
 
-  it('primary can open Accounts Receivable but sees no admin tools', () => {
+  it('primary sees no admin tools; Accounts Receivable is disabled like every other non-office role (v2.2882, J4-8 dead branch removed)', () => {
     const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'primary' })
     expect(keysOf(groups)).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-payment-forecast'])
     const ar = groups.flatMap((g) => g.items).find((i) => i.key === 'accounts-receivable')
-    expect(ar?.disabled).toBe(false)
+    expect(ar?.disabled).toBe(true)
+  })
+
+  it('Accounts Receivable opens for dev / master / assistant / controller only', () => {
+    const arDisabled = (authRole: string | null) =>
+      buildStagesSectionToolsMenu({ ...base, authRole }).flatMap((g) => g.items).find((i) => i.key === 'accounts-receivable')?.disabled
+    for (const authRole of ['dev', 'master_technician', 'assistant', 'controller']) expect(arDisabled(authRole)).toBe(false)
+    for (const authRole of ['primary', 'superintendent', 'estimator', 'subcontractor', 'helpers', null]) expect(arDisabled(authRole)).toBe(true)
   })
 
   it('superintendent sees Accounts Receivable disabled (mirrors the header button)', () => {

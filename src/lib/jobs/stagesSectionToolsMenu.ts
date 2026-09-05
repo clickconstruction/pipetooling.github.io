@@ -72,7 +72,10 @@ export type StagesSectionToolsMenuInput = {
 export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput): StagesSectionToolsGroup[] {
   const { authRole } = input
   const isDevOrMaster = authRole === 'dev' || authRole === 'master_technician'
-  const canOpenAccountsReceivable = isDevOrMaster || isAssistantLike(authRole) || authRole === 'primary'
+  // No `primary` branch (v2.2882, J4-8): primaries never reach the Pipeline
+  // board (Jobs shows them Reports only) and Layout bounces them off
+  // /accounts-receivable — the old `|| authRole === 'primary'` was dead code.
+  const canOpenAccountsReceivable = isDevOrMaster || isAssistantLike(authRole)
   const canSharePrint = isDevOrMaster || isAssistantLike(authRole)
 
   const groups: StagesSectionToolsGroup[] = []

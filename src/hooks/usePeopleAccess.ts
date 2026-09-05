@@ -16,6 +16,12 @@ export function usePeopleAccess(authUserId: string | undefined) {
   const [isDev, setIsDev] = useState(false)
   const [isAssistant, setIsAssistant] = useState(false)
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
+  /**
+   * True once the flags above reflect the signed-in user (v2.2882). Every flag
+   * starts false, so a URL gate that reads them before this flips would bounce
+   * a dev's cold deep link to Users — gate only after `accessResolved`.
+   */
+  const [accessResolved, setAccessResolved] = useState(false)
 
   useEffect(() => {
     async function loadPayAccess() {
@@ -24,8 +30,14 @@ export function usePeopleAccess(authUserId: string | undefined) {
         supabase.from('users').select('role').eq('id', authUserId).single(),
         supabase.from('pay_approved_masters').select('master_id'),
       ])
-      const role = (meRes.data as { role?: string } | null)?.role ?? null
-      const approvedIds = new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id))
+      applyRole(
+        (meRes.data as { role?: string } | null)?.role ?? null,
+        new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id)),
+      )
+      setAccessResolved(true)
+    }
+    function applyRole(role: string | null, approvedIds: Set<string>) {
+      if (!authUserId) return
       if (role === 'dev') {
         setCanAccessPay(true)
         setCanAccessVehicles(true)
@@ -82,5 +94,6 @@ export function usePeopleAccess(authUserId: string | undefined) {
     isDev,
     isAssistant,
     canSeePushStatus,
+    accessResolved,
   }
 }

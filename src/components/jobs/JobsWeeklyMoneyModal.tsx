@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { roleGateRefusalMessage } from '../../lib/roleGate'
 import { addDaysYmd } from '../../lib/emailSchedule/emailScheduleWeek'
 import { chicagoYmdOf } from '../../lib/gcStatementStandingCopies'
 import { mondayOfWeekYmd, weekLabel } from '../../lib/jobs/stagesWeeklyMovement'
@@ -231,7 +232,10 @@ export function JobsWeeklyMoneyModal({ open, onClose, showToast, users }: JobsWe
         }
       } catch (e) {
         if (!cancelled) {
-          setError(formatErrorMessage(e))
+          // The RPC refuses non dev/controller callers with `RAISE EXCEPTION
+          // 'not allowed'` — say whose report it is, never the raw string
+          // (v2.2882, C25 J5-6).
+          setError(roleGateRefusalMessage(e, 'this report') ?? formatErrorMessage(e))
           setLoading(false)
         }
       }

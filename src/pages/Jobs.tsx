@@ -17,6 +17,7 @@ import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { usePartsLedgerData } from '../hooks/usePartsLedgerData'
 import type { TallyPartRow } from '../types/tallyPart'
 import { useToastContext } from '../contexts/ToastContext'
+import { useRoleGate } from '../hooks/useRoleGate'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { buildJobSubSheetHtml } from '../lib/jobsDocuments/subLaborSheet'
@@ -260,6 +261,9 @@ export default function Jobs() {
     },
   })
   const [myRole, setMyRole] = useState<string | null>(null)
+  // Role gates that say something (v2.2882): every "this tab isn't for your
+  // role" rewrite below toasts once and lands honestly instead of silently.
+  const { bounce: roleGateBounce } = useRoleGate(authRole ?? myRole, authUser?.id)
   const subLaborFormRef = useRef<JobsSubLaborFormModalHandle>(null)
   const subLaborPaymentModalsRef = useRef<SubLaborPaymentModalsHandle>(null)
   /** Drives JobsStagesTab (always mounted): the URL router's deep-link writes + the mutation engine's followMovedJob. */
@@ -752,36 +756,33 @@ export default function Jobs() {
       }, { replace: true })
       return
     }
-    // Redirect assistants away from Team Labor tab
+    // Role gates that say something (v2.2882, C25): a link to a tab that isn't
+    // for this role toasts once and lands on a tab that is — never a silent
+    // rewrite. `roleGateBounce` owns the landing + sentence (lib/roleGate.ts).
+    const landOn = (toTab: string | null) => {
+      const target = (toTab ?? 'reports') as JobsTab
+      setActiveTab(target)
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', target)
+        return next
+      }, { replace: true })
+    }
+    // Assistants: no Team Labor tab
     const isAssistant = authRole === 'assistant' || myRole === 'assistant'
     if (isAssistant && tab === 'combined-labor') {
-      setActiveTab('stages')
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'stages')
-        return next
-      }, { replace: true })
+      landOn(roleGateBounce('team-labor', `/jobs?tab=${tab}`).toTab)
       return
     }
-    // Redirect masters/assistants away from Teams tab
+    // Masters / assistants / controllers: no Crew P&L tab (owner only)
     const isMasterOrAssistant = authRole === 'master_technician' || isAssistantLike(authRole) || myRole === 'master_technician' || isAssistantLike(myRole)
     if (isMasterOrAssistant && tab === 'teams-summary') {
-      setActiveTab('reports')
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'reports')
-        return next
-      }, { replace: true })
+      landOn(roleGateBounce('crew-pnl', `/jobs?tab=${tab}`).toTab)
       return
     }
-    // Redirect superintendent away from Team Labor and Teams tabs
+    // Superintendents: neither Team Labor nor Crew P&L
     if (isSuperintendent && (tab === 'combined-labor' || tab === 'teams-summary')) {
-      setActiveTab('reports')
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'reports')
-        return next
-      }, { replace: true })
+      landOn(roleGateBounce(tab === 'teams-summary' ? 'crew-pnl' : 'team-labor', `/jobs?tab=${tab}`).toTab)
       return
     }
     // Superintendent: reports, sub_sheet_ledger only; default reports
@@ -789,13 +790,10 @@ export default function Jobs() {
       const superintendentTabs = ['reports', 'sub_sheet_ledger']
       if (tab && superintendentTabs.includes(tab)) {
         setActiveTab(tab as JobsTab)
-      } else if (!tab || !superintendentTabs.includes(tab)) {
-        setActiveTab('reports')
-        setSearchParams((p) => {
-          const next = new URLSearchParams(p)
-          next.set('tab', 'reports')
-          return next
-        }, { replace: true })
+      } else if (tab) {
+        landOn(roleGateBounce('jobs-tab', `/jobs?tab=${tab}`).toTab)
+      } else {
+        landOn('reports')
       }
       return
     }
@@ -804,13 +802,10 @@ export default function Jobs() {
       const primaryTabs = ['reports']
       if (tab && primaryTabs.includes(tab)) {
         setActiveTab(tab as JobsTab)
-      } else if (!tab || !primaryTabs.includes(tab)) {
-        setActiveTab('reports')
-        setSearchParams((p) => {
-          const next = new URLSearchParams(p)
-          next.set('tab', 'reports')
-          return next
-        }, { replace: true })
+      } else if (tab) {
+        landOn(roleGateBounce('jobs-tab', `/jobs?tab=${tab}`).toTab)
+      } else {
+        landOn('reports')
       }
       return
     }
@@ -839,7 +834,7 @@ export default function Jobs() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, myRole, authRole])
+  }, [searchParams, myRole, authRole, roleGateBounce])
 
   useEffect(() => {
     const newJob = searchParams.get('newJob') === 'true'
@@ -953,7 +948,12 @@ export default function Jobs() {
 
   // `?stagesMoney=` deep link (v2.1443): open the Weekly money movement modal.
   // Same jobsListLoading handle gate as ?stagesWeekly (v2.832 rule).
+  // Dev / controller only (v2.2882, C25 J5-6) — the same gate as the menu item
+  // and the `get_weekly_money_movement_payload` RPC. Anyone else used to get
+  // the report shell and then the RPC's "not allowed"; now the link says whose
+  // it is and they stay on the board.
   const stagesMoneyParam = searchParams.get('stagesMoney')
+  const stagesMoneyRole = authRole ?? myRole
   useEffect(() => {
     const wantsOpen = stagesMoneyParam === 'true' || stagesMoneyParam === '1'
     if (!wantsOpen) return
@@ -967,6 +967,15 @@ export default function Jobs() {
         { replace: true },
       )
     }
+    if (stagesMoneyRole == null) return
+    if (stagesMoneyRole !== 'dev' && stagesMoneyRole !== 'controller') {
+      // Roles with no Pipeline board at all (primary, superintendent) are already
+      // spoken to by the tab gate above — don't stack a second sentence.
+      const onTheBoard = stagesMoneyRole === 'master_technician' || isAssistantLike(stagesMoneyRole)
+      if (onTheBoard) roleGateBounce('pipeline-money', '/jobs?tab=stages&stagesMoney=1')
+      strip()
+      return
+    }
     if (activeTab !== 'stages') {
       strip()
       return
@@ -974,7 +983,7 @@ export default function Jobs() {
     if (jobsListLoading) return
     stagesTabRef.current?.openWeeklyMoney()
     strip()
-  }, [stagesMoneyParam, activeTab, jobsListLoading, setSearchParams])
+  }, [stagesMoneyParam, stagesMoneyRole, activeTab, jobsListLoading, setSearchParams, roleGateBounce])
 
   // `?stagesMove=` deep link (v2.2145): Quickfill → Jobs Cleanup card buttons
   // land here and open the same thing the Pipeline card opens. Same

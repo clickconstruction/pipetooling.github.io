@@ -700,11 +700,22 @@ Route access for the restricted roles above comes from the per-role allowed-path
 
 **Estimators**: Any page except Dashboard/**Map**/Materials/Estimates/**Documents**/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Help/Prospects (if enabled) → `/bids`
 
-**Primary**: Any page except Dashboard/Materials/Estimates/Documents/Jobs/Bids/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects and Prospects hidden
+**Primary**: Any page except Dashboard/Materials/Estimates/Documents/Jobs/Bids/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows the Reports tab only (`Jobs.tsx` `primaryTabs`); Bids full access (all tabs); Projects and Prospects hidden
 
 **Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Dispatch/Bids/Materials/Estimates/**Documents**/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
 
 **Assistants**: Can access most pages but see filtered data
+
+### In-page role gates say something (v2.2882, [`roleGate.ts`](../src/lib/roleGate.ts) + [`useRoleGate.ts`](../src/hooks/useRoleGate.ts))
+
+The route guard above bounces silently by design for sub-like roles (J24-F8). Every **in-page** gate — a tab, a deep-link param, a report a role can't open — follows one convention instead of a silent `setSearchParams(…, { replace: true })`, a flag-gated render branch that returns nothing, or an RPC refusal string rendered verbatim:
+
+1. **Decide through the kernel.** `roleGateRedirect({ from, role, surface })` returns `{ to, toTab, landingLabel, toast, quiet }`. Add a `RoleGateSurface` (subject + audience + landing) rather than an ad-hoc rewrite; the landing is always a same-page tab the role can open.
+2. **Say it once, then land.** `useRoleGate(role, userId).bounce(surface, from)` toasts `"<subject> is for <audience> — you're on <landing>."` (e.g. *Crew P&L is for the owner — you're on Reports.*), records `ui_nav_clicks` `control = 'role_gate_redirect'` / `target = <refused link>`, and hands back the decision; the caller applies its own navigation. `quiet` (subcontractor, helpers) lands with no toast — keep it that way.
+3. **Refusals from the server read as refusals.** A gated report that still reaches an RPC the role can't call renders `roleGateRefusalMessage(error)` → *You don't have access to this report.* for `42501` or a `P0001 … not allowed`, never the PostgREST message.
+4. **Gate after access resolves.** Flags loaded async (`usePeopleAccess().accessResolved`) start false — a URL gate that reads them on mount bounces a dev's cold deep link. Set the tab, let the flag-gated render site wait, gate once resolved.
+
+Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superintendent), Jobs `?stagesMoney=1` + the Weekly money movement modal's load error, People Payroll / Employment / Offsets / Hours, Bids office tabs (superintendent). The dead `primary` branch in the Accounts Receivable gate is gone (primaries never reach the Pipeline board). Imitate lands on `roleHomePath(role)`.
 
 ---
 
