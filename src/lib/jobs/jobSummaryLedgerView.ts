@@ -57,7 +57,7 @@ export const JOB_SUMMARY_CUT_OPTIONS: ReadonlyArray<{ key: JobSummaryCutBy; labe
 const CUT_KEYS: readonly JobSummaryCutBy[] = JOB_SUMMARY_CUT_OPTIONS.map((o) => o.key)
 
 /** Jobs = the ledger table; Days = jobs carried per day (v2.2695); Timeline = jobs running at once, over time (v2.2711); Months = the monthly P&L (v2.2821). */
-export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline' | 'months' | 'cycle' | 'scatter' | 'capacity'
+export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline' | 'months' | 'cycle' | 'scatter' | 'capacity' | 'ahead'
 
 /** Timeline coloring (v2.2745): by today's status, by the state on each day, or by run length. */
 export type JobSummaryTimelineColorBy = 'status' | 'stateOnDay' | 'runLength'
@@ -134,6 +134,7 @@ export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewM
   { key: 'cycle', label: 'Cycle', title: 'How long from the last field day to the bill, and from the bill to the money — and which open jobs are sitting idle' },
   { key: 'scatter', label: 'Scatter', title: 'Every job as a bubble — size across, true margin up — so the big jobs with thin margins stand out' },
   { key: 'capacity', label: 'Capacity', title: 'Approved field hours against the roster’s available hours, by week — were we full?' },
+  { key: 'ahead', label: 'Ahead', title: 'What’s coming: remaining value on open jobs, won bids not started, and the next eight weeks of field days against capacity' },
 ]
 
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
@@ -163,7 +164,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
   try {
     const p = JSON.parse(raw) as Partial<JobSummaryViewPrefs>
     return {
-      view: p.view === 'days' || p.view === 'timeline' || p.view === 'months' || p.view === 'cycle' || p.view === 'scatter' || p.view === 'capacity' ? p.view : 'jobs',
+      view: ['days', 'timeline', 'months', 'cycle', 'scatter', 'capacity', 'ahead'].includes(p.view as string) ? (p.view as JobSummaryViewMode) : 'jobs',
       status: STATUS_KEYS.includes(p.status as JobSummaryStatusFilter) ? (p.status as JobSummaryStatusFilter) : JOB_SUMMARY_VIEW_DEFAULTS.status,
       window: WINDOW_KEYS.includes(p.window as JobSummaryWindowKey) ? (p.window as JobSummaryWindowKey) : JOB_SUMMARY_VIEW_DEFAULTS.window,
       method: METHOD_KEYS.includes(p.method as JobOverheadMethod) ? (p.method as JobOverheadMethod) : JOB_SUMMARY_VIEW_DEFAULTS.method,
