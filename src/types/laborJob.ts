@@ -22,6 +22,8 @@ export type LaborJob = {
   stage_changed_by?: string | null
   stage_source?: string | null
   stage_note?: string | null
+  /** Queued for the pay run (v2.2838) — the portal lights "You're paid" once this is set. */
+  payable_after?: string | null
   /** Resolved display name of stage_changed_by (office moves only). */
   stage_changed_by_name?: string | null
   /** Project name resolved for anchored sheets (display only). */

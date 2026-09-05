@@ -30,7 +30,13 @@ New entries no longer ask for miles — the drive-cost math simply isn't applied
 
 ## Where the sheet stands
 
-The **Stage** column on the ledger says what you're waiting on for each sheet: {{chip:yellow|Waiting on work}} → {{chip:purple|Waiting on walk-through}} → {{chip:blue|Waiting on customer}}, and {{chip:green|Paid}} once the balance is $0. Tap **→** on the chip to advance one stage, or tap the chip to pick any of the three (stepping back is fine). The sub sees the same steps on their portal and can move a sheet to *Waiting on walk-through* themselves by telling you the work is done — the chip then reads *· sub* with their note behind ✎, and the job's Activity feed keeps the history. Details in [share a sub their portal](/help/share-a-sub-their-portal).
+Every ledger row carries the same spine as **Jobs → Work Orders**: **Agreed · Paid · Due**, then **Where it stands** — the rail the sub sees on their portal. Four big dots are the sub's steps (**Work · Walk-through · Customer pays · Paid**); the three small dots in front (**Drafted · Sent · Signed**) are the office's agreement steps. The filled terracotta dot is where the sheet is today; a **dashed red run** through the small dots means work is happening with nothing signed, and the Due figure turns the same red.
+
+**Next** names the office's move — *Get it in writing* ({{button:blue|Draft a work order…}} opens the assembler on the sheet), *Price it and send*, *Waiting on ‹sub›*, *Wait for "done"*, *Schedule the walk-through*, *Bill and collect*, *Pay ‹sub›*, *Nothing — done*.
+
+**Moving the stage**: click the rail's current dot to pick any of the three stages (stepping back is fine), or tap **→** beside the rail to advance one. The sub can move a sheet to *Walk-through* themselves by telling you the work is done — the rail then reads *· sub* with their note behind ✎, and the job's Activity feed keeps the history. Details in [share a sub their portal](/help/share-a-sub-their-portal). Paid sets itself once the balance is $0.
+
+**Crew pay** sheets — a teammate on the sheet — wear a {{chip:purple|Crew pay}} label and draw only the four sub dots: they never need a work order. **Subs only** hides them; **No agreement** shows just the sub sheets with money open and nothing signed. Rows sort by money due; switch to Date or Contractor with the sort buttons.
 
 ## Sending the sub a work order
 
