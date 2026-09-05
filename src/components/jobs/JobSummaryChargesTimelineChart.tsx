@@ -38,6 +38,7 @@ import {
 import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
 import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
+import { chartCashLegendLabel } from '../../lib/jobs/profitLabels'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type {
   JobSummaryInvoiceAllocationLine,
@@ -53,6 +54,8 @@ type Props = {
   invoiceLines: JobSummaryInvoiceAllocationLine[] | undefined
   reports: JobSummaryReportRow[] | undefined
   canAccessBankingForParts: boolean
+  /** False when wage events are left out of the chart (pay-privacy gate) — the green line then says "before team labor" (v2.2852). */
+  teamLaborIncluded: boolean
   mileageCost: number
   timePerMile: number
 }
@@ -246,7 +249,7 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
             color: row.profit >= 0 ? '#15803d' : 'var(--text-red-700)',
           }}
         >
-          Profit: {signedCurrency(row.profit)}
+          Cash position: {signedCurrency(row.profit)}
         </div>
         {row.value != null && (
           <div style={{ color: 'var(--text-link)' }}>
@@ -264,6 +267,7 @@ export default function JobSummaryChargesTimelineChart({
   invoiceLines,
   reports,
   canAccessBankingForParts,
+  teamLaborIncluded,
   mileageCost,
   timePerMile,
 }: Props) {
@@ -362,6 +366,7 @@ export default function JobSummaryChargesTimelineChart({
       data={data}
       revenue={row.job.revenue != null ? Number(row.job.revenue) : null}
       cardChargesExcluded={cardChargesExcluded}
+      teamLaborIncluded={teamLaborIncluded}
     />
   )
 }
@@ -373,10 +378,13 @@ export function JobChargesTimelineChartView({
   data,
   revenue,
   cardChargesExcluded,
+  teamLaborIncluded = true,
 }: {
   data: JobChargesTimelineData
   revenue: number | null
   cardChargesExcluded: boolean
+  /** See `Props.teamLaborIncluded`; defaults to the owner's full-cost reading. */
+  teamLaborIncluded?: boolean
 }) {
   const lastIndex = data.chartRows.length - 1
   const costsDot = useMemo(() => makeCostsDot(lastIndex), [lastIndex])
@@ -459,7 +467,7 @@ export function JobChargesTimelineChartView({
               yAxisId="dollars"
               type="stepAfter"
               dataKey="profit"
-              name="Profit"
+              name="Cash position"
               stroke="#16a34a"
               strokeWidth={2}
               dot={profitDot}
@@ -486,7 +494,7 @@ export function JobChargesTimelineChartView({
       </div>
       <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0', textAlign: 'center' }}>
         <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
-        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = {chartCashLegendLabel(teamLaborIncluded)}
         {valueShown && (
           <>
             {' · '}

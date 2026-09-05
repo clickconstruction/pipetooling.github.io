@@ -15,6 +15,8 @@ import {
 } from '../lib/jobScheduleChicago'
 import { clampCompletenessPct } from '../lib/jobs/jobCompleteness'
 import { pctNoteRequired, validatePctCommit } from '../lib/jobs/stagesPctNote'
+import { recordedPercentProvenance } from '../lib/jobPercentProvenance'
+import { PercentProvenanceChip } from './jobs/PercentProvenanceChip'
 
 export type JobThreadNoteRow = {
   id: string
@@ -146,6 +148,15 @@ export function JobThreadNotesPanel({
 }: JobThreadNotesPanelProps) {
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
+  // Who set the recorded % (v2.2852): the crew, when the newest report with a % says the same number; else the office.
+  const pctProvenance = useMemo(
+    () =>
+      recordedPercentProvenance(
+        pctComplete,
+        (activityProp ?? []).flatMap((i) => (i.kind === 'report' ? [{ created_at: i.report.created_at, field_values: i.report.field_values ?? null }] : [])),
+      ),
+    [pctComplete, activityProp],
+  )
   const [pctNoteError, setPctNoteError] = useState<string | null>(null)
   const openPctEditor = useCallback(() => {
     setPctDraft(pctComplete ?? 0)
@@ -341,6 +352,7 @@ export function JobThreadNotesPanel({
               style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}
             >
               {pctComplete}% complete
+              {activityProp ? <PercentProvenanceChip source={pctProvenance.source} reportedOn={pctProvenance.reportedOn} /> : null}
             </span>
           ) : null}
         </div>

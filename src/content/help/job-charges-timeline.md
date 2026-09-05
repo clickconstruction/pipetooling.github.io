@@ -13,9 +13,9 @@ Go to **Jobs → Job Summary** and click any job row. The row expands with a qui
 
 The same chart also lives at the bottom of the **Parts cost** section in the **Job Detail** and **Edit Job** modals. When a job has many transaction days, the chart widens and **scrolls left–right** instead of crushing the icons together.
 
-## The profit line — money out vs money in
+## The cash position line — money out vs money in
 
-The main line is the job's **profit: payments received minus what it has cost**. It steps **down in red** every day money went into the job, and **up in green** every day a payment came in. A dashed line marks **$0** — above it, the job has collected more than it cost; the bold label at the end of the line is the job's current profit (for example **+$166.21**).
+The main line is the job's **cash position: payments received minus what it has cost** — money in hand on the job so far, not a margin (Job Summary carries gross and true profit). It steps **down in red** every day money went into the job, and **up in green** every day a payment came in. A dashed line marks **$0** — above it, the job has collected more than it cost; the bold label at the end of the line is the job's current cash position (for example **+$166.21**). If your role can't see wages, the legend reads *cash position before team labor* — the same job reads higher for you than for the owner because crew wages are not charged on your chart.
 
 Each red step is tagged with an icon for where the cost came from:
 
@@ -59,4 +59,4 @@ In short: a job reads 100% when its work is done or when the whole contract is b
 
 ## Hover for detail
 
-Hover any point to see everything that happened that day: who charged what, which invoices were allocated, payments received, who filed a report and their completion percent, plus the running **Cost**, **Paid**, **Profit**, and **Value created** totals.
+Hover any point to see everything that happened that day: who charged what, which invoices were allocated, payments received, who filed a report and their completion percent, plus the running **Cost**, **Paid**, **Cash position**, and **Value created** totals.

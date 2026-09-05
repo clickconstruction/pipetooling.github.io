@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { recordNavClick } from '../lib/navClickTelemetry'
 import { denverCalendarDayKey, ymdAddDays } from '../utils/dateUtils'
 import { loadJobDayLedger } from '../lib/jobs/loadJobDayLedger'
 import { deserializeJobDayLedger, serializeJobDayLedger, type JobDayLedger, type JobDayLedgerSerialized, type JobOverheadMethod } from '../lib/jobs/jobDayLedger'
@@ -137,6 +138,8 @@ function useJobDayLedgerWindow(args: { enabled: boolean; userId: string | undefi
 export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { job_address?: string | null } }>(args: {
   enabled: boolean
   userId: string | undefined
+  /** Viewer role, for the open telemetry row (v2.2852). */
+  role?: string | null
   rows: readonly R[]
   reportPctByJobId: ReadonlyMap<string, number>
   search: string
@@ -145,7 +148,7 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   /** `?view=` from the URL (v2.2825): a deep link into one view; applied once, then the pref owns it. */
   initialView?: string | null
 }): JobSummaryViewBundle<R> {
-  const { enabled, userId, rows, reportPctByJobId, search, userNameById, initialView } = args
+  const { enabled, userId, role, rows, reportPctByJobId, search, userNameById, initialView } = args
   const [prefs, setPrefsState] = useState<JobSummaryViewPrefs>(() => {
     try {
       return readJobSummaryViewPrefs(localStorage.getItem(JOB_SUMMARY_VIEW_STORAGE_KEY))
@@ -210,6 +213,19 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     [enriched, prefs, search, startYmd, endYmd],
   )
   const totals = useMemo(() => summarizeJobSummaryRows(visible), [visible])
+  // Telemetry (v2.2852, journey-map Tier-1 #5): one `job-summary-view` row per open, naming the
+  // status filter and whether the view opened on earned or contract revenue — so the next pass
+  // on "% done" / earned revenue rides on what people actually open. Fire-and-forget.
+  const openRecordedRef = useRef(false)
+  useEffect(() => {
+    if (!enabled) {
+      openRecordedRef.current = false
+      return
+    }
+    if (openRecordedRef.current || rows.length === 0) return
+    openRecordedRef.current = true
+    recordNavClick(userId, role ?? null, 'job-summary-view', `/jobs?tab=job-summary&status=${prefs.status}&revenue=${totals.earnedRows > 0 ? 'earned' : 'contract'}`)
+  }, [enabled, userId, role, rows.length, prefs.status, totals.earnedRows])
   const hygiene = useMemo(() => jobSummaryHygiene(ledgerForWindow), [ledgerForWindow])
 
   const cutCtx = useMemo(() => ({ userNameById }), [userNameById])
