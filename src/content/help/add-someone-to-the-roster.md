@@ -33,4 +33,4 @@ Add to roster → **Subcontractor** → name and phone → leave *invite* untick
 
 ## Find people fast
 
-The search box stays put while you scroll. The chips under it narrow the list: **Everyone**, **No login**, **Needs attention**, **Field** (subs, helpers, superintendents), **Office**. The toolbar also holds **Team leads** (who approves whose hours), **Accounts · dev** (roles, passwords, sign-in emails), and **Archived**.
+The search box stays put while you scroll. The chips under it narrow the list: **Everyone**, **No login**, **Needs attention** (paperwork or account gaps — hours never count here), **Hours to approve** (anyone with clock sessions waiting), **Field** (subs, helpers, superintendents), **Office**. The toolbar also holds **Team leads** (who approves whose hours), **Accounts · dev** (roles, passwords, sign-in emails), and **Archived**.
