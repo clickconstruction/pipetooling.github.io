@@ -9,18 +9,10 @@ import { describeLastSeen } from '../../../lib/people/personKey'
 import type { PersonDeskUserRow } from '../../../hooks/usePersonDesk'
 import { BTN, BTN_QUIET, BTN_RED, Chip, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
 import type { UserRole } from '../../../hooks/useAuth'
+import { humanRoleLabel } from '../../../lib/roleLabels'
 
-const ROLES: Array<{ value: string; label: string }> = [
-  { value: 'helpers', label: 'Helper' },
-  { value: 'subcontractor', label: 'Subcontractor' },
-  { value: 'assistant', label: 'Assistant' },
-  { value: 'controller', label: 'Controller' },
-  { value: 'estimator', label: 'Estimator' },
-  { value: 'master_technician', label: 'Master' },
-  { value: 'superintendent', label: 'Superintendent' },
-  { value: 'primary', label: 'Primary' },
-  { value: 'dev', label: 'Dev' },
-]
+/** Least-privilege first; labels come from the one shared helper (`roleLabels.ts`), same as the invite dialog and the email. */
+const ROLE_ORDER: UserRole[] = ['helpers', 'subcontractor', 'assistant', 'controller', 'estimator', 'master_technician', 'superintendent', 'primary', 'dev']
 
 async function fnErrorMessage(e: unknown): Promise<string> {
   if (e instanceof FunctionsHttpError && e.context) {
@@ -62,7 +54,7 @@ export function PersonDeskAccessSection({
 
   const editable = canEditAccount(viewer)
   const isSelf = viewerUserId === user.id
-  const roleLabel = ROLES.find((r) => r.value === user.role)?.label ?? user.role ?? '—'
+  const roleLabel = humanRoleLabel(user.role)
   const serviceIds =
     user.role === 'estimator'
       ? user.estimator_service_type_ids
@@ -78,7 +70,7 @@ export function PersonDeskAccessSection({
 
   async function setRole(role: string) {
     if (!editable || !user) return
-    const ok = await confirmDialog({ message: `Change ${user.name ?? user.email}'s role to ${ROLES.find((r) => r.value === role)?.label ?? role}? Their navigation and access change on next load.`, confirmLabel: 'Change role' })
+    const ok = await confirmDialog({ message: `Change ${user.name ?? user.email}'s role to ${humanRoleLabel(role)}? Their navigation and access change on next load.`, confirmLabel: 'Change role' })
     if (!ok) return
     setBusy('role')
     const { error } = await supabase.from('users').update({ role: role as Exclude<UserRole, 'controller'> }).eq('id', user.id)
@@ -164,9 +156,9 @@ export function PersonDeskAccessSection({
       >
         {editable ? (
           <select value={user.role ?? ''} disabled={busy != null || isSelf} onChange={(e) => void setRole(e.target.value)} style={{ fontSize: '0.8125rem', padding: '0.1rem 0.3rem' }} aria-label="Role">
-            {ROLES.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
+            {ROLE_ORDER.map((r) => (
+              <option key={r} value={r}>
+                {humanRoleLabel(r)}
               </option>
             ))}
           </select>

@@ -18,6 +18,8 @@ import { EXTERNAL_MERGE_OPTION_PREFIX } from '../lib/mergeUserAccounts'
 import { archiveChoiceBlocker, archiveRequestBody, type ArchiveReassignMode } from '../lib/archiveUserDialog'
 import { executeCombinePeople, previewCombinePeople } from '../lib/combinePeople'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { inviteFormValid, roleChangeConfirmMessage, roleChosen, roleTakesServiceTypes, userCreatedTelemetryTarget, type RoleChoice } from '../lib/inviteUserForm'
+import { recordNavClick } from '../lib/navClickTelemetry'
 
 /** External roster person (no login) offered as a merge-away candidate for subcontractor survivors. */
 export type ExternalMergePerson = {
@@ -34,7 +36,7 @@ export type UseActiveAccountsManagementOptions = {
 }
 
 export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiveAccountsManagementOptions) {
-  const { user: authUser } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
 
@@ -47,7 +49,9 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const [archivedUsers, setArchivedUsers] = useState<UserRow[]>([])
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<UserRole>('master_technician')
+  // No privileged default: the role is an explicit choice (v2 "the invite moment"). '' until chosen.
+  const [inviteRole, setInviteRole] = useState<RoleChoice>('')
+  const [inviteTraining, setInviteTraining] = useState(false)
   const [inviteName, setInviteName] = useState('')
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
@@ -55,7 +59,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const [manualAddOpen, setManualAddOpen] = useState(false)
   const [manualAddEmail, setManualAddEmail] = useState('')
   const [manualAddName, setManualAddName] = useState('')
-  const [manualAddRole, setManualAddRole] = useState<UserRole>('master_technician')
+  const [manualAddRole, setManualAddRole] = useState<RoleChoice>('')
+  const [manualAddTraining, setManualAddTraining] = useState(false)
   const [manualAddPassword, setManualAddPassword] = useState('')
   const [manualAddServiceTypeIds, setManualAddServiceTypeIds] = useState<string[]>([])
   const [manualAddError, setManualAddError] = useState<string | null>(null)
@@ -203,6 +208,15 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   }, [enabled, loadAll])
 
   async function updateRole(id: string, role: UserRole) {
+    const target = users.find((u) => u.id === id)
+    if (target && target.role === role) return
+    // Desk precedent (PersonDeskAccessSection.setRole): confirm before re-roling a live account.
+    // The select is controlled by `users`, so Cancel leaves it showing the current role.
+    const ok = await confirmDialog({
+      message: roleChangeConfirmMessage(target?.name || target?.email || 'this account', target?.role, role),
+      confirmLabel: 'Change role',
+    })
+    if (!ok) return
     setUpdatingId(id)
     setError(null)
     // 'controller' is live in the DB enum but the generated types are stale, hence the cast.
@@ -448,7 +462,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   function openInvite() {
     setInviteOpen(true)
     setInviteEmail('')
-    setInviteRole('master_technician')
+    setInviteRole('')
+    setInviteTraining(false)
     setInviteName('')
     setInviteServiceTypeIds([])
     setInviteError(null)
@@ -460,6 +475,11 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
 
   async function handleInvite(e: FormEvent) {
     e.preventDefault()
+    if (!roleChosen(inviteRole) || !inviteFormValid({ email: inviteEmail, role: inviteRole })) {
+      setInviteError('Choose a role before sending the invite.')
+      return
+    }
+    const chosenRole: UserRole = inviteRole
     setInviteError(null)
     setInviteSubmitting(true)
     
@@ -476,11 +496,12 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     
     const body: Record<string, unknown> = {
       email: inviteEmail.trim(),
-      role: inviteRole,
+      role: chosenRole,
       name: trimmedName || undefined,
       redirectTo: `${window.location.origin}/accept-invite`,
+      read_only: inviteTraining,
     }
-    if ((inviteRole === 'estimator' || inviteRole === 'subcontractor' || inviteRole === 'helpers') && inviteServiceTypeIds.length > 0) {
+    if (roleTakesServiceTypes(chosenRole) && inviteServiceTypeIds.length > 0) {
       body.service_type_ids = inviteServiceTypeIds
     }
     const { data, error: eFn } = await supabase.functions.invoke('invite-user', {
@@ -504,6 +525,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       return
     }
     showToast(`Invite sent to ${inviteEmail.trim()}`, 'success')
+    recordNavClick(authUser?.id, authRole, 'user_invited', userCreatedTelemetryTarget(chosenRole, inviteTraining))
     closeInvite()
     await reloadAfterMutation()
   }
@@ -512,7 +534,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setManualAddOpen(true)
     setManualAddEmail('')
     setManualAddName('')
-    setManualAddRole('master_technician')
+    setManualAddRole('')
+    setManualAddTraining(false)
     setManualAddPassword('')
     setManualAddServiceTypeIds([])
     setManualAddError(null)
@@ -524,6 +547,14 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
 
   async function handleManualAdd(e: FormEvent) {
     e.preventDefault()
+    if (
+      !roleChosen(manualAddRole) ||
+      !inviteFormValid({ email: manualAddEmail, role: manualAddRole, password: manualAddPassword, requirePassword: true })
+    ) {
+      setManualAddError('Choose a role before creating the account.')
+      return
+    }
+    const chosenRole: UserRole = manualAddRole
     setManualAddError(null)
     setManualAddSubmitting(true)
     
@@ -541,10 +572,11 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     const body: Record<string, unknown> = {
         email: manualAddEmail.trim(),
         password: manualAddPassword,
-        role: manualAddRole,
+        role: chosenRole,
         name: trimmedName || undefined,
+        read_only: manualAddTraining,
     }
-    if ((manualAddRole === 'estimator' || manualAddRole === 'subcontractor' || manualAddRole === 'helpers') && manualAddServiceTypeIds.length > 0) {
+    if (roleTakesServiceTypes(chosenRole) && manualAddServiceTypeIds.length > 0) {
       body.service_type_ids = manualAddServiceTypeIds
     }
     const { data, error: eFn } = await supabase.functions.invoke('create-user', {
@@ -567,6 +599,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       setManualAddError(err)
       return
     }
+    recordNavClick(authUser?.id, authRole, 'user_created', userCreatedTelemetryTarget(chosenRole, manualAddTraining))
     closeManualAdd()
     await reloadAfterMutation()
   }
@@ -1008,6 +1041,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setInviteEmail,
     inviteRole,
     setInviteRole,
+    inviteTraining,
+    setInviteTraining,
     inviteName,
     setInviteName,
     inviteError,
@@ -1024,6 +1059,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setManualAddName,
     manualAddRole,
     setManualAddRole,
+    manualAddTraining,
+    setManualAddTraining,
     manualAddPassword,
     setManualAddPassword,
     manualAddServiceTypeIds,

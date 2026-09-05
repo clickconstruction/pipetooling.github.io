@@ -278,8 +278,11 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 interface CreateUserRequest {
   email: string      // User's email address
   password: string   // Initial password (min 6 characters)
-  role: string       // User role
+  role: string       // User role — an explicit choice; the dialog has no default (v2.2872)
   name?: string      // Optional display name
+  service_type_ids?: string[] // Optional restriction for estimator/subcontractor/helpers/superintendent
+  read_only?: boolean // v2.2872: start in training mode (users.read_only = true). Absent = false.
+                      // Any non-boolean → 400 "read_only must be true or false".
 }
 ```
 
@@ -292,6 +295,7 @@ interface CreateUserRequest {
 - `'estimator'`
 - `'primary'`
 - `'superintendent'`
+- `'controller'`
 
 #### Example Request
 
@@ -317,7 +321,8 @@ const response = await supabase.functions.invoke('create-user', {
     "id": "uuid",
     "email": "newuser@example.com",
     "name": "John Doe",
-    "role": "assistant"
+    "role": "assistant",
+    "read_only": false
   },
   "message": "User created successfully"
 }
@@ -360,8 +365,10 @@ const response = await supabase.functions.invoke('create-user', {
 3. Creates auth user with `supabase.auth.admin.createUser()`
 4. Sets email as confirmed
 5. Stores role in `user_metadata` (triggers `handle_new_user()`)
-6. Creates corresponding `public.users` record
-7. Returns user details
+6. Upserts the corresponding `public.users` record with role, name, any service-type restriction, and `read_only` (the training-mode flag chosen in the dialog — v2.2872). The service-role write passes `users_guard_privileged_columns` (`auth.uid()` IS NULL), so no migration was needed.
+7. Returns user details (incl. `read_only`)
+
+**Called from**: Active Accounts → **Manually add user** ([`useActiveAccountsManagement.ts`](../src/hooks/useActiveAccountsManagement.ts) `handleManualAdd`). Since v2.2872 the dialog opens with no role selected and **Create user** stays disabled until one is chosen (`inviteFormValid`, [`src/lib/inviteUserForm.ts`](../src/lib/inviteUserForm.ts)).
 
 **Deployment**: See [`supabase/functions/create-user/DEPLOY.md`](../supabase/functions/create-user/DEPLOY.md)
 
@@ -377,15 +384,17 @@ const response = await supabase.functions.invoke('create-user', {
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
 
-**Called from**: Settings → People & Accounts → "Invite via email" ([`Settings.tsx`](../src/pages/Settings.tsx) `handleInvite`) and People → Users → invite roster entry ([`People.tsx`](../src/pages/People.tsx) `inviteAsUser`).
+**Called from**: Active Accounts → "Invite via email" ([`useActiveAccountsManagement.ts`](../src/hooks/useActiveAccountsManagement.ts) `handleInvite`; the dialog opens with no role selected and **Send invite** stays disabled until one is chosen — v2.2872) and People → Users → invite roster entry ([`People.tsx`](../src/pages/People.tsx) `inviteAsUser`, role derived from the roster kind).
 
 #### Request Parameters
 
 ```typescript
 interface InviteUserRequest {
   email: string             // Invitee's email address
-  role: string              // One of the 8 modern roles (same list as create-user)
+  role: string              // One of the 9 roles (same list as create-user)
   name?: string             // Optional display name
+  read_only?: boolean       // v2.2872: start in training mode (users.read_only = true). Absent = false;
+                            // any non-boolean → 400 "read_only must be true or false"
   redirectTo?: string       // Where the invite link lands; must match https://pipetooling.com/*,
                             // https://clicktooling.com/*, or http://localhost:5173|5175/*;
                             // defaults to APP_ORIGIN (else https://pipetooling.com) + /accept-invite
@@ -397,8 +406,8 @@ interface InviteUserRequest {
 
 1. Validates caller is `dev`; validates role and any `service_type_ids`.
 2. Duplicate check on `public.users.email`. A **pending invite** (auth user with `email_confirmed_at` and `last_sign_in_at` both null) is deleted and replaced — re-inviting the same address issues a fresh link ("resend invite"). Anyone else → 400 `User with this email already exists`.
-3. `auth.admin.generateLink({ type: 'invite' })` creates the auth user and returns the action link **without** sending Supabase SMTP mail. The `handle_new_user` trigger reads `invited_role` from user metadata; the function also upserts `public.users` explicitly with role, name, and service-type restriction.
-4. Renders the invitation template and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper (from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`)).
+3. `auth.admin.generateLink({ type: 'invite' })` creates the auth user and returns the action link **without** sending Supabase SMTP mail. The `handle_new_user` trigger reads `invited_role` from user metadata; the function also upserts `public.users` explicitly with role, name, service-type restriction, and `read_only` (training mode from the first minute — v2.2872; service-role writes pass `users_guard_privileged_columns`).
+4. Renders the invitation template — `{{role}}` is filled from the shared human labeler [`_shared/roleLabels.ts`](../supabase/functions/_shared/roleLabels.ts) (`humanRoleLabel`: "Helper", "Master", "Subcontractor" …, the twin of `src/lib/roleLabels.ts`; `src/lib/roleLabels.test.ts` fails when they drift), never the raw enum ("Master_technician") —  and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper (from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`)).
 5. **If the Resend send fails, the auth user is deleted** (FK cascade removes `public.users`) and a 500 is returned — a failed invite leaves nothing behind, so retrying is always safe. The action link is never returned in the response.
 
 #### Accepting the invite
@@ -408,7 +417,7 @@ The emailed link verifies through Supabase Auth and redirects to **`/accept-invi
 #### Success Response
 
 ```json
-{ "success": true, "message": "Invite sent to newuser@example.com" }
+{ "success": true, "message": "Invite sent to newuser@example.com", "read_only": false }
 ```
 
 **Gateway JWT**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml) (function validates the JWT itself).

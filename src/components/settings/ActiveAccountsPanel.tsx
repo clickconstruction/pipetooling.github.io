@@ -9,7 +9,8 @@ import React from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import type { UserRow } from '../../types/settingsRows'
 import { ROLES } from '../../lib/userRoles'
-import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
+import { humanRoleLabel } from '../../lib/roleLabels'
+import { inviteFormValid, roleTakesServiceTypes, type RoleChoice } from '../../lib/inviteUserForm'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { eligibleAbsorbCandidates, eligibleExternalAbsorbCandidates, EXTERNAL_MERGE_OPTION_PREFIX } from '../../lib/mergeUserAccounts'
 import { archiveChoiceBlocker, eligibleReassignTargets } from '../../lib/archiveUserDialog'
@@ -67,6 +68,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     setInviteEmail,
     inviteRole,
     setInviteRole,
+    inviteTraining,
+    setInviteTraining,
     inviteName,
     setInviteName,
     inviteError,
@@ -81,6 +84,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     setManualAddName,
     manualAddRole,
     setManualAddRole,
+    manualAddTraining,
+    setManualAddTraining,
     manualAddPassword,
     setManualAddPassword,
     manualAddServiceTypeIds,
@@ -378,7 +383,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         >
                           {ROLES.map((r) => (
                             <option key={r} value={r}>
-                              {displayLabelForUserRole(r)}
+                              {humanRoleLabel(r)}
                             </option>
                           ))}
                         </select>
@@ -890,20 +895,22 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="invite-role" style={{ display: 'block', marginBottom: 4 }}>Role</label>
+                <label htmlFor="invite-role" style={{ display: 'block', marginBottom: 4 }}>Role *</label>
                 <select
                   id="invite-role"
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as UserRole)}
+                  onChange={(e) => { setInviteRole(e.target.value as RoleChoice); setInviteError(null) }}
+                  required
                   disabled={inviteSubmitting}
                   style={{ width: '100%', padding: '0.5rem' }}
                 >
+                  <option value="" disabled>Choose a role…</option>
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>{displayLabelForUserRole(r)}</option>
+                    <option key={r} value={r}>{humanRoleLabel(r)}</option>
                   ))}
                 </select>
               </div>
-              {(inviteRole === 'estimator' || inviteRole === 'subcontractor' || inviteRole === 'helpers') && (
+              {roleTakesServiceTypes(inviteRole) && (
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>{inviteRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
@@ -939,9 +946,25 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={inviteTraining}
+                    onChange={(e) => setInviteTraining(e.target.checked)}
+                    disabled={inviteSubmitting}
+                  />
+                  Start in training mode (read-only)
+                </label>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '4px 0 0 1.5rem' }}>They can browse everything their role sees, but every change is blocked until a dev switches it off. Clocking in and out still works.</p>
+              </div>
               {inviteError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{inviteError}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={inviteSubmitting}>
+                <button
+                  type="submit"
+                  disabled={inviteSubmitting || !inviteFormValid({ email: inviteEmail, role: inviteRole })}
+                  title={inviteRole === '' ? 'Choose a role first' : undefined}
+                >
                   {inviteSubmitting ? 'Sending…' : 'Send invite'}
                 </button>
                 <button type="button" onClick={closeInvite} disabled={inviteSubmitting}>Cancel</button>
@@ -981,20 +1004,22 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="manual-role" style={{ display: 'block', marginBottom: 4 }}>Role</label>
+                <label htmlFor="manual-role" style={{ display: 'block', marginBottom: 4 }}>Role *</label>
                 <select
                   id="manual-role"
                   value={manualAddRole}
-                  onChange={(e) => setManualAddRole(e.target.value as UserRole)}
+                  onChange={(e) => { setManualAddRole(e.target.value as RoleChoice); setManualAddError(null) }}
+                  required
                   disabled={manualAddSubmitting}
                   style={{ width: '100%', padding: '0.5rem' }}
                 >
+                  <option value="" disabled>Choose a role…</option>
                   {ROLES.map((r) => (
-                    <option key={r} value={r}>{displayLabelForUserRole(r)}</option>
+                    <option key={r} value={r}>{humanRoleLabel(r)}</option>
                   ))}
                 </select>
               </div>
-              {(manualAddRole === 'estimator' || manualAddRole === 'subcontractor' || manualAddRole === 'helpers') && (
+              {roleTakesServiceTypes(manualAddRole) && (
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>{manualAddRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
@@ -1030,9 +1055,28 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={manualAddTraining}
+                    onChange={(e) => setManualAddTraining(e.target.checked)}
+                    disabled={manualAddSubmitting}
+                  />
+                  Start in training mode (read-only)
+                </label>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '4px 0 0 1.5rem' }}>They can browse everything their role sees, but every change is blocked until a dev switches it off. Clocking in and out still works.</p>
+              </div>
               {manualAddError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{manualAddError}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={manualAddSubmitting}>
+                <button
+                  type="submit"
+                  disabled={
+                    manualAddSubmitting ||
+                    !inviteFormValid({ email: manualAddEmail, role: manualAddRole, password: manualAddPassword, requirePassword: true })
+                  }
+                  title={manualAddRole === '' ? 'Choose a role first' : undefined}
+                >
                   {manualAddSubmitting ? 'Creating…' : 'Create user'}
                 </button>
                 <button type="button" onClick={closeManualAdd} disabled={manualAddSubmitting}>Cancel</button>

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { humanRoleLabel } from '../_shared/roleLabels.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +17,8 @@ interface InviteUserRequest {
   redirectTo?: string
   /** For estimator/subcontractor/helpers/superintendent role: IDs of service types to restrict. Omit or empty = all. */
   service_type_ids?: string[]
+  /** Start the account in training mode (`users.read_only = true`): they browse everything their role sees, every write is blocked. Default false. */
+  read_only?: boolean
 }
 
 const VALID_ROLES = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller']
@@ -27,12 +30,6 @@ const ALLOWED_REDIRECT = /^(https:\/\/(pipetooling|clicktooling)\.com\/|http:\/\
 const DEFAULT_SUBJECT = 'Invitation to join ClickTooling'
 const DEFAULT_BODY =
   "Hi {{name}},\n\nYou've been invited to join ClickTooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn't expect this invitation, you can safely ignore this email."
-
-/** Mirrors src/lib/userRoleDisplay.ts displayLabelForUserRole. */
-function displayLabelForRole(role: string): string {
-  if (role === 'helpers') return 'Helper'
-  return role.charAt(0).toUpperCase() + role.slice(1)
-}
 
 function escapeHtml(s: string): string {
   return s
@@ -105,7 +102,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, role, name, redirectTo, service_type_ids }: InviteUserRequest = await req.json()
+    const { email, role, name, redirectTo, service_type_ids, read_only }: InviteUserRequest = await req.json()
 
     if (!email || !role) {
       return jsonResponse({ error: 'Missing required fields: email and role' }, 400)
@@ -114,6 +111,11 @@ serve(async (req) => {
     if (!VALID_ROLES.includes(role)) {
       return jsonResponse({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, 400)
     }
+
+    if (read_only !== undefined && typeof read_only !== 'boolean') {
+      return jsonResponse({ error: 'read_only must be true or false' }, 400)
+    }
+    const startInTraining = read_only === true
 
     const normalizedEmail = email.trim().toLowerCase()
     const trimmedName = name?.trim() || null
@@ -200,13 +202,15 @@ serve(async (req) => {
     const invitedUserId = linkData.user.id
     const actionLink = linkData.properties.action_link
 
-    // Belt-and-braces vs the handle_new_user trigger: write the exact role/name and
-    // any service-type restriction (trigger inserts are ON CONFLICT DO NOTHING).
+    // Belt-and-braces vs the handle_new_user trigger: write the exact role/name, the
+    // training-mode flag, and any service-type restriction (trigger inserts are ON CONFLICT
+    // DO NOTHING). Service-role writes pass users_guard_privileged_columns (auth.uid() is NULL).
     const userRecord: Record<string, unknown> = {
       id: invitedUserId,
       email: normalizedEmail,
       role: role,
       name: trimmedName,
+      read_only: startInTraining,
     }
     if (role === 'estimator' && serviceTypeIds !== null) userRecord.estimator_service_type_ids = serviceTypeIds
     if (role === 'subcontractor' && serviceTypeIds !== null) userRecord.subcontractor_service_type_ids = serviceTypeIds
@@ -233,7 +237,7 @@ serve(async (req) => {
     const subjectTemplate = template?.subject || DEFAULT_SUBJECT
     const bodyTemplate = template?.body || DEFAULT_BODY
 
-    const roleLabel = displayLabelForRole(role)
+    const roleLabel = humanRoleLabel(role)
     const textVariables: Record<string, string> = {
       name: trimmedName || normalizedEmail,
       email: normalizedEmail,
@@ -257,7 +261,7 @@ serve(async (req) => {
       return jsonResponse({ error: `Failed to send invite email — nothing was created, please retry: ${sendResult.error}` }, 500)
     }
 
-    return jsonResponse({ success: true, message: `Invite sent to ${normalizedEmail}` }, 200)
+    return jsonResponse({ success: true, message: `Invite sent to ${normalizedEmail}`, read_only: startInTraining }, 200)
   } catch (error) {
     console.error('Error in invite-user function:', error)
     return jsonResponse({ error: (error as Error).message || 'Internal server error' }, 500)

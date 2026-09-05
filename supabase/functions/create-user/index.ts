@@ -14,6 +14,8 @@ interface CreateUserRequest {
   name?: string
   /** For estimator/subcontractor/helpers/superintendent role: IDs of service types to restrict. Omit or empty = all. */
   service_type_ids?: string[]
+  /** Start the account in training mode (`users.read_only = true`): they browse everything their role sees, every write is blocked. Default false. */
+  read_only?: boolean
 }
 
 serve(async (req) => {
@@ -76,7 +78,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, role, name, service_type_ids }: CreateUserRequest = await req.json()
+    const { email, password, role, name, service_type_ids, read_only }: CreateUserRequest = await req.json()
 
     if (!email || !password || !role) {
       return new Response(
@@ -93,6 +95,14 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    if (read_only !== undefined && typeof read_only !== 'boolean') {
+      return new Response(
+        JSON.stringify({ error: 'read_only must be true or false' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const startInTraining = read_only === true
 
     // Validate and resolve service_type_ids when role is estimator, subcontractor, or superintendent
     let estimatorServiceTypeIds: string[] | null = null
@@ -178,12 +188,14 @@ serve(async (req) => {
       )
     }
 
-    // Create entry in public.users (trigger should handle this, but we'll do it explicitly to set name)
+    // Create entry in public.users (trigger should handle this, but we'll do it explicitly to set
+    // name and the training-mode flag). Service-role writes pass users_guard_privileged_columns.
     const userRecord: Record<string, unknown> = {
       id: newAuthUser.user.id,
       email: email.trim().toLowerCase(),
       role: role,
       name: name?.trim() || null,
+      read_only: startInTraining,
     }
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {
       userRecord.estimator_service_type_ids = estimatorServiceTypeIds
@@ -218,6 +230,7 @@ serve(async (req) => {
       email: newAuthUser.user.email,
       role: role,
       name: name?.trim() || null,
+      read_only: startInTraining,
     }
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {
       userResponse.estimator_service_type_ids = estimatorServiceTypeIds
