@@ -2,6 +2,12 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import {
+  PAID_JOB_BILL_BLOCKED_MESSAGE,
+  allowRebillFromBody,
+  logPaidJobBillBlockedBestEffort,
+  shouldBlockBillOnPaidJob,
+} from '../_shared/paidJobBillGuard.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -105,6 +111,8 @@ serve(async (req) => {
       extra_attachments?: Array<{ filename?: string; content_base64?: string }>
       /** Re-email an already-billed invoice: no status flip, no row update (v2.2605). */
       resend?: boolean
+      /** Explicit re-bill of a `paid` job (J3-1 guard); without `true` a first send on a paid job is refused (409). */
+      allow_rebill?: boolean
     }
     const isResend = body.resend === true
 
@@ -201,12 +209,25 @@ serve(async (req) => {
 
     const { data: jl, error: jlErr } = await userClient
       .from('jobs_ledger')
-      .select('id, customer_id, customer_email')
+      .select('id, customer_id, customer_email, status')
       .eq('id', jobId)
       .single()
 
     if (jlErr || !jl?.customer_id) {
       return jsonResponse({ error: 'Job not found or not linked to a customer' }, 403)
+    }
+
+    // Never bill a paid job twice (J3-1). First sends only — a re-email of an
+    // already-billed invoice (`resend`) writes nothing and is not a new bill.
+    if (!isResend && shouldBlockBillOnPaidJob({ jobStatus: jl.status, allowRebill: allowRebillFromBody(body) })) {
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      await logPaidJobBillBlockedBestEffort(serviceKey ? createClient(supabaseUrl, serviceKey) : null, {
+        jobId,
+        invoiceId: inv.id,
+        actorUserId: user.id,
+        channel: 'physical',
+      })
+      return jsonResponse({ error: PAID_JOB_BILL_BLOCKED_MESSAGE, code: 'job_already_paid' }, 409)
     }
     // Bill-to override (v2.1085): an invoice with bill_to_email set bills an
     // alternate recipient — that address is a valid target alongside the job

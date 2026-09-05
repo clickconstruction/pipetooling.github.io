@@ -10,6 +10,7 @@ import type { InvoiceWithJobLike } from '../components/jobs/BilledPaymentConfirm
 import { isAssistantLike } from './subcontractorLikeRole'
 import { type JobBillingContext } from './jobBillingContext'
 import { type ReadyToBillDashboardUnit as ReadyToBillDashboardUnitBase } from './buildReadyToBillDashboardUnits'
+import { shouldBlockBillOnPaidJob } from '../../supabase/functions/_shared/paidJobBillGuard'
 
 type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 export type JobsLedgerPaymentRow = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -27,6 +28,13 @@ export type InvoiceForDashboard = JobsLedgerInvoiceRow & {
   customer_email: string | null
   customer_phone: string | null
   last_work_date: string | null
+  /**
+   * Parent `jobs_ledger.status` (v2.2846, J3-1): the Ready to Bill / Billed
+   * unit builders drop bills whose job is `paid` — a stale never-sent draft on
+   * a Paid-in-Full job must never sit in the queue with a live Bill Customer
+   * button. Null only when the join is missing.
+   */
+  job_status: string | null
   /** Prefer job `created_at` for dashboard “Open … ago” labels */
   open_since_at: string | null
   invoice_payments: JobsLedgerPaymentRow[]
@@ -47,11 +55,12 @@ export type DashboardInvoiceJoinRow = JobsLedgerInvoiceRow & {
     customer_email: string | null
     customer_phone: string | null
     last_work_date: string | null
+    status: string | null
   }
 }
 
 export const DASHBOARD_INVOICES_JOBS_LEDGER_SELECT =
-  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_invoice_status, stripe_mode, agreed_write_down_at, agreed_write_down_by, agreed_write_down_note, agreed_write_down_previous_amount, agreed_write_down_stripe_credit_note_id, bill_to_name, bill_to_email, bill_to_phone, bill_to_stripe_customer_id, jobs_ledger!inner(hcp_number, click_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email, customer_phone, last_work_date)'
+  'id, job_id, amount, status, created_at, is_primary_rtb_bundle, billed_at, estimated_bill_date, external_send_channel, external_send_note, hosted_invoice_url, sent_to_customer_at, sequence_order, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_invoice_status, stripe_mode, agreed_write_down_at, agreed_write_down_by, agreed_write_down_note, agreed_write_down_previous_amount, agreed_write_down_stripe_credit_note_id, bill_to_name, bill_to_email, bill_to_phone, bill_to_stripe_customer_id, jobs_ledger!inner(hcp_number, click_number, job_name, job_address, google_drive_link, job_plans_link, created_at, master_user_id, customer_id, customer_name, customer_email, customer_phone, last_work_date, status)'
 
 export function buildPaymentsByInvoiceIdMap(payments: JobsLedgerPaymentRow[]): Map<string, JobsLedgerPaymentRow[]> {
   const m = new Map<string, JobsLedgerPaymentRow[]>()
@@ -109,6 +118,7 @@ export function mapJoinedInvoiceToDashboard(
     customer_email: jl?.customer_email ?? null,
     customer_phone: jl?.customer_phone ?? null,
     last_work_date: jl?.last_work_date ?? null,
+    job_status: jl?.status ?? null,
     open_since_at: jl?.created_at ?? r.created_at,
     invoice_payments: paymentsByInvoiceId.get(r.id) ?? [],
   }
@@ -134,6 +144,7 @@ export function dashboardInvoiceToPaymentModal(inv: InvoiceForDashboard): Invoic
     customer_email,
     customer_phone: _customerPhone,
     last_work_date: _lastWorkDate,
+    job_status: _jobStatus,
     open_since_at: _openSince,
     invoice_payments: _invPay,
     ...invoiceRow
@@ -210,13 +221,30 @@ export type BilledWaitingDashboardUnit =
   | { kind: 'invoice'; inv: InvoiceForDashboard }
 
 /**
+ * Dashboard bills whose parent job is Paid in Full never make a unit (J3-1 /
+ * N1, v2.2846): the Pipeline board keys its Ready to Bill / Billed sections on
+ * JOB status (`jobsStagesBoard.ts` — a paid job can never appear), so this is
+ * the same rule applied to the invoice-row side. A bill on a billed or working
+ * job stays: a billed, unpaid invoice is owed regardless of job stage.
+ */
+export function isDashboardBillOnPaidJob(inv: { job_status?: string | null }): boolean {
+  return shouldBlockBillOnPaidJob({ jobStatus: inv.job_status })
+}
+
+export function withoutDashboardBillsOnPaidJobs<I extends { job_status?: string | null }>(invoices: I[]): I[] {
+  return invoices.filter((inv) => !isDashboardBillOnPaidJob(inv))
+}
+
+/**
  * Dedupes billed job + invoice rows: one merged row when exactly one billed
  * invoice on the job. Every job always yields a row — 0 invoices → plain job
  * row, 1 invoice → merged `job_bundle`, 2+ invoices → plain job row (its
  * "Remaining" card, computed job-side as revenue − payments_made) followed by
- * each invoice standalone.
+ * each invoice standalone. Bills riding a `paid` job are dropped first (see
+ * `withoutDashboardBillsOnPaidJobs`).
  */
-export function buildBilledWaitingDashboardUnits(jobs: JobForDashboard[], invoices: InvoiceForDashboard[]): BilledWaitingDashboardUnit[] {
+export function buildBilledWaitingDashboardUnits(jobs: JobForDashboard[], invoicesIn: InvoiceForDashboard[]): BilledWaitingDashboardUnit[] {
+  const invoices = withoutDashboardBillsOnPaidJobs(invoicesIn)
   const byJob = new Map<string, InvoiceForDashboard[]>()
   for (const inv of invoices) {
     const list = byJob.get(inv.job_id) ?? []
