@@ -22,6 +22,10 @@ You see everything: customers, projects, jobs, money, people, and payroll. This 
 
 Offer a sub a step for an agreed amount, they accept from their phone, and approving the walk releases the money into Sub Labor: [pay a sub per step](?g=pay-a-sub-per-step). What you still owe everyone is in [sub labor outstanding](?g=sub-labor-outstanding).
 
+## Working in the field yourself
+
+The first time you open the Dashboard it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view (current job, today's stops, Clock In, Leave Report, Next Job); {{button:outline|Not now}} keeps the full Dashboard. Either way the {{icon:gear}} gear menu toggles it later — see [clocking in and out with Job Mode](?g=job-mode-clocking). Subs and helpers get Job Mode on by default.
+
 ## What each role sees below you
 
 | Role | Their world | Not visible to them |

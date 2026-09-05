@@ -7,12 +7,17 @@ order: 10
 ---
 Job Mode turns the Dashboard into one big card built for working in the field: it shows your current job, your next scheduled job, and big buttons for the things you actually do on site.
 
-## Turning Job Mode on
+## Is Job Mode on?
 
-1. Tap the {{icon:gear}} **gear menu** in the top-right of the header.
-2. Toggle **Job Mode**.
+- **Subs and helpers:** yes, already — Job Mode is on the first time you open the app on any phone. Nothing to set up.
+- **Masters and superintendents:** the Dashboard shows a one-time card, **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} and you're in; {{button:outline|Not now}} hides the card on that phone.
+- **Anyone who can file field reports:** tap the {{icon:gear}} **gear menu** in the top-right of the header and toggle **Job Mode** on or off.
 
-With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap {{button:outline|Show full dashboard}} underneath it to see everything else.
+Turning it **off** is remembered on that phone even if your role has it on by default; the same gear-menu row turns it back on. With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap {{button:outline|Show full dashboard}} underneath it to see everything else for the rest of the visit — the next time you open the app you're back on the card.
+
+:::example A new phone
+Your helper gets a replacement phone, signs in, and lands straight on the Job Mode card with {{button:green|Clock In}} on top — no gear menu, no guide. If they'd rather see the whole Dashboard, one gear-menu tap turns Job Mode off for that phone.
+:::
 
 The header also changes: the three task buttons become a **Contact:** row — a green phone button that calls the office, plus {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left.
 
