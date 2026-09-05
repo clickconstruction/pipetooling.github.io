@@ -165,6 +165,30 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
           prints, and each job section breaks to its own sheet. */}
       <style>{`
         [data-print-only]{display:none}
+        [data-portal-ledger-scroll]{overflow-x:auto}
+        [data-portal-ledger]{min-width:560px}
+        [data-portal-ledger-head],[data-portal-bill]{display:grid;grid-template-columns:84px 1fr auto auto;gap:0 18px}
+        [data-portal-bill]{align-items:center;padding:12px 0 12px 10px;border-bottom:1px solid ${HAIR}}
+        [data-portal-bill][data-last]{border-bottom:none}
+        [data-bill-pay]{padding:7px 16px}
+        /* Phones (v2.2845, journey map J21-F2/J22-F2): the 560px grid used to
+           sit inside a 343px sheet with no scroll cue — every amount and PAY
+           ONLINE button started off-screen. Under 560px each bill becomes a
+           stacked card: date · age / note / amount / full-width button. The
+           inner sideways scroll disappears; print (paper width) never matches
+           this query and keeps the ruled grid. */
+        @media screen and (max-width:559px) {
+          [data-portal-ledger-scroll]{overflow-x:visible}
+          [data-portal-ledger]{min-width:0}
+          [data-portal-ledger-head]{display:none}
+          [data-portal-bill],[data-portal-bill][data-last]{grid-template-columns:1fr;gap:6px 0;align-items:stretch;background:${CARD};border:1px solid ${HAIR};padding:12px 14px;margin-top:8px}
+          [data-portal-bill] br{display:none}
+          [data-bill-age]::before{content:' · '}
+          [data-bill-note]:empty{display:none}
+          [data-bill-amount]{font-size:18px}
+          [data-bill-pay]{display:block;text-align:center;padding:11px 16px}
+          [data-bill-check]{justify-self:start}
+        }
         @media print {
           html,body{background:${PAPER} !important}
           [data-screen-only]{display:none !important}
@@ -238,9 +262,9 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
           <span style={{ color: MUTED }}>No open bills on your account — thank you.</span>
         </div>
       ) : (
-        <div data-portal-ledger-scroll style={{ marginTop: 10, overflowX: 'auto' }}>
-          <div data-portal-ledger style={{ minWidth: 560 }}>
-            <div data-screen-only style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, padding: '0 0 7px', borderBottom: `1.5px solid ${INK}` }}>
+        <div data-portal-ledger-scroll style={{ marginTop: 10 }}>
+          <div data-portal-ledger>
+            <div data-screen-only data-portal-ledger-head style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: FAINT, padding: '0 0 7px', borderBottom: `1.5px solid ${INK}` }}>
               <span>Billed</span>
               <span />
               <span style={{ textAlign: 'right' }}>Amount due</span>
@@ -446,19 +470,19 @@ function PortalJobGroupSection({
 function PortalBillRow({ bill, todayYmd, isLast }: { bill: PortalBill; todayYmd: string; isLast: boolean }) {
   const age = portalDaysSinceBilled(bill.billedOn, todayYmd)
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto auto', gap: '0 18px', alignItems: 'center', padding: '12px 0 12px 10px', borderBottom: isLast ? 'none' : `1px solid ${HAIR}`, fontSize: 13.5 }}>
+    <div data-portal-bill data-last={isLast ? '' : undefined} style={{ fontSize: 13.5 }}>
       <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
         {formatPortalDate(bill.billedOn) ?? '—'}
         {age && (
           <>
             <br />
-            <span style={{ fontSize: 10.5, color: age.aging ? COPPER : FAINT, fontWeight: age.aging ? 600 : 400 }}>
+            <span data-bill-age style={{ fontSize: 10.5, color: age.aging ? COPPER : FAINT, fontWeight: age.aging ? 600 : 400 }}>
               {age.label}
             </span>
           </>
         )}
       </span>
-      <span style={{ minWidth: 0, fontSize: 11.5, color: FAINT }}>
+      <span data-bill-note style={{ minWidth: 0, fontSize: 11.5, color: FAINT }}>
         {/* Original billed amount, so billed − paid = due is visible on the
             page. Redundant when nothing's been paid, so it stays quiet then. */}
         {bill.totalPaid > 0 && (
@@ -470,21 +494,22 @@ function PortalBillRow({ bill, todayYmd, isLast }: { bill: PortalBill; todayYmd:
           </>
         )}
       </span>
-      <span style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(bill.amount)}</span>
+      <span data-bill-amount style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(bill.amount)}</span>
       {bill.payUrl ? (
         // Screen-only: a button is useless on paper; the printed page keeps
         // the check-ref chips and the closing QR instead (v2.2331).
         <a
           data-screen-only
+          data-bill-pay
           href={bill.payUrl}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ background: INK, color: PAPER, padding: '7px 16px', fontSize: 12.5, fontWeight: 600, letterSpacing: '0.02em', textDecoration: 'none', whiteSpace: 'nowrap' }}
+          style={{ background: INK, color: PAPER, fontSize: 12.5, fontWeight: 600, letterSpacing: '0.02em', textDecoration: 'none', whiteSpace: 'nowrap' }}
         >
           PAY ONLINE
         </a>
       ) : (
-        <span style={{ border: '1px solid #b9c2cc', color: MUTED, padding: '6px 12px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+        <span data-bill-check style={{ border: '1px solid #b9c2cc', color: MUTED, padding: '6px 12px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
           check · ref {bill.checkRef || '—'}
         </span>
       )}
