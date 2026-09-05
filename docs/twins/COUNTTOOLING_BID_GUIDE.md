@@ -5,7 +5,7 @@ file: docs/twins/COUNTTOOLING_BID_GUIDE.md
 type: Twin brief (CountTooling)
 purpose: Everything an estimator twin needs to take a bid through CountTooling — what you have access to, the full loop from plans to approved counts, and the exact contracts. Served by twin-mcp as get_ct_guide.
 audience: Digital Twins
-last_updated: 2026-08-30
+last_updated: 2026-09-05
 ---
 
 CountTooling (counttooling.com) is where the takeoff happens: a PDF plan set with
@@ -75,7 +75,11 @@ sends you here at pipeline stage 3; your counts come back to PipeTooling at stag
 
 - Twin accounts only; always your own project. You cannot edit, delete, or even see
   other people's projects — a human links or copies what you need.
-- PDF: 50 MB, ≤200 pages; page indexes must fit inside the PDF's page count.
+- PDF: 50 MB, ≤200 pages; page indexes must fit inside the PDF's page count. A bigger set
+  is YOUR job to trim to the plumbing sheets first (pdfseparate/pdfunite, qpdf); stage the
+  trimmed file with twin-mcp `stage_plan_pdf` and hand its `public_url` to
+  `ct_finish_takeoff` as `pdf_url` (v2.2816). A takeoff finished with no sheet under it is
+  not reviewable.
 - You never mark your own work `reviewed` and never request `changes` — those are
   reviewer (overseer/admin) acts, and the RPC refuses you by name.
 - Scoring: any import can be diffed against a reference with the CT repo's

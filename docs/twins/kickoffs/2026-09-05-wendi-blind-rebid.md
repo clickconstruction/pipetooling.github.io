@@ -25,10 +25,13 @@ last_updated: 2026-09-05
 2. If the connector doesn't appear, the agent can still reach the harness over HTTP:
    `POST https://yewfzhbofbbyvkvtaatw.supabase.co/functions/v1/twin-mcp` with header
    `X-Twin-Token: <key>` and a JSON-RPC body `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_brief","arguments":{}}}`.
-3. Confirm twin-mcp is deployed at v2.2806 or later (`tools/list` shows `score_backtest`
-   and `next_backtest`). Then paste the prompt below, whole, as the first message. To run
+3. Confirm twin-mcp is deployed at v2.2816 or later (`tools/list` shows `score_backtest`,
+   `next_backtest` and `stage_plan_pdf`). Then paste the prompt below, whole, as the first message. To run
    several agents at once, give each one the same prompt plus one line: "Your axis is
    <axis>; claim only that axis and stop after one bid." The dispatcher keeps them apart.
+   Give every agent its own work folder — plans, scratch, AND helper scripts — under
+   `~/pt-twin-digest/work/<twin bid number>/`; on 2026-09-05 two parallel agents shared one
+   scratch folder and one found its helper rewritten under it.
 4. While it runs: the Robots pill on the Bids page counts new audits; the Scoreboard's
    unified run ledger shows each `R2-BT-nn` row as it lands. Compare against BT-6..19.
 
@@ -80,6 +83,10 @@ last_updated: 2026-09-05
 >   counters first, then traced runs; every sheet accounted for; `RFI:` notes at the exact
 >   spot for anything the plans underdetermine. Finish with `ct_finish_takeoff` and
 >   **always** pass `self_assessment` (2–3 sentences on where this draft is least sure).
+>   **Sets over 50 MB or 200 pages** are refused by CountTooling: trim to the plumbing
+>   sheets (pdfseparate/pdfunite or qpdf), `stage_plan_pdf(bid, file_name)` for an upload
+>   URL, PUT the trimmed file there, and pass its `public_url` as `pdf_url` to
+>   `ct_finish_takeoff`. Never finish a takeoff with no sheet underneath it.
 > - STG-5 **Counts into PipeTooling**: Copy to /Tooling → the bid's Counts tab paste import,
 >   then book-assign every row from the 🤖 Robot Default book (extend it when a tag is
 >   missing; mirror sources in the ledger). **Do this before you lock and before the audit
@@ -87,10 +94,12 @@ last_updated: 2026-09-05
 > - LOCK: `add_bid_note` with `[STG-3..5 + LOCK] $NN,NNN — <building total> + <travel line
 >   stated separately> — <one paragraph: set class, census, tiers, exclusions, assumptions>`.
 >   The total must equal what the Counts tab prices.
-> - STG-6 `score_backtest(bid, run_label: 'R2-BT-<n>', axis, locked_total, counts_note?,
->   scope_verdict?, note?)`. Run the scope-match check the placement guide describes and
->   pass `scope_verdict`. Only after it returns may you open the reference's rows for the
->   count/footage comparison; write that comparison into the ledger as the T4 scorecard.
+> - STG-6 in two calls. First `score_backtest(bid, run_label, axis, locked_total)` with
+>   **no** `scope_verdict` — it unseals and scores. Then, and only then, open the
+>   reference's rows, run the scope-match line-compare from the placement guide, and call
+>   `score_backtest` **again** with the same `run_label` and `scope_verdict: 'pass'` or
+>   `'fail'` (exactly those words) plus your `counts_note`; that amends the row and settles
+>   `gate_eligible`. Write the count/footage comparison into the ledger as the T4 scorecard.
 > - AUDIT: seed your open questions on the audit as `bid_audit_notes` rows
 >   (`kind='question'`, best-fit section, **`sheet_ref` + one-line `context` on every one**),
 >   written the way the "Ask like a junior estimator" section says — plain trade words, one

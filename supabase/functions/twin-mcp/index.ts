@@ -183,7 +183,7 @@ const TOOLS = [
   {
     name: 'score_backtest',
     description:
-      "STG-6 unseal + scorecard in one call, for a BACKTEST bid you own (v2.2800). Refused unless the bid's ledger already carries a LOCK note — your blind total goes on the record before the reference opens. The seal breaks HERE: the call reads the reference's value, outcome, loss category and sent date, computes delta_pct, the reference quality flags (roundValue, weakLoss, lossUncategorized, stale), the presence grade and gate_eligible, writes the twin_run_scores row the Scoreboard reads, stamps '[STG-6 SCORECARD]' on your ledger, and returns the reference facts. Idempotent per run_label (an existing label is returned, not overwritten).",
+      "STG-6 unseal + scorecard in one call, for a BACKTEST bid you own (v2.2800). Refused unless the bid's ledger already carries a LOCK note — your blind total goes on the record before the reference opens. The seal breaks HERE: the call reads the reference's value, outcome, loss category and sent date, computes delta_pct, the reference quality flags (roundValue, weakLoss, lossUncategorized, stale), the presence grade and gate_eligible, writes the twin_run_scores row the Scoreboard reads, stamps '[STG-6 SCORECARD]' on your ledger, and returns the reference facts. Idempotent per run_label; a second call with the same run_label plus scope_verdict / counts_note / note AMENDS those fields (locked_total never changes).",
     inputSchema: {
       type: 'object',
       properties: {
@@ -192,10 +192,23 @@ const TOOLS = [
         axis: { type: 'string', description: "Confidence-scoreboard axis, e.g. 'proto/auto-service', 'small TI', 'institutional'" },
         locked_total: { type: 'number', description: 'Your blind total — must match the LOCK note already on the ledger' },
         counts_note: { type: 'string', description: "Optional one-liner on count accuracy, e.g. 'fixtures 17/19 exact · footage 0.9x'" },
-        scope_verdict: { type: 'string', description: "'pass' | 'fail' | 'unknown' — the scope-match check (fail = reference priced a different package; the run is void and not gate-eligible)" },
+        scope_verdict: { type: 'string', description: "Exactly 'pass' or 'fail' (anything else records as 'unknown'). The scope-match check needs the reference rows, which this call unseals — so first call WITHOUT it, do the line-compare, then call again with the same run_label and the verdict: the row is amended and gate_eligible recomputed (v2.2816)." },
         note: { type: 'string', description: 'Optional one-line lesson for the axis card' },
       },
       required: ['bid', 'run_label', 'axis', 'locked_total'],
+    },
+  },
+  {
+    name: 'stage_plan_pdf',
+    description:
+      "Oversized plan sets (v2.2816): CountTooling refuses PDFs over 50 MB or 200 pages. Trim the set to the plumbing sheets yourself (pdfseparate/pdfunite, or qpdf --pages), then call this for a one-time signed upload URL into the twin-plans-tmp bucket: PUT the trimmed file to upload_url (Content-Type: application/pdf, body = the file), then pass public_url as pdf_url to ct_finish_takeoff. The staged object is deleted automatically after a successful import; it expires with the bucket regardless.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your bid (e.g. 'b467') — the object is filed under its tag" },
+        file_name: { type: 'string', description: "File name for the trimmed set, e.g. 'davis-ms-plumbing.pdf'" },
+      },
+      required: ['bid'],
     },
   },
   {
@@ -243,6 +256,7 @@ const TOOLS = [
         self_assessment: { type: 'string', description: "Your confession for the auditor: 2-3 sentences on where THIS draft is least sure (modeled vs traced footage, guessed sub scopes, unread sheets). Shown atop the audit card as 'Where I'm least sure' — always send it." },
         view_name: { type: 'string', description: "Optional view-link label (default '<bid> audit view')" },
         skip_pdf: { type: 'boolean', description: 'Skip the plan-fetch PDF leg (default false)' },
+        pdf_url: { type: 'string', description: "https URL of a plan PDF to attach INSTEAD of the bid's own set — for sets over CountTooling's 50 MB / 200-page cap, trim to the plumbing sheets and stage with stage_plan_pdf, then pass its public_url here (v2.2816)." },
       },
       required: ['bid', 'name', 'takeoff'],
     },
@@ -504,9 +518,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
             notes: `mint via=token:${twin.credId} app=counttooling redirect=${redirectTo}`,
           })
         } catch (_) { /* ledger best-effort */ }
-        return textContent(
-          `Signed-in CountTooling session minted for ${ctEmail}.\naction_link (single-use — navigate a browser to it):\n${body.action_link}`,
-        )
+        return textContent(JSON.stringify({ ok: true, app: 'counttooling', email: ctEmail, action_link: body.action_link, note: 'single-use — navigate a browser to it, or curl -s -o /dev/null -w %{redirect_url} it once to read the JWT from the fragment' }, null, 2))
       }
       const res = await fetch(`${supabaseUrl}/functions/v1/twin-login`, {
         method: 'POST',
@@ -515,9 +527,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) return textContent(`Mint failed (${res.status}): ${body.error ?? 'unknown'}`, true)
-      return textContent(
-        `Signed-in session minted for ${twin.email}.\naction_link (single-use — navigate a browser to it):\n${body.action_link}`,
-      )
+      return textContent(JSON.stringify({ ok: true, app: 'pipetooling', email: twin.email, action_link: body.action_link, note: 'single-use — navigate a browser to it, or curl -s -o /dev/null -w %{redirect_url} it once to read the JWT from the fragment' }, null, 2))
     }
     case 'ask_question': {
       const q = String(args.question ?? '').trim()
@@ -809,6 +819,28 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         next: r.reused ? undefined : 'STG-2 substrate is yours (get_plan_brief tells you when it is missing); then takeoff (STG-3), counts+books (STG-5) BEFORE the lock, then score_backtest (STG-6) and the audit questions.',
       }, null, 2))
     }
+    case 'stage_plan_pdf': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      if (!ref) return textContent('stage_plan_pdf needs bid', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, created_by, estimator_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) return textContent('Not your bid (created_by / estimator fence)', true)
+      const safeName = (String(args.file_name ?? '').trim() || `b${bid.bid_number}-plans.pdf`).replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'plans.pdf'
+      const objectPath = `b${bid.bid_number}/${Date.now()}-${safeName.endsWith('.pdf') ? safeName : `${safeName}.pdf`}`
+      const { data: signed, error: signErr } = await admin.storage.from('twin-plans-tmp').createSignedUploadUrl(objectPath)
+      if (signErr || !signed) return textContent(`Could not create an upload URL: ${signErr?.message ?? 'unknown'}`, true)
+      const publicUrl = admin.storage.from('twin-plans-tmp').getPublicUrl(objectPath).data.publicUrl
+      return textContent(JSON.stringify({
+        ok: true, bucket: 'twin-plans-tmp', object_path: objectPath, upload_url: signed.signedUrl, public_url: publicUrl, size_limit_bytes: 52428800,
+        how: 'curl -sS -X PUT "<upload_url>" -H "Content-Type: application/pdf" --data-binary @trimmed.pdf   — then ct_finish_takeoff(..., pdf_url: public_url). Keep the trimmed set under 50 MB / 200 pages.',
+      }, null, 2))
+    }
     case 'next_backtest': {
       // Dispatcher (v2.2806): parallel agents each ask for the next unclaimed reference
       // in a round's list. A claim IS the round's shell, so the harness stays the single
@@ -847,8 +879,11 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (!ref || !runLabel || !axis || !Number.isFinite(lockedTotal) || lockedTotal <= 0) {
         return textContent('score_backtest needs bid + run_label + axis + positive locked_total', true)
       }
-      const scopeVerdictRaw = String(args.scope_verdict ?? 'unknown').trim().toLowerCase()
-      const scopeVerdict = scopeVerdictRaw === 'pass' || scopeVerdictRaw === 'fail' ? scopeVerdictRaw : 'unknown'
+      // v2.2816: lenient verdict parse ("PASS (pre-unseal)" → pass); anything else is unknown, said back.
+      const scopeVerdictRaw = String(args.scope_verdict ?? '').trim().toLowerCase()
+      const scopeVerdict: 'pass' | 'fail' | 'unknown' = scopeVerdictRaw.startsWith('pass') ? 'pass' : scopeVerdictRaw.startsWith('fail') ? 'fail' : 'unknown'
+      const verdictGiven = scopeVerdictRaw.length > 0
+      const verdictCoerced = verdictGiven && scopeVerdict === 'unknown' ? `scope_verdict "${scopeVerdictRaw.slice(0, 40)}" is not pass/fail — recorded as unknown` : null
       const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       let bq = admin.from('bids').select('id, bid_number, project_name, created_by, estimator_id, twin_source_bid_id')
       bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
@@ -859,9 +894,40 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // Blindness order is structural: no LOCK note on the ledger, no unseal.
       const { data: lockNotes } = await admin.from('bids_submission_entries').select('id').eq('bid_id', bid.id).ilike('notes', '%LOCK%').limit(1)
       if (!lockNotes?.length) return textContent(`b${bid.bid_number} has no LOCK note on its ledger — add_bid_note your blind total first ("[STG-3..5 + LOCK] $NN,NNN …"), then score.`, true)
-      // Idempotent per run label.
+      // Idempotent per run label — and AMENDABLE (v2.2816): the scope-match check needs the
+      // reference rows, which only this call unseals, so the honest first verdict is often
+      // "unknown". A second call with the same run_label and a verdict (or counts_note /
+      // note) updates those fields and recomputes gate_eligible; locked_total never changes.
       const { data: existingScore } = await admin.from('twin_run_scores').select('*').eq('run_label', runLabel).maybeSingle()
-      if (existingScore) return textContent(JSON.stringify({ ok: true, reused: true, score: existingScore }, null, 2))
+      if (existingScore) {
+        const patch: Record<string, unknown> = {}
+        if (verdictGiven && scopeVerdict !== 'unknown') patch.scope_verdict = scopeVerdict
+        const cn = String(args.counts_note ?? '').trim().slice(0, 200); if (cn) patch.counts_note = cn
+        const nt = String(args.note ?? '').trim().slice(0, 400); if (nt) patch.note = nt
+        if (!Object.keys(patch).length) return textContent(JSON.stringify({ ok: true, reused: true, score: existingScore, hint: verdictCoerced ?? 'Pass scope_verdict pass|fail (and/or counts_note, note) to amend this run.' }, null, 2))
+        // gate_eligible = grade A/B + flags clear + scope not fail; the first two are frozen
+        // in the stamped note, so re-derive them from the reference the same way.
+        const { data: amendRef } = await admin.from('bids').select('id, bid_value, outcome, loss_category, bid_date_sent, created_at, plans_link').eq('id', bid.twin_source_bid_id).maybeSingle()
+        if (amendRef) {
+          const [{ count: c1 }, { count: c2 }] = await Promise.all([
+            admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', amendRef.id),
+            admin.from('bid_pricing_assignments').select('id', { count: 'exact', head: true }).eq('bid_id', amendRef.id),
+          ])
+          const v = amendRef.bid_value == null ? null : Number(amendRef.bid_value)
+          const g = !String(amendRef.plans_link ?? '').trim() ? 'X' : v != null && (c1 ?? 0) > 0 && (c2 ?? 0) > 0 ? 'A' : v != null ? 'B' : (c1 ?? 0) > 0 ? 'C' : 'D'
+          const lostA = amendRef.outcome === 'lost'
+          const flagsClearA = !((v != null && v > 0 && v % 100 === 0) || (lostA && ['no_bid', 'project_died'].includes(String(amendRef.loss_category ?? ''))) || (lostA && !amendRef.loss_category) || (() => { const w = String(amendRef.bid_date_sent ?? amendRef.created_at ?? '').slice(0, 10); const d = w ? Math.abs(Date.parse(`${todayYmdInAppTz()}T00:00:00Z`) - Date.parse(`${w}T00:00:00Z`)) / 86400000 : 0; return Number.isFinite(d) && d > 183 })())
+          const finalVerdict = (patch.scope_verdict as string | undefined) ?? String(existingScore.scope_verdict ?? 'unknown')
+          patch.gate_eligible = (g === 'A' || g === 'B') && flagsClearA && finalVerdict !== 'fail'
+        }
+        const { data: amended, error: amendErr } = await admin.from('twin_run_scores').update(patch).eq('id', existingScore.id).select('*').single()
+        if (amendErr) return textContent(`Amend failed: ${amendErr.message}`, true)
+        await admin.from('bids_submission_entries').insert({
+          bid_id: bid.id,
+          notes: `[STG-6 SCORECARD amended] ${runLabel}: ${Object.entries(patch).map(([k, v]) => `${k}=${String(v)}`).join(', ')} via twin-mcp score_backtest.`,
+        }).then(() => {}, () => {})
+        return textContent(JSON.stringify({ ok: true, reused: true, amended: true, score: amended, hint: verdictCoerced ?? undefined }, null, 2))
+      }
       // The seal breaks here — reference value/outcome are read by the server, not the agent.
       const { data: refBid } = await admin.from('bids')
         .select('id, bid_number, project_name, bid_value, outcome, loss_category, bid_date_sent, created_at, plans_link')
@@ -913,7 +979,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         ok: true, reused: false, run_label: runLabel, twin_bid: `b${bid.bid_number}`,
         reference: { bid: `b${refBid.bid_number}`, project_name: refBid.project_name, value: refValue, outcome: refBid.outcome, loss_category: refBid.loss_category, sent: refBid.bid_date_sent, count_rows: refCounts ?? 0, priced_rows: refPricing ?? 0 },
         locked_total: lockedTotal, delta_pct: deltaPct, grade, flags: { roundValue, weakLoss, lossUncategorized, stale }, scope_verdict: scopeVerdict, gate_eligible: gateEligible,
-        next: 'Now (and only now) read the reference rows for the count/footage comparison; write the audit questions in plain words; digest lessons into doctrine per FEEDBACK_LOOP.md.',
+        scope_verdict_note: verdictCoerced ?? undefined,
+        next: 'Now (and only now) read the reference rows: run the scope-match line-compare, then call score_backtest AGAIN with the same run_label and scope_verdict pass|fail (plus counts_note) — that amends the row and recomputes gate_eligible. Then the count/footage comparison, the audit questions in plain words, and the digest per FEEDBACK_LOOP.md.',
         score_id: score.id,
       }, null, 2))
     }
@@ -1019,6 +1086,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         return textContent(`import-takeoff failed (${impRes.status}): ${JSON.stringify(impBody).slice(0, 600)}`, true)
       }
       const projectId = impBody.project_id as string
+      // v2.2816: a set staged via stage_plan_pdf is consumed by the import — remove it.
+      {
+        const staged = String(importBody.pdf_url ?? '')
+        const m = staged.match(/\/storage\/v1\/object\/public\/twin-plans-tmp\/(.+)$/)
+        if (m) await admin.storage.from('twin-plans-tmp').remove([decodeURIComponent(m[1])]).then(() => {}, () => {})
+      }
 
       // 3. Review-ready + view link (best-effort loud: failures reported, marks kept).
       const rpcHeaders = { Authorization: `Bearer ${ctJwt}`, apikey: CT_ANON, 'Content-Type': 'application/json' }
