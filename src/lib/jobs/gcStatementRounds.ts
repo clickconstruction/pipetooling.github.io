@@ -33,30 +33,67 @@ export function sendChannelLabel(channel: string | null | undefined): string {
   return STATEMENT_SEND_CHANNELS.find((c) => c.value === channel)?.label ?? 'Email'
 }
 
+/**
+ * The account man's read of a GC after a contact (v2.2813): hot = pay date in
+ * hand, warm = fine with no date, cool = dodging the date, cold = disputing or
+ * upset. Required on a contacted mark, optional on a send.
+ */
+export type Temperature = 'hot' | 'warm' | 'cool' | 'cold'
+
+export const TEMPERATURES: ReadonlyArray<{ value: Temperature; label: string; hint: string }> = [
+  { value: 'hot', label: 'Hot', hint: 'pay date in hand' },
+  { value: 'warm', label: 'Warm', hint: 'fine, no date' },
+  { value: 'cool', label: 'Cool', hint: 'dodging the date' },
+  { value: 'cold', label: 'Cold', hint: 'disputing or upset' },
+]
+
+export function isTemperature(v: unknown): v is Temperature {
+  return typeof v === 'string' && TEMPERATURES.some((t) => t.value === v)
+}
+
+/** Cold first — the review order everywhere temperatures are listed. */
+export function temperatureRank(t: Temperature | null | undefined): number {
+  return t === 'cold' ? 0 : t === 'cool' ? 1 : t === 'warm' ? 2 : t === 'hot' ? 3 : 4
+}
+
+export type RoundMarkAction = 'sent' | 'skipped' | 'contacted'
+
 export type RoundMarkRow = {
   gc_customer_id: string
   week_start: string
-  action: 'sent' | 'skipped'
+  /** contacted (v2.2813) = spoke with the GC, no statement — never counts as sent. */
+  action: RoundMarkAction
   acted_by: string | null
   acted_by_name: string
   acted_at: string
   /** v2.2761 — null on rows written before the column existed (those were emails). */
   channel: string | null
-  /** v2.2761 — optional free text from whoever marked it sent. */
+  /** v2.2761 — optional free text from whoever marked it sent; on a contacted mark, the answer to "what's their temperature?". */
   note: string | null
+  /** v2.2813 — the temperature read; required on contacted. */
+  temperature: string | null
+  /** v2.2813 — when they said they'd pay, YYYY-MM-DD, if they said. */
+  expected_pay_by: string | null
 }
 
 /**
  * Tooltip for a sent mark: who, when, how, and the note if any. Dates are
  * formatted by the caller so the kernel stays timezone-free.
  */
-export function describeRoundMark(mark: Pick<RoundMarkRow, 'acted_by_name' | 'channel' | 'note'>, whenLabel: string): string {
-  const head = `Marked sent by ${mark.acted_by_name || '—'} · ${whenLabel} · ${sendChannelLabel(mark.channel).toLowerCase()}`
+export function describeRoundMark(
+  mark: Pick<RoundMarkRow, 'acted_by_name' | 'channel' | 'note'> & Partial<Pick<RoundMarkRow, 'action' | 'temperature' | 'expected_pay_by'>>,
+  whenLabel: string,
+): string {
+  const contacted = mark.action === 'contacted'
+  const head = `${contacted ? 'Spoke with them' : 'Marked sent'} by ${mark.acted_by_name || '—'} · ${whenLabel} · ${sendChannelLabel(mark.channel).toLowerCase()}${
+    mark.temperature ? ` · ${mark.temperature}` : ''
+  }${contacted ? ' · no statement' : ''}`
   const note = mark.note?.trim()
-  return note ? `${head}\nNote: ${note}` : head
+  const pay = mark.expected_pay_by ? `\nThey said they'd pay by ${mark.expected_pay_by}` : ''
+  return (note ? `${head}\n${contacted ? 'Temperature' : 'Note'}: ${note}` : head) + pay
 }
 
-export type StatementRoundState = 'needs_certify' | 'needs_sender' | 'ready' | 'sent' | 'skipped'
+export type StatementRoundState = 'needs_certify' | 'needs_sender' | 'ready' | 'sent' | 'skipped' | 'contacted'
 
 export type StatementRoundItem = {
   gcId: string
@@ -143,15 +180,15 @@ export type StatementRoundSummary = {
   held: { count: number; total: number }
   /** the current user's certified, unsent queue (the sender's card) */
   readyForUser: StatementRoundItem[]
-  /** per-sender sent/assigned counts for the panel header, assigned-only */
-  senderProgress: Map<string, { sent: number; total: number }>
+  /** per-sender sent/contacted/assigned counts for the panel header, assigned-only */
+  senderProgress: Map<string, { sent: number; contacted: number; total: number }>
 }
 
 export function summarizeStatementRound(items: readonly StatementRoundItem[], currentUserId: string | null): StatementRoundSummary {
   let heldCount = 0
   let heldTotal = 0
   const readyForUser: StatementRoundItem[] = []
-  const senderProgress = new Map<string, { sent: number; total: number }>()
+  const senderProgress = new Map<string, { sent: number; contacted: number; total: number }>()
   for (const it of items) {
     if (it.state === 'needs_certify') {
       heldCount += 1
@@ -159,9 +196,10 @@ export function summarizeStatementRound(items: readonly StatementRoundItem[], cu
     }
     if (it.state === 'ready' && currentUserId != null && it.senderUserId === currentUserId) readyForUser.push(it)
     if (it.senderUserId) {
-      const p = senderProgress.get(it.senderUserId) ?? { sent: 0, total: 0 }
+      const p = senderProgress.get(it.senderUserId) ?? { sent: 0, contacted: 0, total: 0 }
       p.total += 1
       if (it.state === 'sent') p.sent += 1
+      if (it.state === 'contacted') p.contacted += 1
       senderProgress.set(it.senderUserId, p)
     }
   }
@@ -191,7 +229,7 @@ export function mergeMarksIntoLastSent(lastSentByGcId: Record<string, string>, m
  */
 export function senderRoundQueue(items: readonly StatementRoundItem[], senderUserId: string): { queue: StatementRoundItem[]; sent: number; assigned: number } {
   const mine = items.filter((it) => it.senderUserId === senderUserId)
-  const rank = (s: StatementRoundState) => (s === 'ready' ? 0 : s === 'needs_certify' ? 1 : s === 'needs_sender' ? 2 : s === 'sent' ? 3 : 4)
+  const rank = (s: StatementRoundState) => (s === 'ready' ? 0 : s === 'needs_certify' ? 1 : s === 'needs_sender' ? 2 : s === 'sent' ? 3 : s === 'contacted' ? 4 : 5)
   const queue = [...mine].sort((a, b) => rank(a.state) - rank(b.state) || b.amount - a.amount)
   return { queue, sent: mine.filter((it) => it.state === 'sent').length, assigned: mine.length }
 }
