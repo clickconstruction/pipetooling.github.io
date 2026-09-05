@@ -56,7 +56,7 @@ export const JOB_SUMMARY_CUT_OPTIONS: ReadonlyArray<{ key: JobSummaryCutBy; labe
 const CUT_KEYS: readonly JobSummaryCutBy[] = JOB_SUMMARY_CUT_OPTIONS.map((o) => o.key)
 
 /** Jobs = the ledger table; Days = jobs carried per day (v2.2695); Timeline = jobs running at once, over time (v2.2711); Months = the monthly P&L (v2.2821). */
-export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline' | 'months'
+export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline' | 'months' | 'cycle'
 
 /** Timeline coloring (v2.2745): by today's status, by the state on each day, or by run length. */
 export type JobSummaryTimelineColorBy = 'status' | 'stateOnDay' | 'runLength'
@@ -125,6 +125,7 @@ export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewM
   { key: 'days', label: 'Days', title: 'One row per day — how many jobs the crew carried, and what a job-day of overhead cost' },
   { key: 'timeline', label: 'Timeline', title: 'How many jobs were running at once, over time — every job as a bar from start to finish' },
   { key: 'months', label: 'Months', title: 'One bar per month — revenue split into labor, subs, parts, overhead, and true profit' },
+  { key: 'cycle', label: 'Cycle', title: 'How long from the last field day to the bill, and from the bill to the money — and which open jobs are sitting idle' },
 ]
 
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
@@ -154,7 +155,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
   try {
     const p = JSON.parse(raw) as Partial<JobSummaryViewPrefs>
     return {
-      view: p.view === 'days' || p.view === 'timeline' || p.view === 'months' ? p.view : 'jobs',
+      view: p.view === 'days' || p.view === 'timeline' || p.view === 'months' || p.view === 'cycle' ? p.view : 'jobs',
       status: STATUS_KEYS.includes(p.status as JobSummaryStatusFilter) ? (p.status as JobSummaryStatusFilter) : JOB_SUMMARY_VIEW_DEFAULTS.status,
       window: WINDOW_KEYS.includes(p.window as JobSummaryWindowKey) ? (p.window as JobSummaryWindowKey) : JOB_SUMMARY_VIEW_DEFAULTS.window,
       method: METHOD_KEYS.includes(p.method as JobOverheadMethod) ? (p.method as JobOverheadMethod) : JOB_SUMMARY_VIEW_DEFAULTS.method,
@@ -257,7 +258,10 @@ export type JobSummaryLedgerRowInput = {
     click_number?: string | null
     job_name: string | null
     pct_complete: number | null
-    invoices?: Array<{ status: string | null; amount: number | null }> | null
+    invoices?: Array<{ status: string | null; amount: number | null; billed_at?: string | null }> | null
+    /** Cycle view (v2.2823). */
+    payments?: Array<{ paid_on: string | null; amount: number | null }> | null
+    status?: string | null
     last_work_date?: string | null
     created_at?: string | null
     /** Cut by keys (v2.2820) — all optional so tests and older callers stay small. */

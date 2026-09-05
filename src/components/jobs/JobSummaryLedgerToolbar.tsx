@@ -121,7 +121,8 @@ export default function JobSummaryLedgerToolbar({
   const dl = (d: JobSummaryDelta | undefined, fmt: (abs: number) => string, higherIsGood = true) => (d ? <DeltaLine d={d} fmt={fmt} higherIsGood={higherIsGood} vs={vs} loading={cmpLoading} priorEmpty={priorEmpty} /> : undefined)
   const underTarget = prefs.targetTrueMarginPct > 0 ? countJobSummaryUnderTarget(rows, prefs.targetTrueMarginPct) : 0
   /** Views that run on the visible rows (Show / Compare to / Target apply); Days and Timeline read the ledger directly. */
-  const rowsView = prefs.view === 'jobs' || prefs.view === 'months'
+  const rowsView = prefs.view === 'jobs' || prefs.view === 'months' || prefs.view === 'cycle'
+  const marginView = prefs.view === 'jobs' || prefs.view === 'months'
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '0.75rem' }}>
       <input
@@ -147,7 +148,7 @@ export default function JobSummaryLedgerToolbar({
           />
         ) : null}
         {prefs.view === 'jobs' ? <Segmented label="Cut by" value={prefs.cutBy} options={JOB_SUMMARY_CUT_OPTIONS} onChange={(cutBy) => setPrefs({ cutBy })} title="Group the table by one key — every group gets a subtotal and a ranked bar" /> : null}
-        {showMoney && rowsView ? <Segmented label="Target" value={prefs.targetTrueMarginPct} options={JOB_SUMMARY_TARGET_OPTIONS} onChange={(targetTrueMarginPct) => setPrefs({ targetTrueMarginPct })} title="Target true margin — jobs under it are flagged in the table and counted here" /> : null}
+        {showMoney && marginView ? <Segmented label="Target" value={prefs.targetTrueMarginPct} options={JOB_SUMMARY_TARGET_OPTIONS} onChange={(targetTrueMarginPct) => setPrefs({ targetTrueMarginPct })} title="Target true margin — jobs under it are flagged in the table and counted here" /> : null}
         {compare ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             vs {formatStagesNextDateLabel(compare.startYmd)} → {formatStagesNextDateLabel(compare.endYmd)}
