@@ -4,6 +4,7 @@ import {
   buildPortalTimeline,
   computePortalMainOffCustomerIds,
   computePortalOffKeys,
+  portalGlobeInitialState,
   portalOffKey,
 } from './portalLinkState'
 
@@ -123,5 +124,37 @@ describe('buildPortalTimeline', () => {
     const all = timeline[1]!
     expect(all.kind === 'link' && all.audience).toBe('all')
     expect(all.kind === 'link' && all.outcome).toBe('active')
+  })
+})
+
+describe('portalGlobeInitialState', () => {
+  const row = (audience: string, revoked_at: string | null, customer_id = 'c1') => ({ customer_id, audience, revoked_at })
+
+  it('never-minted → unminted (the modal must not mint on open)', () => {
+    expect(portalGlobeInitialState([], 'c1')).toBe('unminted')
+  })
+
+  it("another customer's rows are not this customer's", () => {
+    expect(portalGlobeInitialState([row('all', null, 'other')], 'c1')).toBe('unminted')
+  })
+
+  it('a live merged link → active', () => {
+    expect(portalGlobeInitialState([row('all', '2026-08-01T00:00:00Z'), row('all', null)], 'c1')).toBe('active')
+  })
+
+  it('every all-row revoked → off, even with a live scoped row', () => {
+    expect(portalGlobeInitialState([row('all', '2026-08-02T00:00:00Z')], 'c1')).toBe('off')
+    expect(portalGlobeInitialState([row('all', '2026-08-02T00:00:00Z'), row('gc', null)], 'c1')).toBe('off')
+  })
+
+  it('legacy-only rows: all revoked → off; one live → legacy-active (continuation mint)', () => {
+    expect(portalGlobeInitialState([row('customer', '2026-08-02T00:00:00Z')], 'c1')).toBe('off')
+    expect(portalGlobeInitialState([row('gc', null)], 'c1')).toBe('legacy-active')
+    expect(portalGlobeInitialState([row('gc', null), row('customer', '2026-08-02T00:00:00Z')], 'c1')).toBe('legacy-active')
+  })
+
+  it('rows without customer_id (sub-portal adapter shape) belong to the asked-for id', () => {
+    expect(portalGlobeInitialState([{ audience: 'all', revoked_at: null }], 'p1')).toBe('active')
+    expect(portalGlobeInitialState([{ audience: 'all', revoked_at: '2026-08-02T00:00:00Z' }], 'p1')).toBe('off')
   })
 })

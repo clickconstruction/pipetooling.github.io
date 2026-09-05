@@ -31,6 +31,14 @@ Every **Answered** raises the prospect's warmth by one — the {{chip:yellow|�
 - The {{button:blue|Next Prospect →}} bar at the bottom advances without logging anything — or check **Automatically move to the next prospect when I click Didn't Answer** and let it advance itself.
 - **Set callback** schedules a callback that shows on your Calendar and on this card.
 
+## Two people, one prospect
+
+Just *looking* at a prospect changes nothing for anyone else. The moment you show you're working it — tap the {{button:blue|📞 phone}} button, click into the comment box, log an outcome, or set a callback — the prospect is marked as yours for the next **30 minutes** and drops out of your colleagues' queues. Close the tab or move on and the mark is released; if you forget, it simply expires.
+
+:::example Someone got there first
+If a colleague started the same prospect in the last half hour (say you both opened it from the Prospect List), your card shows a quiet {{chip:gray|Danny is calling this one}} chip. Nothing stops you — it's a heads-up, not a lock on the door — but check with them before you dial twice.
+:::
+
 ## Where the numbers go
 
 Your calls, answer rate, time on the phone, callbacks, and conversions roll up per person on **Prospects → Activity** — nothing extra to fill in.
