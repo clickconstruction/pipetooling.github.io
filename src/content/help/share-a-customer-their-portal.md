@@ -16,7 +16,7 @@ The top of the modal is their **portal address**, something like `my.clickplumbi
 
 - The address is **editable until it's first shared** — type anything short and recognizable (letters, numbers, dashes). A meter tells you if it's ⚠ easy or ✓ hard to guess; it never blocks you.
 - {{button:blue|Copy link}} — copies the address for a text or email, and **locks** it (printed and texted copies should never go stale). The link is the key, no password needed.
-- {{button:outline|Preview as customer}} — opens the page exactly as they see it, and a **live preview** sits right in the modal.
+- {{button:outline|Preview as customer}} — opens the page exactly as they see it, and a **live preview** sits right in the modal. Your previews (and any open from a signed-in staff browser) are never counted as the customer looking.
 - The preview's corner buttons **⤢ Expand** (grow it in place) and **Full screen ↗** (open the portal in a new tab) are yours too.
 - Under the preview, **Jobs on this statement** mirrors the statement row for row — same order, same dates — with **Pay ↗** (that bill's Stripe pay page, when it has one) and **Edit ↗** (straight into the job's Edit window). The dashed box is office chrome: customers never see any of it on their page.
 
@@ -28,6 +28,7 @@ The {{icon:gear}} button opens one flat list:
 - **Address** — before the first share, 🎲 **Random tail** adds a hard-to-guess ending. After it's locked you can still change it here — with a warning, because the old address stops working.
 - **Separate views** — need to give a GC's office *only* their GC bills, or only their own jobs? Create a scoped link on demand; each has its own Copy and Turn off.
 - **Reset** — {{button:outline|Rotate}} makes a new link and kills the old one immediately (the custom address follows automatically); {{button:outline|Turn off}} shuts the whole portal down. A turned-off customer's globe turns **red** everywhere, and the modal offers {{button:blue|Turn portal back on}} when you're ready.
+- **Opened** — has the customer actually looked? **Opened 3 times · last Sep 3**, or **Not opened yet**. Customer opens only: your previews and staff opens don't count, so the number means what it says before a follow-up call.
 - **History** — every link and address change: what, when, and by whom.
 
 :::example What the customer sees

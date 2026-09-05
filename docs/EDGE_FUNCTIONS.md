@@ -1033,6 +1033,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **View counting** (v2.2341, migration `20260826160132`): each validated load appends a `public_page_views` row (`surface='portal'`, `entity_id` = customer id, `via` token/slug) via the service role, fire-and-forget — measurement can never fail the statement. No anon-writable path; reads are dev-only RLS. (Estimate-accept views were already counted separately — see `get-estimate-for-customer` → Audit.)
 
+**Who counts** (v2.2875, journey-map #37): the row is skipped when the request is an office peek — `?preview=1` (the globe modal's iframe / Preview as customer / Full screen / Edit-chips fetch add it; `CustomerPortal.tsx` forwards it) **or** an `Authorization` bearer that is a verifiable user access token (the page sends the browser's own session when it has one; `admin.auth.getUser` checks it — any valid account is staff, since customers never sign in). Shared decision: [`_shared/publicViewCounting.ts`](../supabase/functions/_shared/publicViewCounting.ts) `publicViewDecision(req, admin, anonKey)`, twin + tests in `src/lib/publicViewCounting*.ts`. Unverifiable tokens count as customers. **Staff-only payload block**: when the session verifies, the response also carries `officeViewStats: { opens, lastOpenedAt }` — the customer's own view rows, read with the service role — which feeds the globe gear's **Opened** row ("Opened 3 times · last Sep 3"). A customer's payload never includes it.
+
 ### submit-portal-request
 
 **Purpose**: Portal form intake (portal train PR 2, v2.1986): validates a visit/bid request from `/portal` (honeypot, length caps, https-only plans link, job-in-scope check), rate-limits 5/hour per portal link, inserts a `dispatch_requests` row (details in `pending_payload.source = 'portal'`; `from_user_id` = `app_settings.portal_requests_from_user_id` → link minter → first dev), then triggers `notify-dispatch-request` and (v2.1988) emails the `portal_request_email_recipients_v1` app_settings list via Resend, best-effort.
@@ -1057,7 +1059,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Auth**: none (`verify_jwt = false` — the link IS the capability, minted/rotated by `mint_sub_portal_link`). Service-role reads; never returns costs beyond the sub's own money, other people's data, or document contents.
 
-**View counting**: each validated load appends a `public_page_views` row (`surface='sub_portal'`, `entity_id` = person id, `via` token/slug), fire-and-forget.
+**View counting**: each validated load appends a `public_page_views` row (`surface='sub_portal'`, `entity_id` = person id, `via` token/slug), fire-and-forget. **v2.2875**: skipped for office peeks — `?preview=1` (the sub globe's iframe / Preview add it; `SubPortal.tsx` forwards it) or a verifiable staff access token in `Authorization` — via the same `publicViewDecision` as `customer-portal`.
 
 ### submit-sub-portal
 
@@ -1126,6 +1128,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Sample** (v2.2758, What customers see): `t=sample` / `sample-done` skips the room lookup — no sign-in (v2.2763 dropped the office-JWT gate) — and gets the fixture room (two options, one pending change order; `sample-done` = signed with the CO accepted) with `terms` / `exclusions` read live from the bid cover-letter defaults. No `room_view` is logged.
 
 **Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` — since v2.2697 the key is validated against the room's current revision and the write passes the shared throttle (30 s dedupe, 60/10 min per IP); always 200, invalid or throttled input dropped — browsing must never break. Requires migration `20260828215717`.
+
+**Staff opens don't count** (v2.2875, journey-map J35-F3): `room_view` (GET) and `option_viewed` (POST) are skipped when the request carries `?preview=1` or a verifiable user access token in `Authorization` — `BidRoom.tsx` now sends the browser's own session when it has one (an estimator checking their own link), the anon key otherwise. Decision shared with the portals: [`_shared/publicViewCounting.ts`](../supabase/functions/_shared/publicViewCounting.ts). Anonymous GC opens log exactly as before; signed / declined never depend on it.
 
 ---
 

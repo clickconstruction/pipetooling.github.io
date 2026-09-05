@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
+import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import type { CSSProperties } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
@@ -125,6 +127,8 @@ export default function SubPortal() {
   const demoMode = import.meta.env.DEV && params.get('demo') === '1'
   // What customers see (v2.2760): the sample token renders the fixture for a signed-in office user.
   const sample = sampleStateFromToken(token)
+  // Office preview (journey-map #37): forwarded so the load is not counted as the sub looking.
+  const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
   const [lang, setLang] = useState<SubPortalLang>('en')
   const [state, setState] = useState<PageState>({ kind: 'loading' })
 
@@ -146,8 +150,10 @@ export default function SubPortal() {
     }
     void (async () => {
       try {
-        const query = token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`
-        const res = await fetch(`${supabaseUrl}/functions/v1/sub-portal?${query}`, sample ? { headers: await publicFunctionHeaders(sample) } : undefined)
+        const query = `${token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`
+        const res = await fetch(`${supabaseUrl}/functions/v1/sub-portal?${query}`, {
+          headers: sample ? await publicFunctionHeaders(sample) : await staffAwarePublicHeaders(),
+        })
         const body: unknown = await res.json().catch(() => null)
         if (cancelled) return
         const payload = parseSubPortalPayload(body)
@@ -169,7 +175,7 @@ export default function SubPortal() {
     return () => {
       cancelled = true
     }
-  }, [token, slug, demoMode, sample])
+  }, [token, slug, demoMode, sample, preview])
 
   const submitToken = state.kind === 'ready' ? (state.payload.requestToken ?? token) : token
 

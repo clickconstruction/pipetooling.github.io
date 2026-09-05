@@ -9,6 +9,8 @@
  */
 import { useEffect, useState, type ReactNode } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
+import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
@@ -75,6 +77,10 @@ export default function BidRoom() {
   const token = params.get('t')?.trim() ?? ''
   // What customers see (v2.2758): the sample token renders the fixture for a signed-in office user.
   const sample = sampleStateFromToken(token)
+  // Journey-map #37 (J35-F3): an estimator checking their own link is not the GC opening it. The
+  // fetches below carry the browser's staff session when there is one (and forward `?preview=1`)
+  // so the server writes no room_view / option_viewed for them.
+  const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [room, setRoom] = useState<RoomFetch | null>(null)
@@ -99,8 +105,8 @@ export default function BidRoom() {
     const ac = new AbortController()
     void (async () => {
       try {
-        const res = await fetch(`${supabaseUrl}/functions/v1/get-bid-proposal-room?t=${encodeURIComponent(token)}`, {
-          headers: await publicFunctionHeaders(sample),
+        const res = await fetch(`${supabaseUrl}/functions/v1/get-bid-proposal-room?t=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`, {
+          headers: sample ? await publicFunctionHeaders(sample) : await staffAwarePublicHeaders(),
           signal: ac.signal,
         })
         const json = (await res.json()) as RoomFetch & { error?: string; code?: string }
@@ -131,16 +137,20 @@ export default function BidRoom() {
       }
     })()
     return () => ac.abort()
-  }, [token, reloadNonce, sample])
+  }, [token, reloadNonce, sample, preview])
 
   function selectOption(key: string) {
     setSelectedKey(key)
     if (sample) return
-    void fetch(`${supabaseUrl}/functions/v1/get-bid-proposal-room`, {
-      method: 'POST',
-      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, event: 'option_viewed', optionKey: key }),
-    }).catch(() => undefined)
+    void staffAwarePublicHeaders()
+      .then((headers) =>
+        fetch(`${supabaseUrl}/functions/v1/get-bid-proposal-room${preview ? `?${PUBLIC_PREVIEW_PARAM}=1` : ''}`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, event: 'option_viewed', optionKey: key }),
+        }),
+      )
+      .catch(() => undefined)
   }
 
   async function post(body: Record<string, unknown>): Promise<boolean> {

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
+import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import type { CSSProperties, FormEvent } from 'react'
 import { Navigate, useParams, useSearchParams } from 'react-router-dom'
@@ -37,6 +39,9 @@ export default function CustomerPortal() {
   const slug = (slugParam ?? '').trim().toLowerCase()
   // What customers see (v2.2760): the sample token renders the fixture for a signed-in office user.
   const sample = sampleStateFromToken(token)
+  // Office preview (journey-map #37): the globe modal opens this page with `?preview=1`; forwarded
+  // to the edge function so the load is not counted as the customer looking.
+  const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
   const [state, setState] = useState<
     | { kind: 'loading' }
     | { kind: 'error'; message: string }
@@ -51,8 +56,12 @@ export default function CustomerPortal() {
     }
     void (async () => {
       try {
-        const query = token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`
-        const res = await fetch(`${supabaseUrl}/functions/v1/customer-portal?${query}`, sample ? { headers: await publicFunctionHeaders(sample) } : undefined)
+        const query = `${token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`
+        // A signed-in office browser sends its own session so the server can tell a staff open
+        // from a customer's; everyone else sends the anon key as before.
+        const res = await fetch(`${supabaseUrl}/functions/v1/customer-portal?${query}`, {
+          headers: sample ? await publicFunctionHeaders(sample) : await staffAwarePublicHeaders(),
+        })
         const body: unknown = await res.json().catch(() => null)
         if (cancelled) return
         const payload = parsePortalPayload(body)
@@ -74,7 +83,7 @@ export default function CustomerPortal() {
     return () => {
       cancelled = true
     }
-  }, [token, slug, sample])
+  }, [token, slug, sample, preview])
 
   const today = useMemo(() => {
     const d = new Date()
