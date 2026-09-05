@@ -117,18 +117,38 @@ describe('enrichJobSummaryRows', () => {
   const enriched = enrichJobSummaryRows({ rows, reportPctByJobId: reportPct, ledger, method: 'day' })
   const byId = new Map(enriched.map((r) => [r.row.job.id, r]))
 
-  it('finished jobs show contract; the % resolves paid invoices → report → pct_complete', () => {
+  it('finished jobs show contract; the % resolves paid invoices (covering the contract) → report → pct_complete', () => {
     const j931 = byId.get('j931')!
     expect(j931.pct).toBe(100)
+    expect(j931.pctSource).toBe('paid-invoices')
     expect(j931.finished).toBe(true)
     expect(j931.revenueUsd).toBe(48_700)
     expect(j931.grossUsd).toBe(48_700 - 1_861 - 2_325)
     expect(j931.marginPct).toBeCloseTo(((48_700 - 4_186) / 48_700) * 100, 6)
   })
 
+  it('a paid progress bill that does not cover the contract is NOT finished — revenue is earned, not the full contract (J523)', () => {
+    // J523 shape (journey J6-2): one paid progress bill at 66% of a $123,600 contract, crew report 77, office 63.
+    const j523Row = row('j523', '523', {
+      totalBill: 123_600,
+      teamLaborCost: 30_000,
+      partsCost: 46_184,
+      job: { pct_complete: 63, invoices: [{ status: 'paid', amount: 81_916.6 }], status: 'in_progress' },
+    })
+    const j523 = enrichJobSummaryRows({ rows: [j523Row], reportPctByJobId: new Map([['j523', 77]]), ledger, method: 'day' })[0]!
+    expect(j523.pct).toBe(77)
+    expect(j523.pctSource).toBe('crew-report')
+    expect(j523.finished).toBe(false)
+    expect(j523.contractUsd).toBe(123_600)
+    expect(j523.revenueUsd).toBeCloseTo(123_600 * 0.77, 6)
+    expect(j523.flags).toContain('earned')
+    expect(j523.flags).not.toContain('assumed-50')
+  })
+
   it('in-progress jobs show earned revenue = contract × % (report wins over pct_complete)', () => {
     const j990 = byId.get('j990')!
     expect(j990.pct).toBe(60)
+    expect(j990.pctSource).toBe('crew-report')
     expect(j990.finished).toBe(false)
     expect(j990.revenueUsd).toBe(6_000)
     expect(j990.flags).toContain('earned')

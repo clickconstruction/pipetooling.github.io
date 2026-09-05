@@ -1,5 +1,5 @@
 /**
- * The bench (v2.2840, owner pick C from the 2026-09-05 mockups): a sub is Active or On the
+ * The bench (v2.2842, owner pick C from the 2026-09-05 mockups): a sub is Active or On the
  * bench, and the decision is a person's. The app only nudges — an active sub who has gone
  * quiet gets a "Bench…" prompt, a benched sub who turns up on a new sheet gets a
  * "Reactivate?" prompt. Nothing moves on its own, so a slow season never benches anyone.

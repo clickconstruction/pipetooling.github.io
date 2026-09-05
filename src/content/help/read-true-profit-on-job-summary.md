@@ -12,7 +12,7 @@ order: 36
 
 Go to **Jobs → Job Summary**. Above the table:
 
-- **Show** — {{chip:blue|Finished (100%)}} opens by default: jobs whose % complete resolves to 100 (paid invoices, the latest report, or the job's own %). **In progress** is everything else; **All** is every job.
+- **Show** — {{chip:blue|Finished (100%)}} opens by default: jobs whose % complete resolves to 100 — the work is done (the latest report or the job's own %) or the whole contract is billed and paid. One paid progress bill no longer marks a job finished, so a job still being worked stays under **In progress** with earned revenue. **In progress** is everything else; **All** is every job.
 - **Worked in** — 90d, 6 mo, **This year** (default), 12 mo, or All. A job is in the window when it has approved field hours there, or its last work date falls inside it.
 - **Overhead** — how each job's overhead share is figured. **Day-share** is the default (below). A, B, and C are the same three lenses People → Overhead shows, applied to one job.
 - Click any column header to sort. Click again to flip. The table opens sorted by true profit.

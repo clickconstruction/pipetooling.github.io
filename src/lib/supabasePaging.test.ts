@@ -1,6 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DatabaseError } from '../utils/errorHandling'
-import { chunkIds, fetchAllRows, fetchAllRowsChunkedIn } from './supabasePaging'
+import {
+  SUPABASE_PAGE_SIZE,
+  chunkIds,
+  fetchAllRows,
+  fetchAllRowsChunkedIn,
+  resetRowCapHitWarningsForTests,
+  warnIfRowCapHit,
+} from './supabasePaging'
 
 function pagedSource(total: number) {
   const rows = Array.from({ length: total }, (_, i) => ({ id: i }))
@@ -87,5 +94,70 @@ describe('fetchAllRowsChunkedIn', () => {
     await expect(
       fetchAllRowsChunkedIn([1], () => Promise.resolve({ data: null, error: { message: 'nope' } }), 'child rows'),
     ).rejects.toThrow(/Failed to child rows: nope/)
+  })
+})
+
+describe('fetchAllRows maxRows (a real, detectable ceiling)', () => {
+  it('stops paging at the ceiling and trims to exactly maxRows', async () => {
+    let calls = 0
+    const src = pagedSource(100)
+    const rows = await fetchAllRows(
+      (f, t) => {
+        calls++
+        return src(f, t)
+      },
+      'test',
+      10,
+      { maxRows: 25 },
+    )
+    expect(rows).toHaveLength(25)
+    expect(rows[rows.length - 1]).toEqual({ id: 24 })
+    expect(calls).toBe(3) // 10 + 10 + 10 → trimmed; no 4th page
+  })
+
+  it('does not issue a request past a ceiling that is an exact page multiple', async () => {
+    let calls = 0
+    const src = pagedSource(100)
+    const rows = await fetchAllRows(
+      (f, t) => {
+        calls++
+        return src(f, t)
+      },
+      'test',
+      10,
+      { maxRows: 20 },
+    )
+    expect(rows).toHaveLength(20)
+    expect(calls).toBe(2)
+  })
+
+  it('returns fewer rows than the ceiling when the table is smaller — the caller can tell', async () => {
+    const rows = await fetchAllRows(pagedSource(13), 'test', 10, { maxRows: 50 })
+    expect(rows).toHaveLength(13)
+    expect(rows.length >= 50).toBe(false)
+  })
+})
+
+describe('warnIfRowCapHit', () => {
+  afterEach(() => {
+    resetRowCapHitWarningsForTests()
+    vi.restoreAllMocks()
+  })
+
+  it('warns once per label when an un-ranged read returns exactly max_rows', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(warnIfRowCapHit('load widgets', SUPABASE_PAGE_SIZE)).toBe(true)
+    expect(warnIfRowCapHit('load widgets', SUPABASE_PAGE_SIZE)).toBe(true)
+    expect(warnIfRowCapHit('load gadgets', SUPABASE_PAGE_SIZE)).toBe(true)
+    expect(warn).toHaveBeenCalledTimes(2)
+    expect(String(warn.mock.calls[0]?.[0])).toMatch(/row_cap_hit load widgets/)
+  })
+
+  it('is silent for any other row count', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(warnIfRowCapHit('load widgets', SUPABASE_PAGE_SIZE - 1)).toBe(false)
+    expect(warnIfRowCapHit('load widgets', 0)).toBe(false)
+    expect(warnIfRowCapHit('load widgets', 40, 40)).toBe(true)
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 })

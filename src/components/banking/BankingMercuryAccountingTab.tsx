@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { Database, Json } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchAllRows, warnIfRowCapHit } from '../../lib/supabasePaging'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
@@ -560,14 +561,25 @@ export function BankingMercuryAccountingTab({
     }
     setAssignmentsLoading(true)
     try {
-      // One unfiltered select (the assignments table is small) then filter to the visible set,
-      // instead of chunking the ~10k ids into 400-id batches (~28 sequential round-trips).
-      const rows = await withSupabaseRetry(async () => {
-        return supabase
-          .from('mercury_transaction_drag_sort_assignments')
-          .select('mercury_transaction_id, label_id')
-          .limit(100000)
-      }, 'accounting load drag assignments')
+      // One PAGED whole-table read then filter to the visible set, instead of chunking the
+      // ~10k ids into 400-id batches (~28 sequential round-trips). Paged because the old
+      // un-ranged `.limit(100000)` was silently cut to PostgREST's 1,000-row max_rows
+      // (J33-N1/N3) — most labeled rows then looked unlabeled in the Sorting Ledger.
+      const rows = await fetchAllRows<{ mercury_transaction_id: string; label_id: string }>(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('mercury_transaction_drag_sort_assignments')
+                .select('mercury_transaction_id, label_id')
+                .order('mercury_transaction_id')
+                .range(from, to),
+            'accounting load drag assignments',
+          )) as { mercury_transaction_id: string; label_id: string }[] | null,
+          error: null,
+        }),
+        'accounting load drag assignments',
+      )
       if (assignmentsLoadSeqRef.current !== seq) return
       const map = new Map<string, string>()
       for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
@@ -626,11 +638,27 @@ export function BankingMercuryAccountingTab({
     const seq = ++pendingLoadSeqRef.current
     setPendingLoading(true)
     try {
-      const list = (await withSupabaseRetry(async () => {
-        return supabase.from('mercury_accounting_label_suggestions').select('*').eq('status', 'pending')
-      }, 'accounting load pending')) as SuggestionRow[] | null
+      // Paged (J33-N3): the pending queue can exceed PostgREST's 1,000-row max_rows after a
+      // big rule pass, and an un-ranged read would silently drop the rest.
+      const list = await fetchAllRows<SuggestionRow>(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('mercury_accounting_label_suggestions')
+                .select('*')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false })
+                .order('id')
+                .range(from, to),
+            'accounting load pending',
+          )) as SuggestionRow[] | null,
+          error: null,
+        }),
+        'accounting load pending',
+      )
       if (pendingLoadSeqRef.current !== seq) return
-      if (list == null || list.length === 0) {
+      if (list.length === 0) {
         setPendingApprovals([])
         return
       }
@@ -733,6 +761,8 @@ export function BankingMercuryAccountingTab({
               .limit(100000),
           'accounting backfill candidates',
         )
+        // Still un-ranged (a per-rule list; rarely near the cap) — surface the cap if it ever hits.
+        warnIfRowCapHit('accounting backfill candidates', (rows ?? []).length)
         const ids = [...new Set(((rows ?? []) as { mercury_transaction_id: string }[]).map((r) => r.mercury_transaction_id))]
         if (ids.length === 0) return
         const value = draft.attributedPersonId ? `p:${draft.attributedPersonId}` : `u:${draft.attributedUserId}`

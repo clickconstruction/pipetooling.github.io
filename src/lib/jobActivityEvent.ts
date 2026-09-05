@@ -38,6 +38,7 @@ export type JobActivityEventType =
   | 'contract_signed'
   | 'contract_voided'
   | 'contract_shared'
+  | 'job_auto_created_from_estimate'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -114,6 +115,8 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   contract_signed: { tag: 'Contract', ...MONEY_GREEN, bucket: 'billing' },
   contract_voided: { tag: 'Contract', ...DANGER_RED, bucket: 'billing' },
   contract_shared: { tag: 'Contract', ...BILLING_BLUE, bucket: 'billing' },
+  // Auto-create-job guard (v2.2838) — written by auto_create_job_from_signed_estimate on a real create.
+  job_auto_created_from_estimate: { tag: 'Opened', ...MONEY_GREEN, bucket: 'status' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {

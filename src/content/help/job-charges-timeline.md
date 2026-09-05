@@ -51,9 +51,11 @@ If the blue line is missing, the caption under the chart says why — usually th
 
 The Job Summary table's last column, **%**, shows how complete the job is:
 
-1. **100%** when every invoice on the job is **paid** and the invoiced total is more than zero — a fully collected job is done, whatever the last report said.
+1. **100%** when the **whole contract is billed and paid** — every invoice on the job is **paid** and the invoiced total covers the job's **Total Bill**. One paid progress bill on a job still being worked does **not** mark it finished; the column falls through to the next two sources.
 2. Otherwise the same completion percent the green line uses: the latest field report that included a completion percent.
 3. Otherwise the job's **% complete** field from Edit Job, and **—** when nothing is set.
+
+In short: a job reads 100% when its work is done or when the whole contract is billed and paid. A job with no Total Bill set but a paid invoice still reads 100% (there is no contract to compare against) — the Quickfill **Complete, no Total Bill** section lists those so the office can set the Job Total.
 
 ## Hover for detail
 
