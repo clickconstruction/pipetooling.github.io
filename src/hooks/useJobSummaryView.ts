@@ -140,8 +140,10 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   search: string
   /** master_user_id → name, for the "lead tech" cut (v2.2820). */
   userNameById?: ReadonlyMap<string, string | null | undefined>
+  /** `?view=` from the URL (v2.2825): a deep link into one view; applied once, then the pref owns it. */
+  initialView?: string | null
 }): JobSummaryViewBundle<R> {
-  const { enabled, userId, rows, reportPctByJobId, search, userNameById } = args
+  const { enabled, userId, rows, reportPctByJobId, search, userNameById, initialView } = args
   const [prefs, setPrefsState] = useState<JobSummaryViewPrefs>(() => {
     try {
       return readJobSummaryViewPrefs(localStorage.getItem(JOB_SUMMARY_VIEW_STORAGE_KEY))
@@ -160,6 +162,10 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
       return next
     })
   }, [])
+  useEffect(() => {
+    const v = readJobSummaryViewPrefs(JSON.stringify({ view: initialView })).view
+    if (initialView && v === initialView) setPrefs({ view: v })
+  }, [initialView, setPrefs])
   const toggleSort = useCallback(
     (key: JobSummarySortKey) => {
       setPrefsState((prev) => {

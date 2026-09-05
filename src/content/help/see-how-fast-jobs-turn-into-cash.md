@@ -2,7 +2,7 @@
 title: see how fast jobs turn into cash
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: cycle, work to bill, bill to paid, days to pay, slowest payer, stale jobs, idle jobs, open jobs, job summary, cash cycle
+keywords: needs you, dashboard card, cycle, work to bill, bill to paid, days to pay, slowest payer, stale jobs, idle jobs, open jobs, job summary, cash cycle
 order: 40
 ---
 
@@ -32,6 +32,10 @@ Work → bill at 6 days and bill → paid at 32 days means the office bills fast
 The panel on the right lists **every open job** — not billed, not paid — with no field work for {{chip:blue|14 d}}, {{chip:blue|21 d}}, or {{chip:blue|30 d}} or more, longest idle first, with the GC, the lead tech, and the contract. It runs on all jobs whatever **Show** says. This is the list behind the Timeline's "open then and still open" number.
 
 Click a row and the Jobs view opens on that job. Most stale jobs need one of three things: a bill, an inspection, or to be closed.
+
+## The Dashboard card
+
+You don't have to open the tab to know. When open jobs have sat idle **21+ days**, a **Needs you** card on the Dashboard says how many, how much contract is behind them, and how many are yours. {{button:blue|See them}} opens this view with the list. The card counts started jobs only — a job still waiting to begin is queued, not stale.
 
 ## Compare to
 

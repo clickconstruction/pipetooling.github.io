@@ -52,6 +52,7 @@ export type NeedsYouItem = {
     | 'contract-missing'
     | 'contract-stale'
     | 'work-orders-unpriced'
+    | 'jobs-stale-open'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -94,6 +95,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'contract-missing': 40,
   'contract-stale': 50,
   'work-orders-unpriced': 40,
+  'jobs-stale-open': 40,
   'lost-bids': 60,
   'd22-uncoded': 60,
 }
@@ -143,6 +145,13 @@ export type NeedsYouInputs = {
    * dedicated Job follow-ups station already carries this count.
    */
   jobFollowupsEnabled: boolean
+  /**
+   * Open jobs idle 21+ days (v2.2825) — the Job Summary Cycle view's stale-open
+   * list. `mine` = jobs whose lead tech is the signed-in user, so the card
+   * names a person. Null while loading; the hook reports zero on error.
+   */
+  staleOpenEnabled?: boolean
+  staleOpen?: { count: number; total: number; mine: number; minIdleDays: number } | null
   /** Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet. */
   contractNudgeEnabled?: boolean
   contractNudge?: { missing: { count: number; revenueTotal: number }; stale: { count: number; oldestDays: number | null } } | null
@@ -327,6 +336,22 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `Drafted${who} without a subcontract amount${oldestDays != null && oldestDays > 0 ? ` — the oldest ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago` : ''}. Open the draft, type the price, send it for signature.`,
       figure: String(n),
       actionLabel: n === 1 ? 'Price it' : 'Price them',
+    })
+  }
+
+  if (inputs.staleOpenEnabled && (inputs.staleOpen?.count ?? 0) > 0) {
+    const { count: n, total, mine, minIdleDays } = inputs.staleOpen!
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'jobs-stale-open',
+      severity: 'amber',
+      kicker: 'Jobs',
+      title: n === 1 ? `An open job has sat idle ${minIdleDays}+ days` : `${n} open jobs have sat idle ${minIdleDays}+ days`,
+      detail:
+        `${money} of contract with no field work in ${minIdleDays} days${mine > 0 ? ` — ${mine} ${mine === 1 ? 'is' : 'are'} yours` : ''}. ` +
+        'Each one needs a bill, an inspection, or to be closed. The Cycle view lists them longest-idle first.',
+      figure: String(n),
+      actionLabel: 'See them',
     })
   }
 

@@ -168,14 +168,16 @@ export const STALE_OPEN_DAY_OPTIONS: ReadonlyArray<{ key: number; label: string;
 ]
 
 /**
- * Open (not billed, not paid) jobs idle at least `minIdleDays`: today minus the
- * ledger's last approved field day, else the job's last_work_date, else its
- * creation date. Longest idle first.
+ * Open jobs idle at least `minIdleDays`: not billed or paid, and started — a
+ * "waiting" job that has never seen a field day isn't stale, it's queued.
+ * Idle = today minus the ledger's last approved field day, else the job's
+ * last_work_date, else its creation date. Longest idle first.
  */
 export function staleOpenJobs(jobs: readonly StaleOpenJobInput[], todayYmd: string, minIdleDays: number, ledger: JobDayLedger | null): StaleOpenJob[] {
   const out: StaleOpenJob[] = []
   for (const j of jobs) {
     if (j.status === 'billed' || j.status === 'paid') continue
+    if (j.status === 'waiting' && !j.last_work_date && !ledger?.jobs.has(j.id)) continue
     const lastWorkYmd = ledger?.jobs.get(j.id)?.lastYmd ?? ymd(j.last_work_date) ?? ymd(j.created_at)
     if (!lastWorkYmd) continue
     const idleDays = daysBetween(lastWorkYmd, todayYmd)
