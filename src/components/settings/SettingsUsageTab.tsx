@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { loadUsageRows } from '../../lib/usageDashboardLoad'
 import {
   USAGE_ROLE_FILTERS,
   controlTotals,
@@ -78,21 +78,10 @@ export function SettingsUsageTab() {
     let cancelled = false
     setLoadError(null)
     const load = async () => {
-      const call = async <T,>(fn: string): Promise<T[] | null> => {
-        try {
-          const data = await withSupabaseRetry(
-            async () => {
-              const { data, error } = await (supabase as any).rpc(fn, { p_days: days })
-              if (error) throw error
-              return data
-            },
-            fn,
-          )
-          return (data ?? []) as T[]
-        } catch {
-          return null
-        }
-      }
+      // J21-N1: the loader hands `withSupabaseRetry` the raw `{ data, error }` envelope so the
+      // rows are unwrapped exactly once (unwrapping inside the callback blanked every panel).
+      const call = <T,>(fn: string): Promise<T[] | null> =>
+        loadUsageRows<T>((name, args) => supabase.rpc(name as never, args as never), fn, days)
       const [pages, clicks, customers, users] = await Promise.all([
         call<UsagePageRow>('usage_page_minutes'),
         call<UsageClickRow>('usage_nav_clicks'),

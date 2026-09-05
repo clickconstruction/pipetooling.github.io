@@ -9,6 +9,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { publicEventGate } from '../_shared/publicEventThrottle.ts'
+import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { BID_COVER_LETTER_EXCLUSIONS_KEY, BID_COVER_LETTER_TERMS_KEY, sampleBidRoomResponse } from '../_shared/customerSampleFixtures.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -38,6 +39,13 @@ serve(async (req) => {
         ? new URL(req.url).searchParams.get('t')?.trim()
         : ((await req.json().catch(() => ({}))) as { token?: string; event?: string; optionKey?: string })
 
+    // Journey-map #37 (J35-F3): an estimator checking their own room link used to count as the
+    // GC "opened 1×" — the page fetched with the anon key, so the server could not tell. The
+    // page now sends the browser's staff session when it has one, and office openers may pass
+    // `?preview=1`; either way no room_view / option_viewed is written. Shared predicate in
+    // `_shared/publicViewCounting.ts`. Anonymous GC opens log exactly as before.
+    const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+
     if (req.method === 'POST') {
       const body = token as { token?: string; event?: string; optionKey?: string }
       const raw = body.token?.trim()
@@ -58,6 +66,7 @@ serve(async (req) => {
       const payload = rev ? parseSharedBidRoomPayload(rev.payload) : null
       const chosen = payload?.options.find((o) => o.key === optionKey)
       if (!chosen) return json({ ok: true })
+      if (!viewDecision.count) return json({ ok: true })
       const ip = clientIp(req)
       const gate = await publicEventGate(admin, {
         table: 'bid_proposal_room_events',
@@ -128,13 +137,15 @@ serve(async (req) => {
       .eq('doc_kind', 'change_order')
       .order('sent_at', { ascending: true })
 
-    await admin.from('bid_proposal_room_events').insert({
-      room_id: room.id,
-      event_type: 'room_view',
-      metadata: { rev_number: rev.rev_number },
-      client_ip: clientIp(req),
-      user_agent: req.headers.get('user-agent'),
-    })
+    if (viewDecision.count) {
+      await admin.from('bid_proposal_room_events').insert({
+        room_id: room.id,
+        event_type: 'room_view',
+        metadata: { rev_number: rev.rev_number },
+        client_ip: clientIp(req),
+        user_agent: req.headers.get('user-agent'),
+      })
+    }
 
     return json({
       revision: { id: rev.id, rev_number: rev.rev_number, note: rev.note, published_at: rev.published_at },

@@ -20,6 +20,7 @@ import {
   type SubSheetRow,
 } from '../_shared/subPortalStatement.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 
 /**
  * Sub portal payload (sub-portal train): resolves a sub portal link token OR
@@ -139,11 +140,16 @@ serve(async (req) => {
     if (!person) return jsonResponse({ error: 'Not found' }, 404)
     const personName = ((person as { name: string | null }).name ?? '').trim() || 'Subcontractor'
 
-    // View counting — fire-and-forget, the statement never fails on measurement.
-    void admin
-      .from('public_page_views')
-      .insert({ surface: 'sub_portal', entity_id: link.person_id, via: rawToken ? 'token' : 'slug' })
-      .then(() => {}, () => {})
+    // View counting — fire-and-forget, the statement never fails on measurement. Office
+    // previews (`?preview=1`) and verified staff sessions do not count (journey-map #37;
+    // shared predicate in `_shared/publicViewCounting.ts`).
+    const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+    if (viewDecision.count) {
+      void admin
+        .from('public_page_views')
+        .insert({ surface: 'sub_portal', entity_id: link.person_id, via: rawToken ? 'token' : 'slug' })
+        .then(() => {}, () => {})
+    }
 
     const todayYmd = todayYmdInAppTz()
 

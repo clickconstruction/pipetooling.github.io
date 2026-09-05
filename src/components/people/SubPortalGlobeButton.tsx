@@ -21,6 +21,7 @@ import {
 } from '../../lib/portal/portalSlug'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShortOrigin'
 import { setSubPortalOff, useSubPortalLinkOff } from '../../hooks/useSubPortalOffStates'
+import { withPreviewFlag } from '../../lib/publicViewCounting'
 
 /**
  * 🌐 next to a sub's name (sub-portal train): office staff manage the sub's
@@ -191,6 +192,9 @@ export default function SubPortalGlobeButton({
   }
 
   const tokenUrl = main.kind === 'active' ? `${window.location.origin}/sub?t=${main.token}` : null
+  // Office openers (Preview, the live iframe) carry `?preview=1` so the load is not counted as the
+  // sub looking (journey-map #37). The copyable link above never carries it.
+  const previewUrl = tokenUrl ? withPreviewFlag(tokenUrl) : null
 
   const saveSlug = async (value: string): Promise<boolean> => {
     const { data, error } = await supabase.rpc('set_sub_portal_slug' as never, {
@@ -508,7 +512,7 @@ export default function SubPortalGlobeButton({
                   </button>
                   <button
                     type="button"
-                    onClick={() => tokenUrl && window.open(tokenUrl, '_blank', 'noopener')}
+                    onClick={() => previewUrl && window.open(previewUrl, '_blank', 'noopener')}
                     style={{ padding: '0.45rem 1rem', background: 'var(--surface)', color: 'var(--text-900)', border: '1px solid var(--border-strong)', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
                   >
                     Preview as {firstName}
@@ -582,11 +586,11 @@ export default function SubPortalGlobeButton({
                 )}
 
                 {/* Live preview — the sub's actual page, scaled down. */}
-                {tokenUrl && (
+                {previewUrl && (
                   <div style={{ marginTop: '0.9rem', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 260 }}>
                     <iframe
                       title={`${personName}'s portal preview`}
-                      src={tokenUrl}
+                      src={previewUrl}
                       sandbox="allow-scripts allow-same-origin"
                       style={{ width: '161%', height: 420, border: 'none', transform: 'scale(0.62)', transformOrigin: 'top left', pointerEvents: 'none' }}
                     />

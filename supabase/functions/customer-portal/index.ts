@@ -14,6 +14,7 @@ import {
 } from '../_shared/portalMergedBills.ts'
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
 import { openBillJobIds, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
+import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -137,11 +138,36 @@ serve(async (req) => {
     if (!customer) return jsonResponse({ error: 'Not found' }, 404)
 
     // View counting (v2.2341): one row per validated portal load — fire-and-forget,
-    // the statement must never fail because measurement did.
-    void admin
-      .from('public_page_views')
-      .insert({ surface: 'portal', entity_id: link.customer_id, via: rawToken ? 'token' : 'slug' })
-      .then(() => {}, () => {})
+    // the statement must never fail because measurement did. Journey-map #37: an office
+    // preview (`?preview=1`, the globe modal's iframe / Preview / chips fetch) or a request
+    // carrying a verified staff session does NOT count — every "view" on record had been
+    // staff. The shared predicate lives in `_shared/publicViewCounting.ts`.
+    const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+    if (viewDecision.count) {
+      void admin
+        .from('public_page_views')
+        .insert({ surface: 'portal', entity_id: link.customer_id, via: rawToken ? 'token' : 'slug' })
+        .then(() => {}, () => {})
+    }
+
+    // Office-only "Opened N times · last <date>" for the globe gear: the customer's own
+    // view rows, read here with the service role (the table's RLS is dev-only) and returned
+    // ONLY to a verified staff session — a customer's payload never carries it.
+    let officeViewStats: { opens: number; lastOpenedAt: string | null } | null = null
+    if (viewDecision.isStaff) {
+      const [{ count }, { data: lastRow }] = await Promise.all([
+        admin.from('public_page_views').select('id', { count: 'exact', head: true }).eq('surface', 'portal').eq('entity_id', link.customer_id),
+        admin
+          .from('public_page_views')
+          .select('occurred_at')
+          .eq('surface', 'portal')
+          .eq('entity_id', link.customer_id)
+          .order('occurred_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ])
+      officeViewStats = { opens: count ?? 0, lastOpenedAt: (lastRow as { occurred_at?: string } | null)?.occurred_at ?? null }
+    }
 
     const jobSelect =
       'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, service_types:service_type_id(name)'
@@ -328,6 +354,8 @@ serve(async (req) => {
       // Lets the slug-resolved page submit request forms (the slug and the
       // token are the same capability — both open this exact statement).
       requestToken: link.token ?? null,
+      // Staff sessions only (journey-map #37): customer opens on record + the latest.
+      ...(officeViewStats ? { officeViewStats } : {}),
       slug,
       agreements,
     })
