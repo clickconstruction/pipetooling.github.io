@@ -210,6 +210,59 @@ describe('CustomerPortal render smoke', () => {
     expect(sent.website).toBe('')
   })
 
+  it('receipt landing (?paid=1, v2.2878): the fetch says return=stripe and a bill that vanished since the last look shows the Payment received banner', async () => {
+    // What the statement showed before the customer paid on Stripe: two bills, $1,700.
+    window.localStorage.setItem(
+      'pt-portal-snapshot:abcdef1234567890abcdef',
+      JSON.stringify({ bills: [{ key: 'pay:https://invoice.stripe.com/x', amount: 1450 }, { key: 'job:Service call · Job 655|2026-08-18', amount: 250 }], totalDue: 1700 }),
+    )
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL) => new Response(JSON.stringify({ ...payload, bills: [payload.bills[1]], totalDue: 250 }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    mountAt('/portal?t=abcdef1234567890abcdef&paid=1')
+    await waitFor(() => expect(screen.getByText('Payment received')).toBeTruthy())
+    expect(String(fetchMock.mock.calls[0]![0])).toContain('return=stripe')
+    expect(document.querySelector('[data-portal-paid-banner]')?.getAttribute('data-screen-only')).not.toBeNull()
+    // The banner is evidence-based: the new statement replaces the stored snapshot.
+    expect(JSON.parse(window.localStorage.getItem('pt-portal-snapshot:abcdef1234567890abcdef')!).totalDue).toBe(250)
+    window.localStorage.clear()
+  })
+
+  it('first look (no earlier snapshot) never claims a payment, even on a ?paid=1 landing', async () => {
+    window.localStorage.clear()
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef&paid=1')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    expect(screen.queryByText('Payment received')).toBeNull()
+    window.localStorage.clear()
+  })
+
+  it('coming back after PAY ONLINE refetches (return=refresh); an idle tab switch does not', async () => {
+    window.localStorage.clear()
+    const fetchMock = vi.fn(async (_url: RequestInfo | URL) => new Response(JSON.stringify(payload), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // Idle return: nothing was paid from here.
+    document.dispatchEvent(new Event('visibilitychange'))
+    window.dispatchEvent(new Event('focus'))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // Tap PAY ONLINE (jsdom must not try to navigate), then come back later.
+    document.addEventListener('click', (e) => e.preventDefault(), { once: true, capture: true })
+    const pay = document.querySelector('a[data-bill-pay]') as HTMLAnchorElement
+    pay.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    const now = Date.now()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(now + 60_000)
+    document.dispatchEvent(new Event('visibilitychange'))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(String(fetchMock.mock.calls[1]![0])).toContain('return=refresh')
+    // focus fires with visibilitychange — the min-gap rule collapses the pair to one load.
+    window.dispatchEvent(new Event('focus'))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    nowSpy.mockRestore()
+    window.localStorage.clear()
+  })
+
   it('missing token never fetches', () => {
     const f = vi.fn()
     vi.stubGlobal('fetch', f)

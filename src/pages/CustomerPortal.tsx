@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -18,6 +18,13 @@ import {
 } from '../lib/portal/portalPayload'
 import { groupPortalBillsByJob, portalBillBilledAmount, PORTAL_GENERIC_PAYMENT_METHOD, type PortalJobGroup } from '../lib/portal/portalJobGroups'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
+import {
+  paidFlipDetected,
+  parsePortalBillsSnapshot,
+  portalSnapshotStorageKey,
+  snapshotPortalBills,
+  type PortalBillsSnapshot,
+} from '../lib/portal/portalPaidFlip'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN } from '../lib/portal/portalTheme'
 
 /**
@@ -31,12 +38,43 @@ import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN } 
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
+/**
+ * After-payment refetch cadence (v2.2878, journey-map J22-F3): Stripe marks
+ * the bill paid a few seconds after the card clears (webhook → ledger), so a
+ * landing or a return-to-tab that still shows the bill open looks again at
+ * +6s and +20s, then stops. Bounded on purpose — every fetch is a portal load.
+ */
+const RETURN_REFETCH_DELAYS_MS = [6000, 20000]
+/** Two return events in this window (focus + visibilitychange fire together) refetch once. */
+const RETURN_REFETCH_MIN_GAP_MS = 1500
+
+type LoadReason = 'open' | 'stripe' | 'refresh'
+type LoadResult = 'flip' | 'same' | 'failed'
+
+function readPortalSnapshot(key: string): PortalBillsSnapshot | null {
+  try {
+    const raw = window.localStorage.getItem(key)
+    return raw ? parsePortalBillsSnapshot(JSON.parse(raw) as unknown) : null
+  } catch {
+    return null
+  }
+}
+
+function writePortalSnapshot(key: string, snap: PortalBillsSnapshot): void {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(snap))
+  } catch {
+    /* private mode / quota — the banner just needs an in-memory before */
+  }
+}
 
 export default function CustomerPortal() {
   const [params] = useSearchParams()
   const { slug: slugParam } = useParams<{ slug?: string }>()
   const token = params.get('t')?.trim() ?? ''
   const slug = (slugParam ?? '').trim().toLowerCase()
+  // Receipt landing (v2.2878): the Stripe invoice footer's link carries ?paid=1.
+  const paidLanding = params.get('paid') === '1'
   // What customers see (v2.2760): the sample token renders the fixture for a signed-in office user.
   const sample = sampleStateFromToken(token)
   // Office preview (journey-map #37): the globe modal opens this page with `?preview=1`; forwarded
@@ -47,43 +85,116 @@ export default function CustomerPortal() {
     | { kind: 'error'; message: string }
     | { kind: 'ready'; payload: PortalPayload }
   >({ kind: 'loading' })
+  // "Payment received — statement updated": a bill this page showed before is
+  // gone (or smaller) and the balance dropped. Read-only detection; no writes.
+  const [paymentLanded, setPaymentLanded] = useState(false)
+  // Load generation: an unmount or a link change invalidates in-flight fetches and pending refetch timers.
+  const genRef = useRef(0)
+  const invalidateLoads = () => {
+    genRef.current += 1
+  }
+  const snapshotRef = useRef<PortalBillsSnapshot | null>(null)
+  const payClickedRef = useRef(false)
+  const lastLoadAtRef = useRef(0)
+  const storageKey = portalSnapshotStorageKey(token || slug)
+
+  const load = useCallback(
+    async (reason: LoadReason, gen: number): Promise<LoadResult> => {
+      lastLoadAtRef.current = Date.now()
+      try {
+        const query = `${token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`
+        const ret = reason === 'open' ? '' : `&return=${reason}`
+        // A signed-in office browser sends its own session so the server can tell a staff open
+        // from a customer's; everyone else sends the anon key as before.
+        const res = await fetch(`${supabaseUrl}/functions/v1/customer-portal?${query}${ret}`, {
+          headers: sample ? await publicFunctionHeaders(sample) : await staffAwarePublicHeaders(),
+        })
+        const body: unknown = await res.json().catch(() => null)
+        if (gen !== genRef.current) return 'failed'
+        const payload = parsePortalPayload(body)
+        if (!res.ok || !payload) {
+          // A refetch that fails leaves the statement already on screen alone.
+          if (reason === 'open') {
+            const msg =
+              body != null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
+                ? String((body as { error: string }).error)
+                : 'We could not open your statement. Please try again, or call our office.'
+            setState({ kind: 'error', message: msg })
+          }
+          return 'failed'
+        }
+        const after = snapshotPortalBills(payload)
+        const before = snapshotRef.current ?? (sample ? null : readPortalSnapshot(storageKey))
+        const flipped = paidFlipDetected(before, after)
+        snapshotRef.current = after
+        if (!sample) writePortalSnapshot(storageKey, after)
+        setState({ kind: 'ready', payload })
+        if (flipped) {
+          setPaymentLanded(true)
+          payClickedRef.current = false
+        }
+        return flipped ? 'flip' : 'same'
+      } catch {
+        if (gen === genRef.current && reason === 'open') {
+          setState({ kind: 'error', message: 'We could not open your statement. Please check your connection and try again.' })
+        }
+        return 'failed'
+      }
+    },
+    [token, slug, sample, storageKey, preview],
+  )
+
+  // Look again on the webhook cadence until the paid bill drops off (or we give up).
+  const refetchUntilFlip = useCallback(
+    async (reason: LoadReason, gen: number) => {
+      for (const ms of RETURN_REFETCH_DELAYS_MS) {
+        await new Promise((r) => setTimeout(r, ms))
+        if (gen !== genRef.current) return
+        if ((await load(reason, gen)) !== 'same') return
+      }
+    },
+    [load],
+  )
 
   useEffect(() => {
-    let cancelled = false
     if (!token && !slug) {
       setState({ kind: 'error', message: 'This link is missing its key. Please use the exact link we sent you.' })
       return
     }
+    const gen = ++genRef.current
+    snapshotRef.current = null
     void (async () => {
-      try {
-        const query = `${token ? `token=${encodeURIComponent(token)}` : `slug=${encodeURIComponent(slug)}`}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`
-        // A signed-in office browser sends its own session so the server can tell a staff open
-        // from a customer's; everyone else sends the anon key as before.
-        const res = await fetch(`${supabaseUrl}/functions/v1/customer-portal?${query}`, {
-          headers: sample ? await publicFunctionHeaders(sample) : await staffAwarePublicHeaders(),
-        })
-        const body: unknown = await res.json().catch(() => null)
-        if (cancelled) return
-        const payload = parsePortalPayload(body)
-        if (!res.ok || !payload) {
-          const msg =
-            body != null && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
-              ? String((body as { error: string }).error)
-              : 'We could not open your statement. Please try again, or call our office.'
-          setState({ kind: 'error', message: msg })
-          return
-        }
-        setState({ kind: 'ready', payload })
-      } catch {
-        if (!cancelled) {
-          setState({ kind: 'error', message: 'We could not open your statement. Please check your connection and try again.' })
-        }
-      }
+      const first = await load(paidLanding ? 'stripe' : 'open', gen)
+      if (paidLanding && first === 'same') await refetchUntilFlip('stripe', gen)
     })()
-    return () => {
-      cancelled = true
+    return invalidateLoads
+  }, [token, slug, paidLanding, load, refetchUntilFlip])
+
+  // Fresh after paying (v2.2878): PAY ONLINE opens Stripe in a new tab; when the
+  // customer comes back to this one, refetch so the totals are not stale. Gated
+  // on a pay click from this page so idle tab switches never re-load.
+  useEffect(() => {
+    const onPayClick = (e: MouseEvent) => {
+      const el = e.target as Element | null
+      if (el?.closest?.('a[data-bill-pay]')) payClickedRef.current = true
     }
-  }, [token, slug, sample, preview])
+    const onReturn = () => {
+      if (document.visibilityState === 'hidden' || !payClickedRef.current) return
+      if (Date.now() - lastLoadAtRef.current < RETURN_REFETCH_MIN_GAP_MS) return
+      const gen = genRef.current
+      void (async () => {
+        if ((await load('refresh', gen)) === 'same') await refetchUntilFlip('refresh', gen)
+      })()
+    }
+    document.addEventListener('click', onPayClick)
+    document.addEventListener('visibilitychange', onReturn)
+    window.addEventListener('focus', onReturn)
+    return () => {
+      document.removeEventListener('click', onPayClick)
+      document.removeEventListener('visibilitychange', onReturn)
+      window.removeEventListener('focus', onReturn)
+    }
+  }, [load, refetchUntilFlip])
 
   const today = useMemo(() => {
     const d = new Date()
@@ -141,6 +252,17 @@ export default function CustomerPortal() {
 
         {state.kind === 'ready' && (
           <>
+            {paymentLanded && (
+              <div
+                data-screen-only
+                data-portal-paid-banner
+                role="status"
+                style={{ marginTop: 14, background: CARD, border: `1px solid ${PAPER_GREEN}`, borderLeftWidth: 4, padding: '10px 14px', fontSize: 13.5 }}
+              >
+                <b style={{ color: PAPER_GREEN }}>Payment received</b>
+                <span style={{ color: MUTED }}> — statement updated.</span>
+              </div>
+            )}
             <PortalStatement payload={state.payload} today={today} />
             <div data-screen-only>
               <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
