@@ -68,6 +68,16 @@ While you're clocked into a job, the card keeps going below the buttons:
 - Moving on? Tap {{button:green|Next Job}} — you'll be asked for brief notes about the job you're leaving, and the sheet shows **where you can go**: your suggested next job is preselected, but you can pick any open job instead, or choose **Done for the day** to clock out.
 - Your location is captured when you punch, and your hours flow to the office automatically for approval.
 
+### When you have no signal
+
+If the punch can't reach the server — a crawlspace, a basement, a dead zone — the sheet says **No connection — the app couldn't reach the server, so nothing was saved** and shows a {{button:outline|Retry}} button. Nothing was recorded, so it's safe to tap it as soon as you have a bar. When your signal comes back on its own, the message changes to **Back online — tap Retry to try again**; the punch still waits for your tap so it is never sent twice.
+
+:::example Clocking in from a basement
+You tap {{button:green|Clock In}}, the sheet shows **No connection** and {{button:outline|Retry}}. You climb the stairs, the line flips to **Back online**, you tap {{button:outline|Retry}} — the timer starts.
+:::
+
+The same Retry appears when you save a report offline. Your **Schedule** tab is different: it reloads by itself the moment the signal returns, no tap needed. If a message says something else — for example that you don't have permission — Retry will not appear, because trying again would not change the answer.
+
 ## Clocking out
 
 Three ways, depending on your day:

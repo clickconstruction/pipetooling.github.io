@@ -17,7 +17,7 @@ import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
 import { itbLinkLabel } from '../../lib/itbLinks'
 import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
-import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { BidWonJobActions } from './BidWonJobActions'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type Bid = Database['public']['Tables']['bids']['Row']
@@ -147,7 +147,6 @@ function outcomeSegmentSelectedStyle(value: BidFormOutcomeOption): CSSProperties
 }
 
 export function BidFormModal(props: BidFormModalProps) {
-  const jobFormModal = useJobFormModal()
   const [serviceTypeSwitchOpen, setServiceTypeSwitchOpen] = useState(false)
   const [duplicatingToServiceTypeId, setDuplicatingToServiceTypeId] = useState<string | null>(null)
   const [dueTimeOpen, setDueTimeOpen] = useState(false)
@@ -825,6 +824,15 @@ export function BidFormModal(props: BidFormModalProps) {
                       <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                   )}
+                  {editingBid ? (
+                    // Tier-1 #8: the Job block lives beside Win/Loss — the person recording the win is
+                    // the person who needs the job next. (It used to hide at the bottom of the Copy Bid
+                    // popover; that popover is about copying bids again.)
+                    <div style={{ flexBasis: '100%', minWidth: 0 }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job</label>
+                      <BidWonJobActions bidId={editingBid.id} won={outcome === 'won' || outcome === 'started_or_complete'} />
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div style={{ ...FORM_SECTION_STYLE, width: '100%' }}>
@@ -1529,45 +1537,6 @@ export function BidFormModal(props: BidFormModalProps) {
                     })}
                   </ul>
                 )}
-                <div
-                  style={{
-                    marginTop: '1.25rem',
-                    paddingTop: '1.25rem',
-                    borderTop: '1px solid var(--border)',
-                  }}
-                >
-                  <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '0.9375rem', fontWeight: 600 }}>Job</h3>
-                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                    Create a new job from this bid with customer and links filled in, and the bid linked on the job.
-                  </p>
-                  {!editingBid ? (
-                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
-                      Save the bid first to enable <strong>Open Job</strong>.
-                    </p>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={!editingBid || !jobFormModal}
-                    title={!editingBid ? 'Save this bid first' : !jobFormModal ? 'Job form unavailable' : undefined}
-                    onClick={() => {
-                      if (!jobFormModal || !editingBid) return
-                      setServiceTypeSwitchOpen(false)
-                      jobFormModal.openNewJob({ prefillBidId: editingBid.id })
-                    }}
-                    style={{
-                      padding: '0.5rem 0.85rem',
-                      fontSize: '0.875rem',
-                      fontWeight: 500,
-                      background: !editingBid || !jobFormModal ? 'var(--bg-200)' : '#3b82f6',
-                      color: !editingBid || !jobFormModal ? 'var(--text-muted)' : 'white',
-                      border: 'none',
-                      borderRadius: 6,
-                      cursor: !editingBid || !jobFormModal ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    Open Job
-                  </button>
-                </div>
               </div>
             </div>
           ) : null}

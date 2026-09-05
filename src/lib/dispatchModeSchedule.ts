@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
+import { withSupabaseRetry, formatErrorMessage, errorKindOf, type DatabaseErrorKind } from '../utils/errorHandling'
 
 /**
  * Dispatch Mode → Schedule tab: pure month-grid/agenda helpers + data fetches.
@@ -144,11 +144,15 @@ type BlockRowRaw = {
   } | null
 }
 
-/** Every person's schedule blocks for one calendar day (dispatcher view). */
+/**
+ * Every person's schedule blocks for one calendar day (dispatcher view).
+ * `errorKind` is the failure's class (v2.2843) so the agenda's error panel can
+ * offer Retry only when the network — not the server — was the problem.
+ */
 export async function fetchDispatchModeDayBlocks(
   ymd: string,
   assigneeUserId?: string,
-): Promise<{ data: DispatchModeAgendaBlock[]; error: string | null }> {
+): Promise<{ data: DispatchModeAgendaBlock[]; error: string | null; errorKind: DatabaseErrorKind | null }> {
   try {
     const rows = await withSupabaseRetry(
       async () => {
@@ -184,9 +188,9 @@ export async function fetchDispatchModeDayBlocks(
         serviceTypeName: jl?.service_type?.name ?? null,
       })
     }
-    return { data: sortDispatchModeAgendaBlocks(out), error: null }
+    return { data: sortDispatchModeAgendaBlocks(out), error: null, errorKind: null }
   } catch (e) {
-    return { data: [], error: formatErrorMessage(e) }
+    return { data: [], error: formatErrorMessage(e), errorKind: errorKindOf(e) }
   }
 }
 
