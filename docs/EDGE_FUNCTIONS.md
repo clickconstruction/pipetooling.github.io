@@ -896,6 +896,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Required Role**: Authenticated user (any role); JWT validated in the function via **`auth.getUser(token)`**.
 
+**Anchors** (v2.2819): a request names its subject with one of `step_id`, `labor_job_id` (v2.2785, Sub Labor sheet work orders), or `work_order_id` (job-anchored work orders from Jobs → Work Orders); the push tag follows the anchor.
+
 **Required Secrets**:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
@@ -1045,6 +1047,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ### submit-sub-portal
 
 **Purpose**: Everything a sub can DO from the portal, token-authenticated like submit-portal-request. Five kinds (the fifth, `mark_work_done`, below): `availability` (rate-limited 5/hour per link → `dispatch_requests` with `pending_payload.source='sub_portal'` + `notify-dispatch-request` fan-out); `accept_offer` — **sign-to-accept**: validates the `offered` + unexpired commitment belongs to the link's person, validates/stores a drawn signature PNG (magic bytes, 512 KB cap, `contract-signer-signatures` bucket under `commitments/<id>/`, compensating delete on failure), transitions `offered → accepted` while stamping the full signature record of truth on the row (`signed_at`, `signer_printed_name`, `signer_signature_mode` type|draw, `signer_signature_storage_path`, `signer_consented_at`, `signer_ip`, `signer_user_agent`), then drops a "signed & accepted" dispatch note; `decline_offer` (`offered → declined` with the required reason + dispatch note); `sign_link` — mints a fresh 14-day `/contract/accept` token for one of the sub's own `unsent`/`sent` `person_contract_documents` (send-contract-for-signature mint pattern, no email; the newest link wins).
+
+**Job-anchored orders create the sheet** (v2.2819): when the signed commitment has `job_id` but no `labor_job_id` (assembled on Jobs → Work Orders), `accept_offer` stamps the signature first, then calls `create_sheet_for_work_order(p_commitment_id)` as the service role — the sub's `people_labor_jobs` sheet with one fixed item at the agreed amount, assignee junction, and `labor_job_id` linked back. The dispatch payload carries `laborJobId` (the created sheet) and `jobId`.
 
 **Acknowledgements** (v2.2789): `accept_offer` reads the commitment's `offer_scope_snapshot.acknowledgements`; the request's `acknowledgements: string[]` must contain every one (case-insensitive) or it returns 400 *Please tick every confirmation box before signing.* The ticked list is stamped into `step_commitments.signer_acknowledgements` as `[{text, acknowledgedAt}]` in the same update as the signature; the dispatch note title appends the sheet label for sheet work orders and the payload carries `laborJobId`.
 

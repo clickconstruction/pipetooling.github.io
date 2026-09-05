@@ -15,6 +15,8 @@ interface NotificationRequest {
   /** One anchor is required: a workflow step, or (v2.2786) a Sub Labor sheet for sheet work orders. */
   step_id?: string
   labor_job_id?: string
+  /** v2.2819: a job-anchored work order (step_commitments.id) — no step, no sheet yet. */
+  work_order_id?: string
   recipient_email: string
   recipient_name: string
   recipient_user_id?: string
@@ -122,6 +124,7 @@ serve(async (req) => {
       template_type,
       step_id,
       labor_job_id,
+      work_order_id,
       recipient_email,
       recipient_name,
       recipient_user_id,
@@ -131,9 +134,9 @@ serve(async (req) => {
       variables = {},
     }: NotificationRequest = await req.json()
 
-    if (!template_type || (!step_id && !labor_job_id) || !recipient_email || !recipient_name) {
+    if (!template_type || (!step_id && !labor_job_id && !work_order_id) || !recipient_email || !recipient_name) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: template_type, step_id or labor_job_id, recipient_email, recipient_name' }),
+        JSON.stringify({ error: 'Missing required fields: template_type, one of step_id / labor_job_id / work_order_id, recipient_email, recipient_name' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -205,7 +208,7 @@ serve(async (req) => {
             title: push_title || subject,
             body: push_body || body.substring(0, 200),
             url: push_url || variables.workflow_link || '/',
-            tag: `workflow-${step_id ?? labor_job_id}`,
+            tag: `workflow-${step_id ?? labor_job_id ?? work_order_id}`,
           })
 
           webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)

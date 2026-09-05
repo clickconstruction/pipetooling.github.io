@@ -80,7 +80,9 @@ export async function notifyWorkOrderOffered(args: {
  * sign). send-workflow-notification accepts labor_job_id in place of step_id.
  */
 export async function notifySheetWorkOrderOffered(args: {
-  laborJobId: string
+  /** The sheet the order hangs off — or, for a job-anchored order (v2.2819), the commitment id via `workOrderId`. */
+  laborJobId?: string | null
+  workOrderId?: string | null
   sheetLabel: string
   offeredByName: string
   recipientName: string
@@ -97,7 +99,8 @@ export async function notifySheetWorkOrderOffered(args: {
   const link = args.portalUrl ?? `${window.location.origin}/dashboard`
   await invoke({
     template_type: 'work_order_offered',
-    labor_job_id: args.laborJobId,
+    ...(args.laborJobId ? { labor_job_id: args.laborJobId } : {}),
+    ...(args.workOrderId ? { work_order_id: args.workOrderId } : {}),
     recipient_email: args.recipientEmail,
     recipient_name: args.recipientName,
     recipient_user_id: args.recipientUserId ?? undefined,

@@ -305,11 +305,11 @@ serve(async (req) => {
 
       const { data: commitment } = await admin
         .from('step_commitments')
-        .select('id, person_id, status, amount, offer_expires_at, offer_scope_snapshot, labor_job_id, step_id')
+        .select('id, person_id, status, amount, offer_expires_at, offer_scope_snapshot, labor_job_id, step_id, job_id')
         .eq('id', commitmentId)
         .maybeSingle()
       const c = commitment as
-        | { id: string; person_id: string; status: string; amount: number | null; offer_expires_at: string | null; offer_scope_snapshot: unknown; labor_job_id: string | null; step_id: string | null }
+        | { id: string; person_id: string; status: string; amount: number | null; offer_expires_at: string | null; offer_scope_snapshot: unknown; labor_job_id: string | null; step_id: string | null; job_id: string | null }
         | null
       if (!c || c.person_id !== link.person_id) return jsonResponse({ error: 'Not found' }, 404)
       if (c.status !== 'offered') {
@@ -409,6 +409,16 @@ serve(async (req) => {
         return jsonResponse({ error: 'Could not record the signature. Please try again.' }, updErr ? 500 : 409)
       }
 
+      // v2.2819: signing a job-anchored order creates its Sub Labor sheet (idempotent RPC).
+      let createdSheetId: string | null = null
+      if (!c.labor_job_id && c.job_id) {
+        const { data: created, error: createErr } = await admin.rpc('create_sheet_for_work_order', { p_commitment_id: c.id })
+        if (createErr) console.error('create_sheet_for_work_order failed', createErr)
+        const cr = created as { ok?: boolean; labor_job_id?: string | null; error?: string } | null
+        if (cr?.error) console.error('create_sheet_for_work_order refused', cr.error)
+        createdSheetId = cr?.labor_job_id ?? null
+      }
+
       const sheetLabel = parseScopeExtras(c.offer_scope_snapshot).sheetLabel
       await insertDispatchNote(
         admin,
@@ -419,7 +429,8 @@ serve(async (req) => {
           personId: link.person_id,
           personName,
           commitmentId: c.id,
-          laborJobId: c.labor_job_id,
+          laborJobId: c.labor_job_id ?? createdSheetId,
+          jobId: c.job_id,
           signedAt: nowIso,
         },
       )
