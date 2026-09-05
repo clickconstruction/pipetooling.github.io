@@ -716,7 +716,7 @@ export function ContractBookModal({
                         style={
                           narrowViewport
                             ? { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }
-                            : { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }
+                            : { justifySelf: 'end', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'nowrap' }
                         }
                       >
                         {onQuickSend && hasLoadableContent ? (
@@ -819,6 +819,40 @@ export function ContractBookModal({
                         </button>
                       </div>
               ) : null
+              // The version line (v2.2808): inline after the chips on desktop so it can flow under the
+              // buttons; its own block on phones and while editing.
+              const versionLabel = effectiveBookVersionLabel(row)
+              const sentCount = sentCountByDocName?.get(row.document_name)
+              const versionCustom = bookVersionDateIsCustom(row)
+              const versionText =
+                versionLabel || sentCount != null ? (
+                  <>
+                    {versionLabel ? (
+                      <>
+                        Version date:{' '}
+                        <span
+                          style={
+                            versionCustom
+                              ? { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }
+                              : undefined
+                          }
+                        >
+                          {versionLabel}
+                        </span>
+                        {versionCustom ? ' — set manually' : ''}
+                      </>
+                    ) : null}
+                    {sentCount != null ? (
+                      <>
+                        {versionLabel ? ' · ' : ''}
+                        {sentCount === 0 ? 'not sent to anyone yet' : `sent to ${sentCount} ${sentCount === 1 ? 'person' : 'people'}`}
+                      </>
+                    ) : null}
+                  </>
+                ) : null
+              const versionBlock = versionText ? (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>{versionText}</div>
+              ) : null
               return (
                 <li
                   key={row.id}
@@ -840,46 +874,17 @@ export function ContractBookModal({
                       {entryActions}
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                      <strong style={{ fontSize: '0.9375rem' }}>{row.document_name}</strong>
-                      {entryChips}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', columnGap: '1rem', rowGap: '0.3rem', alignItems: 'start', marginBottom: '0.35rem' }}>
+                      <strong style={{ fontSize: '0.9375rem', overflowWrap: 'anywhere', alignSelf: 'center' }}>{row.document_name}</strong>
                       {entryActions}
+                      <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
+                        {entryChips}
+                        {!isEditing && versionText ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.15rem' }}>· {versionText}</span> : null}
+                      </div>
                     </div>
                   )}
 
-                  {(() => {
-                    const versionLabel = effectiveBookVersionLabel(row)
-                    const sentCount = sentCountByDocName?.get(row.document_name)
-                    if (!versionLabel && sentCount == null) return null
-                    const custom = bookVersionDateIsCustom(row)
-                    return (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                        {versionLabel ? (
-                          <>
-                            Version date:{' '}
-                            <span
-                              style={
-                                custom
-                                  ? { textDecorationLine: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }
-                                  : undefined
-                              }
-                            >
-                              {versionLabel}
-                            </span>
-                            {custom ? ' — set manually' : ''}
-                          </>
-                        ) : null}
-                        {sentCount != null ? (
-                          <>
-                            {versionLabel ? ' · ' : ''}
-                            {sentCount === 0
-                              ? 'not sent to anyone yet'
-                              : `sent to ${sentCount} ${sentCount === 1 ? 'person' : 'people'}`}
-                          </>
-                        ) : null}
-                      </div>
-                    )
-                  })()}
+                  {narrowViewport || isEditing ? versionBlock : null}
 
                   {viewingId === row.id && !isEditing ? (
                     <div
