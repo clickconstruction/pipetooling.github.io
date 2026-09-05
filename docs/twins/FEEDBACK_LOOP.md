@@ -55,6 +55,12 @@ count. Each card:
    anchored and in plain trade words (PLACEMENT.md → "Ask like a junior
    estimator"). `ct_finish_takeoff` opens the audit row at STG-3 for you, so run
    STG-5 in the same session, before you heartbeat `done`.
+   **STG-5 is one call now (v2.2849)**: `paste_counts(bid, rows, expected_total)`
+   writes the rows and their 🤖 Robot Default assignments together and REFUSES
+   when the priced rows don't equal `expected_total` — always pass your lock
+   total so the invariant is checked by the server, not by you. And the gate is
+   structural in the other direction too: `score_backtest` refuses to unseal a
+   bid with zero count rows, so a $0 audit can no longer reach the queue.
 1. Mint a CT view link for its project: CT RPC
    `create_view_link(p_project_id, p_name, p_expires_at: null)` with the twin's CT JWT.
 2. Insert the `bid_audits` row (`status='pending'`, `ct_project_id`, `ct_view_url`) and
