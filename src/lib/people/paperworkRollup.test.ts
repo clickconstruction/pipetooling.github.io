@@ -28,4 +28,18 @@ describe('buildPaperworkLines', () => {
     expect(lines.find((l) => l.name === 'High-Trust')!.nag).toBe(true)
     expect(summarizePaperwork(lines)).toEqual({ unsent: 1, sent: 0, signed: 1, expiring: 1, expired: 1 })
   })
+
+  it('names the compliance type on filed COI / W-9 / license rows; agreements stay quiet (Add document, Tier-2 #33)', () => {
+    const lines = buildPaperworkLines(
+      [
+        doc({ id: 'c', document_name: 'COI (filed)', status: 'signed', signed_at: '2026-09-05T00:00:00Z', expires_at: '2027-03-01', doc_type: 'coi' }),
+        doc({ id: 'w', document_name: 'W-9 (filed)', status: 'signed', signed_at: '2026-09-05T00:00:00Z', doc_type: 'w9' }),
+        doc({ id: 'a', document_name: 'Master Subcontract', status: 'signed', signed_at: '2026-09-05T00:00:00Z', doc_type: 'agreement' }),
+      ],
+      '2026-09-05',
+    )
+    expect(lines.find((l) => l.id === 'c')!.detail).toBe('signed 2026-09-05 · COI')
+    expect(lines.find((l) => l.id === 'w')!.detail).toBe('signed 2026-09-05 · W-9')
+    expect(lines.find((l) => l.id === 'a')!.detail).toBe('signed 2026-09-05')
+  })
 })

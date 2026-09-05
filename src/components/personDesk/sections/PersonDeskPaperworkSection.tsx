@@ -9,6 +9,7 @@ import { buildPaperworkLines, summarizePaperwork, type PaperworkDocInput, type P
 import { materializePacketForPerson, type PacketPersonDoc, type PacketTemplateDoc } from '../../../lib/people/materializePacket'
 import { denverCalendarDayKey } from '../../../utils/dateUtils'
 import { BTN, BTN_BLUE, BTN_QUIET, Chip, DeskEmpty, DeskRow, DeskSection, LockTag, deskBtn } from '../personDeskShared'
+import { SubDocumentAddForm } from '../../people/SubDocumentAddForm'
 
 const TONE: Record<PaperworkState, 'red' | 'amber' | 'green' | 'blue' | 'gray'> = { unsent: 'red', sent: 'blue', signed: 'green', expiring: 'amber', expired: 'red' }
 
@@ -18,6 +19,9 @@ type DocRow = PaperworkDocInput & { person_name: string | null; person_id: strin
  * Paperwork (PR 3): every document lineage on file for the person, the packet
  * assignment, the clock-in nag, and the doors to Contracts for send / upload.
  * Name-keyed like the tab (docs also carry person_id since v2.2667).
+ * "Add document" (journey-map Tier-2 #33) files a COI / W-9 / license / paper-
+ * signed agreement right here, typed from birth — the same SubDocumentAddForm
+ * the Subs row expander mounts. Nothing is written until Save.
  */
 export function PersonDeskPaperworkSection({ payName, personId, viewer, changeKey, onChanged }: { payName: string | null; personId: string | null; viewer: PersonDeskViewer; changeKey: number; onChanged: () => void }) {
   const { showToast } = useToastContext()
@@ -28,6 +32,7 @@ export function PersonDeskPaperworkSection({ payName, personId, viewer, changeKe
   const [assigned, setAssigned] = useState<string[]>([])
   const [pick, setPick] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const [addingDoc, setAddingDoc] = useState(false)
   const todayYmd = denverCalendarDayKey(Date.now())
   const canEdit = viewer.canAccessContracts && !viewer.readOnly
 
@@ -112,6 +117,11 @@ export function PersonDeskPaperworkSection({ payName, personId, viewer, changeKe
             label="On file"
             actions={
               <>
+                {canEdit && payName && !addingDoc ? (
+                  <button type="button" style={deskBtn(BTN)} onClick={() => setAddingDoc(true)} title="File a COI, W-9, license, or a paper-signed agreement — typed from the start">
+                    Add document
+                  </button>
+                ) : null}
                 {summary.unsent > 0 || summary.sent > 0 ? (
                   <a href={contractsHref} style={{ ...BTN_BLUE, textDecoration: 'none' }}>
                     Send on Contracts
@@ -136,6 +146,22 @@ export function PersonDeskPaperworkSection({ payName, personId, viewer, changeKe
               ))
             )}
           </DeskRow>
+          {canEdit && payName && addingDoc ? (
+            <DeskRow label="Add document">
+              <div style={{ flexBasis: '100%' }}>
+                <SubDocumentAddForm
+                  personId={personId}
+                  personName={payName}
+                  onCancel={() => setAddingDoc(false)}
+                  onSaved={() => {
+                    setAddingDoc(false)
+                    showToast('Filed — the compliance badge updates now', 'success')
+                    onChanged()
+                  }}
+                />
+              </div>
+            </DeskRow>
+          ) : null}
           <DeskRow label="Clock-in nag" actions={canEdit ? null : <LockTag label="contracts roles" />}>
             {lines.filter((l) => l.state !== 'signed').length === 0 ? (
               <span style={{ color: 'var(--text-muted)' }}>Nothing unsigned to nag about</span>

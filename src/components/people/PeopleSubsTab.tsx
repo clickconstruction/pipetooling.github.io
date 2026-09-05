@@ -9,6 +9,9 @@ import { parseSubWorkOrderSnapshot } from '../../lib/subWorkOrders/subWorkOrder'
 import SubPortalGlobeButton from './SubPortalGlobeButton'
 import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 import { appendNoteLine, backNoteLine, benchNoteLine, compareSubsForBench, subBenchStatus, type SubBenchStatus } from '../../lib/people/subBench'
+import { useAuth } from '../../hooks/useAuth'
+import { SubDocumentAddForm } from './SubDocumentAddForm'
+import { SUB_DOCUMENT_TYPE_LABEL, suggestedRetype } from '../../lib/people/subDocumentDraft'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -19,7 +22,12 @@ import { appendNoteLine, backNoteLine, benchNoteLine, compareSubsForBench, subBe
  *
  * The per-sub Documents expander is the compliance micro-editor: set a
  * document's type and expiry here (writes person_contract_documents
- * directly); sending/signing stays on the Contracts tab.
+ * directly), or file a new COI / W-9 / license with "+ Add document"
+ * (SubDocumentAddForm — the same door Person Desk → Paperwork mounts;
+ * journey-map Tier-2 #33). Sending/signing stays on the Contracts tab.
+ * doc_type is NOT NULL DEFAULT 'agreement' in the DB, so rows the Contracts
+ * tab mints arrive typed as the Agreement; a row whose name says COI/W-9/
+ * license but whose type is still that default gets a one-tap retype hint.
  *
  * The "Unattributed sheets" panel at the top surfaces sheets the junction
  * resolves to no one or to several people, grouped per (job, raw name), with
@@ -56,13 +64,18 @@ type BenchMeta = { startDate: string | null; endDate: string | null; notes: stri
 type BenchFilter = 'active' | 'bench' | 'all'
 
 const DOT: Record<SubBenchStatus['tone'], string> = { green: '#22c55e', amber: '#f59e0b', gray: '#94a3b8' }
+/** Mirrors the `person_contract_documents` INSERT policy: is_dev / is_master_or_dev / is_assistant (assistant or controller since v2.714). */
+const CAN_ADD_DOCUMENT_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 
 export default function PeopleSubsTab() {
   const navigate = useNavigate()
   const personDesk = useOptionalPersonDesk()
+  const { role, readOnly } = useAuth()
+  const canAddDocument = !readOnly && role != null && CAN_ADD_DOCUMENT_ROLES.has(role)
   const [result, setResult] = useState<SubsHqResult | null>(null)
   const [docsByPerson, setDocsByPerson] = useState<Record<string, DocRow[]>>({})
   const [expandedPersonId, setExpandedPersonId] = useState<string | null>(null)
+  const [addingDocForPersonId, setAddingDocForPersonId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [savingDocId, setSavingDocId] = useState<string | null>(null)
   /** Active sub roster — exactly the population buildSubsHqRows attributes against. */
@@ -197,7 +210,7 @@ export default function PeopleSubsTab() {
         docs: docRows.map((d) => ({
           person_id: d.person_id,
           person_name: d.person_name,
-          doc_type: d.doc_type ?? 'agreement',
+          doc_type: d.doc_type,
           status: d.status,
           expires_at: d.expires_at ?? null,
           applied_contract_template_document_id: d.applied_contract_template_document_id ?? null,
@@ -765,20 +778,61 @@ export default function PeopleSubsTab() {
 
       {expandedPersonId && (
         <div style={{ margin: '0.75rem 0', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem' }}>
-          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem' }}>
-            Documents — {result.rows.find((r) => r.personId === expandedPersonId)?.name}
-          </h4>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.5rem' }}>
+            <h4 style={{ margin: 0, fontSize: '0.8125rem' }}>
+              Documents — {result.rows.find((r) => r.personId === expandedPersonId)?.name}
+            </h4>
+            {canAddDocument && addingDocForPersonId !== expandedPersonId ? (
+              <button
+                type="button"
+                onClick={() => setAddingDocForPersonId(expandedPersonId)}
+                title="File a COI, W-9, license, or a paper-signed agreement — typed from the start so the badge flips"
+                style={{ padding: '0.15rem 0.55rem', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', fontFamily: 'inherit' }}
+              >
+                + Add document
+              </button>
+            ) : null}
+          </div>
+          {canAddDocument && addingDocForPersonId === expandedPersonId ? (
+            <div style={{ marginBottom: '0.5rem' }}>
+              <SubDocumentAddForm
+                personId={expandedPersonId}
+                personName={result.rows.find((r) => r.personId === expandedPersonId)?.name ?? ''}
+                onCancel={() => setAddingDocForPersonId(null)}
+                onSaved={async () => {
+                  setAddingDocForPersonId(null)
+                  await load()
+                }}
+              />
+            </div>
+          ) : null}
           {(docsByPerson[expandedPersonId] ?? []).length === 0 ? (
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              No documents yet — send one from the Contracts tab, then classify it here.
+              {canAddDocument
+                ? 'No documents yet — file a COI or W-9 with + Add document, or send a contract from the Contracts tab.'
+                : 'No documents yet — a contracts role can file a COI or W-9 here, or send a contract from the Contracts tab.'}
             </p>
           ) : (
             (docsByPerson[expandedPersonId] ?? []).map((d) => (
               <div key={d.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.3rem 0', borderBottom: '1px dashed var(--border)', fontSize: '0.8125rem' }}>
                 <span style={{ minWidth: '10rem' }}>{d.document_name}</span>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({d.status})</span>
+                {(() => {
+                  const hint = suggestedRetype(d)
+                  return hint ? (
+                    <button
+                      type="button"
+                      disabled={savingDocId === d.id}
+                      onClick={() => void updateDoc(d.id, { doc_type: hint })}
+                      title={`Typed as the Agreement (the default for anything minted on Contracts), but the name reads like a ${SUB_DOCUMENT_TYPE_LABEL[hint]}. Click to retype it.`}
+                      style={{ ...BADGE_STYLE.expiring, border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', fontFamily: 'inherit' }}
+                    >
+                      Looks like a {SUB_DOCUMENT_TYPE_LABEL[hint]} — set type
+                    </button>
+                  ) : null
+                })()}
                 <select
-                  value={d.doc_type ?? 'agreement'}
+                  value={d.doc_type}
                   disabled={savingDocId === d.id}
                   onChange={(e) => void updateDoc(d.id, { doc_type: e.target.value })}
                   style={{ padding: '0.15rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.78rem' }}
