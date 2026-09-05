@@ -2,7 +2,7 @@
 title: manage subs end to end
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: subcontractor, subs, sub labor, work order, offer, sign to accept, compliance, W-9, COI, insurance, backcharge, sub portal, roster, onboarding, payments, settle
+keywords: subcontractor, subs, sub labor, work order, offer, sign to accept, compliance, W-9, COI, insurance, backcharge, sub portal, roster, onboarding, payments, settle, bench, inactive sub, active sub, reactivate, last worked
 ---
 Subs run through six surfaces, each with one job. This guide walks the whole lifecycle — onboarding paperwork, the roster, offering work, tracking money, and their portal — in the order you'll actually use it.
 
@@ -25,6 +25,18 @@ The Subs tab is HQ: one row per sub with **compliance pills** (agreement / W-9 /
 - The **globe** 🌐 manages their private portal — see the *share a sub their portal* guide.
 - The **unlinked-sheets warning** at the top means money isn't attributed to anyone on the roster — link those sheets so every balance lands on a sub's row.
 - The **Gen. Cond.** pill tracks whether they've signed the current General Conditions from the Contract library — see *review your subs in one place*.
+
+### Active or on the bench
+
+Every row has a **Status**: {{chip:green|Active}} with *last worked &lt;date&gt;* beneath it, or {{chip:gray|Bench since &lt;date&gt;}}. The pills at the top switch between **Active**, **On the bench**, and **All**.
+
+- {{button:outline|Bench…}} sets a sub aside without archiving them — pick the date and type a one-line reason. Their portal link, sheets, balances, and documents stay exactly where they are; the row just moves to the bench.
+- {{button:blue|Reactivate}} brings them back with one click.
+- The app never moves anyone on its own. It only nudges: an active sub with no work for **90 days** (or never, 60 days after being added) shows *Quiet for N months · Bench…*; a benched sub who turns up on a new sheet or accepts a work order shows *New work · Reactivate?*.
+
+:::example When to bench, when to archive
+Bench a sub who moved, went quiet, or you've paused for now — anyone who might come back. Archive a sub who is gone for good; archived sheets fold into a quiet summary line instead of a row.
+:::
 
 (People → Users is only for login accounts. A roster-only sub with no login is fine — their portal link works without one.)
 

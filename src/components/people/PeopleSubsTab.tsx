@@ -8,6 +8,7 @@ import type { ComplianceBadge } from '../../lib/people/subCompliance'
 import { parseSubWorkOrderSnapshot } from '../../lib/subWorkOrders/subWorkOrder'
 import SubPortalGlobeButton from './SubPortalGlobeButton'
 import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
+import { appendNoteLine, backNoteLine, benchNoteLine, compareSubsForBench, subBenchStatus, type SubBenchStatus } from '../../lib/people/subBench'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -49,6 +50,13 @@ const BADGE_STYLE: Record<ComplianceBadge['state'], { background: string; color:
 
 const DOC_TYPES = ['agreement', 'coi', 'w9', 'license', 'other'] as const
 
+/** Roster fields the bench reads (v2.2836): dates, notes, and when the row was added. */
+type BenchMeta = { startDate: string | null; endDate: string | null; notes: string | null; createdYmd: string | null }
+
+type BenchFilter = 'active' | 'bench' | 'all'
+
+const DOT: Record<SubBenchStatus['tone'], string> = { green: '#22c55e', amber: '#f59e0b', gray: '#94a3b8' }
+
 export default function PeopleSubsTab() {
   const navigate = useNavigate()
   const personDesk = useOptionalPersonDesk()
@@ -62,15 +70,21 @@ export default function PeopleSubsTab() {
   const [assignPickerKey, setAssignPickerKey] = useState<string | null>(null)
   const [assignSavingKey, setAssignSavingKey] = useState<string | null>(null)
   const [showAllUnattributed, setShowAllUnattributed] = useState(false)
+  const [benchMeta, setBenchMeta] = useState<Record<string, BenchMeta>>({})
+  const [benchFilter, setBenchFilter] = useState<BenchFilter>('active')
+  /** The row whose inline Bench… form is open, with its draft. */
+  const [benchForm, setBenchForm] = useState<{ personId: string; date: string; reason: string } | null>(null)
+  const [benchSavingId, setBenchSavingId] = useState<string | null>(null)
+  const [todayYmd, setTodayYmd] = useState(() => calendarYmdInAppTzFromIso(new Date().toISOString()))
 
   const load = useCallback(async () => {
     setError(null)
     const [peopleRes, usersRes, sheetsRes, assigneesRes, commitmentsRes, docsRes] = await Promise.all([
-      supabase.from('people').select('id, name, archived_at, account_user_id').eq('kind', 'sub'),
+      supabase.from('people').select('id, name, archived_at, account_user_id, start_date, end_date, notes, created_at').eq('kind', 'sub'),
       supabase.from('users').select('id, name, email').eq('role', 'subcontractor'),
-      supabase.from('people_labor_jobs').select('id, assigned_to_name, address, job_number, labor_rate'),
+      supabase.from('people_labor_jobs').select('id, assigned_to_name, address, job_number, labor_rate, job_date, paid_at'),
       supabase.from('people_labor_job_assignees').select('labor_job_id, person_id'),
-      supabase.from('step_commitments').select('person_id, amount, status, step_id, labor_job_id, offer_scope_snapshot'),
+      supabase.from('step_commitments').select('person_id, amount, status, step_id, labor_job_id, offer_scope_snapshot, accepted_at'),
       supabase
         .from('person_contract_documents')
         .select('id, document_name, doc_type, status, expires_at, person_id, person_name, applied_contract_template_document_id, applied_version_date'),
@@ -91,7 +105,7 @@ export default function PeopleSubsTab() {
       return
     }
 
-    const sheetRows = (sheetsRes.data ?? []) as Array<{ id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null }>
+    const sheetRows = (sheetsRes.data ?? []) as Array<{ id: string; assigned_to_name: string; address: string; job_number: string | null; labor_rate: number | null; job_date?: string | null; paid_at?: string | null }>
     const sheetIds = sheetRows.map((s) => s.id)
     let itemsByJob = new Map<string, Array<{ fixture: string; count: number; hrs_per_unit: number; is_fixed?: boolean; labor_rate?: number | null; direct_labor_amount?: number | null }>>()
     let paymentsByJob = new Map<string, Array<{ id: string; amount: number; memo: string | null; created_at: string }>>()
@@ -113,7 +127,7 @@ export default function PeopleSubsTab() {
     // Commitments enriched with step/project names (fail-soft pre-migration).
     const commitmentRows = commitmentsRes.error
       ? []
-      : ((commitmentsRes.data ?? []) as Array<{ person_id: string; amount: number; status: string; step_id: string | null; labor_job_id: string | null; offer_scope_snapshot: unknown }>)
+      : ((commitmentsRes.data ?? []) as Array<{ person_id: string; amount: number; status: string; step_id: string | null; labor_job_id: string | null; offer_scope_snapshot: unknown; accepted_at?: string | null }>)
     const stepInfo = new Map<string, { stepName: string; projectName: string | null }>()
     const sheetLabelById = new Map(sheetRows.map((sh) => [sh.id, [sh.job_number, sh.address].filter(Boolean).join(' · ') || sh.assigned_to_name]))
     if (commitmentRows.some((c) => c.step_id)) {
@@ -131,6 +145,18 @@ export default function PeopleSubsTab() {
 
     const docRows = docsRes.error ? [] : ((docsRes.data ?? []) as DocRow[])
     const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+    setTodayYmd(todayYmd)
+
+    const meta: Record<string, BenchMeta> = {}
+    for (const p of (peopleRes.data ?? []) as Array<{ id: string; start_date?: string | null; end_date?: string | null; notes?: string | null; created_at?: string | null }>) {
+      meta[p.id] = {
+        startDate: p.start_date ?? null,
+        endDate: p.end_date ?? null,
+        notes: p.notes ?? null,
+        createdYmd: p.created_at ? calendarYmdInAppTzFromIso(p.created_at) : null,
+      }
+    }
+    setBenchMeta(meta)
 
     const activeRoster = ((peopleRes.data ?? []) as Array<{ id: string; name: string; archived_at: string | null }>)
       .filter((p) => !p.archived_at)
@@ -155,6 +181,8 @@ export default function PeopleSubsTab() {
           labor_rate: s.labor_rate,
           items: itemsByJob.get(s.id) ?? [],
           payments: paymentsByJob.get(s.id) ?? [],
+          jobDateYmd: s.job_date ?? null,
+          paidAtYmd: s.paid_at ? calendarYmdInAppTzFromIso(s.paid_at) : null,
         })),
         assignees: (assigneesRes.data ?? []) as Array<{ labor_job_id: string; person_id: string }>,
         commitments: commitmentRows.map((c) => ({
@@ -164,6 +192,7 @@ export default function PeopleSubsTab() {
           stepName: c.step_id ? stepInfo.get(c.step_id)?.stepName ?? null : null,
           projectName: c.step_id ? stepInfo.get(c.step_id)?.projectName ?? null : null,
           sheetLabel: !c.step_id && c.labor_job_id ? parseSubWorkOrderSnapshot(c.offer_scope_snapshot).sheetLabel ?? sheetLabelById.get(c.labor_job_id) ?? 'Sub sheet' : null,
+          acceptedAtYmd: c.accepted_at ? calendarYmdInAppTzFromIso(c.accepted_at) : null,
         })),
         docs: docRows.map((d) => ({
           person_id: d.person_id,
@@ -195,6 +224,50 @@ export default function PeopleSubsTab() {
   useEffect(() => {
     void load()
   }, [load])
+
+  // The bench (v2.2836): status per row from the roster dates + last worked; Active first.
+  const benchRows = useMemo(() => {
+    if (!result) return { active: [] as Array<{ row: SubsHqResult['rows'][number]; status: SubBenchStatus }>, bench: [] as Array<{ row: SubsHqResult['rows'][number]; status: SubBenchStatus }> }
+    const withStatus = result.rows.map((row) => {
+      const m = benchMeta[row.personId] ?? { startDate: null, endDate: null, notes: null, createdYmd: null }
+      return { row, status: subBenchStatus({ ...m, lastWorkedYmd: row.lastWorkedYmd }, todayYmd) }
+    })
+    withStatus.sort((a, b) => compareSubsForBench(a.row, b.row, a.status, b.status))
+    return { active: withStatus.filter((x) => x.status.kind === 'active'), bench: withStatus.filter((x) => x.status.kind === 'bench') }
+  }, [result, benchMeta, todayYmd])
+
+  async function benchSub(personId: string, date: string, reason: string) {
+    const m = benchMeta[personId]
+    setBenchSavingId(personId)
+    setError(null)
+    const { error: err } = await supabase
+      .from('people')
+      .update({ end_date: date, notes: appendNoteLine(m?.notes, benchNoteLine(date, reason)) })
+      .eq('id', personId)
+    setBenchSavingId(null)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    setBenchForm(null)
+    await load()
+  }
+
+  async function reactivateSub(personId: string) {
+    const m = benchMeta[personId]
+    setBenchSavingId(personId)
+    setError(null)
+    const { error: err } = await supabase
+      .from('people')
+      .update({ end_date: null, start_date: todayYmd, notes: appendNoteLine(m?.notes, backNoteLine(todayYmd)) })
+      .eq('id', personId)
+    setBenchSavingId(null)
+    if (err) {
+      setError(err.message)
+      return
+    }
+    await load()
+  }
 
   const unattributedGroups = useMemo(
     () => (result ? groupUnattributedSheets(result.unattributed) : []),
@@ -440,15 +513,47 @@ export default function PeopleSubsTab() {
         </div>
       )}
       {archivedSummaryLine}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', margin: '0.5rem 0 0.35rem' }} role="group" aria-label="Show subs">
+        {(
+          [
+            ['active', `Active · ${benchRows.active.length}`],
+            ['bench', `On the bench · ${benchRows.bench.length}`],
+            ['all', `All · ${benchRows.active.length + benchRows.bench.length}`],
+          ] as Array<[BenchFilter, string]>
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={benchFilter === key}
+            onClick={() => setBenchFilter(key)}
+            style={{
+              font: 'inherit',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              padding: '0.2rem 0.7rem',
+              borderRadius: 999,
+              border: `1px solid ${benchFilter === key ? 'var(--border-blue)' : 'var(--border)'}`,
+              background: benchFilter === key ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: benchFilter === key ? 'var(--text-blue-700)' : 'var(--text-700)',
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+          Benched subs can come back any time — their portal, sheets, and balances stay put.
+        </span>
+      </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
             <tr>
-              {['Sub', 'Open work orders', 'Balance due', 'Compliance', 'Track record'].map((h, i) => (
+              {['Sub', 'Status', 'Open work orders', 'Balance due', 'Compliance', 'Track record'].map((h, i) => (
                 <th
                   key={h}
                   style={{
-                    textAlign: i === 2 ? 'right' : 'left',
+                    textAlign: i === 3 ? 'right' : 'left',
                     fontSize: '0.68rem',
                     textTransform: 'uppercase',
                     letterSpacing: '0.08em',
@@ -464,8 +569,99 @@ export default function PeopleSubsTab() {
             </tr>
           </thead>
           <tbody>
-            {result.rows.map((row) => (
-              <tr key={row.personId} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
+            {(benchFilter === 'active' ? benchRows.active : benchFilter === 'bench' ? benchRows.bench : [...benchRows.active, ...benchRows.bench]).flatMap(({ row, status }, idx) => {
+              const quiet = status.kind === 'bench'
+              const saving = benchSavingId === row.personId
+              const formOpen = benchForm?.personId === row.personId
+              const sectionRow =
+                benchFilter === 'all' && quiet && idx === benchRows.active.length ? (
+                  <tr key="bench-section">
+                    <td colSpan={6} style={{ padding: '0.35rem 0.6rem', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-faint)', background: 'var(--bg-page)', borderBottom: '1px solid var(--border)' }}>
+                      On the bench · {benchRows.bench.length}
+                    </td>
+                  </tr>
+                ) : null
+              const statusCell = (
+                <td style={{ padding: '0.6rem', fontSize: '0.8125rem', minWidth: 170 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: DOT[status.tone], flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600, color: quiet ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                      {status.kind === 'active' ? 'Active' : `Bench since ${status.since}`}
+                    </span>
+                    {status.kind === 'active' ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => setBenchForm(formOpen ? null : { personId: row.personId, date: todayYmd, reason: '' })}
+                        title={`Put ${row.name} on the bench — they can come back any time`}
+                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.5rem', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+                      >
+                        Bench…
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void reactivateSub(row.personId)}
+                        title={`Make ${row.name} active again`}
+                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.5rem', borderRadius: 5, border: 'none', background: '#0ea5e9', color: '#fff', cursor: saving ? 'wait' : 'pointer' }}
+                      >
+                        {saving ? 'Saving…' : 'Reactivate'}
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', paddingLeft: 16 }}>
+                    {status.reason ? <div>&ldquo;{status.reason}&rdquo;</div> : null}
+                    <div>{status.lastWorkedLine}</div>
+                  </div>
+                  {status.nudge ? (
+                    <div style={{ marginTop: 3, marginLeft: 16, display: 'inline-block', fontSize: '0.72rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 5, padding: '0.08rem 0.5rem' }}>
+                      {status.nudge.text} ·{' '}
+                      {status.nudge.kind === 'bench' ? (
+                        <button type="button" onClick={() => setBenchForm({ personId: row.personId, date: todayYmd, reason: '' })} style={{ font: 'inherit', fontWeight: 700, border: 'none', background: 'none', padding: 0, color: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
+                          Bench…
+                        </button>
+                      ) : (
+                        <button type="button" disabled={saving} onClick={() => void reactivateSub(row.personId)} style={{ font: 'inherit', fontWeight: 700, border: 'none', background: 'none', padding: 0, color: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
+                          Reactivate?
+                        </button>
+                      )}
+                    </div>
+                  ) : null}
+                  {formOpen && benchForm ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        void benchSub(row.personId, benchForm.date, benchForm.reason)
+                      }}
+                      style={{ marginTop: 6, display: 'grid', gap: 4, padding: '0.45rem 0.55rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-page)', maxWidth: 260 }}
+                    >
+                      <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        Bench from
+                        <input type="date" required value={benchForm.date} max={todayYmd} onChange={(e) => setBenchForm({ ...benchForm, date: e.target.value })} style={{ padding: '0.12rem 0.3rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.75rem', fontFamily: 'inherit' }} />
+                      </label>
+                      <input
+                        type="text"
+                        value={benchForm.reason}
+                        maxLength={140}
+                        placeholder="Why (one line, optional)"
+                        onChange={(e) => setBenchForm({ ...benchForm, reason: e.target.value })}
+                        style={{ padding: '0.2rem 0.4rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.75rem', fontFamily: 'inherit' }}
+                      />
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button type="submit" disabled={saving} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 5, border: 'none', background: '#0ea5e9', color: '#fff', cursor: saving ? 'wait' : 'pointer' }}>
+                          {saving ? 'Saving…' : 'Put on the bench'}
+                        </button>
+                        <button type="button" disabled={saving} onClick={() => setBenchForm(null)} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.5rem', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : null}
+                </td>
+              )
+              const tr = (
+              <tr key={row.personId} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top', opacity: quiet ? 0.72 : 1 }}>
                 <td style={{ padding: '0.6rem' }}>
                   <div style={{ fontWeight: 650, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     {personDesk ? (
@@ -493,6 +689,7 @@ export default function PeopleSubsTab() {
                     {expandedPersonId === row.personId ? '▼' : '▶'} Documents ({(docsByPerson[row.personId] ?? []).length})
                   </button>
                 </td>
+                {statusCell}
                 <td style={{ padding: '0.6rem' }}>
                   {row.openCommitments.length === 0 ? (
                     <span style={{ color: 'var(--text-faint)' }}>—</span>
@@ -552,7 +749,16 @@ export default function PeopleSubsTab() {
                   {row.backchargeTotal > 0 ? <> · {money(row.backchargeTotal)} backcharged</> : null}
                 </td>
               </tr>
-            ))}
+              )
+              return sectionRow ? [sectionRow, tr] : [tr]
+            })}
+            {benchFilter === 'bench' && benchRows.bench.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ padding: '0.8rem 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Nobody is on the bench. Bench… on an active row sets a sub aside without archiving them.
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

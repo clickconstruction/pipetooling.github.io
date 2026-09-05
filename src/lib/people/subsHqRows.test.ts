@@ -40,6 +40,27 @@ describe('buildSubsHqRows', () => {
     expect(result.unattributed).toEqual([])
   })
 
+  it('keeps the newest attributed sheet job date, paid date, or accepted offer as lastWorkedYmd (v2.2836)', () => {
+    const result = buildSubsHqRows({
+      people: [BEHAR, KYLE],
+      users: [],
+      sheets: [
+        sheet({ id: 's1', jobDateYmd: '2026-06-10', paidAtYmd: '2026-07-02T15:00:00Z' }),
+        sheet({ id: 's2', jobDateYmd: '2026-05-01' }),
+        sheet({ id: 'ghost', label: 'nobody', assignedToName: 'Nobody', jobDateYmd: '2026-07-30' }),
+      ],
+      assignees: [
+        { labor_job_id: 's1', person_id: 'p-behar' },
+        { labor_job_id: 's2', person_id: 'p-behar' },
+      ],
+      commitments: [{ person_id: 'p-kyle', amount: 500, status: 'accepted', stepName: 'Top-out', projectName: null, acceptedAtYmd: '2026-07-20' }],
+      docs: [],
+      todayYmd: TODAY,
+    })
+    expect(result.rows.find((r) => r.personId === 'p-behar')?.lastWorkedYmd).toBe('2026-07-02')
+    expect(result.rows.find((r) => r.personId === 'p-kyle')?.lastWorkedYmd).toBe('2026-07-20')
+  })
+
   it('routes unmatched and shared sheets to the unattributed bucket, never a row', () => {
     const result = buildSubsHqRows({
       people: [BEHAR, KYLE],
