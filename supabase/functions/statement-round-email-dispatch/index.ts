@@ -4,6 +4,8 @@
  * crew-day-email-dispatch: the payload is PER-RECIPIENT
  * (get_statement_round_for_user computes that sender's round — certified GCs
  * assigned to them, not yet marked sent) and is rebuilt fresh at send time.
+ * v2.2812: the email reads as the account man's own account — standard,
+ * aging, AP contact, last word / temperature, deadline, held GCs, scoreboard.
  * Office roles only on both sides. An empty round still sends a one-liner
  * (a silent skip reads as a broken subscription).
  *
@@ -21,7 +23,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
-import { renderStatementRoundHtml, statementRoundSubject, statementRoundText, type StatementRoundPayload } from './render.ts'
+import { renderStatementRoundHtml, roundTotal, statementRoundSubject, statementRoundText, type StatementRoundPayload } from './render.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -50,7 +52,13 @@ async function fetchRoundForUser(admin: Admin, userId: string): Promise<Statemen
   const { data, error } = await admin.rpc('get_statement_round_for_user', { p_user_id: userId })
   if (error) throw new Error(`get_statement_round_for_user: ${error.message}`)
   if (!data || typeof data !== 'object' || !Array.isArray((data as StatementRoundPayload).ready)) throw new Error('Empty payload')
-  return data as StatementRoundPayload
+  const body = data as StatementRoundPayload
+  // Pre-v2.2812 payload shape (RPC not yet pushed): fill the new fields so the renderer never throws.
+  if (!body.held || !Array.isArray(body.held.items)) body.held = { count: body.held?.count ?? 0, total: body.held?.total ?? 0, items: [] }
+  if (typeof body.book_total !== 'number') body.book_total = roundTotal(body)
+  if (typeof body.contacted_by_me !== 'number') body.contacted_by_me = 0
+  if (typeof body.deadline !== 'string') body.deadline = ''
+  return body
 }
 
 type UserRow = { id: string; email: string | null; name: string | null; role: string | null; archived_at: string | null }
@@ -82,7 +90,7 @@ async function buildEmail(admin: Admin, recipient: UserRow): Promise<{ subject: 
   const payload = await fetchRoundForUser(admin, recipient.id)
   const label = dateLabel()
   // Dev-saved wording (Settings → Email templates): subject template + optional intro paragraph.
-  const wording = await resolveServerEmailWording('statement_round', { date: label }, statementRoundSubject(payload, label))
+  const wording = await resolveServerEmailWording('statement_round', { date: label }, statementRoundSubject(payload, recipient.name))
   const name = recipient.name?.trim() || null
   return {
     subject: wording.subject,

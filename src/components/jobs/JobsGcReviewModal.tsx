@@ -251,6 +251,8 @@ type JobsGcReviewModalProps = {
   onOpenJobDetail?: (jobId: string) => void
   /** Open with the personal statement round overlay already up (the Stages "Start round" card, v2.2072). */
   startInRound?: boolean
+  /** With startInRound: walk the overlay starting ON this GC (the round email's per-GC button, v2.2812). */
+  startInRoundGcId?: string | null
 }
 
 /**
@@ -278,6 +280,7 @@ export function JobsGcReviewModal({
   canCertify,
   onOpenJobDetail,
   startInRound,
+  startInRoundGcId,
 }: JobsGcReviewModalProps) {
   /** Collections jobs ride along by default (v2.2764, owner call); untick to see active billing only. */
   const [includeCollections, setIncludeCollections] = useState(true)
@@ -505,9 +508,14 @@ export function JobsGcReviewModal({
     [roundRollup, certRows, roundMarks, roundSenders, accountMen],
   )
   const roundSummary = useMemo(() => summarizeStatementRound(roundItems, authUser?.id ?? null), [roundItems, authUser?.id])
+  /** The GC the overlay should open on (v2.2812); cleared once the user moves on by marking it. */
+  const [roundFocusGcId, setRoundFocusGcId] = useState<string | null>(null)
   useEffect(() => {
-    if (open && startInRound) setRoundOpen(true)
-  }, [open, startInRound])
+    if (open && startInRound) {
+      setRoundFocusGcId(startInRoundGcId ?? null)
+      setRoundOpen(true)
+    }
+  }, [open, startInRound, startInRoundGcId])
   useEffect(() => {
     // Send from the app (v2.2771): the Draft Message dialog stacks under the round overlay,
     // so the overlay steps aside while it is open and comes back when it closes.
@@ -1755,7 +1763,8 @@ export function JobsGcReviewModal({
       ) : null}
       {roundOpen
         ? (() => {
-            const current = roundSummary.readyForUser[0] ?? null
+            const focused = roundFocusGcId ? roundSummary.readyForUser.find((it) => it.gcId === roundFocusGcId) ?? null : null
+            const current = focused ?? roundSummary.readyForUser[0] ?? null
             const remaining = roundSummary.readyForUser.length
             const cert = current?.gcId ? latestCertByGc(certRows).get(current.gcId) : undefined
             const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

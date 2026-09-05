@@ -93,6 +93,10 @@ export type StatementRoundPayload = {
   held: { count: number; total: number }
   assigned_to_me: number
   sent_by_me: number
+  /** v2.2812+ (optional — older payloads lack them): the week's Friday, the sender's book, contacted marks. */
+  deadline?: string
+  book_total?: number
+  contacted_by_me?: number
 }
 
 export function parseStatementRoundPayload(v: unknown): StatementRoundPayload | null {
@@ -113,6 +117,9 @@ export function parseStatementRoundPayload(v: unknown): StatementRoundPayload | 
     held: { count: Number(p.held?.count ?? 0), total: Number(p.held?.total ?? 0) },
     assigned_to_me: Number(p.assigned_to_me ?? 0),
     sent_by_me: Number(p.sent_by_me ?? 0),
+    ...(typeof p.deadline === 'string' ? { deadline: p.deadline } : {}),
+    ...(typeof p.book_total === 'number' ? { book_total: p.book_total } : {}),
+    ...(typeof p.contacted_by_me === 'number' ? { contacted_by_me: p.contacted_by_me } : {}),
   }
 }
 

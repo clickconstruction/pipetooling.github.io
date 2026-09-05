@@ -3362,6 +3362,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          doc_type: string
           id: string
           name: string
           page_count: number
@@ -3377,6 +3378,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          doc_type?: string
           id?: string
           name: string
           page_count?: number
@@ -3392,6 +3394,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          doc_type?: string
           id?: string
           name?: string
           page_count?: number
@@ -5882,9 +5885,11 @@ export type Database = {
           acted_by_name: string
           action: string
           channel: string | null
+          expected_pay_by: string | null
           gc_customer_id: string
           id: string
           note: string | null
+          temperature: string | null
           week_start: string
         }
         Insert: {
@@ -5893,9 +5898,11 @@ export type Database = {
           acted_by_name?: string
           action: string
           channel?: string | null
+          expected_pay_by?: string | null
           gc_customer_id: string
           id?: string
           note?: string | null
+          temperature?: string | null
           week_start: string
         }
         Update: {
@@ -5904,9 +5911,11 @@ export type Database = {
           acted_by_name?: string
           action?: string
           channel?: string | null
+          expected_pay_by?: string | null
           gc_customer_id?: string
           id?: string
           note?: string | null
+          temperature?: string | null
           week_start?: string
         }
         Relationships: [
@@ -11278,13 +11287,20 @@ export type Database = {
           document_name: string
           expires_at: string | null
           form_hints: Json | null
+          form_keyed_by_user_id: string | null
           form_pdf_storage_path: string | null
+          form_scan_storage_path: string | null
           form_source: string | null
           form_template_id: string | null
           form_values: Json | null
           id: string
           lineage_version: number
           note: string | null
+          office_attested_at: string | null
+          office_completed_at: string | null
+          office_completed_by_user_id: string | null
+          office_signer_printed_name: string | null
+          office_values: Json | null
           partnership_id: string | null
           person_id: string | null
           person_name: string
@@ -11317,13 +11333,20 @@ export type Database = {
           document_name: string
           expires_at?: string | null
           form_hints?: Json | null
+          form_keyed_by_user_id?: string | null
           form_pdf_storage_path?: string | null
+          form_scan_storage_path?: string | null
           form_source?: string | null
           form_template_id?: string | null
           form_values?: Json | null
           id?: string
           lineage_version?: number
           note?: string | null
+          office_attested_at?: string | null
+          office_completed_at?: string | null
+          office_completed_by_user_id?: string | null
+          office_signer_printed_name?: string | null
+          office_values?: Json | null
           partnership_id?: string | null
           person_id?: string | null
           person_name: string
@@ -11356,13 +11379,20 @@ export type Database = {
           document_name?: string
           expires_at?: string | null
           form_hints?: Json | null
+          form_keyed_by_user_id?: string | null
           form_pdf_storage_path?: string | null
+          form_scan_storage_path?: string | null
           form_source?: string | null
           form_template_id?: string | null
           form_values?: Json | null
           id?: string
           lineage_version?: number
           note?: string | null
+          office_attested_at?: string | null
+          office_completed_at?: string | null
+          office_completed_by_user_id?: string | null
+          office_signer_printed_name?: string | null
+          office_values?: Json | null
           partnership_id?: string | null
           person_id?: string | null
           person_name?: string
@@ -11393,10 +11423,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "person_contract_documents_form_keyed_by_user_id_fkey"
+            columns: ["form_keyed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "person_contract_documents_form_template_id_fkey"
             columns: ["form_template_id"]
             isOneToOne: false
             referencedRelation: "contract_form_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_contract_documents_office_completed_by_user_id_fkey"
+            columns: ["office_completed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
