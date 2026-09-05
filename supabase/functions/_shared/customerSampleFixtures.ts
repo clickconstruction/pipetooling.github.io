@@ -196,7 +196,7 @@ export function sampleSubPortalResponse(company: SamplePortalCompany, todayYmd: 
         backcharges: 0,
         open: 900,
         payableAfter: ymdPlusDays(todayYmd, 5),
-        payHoldReason: 'Final walk-through scheduled — we pay you as soon as the work is accepted.',
+        payHoldReason: 'Customer paid — this goes out on the next pay run.',
       },
     ],
     payments: [

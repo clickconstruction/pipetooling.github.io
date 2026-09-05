@@ -9,6 +9,8 @@ import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/
 import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { clampCompletenessPct } from '../../lib/jobs/jobCompleteness'
 import { pctNoteRequired, validatePctCommit } from '../../lib/jobs/stagesPctNote'
+import { recordedPercentProvenance } from '../../lib/jobPercentProvenance'
+import { PercentProvenanceChip } from './PercentProvenanceChip'
 
 /**
  * The unified Job activity body (v2.1673): toolbar, pinned NEXT strip, the
@@ -93,6 +95,15 @@ export function JobActivityView({
     [allLines, activityFilter],
   )
   const filterCounts = useMemo(() => (activity ? countActivityByFilter(activity) : null), [activity])
+  // Who set the recorded % (v2.2852): the crew, when the newest report with a % says the same number; else the office.
+  const pctProvenance = useMemo(
+    () =>
+      recordedPercentProvenance(
+        pctComplete,
+        (activity ?? []).flatMap((i) => (i.kind === 'report' ? [{ created_at: i.report.created_at, field_values: i.report.field_values ?? null }] : [])),
+      ),
+    [pctComplete, activity],
+  )
 
   const jobName = (job.job_name ?? '').trim() || 'this job'
 
@@ -169,6 +180,7 @@ export function JobActivityView({
             style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap', flexShrink: 0 }}
           >
             {pctComplete}% complete
+            {activity ? <PercentProvenanceChip source={pctProvenance.source} reportedOn={pctProvenance.reportedOn} /> : null}
           </span>
         ) : null}
       </div>

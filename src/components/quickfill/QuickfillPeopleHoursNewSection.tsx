@@ -501,8 +501,9 @@ export function QuickfillPeopleHoursNewSection() {
           )}
         </div>
       )}
+      {/* Owner decision 10 (2026-09-05): assistants approve hours — the old "they do not approve!" line contradicted every approve button on this page. */}
       <p style={assistanceNoticeStyle}>
-        Assistance only makes sure hours are correct, they do not approve!
+        Approve yesterday’s and today’s sessions here — every approve adds to payroll.
       </p>
       <DashboardTeamActiveClockStrip
         sessions={sessionsForQuickfillStrip}

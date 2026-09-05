@@ -11,7 +11,8 @@ Every clock session someone punches waits for a person to approve it before the 
 
 - The Dashboard's **Needs you** card grows a {{chip:yellow|Time approvals}} item once the oldest unapproved session is three or more days old. {{button:amber|Open approvals}} lands you in the queue.
 - On **People → Hours**, the header's {{button:outline-amber|Approvals}} button (with a count when anything is waiting) opens it any time.
-- The amber "not yet in payroll" banner above the Hours grid has an {{button:outline-amber|All weeks}} button beside {{button:amber|Review & approve}} — the banner itself only knows about the week on screen.
+- The amber "not yet in payroll" banner above the Hours grid has an {{button:outline-amber|All weeks}} button beside {{button:amber|Review & approve}} — the banner itself only knows about the week on screen. When older weeks are still waiting it says so at the end — **+16 sessions in earlier weeks** — and that text is a link into the queue.
+- In both Review & approve and the queue, a row can wear **salary — counts as flat hours** (payroll credits the person's flat day, not the session length) or **still clocked in at midnight** (the system closed the session at 11:59 PM — check the real end time with Edit before approving).
 
 ## Reading the queue
 

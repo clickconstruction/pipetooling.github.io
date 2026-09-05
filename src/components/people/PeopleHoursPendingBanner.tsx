@@ -7,6 +7,11 @@ export interface PeopleHoursPendingBannerProps {
   onReviewApprove: () => void
   /** Opens the all-weeks approvals queue — the banner itself only knows about the visible week. */
   onOpenQueue?: () => void
+  /**
+   * "+N sessions in earlier weeks" (Tier-1 #15, J7-2): the rest of the backlog the visible-week
+   * count cannot see, from the all-weeks approvals count (v2.2694). '' / undefined hides the line.
+   */
+  outsideWeekLine?: string
 }
 
 /** Hours grid warning banner: pending sessions not yet in payroll, with a bulk review/approve CTA. Renders nothing when there is nothing pending. */
@@ -16,6 +21,7 @@ export function PeopleHoursPendingBanner({
   canAccessPay,
   onReviewApprove,
   onOpenQueue,
+  outsideWeekLine,
 }: PeopleHoursPendingBannerProps) {
   if (!(summary.totalSessions > 0 && (canAccessHours || canAccessPay))) return null
   return (
@@ -49,6 +55,33 @@ export function PeopleHoursPendingBanner({
           </>
         ) : null}
         .
+        {outsideWeekLine ? (
+          <>
+            {' '}
+            {onOpenQueue ? (
+              <button
+                type="button"
+                onClick={onOpenQueue}
+                title="Open the all-weeks approvals queue"
+                style={{
+                  padding: 0,
+                  border: 'none',
+                  background: 'none',
+                  font: 'inherit',
+                  fontWeight: 600,
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  cursor: 'pointer',
+                }}
+              >
+                {outsideWeekLine}
+              </button>
+            ) : (
+              <strong>{outsideWeekLine}</strong>
+            )}
+            .
+          </>
+        ) : null}
       </span>
       <button
         type="button"

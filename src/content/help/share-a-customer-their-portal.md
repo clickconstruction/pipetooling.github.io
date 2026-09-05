@@ -8,7 +8,11 @@ Every customer (and GC) can have a private, no-login **portal page**: one merged
 
 ## The portal address
 
-Click the **globe icon** next to any customer's name — on the **Customers** page, on **Jobs → Pipeline** rows, in **Job Detail**, in **Edit Job**, or beside each GC in **GC Review** (whose Share menu also offers **Copy portal link**, and whose Draft Message can carry a portal card). The top of the modal is their **portal address**, something like `my.clickplumbing.com/knight-contracting`:
+Click the **globe icon** next to any customer's name — on the **Customers** page, on **Jobs → Pipeline** rows, in **Job Detail**, in **Edit Job**, or beside each GC in **GC Review** (whose Share menu also offers **Copy portal link**, and whose Draft Message can carry a portal card).
+
+For a customer who has **never** been given a portal, the modal opens to **No portal link yet** — just looking creates nothing. Click {{button:blue|Create their link}} when you're ready: their page goes live, a "Portal link created" toast confirms it, and the modal switches to the address view below. Everyone who already has a portal opens straight to it.
+
+The top of the modal is their **portal address**, something like `my.clickplumbing.com/knight-contracting`:
 
 - The address is **editable until it's first shared** — type anything short and recognizable (letters, numbers, dashes). A meter tells you if it's ⚠ easy or ✓ hard to guess; it never blocks you.
 - {{button:blue|Copy link}} — copies the address for a text or email, and **locks** it (printed and texted copies should never go stale). The link is the key, no password needed.

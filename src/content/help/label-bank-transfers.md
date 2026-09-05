@@ -2,7 +2,7 @@
 title: label bank transfers and wires
 category: Billing & Money
 roles: dev, controller
-keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, moneyfill, banking, label
+keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, moneyfill, banking, label, card charges, not split, user sort
 order: 60
 ---
 Card purchases get sorted on the Banking page, but money that leaves by **ACH, wire, or check** — rent, insurance, contract labor, credit-card bill payments — used to have no home. Until it's labeled, that spending never reaches the overhead numbers or any job's costs.
@@ -35,6 +35,16 @@ The list shows the last **90 days** by default. Older unlabeled transfers stay t
 :::
 
 Click it to work through the backlog; click again to tuck it away.
+
+## Card charges not split to jobs
+
+Card purchases are the other half of the close. Moneyfill's **Card charges not split to jobs** section lists every debit-card purchase posted in the close week that has no job splits yet, with its posted day, card, counterparty and amount.
+
+:::example One unsplit charge
+Wed, Aug 26 · 6783 · Ferguson · $412.18 {{button:blue|Sort in Banking → User Sort}}
+:::
+
+{{button:blue|Sort in Banking → User Sort}} opens **Banking → User Sort** with that counterparty already in the search box, so the charge is on screen. Press **Link…** on its row to split it across jobs (or onto the office job). Moneyfill and Banking read the same splits, so the charge leaves this queue as soon as the split saves — come back to Moneyfill and the count is one lower.
 
 ## Undoing a label
 

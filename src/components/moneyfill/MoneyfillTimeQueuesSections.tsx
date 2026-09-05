@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { approveClockSessions } from '../../lib/approveClockSessions'
+import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
+import { formatPayWeekLabel } from '../../lib/payWeekAnchor'
+import { useAuth } from '../../hooks/useAuth'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   fetchPendingApprovalForWeek,
   fetchUnassignedTimeForWeek,
+  pendingApprovalPayWeek,
   type PendingApprovalSessionRow,
   type UnassignedTimeWeekData,
 } from '../../lib/moneyfillWeekClose'
@@ -130,8 +134,11 @@ export function MoneyfillPendingApprovalSection({
   onChanged?: () => void
 }) {
   const navigate = useNavigate()
+  const { user: authUser, role } = useAuth()
   const [rows, setRows] = useState<PendingApprovalSessionRow[] | null | 'loading'>('loading')
   const [approvingIds, setApprovingIds] = useState<ReadonlySet<string>>(new Set())
+  /** Sun–Sat pay week ending inside the Mon–Sun close week — the window Draft Payroll opens to (Tier-1 #15). */
+  const payWeekLabel = formatPayWeekLabel(pendingApprovalPayWeek(weekMonday))
 
   const load = useCallback(() => {
     setRows('loading')
@@ -150,6 +157,7 @@ export function MoneyfillPendingApprovalSection({
       return next
     })
     if (!res.error) {
+      recordHoursApproved(authUser?.id, role, 'moneyfill-queue', res.data?.[0]?.approved_count ?? 1)
       load()
       onChanged?.()
     }
@@ -163,7 +171,8 @@ export function MoneyfillPendingApprovalSection({
     <section aria-label="Sessions pending approval" style={sectionStyle}>
       <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: '0 0 0.25rem' }}>Sessions pending approval</h2>
       <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Closed clock sessions in-week nobody has approved — labor cost that isn’t booked to any job yet.{' '}
+        Closed clock sessions in the <b style={{ color: 'var(--text-700)' }}>Sun–Sat pay week {payWeekLabel}</b> nobody has approved —
+        labor cost that isn’t booked to any job yet. Same week as Draft Payroll; the other queues here keep the Mon–Sun close week.{' '}
         {rows !== 'loading' && rows != null ? (
           <b style={{ color: 'var(--text-700)' }}>
             {rows.length} session{rows.length === 1 ? '' : 's'} · {money(dollars)} at wage
@@ -175,7 +184,7 @@ export function MoneyfillPendingApprovalSection({
       ) : rows == null ? (
         <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Couldn’t load pending sessions.</div>
       ) : rows.length === 0 ? (
-        <div style={{ color: '#15803d', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for this week</div>
+        <div style={{ color: '#15803d', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for pay week {payWeekLabel}</div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 560 }}>

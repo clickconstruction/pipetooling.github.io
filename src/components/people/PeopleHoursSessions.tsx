@@ -8,6 +8,8 @@ import {
 } from '../clock-sessions'
 import { CollapsibleSection } from '../CollapsibleSection'
 import { approveClockSessions } from '../../lib/approveClockSessions'
+import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
+import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -79,6 +81,7 @@ export function PeopleHoursSessions({
 }: PeopleHoursSessionsProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
+  const { role: viewerRole } = useAuth()
   // v2.1654: collapsed by default (the list runs 30+ rows and pushed the grid
   // below the fold); an active session search forces it open so matches are
   // never hidden — same convention as the Users-tab roster search.
@@ -267,6 +270,7 @@ export function PeopleHoursSessions({
                       const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
                       const row = result[0]
                       if (row?.error_message) { setError(row.error_message); return }
+                      recordHoursApproved(authUserId, viewerRole, 'sessions-list', row?.approved_count ?? 0)
                       showToast?.(`Approved ${row?.approved_count ?? 0} session(s)`, 'success')
                       reloadSessions()
                       reloadHours()

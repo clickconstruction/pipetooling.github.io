@@ -40,7 +40,7 @@ Notes:
   it**: `mint_session` takes `app: 'counttooling'` (v2.2439) — the MCP server holds CT's
   twin secret, so one per-twin token signs into both apps.
 
-## Bootstrapping a Claude Code session (v2.2854)
+## Bootstrapping a Claude Code session (v2.2863)
 
 The repo's `.mcp.json` registers the `twin-mcp` connector and reads the key from
 `$TWIN_ESTIMATOR_1_TOKEN` — MCP servers connect at session start, so a session

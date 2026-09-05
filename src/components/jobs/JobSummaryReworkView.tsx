@@ -57,7 +57,8 @@ export default function JobSummaryReworkView({ allRows, ledger, ledgerLoading, u
   const ctx = useMemo(() => ({ userNameById }), [userNameById])
   const allPairs = useMemo(() => findReworkPairs(allRows, ledger, windowDays), [allRows, ledger, windowDays])
   const pairs = useMemo(() => filterReworkPairs(allPairs, count), [allPairs, count])
-  const repeatCount = allPairs.length - allPairs.filter((p) => p.kind === 'callback').length
+  const repeatCount = allPairs.filter((p) => p.kind === 'repeat').length
+  const openCount = allPairs.filter((p) => p.kind === 'open').length
   const groups = useMemo(() => reworkRateBy(pairs, allRows, rateBy, ctx).filter((g) => g.jobs >= 2).slice(0, 12), [pairs, allRows, rateBy, ctx])
   const summary = useMemo(() => summarizeRework(pairs, allRows), [pairs, allRows])
 
@@ -76,7 +77,7 @@ export default function JobSummaryReworkView({ allRows, ledger, ledgerLoading, u
         <Segmented label="Window" value={windowDays} options={REWORK_WINDOW_OPTIONS} onChange={setWindowDays} />
         <Segmented label="Count" value={count} options={REWORK_COUNT_OPTIONS} onChange={setCount} />
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          a return = a second job at the same address that started within the window after the first was billed{count === 'callbacks' && repeatCount > 0 ? ` · ${repeatCount} billed returns (repeat work) set aside` : ''}
+          a return = a second job at the same address that started within the window after the first was billed{count === 'callbacks' && repeatCount > 0 ? ` · ${repeatCount} billed returns (repeat work) set aside` : ''}{openCount > 0 ? ` · ${openCount} unbilled ${openCount === 1 ? 'return is' : 'returns are'} still in progress (tagged)` : ''}
         </span>
       </div>
 
@@ -167,7 +168,10 @@ export default function JobSummaryReworkView({ allRows, ledger, ledgerLoading, u
                     <button type="button" onClick={() => onOpenJob(p.second.number)} style={linkBtn}>
                       <b>{p.second.number}</b> {p.second.name}
                     </button>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{p.second.startYmd ? `started ${formatStagesNextDateLabel(p.second.startYmd)}` : ''}</div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                      {p.second.startYmd ? `started ${formatStagesNextDateLabel(p.second.startYmd)}` : ''}
+                      {p.kind === 'open' ? <span style={{ marginLeft: 6, padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontWeight: 700 }}>still open</span> : null}
+                    </div>
                   </td>
                   <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>{p.daysAfter}</td>
                   <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)', color: showMoney ? 'var(--text-red-700)' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '10rem' }}>

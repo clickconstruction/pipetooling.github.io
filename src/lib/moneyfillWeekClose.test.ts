@@ -8,7 +8,7 @@ import {
   type MoneyfillQueueCount,
 } from './moneyfillWeekClose'
 import type { NoncardAttributionQueueRow } from './banking/noncardAttributionQueue'
-import { cardChargesQueueCount, unsplitCardChargesFromTxs, weekUtcBounds } from './moneyfillWeekClose'
+import { MONEYFILL_CARD_CHARGES_SORT_PATH, cardChargeSortHref, cardChargesQueueCount, unsplitCardChargesFromTxs, weekUtcBounds } from './moneyfillWeekClose'
 
 const row = (posted: string | null, amount: number): NoncardAttributionQueueRow => ({
   mercury_transaction_id: 'x',
@@ -126,5 +126,24 @@ describe('card charges queue', () => {
     const b = weekUtcBounds('2026-08-03')
     expect(b?.startIso).toBe('2026-08-03T05:00:00.000Z')
     expect(b?.endIso).toBe('2026-08-10T05:00:00.000Z')
+  })
+
+  describe('fix-surface link (Banking → User Sort)', () => {
+    it('lands on the User Sort tab, never on Quickfill', () => {
+      expect(MONEYFILL_CARD_CHARGES_SORT_PATH).toBe('/banking?tab=sorting')
+      expect(cardChargeSortHref('Ferguson')).toMatch(/^\/banking\?tab=sorting/)
+      expect(cardChargeSortHref('Ferguson')).not.toContain('quickfill')
+    })
+
+    it('pre-fills the tab search with the counterparty, URL-encoded and trimmed', () => {
+      expect(cardChargeSortHref('Ferguson')).toBe('/banking?tab=sorting&q=Ferguson')
+      expect(cardChargeSortHref("  Lowe's #1234 & Co ")).toBe(`/banking?tab=sorting&q=${encodeURIComponent("Lowe's #1234 & Co")}`)
+    })
+
+    it('omits the search when there is no counterparty', () => {
+      expect(cardChargeSortHref(null)).toBe('/banking?tab=sorting')
+      expect(cardChargeSortHref(undefined)).toBe('/banking?tab=sorting')
+      expect(cardChargeSortHref('   ')).toBe('/banking?tab=sorting')
+    })
   })
 })

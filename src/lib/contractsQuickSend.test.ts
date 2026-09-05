@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   listQuickAddBookDocuments,
+  quickSendPlan,
+  quickSendPlanWrites,
   quickSendReusablePersonRow,
   quickSendRosterSplit,
   resolveQuickSendSource,
@@ -155,5 +157,41 @@ describe('listQuickAddBookDocuments', () => {
     ])
     expect(rows.map((r) => r.documentName)).toEqual(['Agreement', 'Handbook'])
     expect(rows[1]?.row.id).toBe('h-new')
+  })
+})
+
+describe('quickSendPlan (decision 17: the pick decides, Send writes)', () => {
+  const source = { kind: 'person' as const, signingBodyHtml: '<p>x</p>', signingBodyFormat: 'html', canonicalDocumentUrl: null }
+
+  it('reuse — an existing row with signing content is the target and nothing is written', () => {
+    const existing = personRow({ id: 'r1', person_name: 'A', document_name: 'D', signing_body_html: '<p>hi</p>' })
+    const plan = quickSendPlan({ existing, source })
+    expect(plan).toEqual({ kind: 'reuse', docId: 'r1' })
+    expect(quickSendPlanWrites(plan)).toBe(false)
+  })
+
+  it('reuse wins even when no source resolves (the row is its own content)', () => {
+    const existing = personRow({ id: 'r1', person_name: 'A', document_name: 'D', canonical_document_url: 'https://x/doc.pdf' })
+    expect(quickSendPlan({ existing, source: null })).toEqual({ kind: 'reuse', docId: 'r1' })
+  })
+
+  it('fill — an empty placeholder is filled from the source at Send', () => {
+    const existing = personRow({ id: 'p1', person_name: 'A', document_name: 'D' })
+    const plan = quickSendPlan({ existing, source })
+    expect(plan).toEqual({ kind: 'fill', docId: 'p1', source })
+    expect(quickSendPlanWrites(plan)).toBe(true)
+  })
+
+  it('insert — no non-signed copy means Send creates the unsent row', () => {
+    const plan = quickSendPlan({ existing: null, source })
+    expect(plan).toEqual({ kind: 'insert', source })
+    expect(quickSendPlanWrites(plan)).toBe(true)
+  })
+
+  it('no-content — nothing to send and nothing to write', () => {
+    const plan = quickSendPlan({ existing: null, source: null })
+    expect(plan).toEqual({ kind: 'no-content' })
+    expect(quickSendPlanWrites(plan)).toBe(false)
+    expect(quickSendPlan({ existing: personRow({ id: 'p1', person_name: 'A', document_name: 'D' }), source: null })).toEqual({ kind: 'no-content' })
   })
 })

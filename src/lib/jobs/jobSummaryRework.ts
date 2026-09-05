@@ -14,6 +14,7 @@ import { jobSummaryCutKey, type JobSummaryCutBy, type JobSummaryCutContext, type
  * view counts callbacks by default. Pure.
  */
 export type ReworkCount = 'callbacks' | 'all'
+export type ReworkKind = 'callback' | 'repeat' | 'open'
 export const REWORK_COUNT_OPTIONS: ReadonlyArray<{ key: ReworkCount; label: string; title: string }> = [
   { key: 'callbacks', label: 'unbilled returns', title: 'Returns with no revenue of their own — the warranty-shaped ones' },
   { key: 'all', label: 'all returns', title: 'Every second job at the same address inside the window, billed or not' },
@@ -46,8 +47,8 @@ export type ReworkPair = {
   first: ReworkJobRef
   second: ReworkJobRef
   daysAfter: number
-  /** callback = the return billed nothing; repeat = it has its own revenue. */
-  kind: 'callback' | 'repeat'
+  /** callback = a finished return that billed nothing; repeat = it has its own revenue; open = unbilled and still in progress (counted with callbacks, tagged). */
+  kind: ReworkKind
   addressLabel: string
   /** Labor + subs + parts + overhead share of the return job. */
   returnCostUsd: number
@@ -72,7 +73,7 @@ function place(rows: readonly JobSummaryEnrichedRow[], ledger: JobDayLedger | nu
 
 /** Every return visit inside the window; a job returns to at most the nearest earlier job at its address. */
 export function filterReworkPairs(pairs: readonly ReworkPair[], count: ReworkCount): ReworkPair[] {
-  return count === 'all' ? [...pairs] : pairs.filter((p) => p.kind === 'callback')
+  return count === 'all' ? [...pairs] : pairs.filter((p) => p.kind !== 'repeat')
 }
 
 export function findReworkPairs(rows: readonly JobSummaryEnrichedRow[], ledger: JobDayLedger | null, windowDays: number): ReworkPair[] {
@@ -99,7 +100,7 @@ export function findReworkPairs(rows: readonly JobSummaryEnrichedRow[], ledger: 
         first: best.first.ref,
         second: second.ref,
         daysAfter: best.days,
-        kind: r.revenueUsd > 0 ? 'repeat' : 'callback',
+        kind: r.revenueUsd > 0 ? 'repeat' : r.finished ? 'callback' : 'open',
         addressLabel: (r.row.job.job_address ?? '').trim() || best.first.ref.name,
         returnCostUsd: r.laborUsd + r.subsUsd + r.partsUsd + (r.overheadUsd ?? 0),
         returnRevenueUsd: r.revenueUsd,

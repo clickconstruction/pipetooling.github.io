@@ -150,9 +150,9 @@ export default function JobSummaryLedgerToolbar({
         ) : null}
         {prefs.view === 'jobs' ? <Segmented label="Cut by" value={prefs.cutBy} options={JOB_SUMMARY_CUT_OPTIONS} onChange={(cutBy) => setPrefs({ cutBy })} title="Group the table by one key — every group gets a subtotal and a ranked bar" /> : null}
         {showMoney && marginView ? <Segmented label="Target" value={prefs.targetTrueMarginPct} options={JOB_SUMMARY_TARGET_OPTIONS} onChange={(targetTrueMarginPct) => setPrefs({ targetTrueMarginPct })} title="Target true margin — jobs under it are flagged in the table and counted here" /> : null}
-        {compare ? (
+        {compare && rowsView ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            vs {formatStagesNextDateLabel(compare.startYmd)} → {formatStagesNextDateLabel(compare.endYmd)}
+            vs {formatStagesNextDateLabel(compare.startYmd)} {compare.startYmd.slice(0, 4)} → {formatStagesNextDateLabel(compare.endYmd)} {compare.endYmd.slice(0, 4)}
             {compare.ledgerError ? <span style={{ color: 'var(--text-red-700)' }}> · compare ledger failed: {compare.ledgerError}</span> : null}
           </span>
         ) : null}

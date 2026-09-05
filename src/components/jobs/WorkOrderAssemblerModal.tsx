@@ -45,7 +45,8 @@ export type WorkOrderAssemblerInitial = {
   stepId?: string | null
 }
 
-type Roster = { id: string; name: string; email: string | null; notes: string | null }
+/** `end_date` set = on the bench (v2.2860) — hidden behind a toggle in the sub step, still pickable. */
+type Roster = { id: string; name: string; email: string | null; notes: string | null; end_date: string | null }
 type BookDoc = { id: string; document_name: string; book_version_date: string | null }
 type PersonDoc = { document_name: string; doc_type: string; status: string; signed_at: string | null; expires_at: string | null; applied_version_date: string | null; applied_contract_template_document_id: string | null }
 type Draft = {
@@ -122,6 +123,7 @@ export function WorkOrderAssemblerModal({
   const [roster, setRoster] = useState<Roster[]>([])
   const [personId, setPersonId] = useState<string>('')
   const [rosterSearch, setRosterSearch] = useState('')
+  const [showBench, setShowBench] = useState(false)
   const [addSubOpen, setAddSubOpen] = useState(false)
   const [addSub, setAddSub] = useState({ name: '', email: '', phone: '' })
   const [existing, setExisting] = useState<StepCommitmentRow | null>(null)
@@ -147,7 +149,7 @@ export function WorkOrderAssemblerModal({
     void (async () => {
       try {
         const [pRes, sRes, bRes, aRes, uRes] = await Promise.all([
-          supabase.from('people').select('id, name, email, notes').eq('kind', 'sub').is('archived_at', null).order('name'),
+          supabase.from('people').select('id, name, email, notes, end_date').eq('kind', 'sub').is('archived_at', null).order('name'),
           supabase.from('sub_scope_items').select('*').is('archived_at', null).order('sequence_order', { ascending: true }),
           supabase.from('contract_template_documents').select('id, document_name, book_version_date').eq('audience', 'sub').order('sequence_order', { ascending: true }),
           supabase.from('app_settings').select('key, value_text').in('key', ['sub_pay_run_day']),
@@ -512,7 +514,11 @@ export function WorkOrderAssemblerModal({
   if (!open) return null
 
   const stepTitle = step === 1 ? 'Job' : step === 2 ? 'Sub' : readOnly ? 'The signed document' : 'Scope and terms'
-  const filteredRoster = roster.filter((r) => r.name.toLowerCase().includes(rosterSearch.trim().toLowerCase()))
+  const searchedRoster = roster.filter((r) => r.name.toLowerCase().includes(rosterSearch.trim().toLowerCase()))
+  // The bench (v2.2860): active subs first; benched subs behind a toggle — still pickable, because
+  // offering them work is how they come back (the Subs tab nudges Reactivate once they accept).
+  const benchedCount = searchedRoster.filter((r) => !!r.end_date).length
+  const filteredRoster = searchedRoster.filter((r) => !r.end_date || showBench || r.id === personId)
   const bidTotalHint = bidTotals && bidTotals.total > 0 ? bidTotals : null
 
   return (
@@ -586,12 +592,18 @@ export function WorkOrderAssemblerModal({
               {filteredRoster.map((r) => {
                 const on = r.id === personId
                 return (
-                  <button key={r.id} type="button" aria-pressed={on} onClick={() => setPersonId(r.id)} style={{ padding: '0.35rem 0.8rem', borderRadius: 999, fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', border: on ? '1px solid #2563eb' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)' }}>
+                  <button key={r.id} type="button" aria-pressed={on} onClick={() => setPersonId(r.id)} title={r.end_date ? `On the bench since ${r.end_date} — offering work is fine; Reactivate them on People → Subs once they accept` : undefined} style={{ padding: '0.35rem 0.8rem', borderRadius: 999, fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer', border: on ? '1px solid #2563eb' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : r.end_date ? 'var(--text-muted)' : 'var(--text-700)' }}>
                     {on ? '✓ ' : ''}
                     {r.name}
+                    {r.end_date ? <span style={{ marginLeft: 6, fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)' }}>bench</span> : null}
                   </button>
                 )
               })}
+              {benchedCount > 0 && !showBench ? (
+                <button type="button" onClick={() => setShowBench(true)} style={{ padding: '0.35rem 0.8rem', borderRadius: 999, fontSize: '0.8125rem', border: '1px dashed var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  + {benchedCount} on the bench
+                </button>
+              ) : null}
               <button type="button" onClick={() => setAddSubOpen((v) => !v)} style={{ padding: '0.35rem 0.8rem', borderRadius: 999, fontSize: '0.8125rem', border: '1px dashed var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }}>
                 + Add Sub
               </button>

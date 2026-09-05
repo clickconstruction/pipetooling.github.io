@@ -22,6 +22,8 @@ export type RailFacts = {
   expiredByName: Record<string, number>
   /** Subs with a live portal link (v2.2762 — a blue "portal on" signal, never attention). */
   portalOnPersonIds?: Set<string>
+  /** Subs on the bench (v2.2860): a gray chip, and their paperwork nags pause. */
+  benchPersonIds?: Set<string>
 }
 
 /** One labeled chip on a Users tab row (v2.2762). Tone follows the app's chip palette. */
@@ -70,6 +72,9 @@ export function buildRailRow(p: RailPersonInput, f: RailFacts): RailRow {
   const badge: string[] = []
   const signals: RailSignal[] = []
   let attention: RailAttention = 'green'
+  // A benched sub (v2.2860): one gray chip, and the paperwork/roster nags pause — nobody
+  // chases a COI for someone who isn't working. Sessions waiting still count (money).
+  const benched = Boolean(p.personId && f.benchPersonIds?.has(p.personId))
   const pending = p.userId ? f.pendingByUserId[p.userId] : undefined
   if (pending && pending.count > 0) {
     // v2.2818 (owner decision, PR 4 of the Users status column): hours are a queue, not an
@@ -78,6 +83,12 @@ export function buildRailRow(p: RailPersonInput, f: RailFacts): RailRow {
     reasons.push(`${pending.count} session${pending.count === 1 ? '' : 's'} waiting`)
     badge.push(String(pending.count))
     signals.push({ key: 'pending', label: `${pending.count} waiting`, tone: 'gray' })
+  }
+  if (benched) {
+    signals.push({ key: 'bench', label: 'on the bench', tone: 'gray' })
+    reasons.push('on the bench')
+    if (p.personId && p.kind === 'sub' && f.portalOnPersonIds?.has(p.personId)) signals.push({ key: 'portal', label: 'portal on', tone: 'blue' })
+    return { ...p, attention, badge: badge.join(' · '), reasons, signals }
   }
   const unsent = f.unsentDocsByName[p.name.trim()] ?? 0
   if (unsent > 0) {

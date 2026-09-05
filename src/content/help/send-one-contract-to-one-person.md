@@ -48,4 +48,8 @@ The CLICK. letterhead on the same paper as the sub portal · **One document to s
 
 ## What canceling does
 
-Both paths create the person's unsent copy before the email step, so canceling the email keeps the document filed as {{chip:red|unsent}} — it counts toward **Needs attention** until you send or delete it (row ⋯ menu → Delete).
+**Cancel leaves nothing behind.** Picking a name in {{button:blue|Send to…}} only opens the email — the person's copy is created the moment you tap {{button:blue|Send email}}. Close the dialog instead and there is no unsent copy, nothing new under **Needs attention**, and nothing for anyone to clean up.
+
+:::example The one exception
+{{button:outline|+ Add document}} → {{button:outline|Save for later}} files the copy as {{chip:red|unsent}} on purpose — that path *is* the save. It counts toward **Needs attention** until you send or delete it (row ⋯ menu → Delete).
+:::

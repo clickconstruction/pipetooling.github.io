@@ -8,7 +8,7 @@ Every subcontractor can have a private, no-login **Work & pay portal**: their jo
 
 ## Turn it on
 
-Click the **globe icon** 🌐 next to any sub's name on **People → Subs**. The first open mints their private link. The top of the modal is their **portal address**, something like `my.clickplumbing.com/dv-mechanical`:
+Click the **globe icon** 🌐 next to any sub's name on **People → Subs**. A sub who has never had a portal opens to **No portal link yet** — looking creates nothing; click {{button:blue|Create their link}} and their private link is minted (a "Portal link created" toast confirms it). From then on the top of the modal is their **portal address**, something like `my.clickplumbing.com/dv-mechanical`:
 
 - {{button:blue|Copy link}} saves the address and copies it — text it to the sub.
 - **Preview as them** opens exactly what they'll see.
@@ -45,6 +45,7 @@ Every sub sheet sits at one of three stages, and the portal draws them as a four
 | {{chip:yellow|Waiting on work}} | "Finish up, then tell us below and we'll come walk it." |
 | {{chip:purple|Waiting on walk-through}} | "You told us the work's done Sep 4. We'll schedule the walk-through and let you know." |
 | {{chip:blue|Waiting on customer}} | "Passed the walk-through Sep 6. The customer's payment is the last thing between you and this money…" |
+| {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: "Queued for the pay run — the date is right below." |
 | {{chip:green|Paid}} | The card leaves *Your jobs* — Paid sets itself when the balance hits $0. |
 
 Move a sheet from the **Stage** column on **Jobs → Sub Labor**: the **→** on the chip advances one stage, and clicking the chip opens all three so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.

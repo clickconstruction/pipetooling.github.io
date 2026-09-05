@@ -8,11 +8,12 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import {
   buildPortalTimeline,
-  computePortalMainOffCustomerIds,
+  portalGlobeInitialState,
   type PortalLinkRow,
   type PortalSlugEventRow,
   type PortalTimelineEntry,
 } from '../../lib/portal/portalLinkState'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 import {
   appendRandomTail,
   isValidSlug,
@@ -39,13 +40,16 @@ import type {
  * · Separate views (scoped GC-only / own-jobs-only links, on demand) · Reset
  * (Rotate / Turn off) · History (links + address events). A turned-off main
  * portal paints the globe red app-wide, and opening the modal never silently
- * re-mints a portal that was deliberately turned off. Self-contained
- * (button + modal); renders nothing for non-office roles.
+ * re-mints a portal that was deliberately turned off — nor mints one for a
+ * never-shared customer (journey-map #14(b) / J21-F7): that opens into a
+ * "No portal link yet" state and the link is created only on "Create their
+ * link". Self-contained (button + modal); renders nothing for non-office roles.
  */
 
 type Audience = 'customer' | 'gc' | 'all'
 type MainState =
   | { kind: 'loading' }
+  | { kind: 'unminted' }
   | { kind: 'active'; token: string }
   | { kind: 'off' }
   | { kind: 'error'; message: string }
@@ -62,7 +66,7 @@ export default function CustomerPortalGlobeButton({
   customerName: string
   size?: number
 }) {
-  const { role } = useAuth()
+  const { user, role } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [open, setOpen] = useState(false)
@@ -131,11 +135,12 @@ export default function CustomerPortalGlobeButton({
   )
 
   /**
-   * Resolve everything WITHOUT reviving a turned-off portal: link rows are
-   * read first; an active 'all' row supplies the token; a main-off verdict
-   * (kernel: 'all' rows all revoked, or legacy-only rows all revoked) is the
-   * deliberate OFF state; only a never-minted customer — or one whose legacy
-   * link is still active (the merged link is its continuation) — auto-mints.
+   * Resolve everything WITHOUT writing: link rows are read first; an active
+   * 'all' row supplies the token; a main-off verdict (kernel: 'all' rows all
+   * revoked, or legacy-only rows all revoked) is the deliberate OFF state; a
+   * never-minted customer opens into 'unminted' (the mint waits for "Create
+   * their link"); only a customer whose legacy scoped link is still active
+   * auto-mints — the merged link is that live link's continuation.
    */
   const loadState = useCallback(async () => {
     setMain({ kind: 'loading' })
@@ -196,17 +201,23 @@ export default function CustomerPortalGlobeButton({
       })
 
       const activeAll = activeFor('all')
-      if (activeAll?.token) {
+      const verdict = portalGlobeInitialState(rows, customerId)
+      if (verdict === 'active' && activeAll?.token) {
         setMain({ kind: 'active', token: activeAll.token })
         setPortalMainOff(customerId, false)
         return
       }
-      const isOff = computePortalMainOffCustomerIds(rows).includes(customerId)
-      if (isOff) {
+      if (verdict === 'off') {
         setMain({ kind: 'off' })
         setPortalMainOff(customerId, true)
         return
       }
+      if (verdict === 'unminted') {
+        setMain({ kind: 'unminted' })
+        setPortalMainOff(customerId, false)
+        return
+      }
+      // 'legacy-active': continue the live pre-merge link as the merged one.
       const token = await mint('all', false)
       if (!token) throw new Error('No link returned')
       setMain({ kind: 'active', token })
@@ -405,6 +416,31 @@ export default function CustomerPortalGlobeButton({
     }
   }
 
+  /**
+   * The ONE place a never-shared customer's link comes into being (v2.2850):
+   * an explicit click, a toast, and a telemetry row — never a side effect of
+   * opening the modal.
+   */
+  const createLink = async () => {
+    setBusy(true)
+    try {
+      const token = await mint('all', false)
+      if (!token) throw new Error('No link returned')
+      setMain({ kind: 'active', token })
+      setPortalMainOff(customerId, false)
+      setTimeline((prev) => [
+        { kind: 'link', at: new Date().toISOString(), createdBy: user?.id ?? null, audience: 'all', outcome: 'active', revokedAt: null },
+        ...prev,
+      ])
+      showToast('Portal link created.', 'success')
+      recordNavClick(user?.id, role, 'portal_link_minted', '#customer-globe')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not create the link'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const fmtWhen = (iso: string) =>
     new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
@@ -564,6 +600,16 @@ export default function CustomerPortalGlobeButton({
                 </p>
                 <button type="button" onClick={() => void turnBackOn()} disabled={busy} style={primaryBtn}>
                   Turn portal back on
+                </button>
+              </div>
+            ) : main.kind === 'unminted' ? (
+              <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 6, padding: '0.75rem 0.9rem', marginBottom: '0.8rem' }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-900)' }}>No portal link yet.</div>
+                <p style={{ margin: '0.3rem 0 0.6rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  {customerName} has never been given a portal page. Creating the link makes their page live — you decide when to share it. Just looking? Close this and nothing is created.
+                </p>
+                <button type="button" onClick={() => void createLink()} disabled={busy} style={primaryBtn}>
+                  {busy ? 'Creating…' : 'Create their link'}
                 </button>
               </div>
             ) : tokenUrl ? (

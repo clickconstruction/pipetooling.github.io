@@ -3,6 +3,8 @@ type Props = {
   label: string
   value: string
   onChange: (v: string) => void
+  /** One line under the label — "Currently 30% — move to update · crew report Aug 27" (v2.2852). */
+  hint?: string | null
 }
 
 function clampPercentString(raw: string): string {
@@ -19,7 +21,7 @@ const PERCENT_QUICK_PICKS = [0, 25, 50, 75, 100]
  * fine-tuning; value is a string 0..100 in field_values (same as other report
  * fields).
  */
-export function ReportTemplatePercentField({ id, label, value, onChange }: Props) {
+export function ReportTemplatePercentField({ id, label, value, onChange, hint }: Props) {
   const n = (() => {
     const p = Number.parseInt(value, 10)
     if (Number.isNaN(p)) return 0
@@ -54,6 +56,11 @@ export function ReportTemplatePercentField({ id, label, value, onChange }: Props
           {n}%
         </output>
       </div>
+      {hint ? (
+        <div data-testid="report-pct-hint" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6, lineHeight: 1.3 }}>
+          {hint}
+        </div>
+      ) : null}
       <div style={{ display: 'flex', gap: '0.35rem', marginBottom: 6 }}>
         {PERCENT_QUICK_PICKS.map((p) => {
           const active = n === p

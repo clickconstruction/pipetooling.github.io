@@ -54,7 +54,13 @@ The **net change** is computed from the lines, so the customer sees exactly how 
 
 ## Starting from Bids
 
-Working a commercial job through **Bids**? The `bids?tab=change-order` form works like always — fill it out, {{button:blue|Copy to clipboard}} or open the Google Docs template for GCs who want their own paper. But now there's also {{button:green|Send for signature →}}: it creates a change-order draft in Estimates, prefilled from the form (description, reason, schedule impact, response-by date) and linked to the bid. The cost impact from the Bids form rides along as an internal note — enter it as real line items in the draft, then send it like any change order.
+Working a commercial job through **Bids**? The `bids?tab=change-order` form works like always — fill it out, {{button:blue|Copy to clipboard}} or open the Google Docs template for GCs who want their own paper. But now there's also {{button:green|Send for signature →}}: it opens a short confirm sheet before anything is created.
+
+:::example The confirm sheet
+**Create a change order draft in Estimates?** · the description, reason, schedule impact, response-by date and your cost text, as they'll land · **Net change to contract ($)** — prefilled when your cost text has one clear number or a "Net …" line; type it otherwise (credits negative, blank = $0 for schedule-only changes) · {{button:outline|Cancel}} creates nothing · {{button:green|Create draft →}}
+:::
+
+Confirm and the draft opens in Estimates, prefilled from the form and linked to the bid, with the net change as a **real cost line** (your typed breakdown becomes its description) — not $0 with the money hidden in a note. Adjust the lines there if you want the breakdown itemized, then send it like any change order.
 
 ## After the customer signs
 
