@@ -14,6 +14,7 @@ import {
   type JobSummarySortKey,
 } from '../../lib/jobs/jobSummaryLedgerView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { JOB_SUMMARY_MONTHS_BOOK_OPTIONS } from '../../lib/jobs/jobSummaryMonths'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 
 /**
@@ -77,7 +78,8 @@ function Tile({ k, v, s, d, tone }: { k: string; v: ReactNode; s?: ReactNode; d?
  * The delta line under a tile (v2.2817): ▲ / ▼ with the change, green when the
  * move is good (`higherIsGood`), red when not, muted when flat or unknown.
  */
-function DeltaLine({ d, fmt, higherIsGood = true, vs, loading }: { d: JobSummaryDelta; fmt: (abs: number) => string; higherIsGood?: boolean; vs: string; loading: boolean }) {
+function DeltaLine({ d, fmt, higherIsGood = true, vs, loading, priorEmpty }: { d: JobSummaryDelta; fmt: (abs: number) => string; higherIsGood?: boolean; vs: string; loading: boolean; priorEmpty: boolean }) {
+  if (priorEmpty && !loading) return <span style={{ color: 'var(--text-muted)' }}>no jobs in the {vs}</span>
   if (d.delta == null) return <span style={{ color: 'var(--text-muted)' }}>{loading ? 'comparing…' : `— vs ${vs}`}</span>
   const flat = Math.abs(d.delta) < 1e-9
   const good = higherIsGood ? d.delta > 0 : d.delta < 0
@@ -115,8 +117,11 @@ export default function JobSummaryLedgerToolbar({
   const c = compare?.comparison ?? null
   const vs = prefs.compareTo === 'lastYear' ? 'last year' : 'prior period'
   const cmpLoading = compare?.ledgerLoading ?? false
-  const dl = (d: JobSummaryDelta | undefined, fmt: (abs: number) => string, higherIsGood = true) => (d ? <DeltaLine d={d} fmt={fmt} higherIsGood={higherIsGood} vs={vs} loading={cmpLoading} /> : undefined)
+  const priorEmpty = compare != null && compare.totals.jobs === 0
+  const dl = (d: JobSummaryDelta | undefined, fmt: (abs: number) => string, higherIsGood = true) => (d ? <DeltaLine d={d} fmt={fmt} higherIsGood={higherIsGood} vs={vs} loading={cmpLoading} priorEmpty={priorEmpty} /> : undefined)
   const underTarget = prefs.targetTrueMarginPct > 0 ? countJobSummaryUnderTarget(rows, prefs.targetTrueMarginPct) : 0
+  /** Views that run on the visible rows (Show / Compare to / Target apply); Days and Timeline read the ledger directly. */
+  const rowsView = prefs.view === 'jobs' || prefs.view === 'months'
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '0.75rem' }}>
       <input
@@ -128,10 +133,11 @@ export default function JobSummaryLedgerToolbar({
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Segmented label="View" value={prefs.view} options={JOB_SUMMARY_VIEW_MODE_OPTIONS} onChange={(view) => setPrefs({ view })} />
-        {prefs.view === 'jobs' ? <Segmented label="Show" value={prefs.status} options={JOB_SUMMARY_STATUS_OPTIONS} onChange={(status) => setPrefs({ status })} /> : null}
+        {rowsView ? <Segmented label="Show" value={prefs.status} options={JOB_SUMMARY_STATUS_OPTIONS} onChange={(status) => setPrefs({ status })} /> : null}
+        {prefs.view === 'months' ? <Segmented label="Book by" value={prefs.monthsBookBy} options={JOB_SUMMARY_MONTHS_BOOK_OPTIONS} onChange={(monthsBookBy) => setPrefs({ monthsBookBy })} /> : null}
         <Segmented label="Worked in" value={prefs.window} options={JOB_SUMMARY_WINDOW_OPTIONS} onChange={(window) => setPrefs({ window })} />
         {showMoney && prefs.view === 'jobs' ? <Segmented label="Overhead" value={prefs.method} options={JOB_OVERHEAD_METHODS} onChange={(method) => setPrefs({ method })} /> : null}
-        {prefs.view === 'jobs' ? (
+        {rowsView ? (
           <Segmented
             label="Compare to"
             value={prefs.window === 'all' ? 'none' : prefs.compareTo}
@@ -141,7 +147,7 @@ export default function JobSummaryLedgerToolbar({
           />
         ) : null}
         {prefs.view === 'jobs' ? <Segmented label="Cut by" value={prefs.cutBy} options={JOB_SUMMARY_CUT_OPTIONS} onChange={(cutBy) => setPrefs({ cutBy })} title="Group the table by one key — every group gets a subtotal and a ranked bar" /> : null}
-        {showMoney && prefs.view === 'jobs' ? <Segmented label="Target" value={prefs.targetTrueMarginPct} options={JOB_SUMMARY_TARGET_OPTIONS} onChange={(targetTrueMarginPct) => setPrefs({ targetTrueMarginPct })} title="Target true margin — jobs under it are flagged in the table and counted here" /> : null}
+        {showMoney && rowsView ? <Segmented label="Target" value={prefs.targetTrueMarginPct} options={JOB_SUMMARY_TARGET_OPTIONS} onChange={(targetTrueMarginPct) => setPrefs({ targetTrueMarginPct })} title="Target true margin — jobs under it are flagged in the table and counted here" /> : null}
         {compare ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             vs {formatStagesNextDateLabel(compare.startYmd)} → {formatStagesNextDateLabel(compare.endYmd)}
