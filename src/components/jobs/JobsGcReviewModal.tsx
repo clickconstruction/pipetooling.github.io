@@ -7,8 +7,9 @@ import {
   type PendingGcStatementSend,
 } from '../../lib/gcStatementSchedule'
 import {
+  canCancelStatementRequest,
   cancelGcStatementSend,
-  listMyPendingGcStatementSends,
+  listPendingStatementRequests,
   scheduleGcStatementSend,
 } from '../../lib/gcStatementEmailRequests'
 import {
@@ -390,7 +391,7 @@ export function JobsGcReviewModal({
   useEffect(() => {
     if (!open) return
     let cancelled = false
-    void listMyPendingGcStatementSends().then(
+    void listPendingStatementRequests().then(
       (rows) => {
         if (!cancelled) setPendingSends(rows)
       },
@@ -401,10 +402,15 @@ export function JobsGcReviewModal({
     }
   }, [open])
   const refreshPendingSends = () => {
-    void listMyPendingGcStatementSends().then(setPendingSends, () => {})
+    void listPendingStatementRequests().then(setPendingSends, () => {})
   }
   const standingGroups = groupStandingCopies(pendingSends)
   const standingRowIds = new Set(standingGroups.flatMap((g) => g.allRowIds))
+  /** Owner-only Cancel (journey-map #45): the office sees every scheduled send; only its requester (or a dev) may end it. */
+  const canCancelRow = (row: PendingGcStatementSend) => canCancelStatementRequest(row, { id: authUser?.id, isDev })
+  const canCancelStanding = (g: StandingCopyGroup) => pendingSends.filter((r) => g.allRowIds.includes(r.id)).every(canCancelRow)
+  const requesterNameOf = (userId: string | null | undefined) => (userId ? users.find((u) => u.id === userId)?.name || '—' : '—')
+  const requesterOf = (g: StandingCopyGroup) => requesterNameOf(pendingSends.find((r) => g.allRowIds.includes(r.id))?.requested_by)
   /** Office-capable roster for the picker (mirrors the billed report's recipient cohort). */
   const standingPickableUsers = users
     .filter((u) => ['dev', 'master_technician', 'assistant', 'controller', 'primary'].includes(u.role) && (u.email ?? '').includes('@'))
@@ -1203,6 +1209,7 @@ export function JobsGcReviewModal({
             <p style={{ margin: '0 0 0.3rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>
               Scheduled statement sends
             </p>
+            {/* Every office role sees every scheduled send (journey-map #45); Cancel shows only to the requester or a dev. */}
             {/* Standing whole-report copies render grouped (one line per recipient, v2.1431). */}
             {standingGroups.map((g) => (
               <div key={`standing-${g.email}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.15rem 0' }}>
@@ -1212,15 +1219,21 @@ export function JobsGcReviewModal({
                 <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                   {formatWeekdays(g.weekdays)} · {formatMinutes(parseHhMm(g.timeHm) ?? 0)} · weekly
                 </span>
-                <button
-                  type="button"
-                  onClick={() => removeStanding(g)}
-                  disabled={standingBusy}
-                  title="Cancel this standing copy (all its weekdays)"
-                  style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
-                >
-                  Cancel
-                </button>
+                {canCancelStanding(g) ? (
+                  <button
+                    type="button"
+                    onClick={() => removeStanding(g)}
+                    disabled={standingBusy}
+                    title="Cancel this standing copy (all its weekdays)"
+                    style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <span title="Only the person who scheduled this (or a dev) can cancel it" style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    by {requesterOf(g)}
+                  </span>
+                )}
               </div>
             ))}
             {pendingSends.filter((s) => !standingRowIds.has(s.id)).map((s) => (
@@ -1232,16 +1245,22 @@ export function JobsGcReviewModal({
                   {new Date(s.send_at).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   {s.repeat_weekly ? ' · weekly' : ''}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void cancelGcStatementSend(s.id).then(refreshPendingSends, refreshPendingSends)
-                  }}
-                  title="Cancel this scheduled send (ends a weekly chain)"
-                  style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
-                >
-                  Cancel
-                </button>
+                {canCancelRow(s) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void cancelGcStatementSend(s.id).then(refreshPendingSends, refreshPendingSends)
+                    }}
+                    title="Cancel this scheduled send (ends a weekly chain)"
+                    style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <span title="Only the person who scheduled this (or a dev) can cancel it" style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    by {requesterNameOf(s.requested_by)}
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -2416,7 +2435,7 @@ export function JobsGcReviewModal({
           })()
         : null}
       {historyGc ? (
-        <GcStatementSendHistoryModal gcId={historyGc.id} gcName={historyGc.name} appLastSentAt={lastSentByGcId[historyGc.id] ?? null} onClose={() => setHistoryGc(null)} />
+        <GcStatementSendHistoryModal gcId={historyGc.id} gcName={historyGc.name} onClose={() => setHistoryGc(null)} />
       ) : null}
     </div>
   )
