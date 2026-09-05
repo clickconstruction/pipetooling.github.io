@@ -262,6 +262,36 @@ const TOOLS = [
     },
   },
   {
+    name: 'paste_counts',
+    description:
+      "STG-5 in one call (v2.2864): write count rows into PipeTooling and book-assign every one from the 🤖 Robot Default book, so the Audits tab prices your card. Each row names the book entry to assign (extend the book first when a tag is missing); unit_price_override carries a price the book doesn't (a lump/bucket row, a LOCK-stated all-in) — label such rows transparently. Pass expected_total (your LOCK total) and the call REFUSES when the priced rows don't equal it — the step-0 invariant (tab total = lock) is enforced server-side, not by convention. Refused when the bid already has rows unless replace: true. Do this BEFORE your LOCK note and before the audit exists; an audit with no rows reads draft $0 and cannot be judged (the 2026-09-04 'we will not do this for free' cards).",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your bid (e.g. 'b467' or uuid) — created by / assigned to you" },
+        rows: {
+          type: 'array',
+          description: 'The count rows, in display order (max 200)',
+          items: {
+            type: 'object',
+            properties: {
+              fixture: { type: 'string', description: "Row label, e.g. 'Water Closet (WC)' or 'ft of 2\" Sanitary Waste (PVC)'" },
+              count: { type: 'number', description: 'Quantity (ea) or length (ft)' },
+              unit: { type: 'string', description: "'ea' | 'ft' | 'px' | 'sqft' — omit to infer from the fixture name ('ft of …' → ft)" },
+              page: { type: 'string', description: "Plan sheet, e.g. 'P2.1' (optional)" },
+              book_entry: { type: 'string', description: 'EXACT 🤖 Robot Default entry name to assign this row to (the fixture_types name)' },
+              unit_price_override: { type: 'number', description: "Price per unit when the book entry's price is not the row's price (lump rows, LOCK-stated all-ins)" },
+            },
+            required: ['fixture', 'count', 'book_entry'],
+          },
+        },
+        expected_total: { type: 'number', description: 'Your LOCK total — the call refuses unless the priced rows equal it (±$1 or 0.1%). Always pass it once you have locked.' },
+        replace: { type: 'boolean', description: "Delete the bid's existing count rows + assignments first (default false — existing rows refuse the call)" },
+      },
+      required: ['bid', 'rows'],
+    },
+  },
+  {
     name: 'get_shadow_queue',
     description:
       'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate — created recently, plans present, NOT yet sent (so the shadow is blind by nature), not a ZZ bid, not already shadowed. HUMAN-REQUESTED bids (the green robot icon on the Bid Board) come FIRST, oldest ask on top, and bypass the lookback window — work those before the rest. Returns logistics only. Pick one and open_shadow it.',
@@ -894,6 +924,13 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // Blindness order is structural: no LOCK note on the ledger, no unseal.
       const { data: lockNotes } = await admin.from('bids_submission_entries').select('id').eq('bid_id', bid.id).ilike('notes', '%LOCK%').limit(1)
       if (!lockNotes?.length) return textContent(`b${bid.bid_number} has no LOCK note on its ledger — add_bid_note your blind total first ("[STG-3..5 + LOCK] $NN,NNN …"), then score.`, true)
+      // STG-5 is structural too (v2.2864): an estimate that lives only in the lock note
+      // renders draft $0 on the Audits tab and cannot be judged — seven BT-16..19 cards
+      // sat that way for four days. No count rows in PipeTooling, no unseal.
+      const { count: twinRowCount } = await admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', bid.id)
+      if (!twinRowCount) {
+        return textContent(`b${bid.bid_number} has no count rows in PipeTooling — the audit card would read draft $0 and cannot be judged. Run STG-5 first (paste_counts, or the Counts tab paste import + book assignment), then score.`, true)
+      }
       // Idempotent per run label — and AMENDABLE (v2.2816): the scope-match check needs the
       // reference rows, which only this call unseals, so the honest first verdict is often
       // "unknown". A second call with the same run_label and a verdict (or counts_note /
@@ -1136,6 +1173,97 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         audit: viewUrl ? 'bid_audits row ensured + count_tooling_link stamped' : 'view link failed — audit row not created',
       }, null, 2))
     }
+    case 'paste_counts': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const rows = Array.isArray(args.rows) ? args.rows as Record<string, unknown>[] : []
+      if (!ref || !rows.length) return textContent('paste_counts needs bid + rows[]', true)
+      if (rows.length > 200) return textContent('paste_counts takes at most 200 rows', true)
+      const UNITS = ['ea', 'ft', 'px', 'sqft']
+      const parsed = rows.map((r, i) => ({
+        i,
+        fixture: String(r.fixture ?? '').trim().slice(0, 300),
+        count: Number(r.count),
+        unit: r.unit == null ? null : String(r.unit).trim(),
+        page: r.page == null ? null : String(r.page).trim().slice(0, 40) || null,
+        bookEntry: String(r.book_entry ?? '').trim(),
+        override: r.unit_price_override == null ? null : Number(r.unit_price_override),
+      }))
+      const bad = parsed.filter((r) =>
+        !r.fixture || !r.bookEntry || !Number.isFinite(r.count) || r.count <= 0 ||
+        (r.unit != null && !UNITS.includes(r.unit)) || (r.override != null && !Number.isFinite(r.override)))
+      if (bad.length) {
+        return textContent(`Invalid rows (need fixture + positive count + book_entry; unit one of ${UNITS.join('/')}): ${bad.map((r) => `#${r.i + 1} "${r.fixture || '(no fixture)'}"`).join(', ')}`, true)
+      }
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, service_type_id, created_by, estimator_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid, error: bidErr } = await bq.maybeSingle()
+      if (bidErr) return textContent(`Bid lookup failed: ${bidErr.message}`, true)
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — counts land only on your own bids.`, true)
+      }
+      // The 🤖 Robot Default book for this bid's service type (global: bid_id null, is_robot).
+      const { data: robotVer } = await admin.from('price_book_versions')
+        .select('id, name').eq('is_robot', true).is('bid_id', null).eq('service_type_id', bid.service_type_id).maybeSingle()
+      if (!robotVer) return textContent('No global 🤖 Robot Default price book exists for this bid\'s service type', true)
+      const { data: entries, error: entErr } = await admin.from('price_book_entries')
+        .select('id, total_price, fixture_types(name)').eq('version_id', robotVer.id).limit(1000)
+      if (entErr) return textContent(`Book read failed: ${entErr.message}`, true)
+      const entryByName = new Map<string, { id: string; total_price: number }>()
+      for (const e of entries ?? []) {
+        const name = (e.fixture_types as { name?: string } | null)?.name
+        if (name) entryByName.set(name.trim().toLowerCase(), { id: e.id as string, total_price: Number(e.total_price) })
+      }
+      const unmatched = parsed.filter((r) => !entryByName.has(r.bookEntry.toLowerCase()))
+      if (unmatched.length) {
+        return textContent(`These book_entry names are not in the 🤖 Robot Default book — extend the book first (mirror sources in the ledger) or fix the name: ${unmatched.map((r) => `"${r.bookEntry}"`).join(', ')}`, true)
+      }
+      // The step-0 invariant, enforced: priced rows must equal the lock.
+      const total = Math.round(parsed.reduce((s, r) => s + r.count * (r.override ?? entryByName.get(r.bookEntry.toLowerCase())!.total_price), 0) * 100) / 100
+      const expected = args.expected_total == null ? null : Number(args.expected_total)
+      if (expected != null && Number.isFinite(expected) && Math.abs(total - expected) > Math.max(1, expected * 0.001)) {
+        return textContent(`Priced rows total $${total.toLocaleString()} but expected_total is $${expected.toLocaleString()} — the audit card must price to your lock. Fix the rows (or the lock) before pasting.`, true)
+      }
+      const { count: existing } = await admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', bid.id)
+      if ((existing ?? 0) > 0 && !args.replace) {
+        return textContent(`b${bid.bid_number} already has ${existing} count rows — pass replace: true to rewrite them (this deletes the existing rows and their book assignments).`, true)
+      }
+      if ((existing ?? 0) > 0) {
+        for (const table of ['bid_pricing_assignments', 'bid_count_row_custom_prices', 'bid_count_row_submission_hides']) {
+          const { error: delErr } = await admin.from(table).delete().eq('bid_id', bid.id)
+          if (delErr) return textContent(`Replace failed clearing ${table}: ${delErr.message}`, true)
+        }
+        const { error: delRowsErr } = await admin.from('bids_count_rows').delete().eq('bid_id', bid.id)
+        if (delRowsErr) return textContent(`Replace failed clearing bids_count_rows: ${delRowsErr.message}`, true)
+      }
+      const { data: inserted, error: rowErr } = await admin.from('bids_count_rows').insert(parsed.map((r, i) => ({
+        bid_id: bid.id, fixture: r.fixture, count: r.count, unit: r.unit, page: r.page, sequence_order: i + 1,
+      }))).select('id')
+      if (rowErr) return textContent(`Rows not saved: ${rowErr.message}`, true)
+      const { error: asgErr } = await admin.from('bid_pricing_assignments').insert((inserted ?? []).map((row, i) => ({
+        bid_id: bid.id,
+        count_row_id: row.id,
+        price_book_entry_id: entryByName.get(parsed[i].bookEntry.toLowerCase())!.id,
+        price_book_version_id: robotVer.id,
+        unit_price_override: parsed[i].override,
+        is_fixed_price: false,
+      })))
+      if (asgErr) return textContent(`Rows saved but assignments failed (${asgErr.message}) — the card will price $0 until every row is assigned. Fix and re-run with replace: true.`, true)
+      const overrides = parsed.filter((r) => r.override != null).length
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[pipeline STG-5] via twin-mcp paste_counts: ${parsed.length} rows written and book-assigned (🤖 Robot Default, ${overrides} price overrides) → priced $${total.toLocaleString()}${expected != null ? ` = expected_total $${expected.toLocaleString()}` : ' (no expected_total passed)'}.`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({
+        ok: true, bid: `b${bid.bid_number}`, rows: parsed.length, priced_total: total,
+        replaced: (existing ?? 0) > 0 ? existing : 0, overrides,
+        next: expected == null ? 'No expected_total passed — verify the Counts tab total equals your LOCK before scoring.' : 'LOCK note next if not already on the ledger, then score_backtest (STG-6).',
+      }, null, 2))
+    }
     case 'get_shadow_queue': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -1335,7 +1463,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.3' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.4' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
