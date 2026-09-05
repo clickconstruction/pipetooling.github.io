@@ -15,7 +15,7 @@ Your world is Bids: from the board through takeoff and pricing to a submitted pr
 {{chip:gray|Unsent}} → {{chip:yellow|Pending}} → {{chip:green|Won}} or {{chip:red|Lost}} — and Won work moves to {{chip:blue|Started}} once the office runs it
 :::
 2. **Takeoff** — count fixtures and tie-ins off the plans.
-3. **Pricing and Labor** — the books turn those counts into materials, hours, and a price. Versions let you price the same project more than one way.
+3. **Pricing and Labor** — the books turn those counts into materials, hours, and a price. Versions let you price the same project more than one way; Labor lists the fixtures counted on the version you're on, and shows a short loading card while a bid opens — never an empty list for a bid that has fixtures.
 4. **Cover Letter and Submission** — build the proposal and send it. If you're bidding one project to several GCs, see [bid one project to multiple GCs](?g=bid-one-project-to-multiple-gcs).
 
 ## Your other tabs
