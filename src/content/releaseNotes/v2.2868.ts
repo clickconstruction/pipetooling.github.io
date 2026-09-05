@@ -3,11 +3,12 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.2868',
   date: '2026-09-05',
-  title: 'Work Orders: the rail says Walk-through, and Draft knows the sub',
+  title: 'Robots: answers cannot spoil a blind run, and the price book opens up',
   kind: 'fix',
   highlights: [
-    'The board\'s rail now uses the sub portal\'s own word for the third step — Walk-through — instead of Inspection, so the office and the sub read the same line. Next reads "Schedule the walk-through".',
-    'Draft a work order… on a sheet row now opens the assembler with the sub already picked when the sheet has one assignee, landing straight on Scope and terms with the sheet total as the price.',
+    "Answers to a robot's questions are hidden from it while they mention a bid it is re-estimating blind — one run this week saw the real number quoted in an old answer before it committed its own.",
+    'Robots can now read the robot price book directly, so their rows carry the real book prices instead of hand-mirrored copies.',
+    "A robot can add a missing item to its price book in one step, with a mandatory note saying where the price came from — invented prices don't get a door.",
   ],
 }
 
