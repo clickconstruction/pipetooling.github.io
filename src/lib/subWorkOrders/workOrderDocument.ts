@@ -59,6 +59,14 @@ export type WorkOrderIssuer = {
   phone: string | null
 }
 
+/** The letterhead on every work order — the sub portal's company block, kept in step by hand. */
+export const WORK_ORDER_ISSUER: WorkOrderIssuer = {
+  companyName: 'Click Plumbing and Electrical',
+  companyLine: 'Plumbing, Electrical, and HVAC',
+  address: null,
+  phone: '(512) 360-0599',
+}
+
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 export function fmtDocDate(ymdOrIso: string | null | undefined): string | null {

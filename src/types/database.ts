@@ -14018,7 +14018,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
-          amount: number
+          amount?: number | null
           approved_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -14086,17 +14086,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "step_commitments_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "step_commitments_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "step_commitments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
           },
           {
@@ -17697,10 +17697,6 @@ export type Database = {
             }
             Returns: string
           }
-      create_sheet_for_work_order: {
-        Args: { p_commitment_id: string }
-        Returns: Json
-      }
       create_pending_contract_versions_after_book_save: {
         Args: { p_contract_template_document_id: string }
         Returns: undefined
@@ -17718,6 +17714,10 @@ export type Database = {
           p_notes?: string
           p_template_id?: string
         }
+        Returns: Json
+      }
+      create_sheet_for_work_order: {
+        Args: { p_commitment_id: string }
         Returns: Json
       }
       create_takeoff_entry_with_items: {
@@ -19140,6 +19140,7 @@ export type Database = {
         Args: { p_master_user_id: string }
         Returns: string
       }
+      next_work_order_record_id: { Args: { p_job_id: string }; Returns: string }
       notify_dispatch_license_expiry_if_needed: {
         Args: { p_license_id: string; p_link: string }
         Returns: string
@@ -19358,10 +19359,6 @@ export type Database = {
       resolve_payment_chase_dispute: {
         Args: { p_touch_id: string }
         Returns: Json
-      }
-      next_work_order_record_id: {
-        Args: { p_job_id: string }
-        Returns: string
       }
       respond_to_work_order: {
         Args: { p_accept: boolean; p_commitment_id: string; p_reason?: string }

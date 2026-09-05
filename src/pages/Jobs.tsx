@@ -25,6 +25,7 @@ import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../l
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
+import JobsWorkOrdersTab from '../components/jobs/JobsWorkOrdersTab'
 import JobsSubLaborFormModal, { type JobsSubLaborFormModalHandle } from '../components/jobs/JobsSubLaborFormModal'
 import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../components/jobs/SubLaborPaymentModals'
 import type { LaborJob } from '../types/laborJob'
@@ -64,14 +65,14 @@ import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 export type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null }
 
-type JobsTab = 'reports' | 'stages' | 'billing' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
+type JobsTab = 'reports' | 'stages' | 'billing' | 'work_orders' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
 
 /** Align with Layout mobile breakpoint; shortens primary create button to "New". */
 const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
 
 // Roster (for Labor / Sub Sheet Ledger)
 export type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
-const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
+const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'work_orders', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
 
 type JobDetailPrefillLocationState = {
   jobDetailPrefill?: { prefillRowLabel: string | null; prefillAddress: string | null }
@@ -624,7 +625,8 @@ export default function Jobs() {
     // sub_sheet_ledger since v2.1621: the New Sub Labor job picker reads the
     // shared jobs cache — a deep link straight to the tab used to leave the
     // picker with zero rows ("No jobs match").
-    activeTab === 'stages' || activeTab === 'billing' || activeTab === 'parts' || activeTab === 'sub_sheet_ledger'
+    // work_orders (v2.2819): the board labels orders by job and its assembler picks jobs from the same cache.
+    activeTab === 'stages' || activeTab === 'billing' || activeTab === 'parts' || activeTab === 'sub_sheet_ledger' || activeTab === 'work_orders'
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
@@ -1582,6 +1584,22 @@ export default function Jobs() {
             Team Labor
           </button>
           )}
+          {showSuperintendentExtraTabs && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('work_orders')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'work_orders')
+                return next
+              })
+            }}
+            style={pageTabStyle(activeTab === 'work_orders')}
+          >
+            Work Orders
+          </button>
+          )}
           <button
             type="button"
             onClick={() => {
@@ -1751,6 +1769,22 @@ export default function Jobs() {
         jobThreadStatsByJobId={jobThreadStatsByJobId}
         refreshJobThreadStatsForJobIds={refreshJobThreadStatsForJobIds}
       />
+
+      {activeTab === 'work_orders' && (
+        <JobsWorkOrdersTab
+          jobs={jobs}
+          jobsLoading={jobsListLoading}
+          authUserId={authUser?.id}
+          deepLinkWorkOrderId={searchParams.get('wo')}
+          onDeepLinkConsumed={() =>
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.delete('wo')
+              return next
+            }, { replace: true })
+          }
+        />
+      )}
 
       {activeTab === 'sub_sheet_ledger' && (
         <JobsSubLaborTab

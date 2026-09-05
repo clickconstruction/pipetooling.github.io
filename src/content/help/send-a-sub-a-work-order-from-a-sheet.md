@@ -5,7 +5,9 @@ roles: dev, master_technician, assistant, controller
 keywords: sub, subcontractor, work order, sub labor, sheet, scope, scope library, general conditions, sign, signature, portal, fixed price, exclusions, acknowledgements
 order: 63
 ---
-A **work order** is the short document a sub signs before they start: what they're doing, for how much, in what window, under which standing rules. Project steps have had one for a while; now any **Sub Labor sheet** can carry one too, so a plain service job gets the same signed scope as a project.
+A **work order** is the short document a sub signs before they start: what they're doing, for how much, in what window, under which standing rules. Project steps have had one for a while; any **Sub Labor sheet** can carry one too, so a plain service job gets the same signed scope as a project.
+
+Most work orders now start on **Jobs → Work Orders** (see *assemble a sub work order*), where signing creates the sheet for you. The sheet's own box, below, is the door for a sheet that already exists.
 
 ## Write it on the sheet
 
