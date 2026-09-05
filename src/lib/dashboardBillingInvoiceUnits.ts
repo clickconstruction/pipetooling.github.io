@@ -10,7 +10,7 @@ import type { InvoiceWithJobLike } from '../components/jobs/BilledPaymentConfirm
 import { isAssistantLike } from './subcontractorLikeRole'
 import { type JobBillingContext } from './jobBillingContext'
 import { type ReadyToBillDashboardUnit as ReadyToBillDashboardUnitBase } from './buildReadyToBillDashboardUnits'
-import { shouldBlockBillOnPaidJob } from '../../supabase/functions/_shared/paidJobBillGuard'
+import { billIsOnPaidJob } from './billing/billTruth'
 
 type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 export type JobsLedgerPaymentRow = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -228,7 +228,7 @@ export type BilledWaitingDashboardUnit =
  * job stays: a billed, unpaid invoice is owed regardless of job stage.
  */
 export function isDashboardBillOnPaidJob(inv: { job_status?: string | null }): boolean {
-  return shouldBlockBillOnPaidJob({ jobStatus: inv.job_status })
+  return billIsOnPaidJob(inv.job_status)
 }
 
 export function withoutDashboardBillsOnPaidJobs<I extends { job_status?: string | null }>(invoices: I[]): I[] {

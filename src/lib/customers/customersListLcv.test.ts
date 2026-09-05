@@ -51,6 +51,18 @@ describe('customersListRollup', () => {
     expect(c1.openJobs).toBe(2)
   })
 
+  it('J34-N6: an over-paid billed shell clamps to 0 per row — it never nets against another job (bill truth)', () => {
+    const rollup = customersListRollup(
+      [
+        { id: 'over', customer_id: 'c1', status: 'billed', revenue: 220, payments_made: 300 },
+        { id: 'owed', customer_id: 'c1', status: 'billed', revenue: 1000, payments_made: 0 },
+      ],
+      [],
+      [],
+    )
+    expect(rollup['c1']!.openBalance).toBe(1000) // not 920
+  })
+
   it('tracks last activity across job creation and payments', () => {
     const rollup = customersListRollup(
       [

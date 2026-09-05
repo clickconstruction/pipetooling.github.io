@@ -11,6 +11,7 @@ import {
   financialJobLabel,
   redactApPayrollItems,
   redactUpcomingApSection,
+  AR_SETTLED_SUBLABEL,
   type FinancialInvoiceRow,
   type FinancialJobRow,
 } from './dashboardFinancials'
@@ -67,13 +68,17 @@ describe('buildArBucket', () => {
     expect(bucket.oldestDateYmd).toBe(null)
   })
 
-  it('drops fully paid invoices and non-billed jobs', () => {
+  it('a fully paid bill still `billed` stays as a $0 settled row (bill truth: membership by status); working shells never appear', () => {
     const bucket = buildArBucket(
       [job({ status: 'working' })],
       [invoice({ amount: 200 })],
       [{ invoice_id: 'i1', amount: 200 }],
     )
-    expect(bucket).toMatchObject({ total: 0, count: 0, oldestDateYmd: null })
+    expect(bucket).toMatchObject({ total: 0, count: 1, oldestDateYmd: null })
+    expect(bucket.items[0]?.sublabel).toContain(AR_SETTLED_SUBLABEL)
+    expect(bucket.items[0]?.dateYmd).toBeNull()
+    // a working job with no billed line owes nothing — no shell row
+    expect(buildArBucket([job({ status: 'working', revenue: 900 })], [], []).count).toBe(0)
   })
 
   it('carries the effective pct onto invoice-level and job-level AR items (unset reads 0)', () => {
@@ -91,10 +96,15 @@ describe('buildArBucket', () => {
     expect(jobItem?.pctComplete).toBe(0)
   })
 
-  it('an invoice whose job row is missing keeps a null pct (no fallback without a job)', () => {
-    const bucket = buildArBucket([], [invoice({ amount: 400 })], [])
-    expect(bucket.items[0]?.label).toBe('Unknown job')
-    expect(bucket.items[0]?.pctComplete).toBeNull()
+  it('J4-2: an invoice whose job row is missing is EXCLUDED from AR and reported, never an "Unknown job" row', () => {
+    const { ar, collections, excluded } = buildArBuckets([], [invoice({ amount: 488 })], [])
+    expect(ar.count).toBe(0)
+    expect(collections.count).toBe(0)
+    expect(excluded).toEqual({ count: 1, total: 488 })
+    // …and so is a bill riding a paid job (the v2.2846 exception)
+    const paid = buildArBuckets([job({ status: 'paid' })], [invoice({ amount: 100 })], [])
+    expect(paid.ar.count + paid.collections.count).toBe(0)
+    expect(paid.excluded).toEqual({ count: 1, total: 100 })
   })
 
   it('carries pct_complete onto collections items too', () => {
@@ -477,19 +487,24 @@ describe('buildArBuckets (collections split)', () => {
 })
 
 describe('buildArBuckets edge cases', () => {
-  it('flagged billed job with zero remainder appears in NEITHER bucket (EPSILON filter)', () => {
-    // Real prod case: revenue fully paid but status still 'billed'. Stages Collections still
-    // lists it (Stages does not filter by remaining); the dashboard drops it like any $0 AR row.
+  it('flagged billed job with zero remainder is a $0 settled Collections row — the same row the Pipeline counts', () => {
+    // Real prod case: revenue fully paid but status still 'billed'. Stages Collections lists it;
+    // bill truth keeps the count identical here and marks it settled (a Mark Paid to-do, never aged).
     const { ar, collections } = buildArBuckets(
       [job({ revenue: 220, payments_made: 220, collections_at: '2026-07-01T00:00:00Z' })],
       [],
       [],
     )
     expect(ar.count).toBe(0)
-    expect(collections.count).toBe(0)
+    expect(collections.count).toBe(1)
+    expect(collections.total).toBe(0)
+    expect(collections.items[0]?.sublabel).toContain(AR_SETTLED_SUBLABEL)
+    // over-paid shell: clamped to 0 once, never negative, never netted
+    const over = buildArBuckets([job({ revenue: 220, payments_made: 300 }), job({ id: 'j2', revenue: 1000 })], [], [])
+    expect(over.ar.total).toBe(1000)
   })
 
-  it('flagged job with one paid and one open invoice: only the open one lands in collections', () => {
+  it('flagged job with one paid and one open invoice: both land in collections, only the open one carries money', () => {
     const flagged = job({ id: 'j1', collections_at: '2026-07-01T00:00:00Z' })
     const { ar, collections } = buildArBuckets(
       [flagged],
@@ -497,8 +512,9 @@ describe('buildArBuckets edge cases', () => {
       [{ invoice_id: 'i-paid', amount: 200 }],
     )
     expect(ar.count).toBe(0)
-    expect(collections.count).toBe(1)
+    expect(collections.count).toBe(2)
     expect(collections.items[0]?.key).toBe('inv:i-open')
+    expect(collections.items[1]).toMatchObject({ key: 'inv:i-paid', amount: 0 })
     expect(collections.total).toBeCloseTo(300)
   })
 })

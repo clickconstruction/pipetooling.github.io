@@ -55,7 +55,7 @@ count. Each card:
    anchored and in plain trade words (PLACEMENT.md → "Ask like a junior
    estimator"). `ct_finish_takeoff` opens the audit row at STG-3 for you, so run
    STG-5 in the same session, before you heartbeat `done`.
-   **STG-5 is one call now (v2.2862)**: `paste_counts(bid, rows, expected_total)`
+   **STG-5 is one call now (v2.2864)**: `paste_counts(bid, rows, expected_total)`
    writes the rows and their 🤖 Robot Default assignments together and REFUSES
    when the priced rows don't equal `expected_total` — always pass your lock
    total so the invariant is checked by the server, not by you. And the gate is

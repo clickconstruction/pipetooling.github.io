@@ -454,6 +454,29 @@ function describeDatabaseError(error: DatabaseError): string {
   })
 }
 
+/**
+ * Pure: the class of ANY thrown value, by the same rules the formatters use
+ * (v2.2843): a `DatabaseError` carries its `kind`; a fetch-layer `TypeError`
+ * is the network; a plain error/object with a PostgREST code or an HTTP
+ * status is the server; a bare string or codeless error is consulted for a
+ * fetch signature and is otherwise `unknown`. The offline Retry panel decides
+ * from this — never from message text — whether a failure is worth retrying
+ * when the signal comes back. Timeouts (`OperationTimeoutError`) are `unknown`:
+ * the request may still have landed, so they must not read as "nothing saved".
+ */
+export function errorKindOf(error: unknown): DatabaseErrorKind {
+  if (error == null) return 'unknown'
+  if (error instanceof DatabaseError) return error.kind
+  if (error instanceof OperationTimeoutError) return 'unknown'
+  if (isFetchLayerTypeError(error)) return 'network'
+  const code = readCode(error)
+  const status = readStatus(error)
+  if (code != null || status != null) {
+    return classifyResultError({ message: readMessage(error), code, status })
+  }
+  return isNetworkFetchErrorMessage(readMessage(error)) ? 'network' : 'unknown'
+}
+
 function reportShown(kind: DatabaseErrorKind, code: string | undefined, operation: string | undefined, status?: number) {
   reportErrorClass({ kind, code: code ?? '', operation: operation ?? '', status })
 }

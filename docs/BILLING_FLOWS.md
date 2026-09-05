@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-08-28
+last_updated: 2026-09-05
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -100,6 +100,7 @@ Audit table (baseline): `job_id` FK CASCADE, `from_status`, `to_status`, `change
 - **Jobs → Pipeline tab** (label renamed from "Stages" in the v2.1251+ naming audit; `src/components/jobs/JobsStagesTab.tsx`, board kernels in `src/lib/jobsStagesBoard.ts`): Waiting / Working / Ready to Bill / Billed Awaiting Payment / Collections / Paid in Full sections with the full action set (promote, Bill Customer, partial invoice, Mark Paid, send-backs, Collections flag, AR modal, aging chips). `readyToBillJobs` includes working jobs that own an RTB draft (break-offs).
 - **Jobs → Billing tab** — flat job-content table (fixtures, charges, totals); **no status transitions**.
 - **Quickfill** (`src/pages/Quickfill.tsx`): read-only "Billed Awaiting Payment" (`src/components/quickfill/BilledAwaitingPaymentSection.tsx`) and "Complete, no Total Bill" (`src/hooks/useQuickfillCompleteNoBillJobs.ts`) reminder sections.
+- **One bill truth (v2.2862, journey Tier-1 #2(c))** — every "Ready to Bill" / "Billed" / "Owed" / "Lifetime" figure reads `src/lib/billing/billTruth.ts` (`computeBillTruth`; rules in its header, one per bucket): the Pipeline strip (`fetchStagesHeaderStats` → `StagesHeaderStats.billTruth`), the Dashboard AR card (`buildArBuckets`) and Billed pin (`useBilledTotal`), Quickfill's breakdown, the Customer Hub strip + Invoices footer and the Customers list. Membership: RTB/billed rows on non-paid jobs (+ one shell per invoice-less billed job); a bill on a `paid` or missing job is **excluded and counted** (`excludedOwed` — the AR card / Quickfill say "N bills on paid or missing jobs excluded"); a fully-paid-but-unmarked bill stays a `settled` $0 member so counts agree; `openRemainder` is the single clamp. `billTruthShadow.ts` keeps the old sums for one release and beacons `bill_truth_mismatch` (dev console + `ui_nav_clicks`).
 - **Edit Job** (`src/components/jobs/JobFormModal.tsx`): break-off invoice creation, payments table, delete/migrate; participates in billed→RTB prep.
 
 ## Invoices (`jobs_ledger_invoices`)
@@ -140,7 +141,7 @@ Billing a partial = Bill Customer with `kind:'invoice'` (fixed amount); billing 
 
 - `src/hooks/useDashboardBillingInvoices.ts` — dashboard engine: `jobs_ledger_invoices.select(DASHBOARD_INVOICES_JOBS_LEDGER_SELECT)` per status + RPC `get_jobs_ledger_by_status` + `jobs_ledger_payments.select('*')` for billed jobs. The select constant + flattener live in `src/lib/dashboardBillingInvoiceUnits.ts` (drift-guarded by its test; `dashboardInvoiceToPaymentModal` strips flattened fields — the v2.734 leak fix).
 - `src/lib/jobsLedgerEmbedSelects.ts` — Pipeline/detail embeds (`JOBS_LEDGER_INVOICES_EMBED` omits the write-down columns); used by `src/lib/fetchJobsLedgerWithDetailsForStages.ts` (Jobs `loadJobs`, AR page) and `src/lib/fetchJobWithDetailsById.ts` (single-job detail, Bill Customer refresh).
-- `src/hooks/useBilledTotal.ts` — billed-and-unpaid headline (includes Collections). `src/lib/invoiceWithJobFromJobList.ts`, `src/lib/jobBillingContext.ts`, `src/lib/jobLedgerCustomerForBilling.ts` — rehydration/context helpers.
+- `src/hooks/useBilledTotal.ts` — billed-and-unpaid headline (includes Collections) = the bill-truth kernel's `owed` over the spine's job cohort (v2.2862). `src/lib/invoiceWithJobFromJobList.ts`, `src/lib/jobBillingContext.ts`, `src/lib/jobLedgerCustomerForBilling.ts` — rehydration/context helpers.
 - RPC `get_jobs_ledger_by_status` (baseline): SECURITY DEFINER, **no auth/role check** (comment: "Bypasses RLS for Dashboard").
 
 ### "Remaining" kernels (v2.727)
@@ -148,6 +149,7 @@ Billing a partial = Bill Customer with `kind:'invoice'` (fixed amount); billing 
 - Dashboard: `src/lib/dashboardBillingInvoiceUnits.ts` (`dashboardBilledInvoiceAmounts` = applied/open per invoice; `buildBilledWaitingDashboardUnits` merge rules) and `src/lib/buildReadyToBillDashboardUnits.ts` (`jobRemainingCents`, `dashboardJobBillingUnallocCents`, bundle rules) — semantics pinned by their tests.
 - Pipeline: `src/lib/jobsStagesBoard.ts` (`jobBillingUnallocatedDollars`, `buildReadyToBillStageRows`, `buildBilledStageRows`, `bankPaymentTargetsFromStageRows`) and `src/lib/jobs/invoiceBilling.ts` (`invoiceOpenRemainingOnJob`, `stageRowBilledRemainingAmount`, aging helpers).
 - Two bases everywhere: invoice-line remaining = `amount − Σ payments(invoice_id)`; job-shell remaining = `revenue − payments_made`; the billing-unallocated variant additionally subtracts RTB+billed invoice amounts.
+- **Bill truth (v2.2862)**: both remaining bases clamp through `lib/billing/billTruth.openRemainder` — `stageRowBilledRemainingAmount`, `billedStageRowRemainingAmount` and `invoiceOpenRemainingOnJob` all call it, so the two stage-row variants can no longer disagree. `buildJobsStagesBoardLists` / `buildBilledAgingBuckets` / `countBilledRowsMissingDates` take RTB and billed invoices only from open (non-paid) jobs (`billOnOpenJob`).
 
 ## The three billing channels (Bill Customer)
 
@@ -270,7 +272,7 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 
 ### Display surfaces
 
-Edit Job "Payments received" table (locked Stripe/Mercury rows; refs via `src/lib/abbreviatePaymentReference.ts`); Dashboard billing pipeline Applied/Open; `useDashboardFinancials` AR buckets; Quickfill `BilledAwaitingPaymentSection`; `useBilledTotal` headline; `HostedStripeBillPanel` paid-at fallback; Job Summary charges timeline (`src/lib/jobChargesTimeline.ts`); physical-invoice payment history; the job activity feed.
+Edit Job "Payments received" table (locked Stripe/Mercury rows; refs via `src/lib/abbreviatePaymentReference.ts`); Dashboard billing pipeline Applied/Open; `useDashboardFinancials` AR buckets, Quickfill `BilledAwaitingPaymentSection` and the `useBilledTotal` headline (all three = `lib/billing/billTruth.ts` since v2.2862); `HostedStripeBillPanel` paid-at fallback; Job Summary charges timeline (`src/lib/jobChargesTimeline.ts`); physical-invoice payment history; the job activity feed.
 
 ## System of record (the 2026-08-24 policy)
 
@@ -388,7 +390,7 @@ Checklist for a live end-to-end billing test on prod (there is no staging; every
 
 Findings only (no fixes) — seeds for a later pass.
 
-1. "Billed remaining" math re-implemented ≥6× (`dashboardBilledInvoiceAmounts`, `useBilledTotal`, Quickfill `BilledAwaitingPaymentSection`, `jobsStagesBoard.billedStageRowRemainingAmount`, `jobs/invoiceBilling.stageRowBilledRemainingAmount`, `useDashboardFinancials`) — and the two stage-row variants disagree on clamping (jobsStagesBoard clamps at 0; invoiceBilling doesn't).
+1. ~~"Billed remaining" math re-implemented ≥6× (`dashboardBilledInvoiceAmounts`, `useBilledTotal`, Quickfill `BilledAwaitingPaymentSection`, `jobsStagesBoard.billedStageRowRemainingAmount`, `jobs/invoiceBilling.stageRowBilledRemainingAmount`, `useDashboardFinancials`) — and the two stage-row variants disagree on clamping (jobsStagesBoard clamps at 0; invoiceBilling doesn't).~~ **Fixed in v2.2862**: `lib/billing/billTruth.ts` is the one kernel (`openRemainder` the one clamp); `useBilledTotal`, `useDashboardFinancials`/`buildArBuckets`, Quickfill, both stage-row helpers and the customer kernels read it. Still separate by design: `dashboardBilledInvoiceAmounts` (per-invoice applied/open for the Stage-3 cards) — same formula, not a bucket.
 2. Invoice-applied-payments sum has ≥5 client copies (`BilledPaymentConfirmationModal`, `HostedStripeBillPanel`, `jobsStagesBoard.sumPaymentsForInvoiceOnJob`, Quickfill, `dashboardBillingInvoiceUnits`) plus ~6 SQL equivalents in payment RPCs.
 3. The "unallocated" kernel exists 5× (ensure RPC SQL, `dashboardJobBillingUnallocCents`, `jobsStagesBoard.jobBillingUnallocatedDollars`, `wouldEnsureNothingLeftToBillForJob`, `JobFormModal.unallocatedBillableDollars`). Bases diverge on the primary bundle **deliberately** since v2.2447: the ensure RPC (v2.1134), `unallocatedBillableDollars` (v2.2446), and `jobsStagesBoard.jobPartialInvoiceRemainingDollars`/`clampPartialInvoiceCentsToUnallocated` (v2.2447, the Pipeline partial-invoice modal's basis) exclude it; `jobsStagesBoard.jobBillingUnallocatedDollars` counts it — that is the board-merge basis (a positive value = gap the drafts don't cover) feeding `readyToBillMergedPrimaryInvoiceId`, section exposure sums, and the board remaining footnotes. `promoteJobToBilledIfFullyInvoiced` short-circuits on any RTB row, so either basis reads the same there.
 4. ~~**Inconsistency**: the Jobs Pipeline "Create partial invoice" modal (`createInvoiceFromModal`, now in `JobsStagesTab.tsx`) computes remaining as `revenue − payments_made` without subtracting existing invoice allocations, unlike `JobFormModal.createInvoice` — it can accept an over-allocating amount; the ensure RPC only guards the primary row.~~ **Fixed in v2.735**: display, clamps, and icon gate now use `jobBillingUnallocatedDollars`/`clampPartialInvoiceCentsToUnallocated`. Still open: its insert+ensure block remains copy-pasted from JobFormModal.

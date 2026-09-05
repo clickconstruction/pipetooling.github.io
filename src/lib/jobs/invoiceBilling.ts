@@ -4,6 +4,7 @@ import { buildBilledStageRows, jobInCollections, stagesMergedBillingInvoiceId, t
 import { calendarDaysSinceDateUtc, formatYmdOrIsoDateForPrintDisplay } from './jobFormatting'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { billOnOpenJob, openRemainder } from '../billing/billTruth'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -21,8 +22,7 @@ export function sumInvoiceAppliedFromJobPayments(job: JobWithDetails, invoiceId:
 }
 
 export function invoiceOpenRemainingOnJob(inv: JobsLedgerInvoice, job: JobWithDetails): number {
-  const applied = sumInvoiceAppliedFromJobPayments(job, inv.id)
-  return Math.max(0, Number(inv.amount ?? 0) - applied)
+  return openRemainder(inv.amount, sumInvoiceAppliedFromJobPayments(job, inv.id))
 }
 
 /**
@@ -39,9 +39,17 @@ export function jobBilledUnpaidDollars(job: JobWithDetails): number {
   return s
 }
 
+/**
+ * Open remainder on one Billed row — the bill-truth kernel's clamp
+ * (`openRemainder`, v2.2862): shell rows are `max(0, revenue −
+ * payments_made)`, invoice rows net their linked payments. Before this the
+ * shell arm here was UNCLAMPED while `jobsStagesBoard.billedStageRowRemainingAmount`
+ * clamped, so an over-paid billed shell lowered the strip total but not the
+ * AR card (BILLING_FLOWS "Optimization candidates" #1, journey J34-N6).
+ */
 export function stageRowBilledRemainingAmount(r: StageRow): number {
   if (r.kind === 'job') {
-    return Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0)
+    return openRemainder(r.job.revenue, r.job.payments_made)
   }
   return invoiceOpenRemainingOnJob(r.inv, r.job)
 }
@@ -201,7 +209,8 @@ export function buildBilledNoLineBucket(rows: StageRow[]): { count: number; sum:
 
 export function countBilledRowsMissingDates(stagesFilteredJobs: JobWithDetails[]): number {
   const st = (j: JobWithDetails) => (j.status ?? 'working') as string
-  const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j))
+  // bill-truth membership: a billed line on a paid job is not an open bill
+  const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j) && billOnOpenJob(j.status))
   const billedJobsList = filtered.filter((j) => st(j) === 'billed')
   const billedInvoicesList = filtered.flatMap((j) =>
     (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
@@ -211,7 +220,8 @@ export function countBilledRowsMissingDates(stagesFilteredJobs: JobWithDetails[]
 
 export function buildBilledAgingBuckets(stagesFilteredJobs: JobWithDetails[], now = new Date()): BilledAgingBuckets {
   const st = (j: JobWithDetails) => (j.status ?? 'working') as string
-  const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j))
+  // bill-truth membership: a billed line on a paid job is not an open bill
+  const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j) && billOnOpenJob(j.status))
   const billedJobsList = filtered.filter((j) => st(j) === 'billed')
   const billedInvoicesList = filtered.flatMap((j) =>
     (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),

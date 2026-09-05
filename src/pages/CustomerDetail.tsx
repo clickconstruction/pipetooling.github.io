@@ -26,6 +26,8 @@ import {
 } from '../lib/customers/customerActivityFeed'
 import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActivity'
 import { buildCustomerInvoiceRows, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
+import { appliedByInvoiceId, openBillRowsForJob } from '../lib/billing/billTruth'
+import { legacyFooterLifetime, legacyHubOpenBalance, reportBillTruthShadow } from '../lib/billing/billTruthShadow'
 import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/customers/fetchCustomerInvoices'
 
 /**
@@ -237,6 +239,24 @@ export default function CustomerDetail() {
         : null,
     [invoicesData, todayYmd],
   )
+
+  // Bill-truth shadow (one release, journey J34-F1/N6): the footer used to skip the job-shell
+  // arm the strip counted, and the strip's open balance used to net over-paid shells. Log-only —
+  // this page has no auth hook; the Dashboard / Quickfill beacons carry the user row.
+  useEffect(() => {
+    if (!stats || !data) return
+    const rows = data.jobs.flatMap((j) =>
+      openBillRowsForJob(j, j.invoices.map((i) => ({ ...i, job_id: j.id })), appliedByInvoiceId(j.payments)),
+    )
+    reportBillTruthShadow({ surface: 'customer-hub-open-balance', legacy: legacyHubOpenBalance(rows), kernel: stats.openBalance })
+    if (invoiceView && invoicesData) {
+      reportBillTruthShadow({
+        surface: 'customer-hub-lifetime',
+        legacy: legacyFooterLifetime(invoicesData.invoices),
+        kernel: invoiceView.totals.billedTotal,
+      })
+    }
+  }, [stats, data, invoiceView, invoicesData])
 
   if (!customerId) {
     return <p style={{ color: 'var(--text-red-700)' }}>No customer id in the URL.</p>

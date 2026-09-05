@@ -1,4 +1,4 @@
-import { shouldBlockBillOnPaidJob } from '../../supabase/functions/_shared/paidJobBillGuard'
+import { billIsOnPaidJob } from './billing/billTruth'
 
 /** One display row for Dashboard Ready to Bill (job, merged job+line, or standalone invoice). */
 export type ReadyToBillDashboardUnit<J, I> =
@@ -54,7 +54,7 @@ export function buildReadyToBillDashboardUnits<
   // Stale never-sent drafts on Paid-in-Full jobs (live specimens: jobs 688 and
   // 903, J3-1) are not "ready to bill" — the board's rule is job-status based
   // and a paid job can never be in Ready to Bill, so the Dashboard matches it.
-  const invoices = invoicesIn.filter((i) => !shouldBlockBillOnPaidJob({ jobStatus: i.job_status }))
+  const invoices = invoicesIn.filter((i) => !billIsOnPaidJob(i.job_status))
   const bundledIds = new Set<string>()
   const out: ReadyToBillDashboardUnit<J, I>[] = []
   for (const job of jobs) {

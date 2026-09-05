@@ -121,6 +121,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 - **Render location:** `{showFinancials && <DashboardFinancialsSection />}`.
 - **Owned state:** none in parent. Fully self-contained component.
 - **Extraction status:** **Done.**
+- **Money source (v2.2862):** the AR card's buckets (`useDashboardFinancials` → `buildArBuckets`) and the parent's Billed pin (`useBilledTotal`) are the bill-truth kernel (`src/lib/billing/billTruth.ts`) — the same `billed` / `collections` / `owed` the Pipeline strip and Quickfill show. The card's detail lines add "N bills on paid or missing jobs excluded ($X)" when the kernel kept bills out of Owed (`arExcluded`); the Stage 2/3 lists' paid-job exclusion (`isDashboardBillOnPaidJob`) reads the same predicate.
 
 ### 3. Banners + tally icon + Job Report + quick actions + pins row
 

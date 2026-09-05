@@ -207,15 +207,22 @@ describe('computeStagesHeaderStats', () => {
       (p) => p.invoice_id != null || (p.paid_on != null && p.paid_on >= windowStart),
     )
 
-    const bounded = {
+    const { billTruth: boundedTruth, ...bounded } = {
       ...computeStagesHeaderStats(assembleLeanStatsJobs(activeJobRows, activeInvoiceRows, boundedPaymentRows), NOW),
       paid: { count: paidCount },
       collectedByDay: collectedByDayFromPayments(boundedPaymentRows, NOW),
     }
-    expect(bounded).toEqual(computeStagesHeaderStats(all, NOW))
+    const { billTruth: fullTruth, ...full } = computeStagesHeaderStats(all, NOW)
+    expect(bounded).toEqual(full)
+    // the buckets agree too; only the paid head-count differs (the bounded path never ships paid jobs)
+    expect(boundedTruth.billed).toEqual(fullTruth.billed)
+    expect(boundedTruth.collections).toEqual(fullTruth.collections)
+    expect(boundedTruth.owed).toEqual(fullTruth.owed)
+    expect(fullTruth.paidInFull.jobCount).toBe(2)
+    expect(boundedTruth.paidInFull.jobCount).toBe(0)
   })
 
-  it('documented delta: a billed invoice stranded on a paid job drops out of the bounded stats', () => {
+  it('bill truth: a billed invoice stranded on a paid job is excluded on BOTH paths (v2.2846 rule, kernel-enforced)', () => {
     const stranded = job('p3', {
       status: 'paid',
       revenue: 200,
@@ -223,9 +230,12 @@ describe('computeStagesHeaderStats', () => {
     })
     const all = [...FULL, stranded]
     const full = computeStagesHeaderStats(all, NOW)
-    // Full path surfaces the stray invoice as an extra Billed row + aging entry…
-    expect(full.billed.count).toBe(4)
-    expect(full.billedAging.count30_90).toBe(2)
+    // The full-row path used to surface the stray invoice as an extra Billed row + aging entry;
+    // the bill-truth kernel files it under onPaidJobs instead and the board lists follow.
+    expect(full.billed.count).toBe(3)
+    expect(full.billedAging.count30_90).toBe(1)
+    expect(full.billTruth.onPaidJobs.invoices.map((i) => i.id)).toEqual(['p3-b'])
+    expect(full.billTruth.excludedOwed).toEqual({ count: 1, total: 200 })
 
     const { jobRows, invoiceRows, paymentRows } = stripToLean(all)
     const activeJobRows = jobRows.filter(
@@ -236,7 +246,7 @@ describe('computeStagesHeaderStats', () => {
       assembleLeanStatsJobs(activeJobRows, activeInvoiceRows, paymentRows),
       NOW,
     )
-    // …the bounded path drops it (paid job rows aren't fetched; orphan invoices are discarded).
+    // …and the bounded path never had it (paid job rows aren't fetched; assembly drops orphan invoices).
     expect(bounded.billed.count).toBe(3)
     expect(bounded.billedAging.count30_90).toBe(1)
   })

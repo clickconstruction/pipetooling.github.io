@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildPipelineFixups, buildPipelineMoneyMoves, buildPipelineMoneyStory } from './pipelineOverview'
 import type { StagesHeaderStats } from './stagesHeaderStats'
+import { emptyBillTruth } from '../billing/billTruth'
 
 const stats = (over: Partial<StagesHeaderStats> = {}): StagesHeaderStats => ({
   waiting: { count: 17, total: 262300 },
@@ -16,6 +17,7 @@ const stats = (over: Partial<StagesHeaderStats> = {}): StagesHeaderStats => ({
     total,
   })),
   billedNoDate: 65,
+  billTruth: emptyBillTruth(),
   ...over,
 })
 

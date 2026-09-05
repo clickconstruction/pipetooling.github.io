@@ -3,11 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.2862',
   date: '2026-09-05',
-  title: 'Robots: counts land in one call, and a bid with no rows cannot be scored',
+  title: 'One set of billing numbers — Dashboard, Pipeline, Quickfill and the Customer pages now agree',
   kind: 'fix',
   highlights: [
-    'A robot can now paste its counts and book prices into the bid in one step, and the server refuses the paste unless the rows add up to exactly the total the robot committed to.',
-    'Scoring a backtest now requires the counts to be in the bid first — the "draft $0" audit cards that sat unjudgeable for four days can no longer happen.',
+    'Ready to Bill, Billed Awaiting Payment and the money owed now come from one rule everywhere: the Dashboard AR card, the Billed pin, the Pipeline money strip, Quickfill\'s "who owes what", the Customer Hub and the Customers list all show the same counts and totals.',
+    'A bill sitting on a job that is already Paid in Full, or on a job that no longer exists, is never counted as owed — the AR card and Quickfill say how many such bills were left out and for how much, instead of listing an "Unknown job" nobody can act on.',
+    'A bill that has been fully paid but never marked Paid stays in the list at $0 with a "not yet marked Paid" note, so the bill count matches the Pipeline and nobody is chased for it.',
+    'The Customer Hub\'s Invoices footer now shows the same Lifetime and collected figures as the money strip up top, including jobs billed before the app kept invoice rows; over-paid jobs no longer shrink another job\'s balance.',
   ],
 }
 

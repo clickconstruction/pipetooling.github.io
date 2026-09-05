@@ -5,12 +5,14 @@ import {
   DatabaseError,
   databaseErrorFromResult,
   describeClassifiedError,
+  errorKindOf,
   executeDeleteChain,
   formatErrorMessage,
   formatPostgrestOrUnknownError,
   humanizeOperationName,
   isRetryableError,
   operationSubject,
+  OperationTimeoutError,
   withRetry,
   withSupabaseRetry,
   type SupabaseClientResult,
@@ -334,5 +336,33 @@ describe('operation-name humanizing', () => {
     expect(describeClassifiedError({ kind: 'network', rawMessage: 'x' })).toBe(OFFLINE_ERROR_MESSAGE)
     expect(describeClassifiedError({ kind: 'unknown', rawMessage: 'x' })).toBe('x')
     expect(describeClassifiedError({ kind: 'server', code: '42P01', rawMessage: 'raw' })).toBe('raw')
+  })
+})
+
+describe('errorKindOf (class of any thrown value — feeds the offline Retry panel)', () => {
+  it('reads a DatabaseError\'s kind', () => {
+    expect(errorKindOf(databaseErrorFromResult({ message: 'x', code: '22P02' }, 'fetch thing', 400))).toBe('server')
+    expect(errorKindOf(databaseErrorFromResult({ message: 'TypeError: Failed to fetch', code: '' }, 'clock in', 0))).toBe(
+      'network',
+    )
+  })
+
+  it('a fetch-layer TypeError is network; an app TypeError is unknown', () => {
+    expect(errorKindOf(new TypeError('Failed to fetch'))).toBe('network')
+    expect(errorKindOf(new TypeError('Load failed'))).toBe('network')
+    expect(errorKindOf(new TypeError('x is not a function'))).toBe('unknown')
+  })
+
+  it('a structured PostgrestError object is decided by code / status, never message', () => {
+    expect(errorKindOf({ message: 'Failed to fetch', code: '42501', details: '', hint: '' })).toBe('server')
+    expect(errorKindOf({ message: 'boom', status: 522 })).toBe('server')
+    expect(errorKindOf({ message: 'TypeError: Failed to fetch', code: '', details: '', hint: '' })).toBe('network')
+  })
+
+  it('a timeout is unknown (the write may still land), as are null and plain strings without a signature', () => {
+    expect(errorKindOf(new OperationTimeoutError('Clock in', 15000))).toBe('unknown')
+    expect(errorKindOf(null)).toBe('unknown')
+    expect(errorKindOf('boom')).toBe('unknown')
+    expect(errorKindOf('TypeError: Failed to fetch')).toBe('network')
   })
 })

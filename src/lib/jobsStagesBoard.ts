@@ -1,4 +1,5 @@
 import type { Database } from '../types/database'
+import { billOnOpenJob, openRemainder } from './billing/billTruth'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { StagesBoardSortMode } from './jobsStagesSortMode'
 import { jobLedgerHasCustomerForBilling } from './jobLedgerCustomerForBilling'
@@ -173,11 +174,10 @@ function sumPaymentsForInvoiceOnJob(job: JobWithDetails, invoiceId: string): num
 /** Remaining dollars for a Billed Awaiting Payment stage row (job shell, merged billed, or invoice). */
 export function billedStageRowRemainingAmount(r: StageRow): number {
   if (r.kind === 'job') {
-    return Math.max(0, Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0))
+    return openRemainder(r.job.revenue, r.job.payments_made)
   }
   const inv = r.inv
-  const applied = sumPaymentsForInvoiceOnJob(r.job, inv.id)
-  return Math.max(0, Number(inv.amount ?? 0) - applied)
+  return openRemainder(inv.amount, sumPaymentsForInvoiceOnJob(r.job, inv.id))
 }
 
 /** Short label for Bank Payments / Stages (HCP + line type). */
@@ -500,10 +500,15 @@ export function buildJobsStagesBoardLists(
     (j) => status(j) === 'ready_to_bill' || (status(j) === 'working' && jobHasReadyToBillInvoice(j)),
   )
   const billedJobs = filtered.filter((j) => status(j) === 'billed')
-  const readyToBillInvoices: InvoiceWithJob[] = filtered.flatMap((j) =>
+  // Bill-truth membership (journey Tier-1 #2): an invoice riding a `paid` job is
+  // never a Ready to Bill draft nor an open bill — the lean strip never fetches
+  // paid jobs, the Dashboard drops them (v2.2846), and this full-row path must
+  // not be the one surface that still lists them.
+  const openJobs = filtered.filter((j) => billOnOpenJob(j.status))
+  const readyToBillInvoices: InvoiceWithJob[] = openJobs.flatMap((j) =>
     (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').map((inv) => ({ ...inv, job: j })),
   )
-  const billedInvoices: InvoiceWithJob[] = filtered.flatMap((j) =>
+  const billedInvoices: InvoiceWithJob[] = openJobs.flatMap((j) =>
     (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
   )
   const readyToBillRows = buildReadyToBillStageRows(readyToBillJobs)

@@ -18,6 +18,8 @@ import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
 import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
 import { RemoveScheduleBlockConfirmModal } from '../schedule/scheduleDispatchRemoveBlockModal'
 import QuickAssignSheet from './QuickAssignSheet'
+import OfflineRetryPanel from '../OfflineRetryPanel'
+import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { LinkedScheduleGroupModal } from '../schedule/LinkedScheduleGroupModal'
 import { fetchUsersTabRosterForScheduleDispatchHub, fetchUserNamesForIds } from '../../lib/scheduleDispatchHub'
 import {
@@ -96,15 +98,16 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   /** Empty set = everyone. Person ids survive day switches; absent people just contribute nothing. */
   const [personFilter, setPersonFilter] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /** Last load failure with its class — the panel offers Retry only for a network failure (J2-F3). */
+  const [error, setError] = useState<OfflineRecoveryLastError | null>(null)
 
   const loadDay = useCallback(
     async (ymd: string) => {
       setLoading(true)
       setError(null)
-      const { data, error: err } = await fetchDispatchModeDayBlocks(ymd, selfUserId)
+      const { data, error: err, errorKind } = await fetchDispatchModeDayBlocks(ymd, selfUserId)
       setBlocks(data)
-      setError(err)
+      setError(err ? { kind: errorKind ?? 'unknown', message: err } : null)
       setLoading(false)
     },
     [selfUserId],
@@ -526,9 +529,15 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           Loading schedule…
         </p>
       ) : error ? (
-        <p style={{ margin: 0, padding: '1rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-          {error}
-        </p>
+        // Reads are idempotent: when the signal returns the agenda refetches by itself (J2-F3).
+        <OfflineRetryPanel
+          failure={error}
+          onRetry={() => loadDay(selectedYmd)}
+          surface="dispatch-schedule"
+          idempotent
+          busy={loading}
+          style={{ padding: '1rem 0.75rem' }}
+        />
       ) : visibleBlocks.length === 0 ? (
         <p style={{ margin: 0, padding: '1rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           {blocks.length === 0 ? 'Nothing scheduled.' : 'Nothing scheduled for the selected people.'}
