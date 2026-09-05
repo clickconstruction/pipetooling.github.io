@@ -13,13 +13,13 @@ export function PersonDeskScheduleSection({ userId, displayName }: { userId: str
   const [open, setOpen] = useState(false)
   if (!userId) {
     return (
-      <DeskSection title="Schedule">
+      <DeskSection id="schedule" title="Schedule">
         <DeskEmpty>Schedule blocks need a login account.</DeskEmpty>
       </DeskSection>
     )
   }
   return (
-    <DeskSection title="Schedule">
+    <DeskSection id="schedule" title="Schedule">
       {open ? (
         <div style={{ padding: '0.4rem 0.5rem' }}>
           <UserDayScheduleSection userId={userId} displayName={displayName} workDateYmd={workDateYmd} onWorkDateYmdChange={setWorkDateYmd} onClose={() => setOpen(false)} titleId={`person-desk-schedule-${userId}`} />

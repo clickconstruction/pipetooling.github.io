@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { PersonDeskPushSection } from './sections/PersonDeskPushSection'
+import { deskSectionDomId } from '../../lib/people/personDeskSections'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
@@ -70,6 +72,25 @@ export function PersonDeskBody({
   const displayName = key?.displayName ?? payload.displayName ?? 'Loading…'
   const viewerUserId = authUser?.id ?? null
 
+  // v2.2810: a door that named a section scrolls the Desk there once the sections exist,
+  // with a short ring so the eye lands on it.
+  const keyUserId = key?.userId ?? null
+  const keyPersonId = key?.personId ?? null
+  useEffect(() => {
+    if (!payload.section || (!keyUserId && !keyPersonId)) return
+    const el = document.getElementById(deskSectionDomId(payload.section))
+    if (!el) return
+    const t0 = setTimeout(() => el.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50)
+    el.style.boxShadow = '0 0 0 2px var(--border-blue)'
+    const t1 = setTimeout(() => {
+      el.style.boxShadow = ''
+    }, 1800)
+    return () => {
+      clearTimeout(t0)
+      clearTimeout(t1)
+    }
+  }, [payload.section, keyUserId, keyPersonId])
+
   return (
     <>
       {readOnly ? (
@@ -114,6 +135,7 @@ export function PersonDeskBody({
             {key.isSub ? <PersonDeskWorkOrdersSection personId={key.personId} changeKey={changeKey} /> : null}
             <PersonDeskPaySection personKey={key} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskTeamSection userId={key.userId} displayName={displayName} viewer={viewer} viewerUserId={viewerUserId} changeKey={changeKey} onChanged={onChanged} />
+            <PersonDeskPushSection userId={key.userId} canSeePush={access.canSeePushStatus} changeKey={changeKey} />
             <PersonDeskFieldSection userId={key.userId} payName={key.payName} displayName={displayName} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskPaperworkSection payName={key.payName} personId={key.personId} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskRecordsSection userId={key.userId} personId={key.personId} viewer={viewer} changeKey={changeKey} />

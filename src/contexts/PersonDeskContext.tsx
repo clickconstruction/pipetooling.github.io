@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { canOpenPersonDesk } from '../lib/people/personDeskGates'
+import type { PersonDeskSectionId } from '../lib/people/personDeskSections'
 
 /**
  * Person Desk opener (v2.2701). Any component can open the per-person drawer
@@ -14,6 +15,8 @@ export type PersonDeskOpenArgs = {
   payName?: string | null
   /** Shown in the header until the key resolves. */
   displayName?: string | null
+  /** v2.2810: scroll the Desk to this section once it renders. */
+  section?: PersonDeskSectionId | null
 }
 
 type PersonDeskContextValue = {
@@ -40,7 +43,7 @@ export function PersonDeskProvider({ children }: { children: ReactNode }) {
     const personId = args.personId?.trim() || null
     const payName = args.payName?.trim() || null
     if (!userId && !personId && !payName) return
-    setPayload({ userId, personId, payName, displayName: args.displayName?.trim() || payName })
+    setPayload({ userId, personId, payName, displayName: args.displayName?.trim() || payName, section: args.section ?? null })
   }, [])
 
   const close = useCallback(() => setPayload(null), [])

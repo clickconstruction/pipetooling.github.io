@@ -203,7 +203,7 @@ export function PersonDeskPaySection({
   const lock = canEdit ? null : <LockTag label={viewer.readOnly ? 'training mode' : 'pay roles'} />
 
   return (
-    <DeskSection title="Pay & schedule" who="pay roles">
+    <DeskSection id="pay" title="Pay & schedule" who="pay roles">
       {!payName ? (
         <DeskEmpty>No pay name yet — an account or roster row gives them one.</DeskEmpty>
       ) : (

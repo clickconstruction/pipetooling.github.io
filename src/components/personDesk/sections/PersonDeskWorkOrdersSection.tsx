@@ -106,7 +106,7 @@ export function PersonDeskWorkOrdersSection({ personId, changeKey }: { personId:
 
   if (!personId) {
     return (
-      <DeskSection title="Work orders">
+      <DeskSection id="work_orders" title="Work orders">
         <DeskEmpty>Work orders hang off the roster row. Create it from the header first.</DeskEmpty>
       </DeskSection>
     )
@@ -114,7 +114,7 @@ export function PersonDeskWorkOrdersSection({ personId, changeKey }: { personId:
 
   const open = (items ?? []).filter((i) => i.status === 'offered' || i.status === 'accepted' || i.status === 'approved').length
   return (
-    <DeskSection title="Work orders" who={items ? `${open} open · ${items.length} total` : undefined}>
+    <DeskSection id="work_orders" title="Work orders" who={items ? `${open} open · ${items.length} total` : undefined}>
       {items == null ? (
         <DeskEmpty>Loading…</DeskEmpty>
       ) : items.length === 0 ? (

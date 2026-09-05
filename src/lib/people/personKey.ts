@@ -164,6 +164,13 @@ export function personDeskParam(key: { userId?: string | null; personId?: string
   return null
 }
 
+/** `?person=u:<id>&section=paperwork` — the search string that opens the Desk at a section (v2.2810). */
+export function personDeskLink(key: { userId?: string | null; personId?: string | null }, section?: string | null): string | null {
+  const p = personDeskParam(key)
+  if (!p) return null
+  return section ? `?person=${p}&section=${section}` : `?person=${p}`
+}
+
 export function parsePersonDeskParam(raw: string | null | undefined): { userId?: string; personId?: string } | null {
   const s = (raw ?? '').trim()
   const m = /^([up]):([0-9a-f-]{36})$/i.exec(s)
