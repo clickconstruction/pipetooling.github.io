@@ -124,6 +124,7 @@ import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthPx'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
+import { useRoleGate } from '../hooks/useRoleGate'
 import { useActiveAccountsModal } from '../contexts/ActiveAccountsModalContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
@@ -347,8 +348,11 @@ export default function People() {
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const hoursTableScrollRef = useRef<HTMLDivElement>(null)
   const hoursFocusClearTimeoutRef = useRef<number | null>(null)
-  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus } = usePeopleAccess(authUser?.id)
+  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus, accessResolved } = usePeopleAccess(authUser?.id)
   const canOpenHoursTab = canAccessPay || canAccessHours
+  // Role gates that say something (v2.2882): a deep link to a Pay tab this role
+  // can't open toasts once and lands on Users — no more tab strip over a blank page.
+  const { bounce: roleGateBounce } = useRoleGate(authRole, authUser?.id)
   const usersTabTags = useUsersTabTags({
     isDev,
     activeTab,
@@ -857,13 +861,21 @@ export default function People() {
         setActiveTab('users')
         return
       }
-      if (tab === 'employment' && !canAccessPay) {
+      // Pay-group gates (v2.2882, C25 J7-5): Payroll / Employment / Offsets need
+      // `canAccessPay`, Hours needs hours-or-pay. Every flag starts false while
+      // usePeopleAccess loads, so gate only once `accessResolved` — before that the
+      // tab is set and the (already flag-gated) render site simply waits. A role
+      // that never gets the flag used to see the tab strip and then nothing.
+      const payGated = tab === 'employment' || tab === 'pay_stubs' || tab === 'offsets'
+      if (accessResolved && ((payGated && !canAccessPay) || (tab === 'hours' && !canOpenHoursTab))) {
+        const { toTab } = roleGateBounce(tab === 'hours' ? 'hours' : 'payroll', `/people?tab=${tab}`)
+        const target = (toTab ?? 'users') as PeopleTab
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
-          next.set('tab', 'users')
+          next.set('tab', target)
           return next
         }, { replace: true })
-        setActiveTab('users')
+        setActiveTab(target)
         return
       }
       if (tab === 'writeups' && !canAccessContracts) {
@@ -883,7 +895,7 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessOverheadTab, canAccessPay, setSearchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessOverheadTab, canAccessPay, canOpenHoursTab, accessResolved, roleGateBounce, setSearchParams])
 
   useEffect(() => {
     if (searchParams.get('tab') !== 'contracts') return

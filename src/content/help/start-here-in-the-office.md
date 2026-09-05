@@ -35,6 +35,10 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 
 **Settings → Guides** has "Viewing guides for" chips — flip to any role to read exactly what they can, which is the quickest way to answer "where do I click?" over the phone.
 
+## When a link isn't for your role
+
+Open a link to a page your role can't use — the owner's Crew P&L, the controller's Payroll — and the app says so once ({{chip:blue|Crew P&L is for the owner — you're on Reports.}}) and lands you on the nearest tab you can use. Nothing is broken; the page just isn't yours. Ask the owner or controller if you need what's on it.
+
 ## Controller-only
 
 Payroll, wage detail, and money visibility that assistants don't have. Everything else on this page is shared.

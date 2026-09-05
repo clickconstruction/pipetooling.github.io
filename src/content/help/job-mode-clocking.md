@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: clock in, clock out, job mode, time tracking, leave report, next job
+keywords: clock in, clock out, job mode, time tracking, leave report, next job, my requests, dispatch answered
 order: 10
 ---
 Job Mode turns the Dashboard into one big card built for working in the field: it shows your current job, your next scheduled job, and big buttons for the things you actually do on site.
@@ -103,7 +103,7 @@ With Job Mode on, a tab bar pins to the bottom of the screen — everything on i
 
 - **Dashboard** — the Job Mode card you know.
 - **Schedule** — a two-week strip plus your own day agenda: your visits with times, customer, and address. Tap one to open the job.
-- **Inbox** — any notification banners meant for you (like stale tally transactions) up top, then your **My Inbox** tasks and your recent push notifications.
+- **Inbox** — any notification banners meant for you (like stale tally transactions) up top, then your **My Inbox** tasks, then **My requests**: everything you've sent to Dispatch (a red phone or red photos tap, a note to Dispatch) split into **Waiting on Dispatch** and **Answered** — an answered one shows the office's note as {{chip:green|Office answered: "Added — it's 555-0100"}}. You also get a push, **Dispatch answered**, the moment they close it.
 - **Customers** — just the customers whose jobs have been on your schedule; tap one for its full interaction summary.
 
 ## Good habits

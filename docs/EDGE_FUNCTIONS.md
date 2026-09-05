@@ -831,6 +831,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Blind-safe verbs (v2.2868 / v1.3.5)** — three fixes from the 2026-09-05 regression batch: **`get_answers` redacts for blindness** — any question/answer mentioning a reference the twin currently holds an UNSEALED shell against (twin-owned bid with `twin_source_bid_id`, no `twin_run_scores` row and no scored `twin_shadow_runs` row) comes back as `{redacted: true, note}` and reappears after that shell's scorecard; matching is by `bNNN` token or project-name substring, and over-redaction is deliberate (R2-BT-20 was value-exposed pre-lock by a parked answer that quoted the reference's won number). **`get_robot_book(bid?)`** — read-only entry names + prices for the 🤖 Robot Default book (the bid's service type, or all robot books), so agents price from the real book instead of mirrored guesses (the R2-BT-21 agent had to override every row when book-price reads were blocked client-side). **`extend_robot_book(bid, entries, mirror_note)`** — the doctrine's "extend when a tag is missing; mirror sources in the ledger" as a fenced verb: inserts fixture types + priced entries for the bid's service type, stamps `[book extend]` + the mandatory `mirror_note` on the bid's ledger; existing names are skipped, never repriced (re-mirrors stay a digest act).
 
+**The last three unverbed lanes (v2.2881 / v1.3.6)** — every run of the 2026-09-05 second batch hit the same three classifier-blocked client-side writes/reads; now they are verbs. **`put_substrate(bid, substrate, version?)`** — STG-2's `bids_plan_substrates` insert, fenced to the twin's own bid, 1 MB cap, latest-row-wins (a corrected substrate is just another call), `[pipeline STG-2]` ledger stamp; `get_plan_brief`'s no-substrate message now routes here. **`seed_audit_questions(bid, questions)`** — up to 20 `bid_audit_notes` rows (`kind='question'`, sections counts/footage/pricing/scope/general, `sheet_ref` + `context` anchoring; the response warns per unanchored question), against the bid's newest `bid_audits` row (opened if missing). **`get_reference_rows(bid)`** — the post-unseal read for the T4 line-compare: takes the twin SHELL, resolves the pairing, and is **refused while no scorecard exists** for that shell (`twin_run_scores`, or a scored `twin_shadow_runs` row) — blind-safe by construction, the read-direction mirror of score_backtest's LOCK gate; returns the reference's count rows with their assigned unit prices (override ?? entry price).
+
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
 
 ---
@@ -1873,11 +1875,11 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### notify-dispatch-request
 
-**Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group).
+**Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group). Since **v2.2880** the same function also carries the answer back: `mode: 'closed' | 'reopened'` pushes the **requester** (`from_user_id`) with the office's closing note and always logs them a `notification_history` row (journey-map Tier-2 #25 — "closing a field request tells the tech nothing").
 
 **Endpoint**: `POST /functions/v1/notify-dispatch-request`
 
-**Required Role**: Authenticated user who is the request author (`from_user_id` on the row)
+**Required Role**: `mode` omitted / `'created'`: authenticated user who is the request author (`from_user_id` on the row). `mode: 'closed' | 'reopened'`: a dispatch group member, a dev, or the row's `closed_by_user_id` (checked with the service role after the RLS-scoped row read).
 
 **Required Secrets**:
 - `SUPABASE_URL`
@@ -1893,6 +1895,12 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 { "dispatch_request_id": "<uuid>" }
 ```
 
+Close / reopen (v2.2880) — `note` is the office's note (trimmed, ≤500 chars; falls back to the row's `closed_note` for `closed`):
+
+```json
+{ "dispatch_request_id": "<uuid>", "mode": "closed", "note": "Added — it's 555-0100" }
+```
+
 #### Success response
 
 ```json
@@ -1906,6 +1914,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `message`.
 
+Close / reopen: `{ success, mode, message, push_sent, recipients: 1, notified: push_sent > 0 }`; when the closer is the requester themselves nothing is sent (`recipients: 0`).
+
 #### Implementation notes
 
 1. User-scoped client loads `dispatch_requests` by id; rejects if not found or `from_user_id !== auth.uid()`.
@@ -1913,6 +1923,7 @@ When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `mes
 3. Logs `notification_history` with `template_type: dispatch_request` per recipient when at least one push succeeded for that recipient.
 4. Optional **job/bid** line in the push body uses **`service_types.ledger_job_prefix`** / **`ledger_bid_prefix`** (fallback **J** / **B**) via shared **[`_shared/ledgerDisplayPrefixes.ts`](../supabase/functions/_shared/ledgerDisplayPrefixes.ts)** when the referenced row includes **`service_type_id`** — **RECENT_FEATURES** **v2.432**.
 5. **`links[]`** is **optional** — empty arrays are tolerated (the function never dereferences `links` for push body composition). The Dashboard My Schedule *Link Customer Pictures* flow (**v2.556**) reuses this endpoint with `links: []` and the new **`pending_action = 'link_job_pictures'`** marker (used only by the inbox UI, not by the push payload), so no Edge-function change was required.
+6. **`mode: 'closed' | 'reopened'`** (**v2.2880**): one recipient — the requester. Push title **"Dispatch answered"** / **"Dispatch reopened your request"**, body `Handled: <title> — <note>` / `Reopened: <title> — <note>` (220-char cap; wording mirrored by `composeDispatchClosurePush` in [`src/lib/dispatchRequestClosure.ts`](../src/lib/dispatchRequestClosure.ts) — keep them in step), `url: /job-mode/inbox`, `tag: dispatch-<id>-<mode>`. The `notification_history` row (`template_type` `dispatch_request_closed` / `dispatch_request_reopened`, `channel: push`) is written **whether or not a push went out**, so Settings → Notifications shows the answer for people who never enabled push. Clients: `useDispatchInbox` (Add & Close → `closed`; note on a closed row → `reopened`) and `JobFormModal`'s blank→set auto-close of `link_job_pictures` / `add_job_phone` requests, both via `notifyDispatchRequestClosure`, which then records `dispatch_request_closed{notified}` in `ui_nav_clicks`.
 
 ---
 
