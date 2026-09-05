@@ -311,6 +311,23 @@ serve(async (req) => {
 
     const totalDue = Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100
 
+    // Receipt landing (v2.2878, J22-F3): the Stripe footer link carries
+    // `?paid=1` and the page calls back with `return=stripe`; a refetch after
+    // a pay tab sends `return=refresh`. Rides the same function-log path as
+    // the statement line — `public_page_views.via` is CHECK-limited to
+    // token/slug, so no row shape changes and no migration.
+    const returnFrom = url.searchParams.get('return')?.trim() || null
+    if (returnFrom === 'stripe') {
+      console.log(
+        JSON.stringify({
+          event: 'portal_return_from_stripe',
+          customer_id: link.customer_id,
+          audience: link.audience,
+          via: rawToken ? 'token' : 'slug',
+        }),
+      )
+    }
+
     // Statement telemetry (J21-F1 follow-up): `public_page_views` has no payload
     // column, so the rendered total rides the function log as one structured
     // line — queryable against the office AR figure without DDL.
@@ -320,6 +337,7 @@ serve(async (req) => {
         customer_id: link.customer_id,
         audience: link.audience,
         via: rawToken ? 'token' : 'slug',
+        return_from: returnFrom,
         statement_total_cents: Math.round(totalDue * 100),
         bill_count: bills.length,
       }),

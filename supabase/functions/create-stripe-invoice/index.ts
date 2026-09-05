@@ -26,6 +26,8 @@ import {
   logPaidJobBillBlockedBestEffort,
   shouldBlockBillOnPaidJob,
 } from '../_shared/paidJobBillGuard.ts'
+import { stripeInvoiceFooter } from '../_shared/stripeInvoiceFooterPortalLink.ts'
+import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -503,6 +505,22 @@ serve(async (req) => {
       return jsonResponse({ error: lineItemsBuilt.error }, 400)
     }
 
+    // Receipt → statement return path (v2.2878, journey-map J22-F3 / #38):
+    // Stripe's hosted invoice page has no return_url (Invoice objects take
+    // none; that is a Checkout field), so the portal link rides the invoice
+    // `footer` — hosted page, PDF and receipt. Custom footers keep priority
+    // (the line is appended only within the 5000-char cap). Only for the job
+    // customer themselves: an alternate payer (bill_to) is not the portal
+    // holder and must never be handed the customer's key.
+    const portalReturnUrl = billToEmail
+      ? null
+      : await loadPortalReturnUrl(
+          admin,
+          customer_id,
+          Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com', // domain-cutover flip point (docs/DOMAIN_CUTOVER.md)
+        )
+    const footerForStripe = stripeInvoiceFooter(footerTrimmedForStripe, portalReturnUrl)
+
     const d = daysUntilDue(due_date.trim())
 
     let invoice: Stripe.Invoice
@@ -521,7 +539,7 @@ serve(async (req) => {
           const parts = [addr ? `Service address: ${addr}` : '', memo?.trim() ?? ''].filter(Boolean)
           return parts.length ? parts.join('\n\n') : undefined
         })(),
-        footer: footerTrimmedForStripe ?? undefined,
+        footer: footerForStripe ?? undefined,
         // v2.998: service address in the invoice header (hosted page + PDF).
         // Read from jobs_ledger.job_address at creation time; Stripe caps
         // custom_fields values at 140 chars. Omitted entirely when blank.
@@ -589,7 +607,7 @@ serve(async (req) => {
       status: 'billed',
       external_send_channel: 'stripe',
       stripe_invoice_memo: memoTrimmed,
-      stripe_invoice_footer: footerTrimmedForStripe,
+      stripe_invoice_footer: footerForStripe,
       // A1 (FRAGILITY_REMEDIATION_PLAN.md): record which Stripe mode this
       // invoice's objects live in; A3 makes the row authoritative for later
       // row-bound operations (void/send/details/OOB/write-down).
