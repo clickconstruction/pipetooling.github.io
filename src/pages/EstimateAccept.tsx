@@ -14,6 +14,8 @@ import {
 import type { EstimateAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
 import { parseAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
 import type { CustomerAttachmentPayload } from '../lib/estimateCustomerAttachment'
+import { supabase } from '../lib/supabase'
+import { estimateCustomerFetchQuery, isEstimateViewStaffPreview } from '../lib/estimateViewPreview'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -48,6 +50,9 @@ function PublicEstimateShell({ children }: { children: ReactNode }) {
 export default function EstimateAccept() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
+  // v2.2873 (journey-map #34/#37): the office's Open customer link appends ?preview=1 so its
+  // own look is not stamped as a customer open; a signed-in staff session counts the same way.
+  const previewParam = isEstimateViewStaffPreview(params, false)
   // What customers see (v2.2758): the sample token renders the fixture for a signed-in office user.
   const sample = sampleStateFromToken(token)
 
@@ -62,6 +67,9 @@ export default function EstimateAccept() {
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  // v2.2873: the customer's "No thanks" (J17-F6).
+  const [declined, setDeclined] = useState(false)
+  const [declining, setDeclining] = useState(false)
   const [headerBrand, setHeaderBrand] = useState<EstimateAcceptHeaderBrand | null>(null)
   // Estimate Options (v2.2460): 2+ options render the picker; the choice rides the accept POST.
   const [options, setOptions] = useState<EstimateOption[]>([])
@@ -78,8 +86,17 @@ export default function EstimateAccept() {
       setLoading(true)
       setError(null)
       try {
+        let staffSession = false
+        try {
+          const { data: sess } = await supabase.auth.getSession()
+          staffSession = Boolean(sess.session)
+        } catch {
+          staffSession = false
+        }
+        if (ac.signal.aborted) return
+        const preview = isEstimateViewStaffPreview(previewParam ? '?preview=1' : '', staffSession)
         const res = await fetch(
-          `${supabaseUrl}/functions/v1/get-estimate-for-customer?token=${encodeURIComponent(token)}`,
+          `${supabaseUrl}/functions/v1/get-estimate-for-customer?${estimateCustomerFetchQuery(token, preview)}`,
           {
             signal: ac.signal,
             headers: await publicFunctionHeaders(sample),
@@ -149,7 +166,7 @@ export default function EstimateAccept() {
     }
     void load()
     return () => ac.abort()
-  }, [token, sample])
+  }, [token, sample, previewParam])
 
   async function submitAccept(payload: EstimateAcceptSubmitPayload) {
     if (!token || !estimate) return
@@ -202,10 +219,59 @@ export default function EstimateAccept() {
     }
   }
 
+  /**
+   * v2.2873 (J17-F6): "No thanks" → accept-estimate with action: 'decline'. The office sees
+   * the row move to the Pipeline's Declined bucket and a "Declined by customer" activity line.
+   */
+  async function submitDecline(reason: string) {
+    if (!token || !estimate || declining) return
+    if (sample) {
+      setDeclined(true)
+      return
+    }
+    setDeclining(true)
+    setError(null)
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/accept-estimate`, {
+        method: 'POST',
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, action: 'decline', declineReason: reason }),
+      })
+      const json = (await res.json()) as { error?: string; ok?: boolean }
+      if (!res.ok) {
+        setError(json.error || 'Could not record your answer.')
+        return
+      }
+      setDeclined(true)
+    } catch {
+      setError('Could not record your answer. Try again later.')
+    } finally {
+      setDeclining(false)
+    }
+  }
+
   if (loading) {
     return (
       <PublicEstimateShell>
         <p>Loading…</p>
+      </PublicEstimateShell>
+    )
+  }
+
+  if (declined) {
+    return (
+      <PublicEstimateShell>
+        {sample ? <SampleModeBanner /> : null}
+        <div className="auth-public-landing__estimate-thankyou-inner">
+          <EstimateCustomerThankYou
+            title="Thanks for letting us know"
+            body="We've marked this estimate as declined and won't follow up on it. If anything changes, just reply to the email and we'll pick it right back up."
+          />
+        </div>
       </PublicEstimateShell>
     )
   }
@@ -271,6 +337,8 @@ export default function EstimateAccept() {
         }}
         headerBrand={headerBrand}
         customerAttachment={estimate.customer_attachment}
+        onDecline={(reason) => void submitDecline(reason)}
+        declining={declining}
       />
     </PublicEstimateShell>
   )

@@ -7,6 +7,7 @@ import {
   estimateDraftMeaningfulLineCount,
   isEmptyEstimateDraft,
   readinessDots,
+  splitFollowupRows,
   type EstimatePipelineRowLike,
 } from './estimatePipelineRefresh'
 
@@ -153,5 +154,34 @@ describe('ledger money view', () => {
     expect(L.filter((r) => ledgerRowPasses(r, { ...base, includeClosed: true }, now))).toHaveLength(5)
     expect(L.filter((r) => ledgerRowPasses(r, { ...base, kind: 'change_order' }, now))).toHaveLength(1)
     expect(L.filter((r) => ledgerRowPasses(r, { ...base, withinDays: 30 }, now))).toHaveLength(3)
+  })
+})
+
+describe('splitFollowupRows', () => {
+  const row = (id: string, status: string, updated_at: string, doc_kind: string | null = null) => ({ id, status, updated_at, doc_kind })
+
+  it('declined rows get their own bucket instead of hiding in Sent (J17-N2)', () => {
+    const b = splitFollowupRows([
+      row('d', 'draft', '2026-09-01'),
+      row('s', 'sent', '2026-09-02'),
+      row('x', 'declined', '2026-09-03'),
+      row('a', 'customer_accepted', '2026-09-04'),
+      row('old', 'superseded', '2026-09-05'),
+    ])
+    expect(b.unsent.map((r) => r.id)).toEqual(['d'])
+    expect(b.sent.map((r) => r.id)).toEqual(['s'])
+    expect(b.declined.map((r) => r.id)).toEqual(['x'])
+    expect(b.accepted.map((r) => r.id)).toEqual(['a'])
+  })
+
+  it('sorts each bucket newest-updated first and skips signed bid-room proposals', () => {
+    const b = splitFollowupRows([
+      row('older', 'sent', '2026-09-01'),
+      row('newer', 'sent', '2026-09-03'),
+      row('bid', 'customer_accepted', '2026-09-04', 'bid_proposal'),
+    ])
+    expect(b.sent.map((r) => r.id)).toEqual(['newer', 'older'])
+    expect(b.accepted).toEqual([])
+    expect(b.declined).toEqual([])
   })
 })

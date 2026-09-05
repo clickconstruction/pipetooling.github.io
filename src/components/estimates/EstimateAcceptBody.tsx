@@ -24,6 +24,7 @@ function formatOptionMoney(cents: number): string {
 import { EstimateAcceptTypedSignatureLine } from './EstimateAcceptTypedSignatureLine'
 import { SignedSignatureBlock } from '../SignedSignatureBlock'
 import { formatSignedCentsUsd, isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
+import { ESTIMATE_DECLINE_REASON_MAX } from '../../../supabase/functions/_shared/estimateDecline'
 
 const ESTIMATE_ACCEPT_MODAL_TITLE = 'Approve Estimate'
 const ESTIMATE_ACCEPT_NAME_PLACEHOLDER = 'Your name'
@@ -109,6 +110,13 @@ export type EstimateAcceptBodyProps = {
   options?: EstimateOption[]
   selectedOptionKey?: string | null
   onSelectOption?: (key: string) => void
+  /**
+   * v2.2873 (journey-map J17-F6): the customer's "No thanks". When set (interactive only), a
+   * quiet link under Approve opens a small confirm panel with an optional reason; the page
+   * owns the POST. Absent on the staff preview.
+   */
+  onDecline?: (reason: string) => void
+  declining?: boolean
 }
 
 const FOCUSABLE_SELECTOR =
@@ -144,6 +152,8 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     options = [],
     selectedOptionKey = null,
     onSelectOption,
+    onDecline,
+    declining = false,
   } = props
 
   const readOnly = variant === 'staffPreview'
@@ -152,6 +162,11 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
   const [acceptModalOpen, setAcceptModalOpen] = useState(false)
   const [acceptMode, setAcceptMode] = useState<'type' | 'draw'>('type')
   const [fieldHint, setFieldHint] = useState<string | null>(null)
+  // v2.2873: the "No thanks" door — a link, then a confirm panel with an optional reason.
+  const [declinePanelOpen, setDeclinePanelOpen] = useState(false)
+  const [declineReason, setDeclineReason] = useState('')
+  const declineReasonId = useId()
+  const canDecline = variant === 'interactive' && !readOnly && typeof onDecline === 'function'
   const approveButtonRef = useRef<HTMLButtonElement>(null)
   // v2.2772: the phone-only bottom bar shows while the Approve button is off-screen.
   const [approveInView, setApproveInView] = useState(false)
@@ -424,6 +439,113 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
               ? `Approve "${selectedOption.name.trim() || 'Option'}" — ${formatOptionMoney(estimateOptionTotalCents(selectedOption))}`
               : 'Approve'}
           </button>
+        </div>
+      ) : null}
+
+      {canDecline && !showStaffAcceptedInline ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', marginTop: '0.85rem' }} data-testid="estimate-decline-door">
+          {!declinePanelOpen ? (
+            <button
+              type="button"
+              onClick={() => setDeclinePanelOpen(true)}
+              disabled={submitting || declining}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: '0.6rem 0.9rem',
+                minHeight: 44,
+                fontSize: '0.9rem',
+                color: 'var(--text-muted)',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+              }}
+              aria-label={isCo ? 'Decline this change order' : 'Decline this estimate'}
+            >
+              No thanks
+            </button>
+          ) : (
+            <div
+              role="group"
+              aria-labelledby={`${declineReasonId}-heading`}
+              style={{
+                width: '100%',
+                maxWidth: 520,
+                boxSizing: 'border-box',
+                padding: '0.9rem 1rem',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                background: 'var(--bg-subtle)',
+              }}
+            >
+              <div id={`${declineReasonId}-heading`} style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
+                Not going ahead{isCo ? ' with this change' : ''}?
+              </div>
+              <p style={{ margin: '0.3rem 0 0.6rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
+                Let us know and we will stop following up. If anything changes later, just reply to the email.
+              </p>
+              <label htmlFor={declineReasonId} style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-700)', marginBottom: '0.25rem' }}>
+                Reason <span style={{ color: 'var(--text-muted)' }}>(optional)</span>
+              </label>
+              <textarea
+                id={declineReasonId}
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value.slice(0, ESTIMATE_DECLINE_REASON_MAX))}
+                maxLength={ESTIMATE_DECLINE_REASON_MAX}
+                rows={2}
+                disabled={declining}
+                placeholder="Went with another bid, timing, budget…"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  fontSize: '0.95rem',
+                  padding: '0.5rem 0.6rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 6,
+                  background: 'var(--surface)',
+                  color: 'var(--text-strong)',
+                  resize: 'vertical',
+                }}
+              />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.6rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeclinePanelOpen(false)}
+                  disabled={declining}
+                  style={{
+                    padding: '0.6rem 0.9rem',
+                    minHeight: 44,
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 6,
+                    background: 'var(--surface)',
+                    color: 'var(--text-700)',
+                    cursor: declining ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Keep looking
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDecline?.(declineReason)}
+                  disabled={declining}
+                  style={{
+                    padding: '0.6rem 0.9rem',
+                    minHeight: 44,
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    border: '1px solid var(--text-red-700)',
+                    borderRadius: 6,
+                    background: 'var(--surface)',
+                    color: 'var(--text-red-700)',
+                    cursor: declining ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {declining ? 'Sending…' : isCo ? 'Decline this change order' : 'Decline this estimate'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
 

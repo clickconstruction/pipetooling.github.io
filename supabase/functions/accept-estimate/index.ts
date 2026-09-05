@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { notifySignedAgreement } from '../_shared/signedAgreementNotify.ts'
 import { clientIpFromRequest, insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
+import { canDeclineEstimate, normalizeEstimateDeclineReason } from '../_shared/estimateDecline.ts'
 
 const SIGNATURE_BUCKET = 'estimate-acceptor-signatures'
 const MAX_SIGNATURE_BYTES = 524288 // 512 KiB (matches bucket file_size_limit)
@@ -69,6 +70,67 @@ type EstimateFetchRow = {
 // v2.2743: staff notice + optional auto-create live in _shared/signedAgreementNotify.ts
 // (the Signed agreements stream). The estimate's own picks still ride along as extras.
 
+function json(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+/**
+ * v2.2873 (journey-map J17-F6 / N1): the customer's "No thanks". Same token contract as
+ * acceptance, no name or signature required. Flips `sent → declined` (status-gated so a
+ * race with an acceptance loses cleanly) and appends the `declined` event with
+ * `metadata.by = 'customer'` and the optional reason (≤ 280 chars). Idempotent: a repeat
+ * POST on an already-declined estimate answers 200 + alreadyDeclined. Requires migration
+ * 20260905170000 (event_type CHECK).
+ */
+async function handleDecline(
+  admin: ReturnType<typeof createClient>,
+  req: Request,
+  tokenHash: string,
+  declineReason: unknown,
+): Promise<Response> {
+  const { data: rowRaw, error: fetchErr } = await admin
+    .from('estimates')
+    .select('id, status, public_token_expires_at')
+    .eq('public_token_hash', tokenHash)
+    .maybeSingle()
+  const row = rowRaw as Pick<EstimateFetchRow, 'id' | 'status' | 'public_token_expires_at'> | null
+  if (fetchErr || !row) return json(404, { error: 'Not found' })
+
+  if (row.status === 'declined') return json(200, { ok: true, alreadyDeclined: true })
+  if (row.status === 'customer_accepted') return json(409, { error: 'Already accepted', code: 'already_accepted' })
+  const verdict = canDeclineEstimate(row.status)
+  if (!verdict.ok) return json(404, { error: 'Not available' })
+
+  const exp = row.public_token_expires_at ? Date.parse(String(row.public_token_expires_at)) : NaN
+  if (!Number.isNaN(exp) && exp < Date.now()) return json(410, { error: 'Link expired', code: 'expired' })
+
+  const reason = normalizeEstimateDeclineReason(declineReason)
+  const { data: updatedRows, error: updErr } = await admin
+    .from('estimates')
+    .update({ status: 'declined' as const })
+    .eq('id', row.id)
+    .eq('status', 'sent')
+    .select('id')
+  if (updErr) {
+    console.error('accept-estimate decline', updErr)
+    return json(500, { error: 'Could not record your answer' })
+  }
+  if (!updatedRows?.[0]) return json(409, { error: 'This estimate is no longer awaiting a reply' })
+
+  await insertEstimateCustomerEvent(admin, {
+    estimateId: row.id,
+    eventType: 'declined',
+    source: 'accept-estimate',
+    req,
+    metadata: { by: 'customer', note: reason },
+  })
+  console.info(JSON.stringify({ tag: 'estimate_declined', by: 'customer', estimateId: row.id, hasReason: reason.length > 0 }))
+  return json(200, { ok: true, declined: true })
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -88,6 +150,9 @@ serve(async (req) => {
       agreedTerms?: boolean
       /** Estimate Options (v2.2460): required when the estimate offers 2+ options. */
       optionKey?: string
+      /** v2.2873: `'decline'` is the customer's "No thanks" — no name/signature/terms needed. */
+      action?: 'accept' | 'decline'
+      declineReason?: string
     }
     const raw = body.token?.trim()
     const printedName = body.printedName?.trim() ?? ''
@@ -99,6 +164,15 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+    if (body.action === 'decline') {
+      const declineUrl = Deno.env.get('SUPABASE_URL')!
+      const declineKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      if (!declineKey) return json(500, { error: 'Server misconfigured' })
+      const declineAdmin = createClient(declineUrl, declineKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      return await handleDecline(declineAdmin, req, await sha256HexFromString(raw), body.declineReason)
     }
     if (!printedName) {
       return new Response(JSON.stringify({ error: 'printedName is required' }), {

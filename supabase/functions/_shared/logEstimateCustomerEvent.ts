@@ -1,8 +1,13 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-export type EstimateCustomerEventType = 'public_link_view' | 'public_accept_submitted' | 'option_viewed'
+export type EstimateCustomerEventType = 'public_link_view' | 'public_accept_submitted' | 'option_viewed' | 'declined'
 
-export type EstimateCustomerEventSource = 'get-estimate-for-customer' | 'accept-estimate' | 'log-estimate-option-view'
+export type EstimateCustomerEventSource =
+  | 'get-estimate-for-customer'
+  | 'accept-estimate'
+  | 'log-estimate-option-view'
+  /** The staff writer is the RPC `record_estimate_decline` (v2.2873), not an edge function. */
+  | 'record_estimate_decline'
 
 export function clientIpFromRequest(req: Request): string | null {
   const fwd = req.headers.get('x-forwarded-for')
