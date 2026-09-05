@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  cardChargeSortHref,
   fetchUnsplitCardChargesForWeek,
   type UnsplitCardChargeRow,
 } from '../../lib/moneyfillWeekClose'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import { useAuth } from '../../hooks/useAuth'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /**
  * Moneyfill queue: card purchases posted in the close week with no job
  * allocations (v2.1445 — WEEKLY_MONEY_PLAN.md Phase 3, queue 3b). Fix surface
- * stays where it lives today — Quickfill → Banking sorting (Link…) — per the
- * plan's "link, never a second editor" rule.
+ * stays where it lives today — Banking → User Sort (Link…) — per the plan's
+ * "link, never a second editor" rule. The button opens that tab with the
+ * charge's counterparty in the search box (v2.2849; it used to land on
+ * Quickfill, where the Banking-sorting section is org-hidden).
  */
 export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string }) {
   const navigate = useNavigate()
+  const { role, user: authUser } = useAuth()
   const [rows, setRows] = useState<UnsplitCardChargeRow[] | null | 'loading'>('loading')
 
   useEffect(() => {
@@ -31,6 +37,12 @@ export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string
   const dollars =
     rows !== 'loading' && rows != null ? rows.reduce((s, r) => s + Math.abs(r.amount), 0) : 0
 
+  const openInUserSort = (r: UnsplitCardChargeRow) => {
+    const href = cardChargeSortHref(r.counterparty)
+    recordNavClick(authUser?.id, role, 'moneyfill-card-charges', href)
+    navigate(href)
+  }
+
   return (
     <section
       aria-label="Card charges not split to jobs"
@@ -39,7 +51,7 @@ export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string
       <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: '0 0 0.25rem' }}>Card charges not split to jobs</h2>
       <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         Mercury debit-card purchases posted this week with no job allocations — every dollar lands on some job or the
-        office.{' '}
+        office. Split each one in Banking → User Sort (Link…).{' '}
         {rows !== 'loading' && rows != null ? (
           <b style={{ color: 'var(--text-700)' }}>
             ${dollars.toLocaleString('en-US', { minimumFractionDigits: 2 })} · {rows.length} charge{rows.length === 1 ? '' : 's'}
@@ -85,11 +97,11 @@ export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string
                   <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
                     <button
                       type="button"
-                      onClick={() => navigate('/quickfill')}
-                      title="Assign job splits in Quickfill → Banking sorting"
+                      onClick={() => openInUserSort(r)}
+                      title={`Opens Banking → User Sort${r.counterparty ? ` searched for “${r.counterparty}”` : ''}; press Link… on the row to split it to jobs`}
                       style={{ padding: '0.2rem 0.65rem', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: 5, background: '#3b82f6', color: 'white', cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
-                      Assign in Banking sorting
+                      Sort in Banking → User Sort
                     </button>
                   </td>
                 </tr>
