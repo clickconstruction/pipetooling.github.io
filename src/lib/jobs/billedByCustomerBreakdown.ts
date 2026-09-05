@@ -3,15 +3,19 @@
  * CUSTOMERS card (v2.1929): the Billed Awaiting Payment rows regrouped by
  * customer so the card's total answers its own question. Pure reshaping of
  * the board's `billedActiveRows` — amounts are the same per-row open
- * remainders the section total sums, ages use the same clock as the 30/90
- * aging chips (`stageRowBilledAgeReference`: hand-set est. bill date, else the
- * billed date; rows with neither can't age — `ageDays` null).
+ * remainders the section total sums (the bill-truth kernel's clamp), ages use
+ * the same clock as the 30/90 aging chips (`stageRowBilledAgeReference`:
+ * hand-set est. bill date, else the billed date; rows with neither can't age —
+ * `ageDays` null). Every row is kept, including a fully-paid bill never marked
+ * Paid (`settled`, $0, never aged) — so the bill count here equals the strip's
+ * (journey J4-1 (b): Quickfill used to say 58 where the board said 59).
  */
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledAgeDays, stageRowBilledAgeReference, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { fixturesForInvoiceBill } from '../invoiceScopedFixtures'
 import { arLineItemFromFixture, type ArLineItem } from '../arModalLineItems'
+import { isSettledRemainder } from '../billing/billTruth'
 
 export type BilledBreakdownBill = {
   /** Jump handle: focus this invoice row when set, else focus the job shell row. */
@@ -23,6 +27,8 @@ export type BilledBreakdownBill = {
   jobAddress: string
   /** Open remainder on this row (what the section total sums). */
   amount: number
+  /** Fully paid but still `billed` — needs Mark Paid, owes nothing, never ages. */
+  settled: boolean
   /** Days since the bill's reference date — the aging chips' clock; null = no date (can't age). */
   ageDays: number | null
   /** True when the age counts from a hand-set est. bill date rather than the billed date. */
@@ -95,7 +101,7 @@ export function buildBilledByCustomerBreakdown(
   const groups = new Map<string, BilledBreakdownCustomerGroup>()
   for (const row of billedActiveRows) {
     const amount = stageRowBilledRemainingAmount(row)
-    if (amount <= 0) continue
+    const settled = isSettledRemainder(amount)
     const job = row.job
     const name = (job.customer_name ?? '').trim() || 'No customer'
     const key = (job.customer_id ?? '').trim() || `name:${name.toLowerCase()}`
@@ -107,9 +113,10 @@ export function buildBilledByCustomerBreakdown(
       jobNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
       jobAddress: (job.job_address ?? '').trim(),
       amount,
+      settled,
       lineItems: billLineItems(row),
-      ageDays: stageRowBilledAgeDays(row, now),
-      ageHandSet: stageRowBilledAgeReference(row)?.handSet ?? false,
+      ageDays: settled ? null : stageRowBilledAgeDays(row, now),
+      ageHandSet: settled ? false : (stageRowBilledAgeReference(row)?.handSet ?? false),
       customerId: (job.customer_id ?? '').trim() || null,
       customerEmail: (job.customer_email ?? '').trim() || null,
       stripeInvoiceId: (inv?.stripe_invoice_id ?? '').trim() || null,

@@ -11,6 +11,8 @@ Every job moves through one pipeline. This guide covers the billing half — how
 {{chip:gray|Waiting}} → {{chip:blue|Working}} → {{chip:yellow|Ready to bill}} → {{chip:red|Billed}} → {{chip:green|Paid}}
 :::
 
+The money you read along the way is the same number everywhere: the Dashboard's **Accounts Receivable** card and **Billed** pin, the Pipeline money strip, Quickfill's **Billed Awaiting Payment** and a customer's page all count the same bills and the same totals — a bill sitting on a job that is already {{chip:green|Paid}} (or on a job that no longer exists) is left out and noted as "excluded", and a bill that was paid but never marked Paid shows at $0 with a *not yet marked Paid* note until someone clicks {{button:green|Mark Paid}}.
+
 New jobs — from **New Job** or from an accepted estimate — land straight in {{chip:blue|Working}}. {{chip:gray|Waiting}} is a parking stage you send a job back to. When you create a job with **New Job** on the Pipeline, the board clears any search you had typed, scrolls to the new job, and flashes its row so you can see exactly where it landed.
 
 ## Reading the Progress & payment bar

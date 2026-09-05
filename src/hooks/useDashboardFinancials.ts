@@ -27,6 +27,9 @@ import {
   type FinancialSupplyInvoiceRow,
   type UpcomingPayrollApSection,
 } from '../lib/dashboardFinancials'
+import type { ArExcluded } from '../lib/dashboardFinancials'
+import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
+import { legacyDashboardArOwed, reportBillTruthShadow } from '../lib/billing/billTruthShadow'
 
 /** Detail for one unpaid supply-house bill — powers the AP row click-through modal. */
 export type DashboardApBill = {
@@ -49,6 +52,8 @@ export type DashboardFinancials = {
   ar: FinancialBucket
   /** Parked receivables: billed jobs flagged difficult to collect. ar + arCollections = all billed-unpaid. */
   arCollections: FinancialBucket
+  /** Billed rows the kernel kept out of AR — on a paid or missing job (journey J4-2's "$488 Unknown job"). */
+  arExcluded: ArExcluded
   /** Includes the estimated upcoming payroll (mergeUpcomingIntoAp) — all team labor owed, not just stubbed weeks. */
   ap: FinancialBucket & { supplyTotal: number; payrollTotal: number; subLaborTotal: number; upcomingTotal: number }
   /** Estimated payroll for worked-but-unreported weeks — same kernel as the Payroll ledger header. */
@@ -81,6 +86,8 @@ export function useDashboardFinancials(
    * they get org-level aggregates from get_dashboard_payroll_totals instead of per-person rows.
    */
   viewerRole?: string | null,
+  /** For the one-release bill-truth shadow beacon row; omit to log only. */
+  viewerUserId?: string | null,
 ): {
   data: DashboardFinancials | null
   loading: boolean
@@ -111,7 +118,10 @@ export function useDashboardFinancials(
               await supabase
                 .from('jobs_ledger')
                 .select('id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, last_work_date, collections_at, pct_complete, customer_id, customer_name')
-                .in('status', ['billed', 'ready_to_bill', 'working']),
+                // The bill-truth spine's cohort (waiting / working / RTB / billed + NULL): a billed
+                // invoice on a waiting job is owed like one on a working job; paid jobs never ship,
+                // so their leftover bills read as excluded (see buildArBuckets).
+                .or(`status.in.(${LEAN_STATS_ACTIVE_JOB_STATUSES.join(',')}),status.is.null`),
             'dashboard financials jobs',
           ),
           withSupabaseRetry(
@@ -337,6 +347,14 @@ export function useDashboardFinancials(
         })
 
         const arBuckets = buildArBuckets(jobs, invoices, invoicePayments)
+        // Shadow (one release): the old card summed orphan bills and dropped settled rows.
+        reportBillTruthShadow({
+          surface: 'dashboard-ar-card',
+          legacy: legacyDashboardArOwed(jobs, invoices, invoicePayments),
+          kernel: arBuckets.ar.total + arBuckets.collections.total,
+          userId: viewerUserId,
+          role: viewerRole ?? null,
+        })
         const apBase = assistantAggregates
           ? buildApBucketFromAggregates(
               supplyInvoices,
@@ -356,6 +374,7 @@ export function useDashboardFinancials(
         setData({
           ar: arBuckets.ar,
           arCollections: arBuckets.collections,
+          arExcluded: arBuckets.excluded,
           // All team labor owed counts toward AP — stubbed weeks at net-pay remainder plus the
           // estimated upcoming weeks (the drill-down still breaks the estimate out on its own line).
           ap: mergeUpcomingIntoAp(apBase, apUpcoming),
@@ -372,7 +391,7 @@ export function useDashboardFinancials(
     return () => {
       cancelled = true
     }
-  }, [enabled, refreshKey, viewerRole])
+  }, [enabled, refreshKey, viewerRole, viewerUserId])
 
   return { data, loading, error }
 }

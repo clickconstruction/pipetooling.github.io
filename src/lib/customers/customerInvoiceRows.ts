@@ -5,9 +5,14 @@
  * and the lifetime totals line. Statuses follow the billing model
  * (ready_to_bill = draft bill, billed, paid); the aging rule reuses the
  * customerProfileStats convention (estimated_bill_date at 30/90 days).
- * The totals must reconcile with the Profile money strip: billedTotal uses
- * the same billed/paid-invoice basis as lifetimeBilled's invoice arm.
+ * The totals ARE the Profile money strip's numbers, by construction: the
+ * bill-truth kernel's `jobBilledContribution` per job (billed/paid invoice
+ * amounts, else the billed/paid job shell — journey J34-F1: this footer used
+ * to skip the shell arm and read five figures under the strip) and
+ * `lifetimeCollected` over every payment on the customer's jobs (record-only
+ * HCP backfills included, as the strip counts them).
  */
+import { jobBilledContribution, lifetimeCollected } from '../billing/billTruth'
 
 export type CustomerInvoiceInput = {
   id: string
@@ -30,7 +35,13 @@ export type CustomerInvoicePaymentInput = {
   paid_on: string | null
 }
 
-export type CustomerInvoiceJob = { id: string; label: string }
+export type CustomerInvoiceJob = {
+  id: string
+  label: string
+  /** For the footer's lifetime (shell arm) — the kernel's lifetime rule needs the job's status + revenue. */
+  status?: string | null
+  revenue?: number | null
+}
 
 export type CustomerInvoiceRow = {
   key: string
@@ -92,16 +103,22 @@ export function buildCustomerInvoiceRows(
   const invoiceCountByJob = new Map<string, number>()
   for (const inv of invoices) invoiceCountByJob.set(inv.job_id, (invoiceCountByJob.get(inv.job_id) ?? 0) + 1)
 
+  const invoicesByJob = new Map<string, CustomerInvoiceInput[]>()
+  for (const inv of invoices) {
+    const list = invoicesByJob.get(inv.job_id)
+    if (list) list.push(inv)
+    else invoicesByJob.set(inv.job_id, [inv])
+  }
   let billedTotal = 0
-  let collectedTotal = 0
+  for (const j of jobs) billedTotal += jobBilledContribution({ status: j.status ?? null, revenue: j.revenue ?? null }, invoicesByJob.get(j.id) ?? [])
+  // Invoices on jobs the caller did not list (should not happen — the fetch is by job) still count.
+  for (const [jobId, list] of invoicesByJob) {
+    if (!jobLabelById.has(jobId)) billedTotal += jobBilledContribution({ status: null, revenue: null }, list)
+  }
+  const collectedTotal = lifetimeCollected(payments)
   const rows: CustomerInvoiceRow[] = invoices.map((inv) => {
     const amount = Number(inv.amount ?? 0)
     const applied = appliedByInvoice.get(inv.id) ?? 0
-    const isBilledOrPaid = inv.status === 'billed' || inv.status === 'paid'
-    if (isBilledOrPaid) {
-      billedTotal += amount
-      collectedTotal += applied
-    }
     let status: CustomerInvoiceRow['status']
     if (inv.status === 'paid') status = 'paid'
     else if (inv.status === 'billed') status = applied > 0.005 ? 'partial' : 'billed'

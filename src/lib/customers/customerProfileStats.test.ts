@@ -31,6 +31,16 @@ describe('customerMoneyStats', () => {
     expect(s.openBalance).toBe(700)
   })
 
+  it('J34-N6: an over-paid billed shell clamps to 0 once and never nets against another job (bill truth)', () => {
+    const s = customerMoneyStats(
+      [job({ id: 'over', revenue: 220, payments_made: 300 }), job({ id: 'owed', revenue: 1000, payments_made: 0 })],
+      TODAY,
+    )
+    expect(s.openBalance).toBe(1000) // was 920: the Hub used to let the −80 lower a different job's balance
+    // the list kernel reads the same rows
+    expect(profileJobRowMoney(job({ id: 'over', revenue: 220, payments_made: 300 }), TODAY)).toMatchObject({ openBilled: 0, noBillDate: false })
+  })
+
   it('paid jobs contribute lifetime but never open balance; working jobs only via billed invoices', () => {
     const jobs = [
       job({ status: 'paid', revenue: 5000, payments: [{ invoice_id: null, amount: 5000, paid_on: '2026-05-01' }] }),

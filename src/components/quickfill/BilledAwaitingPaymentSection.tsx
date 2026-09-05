@@ -9,6 +9,7 @@ import { fetchStagesHeaderStats } from '../../lib/jobs/fetchStagesHeaderStats'
 import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildBilledByCustomerBreakdown, billedBreakdownTotal, type BilledBreakdownCustomerGroup } from '../../lib/jobs/billedByCustomerBreakdown'
+import { reportBillTruthShadow } from '../../lib/billing/billTruthShadow'
 
 /**
  * Quickfill → Billed Awaiting Payment (v2.2190): "Who owes what" — the same
@@ -45,6 +46,7 @@ export function BilledAwaitingPaymentSection() {
   const [error, setError] = useState<string | null>(null)
   const [groups, setGroups] = useState<BilledBreakdownCustomerGroup[]>([])
   const [billCount, setBillCount] = useState(0)
+  const [excluded, setExcluded] = useState<{ count: number; total: number }>({ count: 0, total: 0 })
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(new Set())
 
   useEffect(() => {
@@ -80,9 +82,19 @@ export function BilledAwaitingPaymentSection() {
           return { ...r, job } as StageRow
         })
         const built = buildBilledByCustomerBreakdown(decorated)
+        const count = built.reduce((s, g) => s + g.count, 0)
+        // Shadow (one release): this pile used to drop settled ($0) bills the strip counted.
+        reportBillTruthShadow({
+          surface: 'quickfill-ar-count',
+          legacy: built.reduce((s, g) => s + g.bills.filter((b) => !b.settled).length, 0),
+          kernel: count,
+          userId: authUser?.id ?? null,
+          role: role ?? null,
+        })
         if (!cancelled) {
           setGroups(built)
-          setBillCount(built.reduce((s, g) => s + g.count, 0))
+          setBillCount(count)
+          setExcluded({ count: res.billTruth.excludedOwed.count, total: res.billTruth.excludedOwed.total })
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load')
@@ -94,7 +106,7 @@ export function BilledAwaitingPaymentSection() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id])
+  }, [authUser?.id, role])
 
   const canAccess = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const total = useMemo(() => billedBreakdownTotal(groups), [groups])
@@ -112,6 +124,9 @@ export function BilledAwaitingPaymentSection() {
     <section style={{ marginBottom: '1.5rem' }}>
       <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
         {billCount} bill{billCount === 1 ? '' : 's'} · ${formatCurrency(total)} open · {groups.length} customer{groups.length === 1 ? '' : 's'} — click a customer for their bills, oldest first
+        {excluded.count > 0
+          ? ` · ${excluded.count} bill${excluded.count === 1 ? '' : 's'} on paid or missing jobs excluded ($${formatCurrency(excluded.total)})`
+          : ''}
       </div>
       {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>

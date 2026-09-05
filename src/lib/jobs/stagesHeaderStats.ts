@@ -16,13 +16,9 @@ import {
   capableToBillTotalFromWorking,
   readyToBillRowsExposureTotal,
 } from '../jobsStagesBoard'
-import {
-  buildBilledAgingBuckets,
-  countBilledRowsMissingDates,
-  stageRowBilledRemainingAmount,
-  type BilledAgingBuckets,
-} from './invoiceBilling'
+import { buildBilledAgingBuckets, countBilledRowsMissingDates, type BilledAgingBuckets } from './invoiceBilling'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
+import { computeBillTruthFromJobs, type BillTruth } from '../billing/billTruth'
 
 export type StagesSectionStat = { count: number; total: number }
 
@@ -42,6 +38,12 @@ export type StagesHeaderStats = {
   collectedByDay: CollectedDayPoint[]
   /** Billed rows with a positive remainder but no billed_at / est. date (can't age or be chased). */
   billedNoDate: number
+  /**
+   * The bill-truth buckets over the same jobs (v2.2862, journey Tier-1
+   * #2(c)): `billed` / `collections` above are copied from here, so the
+   * strip, the AR card, Quickfill and the Hub read one kernel.
+   */
+  billTruth: BillTruth
 }
 
 // v2.2299 (owner call): the collected card reads the last 30 days, not 8
@@ -83,10 +85,15 @@ export function collectedByDayFromJobs(jobs: JobWithDetails[], now = new Date())
 /**
  * The exact header expressions from the Stages board (JobsStagesTab render,
  * v2.1801-era lines): waiting/working = Σ(revenue − payments_made); RTB =
- * row-count + exposure; billed/collections = row-count + Σ remaining.
+ * row-count + exposure. Billed / collections come from the bill-truth kernel
+ * (`computeBillTruthFromJobs`) — the board rows agree with it by construction
+ * (one row per billed invoice on an open job, one shell per invoice-less
+ * billed job, `stageRowBilledRemainingAmount` = the kernel clamp; pinned by
+ * `billing/billTruth.test.ts` "spine parity").
  */
 export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date()): StagesHeaderStats {
   const l = buildJobsStagesBoardLists(jobs, '')
+  const truth = computeBillTruthFromJobs(l.filtered)
   const jobNet = (j: JobWithDetails) => Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
   return {
     waiting: { count: l.waiting.length, total: l.waiting.reduce((s, j) => s + jobNet(j), 0) },
@@ -95,19 +102,14 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
       count: l.readyToBillRows.length,
       total: readyToBillRowsExposureTotal(l.readyToBillRows),
     },
-    billed: {
-      count: l.billedActiveRows.length,
-      total: l.billedActiveRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0),
-    },
-    collections: {
-      count: l.collectionsRows.length,
-      total: l.collectionsRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0),
-    },
+    billed: { count: truth.billed.count, total: truth.billed.total },
+    collections: { count: truth.collections.count, total: truth.collections.total },
     paid: { count: l.paid.length },
     capableToBill: capableToBillTotalFromWorking(l.working),
     billedAging: buildBilledAgingBuckets(l.filtered, now),
     collectedByDay: collectedByDayFromJobs(jobs, now),
     billedNoDate: countBilledRowsMissingDates(l.filtered),
+    billTruth: truth,
   }
 }
 
