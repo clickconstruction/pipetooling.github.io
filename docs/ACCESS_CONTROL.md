@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-09-03
+last_updated: 2026-09-05
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -105,6 +105,12 @@ on top of the normal role permissions:
 - **Backend**: Row Level Security (RLS) policies on all tables
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
+
+### `users` readable only by signed-in users (v2.2837, `20260905090000_users_select_requires_session.sql`)
+
+- **What changed**: the roster policy `"Users can select users"` keyed most of its disjuncts on the **row's** role (`role = 'assistant'`, `'estimator'`, `'primary'`, `'helpers'/'subcontractor'`, `'superintendent'`) with no `auth.uid()` term and no `TO authenticated`, so those rows were readable with the anon key alone (journey map J24-N1, live-proved 2026-09-04). The policy now reads `FOR SELECT TO authenticated USING ((SELECT auth.uid()) IS NOT NULL AND (<the same disjuncts, controller widening included>))`.
+- **Unchanged**: which rows each signed-in role sees — own row; dev sees all incl. archived; masters see masters; everyone sees assistant/controller/estimator/primary/helpers/subcontractor/superintendent rows; estimators see master/dev; plus the `master_adopted_current_user` / `can_see_sharing_master` branches. Service-role edge functions bypass RLS; public pages reach `users` only through SECURITY DEFINER RPCs.
+- **Companion client changes (same PR)**: `/accept-invite` offers the set-password form only to a session that arrived through the invite link (`src/lib/acceptInviteState.ts`; any other live session sees "You're already set up — sign in"), and the self-service `/sign-up` route is gone — accounts are created by invitation (`invite-user`) or by a dev (`create-user`) only. Server-side self-signup (`disable_signup`) was closed in the Supabase dashboard on 2026-09-03.
 
 ### `email_templates` readable by all authenticated users (v2.2658, `20260902184612_email_templates_authenticated_read.sql`)
 

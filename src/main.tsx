@@ -5,6 +5,7 @@ import App from './App'
 import { AuthProvider } from './hooks/useAuth'
 import { tryClaimChunkRecoveryReload } from './lib/chunkLoadRecovery'
 import { hardReloadFromRoot } from './lib/hardReload'
+import { markInvitePendingFromHash, safeSessionStorage } from './lib/acceptInviteState'
 import './index.css'
 
 // A deploy replaces all hashed assets; when Vite's preload helper hits a stale-chunk 404
@@ -16,6 +17,11 @@ window.addEventListener('vite:preloadError', (event) => {
     hardReloadFromRoot()
   }
 })
+
+// Invite emails land on /accept-invite with `#access_token=…&type=invite`. supabase-js consumes
+// and clears that hash asynchronously (after this module body), so remember the arrival now:
+// /accept-invite only offers the set-password form to a session that came in through the invite.
+markInvitePendingFromHash(window.location.hash, safeSessionStorage())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
