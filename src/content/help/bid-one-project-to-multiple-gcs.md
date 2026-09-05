@@ -46,11 +46,15 @@ On **Pricing** (New), the Workbench shows the packet you're on: **This GC — Bu
 
 ## Turning the bid into a job
 
-When you import a multi-GC bid into **New Job**, the job needs to know **which GC gave you the job** — that GC becomes the job's GC/Builder, not automatically the bid's own.
+The fastest door is the win itself: set the winner's pill to {{chip:green|won}} — on the Bid Board line, in Followup's **Sent to — by GC**, or in Edit Bid — and a small **open the job →** link appears beside it (Edit Bid's **Job** block shows {{button:green|Open the job}}). One tap opens **New Job** filled from that GC's packet. The old way — **New Job → Import → the bid** — runs the same fill. See *turn a won bid into a job*.
+
+Either way the job needs to know **which GC gave you the job** — that GC becomes the job's GC/Builder, not automatically the bid's own.
 
 - If one GC is already marked {{chip:green|won}}, the import uses them without asking.
 - Otherwise a picker lists every GC on the bid: **picking one records their Won** (the other sent, unanswered GCs are marked lost — their GC lost the project) and the job imports with that builder's name and contact info.
 - If more than one GC reads won, the picker only chooses which packet this job is for — nothing changes on the bid.
+- **Cancel import** writes nothing, says so, and closes the New Job form it opened — no blank form is left behind.
+- A bid that already has a job shows {{chip:green|J1007 opened from this bid}} in Edit Bid; opening another asks first.
 
 :::example Two builders, one winner
 You bid the shell to Burd & Assoc. and Southern Post. Southern Post calls with the job: start **New Job → Import → the bid**, pick **Southern Post** in the ask, and the bid records their win (Burd reads lost) while the job opens with Southern Post as its GC.

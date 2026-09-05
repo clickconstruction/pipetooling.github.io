@@ -13,6 +13,8 @@ import { gcNoteCountKey } from '../../lib/bids/bidGcNotes'
 import { BidGcNotesPopover } from './BidGcNotesPopover'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatCurrency } from '../../lib/format'
+import type { BidBoardJobLink } from '../../lib/bids/bidBoardJobLinks'
+import { BidWonJobActions } from './BidWonJobActions'
 
 export function gcRowsWorthShowing(packets: GcPacket[] | undefined): boolean {
   if (!packets) return false
@@ -107,7 +109,7 @@ export function GcOutcomePill({ value, gcName, busy, onChange }: { value: Packet
  * The per-GC lines: one per packet — name · sent m/d · state pill (★ value in the tooltip). Shared by the
  * table cell, the phone card and Followup. `nameStyle` lets the caller match the surrounding text.
  */
-export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChanged, dense, gcNoteCounts, roomStates }: { bidId: string; bidLabel?: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean; gcNoteCounts?: Record<string, number>; roomStates?: Record<string, BidRoomStateSummary> }) {
+export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChanged, dense, gcNoteCounts, roomStates, jobLink }: { bidId: string; bidLabel?: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean; gcNoteCounts?: Record<string, number>; roomStates?: Record<string, BidRoomStateSummary>; /** Tier-1 #8: the job already opened from this bid (board index, v2.2741) — null = none, undefined = look it up. */ jobLink?: BidBoardJobLink | null }) {
   const { showToast } = useToastContext()
   const [busyKey, setBusyKey] = useState<string | null>(null)
   /** Per-GC notes popover (v2.2217): the open packet's key, one at a time. */
@@ -168,6 +170,8 @@ export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChange
             {/* v2.2217: states LEFT of the name (fixed-width date column), then the clickable name → per-GC notes. */}
             <span style={{ color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-faint)', whiteSpace: 'nowrap', flex: '0 0 auto', minWidth: '4.2rem', fontVariantNumeric: 'tabular-nums' }}>{p.sentOn ? `sent ${fmtSentShort(p.sentOn)}` : 'not sent'}</span>
             <GcOutcomePill value={state} gcName={p.name} busy={busyKey === p.key} onChange={(next) => void change(p, next)} />
+            {/* Tier-1 #8: a pill that reads won is a Won moment — the job is one tap away. */}
+            {state === 'won' ? <BidWonJobActions bidId={bidId} compact knownJob={jobLink} /> : null}
             {gcNameButton(p)}
             {noteBadge(p)}
             {roomStates ? <BidRoomStateChip state={roomStates[roomGcKey(p.gcId)]} compact /> : null}
