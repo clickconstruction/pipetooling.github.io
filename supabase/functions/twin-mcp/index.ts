@@ -175,8 +175,27 @@ const TOOLS = [
       properties: {
         reference_bid: { type: 'string', description: "The human bid to re-estimate blind (e.g. 'b370' or uuid)" },
         due_in_days: { type: 'number', description: 'Optional due date offset for the twin bid (default 7)' },
+        round: { type: 'number', description: "Re-run round (v2.2800): 2 or higher opens a NEW shell named 'ZZ Twin <PROJECT> (backtest R<round>)' instead of handing back the first round's bid — a scored round-1 shell carries its scorecard and would unblind you. Omit for the first run." },
       },
       required: ['reference_bid'],
+    },
+  },
+  {
+    name: 'score_backtest',
+    description:
+      "STG-6 unseal + scorecard in one call, for a BACKTEST bid you own (v2.2800). Refused unless the bid's ledger already carries a LOCK note — your blind total goes on the record before the reference opens. The seal breaks HERE: the call reads the reference's value, outcome, loss category and sent date, computes delta_pct, the reference quality flags (roundValue, weakLoss, lossUncategorized, stale), the presence grade and gate_eligible, writes the twin_run_scores row the Scoreboard reads, stamps '[STG-6 SCORECARD]' on your ledger, and returns the reference facts. Idempotent per run_label (an existing label is returned, not overwritten).",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your backtest bid (e.g. 'b431' or uuid) — created by / assigned to you" },
+        run_label: { type: 'string', description: "Unique run label, e.g. 'R2-BT-3'" },
+        axis: { type: 'string', description: "Confidence-scoreboard axis, e.g. 'proto/auto-service', 'small TI', 'institutional'" },
+        locked_total: { type: 'number', description: 'Your blind total — must match the LOCK note already on the ledger' },
+        counts_note: { type: 'string', description: "Optional one-liner on count accuracy, e.g. 'fixtures 17/19 exact · footage 0.9x'" },
+        scope_verdict: { type: 'string', description: "'pass' | 'fail' | 'unknown' — the scope-match check (fail = reference priced a different package; the run is void and not gate-eligible)" },
+        note: { type: 'string', description: 'Optional one-line lesson for the axis card' },
+      },
+      required: ['bid', 'run_label', 'axis', 'locked_total'],
     },
   },
   {
@@ -693,11 +712,16 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         : referenceGrade === 'C' ? 'quantity scorecard only (no reliable reference value)'
         : referenceGrade === 'D' ? 'census reps only — no scorecard'
         : 'no plans — not backtestable'
-      const ztName = `ZZ Twin ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()} (backtest)`
+      // v2.2800: a re-run round gets its own shell — a scored round-1 shell carries
+      // its scorecard (reference value, delta) in the ledger and would unblind the run.
+      const roundNum = Math.floor(Number(args.round ?? 1))
+      const round = Number.isFinite(roundNum) && roundNum >= 2 ? roundNum : 1
+      const roundTag = round >= 2 ? ` R${round}` : ''
+      const ztName = `ZZ Twin ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()} (backtest${roundTag})`
       const { data: existing } = await admin
         .from('bids').select('id, bid_number').eq('created_by', twin.twinUserId).eq('project_name', ztName).maybeSingle()
       if (existing) {
-        return textContent(JSON.stringify({ ok: true, reused: true, bid: `b${existing.bid_number}`, bid_id: existing.id, name: ztName, reference_grade: referenceGrade, grade_note: gradeNote }, null, 2))
+        return textContent(JSON.stringify({ ok: true, reused: true, round, bid: `b${existing.bid_number}`, bid_id: existing.id, name: ztName, reference_grade: referenceGrade, grade_note: gradeNote, warning: round >= 2 ? undefined : 'This shell may already carry a scorecard — read its ledger via get_work_state before working it, or open a new round with round: 2.' }, null, 2))
       }
       const dueDays = Number(args.due_in_days ?? 7)
       const due = ymdAddDays(todayYmdInAppTz(), Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 7)
@@ -717,20 +741,101 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           // v2.2530: pair the twin copy with its human source — drives the Bid
           // Board robot-readiness icon's "robot bid exists" state.
           twin_source_bid_id: refBid.id,
-          notes: `Blind backtest of b${refBid.bid_number}. Reference sealed until the STG-6 scorecard stamp. Opened via twin-mcp open_backtest.`,
+          notes: `Blind backtest${roundTag ? ` (round ${round})` : ''} of b${refBid.bid_number}. Reference sealed until the STG-6 scorecard stamp. Opened via twin-mcp open_backtest.`,
         })
         .select('id, bid_number')
         .single()
       if (insErr) return textContent(`Backtest bid not created: ${insErr.message}`, true)
       await admin.from('bids_submission_entries').insert({
         bid_id: created.id,
-        notes: `[pipeline STG-0] Blind backtest of b${refBid.bid_number} (${refBid.project_name}) opened via twin-mcp open_backtest by ${twin.email}. Logistics copied (address, customer, service type, distance ${refBid.distance_from_office ?? '?'} mi, plans link); reference counts/pricing/outcome SEALED until STG-6.`,
+        notes: `[pipeline STG-0] Blind backtest${roundTag ? ` ROUND ${round}` : ''} of b${refBid.bid_number} (${refBid.project_name}) opened via twin-mcp open_backtest by ${twin.email}. Logistics copied (address, customer, service type, distance ${refBid.distance_from_office ?? '?'} mi, plans link); reference counts/pricing/outcome SEALED until STG-6${round >= 2 ? '. Prior rounds of this reference are OFF LIMITS until the scorecard stamp' : ''}.`,
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({
-        ok: true, reused: false, bid: `b${created.bid_number}`, bid_id: created.id, name: ztName,
+        ok: true, reused: false, round, bid: `b${created.bid_number}`, bid_id: created.id, name: ztName,
         reference_grade: referenceGrade, grade_note: gradeNote,
         logistics: { address: refBid.address, distance_from_office: refBid.distance_from_office, plans_link: !!refBid.plans_link, due },
         next: 'file_plans if plans_link is empty; then substrate (STG-2), takeoff (STG-3), counts+books (STG-5), scorecard (STG-6) — compute quality flags (round value, weak-loss, stale) at unseal and stamp grade+flags on the scorecard; gate denominators take A/B gate-eligible refs only.',
+      }, null, 2))
+    }
+    case 'score_backtest': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const runLabel = String(args.run_label ?? '').trim().slice(0, 40)
+      const axis = String(args.axis ?? '').trim().slice(0, 60)
+      const lockedTotal = Number(args.locked_total)
+      if (!ref || !runLabel || !axis || !Number.isFinite(lockedTotal) || lockedTotal <= 0) {
+        return textContent('score_backtest needs bid + run_label + axis + positive locked_total', true)
+      }
+      const scopeVerdictRaw = String(args.scope_verdict ?? 'unknown').trim().toLowerCase()
+      const scopeVerdict = scopeVerdictRaw === 'pass' || scopeVerdictRaw === 'fail' ? scopeVerdictRaw : 'unknown'
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, project_name, created_by, estimator_id, twin_source_bid_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) return textContent('Not your bid (created_by / estimator fence)', true)
+      if (!bid.twin_source_bid_id) return textContent(`b${bid.bid_number} has no reference pairing (twin_source_bid_id) — not a backtest shell`, true)
+      // Blindness order is structural: no LOCK note on the ledger, no unseal.
+      const { data: lockNotes } = await admin.from('bids_submission_entries').select('id').eq('bid_id', bid.id).ilike('notes', '%LOCK%').limit(1)
+      if (!lockNotes?.length) return textContent(`b${bid.bid_number} has no LOCK note on its ledger — add_bid_note your blind total first ("[STG-3..5 + LOCK] $NN,NNN …"), then score.`, true)
+      // Idempotent per run label.
+      const { data: existingScore } = await admin.from('twin_run_scores').select('*').eq('run_label', runLabel).maybeSingle()
+      if (existingScore) return textContent(JSON.stringify({ ok: true, reused: true, score: existingScore }, null, 2))
+      // The seal breaks here — reference value/outcome are read by the server, not the agent.
+      const { data: refBid } = await admin.from('bids')
+        .select('id, bid_number, project_name, bid_value, outcome, loss_category, bid_date_sent, created_at, plans_link')
+        .eq('id', bid.twin_source_bid_id).maybeSingle()
+      if (!refBid) return textContent('Reference bid not found', true)
+      const [{ count: refCounts }, { count: refPricing }] = await Promise.all([
+        admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
+        admin.from('bid_pricing_assignments').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
+      ])
+      const refValue = refBid.bid_value == null ? null : Number(refBid.bid_value)
+      const hasPlans = !!String(refBid.plans_link ?? '').trim()
+      const grade = !hasPlans ? 'X' : refValue != null && (refCounts ?? 0) > 0 && (refPricing ?? 0) > 0 ? 'A' : refValue != null ? 'B' : (refCounts ?? 0) > 0 ? 'C' : 'D'
+      // Quality flags — mirrors src/lib/bids/referenceGrade.ts (unseal-time only).
+      const roundValue = refValue != null && refValue > 0 && refValue % 100 === 0
+      const lost = refBid.outcome === 'lost'
+      const weakLoss = lost && ['no_bid', 'project_died'].includes(String(refBid.loss_category ?? ''))
+      const lossUncategorized = lost && !refBid.loss_category
+      const whenYmd = String(refBid.bid_date_sent ?? refBid.created_at ?? '').slice(0, 10)
+      const today = todayYmdInAppTz()
+      const ageDays = whenYmd ? Math.abs(Date.parse(`${today}T00:00:00Z`) - Date.parse(`${whenYmd}T00:00:00Z`)) / 86400000 : 0
+      const stale = Number.isFinite(ageDays) && ageDays > 183
+      const flagsClear = !(roundValue || weakLoss || lossUncategorized || stale)
+      const gateEligible = (grade === 'A' || grade === 'B') && flagsClear && scopeVerdict !== 'fail'
+      const deltaPct = refValue != null && refValue > 0 ? Math.round(((lockedTotal - refValue) / refValue) * 1000) / 10 : null
+      const now = new Date().toISOString()
+      const { data: score, error: scoreErr } = await admin.from('twin_run_scores').insert({
+        run_label: runLabel,
+        kind: 'backtest',
+        axis,
+        project_name: refBid.project_name,
+        twin_bid_number: String(bid.bid_number),
+        reference_bid_number: String(refBid.bid_number),
+        locked_total: lockedTotal,
+        reference_value: refValue,
+        delta_pct: deltaPct,
+        counts_note: String(args.counts_note ?? '').trim().slice(0, 200) || null,
+        scope_verdict: scopeVerdict,
+        gate_eligible: gateEligible,
+        note: String(args.note ?? '').trim().slice(0, 400) || null,
+        scored_at: now,
+      }).select('*').single()
+      if (scoreErr) return textContent(`Score not recorded: ${scoreErr.message}`, true)
+      const flagList = [roundValue && 'roundValue', weakLoss && 'weakLoss', lossUncategorized && 'lossUncategorized', stale && 'stale'].filter(Boolean).join(', ') || 'none'
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[STG-6 SCORECARD] ${runLabel} (${axis}) via twin-mcp score_backtest: twin locked $${lockedTotal.toLocaleString()} vs reference b${refBid.bid_number} ${refValue != null ? `$${refValue.toLocaleString()}` : '(no value)'} ${refBid.outcome ?? 'undecided'}${refBid.loss_category ? ` (${refBid.loss_category})` : ''}, sent ${refBid.bid_date_sent ?? '—'} → delta ${deltaPct != null ? `${deltaPct > 0 ? '+' : ''}${deltaPct}%` : 'n/a'}. Grade ${grade}, flags: ${flagList}, scope ${scopeVerdict}, gate-eligible ${gateEligible ? 'yes' : 'no'}.`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({
+        ok: true, reused: false, run_label: runLabel, twin_bid: `b${bid.bid_number}`,
+        reference: { bid: `b${refBid.bid_number}`, project_name: refBid.project_name, value: refValue, outcome: refBid.outcome, loss_category: refBid.loss_category, sent: refBid.bid_date_sent, count_rows: refCounts ?? 0, priced_rows: refPricing ?? 0 },
+        locked_total: lockedTotal, delta_pct: deltaPct, grade, flags: { roundValue, weakLoss, lossUncategorized, stale }, scope_verdict: scopeVerdict, gate_eligible: gateEligible,
+        next: 'Now (and only now) read the reference rows for the count/footage comparison; write the audit questions in plain words; digest lessons into doctrine per FEEDBACK_LOOP.md.',
+        score_id: score.id,
       }, null, 2))
     }
     case 'add_bid_note': {
