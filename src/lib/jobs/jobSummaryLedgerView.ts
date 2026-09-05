@@ -1,5 +1,6 @@
 import { resolveJobSummaryPercentComplete, jobInvoicesAllPaidWithAmount } from '../jobSummaryPercentComplete'
 import type { JobSummaryMonthsBookBy } from './jobSummaryMonths'
+import type { JobSummaryScatterColorBy, JobSummaryScatterSizeBy } from './jobSummaryScatter'
 import {
   allocateJobOverheadDayShare,
   jobOverheadByMethod,
@@ -56,7 +57,7 @@ export const JOB_SUMMARY_CUT_OPTIONS: ReadonlyArray<{ key: JobSummaryCutBy; labe
 const CUT_KEYS: readonly JobSummaryCutBy[] = JOB_SUMMARY_CUT_OPTIONS.map((o) => o.key)
 
 /** Jobs = the ledger table; Days = jobs carried per day (v2.2695); Timeline = jobs running at once, over time (v2.2711); Months = the monthly P&L (v2.2821). */
-export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline' | 'months' | 'cycle'
+export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline' | 'months' | 'cycle' | 'scatter'
 
 /** Timeline coloring (v2.2745): by today's status, by the state on each day, or by run length. */
 export type JobSummaryTimelineColorBy = 'status' | 'stateOnDay' | 'runLength'
@@ -100,6 +101,9 @@ export type JobSummaryViewPrefs = {
   cutBy: JobSummaryCutBy
   /** Months view booking (v2.2821): spread by work month, or whole by bill month. */
   monthsBookBy: JobSummaryMonthsBookBy
+  /** Scatter view (v2.2826): color and bubble size. */
+  scatterColorBy: JobSummaryScatterColorBy
+  scatterSizeBy: JobSummaryScatterSizeBy
 }
 
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
@@ -118,6 +122,8 @@ export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
   targetTrueMarginPct: 0,
   cutBy: 'none',
   monthsBookBy: 'work',
+  scatterColorBy: 'trade',
+  scatterSizeBy: 'hours',
 }
 
 export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewMode; label: string; title: string }> = [
@@ -126,6 +132,7 @@ export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewM
   { key: 'timeline', label: 'Timeline', title: 'How many jobs were running at once, over time — every job as a bar from start to finish' },
   { key: 'months', label: 'Months', title: 'One bar per month — revenue split into labor, subs, parts, overhead, and true profit' },
   { key: 'cycle', label: 'Cycle', title: 'How long from the last field day to the bill, and from the bill to the money — and which open jobs are sitting idle' },
+  { key: 'scatter', label: 'Scatter', title: 'Every job as a bubble — size across, true margin up — so the big jobs with thin margins stand out' },
 ]
 
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
@@ -155,7 +162,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
   try {
     const p = JSON.parse(raw) as Partial<JobSummaryViewPrefs>
     return {
-      view: p.view === 'days' || p.view === 'timeline' || p.view === 'months' || p.view === 'cycle' ? p.view : 'jobs',
+      view: p.view === 'days' || p.view === 'timeline' || p.view === 'months' || p.view === 'cycle' || p.view === 'scatter' ? p.view : 'jobs',
       status: STATUS_KEYS.includes(p.status as JobSummaryStatusFilter) ? (p.status as JobSummaryStatusFilter) : JOB_SUMMARY_VIEW_DEFAULTS.status,
       window: WINDOW_KEYS.includes(p.window as JobSummaryWindowKey) ? (p.window as JobSummaryWindowKey) : JOB_SUMMARY_VIEW_DEFAULTS.window,
       method: METHOD_KEYS.includes(p.method as JobOverheadMethod) ? (p.method as JobOverheadMethod) : JOB_SUMMARY_VIEW_DEFAULTS.method,
@@ -168,6 +175,8 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
       targetTrueMarginPct: TARGET_KEYS.includes(p.targetTrueMarginPct as number) ? (p.targetTrueMarginPct as number) : 0,
       cutBy: CUT_KEYS.includes(p.cutBy as JobSummaryCutBy) ? (p.cutBy as JobSummaryCutBy) : 'none',
       monthsBookBy: p.monthsBookBy === 'bill' ? 'bill' : 'work',
+      scatterColorBy: p.scatterColorBy === 'gc' || p.scatterColorBy === 'tech' ? p.scatterColorBy : 'trade',
+      scatterSizeBy: p.scatterSizeBy === 'days' || p.scatterSizeBy === 'none' ? p.scatterSizeBy : 'hours',
     }
   } catch {
     return { ...JOB_SUMMARY_VIEW_DEFAULTS }

@@ -121,8 +121,9 @@ export default function JobSummaryLedgerToolbar({
   const dl = (d: JobSummaryDelta | undefined, fmt: (abs: number) => string, higherIsGood = true) => (d ? <DeltaLine d={d} fmt={fmt} higherIsGood={higherIsGood} vs={vs} loading={cmpLoading} priorEmpty={priorEmpty} /> : undefined)
   const underTarget = prefs.targetTrueMarginPct > 0 ? countJobSummaryUnderTarget(rows, prefs.targetTrueMarginPct) : 0
   /** Views that run on the visible rows (Show / Compare to / Target apply); Days and Timeline read the ledger directly. */
+  const showView = prefs.view === 'jobs' || prefs.view === 'months' || prefs.view === 'cycle' || prefs.view === 'scatter'
   const rowsView = prefs.view === 'jobs' || prefs.view === 'months' || prefs.view === 'cycle'
-  const marginView = prefs.view === 'jobs' || prefs.view === 'months'
+  const marginView = prefs.view === 'jobs' || prefs.view === 'months' || prefs.view === 'scatter'
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '0.75rem' }}>
       <input
@@ -134,7 +135,7 @@ export default function JobSummaryLedgerToolbar({
       />
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Segmented label="View" value={prefs.view} options={JOB_SUMMARY_VIEW_MODE_OPTIONS} onChange={(view) => setPrefs({ view })} />
-        {rowsView ? <Segmented label="Show" value={prefs.status} options={JOB_SUMMARY_STATUS_OPTIONS} onChange={(status) => setPrefs({ status })} /> : null}
+        {showView ? <Segmented label="Show" value={prefs.status} options={JOB_SUMMARY_STATUS_OPTIONS} onChange={(status) => setPrefs({ status })} /> : null}
         {prefs.view === 'months' ? <Segmented label="Book by" value={prefs.monthsBookBy} options={JOB_SUMMARY_MONTHS_BOOK_OPTIONS} onChange={(monthsBookBy) => setPrefs({ monthsBookBy })} /> : null}
         <Segmented label="Worked in" value={prefs.window} options={JOB_SUMMARY_WINDOW_OPTIONS} onChange={(window) => setPrefs({ window })} />
         {showMoney && prefs.view === 'jobs' ? <Segmented label="Overhead" value={prefs.method} options={JOB_OVERHEAD_METHODS} onChange={(method) => setPrefs({ method })} /> : null}
