@@ -10,6 +10,7 @@ import { sumEquipmentRows } from '../../lib/bids/bidCostCalc'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../lib/bids/laborRowHours'
+import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
@@ -66,6 +67,8 @@ type BidsLaborTabProps = {
   costEstimateLaborRows: CostEstimateLaborRow[]
   setCostEstimateLaborRows: Dispatch<SetStateAction<CostEstimateLaborRow[]>>
   costEstimateCountRows: BidCountRow[]
+  /** What renders under the bid header: skeleton while the Version resolves, the empty sentence only for a settled zero-row bid (`laborEmptyState`). */
+  panel: LaborTabPanel
   purchaseOrdersForCostEstimate: CostEstimatePO[]
   costEstimateMaterialTotalRoughIn: number | null
   costEstimateMaterialTotalTopOut: number | null
@@ -144,6 +147,7 @@ export function BidsLaborTab({
   costEstimateLaborRows,
   setCostEstimateLaborRows,
   costEstimateCountRows,
+  panel,
   purchaseOrdersForCostEstimate,
   costEstimateMaterialTotalRoughIn,
   costEstimateMaterialTotalTopOut,
@@ -1109,7 +1113,22 @@ export function BidsLaborTab({
               </div>
             )
           })()}
-          {costEstimateCountRows.length === 0 ? (
+          {panel === 'skeleton' ? (
+            // J11-F1: while this bid's Version is still resolving, say so — the empty sentence
+            // below used to render here and read as deleted work (same pattern as Pricing, v2.2367).
+            <div role="status" aria-label="Loading this bid's fixtures and hours" style={{ padding: '0.95rem 1.1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem', fontWeight: 500 }}>
+                <span className="bid-resolve-spinner" aria-hidden />
+                Loading this bid's fixtures and hours…
+              </div>
+              {[['34%', '14%'], ['46%', '20%'], ['40%', '11%']].map(([w1, w2]) => (
+                <div key={w1} aria-hidden style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span className="bid-resolve-shimmer" style={{ width: w1, height: 12, borderRadius: 4 }} />
+                  <span className="bid-resolve-shimmer" style={{ width: w2, height: 12, borderRadius: 4 }} />
+                </div>
+              ))}
+            </div>
+          ) : panel === 'empty' ? (
             <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
           ) : (
             <>

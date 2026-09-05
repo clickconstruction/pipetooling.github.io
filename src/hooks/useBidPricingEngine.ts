@@ -10,6 +10,7 @@ import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
 import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
 import { pickActiveVersion, deriveActivePricingId, resolveTaggedVersion, versionSwitchStillActive } from '../lib/bids/pickActiveVersion'
 import { IDLE_PRICING_RESOLVE, beginPricingResolve, settlePricingResolve, type PricingResolveState } from '../lib/bids/pricingResolve'
+import { shouldMintCostEstimateOnLoad } from '../lib/bids/laborTabLoadGate'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
 import { fetchLastPriceBookTemplateId, saveLastPriceBookTemplateId } from '../lib/bids/pricingUserPrefs'
 import type { BidCountRow } from '../types/bids'
@@ -176,6 +177,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // pricingBidIdRef, so the re-run takes the full bid-changed path again).
   const [pricingResolve, setPricingResolve] = useState<PricingResolveState>(IDLE_PRICING_RESOLVE)
   const [pricingResolveRetryTick, setPricingResolveRetryTick] = useState(0)
+  // Labor/Takeoffs cost-estimate load lifecycle (J11-F1): which bid `costEstimateCountRows`
+  // currently describes. Same shape as `pricingResolve`; the Labor tab renders a skeleton
+  // until this settles for the bid on screen, so a stale/empty array never reads as "no fixtures".
+  const [costEstimateResolve, setCostEstimateResolve] = useState<PricingResolveState>(IDLE_PRICING_RESOLVE)
   const [selectedBidVersionId, setSelectedBidVersionIdState] = useState<string | null>(null)
   // Tagged with the bid the version belongs to, so a synchronous reader only uses it when it
   // matches the bid being loaded (else falls back to that bid's Base — never another bid's version).
@@ -555,7 +560,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     return est
   }
 
-  async function loadCostEstimateCountRows(bidId: string) {
+  /** The active version's count rows for the Labor/Takeoffs cost estimate; null when the read failed. */
+  async function loadCostEstimateCountRows(bidId: string): Promise<BidCountRow[] | null> {
     const { data, error } = await applyVersionFilter(
       supabase.from('bids_count_rows').select('*').eq('bid_id', bidId),
       activeVersionIdForBid(bidId),
@@ -563,7 +569,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     if (error) {
       setError(`Failed to load count rows: ${error.message}`)
       setCostEstimateCountRows([])
-      return []
+      return null
     }
     const rows = (data as BidCountRow[]) ?? []
     setCostEstimateCountRows(rows)
@@ -674,16 +680,42 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     return est
   }
 
+  /** Settle the Labor/Takeoffs load for `bidId` (a late settle for a bid the user left is ignored). */
+  function settleCostEstimateLoad(bidId: string, ok: boolean) {
+    setCostEstimateResolve((prev) => settlePricingResolve(prev.bidId === bidId ? prev : beginPricingResolve(bidId), bidId, ok))
+  }
+
+  /**
+   * Load the cost estimate the Labor (and Takeoffs) tab renders for `bidId`.
+   *
+   * Callers must have the active-version ref resolved for this bid first (the Labor
+   * effect in Bids.tsx gates on `shouldLoadCostEstimate`); otherwise the count-rows read
+   * filters on the wrong version and comes back empty. Minting: a `cost_estimates` row is
+   * created only when the resolved version has count rows — the HOURS table is built from
+   * `cost_estimate_labor_rows`, which need the parent row, and Pricing reads those rows for
+   * its margins. A bid with no fixtures gets no row just for being opened; the first write
+   * (`ensureCostEstimateForBid` from PO creation, or a later sync once fixtures exist)
+   * mints it.
+   */
   async function loadCostEstimateData(bidId: string, laborBookVersionId: string | null) {
+    setCostEstimateResolve((prev) => (prev.bidId === bidId ? prev : beginPricingResolve(bidId)))
     const countRows = await loadCostEstimateCountRows(bidId)
-    if (countRows.length === 0) {
+    if (countRows == null) {
       setCostEstimateLaborRows([])
-      const est = await loadCostEstimate(bidId)
-      if (!est) await ensureCostEstimateForBid(bidId)
+      settleCostEstimateLoad(bidId, false)
+      return
+    }
+    if (!shouldMintCostEstimateOnLoad({ rowCount: countRows.length })) {
+      setCostEstimateLaborRows([])
+      await loadCostEstimate(bidId)
+      settleCostEstimateLoad(bidId, true)
       return
     }
     const est = await ensureCostEstimateForBid(bidId)
-    if (!est) return
+    if (!est) {
+      settleCostEstimateLoad(bidId, false)
+      return
+    }
     let defaults: FixtureLaborDefault[]
     if (laborBookVersionId) {
       const { data: entries, error } = await supabase
@@ -710,6 +742,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       defaults = await loadFixtureLaborDefaults()
     }
     await loadCostEstimateLaborRowsAndSync(est.id, countRows, defaults)
+    settleCostEstimateLoad(bidId, true)
   }
 
   async function loadLaborBookVersions() {
@@ -1680,8 +1713,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setBidVersions,
     selectedBidVersionId,
     setSelectedBidVersionId,
+    selectedBidVersionIdRef,
     pricingResolve,
     retryPricingResolve,
+    costEstimateResolve,
     // pricing
     priceBookVersions,
     setPriceBookVersions,
