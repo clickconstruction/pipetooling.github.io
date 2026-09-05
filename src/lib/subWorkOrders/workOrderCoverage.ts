@@ -55,10 +55,11 @@ export function buildJobWorkOrderCoverage(rows: WorkOrderRowLike[], todayYmd: st
   return candidates[0]?.c ?? { kind: 'none' }
 }
 
+/** The rail's words (sheetRail.ts) on a one-chip surface: No agreement · Drafted · Sent · Signed. */
 export function workOrderChipLabel(c: JobWorkOrderCoverage | null | undefined): string {
-  if (!c || c.kind === 'none') return 'No work order'
-  if (c.kind === 'draft') return c.unpriced ? `Draft · needs a price` : 'Draft'
-  if (c.kind === 'sent') return c.expired ? 'Offer expired' : 'Awaiting signature'
+  if (!c || c.kind === 'none') return 'No agreement'
+  if (c.kind === 'draft') return c.unpriced ? 'Drafted · no price yet' : 'Drafted'
+  if (c.kind === 'sent') return c.expired ? 'Offer expired' : 'Sent · awaiting signature'
   if (c.kind === 'signed') return '✍ Signed'
   return 'Declined'
 }
@@ -69,8 +70,8 @@ export function workOrderChipTone(c: JobWorkOrderCoverage | null | undefined): '
 }
 
 export function workOrderChipTitle(c: JobWorkOrderCoverage | null | undefined): string {
-  if (!c || c.kind === 'none') return 'No sub work order on this job yet'
-  if (c.kind === 'draft') return `Draft for ${c.subName}${c.unpriced ? ' — no price set yet' : ''}`
+  if (!c || c.kind === 'none') return 'No agreement — nothing signed for a sub on this job yet'
+  if (c.kind === 'draft') return `Drafted for ${c.subName}${c.unpriced ? ' — no price yet' : ''}`
   if (c.kind === 'sent') return `Sent to ${c.subName}${c.sentAt ? ` on ${c.sentAt}` : ''}${c.expiresOn ? ` · good through ${c.expiresOn}` : ''}`
   if (c.kind === 'signed') return `${c.subName} signed${c.signedOn ? ` ${c.signedOn}` : ''}${c.recordId ? ` · ${c.recordId}` : ''}`
   return `${c.subName} declined${c.reason ? `: “${c.reason}”` : ''}`

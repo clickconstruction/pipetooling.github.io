@@ -8,7 +8,6 @@ import {
   parseSubWorkOrderSnapshot,
   scopeItemsForTrade,
   sheetWorkOrderLabel,
-  sheetWorkOrderRail,
   signedAmountDrift,
   workOrderWindowLabel,
   type SubScopeItem,
@@ -122,27 +121,6 @@ describe('scopeItemsForTrade', () => {
     expect(scopeItemsForTrade(items, plumbing, 'exclusion').map((o) => o.item.id)).toEqual(['excl'])
   })
 })
-
-describe('sheetWorkOrderRail', () => {
-  it('walks draft → awaiting signature → signed → the sheet stages → paid', () => {
-    const keys = (r: ReturnType<typeof sheetWorkOrderRail>, state: string) => r.filter((s) => s.state === state).map((s) => s.key)
-    const draft = sheetWorkOrderRail('draft', 'working', 100)
-    expect(keys(draft, 'now')).toEqual(['draft'])
-    const offered = sheetWorkOrderRail('offered', 'working', 100)
-    expect(offered.find((s) => s.key === 'sent')?.label).toBe('Awaiting signature')
-    expect(keys(offered, 'now')).toEqual(['sent'])
-    const signedWorking = sheetWorkOrderRail('accepted', 'working', 100)
-    expect(keys(signedWorking, 'done')).toEqual(['draft', 'sent', 'signed'])
-    expect(keys(signedWorking, 'now')).toEqual(['working'])
-    const walk = sheetWorkOrderRail('accepted', 'walkthrough', 100)
-    expect(keys(walk, 'now')).toEqual(['walkthrough'])
-    const paid = sheetWorkOrderRail('settled', 'customer_pay', 0)
-    expect(keys(paid, 'todo')).toEqual([])
-    expect(keys(paid, 'done')).toContain('paid')
-    expect(sheetWorkOrderRail('declined', 'working', 100)).toEqual([])
-  })
-})
-
 describe('generalConditionsStanding', () => {
   it('compares the signed version to the book version', () => {
     expect(generalConditionsStanding({ bookVersionDate: null, signedVersionDate: null, signed: false })).toBe('none')

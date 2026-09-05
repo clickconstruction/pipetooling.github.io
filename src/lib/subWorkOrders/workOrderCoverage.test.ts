@@ -40,7 +40,7 @@ describe('buildJobWorkOrderCoverage', () => {
   it('flags unpriced drafts and expired offers', () => {
     const draft = buildJobWorkOrderCoverage([row({ id: 'd', status: 'draft', amount: null })], TODAY)
     expect(draft).toEqual({ kind: 'draft', id: 'd', subName: 'Behar Kraja', unpriced: true })
-    expect(workOrderChipLabel(draft)).toBe('Draft · needs a price')
+    expect(workOrderChipLabel(draft)).toBe('Drafted · no price yet')
     const expired = buildJobWorkOrderCoverage([row({ id: 'o', status: 'offered', offer_expires_at: '2026-09-01' })], TODAY)
     expect(expired.kind === 'sent' && expired.expired).toBe(true)
     expect(workOrderChipLabel(expired)).toBe('Offer expired')

@@ -13,13 +13,16 @@ import {
   parseSubWorkOrderSnapshot,
   scopeItemsForTrade,
   sheetWorkOrderLabel,
-  sheetWorkOrderRail,
   signedAmountDrift,
   type SubScopeItem,
   type SubWorkOrderBond,
   type SubWorkOrderSnapshot,
 } from '../../lib/subWorkOrders/subWorkOrder'
 import type { SubSheetStage } from '../../lib/subSheetStage'
+import { buildJobWorkOrderCoverage, type WorkOrderRowLike } from '../../lib/subWorkOrders/workOrderCoverage'
+import { buildSheetRail } from '../../lib/subWorkOrders/sheetRail'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { SheetRail } from './SheetRail'
 import SubPortalGlobeButton from '../people/SubPortalGlobeButton'
 
 /**
@@ -473,32 +476,21 @@ export function SubSheetWorkOrderPanel({
   }
 
   const snapshot = commitment ? parseSubWorkOrderSnapshot(commitment.offer_scope_snapshot) : null
-  const rail = commitment ? sheetWorkOrderRail(commitment.status, sheetStage, sheetOpen) : sheetWorkOrderRail('draft', sheetStage, sheetOpen)
+  // The same seven-dot rail as Jobs → Work Orders and Sub Labor (one-row spine, PR 5).
+  const rail = buildSheetRail({
+    coverage: commitment ? buildJobWorkOrderCoverage([commitment as unknown as WorkOrderRowLike], todayYmdInAppTz()) : { kind: 'none' },
+    sheetStage,
+    agreed: sheetTotal,
+    open: sheetOpen,
+    unpriced: sheetTotal === 0,
+  })
   const signed = !!commitment && (commitment.status === 'accepted' || commitment.status === 'approved' || commitment.status === 'settled')
   const drift = commitment && signed ? signedAmountDrift(Number(commitment.amount), sheetTotal) : null
   const personName = commitment?.display_name ?? assignees.find((a) => a.id === draft?.personId)?.name ?? assignees[0]?.name ?? sheet.assigned_to_name ?? 'the sub'
 
   const railEl = (
-    <div style={{ display: 'flex', flexWrap: 'wrap', margin: '0.5rem 0 0.25rem' }}>
-      {rail.map((seg, i) => (
-        <span
-          key={seg.key}
-          style={{
-            fontSize: '0.68rem',
-            fontWeight: 650,
-            letterSpacing: '0.02em',
-            padding: '0.14rem 0.55rem',
-            border: '1px solid var(--border)',
-            borderLeftWidth: i === 0 ? 1 : 0,
-            borderRadius: i === 0 ? '999px 0 0 999px' : i === rail.length - 1 ? '0 999px 999px 0' : 0,
-            background: seg.state === 'done' ? 'var(--bg-green-tint)' : seg.state === 'now' ? 'var(--bg-orange-tint)' : 'var(--surface)',
-            color: seg.state === 'done' ? '#059669' : seg.state === 'now' ? '#E87600' : 'var(--text-faint)',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {seg.label}
-        </span>
-      ))}
+    <div style={{ margin: '0.5rem 0 0.25rem' }}>
+      <SheetRail rail={rail} />
     </div>
   )
 

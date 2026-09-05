@@ -254,39 +254,6 @@ export function scopeItemsForTrade(
     .map((item) => ({ item, ticked: item.is_default }))
 }
 
-export type SubWorkOrderRailSegment = {
-  key: 'draft' | 'sent' | 'signed' | 'working' | 'walkthrough' | 'customer_pay' | 'paid'
-  label: string
-  state: 'done' | 'now' | 'todo'
-}
-
-/**
- * The sheet work order's rail: its own money steps (Draft → Sent → Signed),
- * then it hands off to the sheet's stages. Declined/cancelled return empty —
- * the panel shows their banner instead.
- */
-export function sheetWorkOrderRail(
-  commitmentStatus: string,
-  sheetStage: 'working' | 'walkthrough' | 'customer_pay',
-  sheetOpen: number,
-): SubWorkOrderRailSegment[] {
-  if (commitmentStatus === 'cancelled' || commitmentStatus === 'declined') return []
-  const signed = commitmentStatus === 'accepted' || commitmentStatus === 'approved' || commitmentStatus === 'settled'
-  const sent = signed || commitmentStatus === 'offered'
-  const stageRank = sheetStage === 'working' ? 0 : sheetStage === 'walkthrough' ? 1 : 2
-  const paid = signed && sheetOpen <= 0
-  const segs: SubWorkOrderRailSegment[] = [
-    { key: 'draft', label: 'Draft', state: sent ? 'done' : 'now' },
-    { key: 'sent', label: commitmentStatus === 'offered' ? 'Awaiting signature' : 'Sent', state: signed ? 'done' : sent ? 'now' : 'todo' },
-    { key: 'signed', label: 'Signed', state: signed ? 'done' : 'todo' },
-    { key: 'working', label: 'Working', state: !signed ? 'todo' : paid || stageRank > 0 ? 'done' : 'now' },
-    { key: 'walkthrough', label: 'Walk-through', state: !signed ? 'todo' : paid || stageRank > 1 ? 'done' : stageRank === 1 ? 'now' : 'todo' },
-    { key: 'customer_pay', label: 'Customer pays', state: !signed ? 'todo' : paid ? 'done' : stageRank === 2 ? 'now' : 'todo' },
-    { key: 'paid', label: 'Paid', state: paid ? 'done' : 'todo' },
-  ]
-  return segs
-}
-
 export type GeneralConditionsStanding = 'current' | 'behind' | 'unsigned' | 'none'
 
 /**
