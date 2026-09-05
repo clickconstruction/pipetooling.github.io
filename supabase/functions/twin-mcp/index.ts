@@ -122,7 +122,7 @@ const TOOLS = [
   {
     name: 'get_answers',
     description:
-      'Your questions and their answers (newest first) — check this at the START of every run; an answered question may unblock parked work. Promoted questions carry the RFI number they became.',
+      'Your questions and their answers (newest first) — check this at the START of every run; an answered question may unblock parked work. Promoted questions carry the RFI number they became. Blind-safe (v2.2868): any item that mentions a reference you currently hold an unsealed shell against comes back redacted, and reappears after that shell is scored — never try to recover a redacted item another way.',
     inputSchema: { type: 'object', properties: { open_only: { type: 'boolean', description: 'true = only unanswered' } } },
   },
   {
@@ -289,6 +289,42 @@ const TOOLS = [
         replace: { type: 'boolean', description: "Delete the bid's existing count rows + assignments first (default false — existing rows refuse the call)" },
       },
       required: ['bid', 'rows'],
+    },
+  },
+  {
+    name: 'get_robot_book',
+    description:
+      "Read the 🤖 Robot Default price book (v2.2868): entry names and prices, so rows can be priced from the real book instead of mirrored guesses. Pass your bid to get the book for its service type, or nothing for every robot book. Read-only; prices here are the ones paste_counts uses when a row carries no override.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Optional: your bid (e.g. 'b470' or uuid) — returns the robot book for its service type only" },
+      },
+    },
+  },
+  {
+    name: 'extend_robot_book',
+    description:
+      "Extend the 🤖 Robot Default book when a tag is missing (v2.2868) — the doctrine's 'extend it when a tag is missing; mirror sources in the ledger', as a verb. Adds fixture types + priced entries to the robot book for your bid's service type and stamps a '[book extend]' note carrying your mirror_note on that bid's ledger. Names already in the book are skipped, never repriced (re-mirrors of existing prices stay a digest-session act). Use real mirrored prices and say where they came from — an invented price poisons every future draft.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your bid (e.g. 'b470' or uuid) — the ledger the mirror note lands on; must be yours (assigned/created)" },
+        entries: {
+          type: 'array',
+          description: 'New entries, max 20: [{ name, price }]',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: "Entry name exactly as rows will reference it, e.g. 'ft of 1 1/2\" Cold Water'" },
+              price: { type: 'number', description: 'Unit price (mirrored, not invented)' },
+            },
+            required: ['name', 'price'],
+          },
+        },
+        mirror_note: { type: 'string', description: "Where the prices came from, e.g. 'human books: FEET OF 1 1/2IN COPPER $87.63 (108 versions)' — required, lands on the ledger" },
+      },
+      required: ['bid', 'entries', 'mirror_note'],
     },
   },
   {
@@ -596,7 +632,49 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const { data, error } = await sel
       if (error) return textContent(`Lookup failed: ${error.message}`, true)
       if (!data?.length) return textContent(args.open_only === true ? 'No open questions.' : 'No questions yet — ask_question parks one.')
-      return textContent(JSON.stringify({ questions: data }, null, 2))
+      // Blindness redaction (v2.2868): an answer can quote a reference's value — it
+      // happened on R2-BT-20, where a parked answer named the reference bid and its won
+      // number, exposing a blind run before its lock. Every reference this twin holds an
+      // UNSEALED shell against gets its mentions redacted; the item comes back after the
+      // shell's STG-6 (or shadow score) breaks the seal. Over-redaction is safe; a leak
+      // is not.
+      const { data: shells } = await admin.from('bids')
+        .select('id, bid_number, twin_source_bid_id')
+        .eq('created_by', twin.twinUserId)
+        .not('twin_source_bid_id', 'is', null)
+      let redacted = 0
+      let out = data
+      if (shells?.length) {
+        const [{ data: scored }, { data: shadowScored }] = await Promise.all([
+          admin.from('twin_run_scores').select('twin_bid_number').in('twin_bid_number', shells.map((s) => String(s.bid_number))),
+          admin.from('twin_shadow_runs').select('shadow_bid_id').not('scored_at', 'is', null).in('shadow_bid_id', shells.map((s) => s.id)),
+        ])
+        const scoredNums = new Set((scored ?? []).map((r) => String(r.twin_bid_number)))
+        const scoredShadowIds = new Set((shadowScored ?? []).map((r) => r.shadow_bid_id))
+        const unsealed = shells.filter((s) => !scoredNums.has(String(s.bid_number)) && !scoredShadowIds.has(s.id))
+        if (unsealed.length) {
+          const { data: refs } = await admin.from('bids')
+            .select('id, bid_number, project_name')
+            .in('id', unsealed.map((s) => s.twin_source_bid_id))
+          const matchers = (refs ?? []).map((r) => ({
+            tag: `b${r.bid_number}`,
+            numRe: new RegExp(`\\bbp?${r.bid_number}\\b`, 'i'),
+            name: String(r.project_name ?? '').trim().toLowerCase(),
+          }))
+          out = data.map((q: Record<string, unknown>) => {
+            const text = `${q.question ?? ''}\n${q.answer ?? ''}`.toLowerCase()
+            const hit = matchers.find((m) => m.numRe.test(text) || (m.name.length >= 6 && text.includes(m.name)))
+            if (!hit) return q
+            redacted++
+            return {
+              id: q.id, status: q.status, created_at: q.created_at, mission: q.mission,
+              redacted: true,
+              note: `Redacted: this item mentions ${hit.tag}, a reference you currently hold a blind shell against. It will be readable again after that shell's scorecard breaks the seal.`,
+            }
+          })
+        }
+      }
+      return textContent(JSON.stringify({ questions: out, ...(redacted ? { redacted_for_blindness: redacted } : {}) }, null, 2))
     }
     case 'heartbeat': {
       const stage = String(args.stage ?? '').trim()
@@ -1264,6 +1342,89 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         next: expected == null ? 'No expected_total passed — verify the Counts tab total equals your LOCK before scoring.' : 'LOCK note next if not already on the ledger, then score_backtest (STG-6).',
       }, null, 2))
     }
+    case 'get_robot_book': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      let versions = admin.from('price_book_versions').select('id, name, service_type_id').eq('is_robot', true).is('bid_id', null)
+      const ref = String(args.bid ?? '').trim()
+      if (ref) {
+        const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        let bq = admin.from('bids').select('id, service_type_id')
+        bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+        const { data: bid } = await bq.maybeSingle()
+        if (!bid) return textContent(`No bid found for "${ref}"`, true)
+        versions = versions.eq('service_type_id', bid.service_type_id)
+      }
+      const { data: vers, error: verErr } = await versions
+      if (verErr) return textContent(`Book lookup failed: ${verErr.message}`, true)
+      if (!vers?.length) return textContent('No global 🤖 Robot Default book found', true)
+      const books = await Promise.all(vers.map(async (v) => {
+        const { data: entries } = await admin.from('price_book_entries')
+          .select('total_price, sequence_order, fixture_types(name)').eq('version_id', v.id).order('sequence_order').limit(1000)
+        return {
+          version_id: v.id,
+          service_type_id: v.service_type_id,
+          entries: (entries ?? []).map((e) => ({ name: (e.fixture_types as { name?: string } | null)?.name ?? '?', price: e.total_price })),
+        }
+      }))
+      return textContent(JSON.stringify({ books, note: 'paste_counts matches rows to these names exactly; the price shown is what an override-less row earns.' }, null, 2))
+    }
+    case 'extend_robot_book': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const mirrorNote = String(args.mirror_note ?? '').trim()
+      const entries = Array.isArray(args.entries) ? args.entries as Record<string, unknown>[] : []
+      if (!ref || !mirrorNote || !entries.length) return textContent('extend_robot_book needs bid + entries[] + mirror_note (where the prices came from)', true)
+      if (entries.length > 20) return textContent('extend_robot_book takes at most 20 entries per call', true)
+      const parsed = entries.map((e) => ({ name: String(e.name ?? '').trim().slice(0, 200), price: Number(e.price) }))
+      const bad = parsed.filter((e) => !e.name || !Number.isFinite(e.price) || e.price <= 0)
+      if (bad.length) return textContent(`Invalid entries (need name + positive price): ${bad.map((e) => `"${e.name || '(no name)'}"`).join(', ')}`, true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, service_type_id, created_by, estimator_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — book extensions ride your own bid's ledger.`, true)
+      }
+      const { data: robotVer } = await admin.from('price_book_versions')
+        .select('id').eq('is_robot', true).is('bid_id', null).eq('service_type_id', bid.service_type_id).maybeSingle()
+      if (!robotVer) return textContent('No global 🤖 Robot Default book exists for this bid\'s service type', true)
+      const { data: existing } = await admin.from('price_book_entries')
+        .select('sequence_order, fixture_types(name)').eq('version_id', robotVer.id).limit(1000)
+      const have = new Set((existing ?? []).map((e) => ((e.fixture_types as { name?: string } | null)?.name ?? '').trim().toLowerCase()))
+      let nextSeq = Math.max(0, ...(existing ?? []).map((e) => e.sequence_order ?? 0)) + 1
+      const added: string[] = []
+      const skipped: string[] = []
+      for (const entry of parsed) {
+        if (have.has(entry.name.toLowerCase())) { skipped.push(entry.name); continue }
+        const { data: ftExisting } = await admin.from('fixture_types')
+          .select('id').eq('service_type_id', bid.service_type_id).eq('name', entry.name).maybeSingle()
+        let ftId = ftExisting?.id
+        if (!ftId) {
+          const { data: ft, error: ftErr } = await admin.from('fixture_types')
+            .insert({ name: entry.name, service_type_id: bid.service_type_id, sequence_order: 0 }).select('id').single()
+          if (ftErr) return textContent(`fixture_types insert failed at "${entry.name}": ${ftErr.message} (added so far: ${added.join(', ') || 'none'})`, true)
+          ftId = ft.id
+        }
+        const { error: entErr } = await admin.from('price_book_entries').insert({
+          version_id: robotVer.id, fixture_type_id: ftId, sequence_order: nextSeq++,
+          total_price: entry.price, rough_in_price: entry.price, top_out_price: 0, trim_set_price: 0,
+        })
+        if (entErr) return textContent(`price_book_entries insert failed at "${entry.name}": ${entErr.message} (added so far: ${added.join(', ') || 'none'})`, true)
+        added.push(`${entry.name} = $${entry.price}`)
+      }
+      if (added.length) {
+        await admin.from('bids_submission_entries').insert({
+          bid_id: bid.id,
+          notes: `[book extend] 🤖 Robot Default +${added.length} via twin-mcp extend_robot_book: ${added.join(' · ')}. Mirror sources: ${mirrorNote.slice(0, 2000)}`,
+        }).then(() => {}, () => {})
+      }
+      return textContent(JSON.stringify({ ok: true, added, skipped, note: skipped.length ? 'Skipped names already in the book — existing prices are never changed here; re-mirrors go through the digest.' : undefined }, null, 2))
+    }
     case 'get_shadow_queue': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -1463,7 +1624,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.4' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.5' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
