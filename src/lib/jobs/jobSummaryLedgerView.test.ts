@@ -97,6 +97,7 @@ describe('prefs + window', () => {
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'cycle' }))).toMatchObject({ view: 'cycle' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'capacity' }))).toMatchObject({ view: 'capacity' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'ahead' }))).toMatchObject({ view: 'ahead' })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'rework' }))).toMatchObject({ view: 'rework' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ cutBy: 'gc' }))).toMatchObject({ cutBy: 'gc' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ cutBy: 'planet' }))).toMatchObject({ cutBy: 'none' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ compareTo: 'lastYear', targetTrueMarginPct: 35 }))).toMatchObject({ compareTo: 'lastYear', targetTrueMarginPct: 35 })
