@@ -37,6 +37,8 @@ import {
 import { countSortingUnmatched, filterMercuryRowsForSorting } from '../lib/bankingSortingCounts'
 import { shortUuidPrefix } from '../lib/shortUuidPrefix'
 import { fetchAllAttributions, fetchAllJobAllocations } from '../lib/fetchMercuryRelationsByTxIds'
+import { buildMercuryRelationMaps } from '../lib/mercuryRelationMaps'
+import { fetchAllRows, SUPABASE_PAGE_SIZE } from '../lib/supabasePaging'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import {
   MercuryTransactionAllocationsModal,
@@ -73,7 +75,12 @@ type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 /** Stable empty list for org-note fetch ids when not on Mercury Banking (avoid spurious refetches). */
 const NO_MERCURY_TX_IDS_FOR_BANKING_NOTES: readonly string[] = []
 const DEBIT_CARD_RECENT_TX_CAP = 50
-/** Cap for the in-memory Banking → Mercury list. Sized to comfortably fit a 1-year backfill (~10k tx) plus headroom. */
+/**
+ * Hard ceiling for the in-memory Banking → Mercury list. Sized to comfortably fit a 1-year
+ * backfill (~10k tx) plus headroom. The loaders PAGE up to it (`fetchAllRows` + `.range()`),
+ * so this is a real cap the "⚠ capped" chip can detect — a bare `.limit(15000)` was silently
+ * cut to PostgREST's 1,000-row `max_rows` (J33-N1: 13,065 transactions in prod, 1,000 shown).
+ */
 const MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000
 /** Page size for the Accounting tab's keyset-paginated "show labeled" (Hide labeled = off) view. */
 const ACCOUNTING_LABELED_PAGE_SIZE = 500
@@ -519,15 +526,28 @@ export default function Banking() {
       setLoading(true)
     }
     try {
-      const data = await withSupabaseRetry(async () => {
-        return supabase
-          .from('mercury_transactions')
-          .select(MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS)
-          .order('posted_at', { ascending: false, nullsFirst: false })
-          .limit(MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)
-      }, 'load mercury_transactions')
+      // Paged newest-first under a stable (posted_at, id) order until a short page or the
+      // hard ceiling — every transaction in the window is loaded, so the User Sort headline
+      // ("Without person / Not split to jobs / N of N loaded") counts the whole table.
+      const list = await fetchAllRows<MercuryTxRow>(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('mercury_transactions')
+                .select(MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS)
+                .order('posted_at', { ascending: false, nullsFirst: false })
+                .order('id', { ascending: false })
+                .range(from, to),
+            'load mercury_transactions',
+          )) as MercuryTxRow[] | null,
+          error: null,
+        }),
+        'load mercury_transactions',
+        SUPABASE_PAGE_SIZE,
+        { maxRows: MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT },
+      )
       if (listLoadSeqRef.current !== seq) return
-      const list = (data as MercuryTxRow[]) ?? []
       setRows(list)
       setRowsTruncated(list.length >= MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)
     } catch (e) {
@@ -548,8 +568,9 @@ export default function Banking() {
   // no matching `mercury_transaction_drag_sort_assignments`. Used when the
   // Accounting tab is active with **Hide labeled transactions** on (the
   // 90% case), instead of pulling 15k rows and discarding ~88% client-side.
-  // RPC has no cap; PostgREST's project-level row cap still applies as the
-  // ultimate ceiling, same as before.
+  // The RPC orders `posted_at desc nulls last, id desc`, so its result set is
+  // paged with `.range()` exactly like the master list — PostgREST's 1,000-row
+  // `max_rows` applies to un-ranged RPC responses too.
   const loadUnlabeledRows = useCallback(async (options?: { silent?: boolean }) => {
     if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     const silent = options?.silent === true
@@ -562,11 +583,22 @@ export default function Banking() {
       // Explicit cap (instead of leaning on PostgREST's project row ceiling) so
       // we can detect truncation and surface it rather than silently dropping
       // the oldest unlabeled rows.
-      const data = await withSupabaseRetry(async () => {
-        return supabase.rpc('list_unlabeled_mercury_transactions', { p_limit: MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT })
-      }, 'load mercury_transactions unlabeled')
+      const list = await fetchAllRows<MercuryTxRow>(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .rpc('list_unlabeled_mercury_transactions', { p_limit: MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT })
+                .range(from, to),
+            'load mercury_transactions unlabeled',
+          )) as MercuryTxRow[] | null,
+          error: null,
+        }),
+        'load mercury_transactions unlabeled',
+        SUPABASE_PAGE_SIZE,
+        { maxRows: MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT },
+      )
       if (listLoadSeqRef.current !== seq) return
-      const list = (data as MercuryTxRow[]) ?? []
       setRows(list)
       setRowsTruncated(list.length >= MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)
     } catch (e) {
@@ -845,44 +877,25 @@ export default function Banking() {
     }
     const ids = rows.map((r) => r.id)
     try {
-      // The relation tables (allocations ~1k, attributions ~5k) are small and we've loaded
-      // every transaction, so one unfiltered select each (in parallel) beats chunking ~10k
-      // ids into 200-id batches (~110 sequential round-trips → 2). Extra rows for txs beyond
-      // the loaded set are harmless: lookups are keyed by loaded tx id.
+      // The relation tables (allocations ~2k, attributions ~5k) are small next to the loaded
+      // transaction list (the whole table), so two PAGED whole-table reads (~3 + ~6 requests)
+      // beat chunking ~13k ids into 200-id `.in()` batches (~130 round-trips). Both reads page
+      // under a stable order until a short page — complete by construction (the previous
+      // un-ranged `.limit(100000)` was silently cut to 1,000 rows: J33-N1). Rows for txs
+      // outside the loaded set are dropped by the kernel; every loaded id gets an entry.
       const [allocRows, attrRows] = await Promise.all([
         fetchAllJobAllocations('load'),
         fetchAllAttributions('load'),
       ])
 
-      const allocMap = new Map<string, MercuryJobSplit[]>()
-      for (const row of allocRows) {
-        const tid = row.mercury_transaction_id
-        const list = allocMap.get(tid) ?? []
-        const split: MercuryJobSplit = { job_id: row.job_id, amount: Number(row.amount) }
-        if (row.note != null && row.note !== '') split.note = row.note
-        list.push(split)
-        allocMap.set(tid, list)
-      }
-      setAllocationsByTxId(allocMap)
+      const maps = buildMercuryRelationMaps(allocRows, attrRows, ids)
+      setAllocationsByTxId(maps.allocationsByTxId)
+      setPersonIdByTxId(maps.personIdByTxId)
+      setUserIdByTxId(maps.userIdByTxId)
+      const personIds = new Set(maps.personIds)
+      const userIds = new Set(maps.userIds)
 
-      const personMap = new Map<string, string | null>()
-      const userMap = new Map<string, string | null>()
-      const personIds = new Set<string>()
-      const userIds = new Set<string>()
-      for (const row of attrRows) {
-        personMap.set(row.mercury_transaction_id, row.person_id)
-        userMap.set(row.mercury_transaction_id, row.user_id)
-        if (row.person_id) personIds.add(row.person_id)
-        if (row.user_id) userIds.add(row.user_id)
-      }
-      for (const id of ids) {
-        if (!personMap.has(id)) personMap.set(id, null)
-        if (!userMap.has(id)) userMap.set(id, null)
-      }
-      setPersonIdByTxId(personMap)
-      setUserIdByTxId(userMap)
-
-      const jobIds = [...new Set(allocRows.map((r) => r.job_id))]
+      const jobIds = maps.jobIds
       const jobLabels: Record<string, string> = {}
       if (jobIds.length > 0) {
         const jobRowsData = await withSupabaseRetry(

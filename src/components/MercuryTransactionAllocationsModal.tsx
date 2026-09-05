@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchDispatchScheduledJobsForAssigneeDay, type DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import { useToastContext } from '../contexts/ToastContext'
@@ -21,6 +21,8 @@ import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledge
 import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../lib/dragSortDefaultLabels'
+import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
+import { decideSplitSaveGuard, seedStateFromRows, type MercurySplitSeedState } from '../lib/mercuryAllocModalSeed'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type JobSearchRow = {
@@ -59,11 +61,17 @@ export type MercuryTransactionAllocationsModalProps = {
   open: boolean
   onClose: () => void
   transaction: MercuryTxRow | null
-  /** Existing splits from DB (signed amounts). */
+  /**
+   * Existing splits (signed amounts) as the parent knows them. Staff paths treat
+   * this as a placeholder only: the modal re-reads this transaction's current
+   * splits + attribution by id when it opens and refuses to save until that read
+   * lands (the parent's page map has been a silently truncated read — J33-N1 —
+   * and Save is a REPLACE). Tally self-service paths use it as-is.
+   */
   initialAllocations: MercuryJobSplit[]
-  /** Legacy people-only attribution (no user row). */
+  /** Legacy people-only attribution (no user row) — same placeholder semantics. */
   initialPersonId: string | null
-  /** User attribution (auth.users). */
+  /** User attribution (auth.users) — same placeholder semantics. */
   initialUserId: string | null
   /** Display name when initialPersonId is set and initialUserId is null. */
   legacyPersonDisplayName?: string | null
@@ -307,6 +315,15 @@ export function MercuryTransactionAllocationsModal({
   const [userId, setUserId] = useState<string>('')
   const [stripAttribution, setStripAttribution] = useState(false)
   const [saving, setSaving] = useState(false)
+  /** Attribution the modal is editing FROM (props until the by-id re-read lands, then the DB's answer). */
+  const [seedPersonId, setSeedPersonId] = useState<string | null>(null)
+  const [seedUserId, setSeedUserId] = useState<string | null>(null)
+  /** What the DB said at open (staff paths) — compared against a fresh read right before Save. */
+  const [serverSeed, setServerSeed] = useState<MercurySplitSeedState | null>(null)
+  const [seedStatus, setSeedStatus] = useState<'idle' | 'loading' | 'ready' | 'failed' | 'changed'>('idle')
+  const [seedRetryTick, setSeedRetryTick] = useState(0)
+  const jobLabelByIdRef = useRef(jobLabelById)
+  jobLabelByIdRef.current = jobLabelById
   const [jobSearch, setJobSearch] = useState('')
   const [jobResults, setJobResults] = useState<JobSearchRow[]>([])
   const jobResultsUnified = useMemo(
@@ -421,11 +438,82 @@ export function MercuryTransactionAllocationsModal({
       }),
     )
     setUserId(initialUserId ?? '')
+    setSeedPersonId(initialPersonId)
+    setSeedUserId(initialUserId ?? null)
     setStripAttribution(false)
     setJobSearch('')
     setJobResults([])
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: `initialAllocations` / `jobLabelById` / `transaction` identity churn must not wipe in-progress edits
   }, [open, transaction?.id, initialUserId])
+
+  // Staff paths: the DB — not the parent's page map — is the seed of record.
+  // `replace_mercury_transaction_splits` is DELETE + INSERT of this modal's list,
+  // and the parent maps have been a silently truncated read (J33-N1: 2,060
+  // allocation rows, 1,000 returned), so a stale-empty seed was one Save away
+  // from erasing a transaction's real splits. Re-read this transaction by id on
+  // open; Save stays off until the read lands. Tally self-service paths keep the
+  // prop seed: their roles can't read the relation tables (RLS returns [] with
+  // no error, which would look like "no splits") and their RPCs are scoped.
+  useEffect(() => {
+    if (!open || !transaction?.id) {
+      setSeedStatus('idle')
+      setServerSeed(null)
+      return
+    }
+    if (tallySelfService) {
+      setSeedStatus('ready')
+      setServerSeed(null)
+      return
+    }
+    const txId = transaction.id
+    let cancelled = false
+    setSeedStatus('loading')
+    setServerSeed(null)
+    void (async () => {
+      try {
+        const [allocs, attrs] = await Promise.all([
+          fetchJobAllocationsByMercuryTxIds([txId], 'mercury alloc modal seed'),
+          fetchAttributionsByMercuryTxIds([txId], 'mercury alloc modal seed'),
+        ])
+        if (cancelled) return
+        const seed = seedStateFromRows(allocs, attrs, txId)
+        const knownLabels = jobLabelByIdRef.current
+        const missingJobIds = [...new Set(seed.splits.map((sp) => sp.job_id).filter((id) => !(id in knownLabels)))]
+        const extraLabels: Record<string, string> = {}
+        if (missingJobIds.length > 0) {
+          const jobRows = await withSupabaseRetry(
+            async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', missingJobIds),
+            'mercury alloc modal seed job labels',
+          )
+          for (const j of (jobRows ?? []) as { id: string; hcp_number: string | null; job_name: string | null }[]) {
+            const label = `${j.hcp_number ?? ''} · ${j.job_name ?? ''}`.trim()
+            extraLabels[j.id] = label || j.id
+          }
+        }
+        if (cancelled) return
+        setLines(
+          seed.splits.map((a) => ({
+            jobId: a.job_id,
+            jobLabel: knownLabels[a.job_id] ?? extraLabels[a.job_id] ?? a.job_id,
+            mode: 'dollars' as SplitMode,
+            valueStr: String(round2(Math.abs(Number(a.amount)))),
+            note: a.note ?? '',
+          })),
+        )
+        setUserId(seed.userId ?? '')
+        setStripAttribution(false)
+        setSeedPersonId(seed.personId)
+        setSeedUserId(seed.userId)
+        setServerSeed(seed)
+        setSeedStatus('ready')
+      } catch {
+        if (!cancelled) setSeedStatus('failed')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, transaction?.id, tallySelfService, seedRetryTick])
 
   useEffect(() => {
     if (!open) return
@@ -699,11 +787,13 @@ export function MercuryTransactionAllocationsModal({
   const canSave = useMemo(() => {
     if (!transaction) return false
     if (internalTransfersLabelLocked === true) return false
+    // Staff paths never REPLACE against an unverified seed (see the seed effect).
+    if (!tallySelfService && seedStatus !== 'ready') return false
     if (lines.length === 0) return true
     if (displayTotal <= 0) return false
     if (!allocationSum.ok) return false
     return Math.abs(remainder) < sumEpsilon
-  }, [transaction, internalTransfersLabelLocked, lines.length, displayTotal, allocationSum.ok, remainder])
+  }, [transaction, internalTransfersLabelLocked, tallySelfService, seedStatus, lines.length, displayTotal, allocationSum.ok, remainder])
 
   const recentChipsOrdered = useMemo(() => {
     if (!recentPersonPicksStorageKey) return []
@@ -810,7 +900,7 @@ export function MercuryTransactionAllocationsModal({
               return row
             })
       const uid = userId.trim()
-      const legacyOnly = Boolean(initialPersonId && !initialUserId)
+      const legacyOnly = Boolean(seedPersonId && !seedUserId)
       let p_user_id: string | null = null
       let p_person_id: string | null = null
       if (stripAttribution) {
@@ -819,11 +909,11 @@ export function MercuryTransactionAllocationsModal({
       } else if (uid !== '') {
         p_user_id = uid
         p_person_id = null
-      } else if (initialUserId) {
+      } else if (seedUserId) {
         p_user_id = null
         p_person_id = null
       } else if (legacyOnly) {
-        p_person_id = initialPersonId
+        p_person_id = seedPersonId
         p_user_id = null
       } else {
         p_user_id = null
@@ -851,6 +941,24 @@ export function MercuryTransactionAllocationsModal({
           )
         }
       } else {
+        // Optimistic concurrency: re-read right before the REPLACE and refuse if
+        // the DB no longer matches what this window was opened on (another save
+        // landed in between). Nothing is written on a mismatch.
+        const [curAllocs, curAttrs] = await Promise.all([
+          fetchJobAllocationsByMercuryTxIds([transaction.id], 'mercury alloc modal pre-save check'),
+          fetchAttributionsByMercuryTxIds([transaction.id], 'mercury alloc modal pre-save check'),
+        ])
+        const guard = decideSplitSaveGuard(serverSeed, seedStateFromRows(curAllocs, curAttrs, transaction.id))
+        if (guard !== 'ok') {
+          setSeedStatus(guard === 'changed' ? 'changed' : 'failed')
+          showToast(
+            guard === 'changed'
+              ? 'This transaction’s splits or person changed since you opened this window — nothing was saved. Reload to see the current splits.'
+              : 'Could not confirm this transaction’s current splits — nothing was saved. Reload and try again.',
+            'error',
+          )
+          return
+        }
         const replaceMercurySplitsPayload: ReplaceMercuryTransactionSplitsCall = {
           p_mercury_transaction_id: transaction.id,
           p_rows: p_rows as unknown as Json,
@@ -904,7 +1012,7 @@ export function MercuryTransactionAllocationsModal({
   if (!open || !transaction) return null
 
   const emptyUserOption: SearchableSelectOption = { value: '', label: '—' }
-  const hasLegacyPerson = Boolean(initialPersonId && !initialUserId)
+  const hasLegacyPerson = Boolean(seedPersonId && !seedUserId)
   const showAttributionHint = hasLegacyPerson && legacyPersonDisplayName
 
   const summaryDebitCardId = mercuryDebitCardIdFromRaw(transaction.raw)
@@ -972,6 +1080,52 @@ export function MercuryTransactionAllocationsModal({
             </div>
             This transaction is labeled <strong>Internal Transfers</strong> and cannot be split onto jobs.
             Remove the label in <strong>Banking → Mercury → Drag Sort</strong> first.
+          </div>
+        ) : null}
+
+        {!tallySelfService && seedStatus !== 'ready' && seedStatus !== 'idle' ? (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              marginBottom: '0.85rem',
+              padding: '0.55rem 0.85rem',
+              borderRadius: 6,
+              border: '1px solid var(--border-strong)',
+              background: seedStatus === 'loading' ? 'var(--bg-subtle)' : 'var(--bg-amber-tint)',
+              color: seedStatus === 'loading' ? 'var(--text-muted)' : 'var(--text-amber-700)',
+              fontSize: '0.8125rem',
+              lineHeight: 1.45,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ flex: 1, minWidth: 200 }}>
+              {seedStatus === 'loading'
+                ? 'Checking this transaction’s current splits…'
+                : seedStatus === 'changed'
+                  ? 'Splits or person changed since you opened this window (another save landed). Nothing was saved.'
+                  : 'Could not read this transaction’s current splits, so Save is off.'}
+            </span>
+            {seedStatus !== 'loading' ? (
+              <button
+                type="button"
+                onClick={() => setSeedRetryTick((t) => t + 1)}
+                style={{
+                  padding: '0.3rem 0.7rem',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-base)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                }}
+              >
+                {seedStatus === 'changed' ? 'Reload current splits' : 'Retry'}
+              </button>
+            ) : null}
           </div>
         ) : null}
 
@@ -1208,7 +1362,7 @@ export function MercuryTransactionAllocationsModal({
                 portalZIndex={1160}
               />
             </div>
-            {(initialPersonId || initialUserId) && (
+            {(seedPersonId || seedUserId) && (
               <div style={{ marginBottom: '1rem' }}>
                 <button
                   type="button"

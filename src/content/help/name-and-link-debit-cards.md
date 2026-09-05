@@ -5,7 +5,7 @@ roles: dev, assistant, master_technician
 keywords: debit card, card, nickname, link, person, attribution, auto-assign, company card, fuel, wheels, mercury, sorting
 ---
 
-Every Mercury purchase arrives with the debit card that made it. One place names those cards, says whose they are, and keeps the purchases flowing to the right person: Banking → Sorting → {{button:outline|Nicknames ▾}} → **Debit cards**.
+Every Mercury purchase arrives with the debit card that made it. One place names those cards, says whose they are, and keeps the purchases flowing to the right person: Banking → Sorting → {{button:outline|Nicknames ▾}} → **Debit cards**. (The Sorting tab loads every transaction in your window — its "Without person" and "Not split to jobs" counts cover the whole list, not just the first page.)
 
 ## One row per card
 
