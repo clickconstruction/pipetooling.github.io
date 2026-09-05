@@ -1,9 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import {
+  CONVERTIBLE_PROSPECT_COLUMNS,
+  canAccessProspectPipeline,
+  customerDraftFromProspect,
+  markProspectConverted,
+  prospectChipLabel,
+  recordProspectConverted,
+  searchProspectsForCustomerForm,
+  type ConvertibleProspect,
+  type ProspectConversionLane,
+} from '../lib/prospects/prospectConversion'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'estimator'
@@ -81,19 +92,31 @@ export type NewCustomerFormPayload = {
   master_user_id: string
 }
 
+/** Reported with the new row: which prospect (if any) Save just marked converted. */
+export type NewCustomerCreatedMeta = {
+  convertedProspectId: string | null
+}
+
 type Props = {
   showQuickFill?: boolean
-  onCreated?: (customer: CustomerRow) => void
+  onCreated?: (customer: CustomerRow, meta?: NewCustomerCreatedMeta) => void
   onCancel?: () => void
   mode: 'page' | 'modal'
   initialValues?: NewCustomerInitialValues
   /** When provided, form submit calls this instead of creating customer (for Convert flow) */
   onSubmitForConvert?: (payload: NewCustomerFormPayload) => Promise<void>
+  /**
+   * A prospect already linked when the form opens (Follow Up's "Converted ✓").
+   * Save marks it converted with the new customer id; the user can unlink it.
+   */
+  sourceProspect?: ConvertibleProspect | null
+  /** Telemetry lane for `prospect_converted{lane}`; defaults to `add-customer`. */
+  conversionLane?: ProspectConversionLane
 }
 
-export default function NewCustomerForm({ showQuickFill = false, onCreated, onCancel, mode, initialValues, onSubmitForConvert }: Props) {
+export default function NewCustomerForm({ showQuickFill = false, onCreated, onCancel, mode, initialValues, onSubmitForConvert, sourceProspect, conversionLane = 'add-customer' }: Props) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, role: authRole, estimatorProspectsAccess } = useAuth()
   const [name, setName] = useState(initialValues?.name ?? '')
   const [address, setAddress] = useState(initialValues?.address ?? '')
   const [phone, setPhone] = useState(initialValues?.phone ?? '')
@@ -109,6 +132,54 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   const [quickFillExpanded, setQuickFillExpanded] = useState(false)
   const [customerMasterExpanded, setCustomerMasterExpanded] = useState(false)
   const [customerType, setCustomerType] = useState<'commercial' | 'residential'>('commercial')
+
+  // "Started as a prospect?" (v2.2879, J34-F4): the pipeline's finish line lives
+  // where customers are actually minted. Shown only to roles that can see the
+  // customer pipeline (same gate as Prospects → Follow Up) and never inside the
+  // Convert tab, which has its own picker. Prospects load once, on first use.
+  const showProspectSearch = !onSubmitForConvert && canAccessProspectPipeline(authRole, estimatorProspectsAccess)
+  const [linkedProspect, setLinkedProspect] = useState<ConvertibleProspect | null>(sourceProspect ?? null)
+  const [prospectQuery, setProspectQuery] = useState('')
+  const [prospectPool, setProspectPool] = useState<ConvertibleProspect[] | null>(null)
+  const [prospectPoolLoading, setProspectPoolLoading] = useState(false)
+  const prospectResults = prospectPool ? searchProspectsForCustomerForm(prospectPool, prospectQuery) : []
+
+  useEffect(() => {
+    setLinkedProspect(sourceProspect ?? null)
+  }, [sourceProspect])
+
+  // One-shot pool load on the first keystroke (~300 rows; the Prospects page
+  // loads the same set). Keystrokes must not cancel it, so the only guard is
+  // the loading flag plus an unmount check.
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+  useEffect(() => {
+    if (!showProspectSearch || prospectPool !== null || prospectPoolLoading) return
+    if (!prospectQuery.trim()) return
+    setProspectPoolLoading(true)
+    void (async () => {
+      const { data, error: loadErr } = await supabase
+        .from('prospects')
+        .select(CONVERTIBLE_PROSPECT_COLUMNS)
+        .order('company_name', { ascending: true })
+      if (!mountedRef.current) return
+      setProspectPool(loadErr ? [] : ((data ?? []) as ConvertibleProspect[]))
+      setProspectPoolLoading(false)
+    })()
+  }, [showProspectSearch, prospectQuery, prospectPool, prospectPoolLoading])
+
+  function linkProspect(p: ConvertibleProspect) {
+    setLinkedProspect(p)
+    setProspectQuery('')
+    const draft = customerDraftFromProspect(p)
+    if (draft.name) setName(draft.name)
+    if (draft.address) setAddress(draft.address)
+    if (draft.phone) setPhone(draft.phone)
+    if (draft.email) setEmail(draft.email)
+  }
 
   function handleQuickFill() {
     const parsed = parseQuickFill(quickFill)
@@ -245,9 +316,23 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       setError('Customer was created but could not be loaded. Refresh the page and search again.')
       return
     }
+    const created = data as CustomerRow
+    // Close the loop on the prospect only now — Save is the confirm (decision
+    // #17); Cancel above writes nothing. The customer already exists, so a
+    // failure here is logged and never blocks the hand-off.
+    let convertedProspectId: string | null = null
+    if (linkedProspect && showProspectSearch) {
+      const marked = await markProspectConverted(linkedProspect.id, created.id, payload.name, user.id)
+      if (marked.ok) {
+        convertedProspectId = linkedProspect.id
+        recordProspectConverted(user.id, authRole, conversionLane)
+      } else {
+        console.error('[NewCustomerForm] failed to mark prospect converted:', marked.error)
+      }
+    }
     if (onCreated) {
       // Defer so React flushes state before closing modal and refreshing
-      setTimeout(() => onCreated(data as CustomerRow), 0)
+      setTimeout(() => onCreated(created, { convertedProspectId }), 0)
     } else {
       navigate('/customers', { replace: true })
     }
@@ -316,6 +401,101 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
       )}
       {!showQuickFill && <h2 style={{ margin: '0 0 1rem 0' }}>{title}</h2>}
       <form id={onSubmitForConvert ? 'convert-customer-form' : undefined} onSubmit={handleSubmit} style={{ maxWidth: 400 }}>
+        {showProspectSearch && (
+          <div style={{ marginBottom: '1rem' }} data-testid="ncf-prospect-search">
+            <label htmlFor="ncf-prospect" style={{ display: 'block', marginBottom: 4 }}>Started as a prospect?</label>
+            {linkedProspect ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.375rem 0.625rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 6,
+                  background: 'var(--bg-muted)',
+                  fontSize: '0.875rem',
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>From prospect: </span>
+                  <span style={{ fontWeight: 600 }}>{prospectChipLabel(linkedProspect)}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLinkedProspect(null)}
+                  title="Not from this prospect — saving will leave it in the calling queue"
+                  aria-label="Unlink prospect"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1, padding: 0 }}
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  id="ncf-prospect"
+                  type="search"
+                  value={prospectQuery}
+                  onChange={(e) => setProspectQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const first = prospectResults[0]
+                      if (first) linkProspect(first)
+                    }
+                  }}
+                  placeholder="Search prospects by company, contact, phone, or address…"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box' }}
+                />
+                {prospectQuery.trim() !== '' && (
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', marginTop: '0.25rem', overflow: 'hidden' }}>
+                    {prospectPool === null || prospectPoolLoading ? (
+                      <p style={{ margin: 0, padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Loading prospects…</p>
+                    ) : prospectResults.length === 0 ? (
+                      <p style={{ margin: 0, padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No open prospects match — fine, just fill the form in.</p>
+                    ) : (
+                      prospectResults.map((p, i) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => linkProspect(p)}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '0.5rem 0.75rem',
+                            border: 'none',
+                            borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                            background: 'none',
+                            cursor: 'pointer',
+                            color: 'inherit',
+                            fontSize: '0.875rem',
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{p.company_name || p.contact_name || '—'}</span>
+                          {p.company_name && p.contact_name && <span style={{ color: 'var(--text-muted)' }}> — {p.contact_name}</span>}
+                          {(p.phone_number || p.address) && (
+                            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {[p.phone_number, p.address].filter(Boolean).join(' · ')}
+                            </span>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Pick one to prefill the form; saving marks the prospect converted and takes it out of the calling queue.
+                </div>
+              </>
+            )}
+          </div>
+        )}
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="ncf-name" style={{ display: 'block', marginBottom: 4 }}>Name *</label>
           <input

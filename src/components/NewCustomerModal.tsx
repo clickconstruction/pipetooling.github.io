@@ -12,10 +12,13 @@ export default function NewCustomerModal() {
         <NewCustomerForm
           showQuickFill
           mode="modal"
+          initialValues={modalContext.initialValues}
+          sourceProspect={modalContext.sourceProspect}
+          conversionLane={modalContext.conversionLane}
           onCancel={modalContext.closeModal}
-          onCreated={(c) => {
+          onCreated={(c, meta) => {
             if (typeof modalContext.onCreated === 'function') {
-              modalContext.onCreated(c)
+              modalContext.onCreated(c, meta)
             }
             modalContext.closeModal()
           }}
