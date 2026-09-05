@@ -41,7 +41,18 @@ import {
   estimateDraftMeaningfulLineCount,
   isEmptyEstimateDraft,
   readinessDots,
+  splitFollowupRows,
 } from '../lib/estimatePipelineRefresh'
+import { estimateOpenState, groupEventsByEstimateId, type EstimateOpenState } from '../lib/estimateOpenState'
+import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
+import { withEstimatePreviewMarker } from '../lib/estimateViewPreview'
+import {
+  canDeclineEstimate,
+  estimateDeclinedLabel,
+  parseEstimateDeclineMetadata,
+  type EstimateDeclineChannel,
+} from '../../supabase/functions/_shared/estimateDecline'
+import EstimateRecordDeclineControl from '../components/estimates/EstimateRecordDeclineControl'
 import EstimateDraftStepRail from '../components/estimates/EstimateDraftStepRail'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -202,7 +213,7 @@ function EstimateDetailCustomerActivitySection({
   events,
 }: {
   estimateId: string
-  status: 'sent' | 'customer_accepted'
+  status: 'sent' | 'customer_accepted' | 'declined'
   defaultOpen: boolean
   loading: boolean
   events: Tables<'estimate_customer_events'>[]
@@ -249,10 +260,14 @@ function EstimateDetailCustomerActivitySection({
               ev.event_type === 'option_viewed' && meta && typeof meta.option_name === 'string' && meta.option_name.trim()
                 ? ` — ${meta.option_name.trim()}`
                 : ''
+            // v2.2873: "Declined by customer — went with another bid" / "Declined — office heard it by phone — …".
+            const declineMeta = ev.event_type === 'declined' ? parseEstimateDeclineMetadata(meta) : null
+            const declineNote = declineMeta?.note ? ` — “${declineMeta.note}”` : ''
             return (
               <li key={ev.id} style={{ marginBottom: '0.35rem' }}>
-                {estimateCustomerEventLabel(ev.event_type)}
+                {ev.event_type === 'declined' ? estimateDeclinedLabel(declineMeta) : estimateCustomerEventLabel(ev.event_type)}
                 {optionName}
+                {declineNote}
                 {sig}
                 {ev.client_ip?.trim() ? (
                   <>
@@ -300,10 +315,24 @@ function estimateCustomerEventLabel(eventType: string): string {
       return 'Customer accepted estimate'
     case 'option_viewed':
       return 'Viewed option'
+    case 'declined':
+      return 'Declined'
     default:
       return eventType
   }
 }
+
+/** Row chip for a Declined row: who said no, from the row's `declined` event (v2.2873). */
+function estimateDeclinedRowLabel(events: EstimateListCustomerEvent[] | undefined): string {
+  const ev = (events ?? []).find((e) => e.event_type === 'declined')
+  if (!ev) return 'Declined'
+  const meta = parseEstimateDeclineMetadata(ev.metadata)
+  const when = ev.occurred_at ? ` · ${formatEstimateUpdatedRelativeCompact(ev.occurred_at)}` : ''
+  return `${estimateDeclinedLabel(meta)}${when}`
+}
+
+/** The slice of `estimate_customer_events` the Pipeline loads for every sent/declined row (v2.2873). */
+type EstimateListCustomerEvent = Pick<Tables<'estimate_customer_events'>, 'estimate_id' | 'event_type' | 'occurred_at' | 'client_ip' | 'metadata'>
 
 function isUsableCustomerAcceptUrl(url: string): boolean {
   const t = url.trim()
@@ -916,47 +945,6 @@ function estimateListRowMatchesSearch(r: EstimateListRow, query: string): boolea
   return false
 }
 
-function sortEstimatesByUpdatedDesc(list: EstimateListRow[]): EstimateListRow[] {
-  return [...list].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
-}
-
-/** Stages tab: draft → Unsent; sent + declined → Sent; customer_accepted → Accepted; superseded omitted. */
-function splitFollowupRows(source: EstimateListRow[]): {
-  unsent: EstimateListRow[]
-  sent: EstimateListRow[]
-  accepted: EstimateListRow[]
-} {
-  const unsent: EstimateListRow[] = []
-  const sent: EstimateListRow[] = []
-  const accepted: EstimateListRow[] = []
-  for (const r of source) {
-    // Signed bid-room proposals (v2.2470) are bid-side paperwork — Ledger only, never the
-    // estimates funnel (owner decision 1).
-    if (isBidProposalDocKind(r.doc_kind)) continue
-    switch (r.status) {
-      case 'draft':
-        unsent.push(r)
-        break
-      case 'sent':
-      case 'declined':
-        sent.push(r)
-        break
-      case 'customer_accepted':
-        accepted.push(r)
-        break
-      case 'superseded':
-        break
-      default:
-        break
-    }
-  }
-  return {
-    unsent: sortEstimatesByUpdatedDesc(unsent),
-    sent: sortEstimatesByUpdatedDesc(sent),
-    accepted: sortEstimatesByUpdatedDesc(accepted),
-  }
-}
-
 type EstimateListStagesThread = {
   estimateThreadStatsByEstimateId: Record<string, EstimateThreadNoteStats>
   estimateThreadNotesByEstimateId: Record<string, JobThreadNoteRow[]>
@@ -980,6 +968,14 @@ type EstimateListTableProps = {
   onCustomerSnapshotRequest?: (customerId: string) => void
   /** Estimates Stages: Last activity column + expandable thread notes. */
   stagesThread?: EstimateListStagesThread
+  /**
+   * v2.2873 (J17-F1): opened / never opened per Sent row, from the list's one chunked
+   * `estimate_customer_events` fetch. Absent (still loading) → the chip falls back to
+   * `computeSentWait` alone, exactly as before.
+   */
+  sentOpenStateById?: Record<string, EstimateOpenState | null>
+  /** v2.2873: "Declined by customer · 2d ago" for rows in the Declined bucket. */
+  declinedLabelById?: Record<string, string>
 }
 
 const estimateListCustomerCellStyle: CSSProperties = {
@@ -1017,6 +1013,8 @@ function EstimateListTable({
   showCustomerColumn = false,
   onCustomerSnapshotRequest,
   stagesThread,
+  sentOpenStateById,
+  declinedLabelById,
 }: EstimateListTableProps) {
   const { role: estimateListViewerRole } = useAuth()
   const showStagesActivity = stagesThread != null
@@ -1341,10 +1339,13 @@ function EstimateListTable({
                       </span>
                     )
                   })() : r.status === 'sent' ? (() => {
-                    const w = computeSentWait(r, Date.now())
+                    // v2.2873 (J17-F1): "opened Tue · quiet 2d" / "never opened · sent 7d ago — nudge?"
+                    // once the list's events fetch has landed; computeSentWait alone until then.
+                    const w = sentOpenStateById?.[r.id] ?? computeSentWait(r, Date.now())
                     if (!w) return statusLabel(r.status)
                     return (
                       <span
+                        title={'opened' in w ? (w.opened ? `Customer opened this ${w.openCount} time${w.openCount === 1 ? '' : 's'}` : 'No customer has opened the link yet') : undefined}
                         style={{
                           fontSize: '0.75rem',
                           fontWeight: 600,
@@ -1357,7 +1358,11 @@ function EstimateListTable({
                         {w.label}
                       </span>
                     )
-                  })() : statusLabel(r.status))
+                  })() : r.status === 'declined' ? (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      {declinedLabelById?.[r.id] ?? statusLabel(r.status)}
+                    </span>
+                  ) : statusLabel(r.status))
                 )}
               </td>
               <td style={{ padding: '0.5rem' }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <>{formatMoney(r.total_cents)}<span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{estimateListOptionsSuffix(r)}</span></>}</td>
@@ -1435,6 +1440,8 @@ function EstimateListCards({
   showCustomerColumn = false,
   onCustomerSnapshotRequest,
   stagesThread,
+  sentOpenStateById,
+  declinedLabelById,
 }: EstimateListTableProps) {
   const { role: estimateListViewerRole } = useAuth()
 
@@ -1607,10 +1614,13 @@ function EstimateListCards({
                       </span>
                     )
                   })() : r.status === 'sent' ? (() => {
-                    const w = computeSentWait(r, Date.now())
+                    // v2.2873 (J17-F1): "opened Tue · quiet 2d" / "never opened · sent 7d ago — nudge?"
+                    // once the list's events fetch has landed; computeSentWait alone until then.
+                    const w = sentOpenStateById?.[r.id] ?? computeSentWait(r, Date.now())
                     if (!w) return statusLabel(r.status)
                     return (
                       <span
+                        title={'opened' in w ? (w.opened ? `Customer opened this ${w.openCount} time${w.openCount === 1 ? '' : 's'}` : 'No customer has opened the link yet') : undefined}
                         style={{
                           fontSize: '0.75rem',
                           fontWeight: 600,
@@ -1623,7 +1633,11 @@ function EstimateListCards({
                         {w.label}
                       </span>
                     )
-                  })() : statusLabel(r.status))}</div>
+                  })() : r.status === 'declined' ? (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                      {declinedLabelById?.[r.id] ?? statusLabel(r.status)}
+                    </span>
+                  ) : statusLabel(r.status))}</div>
     )
   }
 
@@ -1893,6 +1907,57 @@ function EstimateList() {
   }, [rows, listSearch])
 
   const followupBuckets = useMemo(() => splitFollowupRows(filteredRows), [filteredRows])
+
+  // v2.2873 (J17-F1 / N2): one chunked fetch of every sent + declined row's customer events,
+  // so the Sent chip can say opened / never opened and a Declined row can say who said no.
+  // The list select stays `estimates` alone — a join would multiply rows per event.
+  const [listCustomerEvents, setListCustomerEvents] = useState<Record<string, EstimateListCustomerEvent[]> | null>(null)
+  const eventRowIdsKey = useMemo(
+    () => rows.filter((r) => r.status === 'sent' || r.status === 'declined').map((r) => r.id).sort().join(','),
+    [rows],
+  )
+  useEffect(() => {
+    const ids = eventRowIdsKey ? eventRowIdsKey.split(',') : []
+    if (ids.length === 0) {
+      setListCustomerEvents({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const events = await fetchAllRowsChunkedIn<EstimateListCustomerEvent, string>(
+          ids,
+          (chunk, from, to) =>
+            supabase
+              .from('estimate_customer_events')
+              .select('estimate_id, event_type, occurred_at, client_ip, metadata')
+              .in('estimate_id', chunk)
+              .order('occurred_at', { ascending: false })
+              .range(from, to),
+          'estimate list customer events',
+        )
+        if (!cancelled) setListCustomerEvents(groupEventsByEstimateId(events))
+      } catch {
+        // Best-effort: the chip falls back to computeSentWait alone.
+        if (!cancelled) setListCustomerEvents({})
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [eventRowIdsKey])
+  const sentOpenStateById = useMemo(() => {
+    if (!listCustomerEvents) return undefined
+    const nowMs = Date.now()
+    const out: Record<string, EstimateOpenState | null> = {}
+    for (const r of followupBuckets.sent) out[r.id] = estimateOpenState(listCustomerEvents[r.id] ?? [], r, nowMs)
+    return out
+  }, [listCustomerEvents, followupBuckets.sent])
+  const declinedLabelById = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const r of followupBuckets.declined) out[r.id] = estimateDeclinedRowLabel(listCustomerEvents?.[r.id])
+    return out
+  }, [listCustomerEvents, followupBuckets.declined])
 
   // Pipeline refresh: empty-draft debris collapses behind one sweep button.
   const listConfirmDialog = useConfirmDialog()
@@ -2310,6 +2375,7 @@ function EstimateList() {
                         showCustomerColumn
                         onCustomerSnapshotRequest={setCustomerSnapshotId}
                         stagesThread={estimatesStagesThread}
+                        sentOpenStateById={sentOpenStateById}
                       />
                     ) : (
                       <EstimateListTable
@@ -2319,11 +2385,40 @@ function EstimateList() {
                         showCustomerColumn
                         onCustomerSnapshotRequest={setCustomerSnapshotId}
                         stagesThread={estimatesStagesThread}
+                        sentOpenStateById={sentOpenStateById}
                       />
                     )}
                   </div>
                 )}
               </section>
+              {followupBuckets.declined.length > 0 ? (
+                <section>
+                  <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Declined</h2>
+                  <div style={estimateListTableScrollWrapStyle}>
+                    {narrowViewport640 ? (
+                      <EstimateListCards
+                        rows={followupBuckets.declined}
+                        setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                        setCreateJobFromListRow={setCreateJobFromListRow}
+                        showCustomerColumn
+                        onCustomerSnapshotRequest={setCustomerSnapshotId}
+                        stagesThread={estimatesStagesThread}
+                        declinedLabelById={declinedLabelById}
+                      />
+                    ) : (
+                      <EstimateListTable
+                        rows={followupBuckets.declined}
+                        setAcceptanceModalEstimateId={setAcceptanceModalEstimateId}
+                        setCreateJobFromListRow={setCreateJobFromListRow}
+                        showCustomerColumn
+                        onCustomerSnapshotRequest={setCustomerSnapshotId}
+                        stagesThread={estimatesStagesThread}
+                        declinedLabelById={declinedLabelById}
+                      />
+                    )}
+                  </div>
+                </section>
+              ) : null}
               <section>
                 <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Accepted</h2>
                 {followupBuckets.accepted.length === 0 ? (
@@ -2668,7 +2763,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const loadEstimateCustomerEvents = useCallback(async () => {
     const id = row?.id
     const st = row?.status
-    if (!id || (st !== 'sent' && st !== 'customer_accepted')) {
+    if (!id || (st !== 'sent' && st !== 'customer_accepted' && st !== 'declined')) {
       setEstimateCustomerEvents([])
       setEstimateCustomerEventsLoading(false)
       return
@@ -3346,8 +3441,37 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const openCustomerAcceptUrl = useCallback(() => {
     const url = customerAcceptUrl
     if (!url) return
-    window.open(url, '_blank', 'noopener,noreferrer')
+    // v2.2873 (#34/#37): the office's own look must not read as a customer open — the marker
+    // tells get-estimate-for-customer to skip the view stamp. Copy stays the raw link.
+    window.open(withEstimatePreviewMarker(url), '_blank', 'noopener,noreferrer')
   }, [customerAcceptUrl])
+
+  // v2.2873 (J17-N1): the office heard a "no" on the phone — record it. One RPC flips
+  // sent → declined and writes the `declined` event (metadata.by = staff) in one transaction.
+  const [recordingDecline, setRecordingDecline] = useState(false)
+  const declineVerdict = useMemo(() => canDeclineEstimate(row?.status), [row?.status])
+  async function recordStaffDecline(note: string, channel: EstimateDeclineChannel) {
+    if (!row || recordingDecline || !user || !declineVerdict.ok) return
+    setRecordingDecline(true)
+    try {
+      // The RPC ships with this PR's migration; generated types catch up on the next gen-types run.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).rpc('record_estimate_decline', {
+        p_estimate_id: row.id,
+        p_note: note,
+        p_channel: channel,
+      })
+      if (error) throw error
+      showToast('Marked declined.', 'success')
+      recordNavClick(user.id, role, 'estimate_declined', '#staff')
+      await load()
+      await loadEstimateCustomerEvents()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not mark declined'), 'error')
+    } finally {
+      setRecordingDecline(false)
+    }
+  }
 
   /** Resend link (v2.2856): can THIS row take a re-mint? Same kernel the edge function enforces. */
   const resendVerdict = useMemo(
@@ -6245,6 +6369,26 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 onCopy={copyCustomerAcceptUrl}
                 onOpen={openCustomerAcceptUrl}
                 style={{ marginTop: '0.75rem' }}
+              />
+              <EstimateRecordDeclineControl
+                busy={recordingDecline || loading}
+                onRecord={(note, channel) => void recordStaffDecline(note, channel)}
+                style={{ marginTop: '1rem' }}
+              />
+            </>
+          )}
+          {row.status === 'declined' && (
+            <>
+              <p style={{ marginTop: '1rem', color: 'var(--text-700)' }}>
+                <strong>Declined.</strong> Nothing more is waiting on the customer — the row sits in the Pipeline's
+                Declined bucket. To quote again, start a New estimate from the Estimates page.
+              </p>
+              <EstimateDetailCustomerActivitySection
+                estimateId={row.id}
+                status="declined"
+                defaultOpen
+                loading={estimateCustomerEventsLoading}
+                events={estimateCustomerEvents}
               />
             </>
           )}

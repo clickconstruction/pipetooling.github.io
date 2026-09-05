@@ -196,12 +196,19 @@ serve(async (req) => {
     const accept_header_brand = ab === 'elec' || ab === 'plum' ? ab : null
     const customer_attachment = parseCustomerAttachmentSent(est.customer_attachment_sent)
 
-    const { error: viewErr } = await admin.rpc('record_estimate_public_link_view', {
-      p_estimate_id: est.id,
-      p_client_ip: clientIpFromRequest(req) ?? '',
-      p_user_agent: req.headers.get('user-agent') ?? '',
-    })
-    if (viewErr) console.error('record_estimate_public_link_view', viewErr)
+    // v2.2873 (journey-map #34/#37): the office's own look is not a customer open. The page
+    // sends `preview=1` when it was opened from Open customer link or by a signed-in staff
+    // session (src/lib/estimateViewPreview.ts); the marker can only under-count, so it needs
+    // no proof. Sample tokens never reach here.
+    const isStaffPreview = url.searchParams.get('preview') === '1'
+    if (!isStaffPreview) {
+      const { error: viewErr } = await admin.rpc('record_estimate_public_link_view', {
+        p_estimate_id: est.id,
+        p_client_ip: clientIpFromRequest(req) ?? '',
+        p_user_agent: req.headers.get('user-agent') ?? '',
+      })
+      if (viewErr) console.error('record_estimate_public_link_view', viewErr)
+    }
 
     return new Response(
       JSON.stringify({

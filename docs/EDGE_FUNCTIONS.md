@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 84 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-03
+last_updated: 2026-09-05
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -1081,7 +1081,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Purpose**: Public read of a **sent** estimate for the customer acceptance page (no JWT).
 
-**Endpoint**: `GET /functions/v1/get-estimate-for-customer?token=<opaque>`
+**Endpoint**: `GET /functions/v1/get-estimate-for-customer?token=<opaque>[&preview=1]`
 
 **Expiry** (v2.2703): an estimate is valid through the end of its `valid_until` day in Central time (it used to expire at 7 PM Central).
 
@@ -1095,7 +1095,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash). Since v2.2460 also includes **`options`** — `estimates.options_snapshot` normalized by [`_shared/estimateOptions.ts`](../supabase/functions/_shared/estimateOptions.ts) (`[]` = single-option estimate); the acceptance page renders the picker from exactly what `accept-estimate` will validate against.
 
-**Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260406034514_record_estimate_public_link_view_rpc.sql) (pre-baseline archive; the live schema comes from the baseline). **Dedupe**: [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/archive/migrations-pre-baseline/20260412184127_dedupe_record_estimate_public_link_view.sql) skips a second **`public_link_view`** for the same estimate, IP, and user-agent within **5 seconds** (Strict Mode double-fetch, etc.).
+**Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260406034514_record_estimate_public_link_view_rpc.sql) (pre-baseline archive; the live schema comes from the baseline). **Dedupe**: [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/archive/migrations-pre-baseline/20260412184127_dedupe_record_estimate_public_link_view.sql) skips a second **`public_link_view`** for the same estimate, IP, and user-agent within **5 seconds** (Strict Mode double-fetch, etc.). **Office previews don't count** (v2.2873, journey-map #34/#37): when the query carries **`preview=1`** the view RPC is skipped entirely. The page adds the marker itself ([`src/lib/estimateViewPreview.ts`](../src/lib/estimateViewPreview.ts)) when the URL already carries `?preview=1` — which is how the office's **Open customer link** opens it — or when a signed-in staff session is on the page. The marker can only under-count, so it needs no server-side proof (a customer forging it would hide only their own open). The Pipeline's "opened / never opened" chip reads these rows.
 
 ---
 
@@ -1310,6 +1310,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Expiry** (v2.2703): same end-of-Central-day rule as `get-estimate-for-customer`.
 
 **Body**: `{ "token": string, "printedName": string, "agreedTerms": true, "optionKey"?: string }` — `optionKey` is **required when the estimate offers 2+ options** (400 `option_required` / `option_unknown` otherwise).
+
+**Decline** (v2.2873, journey-map J17-F6 / Tier-2 #34): `{ "token": string, "action": "decline", "declineReason"?: string }` — the customer's **No thanks** on the acceptance page. No name, signature, or terms. Same token lookup; the `sent → declined` update is status-gated (`.eq('status','sent')`) so a race with an acceptance answers **409**; then `insertEstimateCustomerEvent` appends `event_type = declined`, `source = accept-estimate`, `metadata { by: 'customer', note }` (reason trimmed/collapsed to ≤ 280 by [`_shared/estimateDecline.ts`](../supabase/functions/_shared/estimateDecline.ts)). Responses: **200** `{ ok, declined: true }`; **200** `{ ok, alreadyDeclined: true }` on a repeat; **409** `already_accepted`; **410** `expired` on a dead token; **404** for drafts/superseded. No staff email (the Pipeline's **Declined** bucket and the "Declined by customer" activity line are the notice). One structured log line `estimate_declined {by, estimateId, hasReason}`. Requires migration `20260905170000` (event_type CHECK widened; **push it before deploying** — without it the status still flips but the best-effort audit row is dropped). The **staff** decline ("Record a decline (phone / in person)" on the sent detail) is not this function — it is the authenticated RPC `record_estimate_decline` from the same migration.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional; staff notify skipped if missing)
 

@@ -146,6 +146,52 @@ export function computeSentWait(
   return { level: 'ok', days, label: days === 0 ? 'sent today' : `sent ${days}d ago` }
 }
 
+export type FollowupRowLike = { status: string; doc_kind?: string | null; updated_at?: string | null }
+
+export type FollowupBuckets<T> = { unsent: T[]; sent: T[]; declined: T[]; accepted: T[] }
+
+function sortByUpdatedDesc<T extends FollowupRowLike>(list: T[]): T[] {
+  return [...list].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
+}
+
+/**
+ * Pipeline buckets: draft → Unsent; sent → Sent; declined → Declined (v2.2873 — it used
+ * to ride in Sent, where `computeSentWait` kept it wearing "sent Nd ago — nudge?", J17-N2);
+ * customer_accepted → Accepted; superseded omitted. Signed bid-room proposals (v2.2470)
+ * are bid-side paperwork — Ledger only, never the estimates funnel (owner decision 1).
+ */
+export function splitFollowupRows<T extends FollowupRowLike>(source: T[]): FollowupBuckets<T> {
+  const unsent: T[] = []
+  const sent: T[] = []
+  const declined: T[] = []
+  const accepted: T[] = []
+  for (const r of source) {
+    if (isBidProposalDocKind(r.doc_kind)) continue
+    switch (r.status) {
+      case 'draft':
+        unsent.push(r)
+        break
+      case 'sent':
+        sent.push(r)
+        break
+      case 'declined':
+        declined.push(r)
+        break
+      case 'customer_accepted':
+        accepted.push(r)
+        break
+      default:
+        break
+    }
+  }
+  return {
+    unsent: sortByUpdatedDesc(unsent),
+    sent: sortByUpdatedDesc(sent),
+    declined: sortByUpdatedDesc(declined),
+    accepted: sortByUpdatedDesc(accepted),
+  }
+}
+
 export type LedgerRowLike = {
   status: string
   doc_kind?: string | null
