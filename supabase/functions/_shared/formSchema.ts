@@ -20,6 +20,8 @@
  */
 
 export type FormBoxType = 'text' | 'digits' | 'checkbox' | 'signature' | 'date' | 'constant'
+/** Who fills a box (Contract Forms PR 7): the person signing, or the office afterwards (I-9 Section 2). */
+export type FormParty = 'signer' | 'office'
 export type FormAlign = 'left' | 'center' | 'right'
 export type FormPrefill = 'person_name' | 'person_email' | 'person_phone'
 
@@ -65,6 +67,8 @@ export type FormBox = {
   dateMode?: 'today' | 'typed'
   /** Studio sample value (shown in previews, never stored on a person). */
   sample?: string
+  /** Default `signer`. `office` boxes are hidden from the signer and completed from the record afterwards. */
+  party?: FormParty
 }
 
 export type FormGroup = { key: string; label: string; exactlyOne: boolean; required: boolean }
@@ -94,6 +98,32 @@ export const FORM_MIN_FONT_SIZE = 5
 
 export function emptyFormSchema(pages: FormPage[]): FormSchema {
   return { version: FORM_SCHEMA_VERSION, pages, boxes: [], groups: [], oneOfs: [] }
+}
+
+// ── parties ────────────────────────────────────────────────────────────────────
+
+export function partyOf(box: FormBox): FormParty {
+  return box.party === 'office' ? 'office' : 'signer'
+}
+
+export function hasOfficeBoxes(schema: FormSchema): boolean {
+  return schema.boxes.some((b) => partyOf(b) === 'office')
+}
+
+/**
+ * The schema one party sees: only its boxes, with groups / one-of sets pruned
+ * to the ones those boxes reference. Every kernel function works unchanged on
+ * the result, so the signer page validates and fills only the signer's half
+ * and the office step only its own.
+ */
+export function schemaForParty(schema: FormSchema, party: FormParty): FormSchema {
+  const boxes = schema.boxes.filter((b) => partyOf(b) === party)
+  return {
+    ...schema,
+    boxes,
+    groups: schema.groups.filter((g) => boxes.some((b) => b.group === g.key)),
+    oneOfs: schema.oneOfs.filter((o) => boxes.some((b) => b.oneOf === o.key)),
+  }
 }
 
 // ── schema hygiene ─────────────────────────────────────────────────────────────
@@ -289,8 +319,9 @@ export function splitFormValuesForStorage(schema: FormSchema, values: FormValues
 // ── fill plan ──────────────────────────────────────────────────────────────────
 
 export type FillOp =
-  | { kind: 'setText'; bind: string; text: string; fontSize?: number }
-  | { kind: 'check'; bind: string }
+  /** Fill the PDF's own field. `page` / `rect` / `align` let the executor draw the text instead when the field refuses it (dropdown without the option, maxLength overflow). */
+  | { kind: 'setText'; bind: string; text: string; fontSize?: number; page?: number; rect?: FormRect; align?: FormAlign }
+  | { kind: 'check'; bind: string; page?: number; rect?: FormRect }
   | { kind: 'drawText'; page: number; rect: FormRect; text: string; fontSize: number; align: FormAlign; font: 'body' | 'cursive' }
   | { kind: 'drawImage'; page: number; rect: FormRect; png: Uint8Array }
 
@@ -302,6 +333,8 @@ export type FillContext = {
   /** "Sep 4, 2026" in the company calendar. */
   todayLabel: string
   signature: FillSignature
+  /** The office's signature and date for `party: 'office'` boxes; absent = those boxes are left alone. */
+  office?: { signature: FillSignature; todayLabel: string }
 }
 
 /**
@@ -320,13 +353,15 @@ export function buildFillPlan(schema: FormSchema, values: FormValues, ctx: FillC
     align: b.align ?? 'left',
     font,
   })
+  const bound = (b: FormBox, text: string): FillOp => ({ kind: 'setText', bind: b.bind!, text, fontSize: b.fontSize, page: b.page, rect: b.rect, align: b.align })
   for (const b of [...schema.boxes].sort((a, c) => a.order - c.order)) {
     const v = values[b.key]
+    const office = partyOf(b) === 'office'
     switch (b.type) {
       case 'text': {
         if (typeof v !== 'string' || !v.trim()) break
         const text = b.maxLength ? v.trim().slice(0, b.maxLength) : v.trim()
-        ops.push(b.bind ? { kind: 'setText', bind: b.bind, text, fontSize: b.fontSize } : draw(b, text))
+        ops.push(b.bind ? bound(b, text) : draw(b, text))
         break
       }
       case 'digits': {
@@ -340,7 +375,7 @@ export function buildFillPlan(schema: FormSchema, values: FormValues, ctx: FillC
             if (part) ops.push({ kind: 'setText', bind, text: part, fontSize: b.fontSize })
           })
         } else if (b.bind) {
-          ops.push({ kind: 'setText', bind: b.bind, text: b.mask ? formatDigitsWithMask(digits, b.mask) : digits, fontSize: b.fontSize })
+          ops.push(bound(b, b.mask ? formatDigitsWithMask(digits, b.mask) : digits))
         } else {
           ops.push(draw(b, b.mask ? formatDigitsWithMask(digits, b.mask) : digits))
         }
@@ -348,23 +383,24 @@ export function buildFillPlan(schema: FormSchema, values: FormValues, ctx: FillC
       }
       case 'checkbox': {
         if (v !== true) break
-        ops.push(b.bind ? { kind: 'check', bind: b.bind } : { ...draw(b, 'X'), align: 'center' })
+        ops.push(b.bind ? { kind: 'check', bind: b.bind, page: b.page, rect: b.rect } : { ...draw(b, 'X'), align: 'center' })
         break
       }
       case 'constant': {
         const text = (b.text ?? '').trim()
         if (!text) break
-        ops.push(b.bind ? { kind: 'setText', bind: b.bind, text, fontSize: b.fontSize } : draw(b, text))
+        ops.push(b.bind ? bound(b, text) : draw(b, text))
         break
       }
       case 'date': {
-        const text = (b.dateMode ?? 'today') === 'today' ? ctx.todayLabel : typeof v === 'string' ? v.trim() : ''
+        const today = office ? ctx.office?.todayLabel ?? '' : ctx.todayLabel
+        const text = (b.dateMode ?? 'today') === 'today' ? today : typeof v === 'string' ? v.trim() : ''
         if (!text) break
-        ops.push(b.bind ? { kind: 'setText', bind: b.bind, text, fontSize: b.fontSize } : draw(b, text))
+        ops.push(b.bind ? bound(b, text) : draw(b, text))
         break
       }
       case 'signature': {
-        const sig = ctx.signature
+        const sig = office ? ctx.office?.signature ?? null : ctx.signature
         if (!sig) break
         if (sig.mode === 'type') {
           if (sig.text.trim()) ops.push({ ...draw(b, sig.text.trim(), 'cursive'), fontSize: b.fontSize ?? Math.max(FORM_MIN_FONT_SIZE, Math.round(b.rect.h * 0.75)) })
@@ -381,7 +417,8 @@ export function buildFillPlan(schema: FormSchema, values: FormValues, ctx: FillC
 export type PdfFieldInfo = {
   /** Fully qualified AcroForm name, e.g. `topmostSubform[0].Page1[0].f1_01[0]`. */
   name: string
-  kind: 'text' | 'checkbox' | 'other'
+  /** `dropdown` (a combo box, e.g. the I-9's State) is filled like text: the option is selected when it exists, else the text is drawn. */
+  kind: 'text' | 'checkbox' | 'dropdown' | 'other'
   page: number
   rect: FormRect
   maxLength?: number
@@ -424,7 +461,7 @@ export function draftSchemaFromPdfFields(fields: PdfFieldInfo[], pages: FormPage
     let n = 2
     while (usedKeys.has(unique)) unique = `${key}_${n++}`
     usedKeys.add(unique)
-    if (f.kind === 'text') {
+    if (f.kind === 'text' || f.kind === 'dropdown') {
       schema.boxes.push({
         key: unique,
         type: 'text',

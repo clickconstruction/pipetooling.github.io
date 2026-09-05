@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
-import { buildFillPlan, splitFormValuesForStorage, validateFormValues, type FormSchema, type FormValues } from '../_shared/formSchema.ts'
+import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorage, validateFormValues, type FormSchema, type FormValues } from '../_shared/formSchema.ts'
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 
@@ -207,7 +207,12 @@ serve(async (req) => {
       const t = tpl as { schema: FormSchema; pdf_storage_path: string } | null
       if (!t?.schema) return fail(500, 'The form template is missing.')
       const values: FormValues = body.formValues && typeof body.formValues === 'object' && !Array.isArray(body.formValues) ? body.formValues : {}
-      const problems = validateFormValues(t.schema, values)
+      // Two-party forms (PR 7): the signer sees and fills only their boxes; the office's half is
+      // completed from the record afterwards, so the PDF stays fillable (read-only where filled)
+      // until then and is flattened by complete-contract-form-office.
+      const signerSchema = schemaForParty(t.schema, 'signer')
+      const twoParty = hasOfficeBoxes(t.schema)
+      const problems = validateFormValues(signerSchema, values)
       if (problems.length > 0) return fail(400, problems[0]!.message, { code: 'form_invalid', problems })
       const { data: file, error: dlErr } = await admin.storage.from(FORM_TEMPLATES_BUCKET).download(t.pdf_storage_path)
       if (dlErr || !file) {
@@ -216,10 +221,10 @@ serve(async (req) => {
       }
       const templateBytes = new Uint8Array(await file.arrayBuffer())
       const signature = sigBytes ? { mode: 'draw' as const, png: sigBytes } : { mode: 'type' as const, text: printedName }
-      const plan = buildFillPlan(t.schema, values, { todayLabel: formatYmdForContractEmail(todayYmdInAppTz()) ?? '', signature })
+      const plan = buildFillPlan(signerSchema, values, { todayLabel: formatYmdForContractEmail(todayYmdInAppTz()) ?? '', signature })
       let filledBytes: Uint8Array
       try {
-        const filled = await fillFormPdf(pdfLib as unknown as FormPdfLibLike, templateBytes, plan, { cursiveFontBytes: await loadCursiveFont(), fontkit })
+        const filled = await fillFormPdf(pdfLib as unknown as FormPdfLibLike, templateBytes, plan, { cursiveFontBytes: await loadCursiveFont(), fontkit, flatten: !twoParty, readOnlyFilled: twoParty })
         if (filled.skipped.length > 0) console.warn('form fill skipped binds', doc.id, filled.skipped)
         filledBytes = filled.bytes
       } catch (e) {
@@ -232,7 +237,7 @@ serve(async (req) => {
         console.error('form pdf upload', pdfErr)
         return fail(500, 'Could not file the signed form.')
       }
-      const split = splitFormValuesForStorage(t.schema, values)
+      const split = splitFormValuesForStorage(signerSchema, values)
       formUpdate = { form_values: split.values, form_hints: split.hints, form_pdf_storage_path: formPdfPath, form_source: 'portal' }
     }
 

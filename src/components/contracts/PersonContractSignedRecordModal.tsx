@@ -8,6 +8,8 @@ import type { Tables } from '../../types/database'
 import type { FormSchema, FormValues } from '../../lib/forms/formSchema'
 import { FORM_SOURCE_LABEL, formFacts } from '../../lib/forms/formRecord'
 import { missingRequired } from '../../lib/forms/formPaperEntry'
+import { hasOfficeBoxes } from '../../lib/forms/formSchema'
+import { ContractFormOfficeModal } from './formFill/ContractFormOfficeModal'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -35,6 +37,8 @@ type PersonContractDocumentRow = Pick<
   form_pdf_storage_path?: string | null
   form_scan_storage_path?: string | null
   form_keyed_by_user_id?: string | null
+  office_completed_at?: string | null
+  office_signer_printed_name?: string | null
 }
 
 type PersonContractSignedRecordModalProps = {
@@ -52,6 +56,8 @@ export function PersonContractSignedRecordModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signatureSignedUrl, setSignatureSignedUrl] = useState<string | null>(null)
+  /** Two-party forms (v2.2802): the office-section modal. */
+  const [officeOpen, setOfficeOpen] = useState(false)
   const [formSchema, setFormSchema] = useState<FormSchema | null>(null)
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
@@ -86,7 +92,7 @@ export function PersonContractSignedRecordModal({
             await supabase
               .from('person_contract_documents')
               .select(
-                'id, document_name, person_name, signing_body_html, signing_body_format, canonical_document_url, url, status, signed_at, signer_printed_name, signer_consented_at, signer_signature_storage_path, form_template_id, form_values, form_hints, form_source, form_pdf_storage_path, form_scan_storage_path, form_keyed_by_user_id',
+                'id, document_name, person_name, signing_body_html, signing_body_format, canonical_document_url, url, status, signed_at, signer_printed_name, signer_consented_at, signer_signature_storage_path, form_template_id, form_values, form_hints, form_source, form_pdf_storage_path, form_scan_storage_path, form_keyed_by_user_id, office_completed_at, office_signer_printed_name',
               )
               .eq('id', id)
               .maybeSingle(),
@@ -179,6 +185,7 @@ export function PersonContractSignedRecordModal({
   }
 
   const isForm = Boolean(row?.form_template_id)
+  const twoParty = Boolean(formSchema && hasOfficeBoxes(formSchema))
   const facts = row && formSchema ? formFacts(formSchema, row.form_values ?? null, row.form_hints ?? null) : []
   const paperMissing = row && formSchema && row.form_source === 'paper' ? missingRequired(formSchema, { ...(row.form_values ?? {}), ...Object.fromEntries(Object.keys(row.form_hints ?? {}).map((k) => [k, 'x'])) }) : []
 
@@ -370,6 +377,17 @@ export function PersonContractSignedRecordModal({
                       {pdfError}
                     </p>
                   ) : null}
+                  {twoParty ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0 0 0.6rem', padding: '0.5rem 0.7rem', borderRadius: 6, background: row.office_completed_at ? 'var(--bg-green-tint, #e8f3ea)' : 'var(--bg-amber-tint, #fdf1e3)', fontSize: '0.8125rem' }}>
+                      <span style={{ fontWeight: 600 }}>Office section</span>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {row.office_completed_at ? `completed ${new Date(row.office_completed_at).toLocaleDateString()}${row.office_signer_printed_name ? `, signed as ${row.office_signer_printed_name}` : ''}` : 'not completed yet — the PDF is not final until it is'}
+                      </span>
+                      <button type="button" onClick={() => setOfficeOpen(true)} style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem', fontWeight: 600, fontSize: '0.8125rem' }}>
+                        {row.office_completed_at ? 'View office section' : 'Complete the office section'}
+                      </button>
+                    </div>
+                  ) : null}
                   {row.form_source === 'paper' ? (
                     <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       Signed on paper{row.signed_at ? ` on ${row.signed_at}` : ''}{row.signer_printed_name ? ` by ${row.signer_printed_name}` : ''}; the signature is on the scan, not typed.
@@ -441,6 +459,16 @@ export function PersonContractSignedRecordModal({
           ) : null}
         </div>
       </div>
-    </div>
+    {officeOpen && row ? (
+        <ContractFormOfficeModal
+          documentId={row.id}
+          onClose={() => setOfficeOpen(false)}
+          onCompleted={() => {
+            setOfficeOpen(false)
+            onClose()
+          }}
+        />
+      ) : null}
+      </div>
   )
 }

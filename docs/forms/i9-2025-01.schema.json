@@ -1,0 +1,897 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "width": 612,
+      "height": 792
+    },
+    {
+      "width": 612,
+      "height": 792
+    },
+    {
+      "width": 612,
+      "height": 792
+    },
+    {
+      "width": 612,
+      "height": 792
+    }
+  ],
+  "boxes": [
+    {
+      "key": "last_name",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 42.72,
+        "y": 604.76,
+        "w": 155.68,
+        "h": 15.24
+      },
+      "order": 10,
+      "label": "Last name (family name)",
+      "bind": "Last Name (Family Name)",
+      "labelEs": "Apellido",
+      "required": true,
+      "sample": "Rachelle"
+    },
+    {
+      "key": "first_name",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 204.16,
+        "y": 604.76,
+        "w": 137.68,
+        "h": 15.24
+      },
+      "order": 20,
+      "label": "First name (given name)",
+      "bind": "First Name Given Name",
+      "labelEs": "Nombre",
+      "required": true,
+      "sample": "Taunya"
+    },
+    {
+      "key": "middle_initial",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 348.44,
+        "y": 604.76,
+        "w": 65.4,
+        "h": 15.24
+      },
+      "order": 30,
+      "label": "Middle initial, if any",
+      "bind": "Employee Middle Initial (if any)",
+      "maxLength": 1,
+      "labelEs": "Inicial del segundo nombre, si tiene",
+      "sample": "R"
+    },
+    {
+      "key": "other_last_names",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 420.44,
+        "y": 604.76,
+        "w": 155.68,
+        "h": 15.23
+      },
+      "order": 40,
+      "label": "Other last names used, if any",
+      "bind": "Employee Other Last Names Used (if any)",
+      "labelEs": "Otros apellidos usados, si tiene",
+      "help": "Maiden name or a previous married name. Leave blank if none.",
+      "helpEs": "Apellido de soltera o anterior. Deje en blanco si no aplica."
+    },
+    {
+      "key": "address",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 41.88,
+        "y": 579.92,
+        "w": 186.24,
+        "h": 13.55
+      },
+      "order": 50,
+      "label": "Address (street number and name)",
+      "bind": "Address Street Number and Name",
+      "labelEs": "Direcci\u00f3n (n\u00famero y calle)",
+      "required": true,
+      "sample": "4410 Oak Hollow Dr"
+    },
+    {
+      "key": "apt",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 233.6,
+        "y": 579.92,
+        "w": 65.68,
+        "h": 13.55
+      },
+      "order": 60,
+      "label": "Apt. number, if any",
+      "bind": "Apt Number (if any)",
+      "labelEs": "N\u00famero de apartamento, si tiene"
+    },
+    {
+      "key": "city",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 305.88,
+        "y": 579.92,
+        "w": 149.4,
+        "h": 13.55
+      },
+      "order": 70,
+      "label": "City or town",
+      "bind": "City or Town",
+      "labelEs": "Ciudad",
+      "required": true,
+      "sample": "Kyle"
+    },
+    {
+      "key": "state",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 461.2,
+        "y": 579.9,
+        "w": 41.2,
+        "h": 13.6
+      },
+      "label": "State",
+      "labelEs": "Estado",
+      "help": "Two letters, e.g. TX.",
+      "helpEs": "Dos letras, p. ej. TX.",
+      "required": true,
+      "maxLength": 2,
+      "fontSize": 10,
+      "align": "center",
+      "sample": "TX",
+      "order": 80
+    },
+    {
+      "key": "zip",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 509.88,
+        "y": 579.92,
+        "w": 65.4,
+        "h": 13.55
+      },
+      "order": 90,
+      "label": "ZIP code",
+      "bind": "ZIP Code",
+      "maxLength": 6,
+      "labelEs": "C\u00f3digo postal",
+      "mask": "#####",
+      "required": true,
+      "sample": "78640"
+    },
+    {
+      "key": "dob",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 41.78,
+        "y": 553.64,
+        "w": 99.09,
+        "h": 13.84
+      },
+      "order": 100,
+      "label": "Date of birth",
+      "bind": "Date of Birth mmddyyyy",
+      "labelEs": "Fecha de nacimiento",
+      "mask": "##/##/####",
+      "required": true,
+      "help": "Month, day, year: mm/dd/yyyy.",
+      "helpEs": "Mes, d\u00eda, a\u00f1o: mm/dd/aaaa.",
+      "sample": "03/14/1990"
+    },
+    {
+      "key": "ssn",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 150,
+        "y": 553.44,
+        "w": 105,
+        "h": 13.76
+      },
+      "order": 110,
+      "label": "U.S. Social Security number",
+      "bind": "US Social Security Number",
+      "maxLength": 9,
+      "labelEs": "N\u00famero de Seguro Social",
+      "mask": "#########",
+      "sensitive": true,
+      "help": "Nine digits. Required only if your employer uses E-Verify; otherwise optional.",
+      "helpEs": "Nueve d\u00edgitos. Obligatorio solo si el empleador usa E-Verify.",
+      "sample": "123456789"
+    },
+    {
+      "key": "email",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 264.16,
+        "y": 553.64,
+        "w": 185.96,
+        "h": 13.84
+      },
+      "order": 120,
+      "label": "Email address",
+      "bind": "Employees E-mail Address",
+      "labelEs": "Correo electr\u00f3nico",
+      "prefill": "person_email",
+      "sample": "taunya@example.com"
+    },
+    {
+      "key": "phone",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 456.15,
+        "y": 553.48,
+        "w": 119.2,
+        "h": 14.11
+      },
+      "order": 130,
+      "label": "Telephone number",
+      "bind": "Telephone Number",
+      "labelEs": "Tel\u00e9fono",
+      "mask": "###-###-####",
+      "prefill": "person_phone",
+      "sample": "5125550142"
+    },
+    {
+      "key": "cit_citizen",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 181.68,
+        "y": 523.32,
+        "w": 9.48,
+        "h": 9.48
+      },
+      "order": 140,
+      "label": "A citizen of the United States",
+      "bind": "CB_1",
+      "labelEs": "Ciudadano/a de los Estados Unidos",
+      "group": "status",
+      "sample": "true"
+    },
+    {
+      "key": "cit_national",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 181.68,
+        "y": 511.32,
+        "w": 9.48,
+        "h": 9.48
+      },
+      "order": 150,
+      "label": "A noncitizen national of the United States",
+      "bind": "CB_2",
+      "labelEs": "Nacional no ciudadano/a de los Estados Unidos",
+      "group": "status"
+    },
+    {
+      "key": "cit_lpr",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 181.68,
+        "y": 499.32,
+        "w": 9.48,
+        "h": 9.48
+      },
+      "order": 160,
+      "label": "A lawful permanent resident",
+      "bind": "CB_3",
+      "labelEs": "Residente permanente legal",
+      "group": "status"
+    },
+    {
+      "key": "cit_alien",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 181.96,
+        "y": 487.32,
+        "w": 9.2,
+        "h": 9.04
+      },
+      "order": 170,
+      "label": "A noncitizen authorized to work",
+      "bind": "CB_4",
+      "labelEs": "Extranjero/a autorizado/a para trabajar",
+      "group": "status"
+    },
+    {
+      "key": "lpr_number",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 390.6,
+        "y": 498.24,
+        "w": 184.92,
+        "h": 11.16
+      },
+      "order": 180,
+      "label": "USCIS or A-Number (if you checked box 3)",
+      "bind": "3 A lawful permanent resident Enter USCIS or ANumber",
+      "labelEs": "N\u00famero USCIS o A-Number (si marc\u00f3 la casilla 3)",
+      "advanced": true,
+      "help": "Only if you are a lawful permanent resident.",
+      "helpEs": "Solo si es residente permanente legal."
+    },
+    {
+      "key": "alien_exp",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 390.19,
+        "y": 484.11,
+        "w": 59.33,
+        "h": 12.92
+      },
+      "order": 190,
+      "label": "Authorized to work until (if you checked box 4)",
+      "bind": "Exp Date mmddyyyy",
+      "labelEs": "Autorizado/a a trabajar hasta (si marc\u00f3 la casilla 4)",
+      "advanced": true,
+      "help": "Expiration date, mm/dd/yyyy, if any.",
+      "helpEs": "Fecha de vencimiento, mm/dd/aaaa, si la hay."
+    },
+    {
+      "key": "alien_anumber",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 180.6,
+        "y": 444.24,
+        "w": 82.8,
+        "h": 11.16
+      },
+      "order": 200,
+      "label": "USCIS A-Number (box 4, one of three)",
+      "bind": "USCIS ANumber",
+      "maxLength": 10,
+      "labelEs": "N\u00famero A de USCIS (casilla 4, uno de tres)",
+      "advanced": true,
+      "oneOf": "alien_id"
+    },
+    {
+      "key": "alien_i94",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 276.6,
+        "y": 444.24,
+        "w": 106.8,
+        "h": 11.16
+      },
+      "order": 210,
+      "label": "Form I-94 admission number (box 4, one of three)",
+      "bind": "Form I94 Admission Number",
+      "maxLength": 11,
+      "labelEs": "N\u00famero de admisi\u00f3n I-94 (casilla 4, uno de tres)",
+      "advanced": true,
+      "oneOf": "alien_id"
+    },
+    {
+      "key": "alien_passport",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 396.6,
+        "y": 444.24,
+        "w": 178.8,
+        "h": 11.16
+      },
+      "order": 220,
+      "label": "Foreign passport number and country (box 4, one of three)",
+      "bind": "Foreign Passport Number and Country of IssuanceRow1",
+      "labelEs": "Pasaporte extranjero y pa\u00eds (casilla 4, uno de tres)",
+      "advanced": true,
+      "oneOf": "alien_id"
+    },
+    {
+      "key": "signature",
+      "type": "signature",
+      "page": 1,
+      "rect": {
+        "x": 42.08,
+        "y": 420.8,
+        "w": 323.2,
+        "h": 12.92
+      },
+      "label": "Signature of employee",
+      "labelEs": "Firma del empleado",
+      "order": 230
+    },
+    {
+      "key": "date",
+      "type": "date",
+      "page": 1,
+      "rect": {
+        "x": 372.44,
+        "y": 420.8,
+        "w": 101.68,
+        "h": 12.92
+      },
+      "label": "Today's date",
+      "labelEs": "Fecha de hoy",
+      "dateMode": "today",
+      "order": 240
+    },
+    {
+      "key": "a1_title",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.8,
+        "y": 342.4,
+        "w": 136.4,
+        "h": 17.0
+      },
+      "order": 260,
+      "label": "List A \u00b7 Document 1 title",
+      "help": "e.g. U.S. Passport, Permanent Resident Card, Employment Authorization Document. Use List A alone, or List B and C together.",
+      "party": "office",
+      "sample": "U.S. Passport"
+    },
+    {
+      "key": "a1_issuer",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 324.24,
+        "w": 136.44,
+        "h": 17.04
+      },
+      "order": 270,
+      "label": "List A \u00b7 Document 1 issuing authority",
+      "bind": "Issuing Authority 1",
+      "party": "office",
+      "sample": "U.S. Department of State"
+    },
+    {
+      "key": "a1_number",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 306.24,
+        "w": 136.44,
+        "h": 16.92
+      },
+      "order": 280,
+      "label": "List A \u00b7 Document 1 number",
+      "bind": "Document Number 0 (if any)",
+      "party": "office",
+      "sample": "563021158"
+    },
+    {
+      "key": "a1_exp",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 288.72,
+        "w": 136.44,
+        "h": 16.44
+      },
+      "order": 290,
+      "label": "List A \u00b7 Document 1 expiration",
+      "bind": "Expiration Date if any",
+      "party": "office",
+      "sample": "03/14/2032"
+    },
+    {
+      "key": "a2_title",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 270.24,
+        "w": 136.44,
+        "h": 16.68
+      },
+      "order": 300,
+      "label": "List A \u00b7 Document 2 title (if any)",
+      "bind": "Document Title 2 If any",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "a2_issuer",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 252.24,
+        "w": 136.44,
+        "h": 16.92
+      },
+      "order": 310,
+      "label": "List A \u00b7 Document 2 issuing authority",
+      "bind": "Issuing Authority_2",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "a2_number",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 234.24,
+        "w": 136.44,
+        "h": 16.92
+      },
+      "order": 320,
+      "label": "List A \u00b7 Document 2 number",
+      "bind": "Document Number If any_2",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "a2_exp",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 127.28,
+        "y": 216.48,
+        "w": 136.44,
+        "h": 16.68
+      },
+      "order": 330,
+      "label": "List A \u00b7 Document 2 expiration",
+      "bind": "List A.  Document 2. Expiration Date (if any)",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "a3_title",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 198.24,
+        "w": 136.44,
+        "h": 16.68
+      },
+      "order": 340,
+      "label": "List A \u00b7 Document 3 title (if any)",
+      "bind": "List A.   Document Title 3.  If any",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "a3_issuer",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 180.24,
+        "w": 136.44,
+        "h": 16.92
+      },
+      "order": 350,
+      "label": "List A \u00b7 Document 3 issuing authority",
+      "bind": "List A. Document 3.  Enter Issuing Authority",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "a3_number",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 127.28,
+        "y": 161.59,
+        "w": 136.44,
+        "h": 16.92
+      },
+      "order": 360,
+      "label": "List A \u00b7 Document 3 number",
+      "bind": "List A.  Document 3 Number.  If any",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "a3_exp",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 126.84,
+        "y": 144.24,
+        "w": 136.44,
+        "h": 16.92
+      },
+      "order": 370,
+      "label": "List A \u00b7 Document 3 expiration",
+      "bind": "Document Number if any_3",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "b_title",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 276.84,
+        "y": 342.41,
+        "w": 142.36,
+        "h": 17.32
+      },
+      "order": 380,
+      "label": "List B \u00b7 Document title",
+      "bind": "List B Document 1 Title",
+      "party": "office",
+      "help": "Identity document, e.g. Driver\u2019s license. Use List B and C together instead of List A."
+    },
+    {
+      "key": "b_issuer",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 277.49,
+        "y": 324.73,
+        "w": 142.25,
+        "h": 17.04
+      },
+      "order": 390,
+      "label": "List B \u00b7 Issuing authority",
+      "bind": "List B Issuing Authority 1",
+      "party": "office"
+    },
+    {
+      "key": "b_number",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 276.84,
+        "y": 306.82,
+        "w": 142.22,
+        "h": 17.04
+      },
+      "order": 400,
+      "label": "List B \u00b7 Document number",
+      "bind": "List B Document Number 1",
+      "party": "office"
+    },
+    {
+      "key": "b_exp",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 276.84,
+        "y": 288.89,
+        "w": 142.22,
+        "h": 17.04
+      },
+      "order": 410,
+      "label": "List B \u00b7 Expiration date",
+      "bind": "List B Expiration Date 1",
+      "party": "office"
+    },
+    {
+      "key": "c_title",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 420.77,
+        "y": 342.41,
+        "w": 154.65,
+        "h": 17.04
+      },
+      "order": 420,
+      "label": "List C \u00b7 Document title",
+      "bind": "List C Document Title 1",
+      "party": "office",
+      "help": "Employment authorization, e.g. Social Security card."
+    },
+    {
+      "key": "c_issuer",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 420.77,
+        "y": 324.73,
+        "w": 154.65,
+        "h": 17.07
+      },
+      "order": 430,
+      "label": "List C \u00b7 Issuing authority",
+      "bind": "List C Issuing Authority 1",
+      "party": "office"
+    },
+    {
+      "key": "c_number",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 420.77,
+        "y": 306.82,
+        "w": 154.65,
+        "h": 17.04
+      },
+      "order": 440,
+      "label": "List C \u00b7 Document number",
+      "bind": "List C Document Number 1",
+      "party": "office"
+    },
+    {
+      "key": "c_exp",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 420.77,
+        "y": 288.89,
+        "w": 154.65,
+        "h": 17.04
+      },
+      "order": 450,
+      "label": "List C \u00b7 Expiration date",
+      "bind": "List C Expiration Date 1",
+      "party": "office"
+    },
+    {
+      "key": "additional",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 266.73,
+        "y": 158.42,
+        "w": 309,
+        "h": 116.26
+      },
+      "order": 460,
+      "label": "Additional information",
+      "bind": "Additional Information",
+      "party": "office",
+      "advanced": true,
+      "fontSize": 9
+    },
+    {
+      "key": "alt_procedure",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 267.51,
+        "y": 147.2,
+        "w": 9.48,
+        "h": 9.48
+      },
+      "order": 470,
+      "label": "Used an alternative procedure authorized by DHS to examine documents",
+      "bind": "CB_Alt",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "first_day",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 462.6,
+        "y": 111.29,
+        "w": 85.1,
+        "h": 15.34
+      },
+      "order": 480,
+      "label": "First day of employment",
+      "bind": "FirstDayEmployed mmddyyyy",
+      "party": "office",
+      "mask": "##/##/####",
+      "required": true,
+      "sample": "09/08/2026"
+    },
+    {
+      "key": "employer_rep",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 36.61,
+        "y": 79.64,
+        "w": 251.27,
+        "h": 19.6
+      },
+      "order": 490,
+      "label": "Last name, first name, and title of employer or authorized representative",
+      "bind": "Last Name First Name and Title of Employer or Authorized Representative",
+      "party": "office",
+      "required": true,
+      "sample": "Douglas, Robert, Owner"
+    },
+    {
+      "key": "employer_signature",
+      "type": "signature",
+      "page": 1,
+      "rect": {
+        "x": 294.28,
+        "y": 79.64,
+        "w": 191.04,
+        "h": 19.6
+      },
+      "order": 500,
+      "label": "Signature of employer or authorized representative",
+      "party": "office"
+    },
+    {
+      "key": "employer_date",
+      "type": "date",
+      "page": 1,
+      "rect": {
+        "x": 489.85,
+        "y": 79.64,
+        "w": 78.01,
+        "h": 19.6
+      },
+      "order": 510,
+      "label": "Today's date (employer)",
+      "dateMode": "today",
+      "party": "office"
+    },
+    {
+      "key": "employer_name",
+      "type": "constant",
+      "page": 1,
+      "rect": {
+        "x": 36.69,
+        "y": 53.04,
+        "w": 202.18,
+        "h": 13.71
+      },
+      "order": 520,
+      "label": "",
+      "bind": "Employers Business or Org Name",
+      "party": "office",
+      "text": "Click Plumbing, LLC"
+    },
+    {
+      "key": "employer_address",
+      "type": "constant",
+      "page": 1,
+      "rect": {
+        "x": 245.82,
+        "y": 53.04,
+        "w": 329.16,
+        "h": 13.71
+      },
+      "order": 530,
+      "label": "",
+      "bind": "Employers Business or Org Address",
+      "party": "office",
+      "text": "5501 Balcones Drive, Suite #A-141, Austin, TX 78731"
+    }
+  ],
+  "groups": [
+    {
+      "key": "status",
+      "label": "Citizenship or immigration status",
+      "exactlyOne": true,
+      "required": true
+    }
+  ],
+  "oneOfs": [
+    {
+      "key": "alien_id",
+      "label": "A-Number, I-94 number, or foreign passport (box 4)",
+      "required": false
+    }
+  ]
+}

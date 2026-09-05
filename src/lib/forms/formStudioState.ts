@@ -257,12 +257,13 @@ export function parseSchemaJson(text: string): ParsedSchema {
   return errors.length > 0 ? { ok: false, errors } : { ok: true, schema }
 }
 
-export function schemaSummary(schema: FormSchema): { boxes: number; asked: number; sensitive: number; bound: number; drawn: number } {
+export function schemaSummary(schema: FormSchema): { boxes: number; asked: number; sensitive: number; bound: number; drawn: number; office: number } {
   const boxes = schema.boxes.length
+  const office = schema.boxes.filter((b) => b.party === 'office').length
   const asked = schema.boxes.filter((b) => b.type !== 'constant' && !(b.type === 'date' && (b.dateMode ?? 'today') === 'today')).length
   const sensitive = schema.boxes.filter((b) => b.sensitive).length
   const bound = schema.boxes.filter((b) => b.bind || (b.bindSegments && b.bindSegments.length > 0)).length
-  return { boxes, asked, sensitive, bound, drawn: boxes - bound }
+  return { boxes, asked, sensitive, bound, drawn: boxes - bound, office }
 }
 
 /** The Book entry a publish creates or updates for a form template. */
