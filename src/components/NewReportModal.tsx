@@ -14,6 +14,8 @@ import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import ResponsiveModalShell from './ResponsiveModalShell'
+import OfflineRetryPanel from './OfflineRetryPanel'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import AutoGrowTextarea from './AutoGrowTextarea'
 import ConfirmDialog from './ConfirmDialog'
 import { hasUnsavedReportEntries } from '../lib/reportFormDirty'
@@ -61,6 +63,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const [lastReportJob, setLastReportJob] = useState<JobSearchResult | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Last save failure with its class; the panel offers Retry only for a network failure. */
+  const [submitFailure, setSubmitFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [searchMode, setSearchMode] = useState<'search' | 'last'>('search')
   const [copyJustClicked, setCopyJustClicked] = useState(false)
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
@@ -263,11 +267,17 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    void submitReport()
+  }
+
+  /** The save itself, separated from the form event so the offline Retry panel can re-run it (J2-F3). */
+  async function submitReport() {
     if (!authUserId || !selectedJob || !selectedTemplateId) return
     setSaving(true)
     setError(null)
+    setSubmitFailure(null)
     const fields = templateFields[selectedTemplateId] ?? []
     for (const f of fields) {
       if ((f.input_type ?? 'long_text') === 'signature_png') {
@@ -342,7 +352,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     }
     setSaving(false)
     if (err) {
-      setError(err.message)
+      // Class-decided (v2.2843): a fetch-layer failure gets Retry; a refused insert says why.
+      setSubmitFailure(recoveryFailureFromError(err, 'Could not save the report'))
       return
     }
     // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
@@ -632,6 +643,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
           )}
 
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
+          <OfflineRetryPanel
+            failure={submitFailure}
+            onRetry={submitReport}
+            surface={'new-report'}
+            busy={saving}
+            style={{ marginBottom: '1rem' }}
+          />
         </form>
     </ResponsiveModalShell>
     {discardConfirmOpen && (

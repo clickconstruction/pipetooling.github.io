@@ -782,6 +782,7 @@ function HubPeopleBlockCard({
             if (placementPickingActive) return
             onOpenJob(scheduleBlockAnchorId(block))
           }}
+          title={block.job_id == null ? 'Open this bid' : "Open this job's week"}
           style={{
             display: 'block',
             width: '100%',

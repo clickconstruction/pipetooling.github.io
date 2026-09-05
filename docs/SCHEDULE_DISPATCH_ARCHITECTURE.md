@@ -5,12 +5,12 @@ file: docs/SCHEDULE_DISPATCH_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (~3,302 lines, presentational) + ScheduleDispatchHubPage.tsx (~2,384 lines, container), treated as one hot ~5.7k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, and cross-region coupling so extraction can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-08-13
+last_updated: 2026-09-05
 ---
 
 ## What this surface is
 
-> **Anchors since v2.1613:** schedule blocks anchor to **exactly one of a job or a bid** (`job_schedule_blocks.job_id` is nullable; `bid_id` + one-anchor CHECK). Hub plumbing carries an opaque **anchor id** — the job uuid, or `bid:<uuid>` — produced by `scheduleBlockAnchorId()` and decoded by `scheduleBlockAnchorFromId()` (both in [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts)); `hubJobTitleById` / `hubJobAddressById` carry `bid:`-keyed entries so every id-keyed lookup just works. The linked-group primitives (`updateJobScheduleBlockGroup`, `fetchJobScheduleBlockGroupLegs`, `move_job_schedule_block_group`) are **group-keyed** — they no longer take/filter by job. Job-only affordances (Job Detail, job week `?jobId=`, team fetch, week summaries) skip bid anchors.
+> **Anchors since v2.1613:** schedule blocks anchor to **exactly one of a job or a bid** (`job_schedule_blocks.job_id` is nullable; `bid_id` + one-anchor CHECK). Hub plumbing carries an opaque **anchor id** — the job uuid, or `bid:<uuid>` — produced by `scheduleBlockAnchorId()` and decoded by `scheduleBlockAnchorFromId()` (both in [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts)); `hubJobTitleById` / `hubJobAddressById` carry `bid:`-keyed entries so every id-keyed lookup just works. The linked-group primitives (`updateJobScheduleBlockGroup`, `fetchJobScheduleBlockGroupLegs`, `move_job_schedule_block_group`) are **group-keyed** — they no longer take/filter by job. Job-only affordances (Job Detail, job week `?jobId=`, team fetch, week summaries) skip bid anchors. **Opening a bid block (v2.2861, J18-F1):** `openJobWeekGrid` runs the anchor through `scheduleBlockTarget()` ([`scheduleBlockTarget.ts`](../src/lib/scheduleBlockTarget.ts), pure) and sends a `bid` to the Bids page's Edit Bid deep link (`bidOpenPath` → `/bids?bidId=<uuid>&openBidEdit=1`) instead of writing `?jobId=bid:<uuid>`; the router does the same for any old link still open.
 
 The Schedule Dispatch hub is the week-grid scheduling surface at `/schedule-dispatch`. It is **already split into the playbook's two layers**, but both halves are individually oversized and hot (both files rank in the repo's top churn — dozens of `RECENT_FEATURES.md` entries touch them):
 
@@ -20,7 +20,7 @@ The Schedule Dispatch hub is the week-grid scheduling surface at `/schedule-disp
 **Relationship:** `ScheduleDispatchHubPage` owns 100% of the data and mode state and renders `<ScheduleDispatchHub …/>` inside a `DndContext`. The Hub component never mutates anything itself; it calls `on*` callbacks. So decomposition here is **not** the usual "pull state out of a God page" — it is (a) splitting the Hub file into per-panel component files (pure file moves), and (b) carving the Page's state clusters into hooks.
 
 **Mounts (both must keep working):**
-1. [`src/pages/ScheduleDispatch.tsx`](../src/pages/ScheduleDispatch.tsx) — thin router: no `?jobId=` → `<ScheduleDispatchHubPage variant="url" />`; with `?jobId=` → the separate `ScheduleDispatchJobWeek` (NOT this surface).
+1. [`src/pages/ScheduleDispatch.tsx`](../src/pages/ScheduleDispatch.tsx) — thin router: no `?jobId=` → `<ScheduleDispatchHubPage variant="url" />`; `?jobId=bid:<uuid>` → `<Navigate replace>` to the bid (v2.2861; empty id → the hub); any other `?jobId=` → the separate `ScheduleDispatchJobWeek` (NOT this surface).
 2. [`QuickfillTomorrowsScheduleSection`](../src/components/quickfill/QuickfillTomorrowsScheduleSection.tsx) — `<ScheduleDispatchHubPage variant="tomorrow" />`: single-day (tomorrow) embed; hides tabs, week nav, weekend toggle, Expected Manpower (the `showHubViewTabs` / `showWeekNavigation` / `showExpectedManpower` / `showHideWeekendToggle` props).
 
 The hub view is tab-switched on `hubTab: 'people' | 'jobs' | 'day'` (URL `?hubTab=`, default `people`; local state in the tomorrow variant). The Day tab is **already a thin wrapper** around the extracted [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx).
@@ -74,7 +74,7 @@ Update the relevant dossier whenever a region is extracted or its state/handlers
 - **Owned local state:** `search`, `onlyWithBlocks` (default `true`), `jobsScrollRef`.
 - **Cross-tab/shared state (props):** `rows: ScheduleDispatchHubMergedRow[]` (page's `hubMergedRows`), `loading`, `jobsError`, `summariesError`, `visibleDayKeys`, `hideWeekend`+`onHideWeekendChange` (shared with People's View menu — the same page state `hideWeekend`), `onOpenJob`, `scheduleTodayYmd`, `columnFocusDayYmd`, `columnScrollKey`.
 - **Derived memos:** `filteredRows` (search over `hcp_number`/`job_name`/`displayTitle`, then `totalBlocks > 0` filter).
-- **Handlers:** none of its own beyond the two filter inputs; row/Open buttons call `onOpenJob(jobId)` (navigates to the JobWeek grid via `?jobId=`).
+- **Handlers:** none of its own beyond the two filter inputs; row/Open buttons call `onOpenJob(jobId)` (navigates to the JobWeek grid via `?jobId=`; the same callback on a block card's time range sends a bid anchor to the Bids page — see the anchors note atop this doc).
 - **Effects/hooks:** `useScrollScheduleDispatchColumnIntoView` (shared lib hook; scrolls the `?day=` column into view).
 - **Supabase:** none (fully controlled).
 - **Sub-components:** none inline; day-column styling from `scheduleDispatchColumnFocus` lib.
@@ -206,7 +206,7 @@ Consequence for extraction: Hub-file splits are prop-preserving file moves (chea
 
 - **Contexts consumed:** `useAuth` (page), `ToastContext` (both files), `JobFormModalContext` + `JobDetailModalContext` (page), `DispatchNoteRequirementsContext` (Hub card + panel — note the Hub reads a context directly rather than props; an extracted card keeps doing so).
 - **Supabase inventory (all via `withSupabaseRetry`-wrapped lib helpers unless noted):** `jobs_ledger`, `jobs_ledger_team_members` (150-id `.in()` chunks), `users` (roster/names/archived), `job_schedule_blocks` (all verbs), `user_time_off`, `people_pay_config` (direct, wages by `person_name`), `pay_approved_masters` (direct), `dispatch_swim_lanes` + `dispatch_swim_lane_members` (cast `as never` — missing from generated types; via `fetchDispatchSwimLanes` and the `DispatchSettingsModal` manager). RPC: `pay_staff_remove_not_coming_in_for_user_day`. No realtime subscriptions anywhere on this surface.
-- **Deep-link senders (verify before changing URL params):** Dashboard clock strip → `?focusPerson=`; job surfaces → `?placeJob=`; Quickfill tomorrow embed (no URL). `openJobWeekGrid` writes `?jobId=` for the sibling JobWeek surface.
+- **Deep-link senders (verify before changing URL params):** Dashboard clock strip → `?focusPerson=`; job surfaces → `?placeJob=`; Quickfill tomorrow embed (no URL). `openJobWeekGrid` writes `?jobId=` for the sibling JobWeek surface **for job anchors only** — a `bid:` anchor navigates to `/bids?bidId=&openBidEdit=1` (v2.2861) and records `schedule_block_opened` (`#job` / `#bid`) on `ui_nav_clicks`.
 
 ## Preserve-quirks list (odd but load-bearing)
 

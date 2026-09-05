@@ -56,6 +56,8 @@ Pick the job — a schedule block appears in the cell. Jobs the person already c
 Type the bid number in the Assign-work search, pick the {{chip:purple|Bid}} row, then click the person-day cell — the visit lands on their schedule as `B412 · Oakmont Clubhouse`, no placeholder job needed.
 :::
 
+**Opening a bid block.** Click a job block's time range and you get that job's week grid. A bid has no job to grid, so clicking a bid block's time range opens the **bid** instead — the Edit Bid window on the Bids page. (The title line on a bid block does nothing; Job Detail is for jobs.)
+
 Each block can carry **job instructions**: click the pencil ("Edit job instructions") to open the **Job instructions** modal and {{button:blue|Save}}. Instructions are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival details.
 
 ### Moving a block — no need to delete and re-add
