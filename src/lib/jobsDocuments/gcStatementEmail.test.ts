@@ -58,15 +58,18 @@ describe('gcStatementEmail', () => {
     expect(html).not.toContain('Collections')
   })
 
-  it('falls back to job name when the address is blank, and escapes HTML', () => {
+  it('falls back to job name when the address is blank — printed once (J20-F8) — and escapes HTML', () => {
     const g = group({
       gcName: 'A&B <Builders>',
       rows: [{ ...group().rows[0]!, jobAddress: '', jobName: '<Spec House>' }],
     })
     const html = buildGcStatementEmailHtml(g, { dateStr: 'Jul 31, 2026' })
     expect(html).toContain('A&amp;B &lt;Builders&gt;')
-    expect(html).toContain('&lt;Spec House&gt;')
+    expect(html.split('&lt;Spec House&gt;').length - 1).toBe(1)
+    expect(html).toContain('&lt;Spec House&gt;<br /><span style="font-size:11px;color:#6b7280">Job 916</span>')
     expect(html).not.toContain('<Spec House>')
+    const text = buildGcStatementEmailText(g, { dateStr: 'Jul 31, 2026' })
+    expect(text).toContain('- <Spec House> (Job 916) — billed Jul 21, 2026 — $450.00')
   })
 
   it('plain-text variant carries the same facts', () => {
@@ -175,10 +178,12 @@ describe('portal card (v2.2151)', () => {
     expect(mod.gcStatementPortalCardHtml('  ')).toBe('')
     const html = mod.gcStatementPortalCardHtml('https://my.clickplumbing.com/rmc-dudley-mason')
     expect(html).toContain('Your account, any time')
-    expect(html).toContain('href="https://my.clickplumbing.com/rmc-dudley-mason"')
-    expect(html).toContain('my.clickplumbing.com/rmc-dudley-mason</a>')
-    expect(mod.gcStatementPortalLineText('https://x/y')).toContain('https://x/y')
-    expect(mod.gcStatementPortalLineText(null)).toBeNull()
+    // Journey-map #46: the card says how to pay, and the link carries the statement's attribution tag.
+    expect(html).toContain('Pay online any time at <a href="https://my.clickplumbing.com/rmc-dudley-mason?src=gc-statement"')
+    expect(html).toContain('my.clickplumbing.com/rmc-dudley-mason</a> — this statement stays current there.')
+    expect(mod.gcStatementPayLineText('https://x/y')).toBe('Pay online any time at https://x/y?src=gc-statement — this statement stays current there.')
+    expect(mod.gcStatementPayLineText(null)).toBeNull()
+    expect(mod.gcStatementPayUrl('https://pipetooling.com/portal?t=abc')).toBe('https://pipetooling.com/portal?t=abc&src=gc-statement')
   })
 })
 

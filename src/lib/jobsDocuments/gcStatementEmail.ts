@@ -12,6 +12,10 @@ import { formatCurrency } from '../jobs/jobFormatting'
  * reference. No days-past-due pressure language, no internal vocabulary.
  * Table-based with inline styles so Gmail/Outlook/Apple Mail render it
  * faithfully.
+ *
+ * KEEP IN SYNC with supabase/functions/gc-statement-email-dispatch/render.ts —
+ * the scheduled lane renders the same statement server-side from the RPC
+ * payload. `gcStatementEmailParity.test.ts` pins the two byte-for-byte.
  */
 
 export const GC_STATEMENT_COMPANY_NAME = 'Click Plumbing and Electrical'
@@ -34,34 +38,85 @@ export type GcStatementEmailOpts = {
   dateStr?: string
   groupBy?: GcReviewGroupBy
   officePhone?: string | null
-  /** The GC's portal link (v2.2151) — renders the "Your account, any time" card; omit/null for none. */
+  /** The GC's portal link (v2.2151) — renders the "Your account, any time" card with its Pay online line; omit/null for none. */
   portalUrl?: string | null
+  /**
+   * Intro paragraph above the statement (journey-map #46): the dev-saved
+   * `gc_statement_scheduled` template body, rendered — the same words the
+   * scheduled lane prepends. Omit/blank for none (the personal Copy lane adds
+   * its own line by hand).
+   */
+  introText?: string | null
 }
 
 /**
- * Portal card under the statement table (v2.2151). Mirror of
- * gc-statement-email-dispatch/render.ts `portalCardHtml` — keep in sync.
+ * Attribution tag on the pay link (journey-map #46 telemetry): the portal
+ * counts views, and `?src=gc-statement` lets #37's counter tell a statement
+ * click from any other open. The portal ignores unknown query keys.
+ */
+export const GC_STATEMENT_PAY_LINK_SRC = 'gc-statement'
+
+/** The portal URL with the statement's `src` tag appended — mirror of render.ts `payUrl`. */
+export function gcStatementPayUrl(portalUrl: string | null | undefined): string | null {
+  const url = (portalUrl ?? '').trim()
+  if (!url) return null
+  return `${url}${url.includes('?') ? '&' : '?'}src=${GC_STATEMENT_PAY_LINK_SRC}`
+}
+
+/**
+ * Portal card under the statement table (v2.2151; says how to pay since
+ * journey-map #46 — "Pay online any time at …", the office-side promise the
+ * GC's copy never carried). Mirror of gc-statement-email-dispatch/render.ts
+ * `portalCardHtml` — keep in sync.
  */
 export function gcStatementPortalCardHtml(portalUrl: string | null | undefined): string {
   const url = (portalUrl ?? '').trim()
-  if (!url) return ''
+  const href = gcStatementPayUrl(url)
+  if (!url || !href) return ''
   const shown = url.replace(/^https?:\/\//, '')
   return `<table role="presentation" style="width:100%;border-collapse:collapse;margin-top:14px"><tr>
     <td style="border:1px solid #ddd6c8;border-left:4px solid #b0662f;background:#fbf7f0;border-radius:6px;padding:12px 14px">
       <p style="margin:0;font-size:14px;font-weight:bold;color:#16283c">Your account, any time</p>
-      <p style="margin:3px 0 0;font-size:13px;color:#5a6b7e;line-height:1.4">This statement stays current at <a href="${escapeHtml(url)}" style="color:#b0662f;font-weight:bold;text-decoration:none">${escapeHtml(shown)}</a></p>
+      <p style="margin:3px 0 0;font-size:13px;color:#5a6b7e;line-height:1.4">Pay online any time at <a href="${escapeHtml(href)}" style="color:#b0662f;font-weight:bold;text-decoration:none">${escapeHtml(shown)}</a> — this statement stays current there.</p>
     </td>
   </tr></table>`
 }
 
-/** Plain-text counterpart of the portal card. */
-export function gcStatementPortalLineText(portalUrl: string | null | undefined): string | null {
-  const url = (portalUrl ?? '').trim()
-  return url ? `Your account, any time: this statement stays current at ${url}` : null
+/** Plain-text counterpart of the portal card — the same pay line. */
+export function gcStatementPayLineText(portalUrl: string | null | undefined): string | null {
+  const href = gcStatementPayUrl(portalUrl)
+  return href ? `Pay online any time at ${href} — this statement stays current there.` : null
 }
 
 const escapeHtml = (s: string) =>
   (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/**
+ * Intro paragraph (journey-map #46): the editable template body, escaped with
+ * newlines as <br>, inside the statement's own font so it reads as one email.
+ * Mirror of render.ts `introHtml`.
+ */
+export function gcStatementIntroHtml(introText: string | null | undefined): string {
+  const text = (introText ?? '').trim()
+  if (!text) return ''
+  return `<p style="margin:0 0 12px;font-size:14px;color:#111827;line-height:1.45">${escapeHtml(text).replace(/\n/g, '<br>')}</p>
+  `
+}
+
+/**
+ * Row label (journey-map #46 duplicate-name fix): the address leads; the job
+ * name falls back to the lead only when there is no address, and then the
+ * sub-line must not print it again ("Water Heater / Water Heater").
+ * Mirror of render.ts `rowLabel`.
+ */
+export function gcStatementRowLabel(jobAddress: string | null | undefined, jobName: string | null | undefined, jobNumber: string | null | undefined): { lead: string; sub: string } {
+  const address = (jobAddress ?? '').trim()
+  const name = (jobName ?? '').trim()
+  const num = (jobNumber ?? '').trim()
+  const lead = address || name || '—'
+  const sub = [num && num !== '—' ? `Job ${num}` : '', name && name !== lead ? name : ''].filter(Boolean).join(' · ')
+  return { lead, sub }
+}
 
 /** `tel:` target for the office number — US 10/11-digit → +1…, else +digits; null when no digits. */
 export function officePhoneTelHref(officePhone?: string | null): string | null {
@@ -92,14 +147,19 @@ export function gcStatementEmailSubject(_group: GcReviewGroup, dateStr: string):
 const statementRowsHtml = (rows: GcReviewGroup['rows']): string =>
   rows
     .map((r) => {
-      const sub = [r.hcp !== '—' ? `Job ${r.hcp}` : '', r.jobName].filter(Boolean).join(' · ')
+      const { lead, sub } = gcStatementRowLabel(r.jobAddress, r.jobName, r.hcp)
       return `<tr>
-        <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;line-height:1.3">${escapeHtml(r.jobAddress || r.jobName || '—')}${sub ? `<br /><span style="font-size:11px;color:#6b7280">${escapeHtml(sub)}</span>` : ''}</td>
+        <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;line-height:1.3">${escapeHtml(lead)}${sub ? `<br /><span style="font-size:11px;color:#6b7280">${escapeHtml(sub)}</span>` : ''}</td>
         <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;white-space:nowrap;vertical-align:top">${escapeHtml(r.referenceDateDisplay)}</td>
         <td style="padding:7px 6px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#111827;text-align:right;vertical-align:top">$${formatCurrency(r.remaining)}</td>
       </tr>`
     })
     .join('')
+
+const statementRowText = (r: GcReviewGroup['rows'][number]): string => {
+  const { lead, sub } = gcStatementRowLabel(r.jobAddress, r.jobName, r.hcp)
+  return `- ${lead}${sub ? ` (${sub})` : ''} — billed ${r.referenceDateDisplay} — $${formatCurrency(r.remaining)}`
+}
 
 const statementTableHeadHtml = `<thead><tr>
       <th style="padding:6px;border-bottom:2px solid #9ca3af;font-size:12px;color:#4b5563;text-align:left">Job address</th>
@@ -114,7 +174,7 @@ export function buildGcStatementEmailHtml(
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
-  <p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
+  ${gcStatementIntroHtml(opts?.introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
   <p style="margin:2px 0 12px;font-size:13px;color:#4b5563">Statement for ${escapeHtml(group.gcName)} · ${escapeHtml(dateStr)}</p>
   <table style="width:100%;border-collapse:collapse">
     ${statementTableHeadHtml}
@@ -157,7 +217,7 @@ export function buildGcReviewShareAllEmailHtml(
     )
     .join('\n  ')
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
-  <p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
+  ${gcStatementIntroHtml(opts?.introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
   <p style="margin:2px 0 4px;font-size:13px;color:#4b5563">Open balances by ${scope} · ${escapeHtml(dateStr)}</p>
   ${sectionsHtml}
   <table style="width:100%;border-collapse:collapse;margin-top:14px">
@@ -172,6 +232,11 @@ export function buildGcReviewShareAllEmailHtml(
 </div>`
 }
 
+const introTextLines = (introText: string | null | undefined): string[] => {
+  const text = (introText ?? '').trim()
+  return text ? [text, ''] : []
+}
+
 export function buildGcReviewShareAllEmailText(
   report: { groups: GcReviewGroup[]; grandTotal: number },
   opts?: GcStatementEmailOpts,
@@ -180,13 +245,11 @@ export function buildGcReviewShareAllEmailText(
   const scope = opts?.groupBy === 'development' ? 'development' : 'GC'
   const sections = report.groups.flatMap((g) => [
     `${g.gcName} · ${g.jobCount} job${g.jobCount === 1 ? '' : 's'} · $${formatCurrency(g.subtotal)}`,
-    ...g.rows.map((r) => {
-      const sub = [r.hcp !== '—' ? `Job ${r.hcp}` : '', r.jobName].filter(Boolean).join(' · ')
-      return `- ${r.jobAddress || r.jobName || '—'}${sub ? ` (${sub})` : ''} — billed ${r.referenceDateDisplay} — $${formatCurrency(r.remaining)}`
-    }),
+    ...g.rows.map(statementRowText),
     '',
   ])
   return [
+    ...introTextLines(opts?.introText),
     GC_STATEMENT_COMPANY_NAME,
     `Open balances by ${scope} · ${dateStr}`,
     '',
@@ -223,19 +286,17 @@ export function buildGcStatementEmailText(
   opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  const lines = group.rows.map((r) => {
-    const sub = [r.hcp !== '—' ? `Job ${r.hcp}` : '', r.jobName].filter(Boolean).join(' · ')
-    return `- ${r.jobAddress || r.jobName || '—'}${sub ? ` (${sub})` : ''} — billed ${r.referenceDateDisplay} — $${formatCurrency(r.remaining)}`
-  })
+  const payLine = gcStatementPayLineText(opts?.portalUrl)
   return [
+    ...introTextLines(opts?.introText),
     GC_STATEMENT_COMPANY_NAME,
     `Statement for ${group.gcName} · ${dateStr}`,
     '',
-    ...lines,
+    ...group.rows.map(statementRowText),
     '',
     `Total owed: $${formatCurrency(group.subtotal)}`,
     '',
-    ...(gcStatementPortalLineText(opts?.portalUrl) ? [gcStatementPortalLineText(opts?.portalUrl) as string, ''] : []),
+    ...(payLine ? [payLine, ''] : []),
     gcStatementFooterLine(opts?.officePhone),
   ].join('\n')
 }

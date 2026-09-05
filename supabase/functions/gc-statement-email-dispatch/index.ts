@@ -217,10 +217,13 @@ serve(async (req) => {
           isSingle ? gcStatementSubject(dateStr) : gcShareAllSubject(payload.group_by, dateStr),
         )
         const subject = wording.subject
-        // Portal card (v2.2151): single-GC statements carry the GC's portal link when one is active.
+        // Portal card (v2.2151; says "Pay online any time at …" since journey-map #46): single-GC statements carry the GC's portal link when one is active.
         const portalUrl = isSingle && row.group_by === 'gc' && row.gc_customer_id ? await resolveGcPortalUrl(admin, row.gc_customer_id) : null
-        const html = (wording.introHtml ?? '') + (isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl) : renderGcShareAllHtml(payload, dateStr, officePhone))
-        const text = (wording.introText ? wording.introText + '\n\n' : '') + (isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl) : renderGcShareAllText(payload, dateStr, officePhone))
+        // The intro rides INSIDE the statement (journey-map #46) so the scheduled
+        // lane and the client's Draft Message lane render one identical body —
+        // src/lib/jobsDocuments/gcStatementEmailParity.test.ts pins it.
+        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl, wording.introText) : renderGcShareAllHtml(payload, dateStr, officePhone, wording.introText)
+        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl, wording.introText) : renderGcShareAllText(payload, dateStr, officePhone, wording.introText)
 
         const { data: requester } = await admin
           .from('users')

@@ -595,8 +595,8 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
               },
               {
                 type: 'gc_statement_scheduled' as const,
-                label: 'GC statement (scheduled)',
-                description: 'Subject + intro for the scheduled statement email. Variables: {{date}}, {{default_subject}}',
+                label: 'GC statement (Draft Message + scheduled)',
+                description: 'Subject + intro paragraph for the statement email — GC Review\'s Draft Message and the scheduled sends read the same words. Variables: {{date}}, {{default_subject}}',
               },
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)

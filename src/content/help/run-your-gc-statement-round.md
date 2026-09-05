@@ -41,7 +41,7 @@ Clicking it opens the assign picker instead, since there's no round to show yet.
 
 {{button:blue|Start round →}} walks your GCs one at a time. For each:
 
-1. {{button:outline|Preview statement}} — see exactly what the GC will see.
+1. {{button:outline|Preview statement}} — see exactly what the GC will see, portal card included.
 2. {{button:outline|Copy for email}} — copies the statement as a real table. Paste it into your own Gmail or Outlook, add a personal line on top, and send from your own address. Or {{button:outline|Send from the app…}} — the Draft Message dialog opens for that GC, the app sends it, and the GC is marked sent for you the moment it goes out.
 3. {{button:blue|Sent it ✓}} — tells the app it went out. A short form opens: pick **how** ({{chip:blue|Email}} {{chip:gray|Text}} {{chip:gray|Call}} {{chip:gray|In person}} {{chip:gray|Other}}) and add an optional note, then {{button:blue|Save mark}}. This counts as a statement sent everywhere the app keeps score — the GC's last-sent pill, the GC Review progress strip, the Dashboard's Wednesday "GC review is due" card and its badge, and your morning round email — exactly as if the app had sent it.
 4. **Skip** defers that GC for the week.
@@ -98,5 +98,5 @@ The **last sent Aug 27** pill on each GC's header names the channel when this we
 
 - Nothing is ever emailed uncertified, and nothing is emailed by the system at all — a person always sends.
 - The per-sender tallies in the panel header ("Malachi 2/3 sent") are how you see Friday afternoon who still owes sends.
-- Each GC row carries its portal globe; **Share → Copy portal link** and the Draft Message's portal card point the GC at their live statement with Pay online.
+- Each GC row carries its portal globe; **Share → Copy portal link** and the statement's portal card point the GC at their live statement — the card itself says **"Pay online any time at …"**, and it is the same card in {{button:outline|Preview statement}}, {{button:outline|Copy for email}}, Draft Message, and scheduled sends.
 - The **Draft Message** dialog and scheduled sends still exist for the GCs where an app-sent statement is fine. Three things count as "that GC got their statement this week": {{button:blue|Sent it ✓}} (or **Share → Mark sent…**), **Send from the app…** / **Draft Message**, and a scheduled send addressed to that one GC. Two things never do: **Spoke with them · no statement**, and the office's own "All GCs" whole-report copies — those are for you, not the GC. The Dashboard card turns green only when every GC over the line is certified and sent one of the three ways.
