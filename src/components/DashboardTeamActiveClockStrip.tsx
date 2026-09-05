@@ -23,6 +23,7 @@ import {
   type TodaySessionStripRow,
 } from '../hooks/useDashboardMyTeamSectionState'
 import { approveClockSessions } from '../lib/approveClockSessions'
+import { recordHoursApproved, type HoursApprovedSurface } from '../lib/hoursApprovedTelemetry'
 import { supabase } from '../lib/supabase'
 import { countDistinctJobsPerAssignee } from '../lib/currentlyInDispatchCounts'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -1043,7 +1044,7 @@ export function DashboardTeamActiveClockStrip({
   }, [stripRejectConfirm, stripApproveBusy])
 
   const handleStripSessionApprove = useCallback(
-    async (sessionId: string): Promise<boolean> => {
+    async (sessionId: string, surface: HoursApprovedSurface = 'strip-actions'): Promise<boolean> => {
       if (!sessionId) return false
       setStripApproveBusy((prev) => new Set(prev).add(sessionId))
       try {
@@ -1059,6 +1060,7 @@ export function DashboardTeamActiveClockStrip({
           return false
         }
         setOptimisticStripApprovedIds((prev) => new Set(prev).add(sessionId))
+        recordHoursApproved(authUserId, viewerRole, surface, row?.approved_count ?? 1)
         onClockSessionsMutated?.()
         return true
       } finally {
@@ -1069,7 +1071,28 @@ export function DashboardTeamActiveClockStrip({
         })
       }
     },
-    [onClockSessionsMutated, onJobBidAssignError],
+    [onClockSessionsMutated, onJobBidAssignError, authUserId, viewerRole],
+  )
+
+  /**
+   * The strip pill's short press / Enter / Space (Tier-1 #15, J7-8): the only
+   * single-click payroll write in the app asked nothing before v2 — a misclick
+   * on a 10-px segment silently wrote people_hours. One confirm, same dialog
+   * every sibling surface uses; the long-press Session actions menu is
+   * unchanged (its Approve is already a deliberate button).
+   */
+  const handleStripPillApprove = useCallback(
+    async (sessionId: string, personLabel: string, timeRangeLabel: string): Promise<boolean> => {
+      if (!sessionId) return false
+      const who = personLabel.trim() || 'this person'
+      const ok = await confirmDialog({
+        message: `Approve ${who}’s session (${timeRangeLabel})? This adds the hours to payroll.`,
+        confirmLabel: 'Approve',
+      })
+      if (!ok) return false
+      return handleStripSessionApprove(sessionId, 'strip-pill')
+    },
+    [confirmDialog, handleStripSessionApprove],
   )
 
   const handleStripSessionRevoke = useCallback(
@@ -2124,7 +2147,7 @@ export function DashboardTeamActiveClockStrip({
                                                       )
                                                     }}
                                                     onApprove={async () => {
-                                                      await handleStripSessionApprove(s.id)
+                                                      await handleStripPillApprove(s.id, rowLabel, timeRangeLabel)
                                                     }}
                                                     onReject={async () => {}}
                                                   />
@@ -2715,7 +2738,7 @@ export function DashboardTeamActiveClockStrip({
                                                   )
                                                 }}
                                                 onApprove={async () => {
-                                                  await handleStripSessionApprove(s.id)
+                                                  await handleStripPillApprove(s.id, personName, timeRangeLabel)
                                                 }}
                                                 onReject={async () => {}}
                                               />
@@ -2878,7 +2901,7 @@ export function DashboardTeamActiveClockStrip({
     onClose={() => setStripActionsSession(null)}
     onApprove={async () => {
       if (!stripActionsPayload) return false
-      return handleStripSessionApprove(stripActionsPayload.sessionId)
+      return handleStripSessionApprove(stripActionsPayload.sessionId, 'strip-actions')
     }}
     onRequestReject={requestRejectFromActionsModal}
     onRevoke={async () => {

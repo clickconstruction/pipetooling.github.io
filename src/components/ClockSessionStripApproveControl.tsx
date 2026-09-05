@@ -40,7 +40,7 @@ const pathD = {
     'M480 144C488.8 144 496 151.2 496 160L496 480C496 488.8 488.8 496 480 496L160 496C151.2 496 144 488.8 144 480L144 160C144 151.2 151.2 144 160 144L480 144zM160 96C124.7 96 96 124.7 96 160L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 160C544 124.7 515.3 96 480 96L160 96z',
 }
 
-/** Short release approves (pending). Long hold opens session actions when `actionsEligible`. */
+/** Short release asks to approve (pending) — the host confirms before writing (Tier-1 #15). Long hold opens session actions when `actionsEligible`. */
 const APPROVE_MAX_MS = 420
 const REJECT_MIN_MS = 560
 
@@ -173,9 +173,9 @@ export function ClockSessionStripApproveControl({
   )
 
   const titlePending = actionsEligible
-    ? 'Click to approve. Long-press or Shift+click for Approve, Reject, or Edit.'
+    ? 'Click to approve (asks first). Long-press or Shift+click for Approve, Reject, or Edit.'
     : interactive
-      ? 'Click to approve. Hold 0.6s or Shift+click to reject.'
+      ? 'Click to approve (asks first). Hold 0.6s or Shift+click to reject.'
       : 'Pending approval (view only)'
 
   const titleApproved = actionsEligible
@@ -282,8 +282,8 @@ export function ClockSessionStripApproveControl({
         title={title}
         aria-label={
           actionsEligible
-            ? 'Clock session: click to approve, long-press or Shift+click for more actions'
-            : 'Clock session: click to approve, hold to reject, or Shift+click to reject'
+            ? 'Clock session: click to approve (confirms first), long-press or Shift+click for more actions'
+            : 'Clock session: click to approve (confirms first), hold to reject, or Shift+click to reject'
         }
         disabled={busy}
         onPointerDown={(e) => {
