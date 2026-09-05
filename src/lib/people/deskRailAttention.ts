@@ -31,6 +31,8 @@ export type RailAttention = 'red' | 'amber' | 'green'
 
 export type RailRow = RailPersonInput & {
   attention: RailAttention
+  /** v2.2809: the Users tab's grouped needs (hours beside paperwork/account); when set, `attention`/`reasons` already come from it. */
+  rowNeeds?: import('./rowNeeds').RowNeeds
   /** "23 · doc" style badge; '' when green. */
   badge: string
   reasons: string[]

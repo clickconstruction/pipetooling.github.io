@@ -8,7 +8,8 @@ import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { useUsersTabSignals } from '../../hooks/useUsersTabSignals'
 import { buildRailRow, normaliseKind, type RailRow } from '../../lib/people/deskRailAttention'
-import { USERS_TAB_FILTERS, describeGroupCount, foldNoLoginRows, orderUsersTabRows, rowMatchesFilter, type UsersTabFilter } from '../../lib/people/usersTabRows'
+import { buildRowNeeds } from '../../lib/people/rowNeeds'
+import { USERS_TAB_FILTERS, describeGroupCount, foldNoLoginRows, orderUsersTabRows, rowMatchesFilter, type UsersTabFilter, applyRowNeeds } from '../../lib/people/usersTabRows'
 import { UsersTabRow, type UsersTabRowMenuAction } from './UsersTabRow'
 import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
 import {
@@ -194,13 +195,22 @@ export function PeopleUsersTab({
     return { kind: 'user', userId: item.id }
   }
 
-  /** Attention + signal chips for one row, from the same facts the Person tab rail uses. */
+  /**
+   * Attention + signal chips for one row, from the same facts the Person tab rail uses.
+   * v2.2809: the dot and the filters follow the grouped needs (hours beside paperwork /
+   * account — hours never color the dot); the chips themselves switch over in the next PR.
+   */
   function railFor(sectionKind: PersonKind | 'dev', item: UsersTabRosterListRow): RailRow {
     const personId = item.source === 'people' ? item.id : (people.find((p) => p.account_user_id === item.id)?.id ?? resolvePersonIdForUsersRow(item, sectionKind === 'dev' ? null : sectionKind))
-    return buildRailRow(
-      { userId: item.source === 'user' ? item.id : null, personId, name: item.name, kind: sectionKind === 'dev' ? 'dev' : normaliseKind(sectionKind), archived: false },
-      railFacts,
-    )
+    const person = { userId: item.source === 'user' ? item.id : null, personId, name: item.name, kind: sectionKind === 'dev' ? 'dev' : normaliseKind(sectionKind), archived: false }
+    const needs = buildRowNeeds({
+      person,
+      facts: railFacts,
+      signingLight: canAccessContracts ? contractSigningStatusByPersonName[item.name] : undefined,
+      canSeePush: canSeePushStatus,
+      pushOn: item.source === 'user' ? pushEnabledUserIds.has(item.id) : undefined,
+    })
+    return applyRowNeeds(buildRailRow(person, railFacts), needs)
   }
 
   function menuFor(sectionKind: PersonKind | 'dev', item: UsersTabRosterListRow): UsersTabRowMenuAction[] {

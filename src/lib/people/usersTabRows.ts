@@ -4,13 +4,15 @@
  * this decides which show, in what order, and how many hide behind the fold.
  */
 import type { RailRow } from './deskRailAttention'
+import type { RowNeeds } from './rowNeeds'
 
-export type UsersTabFilter = 'all' | 'nologin' | 'attention' | 'field' | 'office'
+export type UsersTabFilter = 'all' | 'nologin' | 'attention' | 'hours' | 'field' | 'office'
 
 export const USERS_TAB_FILTERS: Array<{ key: UsersTabFilter; label: string }> = [
   { key: 'all', label: 'Everyone' },
   { key: 'nologin', label: 'No login' },
   { key: 'attention', label: 'Needs attention' },
+  { key: 'hours', label: 'Hours to approve' },
   { key: 'field', label: 'Field' },
   { key: 'office', label: 'Office' },
 ]
@@ -25,11 +27,22 @@ export function rowMatchesFilter(row: RailRow, filter: UsersTabFilter): boolean 
       return row.userId == null
     case 'attention':
       return row.attention !== 'green'
+    case 'hours':
+      return (row.rowNeeds?.hoursWaiting ?? 0) > 0
     case 'field':
       return FIELD_KINDS.has(row.kind)
     case 'office':
       return !FIELD_KINDS.has(row.kind)
   }
+}
+
+/**
+ * v2.2809: a rail row re-read through the grouped needs — the dot and the Needs attention
+ * filter follow `needs` (hours and facts never move them), and the row carries the needs
+ * for the status column to render.
+ */
+export function applyRowNeeds(row: RailRow, rowNeeds: RowNeeds): RailRow {
+  return { ...row, attention: rowNeeds.attention, reasons: rowNeeds.reasons, rowNeeds }
 }
 
 /** Account rows first, then roster-only rows, alphabetical within each. */
