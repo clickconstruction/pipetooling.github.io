@@ -65,7 +65,7 @@ describe('buildCustomerInvoiceRows', () => {
     expect(byKey['d']!.agingDays).toBeNull()
   })
 
-  it('totals use the billed/paid basis and reconcile like the money strip', () => {
+  it('totals ARE the money strip\'s numbers: billed/paid invoices per job, every payment collected', () => {
     const { totals } = buildCustomerInvoiceRows(
       [
         inv({ id: 'a', status: 'ready_to_bill', amount: 999 }), // draft — excluded
@@ -75,12 +75,30 @@ describe('buildCustomerInvoiceRows', () => {
       [
         { invoice_id: 'b', amount: 400, paid_on: '2026-08-01' },
         { invoice_id: 'c', amount: 500, paid_on: '2026-07-01' },
-        { invoice_id: 'a', amount: 1, paid_on: '2026-07-01' }, // draft payment — excluded from collected
+        { invoice_id: 'a', amount: 1, paid_on: '2026-07-01' }, // every payment row counts — same as the strip's "collected"
       ],
       JOBS,
       TODAY,
     )
-    expect(totals).toEqual({ count: 3, billedTotal: 1500, collectedTotal: 900 })
+    expect(totals).toEqual({ count: 3, billedTotal: 1500, collectedTotal: 901 })
+  })
+
+  it('J34-F1: a billed/paid job with no invoice rows adds its shell revenue, and record-only payments are collected — the footer equals the Profile strip', () => {
+    const jobs = [
+      { id: 'j1', label: '941', status: 'billed', revenue: 1200 }, // has an invoice → invoice arm
+      { id: 'hcp', label: 'HCP-12', status: 'paid', revenue: 8_400 }, // HCP-era: no invoice rows → shell arm
+      { id: 'w', label: '972', status: 'working', revenue: 5_000 }, // unbilled → nothing
+    ]
+    const { totals } = buildCustomerInvoiceRows(
+      [inv({ id: 'b', job_id: 'j1', status: 'billed', amount: 1000 })],
+      [
+        { invoice_id: 'b', amount: 400, paid_on: '2026-08-01' },
+        { invoice_id: null, amount: 8_400, paid_on: '2026-03-01' }, // job-level backfilled payment
+      ],
+      jobs,
+      TODAY,
+    )
+    expect(totals).toEqual({ count: 1, billedTotal: 1000 + 8_400, collectedTotal: 400 + 8_400 })
   })
 
   it('part labels only for multi-invoice jobs; sorted newest billed first', () => {

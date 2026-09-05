@@ -4,9 +4,12 @@
  * cards can never disagree with Jobs Stages (unallocated), Supply Houses (unpaid), or the Payroll
  * ledger (open balances):
  *
- * - AR   = per billed invoice: max(0, amount − payments applied to it) [write-downs already
- *          reduce invoice.amount], plus billed jobs with no billed invoice rows:
- *          max(0, revenue − payments_made). Mirrors useBilledTotal.
+ * - AR   = the bill-truth kernel's `billed` / `collections` buckets (`lib/billing/billTruth.ts`,
+ *          journey Tier-1 #2(c)): one row per billed invoice on a non-paid job, netted against its
+ *          linked payments; one shell row per invoice-less billed job (revenue − payments_made);
+ *          clamped at 0 once, in the kernel. Bills on paid or missing jobs are EXCLUDED and
+ *          reported in `excluded` (the old "Unknown job" $488 row). Same numbers as the Pipeline
+ *          strip, the Billed pin, Quickfill and the Customer Hub.
  * - AP   = unpaid supply-house invoices + open payroll balances
  *          (stubNetPay(gross, less, additional) − payments) + estimated upcoming payroll for
  *          worked-but-unreported weeks (folded in via mergeUpcomingIntoAp). Mirrors the Payroll
@@ -18,6 +21,7 @@
 
 import type { UpcomingPayrollLine } from './upcomingPayrollSummary'
 import { effectivePctComplete } from './jobs/effectivePctComplete'
+import { computeBillTruth, type BillTruth, type BillTruthOpenRow } from './billing/billTruth'
 
 export type FinancialItem = {
   key: string
@@ -131,69 +135,60 @@ function finishBucket(items: FinancialItem[]): FinancialBucket {
   }
 }
 
-/** In Collections = billed AND flagged (mirrors jobInCollections in jobsStagesBoard.ts). */
-function financialJobRowInCollections(job: Pick<FinancialJobRow, 'status' | 'collections_at'> | undefined): boolean {
-  return job != null && (job.status ?? '') === 'billed' && job.collections_at != null
+/** Bills the kernel kept out of Owed: on a paid job, or on a job not in the fetch (deleted). */
+export type ArExcluded = { count: number; total: number }
+
+/** Sublabel for a bill that is fully paid but still `billed` — a Mark Paid to-do, not money owed. */
+export const AR_SETTLED_SUBLABEL = 'paid in full — not yet marked Paid'
+
+function arItemFromRow(
+  row: BillTruthOpenRow,
+  job: FinancialJobRow | undefined,
+  invoiceById: ReadonlyMap<string, FinancialInvoiceRow>,
+): FinancialItem {
+  const inv = row.invoiceId ? invoiceById.get(row.invoiceId) : undefined
+  const shell = row.kind === 'shell'
+  return {
+    key: shell ? `job:${row.jobId}` : `inv:${row.invoiceId}`,
+    label: job ? financialJobLabel(job) : '—',
+    sublabel: row.settled
+      ? `${shell ? 'Billed job' : 'Billed invoice'} · ${AR_SETTLED_SUBLABEL}`
+      : shell
+        ? 'Billed job (no invoice rows)'
+        : 'Billed invoice',
+    amount: row.remaining,
+    // A settled row has nothing to age — never let it drive the "oldest" hint or the 30/90 bars.
+    dateYmd: row.settled || shell ? null : isoToYmd(inv?.billed_at ?? null),
+    jobId: row.jobId,
+    address: (job?.job_address ?? '').trim() || null,
+    pctComplete: job ? effectivePctComplete(job.pct_complete, job.status) : null,
+    customerId: job?.customer_id ?? null,
+    customerName: (job?.customer_name ?? '').trim() || null,
+  }
 }
 
 /**
  * AR split by the difficult-to-collect flag: `ar` is the headline (money realistically expected
- * soon), `collections` is parked receivables. Items route by the parent job's flag, so
- * ar.total + collections.total equals the pre-split AR total.
+ * soon), `collections` is parked receivables. Both are the bill-truth kernel's buckets shaped
+ * into items — membership by status (a fully-paid-but-unmarked bill stays as a $0 settled row,
+ * so the count matches the Pipeline strip), remainders clamped once in the kernel, bills on paid
+ * or missing jobs excluded and counted in `excluded`. ar.total + collections.total = Owed.
  */
 export function buildArBuckets(
   jobs: FinancialJobRow[],
   invoices: FinancialInvoiceRow[],
   invoicePayments: FinancialInvoicePaymentRow[],
-): { ar: FinancialBucket; collections: FinancialBucket } {
+): { ar: FinancialBucket; collections: FinancialBucket; excluded: ArExcluded; truth: BillTruth } {
+  const truth = computeBillTruth({ jobs, invoices, payments: invoicePayments })
   const jobsById = new Map(jobs.map((j) => [j.id, j]))
-  const appliedByInvoice = new Map<string, number>()
-  for (const p of invoicePayments) {
-    if (!p.invoice_id) continue
-    appliedByInvoice.set(p.invoice_id, (appliedByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
+  const invoiceById = new Map(invoices.map((i) => [i.id, i]))
+  const toItems = (rows: BillTruthOpenRow[]) => rows.map((r) => arItemFromRow(r, jobsById.get(r.jobId), invoiceById))
+  return {
+    ar: finishBucket(toItems(truth.billed.rows)),
+    collections: finishBucket(toItems(truth.collections.rows)),
+    excluded: { count: truth.excludedOwed.count, total: truth.excludedOwed.total },
+    truth,
   }
-  const billedInvoices = invoices.filter((i) => i.status === 'billed')
-  const jobIdsWithBilledInvoice = new Set(billedInvoices.map((i) => i.job_id))
-  const arItems: FinancialItem[] = []
-  const collectionsItems: FinancialItem[] = []
-  for (const inv of billedInvoices) {
-    const remaining = Math.max(0, Number(inv.amount ?? 0) - (appliedByInvoice.get(inv.id) ?? 0))
-    if (remaining <= EPSILON) continue
-    const job = jobsById.get(inv.job_id)
-    const target = financialJobRowInCollections(job) ? collectionsItems : arItems
-    target.push({
-      key: `inv:${inv.id}`,
-      label: job ? financialJobLabel(job) : 'Unknown job',
-      sublabel: 'Billed invoice',
-      amount: remaining,
-      dateYmd: isoToYmd(inv.billed_at),
-      jobId: inv.job_id,
-      address: (job?.job_address ?? '').trim() || null,
-      pctComplete: job ? effectivePctComplete(job.pct_complete, job.status) : null,
-      customerId: job?.customer_id ?? null,
-      customerName: (job?.customer_name ?? '').trim() || null,
-    })
-  }
-  for (const job of jobs) {
-    if ((job.status ?? '') !== 'billed') continue
-    if (jobIdsWithBilledInvoice.has(job.id)) continue
-    const remaining = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
-    if (remaining <= EPSILON) continue
-    const target = financialJobRowInCollections(job) ? collectionsItems : arItems
-    target.push({
-      key: `job:${job.id}`,
-      label: financialJobLabel(job),
-      sublabel: 'Billed job (no invoice rows)',
-      amount: remaining,
-      dateYmd: null,
-      jobId: job.id,
-      address: (job.job_address ?? '').trim() || null,
-      pctComplete: effectivePctComplete(job.pct_complete, job.status),
-      customerId: job.customer_id ?? null,
-      customerName: (job.customer_name ?? '').trim() || null,
-    })
-  }
-  return { ar: finishBucket(arItems), collections: finishBucket(collectionsItems) }
 }
 
 /** AR ignoring the collections split: open remainders on ALL billed invoices + invoice-less billed jobs. */

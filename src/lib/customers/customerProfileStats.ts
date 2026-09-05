@@ -2,10 +2,14 @@
  * Customer profile modal — derived stats kernel (v2.1322).
  *
  * Pure math over a customer's jobs/invoices/payments for the three money
- * cells and the aging chip:
- *  - open balance: billed-invoice remainders + billed job-shells (the board's
- *    remaining semantics), INCLUDING Collections jobs — flagged money is
- *    still owed to this customer's ledger;
+ * cells and the aging chip. The money rules are the bill-truth kernel's
+ * (`lib/billing/billTruth.ts`, journey Tier-1 #2(c)) — the same rows and the
+ * same single clamp the Pipeline strip, the AR card, the Invoices footer and
+ * the Customers list read:
+ *  - open balance: `openBillRowsForJob` — billed-invoice remainders + billed
+ *    job-shells, each clamped at 0 once (an over-paid shell no longer nets
+ *    against another job, J34-N6), INCLUDING Collections jobs — flagged money
+ *    is still owed to this customer's ledger;
  *  - aging buckets: estimated_bill_date rule at 30/90 days with remaining > 0
  *    (keep in sync with billedStageRowAgingBucket in lib/jobs/invoiceBilling —
  *    same rule, restated here over lean structural inputs);
@@ -14,6 +18,14 @@
  *    invoice-linked payments' paid_on, last 12 months (job-level payments
  *    excluded — no bill date to measure from).
  */
+
+import {
+  appliedByInvoiceId,
+  jobBilledContribution,
+  lifetimeCollected,
+  openBillRowsForJob,
+  openRemainder,
+} from '../billing/billTruth'
 
 export type ProfileInvoice = {
   id: string
@@ -72,28 +84,20 @@ export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): Custom
   let billedTotal = 0
   const aging: CustomerAging = { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 }
   for (const job of jobs) {
-    const appliedByInvoice = new Map<string, number>()
-    for (const p of job.payments) {
-      const amt = Number(p.amount ?? 0)
-      lifetime += amt
-      if (p.invoice_id) appliedByInvoice.set(p.invoice_id, (appliedByInvoice.get(p.invoice_id) ?? 0) + amt)
-    }
-    const status = (job.status ?? 'working') as string
-    const invoicedBilled = job.invoices
-      .filter((i) => i.status === 'billed' || i.status === 'paid')
-      .reduce((sum, i) => sum + Number(i.amount ?? 0), 0)
-    if (invoicedBilled > 0) billedTotal += invoicedBilled
-    else if (status === 'billed' || status === 'paid') billedTotal += Number(job.revenue ?? 0)
-    if (status === 'paid') continue
-    const billed = job.invoices.filter((i) => i.status === 'billed')
-    if (billed.length === 0) {
-      if (status === 'billed') open += Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)
-      continue
-    }
-    for (const inv of billed) {
-      const remaining = Math.max(0, Number(inv.amount ?? 0) - (appliedByInvoice.get(inv.id) ?? 0))
-      open += remaining
-      if (remaining <= 0 || !inv.estimated_bill_date) continue
+    lifetime += lifetimeCollected(job.payments)
+    const appliedByInvoice = appliedByInvoiceId(job.payments)
+    billedTotal += jobBilledContribution(job, job.invoices)
+    const rows = openBillRowsForJob(
+      job,
+      job.invoices.map((i) => ({ ...i, job_id: job.id })),
+      appliedByInvoice,
+    )
+    const invoiceById = new Map(job.invoices.map((i) => [i.id, i]))
+    for (const row of rows) {
+      open += row.remaining
+      const inv = row.invoiceId ? invoiceById.get(row.invoiceId) : undefined
+      if (row.settled || !inv?.estimated_bill_date) continue
+      const remaining = row.remaining
       const days = daysBetweenYmdUtc(ymdOf(inv.estimated_bill_date), todayYmd)
       if (days >= 90) {
         aging.count90 += 1
@@ -170,30 +174,30 @@ export type ProfileJobRowMoney = {
 }
 
 /**
- * One job's money for the profile jobs list (v2.1985). Rules mirror
- * customerMoneyStats exactly: billed-invoice remainders (net of linked
- * payments) plus the billed job-shell fallback; every other non-paid job
- * shows its unbilled value instead.
+ * One job's money for the profile jobs list (v2.1985). Rules are the
+ * bill-truth kernel's, so listed rows reconcile with the money strip:
+ * billed-invoice remainders (net of linked payments) plus the billed
+ * job-shell fallback, each clamped once; every other non-paid job shows its
+ * unbilled value instead.
  */
 export function profileJobRowMoney(job: ProfileJob, todayYmd: string): ProfileJobRowMoney {
   const status = (job.status ?? 'working') as string
   const out: ProfileJobRowMoney = { openBilled: 0, unbilled: 0, ageDays: null, oldestOpenBillYmd: null, noBillDate: false }
   if (status === 'paid') return out
-  const appliedByInvoice = new Map<string, number>()
-  for (const p of job.payments) {
-    if (p.invoice_id) appliedByInvoice.set(p.invoice_id, (appliedByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
-  }
-  const billed = job.invoices.filter((i) => i.status === 'billed')
-  if (billed.length === 0 && status === 'billed') {
-    out.openBilled = Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)
-    out.noBillDate = out.openBilled > 0.005
+  const rows = openBillRowsForJob(job, job.invoices.map((i) => ({ ...i, job_id: job.id })), appliedByInvoiceId(job.payments))
+  const shell = rows.find((r) => r.kind === 'shell')
+  if (shell) {
+    out.openBilled = shell.remaining
+    out.noBillDate = !shell.settled
     return out
   }
+  const invoiceById = new Map(job.invoices.map((i) => [i.id, i]))
   let sawUndated = false
-  for (const inv of billed) {
-    const remaining = Math.max(0, Number(inv.amount ?? 0) - (appliedByInvoice.get(inv.id) ?? 0))
+  for (const row of rows) {
+    const inv = row.invoiceId ? invoiceById.get(row.invoiceId) : undefined
+    const remaining = row.remaining
     out.openBilled += remaining
-    if (remaining <= 0.005) continue
+    if (row.settled || !inv) continue
     const dateSource = inv.estimated_bill_date ?? inv.billed_at
     if (!dateSource) {
       sawUndated = true
@@ -204,7 +208,7 @@ export function profileJobRowMoney(job: ProfileJob, todayYmd: string): ProfileJo
   }
   if (out.oldestOpenBillYmd != null) out.ageDays = Math.max(0, daysBetweenYmdUtc(out.oldestOpenBillYmd, todayYmd))
   out.noBillDate = out.openBilled > 0.005 && out.oldestOpenBillYmd == null && sawUndated
-  if (out.openBilled <= 0.005) out.unbilled = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+  if (out.openBilled <= 0.005) out.unbilled = openRemainder(job.revenue, job.payments_made)
   return out
 }
 

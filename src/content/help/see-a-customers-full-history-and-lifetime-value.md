@@ -63,7 +63,7 @@ The **Jobs** tab is the customer's complete job history — including paid jobs 
 
 ## Audit their invoices
 
-The **Invoices** tab lists every invoice across all the customer's jobs — channel (Stripe / HCP / Physical), status ({{chip:gray|Draft}} {{chip:yellow|Billed}} {{chip:blue|Partial}} {{chip:green|Paid}}), amount, and billed / last-paid dates. Billed invoices waiting 30+ days show their age on the chip; Stripe invoices link straight to the hosted invoice. The **Lifetime** row at the bottom is the same number as the money strip up top.
+The **Invoices** tab lists every invoice across all the customer's jobs — channel (Stripe / HCP / Physical), status ({{chip:gray|Draft}} {{chip:yellow|Billed}} {{chip:blue|Partial}} {{chip:green|Paid}}), amount, and billed / last-paid dates. Billed invoices waiting 30+ days show their age on the chip; Stripe invoices link straight to the hosted invoice. The **Lifetime** row at the bottom is the same number as the money strip up top — including jobs that were billed before the app kept invoice rows — and its *collected* figure counts every payment on the customer's jobs, just like the strip.
 
 ## Follow the Activity feed
 

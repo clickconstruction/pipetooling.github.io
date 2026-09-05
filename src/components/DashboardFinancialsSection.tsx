@@ -1578,8 +1578,8 @@ function ItemsModal({
 /** Dashboard "Financials" one-pager: AR / AP / Not billed cards with drill-down modals. */
 /** `overheadCard` (v2.2676): an optional fourth tile rendered inside the same grid — the Dashboard passes the self-gating Overhead card. */
 export default function DashboardFinancialsSection({ overheadCard = null }: { overheadCard?: React.ReactNode } = {}) {
-  const { role } = useAuth()
-  const { data, loading, error } = useDashboardFinancials(true, undefined, role)
+  const { role, user: authUser } = useAuth()
+  const { data, loading, error } = useDashboardFinancials(true, undefined, role, authUser?.id ?? null)
   const [openCard, setOpenCard] = useState<CardKey | null>(null)
   const [dispatchItem, setDispatchItem] = useState<FinancialItem | null>(null)
   const [apBill, setApBill] = useState<DashboardApBill | null>(null)
@@ -1613,6 +1613,12 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
                 ? ` · Collections ${formatMoneyShortK(data.arCollections.total)} (${data.arCollections.count})`
                 : ''
             }`,
+            // Bills the kernel keeps out of Owed (on a paid or deleted job) — said, never summed.
+            ...(data.arExcluded.count > 0
+              ? [
+                  `${data.arExcluded.count} bill${data.arExcluded.count === 1 ? '' : 's'} on paid or missing jobs excluded (${formatMoneyShortK(data.arExcluded.total)})`,
+                ]
+              : []),
           ],
         },
         {

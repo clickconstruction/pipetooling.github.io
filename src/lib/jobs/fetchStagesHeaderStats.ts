@@ -15,10 +15,15 @@
  * `collectedByDay` (from the raw payment rows) — both would otherwise need
  * paid jobs' rows, which is most of the table and none of the other math.
  *
- * Known delta vs the pre-bound fetch: a `billed` invoice left hanging on a
- * `paid` job no longer surfaces in the stats (its job row isn't fetched, and
- * assembly drops orphan invoices). That combination is a billing-state bug
- * when it exists — verified empty in prod at cutover.
+ * A `billed` invoice left hanging on a `paid` (or deleted) job never surfaces
+ * in the stats — its job row isn't fetched, and the bill-truth kernel files
+ * it under `billTruth.orphans` / `excludedOwed` instead of Owed (journey
+ * J4-1/2: the $488 "Unknown job" the AR card used to sum). Surfaces may show
+ * that count as an excluded-bills hint; nothing sums it.
+ *
+ * This fetch is the SPINE (journey Tier-1 #2(c)): the Pipeline strip, the
+ * Dashboard AR card, the Billed pin and Quickfill's "who owes what" all read
+ * `computeBillTruth` over rows shaped like these — see `lib/billing/billTruth.ts`.
  */
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
@@ -37,9 +42,11 @@ import {
   type LeanStatsPaymentRow,
   type StagesHeaderStats,
 } from './stagesHeaderStats'
+import { computeBillTruth, type BillTruth } from '../billing/billTruth'
+import { legacyStripBilledTotal, reportBillTruthShadow } from '../billing/billTruthShadow'
 
 export type FetchStagesHeaderStatsResult =
-  | { ok: true; stats: StagesHeaderStats; leanBilledRows: StageRow[] }
+  | { ok: true; stats: StagesHeaderStats; leanBilledRows: StageRow[]; billTruth: BillTruth }
   | { ok: false; error: string }
 
 /**
@@ -100,13 +107,28 @@ export async function fetchStagesHeaderStats(
       payments,
     )
     const stats = computeStagesHeaderStats(jobs, now)
+    // Orphans (bills whose job the bound fetch never ships) are visible only
+    // from the flat rows — the assembled jobs dropped them already.
+    const billTruth = computeBillTruth({
+      jobs: (jobRows ?? []) as unknown as LeanStatsJobRow[],
+      invoices: (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
+      payments,
+    })
+    // Shadow (one release): the strip's old shell arm was unclamped.
+    reportBillTruthShadow({
+      surface: 'pipeline-strip-billed',
+      legacy: legacyStripBilledTotal(billTruth.billed.rows),
+      kernel: billTruth.billed.total,
+    })
     return {
       ok: true,
       stats: {
         ...stats,
         paid: { count: paidCount },
         collectedByDay: collectedByDayFromPayments(payments, now),
+        billTruth,
       },
+      billTruth,
       // Lean billed rows for the chase-queue card (v2.2025): the same
       // assembled jobs the stats ran over, shaped by the board kernel. Lean
       // rows lack names — the call-mode modal re-derives from full rows.

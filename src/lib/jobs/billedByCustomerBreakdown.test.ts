@@ -108,7 +108,7 @@ describe('buildBilledByCustomerBreakdown', () => {
     expect(byId.get('i3')!.externalSendChannel).toBeNull()
   })
 
-  it('bill amounts net payments applied to that invoice; fully-applied rows drop out', () => {
+  it('bill amounts net payments applied to that invoice; a fully-applied row stays as a $0 settled bill that never ages', () => {
     const j = job({
       id: 'jp',
       payments: [
@@ -116,11 +116,18 @@ describe('buildBilledByCustomerBreakdown', () => {
         { invoice_id: 'i2', amount: 1000 },
       ] as unknown as JobWithDetails['payments'],
     })
-    const rows = [invRow(j, { id: 'i1', amount: 1000 }), invRow(j, { id: 'i2', amount: 1000 })]
+    const rows = [invRow(j, { id: 'i1', amount: 1000, estimated_bill_date: '2026-05-01' }), invRow(j, { id: 'i2', amount: 1000, estimated_bill_date: '2026-01-01' })]
     const groups = buildBilledByCustomerBreakdown(rows, NOW)
     expect(groups).toHaveLength(1)
-    expect(groups[0]!.bills).toHaveLength(1)
-    expect(groups[0]!.bills[0]!.amount).toBe(600)
+    // bill truth (J4-1 b): the count matches the Pipeline strip — the settled row is kept, worth $0, undated
+    expect(groups[0]!.bills).toHaveLength(2)
+    expect(groups[0]!.total).toBe(600)
+    const byId = new Map(groups[0]!.bills.map((b) => [b.invoiceId, b]))
+    expect(byId.get('i1')).toMatchObject({ amount: 600, settled: false, ageDays: 111 })
+    expect(byId.get('i2')).toMatchObject({ amount: 0, settled: true, ageDays: null })
+    // the settled bill's 200+ day age must NOT make the customer look 200 days late
+    expect(groups[0]!.worstAgeDays).toBe(111)
+    expect(groups[0]!.bills[0]!.invoiceId).toBe('i1') // aged first, settled last
   })
 
   it('job-shell rows use revenue − payments and jump by jobId; undated bills sort last with null age', () => {

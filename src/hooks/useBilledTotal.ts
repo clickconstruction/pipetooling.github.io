@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { computeBillTruth, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../lib/billing/billTruth'
+import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
+import { legacyBilledPinTotal, reportBillTruthShadow } from '../lib/billing/billTruthShadow'
 
 // Intentionally ALL billed jobs, including those flagged into Collections — this total means
-// "billed and unpaid", unlike the Dashboard AR headline which excludes Collections (buildArBuckets).
+// "billed and unpaid" = the bill-truth kernel's Owed (billed + collections), the same figure the
+// Pipeline strip, the AR card (ar + Collections) and Quickfill read. Bills on paid or deleted jobs
+// are excluded by the kernel (they used to pad this pin).
 export function useBilledTotal(
   enabled: boolean,
   refreshKey?: number
@@ -30,52 +35,46 @@ export function useBilledTotal(
         const [jobsRes, invoicesRes] = await Promise.all([
           withSupabaseRetry(
             async () =>
-              supabase.from('jobs_ledger').select('id, revenue, payments_made').eq('status', 'billed'),
+              supabase
+                .from('jobs_ledger')
+                .select('id, status, revenue, payments_made, collections_at')
+                // the spine's cohort — a billed invoice on a working/waiting job is owed too
+                .or(`status.in.(${LEAN_STATS_ACTIVE_JOB_STATUSES.join(',')}),status.is.null`),
             'useBilledTotal jobs',
           ),
           withSupabaseRetry(
             async () =>
-              supabase.from('jobs_ledger_invoices').select('id, job_id, amount').eq('status', 'billed'),
+              supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status').eq('status', 'billed'),
             'useBilledTotal invoices',
           ),
         ])
         if (cancelled) return
-        const jobs = (jobsRes ?? []) as Array<{ id: string; revenue: number | null; payments_made: number | null }>
-        const invoices = (invoicesRes ?? []) as Array<{ id: string; job_id: string; amount: number | null }>
+        const jobs = (jobsRes ?? []) as unknown as BillTruthJob[]
+        const invoices = (invoicesRes ?? []) as unknown as BillTruthInvoice[]
         const invoiceIds = invoices.map((i) => i.id)
-        let paymentsRows: Array<{ invoice_id: string | null; amount: number | null }> = []
+        let paymentsRows: BillTruthPayment[] = []
         if (invoiceIds.length > 0) {
           paymentsRows =
-            (await withSupabaseRetry(
+            ((await withSupabaseRetry(
               async () =>
                 supabase.from('jobs_ledger_payments').select('invoice_id, amount').in('invoice_id', invoiceIds),
               'useBilledTotal payments',
-            )) ?? []
+            )) ?? []) as BillTruthPayment[]
         }
-        const appliedByInvoice = new Map<string, number>()
-        for (const p of paymentsRows) {
-          if (!p.invoice_id) continue
-          appliedByInvoice.set(
-            p.invoice_id,
-            (appliedByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0),
-          )
-        }
-        const jobIdsWithBilledInvoice = new Set(invoices.map((i) => i.job_id))
-        let sum = 0
-        let n = 0
-        for (const inv of invoices) {
-          const applied = appliedByInvoice.get(inv.id) ?? 0
-          sum += Math.max(0, Number(inv.amount ?? 0) - applied)
-          n += 1
-        }
-        for (const j of jobs) {
-          if (jobIdsWithBilledInvoice.has(j.id)) continue
-          sum += Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
-          n += 1
-        }
+        const truth = computeBillTruth({ jobs, invoices, payments: paymentsRows })
+        // Shadow (one release): the old pin summed every billed invoice, orphans and paid-job bills included.
+        reportBillTruthShadow({
+          surface: 'dashboard-billed-pin',
+          legacy: legacyBilledPinTotal(
+            jobs.filter((j) => j.status === 'billed'),
+            invoices,
+            paymentsRows,
+          ),
+          kernel: truth.owed.total,
+        })
         if (!cancelled) {
-          setCount(n)
-          setTotal(sum)
+          setCount(truth.owed.count)
+          setTotal(truth.owed.total)
         }
       } catch {
         if (!cancelled) {

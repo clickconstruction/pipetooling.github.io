@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PipelineOverview } from './PipelineOverview'
 import type { StagesHeaderStats } from '../../lib/jobs/stagesHeaderStats'
+import { emptyBillTruth } from '../../lib/billing/billTruth'
 
 const stats: StagesHeaderStats = {
   waiting: { count: 17, total: 262300 },
@@ -19,6 +20,7 @@ const stats: StagesHeaderStats = {
   billedAging: { count30_90: 10, sum30_90: 40000, count90: 4, sum90: 44000 },
   collectedByDay: [12000, 30000, 40000, 36000].map((total, i) => ({ dayYmd: `2026-08-0${i + 1}`, total })),
   billedNoDate: 0,
+  billTruth: emptyBillTruth(),
 }
 
 function props(over: Partial<Parameters<typeof PipelineOverview>[0]> = {}) {
