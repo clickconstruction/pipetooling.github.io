@@ -760,3 +760,6 @@ verify_jwt = false
 
 [functions.contract-form-paper-entry]
 verify_jwt = false
+
+[functions.complete-contract-form-office]
+verify_jwt = false

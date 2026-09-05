@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  hasOfficeBoxes,
+  schemaForParty,
   applyPrefill,
   askedBoxes,
   buildFillPlan,
@@ -113,7 +115,10 @@ describe('buildFillPlan', () => {
   it('binds by name, splits digits across segments, draws signatures and unbound boxes', () => {
     const s = w9Schema()
     const plan = buildFillPlan(s, { name: 'Taunya', cls_individual: true, address: 'A St', ssn: '123456789' }, { todayLabel: 'Sep 4, 2026', signature: { mode: 'type', text: 'Taunya Rachelle' } })
-    expect(plan).toEqual([
+    // Bound ops also carry page / rect / align so the executor can fall back to drawing; strip them here.
+    const bare = plan.map((o) => (o.kind === 'setText' ? { kind: o.kind, bind: o.bind, text: o.text, fontSize: o.fontSize } : o.kind === 'check' ? { kind: o.kind, bind: o.bind } : o))
+    expect(plan.filter((o) => o.kind === 'setText' && o.bind === 'f1_01')[0]).toMatchObject({ page: 1, rect: expect.objectContaining({ x: expect.any(Number) }) })
+    expect(bare).toEqual([
       { kind: 'setText', bind: 'f1_01', text: 'Taunya', fontSize: undefined },
       { kind: 'check', bind: 'c1_1[0]' },
       { kind: 'setText', bind: 'f1_07', text: 'A St', fontSize: undefined },
@@ -163,5 +168,28 @@ describe('geometry', () => {
     const s = pdfRectToScreen(r, LETTER, 1.5)
     expect({ left: round2(s.left), top: round2(s.top), width: round2(s.width), height: round2(s.height) }).toEqual({ left: 87.9, top: 177, width: 776.1, height: 21 })
     expect(screenRectToPdf(s, LETTER, 1.5)).toEqual(r)
+  })
+})
+
+describe('parties (two-party forms)', () => {
+  it('splits a schema by party, pruning groups and one-of sets, and fills office signature/date only from the office context', () => {
+    const s = w9Schema()
+    s.boxes.push({ key: 'emp_name', type: 'text', page: 1, rect: { x: 36, y: 79, w: 250, h: 19 }, order: 950, label: 'Employer', party: 'office' })
+    s.boxes.push({ key: 'emp_sig', type: 'signature', page: 1, rect: { x: 294, y: 79, w: 190, h: 19 }, order: 960, label: 'Employer signature', party: 'office' })
+    s.boxes.push({ key: 'emp_date', type: 'date', page: 1, rect: { x: 489, y: 79, w: 78, h: 19 }, order: 970, label: 'Date', dateMode: 'today', party: 'office' })
+    expect(hasOfficeBoxes(s)).toBe(true)
+    expect(hasOfficeBoxes(w9Schema())).toBe(false)
+    const signer = schemaForParty(s, 'signer')
+    const office = schemaForParty(s, 'office')
+    expect(signer.boxes.map((b) => b.key)).not.toContain('emp_name')
+    expect(office.boxes.map((b) => b.key)).toEqual(['emp_name', 'emp_sig', 'emp_date'])
+    expect(office.groups).toEqual([])
+    expect(office.oneOfs).toEqual([])
+    expect(signer.groups.map((g) => g.key)).toEqual(s.groups.map((g) => g.key))
+    // Without an office context the office signature and date produce nothing.
+    const noOffice = buildFillPlan(office, { emp_name: 'Robert Douglas, Owner' }, { todayLabel: 'Sep 5, 2026', signature: { mode: 'type', text: 'Taunya' } })
+    expect(noOffice.map((o) => o.kind)).toEqual(['drawText'])
+    const withOffice = buildFillPlan(office, { emp_name: 'Robert Douglas, Owner' }, { todayLabel: 'x', signature: null, office: { signature: { mode: 'type', text: 'Robert Douglas' }, todayLabel: 'Sep 5, 2026' } })
+    expect(withOffice.map((o) => (o.kind === 'drawText' ? o.text : o.kind))).toEqual(['Robert Douglas, Owner', 'Robert Douglas', 'Sep 5, 2026'])
   })
 })

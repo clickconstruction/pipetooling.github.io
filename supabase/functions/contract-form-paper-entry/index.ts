@@ -22,7 +22,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
-import { buildFillPlan, splitFormValuesForStorage, type FormSchema, type FormValues } from '../_shared/formSchema.ts'
+import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorage, type FormSchema, type FormValues } from '../_shared/formSchema.ts'
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 
@@ -129,8 +129,11 @@ serve(async (req) => {
     if (body.attested !== true) return json({ error: 'Confirm the answers were typed exactly as written.' }, 400)
     const skipBoxes = body.skip_boxes === true
     const values: FormValues = !skipBoxes && body.formValues && typeof body.formValues === 'object' && !Array.isArray(body.formValues) ? (body.formValues as FormValues) : {}
-    // Only keys the schema knows, only strings / booleans.
-    const known = new Set(tpl.schema.boxes.map((b) => b.key))
+    // The paper carries the signer's half; the office's half is completed from the record (PR 7).
+    const signerSchema = schemaForParty(tpl.schema, 'signer')
+    const twoParty = hasOfficeBoxes(tpl.schema)
+    // Only keys the signer's schema knows, only strings / booleans.
+    const known = new Set(signerSchema.boxes.map((b) => b.key))
     for (const k of Object.keys(values)) {
       const v = values[k]
       if (!known.has(k) || !(typeof v === 'string' || typeof v === 'boolean')) delete values[k]
@@ -166,9 +169,9 @@ serve(async (req) => {
         console.error('template download', dlErr)
         return await fail(500, 'Could not load the form.')
       }
-      const plan = buildFillPlan(tpl.schema, values, { todayLabel: formatYmdForContractEmail(signedOn) ?? signedOn, signature: null })
+      const plan = buildFillPlan(signerSchema, values, { todayLabel: formatYmdForContractEmail(signedOn) ?? signedOn, signature: null })
       try {
-        const filled = await fillFormPdf(pdfLib as unknown as FormPdfLibLike, new Uint8Array(await file.arrayBuffer()), plan, { cursiveFontBytes: await loadCursiveFont(), fontkit })
+        const filled = await fillFormPdf(pdfLib as unknown as FormPdfLibLike, new Uint8Array(await file.arrayBuffer()), plan, { cursiveFontBytes: await loadCursiveFont(), fontkit, flatten: !twoParty, readOnlyFilled: twoParty })
         if (filled.skipped.length > 0) console.warn('paper entry skipped binds', docId, filled.skipped)
         pdfPath = `${docId}/signed.pdf`
         const { error: upErr } = await admin.storage.from(FORM_PDFS_BUCKET).upload(pdfPath, filled.bytes, { contentType: 'application/pdf', upsert: true })
@@ -194,7 +197,7 @@ serve(async (req) => {
       uploaded.push(scanPath)
     }
 
-    const split = splitFormValuesForStorage(tpl.schema, values)
+    const split = splitFormValuesForStorage(signerSchema, values)
     const { data: inserted, error: insErr } = await admin
       .from('person_contract_documents')
       .insert({

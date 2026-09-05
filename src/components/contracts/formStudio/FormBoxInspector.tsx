@@ -108,6 +108,14 @@ export function FormBoxInspector({
         </select>
       </label>
 
+      <label>
+        <span style={label}>Filled by</span>
+        <select style={input} value={box.party ?? 'signer'} onChange={(e) => onPatch({ party: e.target.value === 'office' ? 'office' : undefined })}>
+          <option value="signer">the signer (on the signing page)</option>
+          <option value="office">the office (completed from the record afterwards)</option>
+        </select>
+      </label>
+
       {box.type !== 'constant' ? (
         <>
           <label>

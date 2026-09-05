@@ -1,0 +1,33 @@
+---
+title: complete the office section of a form
+category: Office
+roles: dev, master_technician, assistant, controller
+keywords: contracts, forms, I-9, office section, employer, Section 2, two-party, complete, verification
+order: 80
+---
+Some forms have two halves. On the I-9 the employee fills and signs **Section 1**; the employer examines their documents and completes **Section 2**. In the app the employee's half is the signing page as usual, and the office's half is finished from the record.
+
+## How a two-party form works
+
+- In the **Form Studio**, each box has a **Filled by** setting: *the signer* or *the office*. The signer never sees office boxes; the phone lens skips them.
+- When the signer signs (or the office keys their half from paper), the filed PDF holds the signer's answers but is **not final yet**: the office boxes are still open.
+- The record shows an amber **Office section · not completed yet** line until you finish it.
+
+## Complete it
+
+1. **People → Contracts**, the person's row, {{button:outline|View signed}} on the form.
+2. Click {{button:blue|Complete the office section}}. The filed PDF opens with only the office boxes over it.
+3. Fill them the way the paper asks — for the I-9, the document you examined (List A, or List B and C), its number and expiration, and the first day of employment.
+4. **Your name and title** as it should appear, e.g. *Robert Douglas, Owner*. It is typed in cursive into the office signature box; office date boxes get today's date.
+5. {{button:blue|Complete and finish the PDF}}.
+
+:::example This is the moment the PDF becomes final
+Completing flattens the document: the signer's answers and the office's become page content nobody can edit. Until then, staff could still fill the office boxes; after, the record shows **Office section · completed** with the date and the name it was signed as, and {{button:outline|View office section}} shows what was recorded.
+:::
+
+## Things to know
+
+- Required office boxes must be filled before completing; the line under the page names what is still missing.
+- Sensitive office boxes, if a form has them, live in the PDF only, like the signer's.
+- One-shot: a completed office section cannot be edited. If something is wrong, ask the signer for a fresh copy (send the form again) and complete it anew.
+- Opening the finished PDF stays limited to devs, controllers, and pay-approved masters, and each open is logged.

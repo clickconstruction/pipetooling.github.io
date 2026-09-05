@@ -39,3 +39,7 @@ Solid borders fill the PDF's own field by name; dashed borders are drawn at thei
 ## Working with an agent
 
 Hand an agent the PDF and say "help me draft this". It can run `npm run forms:inspect`, draft the schema with `forms:draft`, write the labels, render the filled page with `forms:preview --png`, and send you the image. When it looks right, paste the JSON into **Import JSON** in the studio, nudge anything that needs it, and publish.
+
+## Forms with an office half
+
+Some forms are signed by one person and completed by another (the I-9). In the inspector, set **Filled by** to *the office* on the boxes the office completes. The signer never sees them; after the signer signs, the record offers **Complete the office section**, which fills those boxes on the filed PDF and finishes it. **Preview filled PDF** shows both halves with sample answers.

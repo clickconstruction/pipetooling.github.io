@@ -41,7 +41,8 @@ const values: FormValues = valuesPath ? (JSON.parse(readFileSync(valuesPath, 'ut
 const problems = validateFormValues(schema, values)
 if (problems.length > 0) console.error('note — these values would be refused at signing:', problems)
 
-const plan = buildFillPlan(schema, values, { todayLabel: 'Sep 4, 2026', signature: { mode: 'type', text: 'Sample Signer' } })
+// Both parties are previewed: the signer as "Sample Signer", the office (party: 'office' boxes) as "Office Signer".
+const plan = buildFillPlan(schema, values, { todayLabel: 'Sep 4, 2026', signature: { mode: 'type', text: 'Sample Signer' }, office: { signature: { mode: 'type', text: 'Office Signer' }, todayLabel: 'Sep 5, 2026' } })
 const fontPath = resolve(process.cwd(), 'public/fonts/GreatVibes-Regular.ttf')
 const cursive = existsSync(fontPath) ? readFileSync(fontPath) : null
 const result = await fillFormPdf(pdfLib as unknown as FormPdfLibLike, readFileSync(pdfPath), plan, {

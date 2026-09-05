@@ -121,6 +121,7 @@ when_to_read:
    - [get-contract-signing-link-for-self](#get-contract-signing-link-for-self)
    - [open-contract-form-pdf](#open-contract-form-pdf)
    - [contract-form-paper-entry](#contract-form-paper-entry)
+   - [complete-contract-form-office](#complete-contract-form-office)
    - [check-estimate-attachment-url](#check-estimate-attachment-url)
    - [resolve-ip-geolocation](#resolve-ip-geolocation)
    - [street-view-preview](#street-view-preview)
@@ -1341,7 +1342,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### accept-contract
 
-**Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn.
+**Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn. **Two-party forms (v2.2802):** the signer's boxes only are validated and filled (`schemaForParty(schema, 'signer')`); when the template has office boxes the PDF is filed unflattened with the filled fields read-only, and `complete-contract-form-office` finishes it.
 
 **Endpoint**: `POST /functions/v1/accept-contract`
 
@@ -1410,6 +1411,21 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 - `{ "action": "file", "book_entry_id", "person_name", "person_id"?, "formValues", "signer_printed_name", "signed_on_ymd", "attested": true, "skip_boxes", "scan"?: { base64, mime, filename } }` → `{ ok, id, filed_pdf, filed_scan }`. Validates known keys only, scan type (JPG / PNG / WEBP / HEIC / PDF) and size (8 MB), the attestation, and the date; `skip_boxes` requires a scan. Missing required boxes never block. Fills + flattens the template with **no signature drawn** (the date box gets the date on the paper), uploads `<id>/signed.pdf` (unless boxes were skipped) and `<id>/source.<ext>` to `contract-form-pdfs`, then inserts the `person_contract_documents` row: `status = signed`, `signed_at` = the paper's date, `signer_printed_name`, `applied_contract_template_document_id` (the resolver trigger stamps `form_template_id` + `doc_type`), `form_values` (non-sensitive) / `form_hints` (last four), `form_pdf_storage_path`, `form_scan_storage_path`, `form_source = 'paper'`, `form_keyed_by_user_id`, and a `note` when the boxes were skipped. Uploaded objects are removed if the insert fails.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font (unused here in practice since no signature is drawn).
+
+
+### complete-contract-form-office
+
+**Purpose** (v2.2802, Contract Forms PR 7 — two-party forms): the office's half of a form whose template has `party: 'office'` boxes (the I-9's Section 2). Such forms are filed by `accept-contract` / `contract-form-paper-entry` **unflattened** (signer fields read-only) so the office can still fill its fields; this function finishes them.
+
+**Endpoint**: `POST /functions/v1/complete-contract-form-office` (`verify_jwt = false`; JWT validated with `auth.getUser` in the body).
+
+**Gate**: `users.role` in dev · master_technician · assistant · controller, and the row must be readable under the caller's own contracts RLS (read through their client).
+
+**Body**:
+- `{ "action": "prepare", "person_contract_document_id": uuid }` → `{ ok, schema (office boxes only, via schemaForParty), pdfUrl (15-min signed URL of the current filed PDF), officeValues, completed: { at, by, printedName } | null, documentName, personName }`. 400 when the form has no office section; 409 when the signer has not completed their part.
+- `{ "action": "complete", "person_contract_document_id", "officeValues", "office_signer_printed_name" }` → validates the office half (`validateFormValues` on the office schema; unknown keys dropped), downloads the filed PDF, fills the office boxes (office signature typed in cursive, office `today` dates = today), **flattens**, overwrites `<id>/signed.pdf` in `contract-form-pdfs`, and stores `office_values` (non-sensitive) + `office_completed_at` + `office_completed_by_user_id` + `office_signer_printed_name`. One-shot: **409** `already_completed` afterwards. → `{ ok }`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font.
 
 ---
 

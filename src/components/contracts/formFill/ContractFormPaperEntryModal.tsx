@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { supabase } from '../../../lib/supabase'
 import { PdfPageCanvas } from '../formStudio/PdfPageCanvas'
 import { FormFillOverlay } from './FormFillOverlay'
-import type { FormBox, FormSchema, FormValues } from '../../../lib/forms/formSchema'
+import { schemaForParty, type FormBox, type FormSchema, type FormValues } from '../../../lib/forms/formSchema'
 import { acceptDigitsInput, errorsByBox, fillProgress, setOneOfValue, toggleCheckbox } from '../../../lib/forms/formFillState'
 import { buildPaperEntryRequest, checkScanFile, missingRequired, paperEntryBlockers } from '../../../lib/forms/formPaperEntry'
 import { todayYmdInAppTz } from '../../../utils/dateUtils'
@@ -59,7 +59,8 @@ export function ContractFormPaperEntryModal({ personName, personId, forms, onClo
         const j = (await res.json()) as Prepared & { ok?: boolean; error?: string }
         if (!res.ok || !j.ok) throw new Error(j.error || `HTTP ${res.status}`)
         if (cancelled) return
-        setPrepared(j)
+        // Two-party forms: the paper carries the signer's half; the office section is completed from the record.
+        setPrepared({ ...j, schema: schemaForParty(j.schema, 'signer') })
         // Roster prefill the way the signer gets it: the name box.
         const nameBox = j.schema.boxes.find((b) => b.prefill === 'person_name')
         if (nameBox) setValues({ [nameBox.key]: personName })

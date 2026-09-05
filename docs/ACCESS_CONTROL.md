@@ -155,6 +155,8 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Enter from paper** (v2.2801): `contract-form-paper-entry` lets dev · master_technician · assistant · controller key a hand-filled form into a person's row as signed on paper (the roles that may insert person copies); it files the scan alongside the flattened PDF in `contract-form-pdfs`. Opening the scan goes through `open-contract-form-pdf` with `which: 'scan'` — the same dev / controller / pay-approved-master gate and the same `contract_form_pdf_opens` log.
 
+**Two-party forms** (v2.2802): `complete-contract-form-office` lets dev · master_technician · assistant · controller fill a form's `party: 'office'` boxes on the filed PDF and flatten it (the I-9's Section 2), provided the row is readable under their own RLS. The signer never sees office boxes; `office_values` stores only non-sensitive office answers.
+
 ### Contract documents: type/expiry/identity columns (v2.1213, `20260801200000_contract_doc_types_expiry.sql`)
 - `person_contract_documents` gains `doc_type` (agreement|coi|w9|license|other, default agreement), `expires_at`, and `person_id` (FK `people`, resolver backfill + `contract_docs_set_person_id` trigger). **No RLS changes** — column-additive; existing contract-document policies govern who sees the new compliance fields.
 

@@ -45,7 +45,8 @@ Source of truth: [`supabase/functions/_shared/formSchema.ts`](../supabase/functi
       "bind": "topmostSubform[0].Page1[0].f1_01[0]",   // fill the PDF's own field; omit to draw at rect
       "maxLength": 80, "fontSize": 10, "align": "left",
       "prefill": "person_name",      // person_name | person_email | person_phone
-      "sample": "Misses Taunya Rachelle"               // studio / preview only
+      "sample": "Misses Taunya Rachelle",              // studio / preview only
+      "party": "signer"              // signer (default) | office — office boxes are completed from the record afterwards (v2.2802)
     },
     { "key": "ssn", "type": "digits", "mask": "###-##-####",
       "bindSegments": ["…f1_11[0]", "…f1_12[0]", "…f1_13[0]"],  // one PDF field per mask segment
@@ -106,6 +107,16 @@ The IRS W-9 fixture used by the tests lives at `src/test/fixtures/fw9-2024-03.pd
 
 A sub hands the office a hand-filled form. **People → Contracts → person → + Add document → Enter from paper** opens `ContractFormPaperEntryModal`: the form's pages with the signer's overlay (`FormFillOverlay`, desktop scale, no lens, `signature={null}`), a scan attachment (photo / PDF ≤ 8 MB), "signed by (printed)" + "date on the paper", and the attestation checkbox. Filing posts to `contract-form-paper-entry` (`prepare` → schema + 15-minute template URL; `file` → fill + flatten with **no signature drawn**, upload `<id>/signed.pdf` + `<id>/source.<ext>` to `contract-form-pdfs`, insert the signed row with `form_source = 'paper'`, `form_scan_storage_path`, `form_keyed_by_user_id`). **Skip the boxes, just file the scan** files the scan alone (a `note` records it). Missing required boxes never block; `missingRequired` (`src/lib/forms/formPaperEntry.ts`) lists them on the record. The record modal shows the paper facts and two doors, **Open the filled PDF** / **Open the paper scan**, both through `open-contract-form-pdf` (`which`).
 
+## Two-party forms: the office section (v2.2802)
+
+Some forms are signed by one person and completed by another (the I-9: employee Section 1, employer Section 2). Each box has a `party` — `signer` (default) or `office`. `schemaForParty(schema, party)` returns the half one party sees (groups / one-of sets pruned), and every kernel function works on it unchanged:
+
+- **Signing** (`accept-contract`) and **Enter from paper** validate and fill the signer's half. When `hasOfficeBoxes(schema)`, the PDF is filed **unflattened** with the filled fields read-only (`fillFormPdf(..., { flatten: false, readOnlyFilled: true })`).
+- **The record** shows an *Office section* line; **Complete the office section** opens `ContractFormOfficeModal` — the filed PDF with only the office boxes over it — and posts to `complete-contract-form-office`, which fills the office boxes (`FillContext.office = { signature, todayLabel }` drives office signature and date boxes), flattens, overwrites `<id>/signed.pdf`, and stores `office_values` + who / when. One-shot.
+- In the **studio**, the inspector's **Filled by** select sets the party; office boxes are hatch-shaded on the layer. `forms:preview` previews both parties (Sample Signer / Office Signer).
+
+The shipped I-9 schema is `docs/forms/i9-2025-01.schema.json` (Section 1 = signer, Section 2 = office; the employer's business name and address are constants — edit them in the studio if the entity changes).
+
 ## New revisions of a form
 
 When the IRS (or anyone) issues a new PDF: open the form in the studio, **Replace PDF…** (boxes are kept; pages re-measured), then **Import PDF fields** (adds only fields no box binds yet), fix labels, **Preview filled PDF**, republish. Person copies already signed are untouched; new copies use the new PDF. From the terminal, `npm run forms:preview -- new.pdf docs/forms/<schema>.json --out /tmp/p.pdf` prints any binds the new PDF no longer has as `skipped` — that list must be empty before republishing.
@@ -120,10 +131,12 @@ People → Contracts → Contract library → **Forms** (`src/components/contrac
 
 ## Fill semantics
 
-- **Bound** box (`bind`): the PDF's own field is set (`setText` / `check`), so it renders with the form's native appearance and lands exactly. Binds the PDF lacks are reported in `skipped`, never thrown — a schema drafted against another revision degrades visibly instead of crashing a signing.
+- **Order** (v2.2802): field ops (`setText` / `check`) first, then **flatten**, then draw ops. Drawing after flattening means a field's flattened appearance can never cover drawn text (the I-9's State dropdown did exactly that before).
+- **Bound** box (`bind`): the PDF's own field is set, so it renders with the form's native appearance and lands exactly. **Dropdowns** (combo boxes) are filled by selecting the option that matches the text (case-insensitive).
+- **Tolerance** (v2.2802): a field op that fails — unknown name, `maxLength` overflow, an option the dropdown lacks — is never fatal. Bound ops carry `page` / `rect` / `align`, so the text is drawn at the box instead, and the case is reported in `skipped` as `name (reason)`. A schema drafted against another revision degrades visibly instead of crashing a signing. Single-bound `digits` boxes write the **formatted** string, so a comb field with `maxLength` (the I-9's 9-cell SSN) needs a mask without separators (`#########`).
 - **Unbound** box: text is drawn at the rect with auto-shrink to fit the width (min 5 pt), aligned per `align`; checkboxes draw an `X`; signatures draw the typed name in Great Vibes (fallback Times Italic) or the PNG, scaled to fit and vertically centred.
-- **Flatten** (default): after filling, fields become page content. Tests pass `flatten: false` to read values back.
-- **Dates**: `dateMode: 'today'` uses the company calendar label passed in `ctx.todayLabel`; the kernel never reads the clock.
+- **Flatten** (default): after filling, fields become page content. Tests pass `flatten: false` to read values back; the two-party signer stage passes `flatten: false, readOnlyFilled: true`.
+- **Dates**: `dateMode: 'today'` uses the company calendar label passed in `ctx.todayLabel` (office boxes: `ctx.office.todayLabel`); the kernel never reads the clock.
 
 ## Storage (out-of-band)
 

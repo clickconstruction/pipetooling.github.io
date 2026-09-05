@@ -9,7 +9,7 @@ import { contractBodyHasRenderableDisplay } from '../lib/contractBodyFormat'
 import { ContractBodyDisplay } from '../components/contracts/ContractBodyDisplay'
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
 import { ContractFormFill } from '../components/contracts/formFill/ContractFormFill'
-import { applyPrefill, validateFormValues, type FormPerson, type FormSchema, type FormValues } from '../lib/forms/formSchema'
+import { applyPrefill, schemaForParty, type FormPerson, type FormSchema, type FormValues, validateFormValues } from '../lib/forms/formSchema'
 import { errorsByBox, fillString, type FillLang } from '../lib/forms/formFillState'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
@@ -161,10 +161,11 @@ export default function ContractAccept() {
           signing_body_format:
             typeof json.signing_body_format === 'string' && json.signing_body_format ? json.signing_body_format : 'html',
           canonical_document_url: json.canonical_document_url ?? null,
-          form: json.form && json.form.schema ? json.form : null,
+          // Two-party forms (v2.2802): the signer sees only their boxes; the office's half is completed from the record.
+          form: json.form && json.form.schema ? { ...json.form, schema: schemaForParty(json.form.schema, 'signer') } : null,
         })
         if (json.form && json.form.schema) {
-          setFormValues(applyPrefill(json.form.schema, {}, json.form.person))
+          setFormValues(applyPrefill(schemaForParty(json.form.schema, 'signer'), {}, json.form.person))
           setFormErrors({})
         }
       } catch {

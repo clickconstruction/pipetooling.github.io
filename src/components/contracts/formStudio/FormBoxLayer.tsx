@@ -146,6 +146,7 @@ function BoxItem({
     }
   }
 
+  const office = box.party === 'office'
   const text = sample === undefined ? '' : typeof sample === 'boolean' ? (sample ? 'X' : '') : sample
   const fontPx = Math.max(6, Math.min((box.fontSize ?? 10) * scale, rect.height * 0.8))
   const style: CSSProperties = {
@@ -156,7 +157,7 @@ function BoxItem({
     height: rect.height,
     boxSizing: 'border-box',
     border: `${selected ? 2 : 1}px ${box.bind || box.bindSegments ? 'solid' : 'dashed'} ${color}`,
-    background: `${color}${selected ? '33' : '1a'}`,
+    background: office ? `repeating-linear-gradient(135deg, ${color}26 0 4px, ${color}0d 4px 8px)` : `${color}${selected ? '33' : '1a'}`,
     cursor: 'move',
     fontSize: fontPx,
     lineHeight: 1,
@@ -188,7 +189,7 @@ function BoxItem({
       role="button"
       tabIndex={0}
       aria-label={`${box.label || box.key} (${box.type})`}
-      title={`${box.key} · ${box.type}${box.bind ? ` · ${box.bind.split('.').pop()}` : ''}`}
+      title={`${box.key} · ${box.type}${office ? ' · office' : ''}${box.bind ? ` · ${box.bind.split('.').pop()}` : ''}`}
       data-box-key={box.key}
       style={style}
       onPointerDown={(e) => begin(e, 'move')}

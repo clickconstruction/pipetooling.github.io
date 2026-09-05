@@ -103,7 +103,7 @@ describe('parseSchemaJson + summary + publish payload', () => {
     const bad = parseSchemaJson(JSON.stringify({ ...s, boxes: [{ key: 'X', type: 'text', page: 9, rect: { x: 0, y: 0, w: 0, h: 0 }, order: 1, label: '' }] }))
     expect(bad.ok).toBe(false)
     if (!bad.ok) expect(bad.errors.length).toBeGreaterThan(2)
-    expect(schemaSummary(s)).toEqual({ boxes: 6, asked: 6, sensitive: 0, bound: 6, drawn: 0 })
+    expect(schemaSummary(s)).toEqual({ boxes: 6, asked: 6, sensitive: 0, bound: 6, drawn: 0, office: 0 })
     expect(bookEntryForForm({ formTemplateId: 'f', packetTemplateId: 'p', documentName: ' W-9 ', audience: 'sub', sequenceOrder: 3, versionDate: '2024-03-01' })).toEqual({
       template_id: 'p',
       document_name: 'W-9',
