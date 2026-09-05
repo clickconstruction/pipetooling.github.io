@@ -4,12 +4,15 @@ import { loadJobDayLedger } from '../lib/jobs/loadJobDayLedger'
 import { deserializeJobDayLedger, serializeJobDayLedger, type JobDayLedger, type JobDayLedgerSerialized, type JobOverheadMethod } from '../lib/jobs/jobDayLedger'
 import {
   JOB_SUMMARY_VIEW_STORAGE_KEY,
+  compareJobSummaryTotals,
   enrichJobSummaryRows,
   filterAndSortJobSummaryRows,
+  jobSummaryCompareWindow,
   jobSummaryHygiene,
   jobSummaryWindowStartYmd,
   readJobSummaryViewPrefs,
   summarizeJobSummaryRows,
+  type JobSummaryComparison,
   type JobSummaryEnrichedRow,
   type JobSummaryHygiene,
   type JobSummaryLedgerRowInput,
@@ -39,6 +42,17 @@ export type JobSummaryViewBundle<R extends JobSummaryLedgerRowInput> = {
   rows: JobSummaryEnrichedRow<R>[]
   totals: JobSummaryTotals
   hygiene: JobSummaryHygiene | null
+  /** Compare to (v2.2817): the second window's totals and the deltas; null when the chip is off or the window is "All". */
+  compare: JobSummaryCompareBundle | null
+}
+
+export type JobSummaryCompareBundle = {
+  startYmd: string
+  endYmd: string
+  totals: JobSummaryTotals
+  comparison: JobSummaryComparison
+  ledgerLoading: boolean
+  ledgerError: string | null
 }
 
 type CacheEntry = { cachedAtMs: number; ledger: JobDayLedgerSerialized }
@@ -46,6 +60,64 @@ const CACHE_TTL_MS = 60 * 60 * 1000
 
 function cacheKey(userId: string, startYmd: string, endYmd: string): string {
   return `jobDayLedger:v4:${userId}:${startYmd}:${endYmd}`
+}
+
+/** One window's day ledger behind the sessionStorage cache; `enabled` false keeps it idle and null. */
+function useJobDayLedgerWindow(args: { enabled: boolean; userId: string | undefined; startYmd: string; endYmd: string; reloadTick: number }): {
+  ledger: JobDayLedger | null
+  loading: boolean
+  error: string | null
+} {
+  const { enabled, userId, startYmd, endYmd, reloadTick } = args
+  const [ledger, setLedger] = useState<JobDayLedger | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!enabled || !userId) return
+    let cancelled = false
+    const key = cacheKey(userId, startYmd, endYmd)
+    if (reloadTick === 0) {
+      try {
+        const raw = sessionStorage.getItem(key)
+        if (raw) {
+          const entry = JSON.parse(raw) as CacheEntry
+          if (Date.now() - entry.cachedAtMs < CACHE_TTL_MS) {
+            setLedger(deserializeJobDayLedger(entry.ledger))
+            setError(null)
+            return
+          }
+        }
+      } catch {
+        /* storage unavailable or corrupt — live load */
+      }
+    }
+    setLoading(true)
+    setError(null)
+    void loadJobDayLedger({ startYmd, endYmd, isCancelled: () => cancelled })
+      .then((l) => {
+        if (cancelled || !l) return
+        setLedger(l)
+        try {
+          const entry: CacheEntry = { cachedAtMs: Date.now(), ledger: serializeJobDayLedger(l) }
+          sessionStorage.setItem(key, JSON.stringify(entry))
+        } catch {
+          /* per-session nicety only */
+        }
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, userId, startYmd, endYmd, reloadTick])
+  // A ledger for a different window than asked for is stale — hide it rather
+  // than charge last window's days to this window's jobs.
+  const forWindow = enabled && ledger && ledger.startYmd === startYmd && ledger.endYmd === endYmd ? ledger : null
+  return { ledger: forWindow, loading: enabled ? loading : false, error: enabled ? error : null }
 }
 
 export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { job_address?: string | null } }>(args: {
@@ -95,58 +167,16 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   const endYmd = denverCalendarDayKey(Date.now())
   const startYmd = jobSummaryWindowStartYmd(endYmd, prefs.window, ymdAddDays)
 
-  const [ledger, setLedger] = useState<JobDayLedger | null>(null)
-  const [ledgerLoading, setLedgerLoading] = useState(false)
-  const [ledgerError, setLedgerError] = useState<string | null>(null)
   const [reloadTick, setReloadTick] = useState(0)
   const reloadLedger = useCallback(() => setReloadTick((n) => n + 1), [])
+  const main = useJobDayLedgerWindow({ enabled, userId, startYmd, endYmd, reloadTick })
+  const ledgerForWindow = main.ledger
+  const ledgerLoading = main.loading
+  const ledgerError = main.error
 
-  useEffect(() => {
-    if (!enabled || !userId) return
-    let cancelled = false
-    const key = cacheKey(userId, startYmd, endYmd)
-    if (reloadTick === 0) {
-      try {
-        const raw = sessionStorage.getItem(key)
-        if (raw) {
-          const entry = JSON.parse(raw) as CacheEntry
-          if (Date.now() - entry.cachedAtMs < CACHE_TTL_MS) {
-            setLedger(deserializeJobDayLedger(entry.ledger))
-            setLedgerError(null)
-            return
-          }
-        }
-      } catch {
-        /* storage unavailable or corrupt — live load */
-      }
-    }
-    setLedgerLoading(true)
-    setLedgerError(null)
-    void loadJobDayLedger({ startYmd, endYmd, isCancelled: () => cancelled })
-      .then((l) => {
-        if (cancelled || !l) return
-        setLedger(l)
-        try {
-          const entry: CacheEntry = { cachedAtMs: Date.now(), ledger: serializeJobDayLedger(l) }
-          sessionStorage.setItem(key, JSON.stringify(entry))
-        } catch {
-          /* per-session nicety only */
-        }
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) setLedgerError(e instanceof Error ? e.message : String(e))
-      })
-      .finally(() => {
-        if (!cancelled) setLedgerLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [enabled, userId, startYmd, endYmd, reloadTick])
-
-  // A ledger for a different window than the current prefs is stale — hide it
-  // rather than charge last window's days to this window's jobs.
-  const ledgerForWindow = ledger && ledger.startYmd === startYmd && ledger.endYmd === endYmd ? ledger : null
+  // Compare to (v2.2817): a second window, loaded the same way, only while the chip is on.
+  const compareWindow = useMemo(() => jobSummaryCompareWindow(startYmd, endYmd, prefs.compareTo, prefs.window, ymdAddDays), [startYmd, endYmd, prefs.compareTo, prefs.window])
+  const cmp = useJobDayLedgerWindow({ enabled: enabled && compareWindow != null, userId, startYmd: compareWindow?.startYmd ?? startYmd, endYmd: compareWindow?.endYmd ?? endYmd, reloadTick })
 
   const method: JobOverheadMethod = prefs.method
   const enriched = useMemo(
@@ -160,5 +190,13 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   const totals = useMemo(() => summarizeJobSummaryRows(visible), [visible])
   const hygiene = useMemo(() => jobSummaryHygiene(ledgerForWindow), [ledgerForWindow])
 
-  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, totals, hygiene }
+  const compare = useMemo<JobSummaryCompareBundle | null>(() => {
+    if (!compareWindow) return null
+    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method })
+    const visiblePrior = filterAndSortJobSummaryRows({ rows: enrichedPrior, prefs, search, startYmd: compareWindow.startYmd, endYmd: compareWindow.endYmd })
+    const priorTotals = summarizeJobSummaryRows(visiblePrior)
+    return { ...compareWindow, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), ledgerLoading: cmp.loading, ledgerError: cmp.error }
+  }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals])
+
+  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, totals, hygiene, compare }
 }

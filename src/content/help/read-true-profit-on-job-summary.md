@@ -2,7 +2,7 @@
 title: read true profit on Job Summary
 category: Office
 roles: dev, master_technician, controller
-keywords: job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
+keywords: compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
 order: 36
 ---
 
@@ -18,6 +18,18 @@ Go to **Jobs → Job Summary**. Above the table:
 - Click any column header to sort. Click again to flip. The table opens sorted by true profit.
 
 The strip under the controls totals what's showing: jobs, revenue, gross profit and margin, overhead charged, true profit and true margin, and true profit per field hour. The chips beside it say what would move the numbers: jobs with no contract $, jobs with no %, sessions still awaiting approval, and overhead that fell on days with no field work.
+
+## Compare to and Target
+
+Two chips at the end of the control row change everything above the table at once.
+
+**Compare to** runs the same view on a second window and shows the difference. {{chip:blue|prior period}} is the same number of days immediately before your window; {{chip:blue|last year}} is the same dates a year earlier. Every tile grows a line like {{chip:green|▲ $12,400 vs prior period}} or {{chip:red|▼ 2.3 pts vs last year}}, and the margin tiles show the change in points beside the percent. Green means the move is good — for Overhead, lower is the good direction. Show, Worked in, and Overhead stay exactly as set, so the comparison is like for like.
+
+**Target** sets the true margin you expect: 30, 35, or 40%. Jobs under it turn red in the **True %** column with a ▾, the True profit tile turns red when the whole window is under, and a chip counts them: {{chip:red|▾ 4 jobs under the 35% target}}. Sort by True % to see them first.
+
+:::example Why "All" can't compare
+"All" starts at the beginning of the clock history, so there is no earlier window to compare with. Pick a shorter Worked in and the chip wakes up.
+:::
 
 ## The columns
 

@@ -58,6 +58,7 @@ import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDay
 import JobSummaryTimelineView from './JobSummaryTimelineView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
+import { jobSummaryRowUnderTarget } from '../../lib/jobs/jobSummaryLedgerView'
 import type { TallyPartRow } from '../../types/tallyPart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
@@ -677,8 +678,11 @@ export default function JobsJobSummaryTab({
                             <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 700, color: showTeamLaborAndProfit && enriched.trueProfitUsd != null && enriched.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>
                               {!showTeamLaborAndProfit ? '—' : enriched.trueProfitUsd == null ? (view.ledgerLoading ? '…' : '—') : `$${formatCurrency(enriched.trueProfitUsd)}`}
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
-                              {showTeamLaborAndProfit && enriched.trueMarginPct != null ? `${Math.round(enriched.trueMarginPct)}%` : '—'}
+                            <td
+                              style={{ padding: '0.75rem', textAlign: 'right', color: showTeamLaborAndProfit && jobSummaryRowUnderTarget(enriched, view.prefs.targetTrueMarginPct) ? 'var(--text-red-700)' : 'var(--text-700)', fontWeight: showTeamLaborAndProfit && jobSummaryRowUnderTarget(enriched, view.prefs.targetTrueMarginPct) ? 700 : undefined }}
+                              title={showTeamLaborAndProfit && jobSummaryRowUnderTarget(enriched, view.prefs.targetTrueMarginPct) ? `Under the ${view.prefs.targetTrueMarginPct}% target` : undefined}
+                            >
+                              {showTeamLaborAndProfit && enriched.trueMarginPct != null ? `${Math.round(enriched.trueMarginPct)}%${jobSummaryRowUnderTarget(enriched, view.prefs.targetTrueMarginPct) ? ' ▾' : ''}` : '—'}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
                               {formatJobSummaryPercentComplete(enriched.pct)}
