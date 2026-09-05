@@ -133,7 +133,7 @@ A Master Plumber can:
 5. Database stores all data with proper relationships and constraints
 
 ### Client-Side Routing
-- All routes except `/sign-in`, `/sign-up`, `/reset-password`, and `/reset-password-confirm` are protected
+- All routes except `/sign-in`, `/accept-invite`, `/reset-password`, `/reset-password-confirm` and the customer/sub-facing public pages are protected (there is no self-service sign-up route — removed v2.2837)
 - `ProtectedRoute` component checks authentication
 - Role-based navigation hiding (subcontractors see limited nav)
 - Client-side redirects enforce role restrictions
@@ -141,7 +141,7 @@ A Master Plumber can:
 **Public Routes**:
 - `/sign-in` - Sign in page
 - `/dev-login` - Dev-only auth bypass (always signs in as `robert@douglasmining.com` — v2.1517; only when `import.meta.env.DEV`; requires `VITE_DEV_LOGIN_SECRET` and Edge Function `DEV_LOGIN_SECRET`). See `EDGE_FUNCTIONS.md` → dev-login.
-- `/sign-up` - Sign up page
+- `/accept-invite` - Invite landing page (set a password once; a session that did not arrive via the invite sees "You're already set up" — v2.2837)
 - `/reset-password` - Request password reset
 - `/reset-password-confirm` - Confirm password reset (from email link)
 
@@ -1609,7 +1609,7 @@ counts_fixture_groups (id)
 ## Authentication & Authorization
 
 ### Authentication Flow
-1. User signs up or signs in via `SignIn.tsx` / `SignUp.tsx`
+1. User signs in via `SignIn.tsx` (accounts are created by invitation — `invite-user` → `/accept-invite` — or by a dev via `create-user`; the self-service `/sign-up` page was removed in v2.2837)
 2. Supabase Auth handles email/password authentication
 3. `handle_new_user()` trigger creates `public.users` record
 4. `useAuth()` hook provides current user state
@@ -1837,7 +1837,6 @@ pipetooling.github.io/
 │   │   ├── ResetPasswordConfirm.tsx # Password reset confirmation page
 │   │   ├── Settings.tsx        # User management (dev) and password change (all users)
 │   │   ├── SignIn.tsx          # Sign in page (with "Forgot password?" link)
-│   │   ├── SignUp.tsx          # Sign up page
 │   │   ├── Templates.tsx       # Templates (dev)
 │   │   └── Workflow.tsx        # Workflow management
 │   ├── types/

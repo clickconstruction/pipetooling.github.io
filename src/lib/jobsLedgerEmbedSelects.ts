@@ -8,6 +8,8 @@
 
 /** `jobs_ledger_invoices` — full row (small fixed set) */
 export const JOBS_LEDGER_INVOICES_EMBED = [
+  'agreed_write_down_at',
+  'agreed_write_down_previous_amount',
   'amount',
   'bill_to_email',
   'bill_to_name',

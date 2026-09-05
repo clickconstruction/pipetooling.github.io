@@ -97,6 +97,7 @@ describe('prefs + window', () => {
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'cycle' }))).toMatchObject({ view: 'cycle' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'capacity' }))).toMatchObject({ view: 'capacity' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'ahead' }))).toMatchObject({ view: 'ahead' })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'rework' }))).toMatchObject({ view: 'rework' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ cutBy: 'gc' }))).toMatchObject({ cutBy: 'gc' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ cutBy: 'planet' }))).toMatchObject({ cutBy: 'none' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ compareTo: 'lastYear', targetTrueMarginPct: 35 }))).toMatchObject({ compareTo: 'lastYear', targetTrueMarginPct: 35 })
@@ -233,7 +234,7 @@ describe('compare to + target (v2.2817)', () => {
   })
 
   it('compares totals measure by measure and leaves unknowns null', () => {
-    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0 }
+    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0 }
     const prior = { ...base, jobs: 8, revenueUsd: 800, grossUsd: 400, marginPct: 50, trueProfitUsd: 300, trueMarginPct: 37.5, overheadUsd: null, truePerHourUsd: null }
     const c = compareJobSummaryTotals(base, prior)
     expect(c.jobs).toEqual({ now: 10, prior: 8, delta: 2 })
@@ -308,5 +309,25 @@ describe('cut by (v2.2820)', () => {
   it('carries revenue per field hour on rows and totals', () => {
     expect(rows[0]!.revenuePerHourUsd).toBeNull()
     expect(summarizeJobSummaryRows(rows).revenuePerHourUsd).toBeNull()
+  })
+})
+
+describe('leakage flags (v2.2832)', () => {
+  it('sums agreed write-downs per job and flags collections until paid; totals carry both', () => {
+    const rows = enrichJobSummaryRows({
+      rows: [
+        { job: { id: 'w', hcp_number: 'w', job_name: 'w', pct_complete: 100, status: 'billed', invoices: [{ status: 'billed', amount: 800, agreed_write_down_at: '2026-08-01T00:00:00Z', agreed_write_down_previous_amount: 1000 }, { status: 'billed', amount: 500 }] }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 1300 },
+        { job: { id: 'c', hcp_number: 'c', job_name: 'c', pct_complete: 100, status: 'billed', collections_at: '2026-08-10T00:00:00Z' }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 900 },
+        { job: { id: 'p', hcp_number: 'p', job_name: 'p', pct_complete: 100, status: 'paid', collections_at: '2026-07-01T00:00:00Z' }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 400 },
+      ],
+      reportPctByJobId: new Map(),
+      ledger: null,
+      method: 'day',
+    })
+    expect(rows[0]).toMatchObject({ writeDownUsd: 200, inCollections: false })
+    expect(rows[0]!.flags).toContain('write-down')
+    expect(rows[1]).toMatchObject({ writeDownUsd: 0, inCollections: true })
+    expect(rows[2]!.inCollections).toBe(false)
+    expect(summarizeJobSummaryRows(rows)).toMatchObject({ writeDownUsd: 200, writeDownJobs: 1, collectionsJobs: 1, collectionsUsd: 900 })
   })
 })

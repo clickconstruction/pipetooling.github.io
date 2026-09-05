@@ -5,7 +5,7 @@ file: docs/WORKFLOW_PAGE_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Workflow.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every region of the ~4,782-line src/pages/Workflow.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs/edge functions, coupling) so extraction can start without re-deriving the strategy. Sections — What this surface is; Key structural differences from Bids/Materials; Master summary table; Per-region dossiers; Shared infrastructure; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order.
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-09-05
 ---
 
 ## What this surface is
@@ -76,7 +76,7 @@ Role gates (defined once, read by every region): `canManageStages` (dev / master
 - **Render location:** `{stepForm.open && <StepFormModal …/>}` in the parent; component lives in [`src/components/workflow/StepFormModal.tsx`](../src/components/workflow/StepFormModal.tsx).
 - **Owned local state (all self-contained):** `name`, `assigned_to_name`, `started_at`, `ended_at`, `depends_on_step_id`, `insert_after_step_id`, plus the assignee autocomplete cluster — `mastersAndSubs`, `assignedSearch`, `filteredMastersSubs`, `showDropdown` — and the Add Person sub-modal cluster — `showAddPerson`, `newPerson` (`{name,email,phone,notes}`), `savingPerson`, `addPersonError`.
 - **Props (already a clean seam):** `viewerRole`, `step`, `dependsOnStepId`, `insertAfterStepId`, `steps`, `onSave`, `onClose`, `onCopy?`, `toDatetimeLocal`, `fromDatetimeLocal`.
-- **Handlers:** `loadMastersAndSubs` (superintendents load via `master_superintendents` adoption; others scope `people` to own `master_user_id`; users filtered to `master_technician|subcontractor|helpers|primary`; dedupe case-insensitive by name), `handleAssignedSearchChange`, `handleSelectPerson`, `handleAddNewPersonClick`, `checkDuplicateName` (loads **all** `people` + `users` client-side — quirk), `handleSaveNewPerson` (inserts `people` with `kind: viewerRole === 'helpers' ? 'helper' : 'sub'`), `handleSubmit`.
+- **Handlers:** `loadMastersAndSubs` (superintendents scope the `people` roster to the masters in `master_superintendents` — company-wide since v2.921, so this is every master's `people`; adoption is a **roster scope only** and grants no project access — project rows come through `project_superintendents`, RLS-enforced since v2.2836; others scope `people` to own `master_user_id`; users filtered to `master_technician|subcontractor|helpers|primary`; dedupe case-insensitive by name), `handleAssignedSearchChange`, `handleSelectPerson`, `handleAddNewPersonClick`, `checkDuplicateName` (loads **all** `people` + `users` client-side — quirk), `handleSaveNewPerson` (inserts `people` with `kind: viewerRole === 'helpers' ? 'helper' : 'sub'`), `handleSubmit`.
 - **Supabase tables:** `users` (role lookup + roster), `people` (roster + INSERT), `master_superintendents`.
 - **Sub-detail:** the "change order:" quick-phrase row — first button is a **no-op label styled as a button**; the phrase buttons append `, <phrase>` to the name. Preserve as-is.
 - **Extraction status + risk + approach:** **Extracted** — verbatim move to [`src/components/workflow/StepFormModal.tsx`](../src/components/workflow/StepFormModal.tsx); parent wiring (`stepForm` state, `saveStep`, `copyStep`, `closeStepForm`) unchanged. No Stage-A prerequisite (its logic is IO + trivial filtering).
@@ -161,7 +161,7 @@ The "API surface" any extracted region must be handed. **This is the page's subs
 ### Identity, role, and roster (parent, permanent)
 
 - `useAuth()` → `authUser`, `authProfileName`, `authRole`; `useToastContext()` → `showToast`; `useEditProjectModal()`.
-- The `authUser?.id` effect loads `users.role/name/email` → `userRole` + `currentUserName`, then builds `roster` (superintendents: `people` scoped to adopted masters via `master_superintendents`; others: own `master_user_id`; users list role-dependent), `userNames` (lowercased set) and `personContacts` (people take precedence over users).
+- The `authUser?.id` effect loads `users.role/name/email` → `userRole` + `currentUserName`, then builds `roster` (superintendents: `people` scoped to adopted masters via `master_superintendents` — every master since the v2.921 company-wide sync; roster scope only, the project itself is visible only if the superintendent is in `project_superintendents` (v2.2836); others: own `master_user_id`; users list role-dependent), `userNames` (lowercased set) and `personContacts` (people take precedence over users).
 - Gates derived per render: `canManageStages`, `isDevOrMaster`, `canSeePrivateNotesAndApprove`, `canAssignSuperintendents`.
 
 ### Steps engine (parent, becomes `useWorkflowStepsEngine`)
