@@ -196,7 +196,9 @@ export default function Banking() {
   const [error, setError] = useState<string | null>(null)
   const [accountFilter, setAccountFilter] = useState<string>('')
   const [kindFilter, setKindFilter] = useState<string>('')
-  const [bankingSearchText, setBankingSearchText] = useState<string>('')
+  // `?q=` seeds the search once, on mount — Moneyfill's card-charges queue links here with the
+  // charge's counterparty so the row is on screen (v2.2849). Not kept in sync with later typing.
+  const [bankingSearchText, setBankingSearchText] = useState<string>(() => searchParams.get('q')?.trim() ?? '')
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null)
   const [nicknameByAccount, setNicknameByAccount] = useState<Record<string, string>>({})
   const [nicknameDrafts, setNicknameDrafts] = useState<Record<string, string>>({})

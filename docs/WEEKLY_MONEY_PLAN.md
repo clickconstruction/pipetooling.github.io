@@ -68,7 +68,7 @@ Shared shell first, then queues by dollar-risk order. Each queue = week-scoped c
 | # | Queue | Source / reuse | Status today |
 |---|---|---|---|
 | 3a | **Close-week shell**: week picker (defaults previous complete week) + section framework + `moneyfillWeekClose.ts` lib shared with the report's confidence footer | `QuickfillSectionWrapper` + marks tables | new |
-| 3b | Card charges not split to jobs ($ total, week) | Quickfill Banking-sorting data path, week-bounded | mirror |
+| 3b | Card charges not split to jobs ($ total, week) | Banking → **User Sort** data path (`fetchJobAllocationsByMercuryTxIds`, paged), week-bounded; per-row **Sort in Banking → User Sort** opens `/banking?tab=sorting&q=<counterparty>` (v2.2849 — was a dead-end `navigate('/quickfill')`) | mirror |
 | 3c | Approved time with no job/bid, as dollars (hours × wage) | `peopleHoursUnallocatedRows.ts` kernel + wages | mirror ($-view) |
 | 3d | Closed sessions pending approval (labor not yet booked) | pending-sessions queries; link to People → Hours | new |
 | 3e | Supply invoices not fully allocated to jobs (Σ allocations < amount) | new coverage query/RPC over `supply_house_invoices` + allocations | **new — exists nowhere** |
