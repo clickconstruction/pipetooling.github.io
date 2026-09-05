@@ -27,3 +27,22 @@ export function pageTabStyle(active: boolean): CSSProperties {
     flexShrink: 0,
   }
 }
+
+/** Second-row sub-tabs under a page tab (People, v2.2811): small pills. The selected pill is
+ * filled with the strong text color and inverted; the others are outlined and muted. */
+export function pageSubTabStyle(active: boolean): CSSProperties {
+  return {
+    font: 'inherit',
+    fontSize: '0.8rem',
+    fontWeight: active ? 700 : 500,
+    lineHeight: 1.2,
+    padding: '0.3rem 0.8rem',
+    borderRadius: 999,
+    border: `1px solid ${active ? 'var(--text-strong)' : 'var(--border-strong)'}`,
+    backgroundColor: active ? 'var(--text-strong)' : 'transparent',
+    color: active ? 'var(--surface)' : 'var(--text-700)',
+    cursor: 'pointer',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+  }
+}
