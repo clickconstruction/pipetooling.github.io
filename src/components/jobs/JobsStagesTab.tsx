@@ -616,6 +616,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
   /** Personal statement rounds (v2.2072): open GC Review straight into the round overlay. */
   const [gcReviewStartRound, setGcReviewStartRound] = useState(false)
+  /** `?round=1&gc=<id>` (v2.2812): the round email's per-GC button opens the overlay ON that GC. */
+  const [gcReviewRoundGcId, setGcReviewRoundGcId] = useState<string | null>(null)
   const [weeklyMovementModalOpen, setWeeklyMovementModalOpen] = useState(false)
   const [weeklyMoneyModalOpen, setWeeklyMoneyModalOpen] = useState(false)
   /** "Last sent" hints for GC Review's Email… (v2.1416). Best-effort: table may predate the db push. */
@@ -1156,9 +1158,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (searchParams.get('round') === '1') {
       roundParamConsumedRef.current = true
       setGcReviewStartRound(true)
+      setGcReviewRoundGcId(searchParams.get('gc') || null)
       setGcReviewModalOpen(true)
       const p = new URLSearchParams(searchParams)
       p.delete('round')
+      p.delete('gc')
       navigate({ search: p.toString() }, { replace: true })
     }
   }, [searchParams, navigate])
@@ -4643,6 +4647,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setGcReviewStartRound(false)
                   }}
                   startInRound={gcReviewStartRound}
+                  startInRoundGcId={gcReviewRoundGcId}
                   billedActiveRows={unfilteredBoardLists.billedActiveRows}
                   collectionsRows={unfilteredBoardLists.collectionsRows}
                   users={users}
