@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { loginAsUser } from '../../lib/loginAsUser'
 import { APP_HOSTNAME, appUrl } from '../../lib/appOrigin'
 import type { RailRow, RailSignal } from '../../lib/people/deskRailAttention'
-import type { ContractSigningTrafficLight } from '../../lib/contractSigningRollup'
+import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
+import { UsersNeedsFoldOut, UsersNeedsPill, UsersRailCells } from './UsersTabStatusColumn'
 
 export type UsersTabRowItem = {
   source: 'user' | 'people'
@@ -35,26 +36,21 @@ function Chip({ tone, title, children }: { tone: keyof typeof CHIP_TONE; title?:
   )
 }
 
-/** The contract-signing traffic light as a chip: green is silent, yellow and red speak. */
-function signingChip(light: ContractSigningTrafficLight | undefined): ReactNode {
-  if (!light || light === 'green') return null
-  return light === 'yellow' ? <Chip tone="amber" title="Some contracts signed">docs waiting</Chip> : <Chip tone="red" title="No contracts signed yet">docs unsigned</Chip>
-}
-
 /**
  * One row shape for every person on People → Users (v2.2762): imitate
  * (unchanged, one click, dev only) · attention dot · name (Desk door) ·
- * login / no-login chip · contact · signal chips · one ⋯ menu. Roster-only
+ * login / no-login chip · contact · the status column · one ⋯ menu. Roster-only
  * and account rows read the same; the chip says which is which.
+ * v2.2815: the status column is the icon rail on wide screens and the hours counter +
+ * "Needs you" pill on narrow ones (UsersTabStatusColumn), from the row's grouped needs;
+ * without needs (an older caller) the row falls back to the loose signal chips.
  */
 export function UsersTabRow({
   item,
   rail,
   narrowViewport,
   isDev,
-  pushOn,
-  showPush,
-  signingLight,
+  openDesk,
   activeProjects,
   loggingInAsId,
   setLoggingInAsId,
@@ -67,10 +63,8 @@ export function UsersTabRow({
   rail: RailRow
   narrowViewport: boolean
   isDev: boolean
-  pushOn: boolean
-  /** Whether the viewer may see push state at all (office roles). */
-  showPush: boolean
-  signingLight: ContractSigningTrafficLight | undefined
+  /** Opens the Person Desk at a section — the status column's doors; undefined when the viewer can't open the Desk. */
+  openDesk?: (section: PersonDeskSectionId) => void
   activeProjects: Array<{ id: string; name: string }>
   loggingInAsId: string | null
   setLoggingInAsId: (id: string | null) => void
@@ -82,6 +76,8 @@ export function UsersTabRow({
   below?: ReactNode
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  /** Narrow only: the "Needs you" pill's fold-out, rendered under the row so ⋯ stays beside the pill. */
+  const [needsOpen, setNeedsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const isAccount = item.source === 'user'
 
@@ -175,17 +171,21 @@ export function UsersTabRow({
           </span>
         )}
         {isAccount && item.notes ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: narrowViewport ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>— {item.notes}</span> : null}
-        <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', marginLeft: narrowViewport ? 0 : 'auto', flexShrink: 0 }}>
-          {rail.signals.map((s) => (
-            <Chip key={s.key} tone={s.tone}>
-              {s.label}
-            </Chip>
-          ))}
-          {signingChip(signingLight)}
-          {showPush && isAccount && !pushOn && (rail.kind === 'sub' || rail.kind === 'helper' || rail.kind === 'superintendent') ? (
-            <Chip tone="gray" title="Push notifications are not enabled on their phone">no push</Chip>
-          ) : null}
-        </span>
+        {rail.rowNeeds ? (
+          narrowViewport ? (
+            <UsersNeedsPill rowNeeds={rail.rowNeeds} name={item.name} openDesk={openDesk} open={needsOpen} onToggle={() => setNeedsOpen((v) => !v)} />
+          ) : (
+            <UsersRailCells rowNeeds={rail.rowNeeds} name={item.name} openDesk={openDesk} />
+          )
+        ) : (
+          <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', marginLeft: narrowViewport ? 0 : 'auto', flexShrink: 0 }}>
+            {rail.signals.map((s) => (
+              <Chip key={s.key} tone={s.tone}>
+                {s.label}
+              </Chip>
+            ))}
+          </span>
+        )}
         {menu.length > 0 ? (
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
@@ -222,6 +222,7 @@ export function UsersTabRow({
           </div>
         ) : null}
       </div>
+      {narrowViewport && needsOpen && rail.rowNeeds ? <UsersNeedsFoldOut rowNeeds={rail.rowNeeds} name={item.name} openDesk={openDesk} /> : null}
       {activeProjects.length > 0 ? (
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', paddingLeft: narrowViewport ? 0 : '1.4rem' }}>
           Active projects:{' '}

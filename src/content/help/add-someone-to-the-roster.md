@@ -12,10 +12,11 @@ People → **Users** lists everyone the company works with — the ones who sign
 Every row reads the same way, left to right:
 
 - **Imitate** (devs only) — the face-in-brackets icon signs you in as them in one click, the same as always.
-- A **dot** — green means nothing needs you; amber means something does (sessions waiting, a document unsent or expiring, no roster row); red means expired paperwork. Hover it for the reasons.
+- A **dot** — green means nothing needs you; amber means something does (a document unsent or expiring, no roster row); red means expired paperwork. Hours waiting never color the dot — they are a queue, not an alarm. Hover it for the reasons.
 - Their **name** — tap it to open their desk.
 - {{chip:gray|login}} or {{chip:gray|no login}} — whether they have an app account. A person with no login still has everything else: a portal (subs), paperwork, pay, a truck.
-- Contact, then a few chips that only appear when they mean something: {{chip:yellow|23 waiting}}, {{chip:yellow|1 doc unsent}}, {{chip:red|1 expired}}, {{chip:yellow|no roster row}}, {{chip:blue|portal on}}, {{chip:gray|no push}}.
+- Contact, then the **status column**. On a wide screen it is three small cells under a **Hours · Paper · Acct** header: a clock with how many sessions wait for approval, a document with how many paperwork items need you (unsent, expiring, expired, or unsigned — the cell goes red when something has expired), and a person for the account (no roster row, no login, no push, portal on). Hover a cell for the words; tap it to open their desk at that section. Empty cells stay faint so the columns line up.
+- On a phone the same facts fold into two controls: the clock counter, and a {{chip:yellow|Needs you · 2}} pill (or **Clear**). Tap the pill and the row unfolds one line per item with a button that opens the right desk section: {{button:blue|Send ›}}, {{button:blue|Create roster row ›}}, {{button:outline|How to enable ›}}.
 - The **⋯** menu — Open desk, Edit, Invite as user, Link account, Combine, Archive, depending on the row.
 
 Groups are still by kind. Each header says how many have a login ("Subcontractors 16 · 2 with a login"). Long groups fold the roster-only rows behind **+ N more without a login**; searching or the **No login** filter opens every fold.
