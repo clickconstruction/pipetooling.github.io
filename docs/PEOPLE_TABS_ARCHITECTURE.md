@@ -219,7 +219,8 @@ The strip shows **six group tabs** and a **second row** of the active group's vi
 - **Coupling/risk:** **med-high.** Big analytics block, dev-only (low blast radius) but tangled with the Team-Summary machinery shared with hours. Extract `useTeamSummaryData` first.
 
 ### `feedback` — Feedback (dev-only)
-- **Render:** ~5 lines. Thin wrapper `TeamFeedbackDevSettingsBlock`. **Done.**
+- **Render:** thin wrapper `TeamFeedbackDevSettingsBlock layout="standalone"` (also mounted on Settings → People & accounts). **v2.2824 rebuild:** header (Enabled, last words, **Try the deck** → `CrewReviewDeck preview`) + pills Ratings (`CrewRatingsPanel`) · Open words (`OpenWordsPanel`) · Who's due (`TeamFeedbackEligibilityOverview`) · Settings (`CrewFeedbackSettingsForm`) · Retired questions (`RetiredQuestionsPanel`). Kernel: [`crewReview.ts`](../src/lib/people/crewReview.ts). Data: `team_member_reviews` (source `crew`/`office`), `team_feedback_submissions` (open words), `team_feedback_settings`, `team_feedback_user_state`.
+- **Owned state:** none in the parent (`isDev` gate only).
 
 ### `activity` — App Activity
 - **Render:** ~180 lines. Renders `PeopleAppActivityPanel` but keeps inline **grant-management UI** above it.

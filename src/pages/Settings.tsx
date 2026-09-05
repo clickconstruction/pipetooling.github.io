@@ -21,7 +21,6 @@ import SettingsRecentEmailsSent from '../components/settings/SettingsRecentEmail
 import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import SettingsJobsTab from '../components/settings/SettingsJobsTab'
-import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { GuideBrowser } from '../components/GuideBrowser'
 import type { Database } from '../types/database'
@@ -1407,10 +1406,6 @@ export default function Settings() {
         />
       )}
 
-
-      {myRole === 'master_technician' && authUser?.id && payApprovedMasterIds.has(authUser.id) && (
-        <TeamFeedbackMasterAggregates />
-      )}
 
       {/* v2.2088: review cadence is a People/teams policy, not a Dashboard alert. */}
       {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}

@@ -134,12 +134,12 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 4. Clock-in button + contract-signing prompt + team feedback
 
-- **Render location:** `ClockInOutButton`, quick-feedback button + `TeamFeedbackWizard`, `DashboardContractSigningPromptModal`.
+- **Render location:** `ClockInOutButton`, **Rate your crew** button + `CrewReviewDeck` (v2.2824; was quick-feedback + `TeamFeedbackWizard`), `DashboardContractSigningPromptModal`.
 - **Owned local state:** `userName` (~1215, also feeds `clockDisplayName` memo), `dashboardSelfIsSalary` (~1220), `dashboardSalaryScheduleClockActive` (~1222), `teamFeedbackHomeEnabled`/`teamFeedbackWizardOpen` (~1294–1295), `contractSigningPromptOpen`/`Rows`/`OpeningId` + `contractSigningVisitPromptEpochRef` (~1296–1302).
 - **Cross-section/shared state:** `clockDisplayName` (userName from the boot loader); `hoursDaysCorrectSet` + `stripSalariedUserIds` + `setStripMyTimeEditor` (strip cluster) — `openMyTimePreviewFromClock` (~1279) opens the *shared* day-editor modal; `dashboardSelfIsSalary` also passed to `DashboardMyTimeSection`; `refreshDashboardAssignedJobLists` on field-report save.
 - **Handlers:** `fetchContractDashboardPromptRows` (RPC `list_my_contract_dashboard_prompts`), `runContractSigningPromptFromRpc`, `handleClockInSuccessContractPrompt`, `openContractSigningPageForDoc` (edge fn `get-contract-signing-link-for-self`), salaried-visit prompt effect (~1328, epoch-guarded against Strict Mode).
 - **Supabase:** `people_pay_config` (self is_salary ×2), `salary_work_schedule_templates`; `fetchTeamFeedbackSettings` lib.
-- **Sub-components (extracted):** `ClockInOutButton`, `TeamFeedbackWizard`, `DashboardContractSigningPromptModal`.
+- **Sub-components (extracted):** `ClockInOutButton`, `CrewReviewDeck`, `DashboardContractSigningPromptModal`.
 - **Extraction status + risk + approach:** Components extracted; glue inline. **Medium.** Stage A: none needed. Stage B: a `useContractSigningPrompt` hook (rows/open/openingId + the RPC + edge-fn opener + visit-prompt effect) is the clean seam; team-feedback state can move into a tiny wrapper. `ClockInOutButton` wiring stays in the parent (touches strip + assigned-jobs refresh).
 
 ### 5. Clocked-In strip cluster

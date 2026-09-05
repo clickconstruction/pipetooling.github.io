@@ -1,22 +1,25 @@
+/**
+ * Team feedback admin (dev). Standalone on People → Feedback; collapsible on Settings → People &
+ * accounts. v2.2824: the crew deck on the three bars — Ratings · Open words · Who's due ·
+ * Settings · Retired questions, plus a Try-the-deck preview.
+ */
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react'
-import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
-import {
-  fetchLastTeamFeedbackSubmissionCreatedAt,
-  fetchTeamFeedbackSettings,
-  type TeamFeedbackSettingsRow,
-} from '../../lib/teamFeedback'
+import { fetchLastTeamFeedbackSubmissionCreatedAt, fetchTeamFeedbackSettings, type TeamFeedbackSettingsRow } from '../../lib/teamFeedback'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
-import TeamFeedbackDevReports from './TeamFeedbackDevReports'
+import { useAuth } from '../../hooks/useAuth'
+import { pageSubTabStyle } from '../../lib/pageTabStyle'
+import CrewRatingsPanel from './CrewRatingsPanel'
+import OpenWordsPanel from './OpenWordsPanel'
 import TeamFeedbackEligibilityOverview from './TeamFeedbackEligibilityOverview'
-import TeamFeedbackSettingsSection from './TeamFeedbackSettingsSection'
+import CrewFeedbackSettingsForm from './CrewFeedbackSettingsForm'
+import RetiredQuestionsPanel from './RetiredQuestionsPanel'
+import CrewReviewDeck from './CrewReviewDeck'
 
-/** Relative phrase for Settings-style “last collected” (min / hr / days / mo ago). */
+/** Relative phrase for “last collected” (min / hr / days / mo ago). */
 function relativeTimeAgo(iso: string): string {
-  const d = new Date(iso).getTime()
-  const now = Date.now()
-  const sec = Math.max(0, Math.floor((now - d) / 1000))
+  const sec = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
   if (sec < 60) return 'Just now'
   const min = Math.floor(sec / 60)
   if (min < 60) return `${min} min ago`
@@ -28,28 +31,37 @@ function relativeTimeAgo(iso: string): string {
   return `${mo} mo ago`
 }
 
+type Panel = 'ratings' | 'words' | 'due' | 'settings' | 'retired'
+const PANELS: Array<{ id: Panel; label: string }> = [
+  { id: 'ratings', label: 'Ratings' },
+  { id: 'words', label: 'Open words' },
+  { id: 'due', label: "Who's due" },
+  { id: 'settings', label: 'Settings' },
+  { id: 'retired', label: 'Retired questions' },
+]
+
 export type TeamFeedbackDevSettingsBlockProps = {
-  /** `settings`: collapsible block for Settings. `standalone`: always expanded (e.g. People → Feedback tab). */
+  /** `settings`: collapsible block for Settings. `standalone`: always expanded (People → Feedback tab). */
   layout?: 'settings' | 'standalone'
 }
 
 export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: TeamFeedbackDevSettingsBlockProps) {
   const isStandalone = layout === 'standalone'
   const { showToast } = useToastContext()
-  const [settingsSectionOpen, setSettingsSectionOpen] = useState(false)
-  const sectionVisible = isStandalone || settingsSectionOpen
+  const { user: authUser } = useAuth()
+  const [sectionOpen, setSectionOpen] = useState(false)
+  const visible = isStandalone || sectionOpen
   const [row, setRow] = useState<TeamFeedbackSettingsRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastCreatedAt, setLastCreatedAt] = useState<string | null>(null)
-  const [lastLoading, setLastLoading] = useState(false)
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const [enabledSaving, setEnabledSaving] = useState(false)
+  const [panel, setPanel] = useState<Panel>('ratings')
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const s = await fetchTeamFeedbackSettings()
-      setRow(s)
+      setRow(await fetchTeamFeedbackSettings())
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Failed to load team feedback settings', 'error')
     } finally {
@@ -62,34 +74,21 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
   }, [load])
 
   useEffect(() => {
-    if (!sectionVisible) return
+    if (!visible) return
     let cancelled = false
-    ;(async () => {
-      setLastLoading(true)
-      try {
-        const t = await fetchLastTeamFeedbackSubmissionCreatedAt()
+    fetchLastTeamFeedbackSubmissionCreatedAt()
+      .then((t) => {
         if (!cancelled) setLastCreatedAt(t)
-      } catch {
+      })
+      .catch(() => {
         if (!cancelled) setLastCreatedAt(null)
-      } finally {
-        if (!cancelled) setLastLoading(false)
-      }
-    })()
+      })
     return () => {
       cancelled = true
     }
-  }, [sectionVisible])
+  }, [visible])
 
-  useEffect(() => {
-    if (!isStandalone || !settingsModalOpen) return
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setSettingsModalOpen(false)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [isStandalone, settingsModalOpen])
-
-  const onEnabledHeaderChange = useCallback(
+  const onEnabledChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
       const checked = e.target.checked
       if (!row) return
@@ -98,17 +97,10 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
       setEnabledSaving(true)
       try {
         await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('team_feedback_settings')
-              .update({
-                enabled: checked,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', 1),
-          'update team_feedback_settings enabled'
+          async () => supabase.from('team_feedback_settings').update({ enabled: checked, updated_at: new Date().toISOString() }).eq('id', 1),
+          'update team_feedback_settings enabled',
         )
-        showToast('Team feedback settings saved', 'success')
+        showToast(checked ? 'Team feedback is on: the deck is dealt at the next eligible clock-out' : 'Team feedback is off', 'success')
       } catch (err) {
         setRow((r) => (r ? { ...r, enabled: previous } : r))
         showToast(err instanceof Error ? err.message : 'Could not save enabled setting', 'error')
@@ -116,237 +108,70 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
         setEnabledSaving(false)
       }
     },
-    [row, showToast]
+    [row, showToast],
   )
 
   return (
-    <div
-      style={{
-        marginTop: isStandalone ? 0 : '2rem',
-        marginBottom: isStandalone ? '1.5rem' : '2rem',
-        border: '1px solid var(--border)',
-        borderRadius: 8,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-          padding: '1rem',
-          flexWrap: 'wrap',
-        }}
-      >
+    <div style={{ marginTop: isStandalone ? 0 : '2rem', marginBottom: isStandalone ? '1.5rem' : '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', flexWrap: 'wrap' }}>
         {isStandalone ? (
-          <span
-            style={{
-              fontSize: '1rem',
-              fontWeight: 600,
-              color: 'var(--text-strong)',
-              flex: '0 0 auto',
-            }}
-          >
-            Team feedback
-          </span>
+          <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Team feedback</span>
         ) : (
           <button
             type="button"
-            onClick={() => setSettingsSectionOpen((prev) => !prev)}
-            aria-expanded={settingsSectionOpen}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              margin: 0,
-              padding: 0,
-              flex: '0 0 auto',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-              color: 'var(--text-strong)',
-            }}
+            onClick={() => setSectionOpen((p) => !p)}
+            aria-expanded={sectionOpen}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}
           >
-            <span style={{ fontSize: '0.75rem' }}>{settingsSectionOpen ? '\u25bc' : '\u25b6'}</span>
+            <span style={{ fontSize: '0.75rem' }}>{sectionOpen ? '▼' : '▶'}</span>
             Team feedback
           </button>
         )}
-        {sectionVisible && row && (
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              cursor: enabledSaving || loading ? 'wait' : 'pointer',
-              opacity: enabledSaving || loading ? 0.7 : 1,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={row.enabled}
-              disabled={enabledSaving || loading}
-              onChange={(e) => void onEnabledHeaderChange(e)}
-            />
+        {visible && row && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: enabledSaving || loading ? 'wait' : 'pointer', opacity: enabledSaving || loading ? 0.7 : 1 }}>
+            <input type="checkbox" checked={row.enabled} disabled={enabledSaving || loading} onChange={(e) => void onEnabledChange(e)} />
             <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Enabled</span>
           </label>
         )}
-        {sectionVisible && (
-          <div
-            style={{
-              marginLeft: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-end',
-              flexWrap: 'wrap',
-              gap: '0.75rem',
-              flex: '1 1 auto',
-              minWidth: 0,
-            }}
-          >
-            <span
-              style={{
-                fontSize: '0.8125rem',
-                color: 'var(--text-muted)',
-                textAlign: 'right',
-              }}
-              title={lastCreatedAt ?? undefined}
-            >
-              {lastLoading
-                ? 'Last collected: …'
-                : lastCreatedAt
-                  ? `Last collected: ${new Date(lastCreatedAt).toLocaleString()} (${relativeTimeAgo(lastCreatedAt)})`
-                  : 'Last collected: Never'}
+        {visible && (
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} title={lastCreatedAt ?? undefined}>
+              {lastCreatedAt ? `Last words: ${relativeTimeAgo(lastCreatedAt)}` : 'Last words: never'}
             </span>
-            {isStandalone && (
+            {authUser?.id && (
               <button
                 type="button"
-                onClick={() => setSettingsModalOpen(true)}
-                style={{
-                  flexShrink: 0,
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: 6,
-                  border: '1px solid var(--border-strong)',
-                  background: 'var(--surface)',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  color: 'var(--text-700)',
-                  cursor: 'pointer',
-                }}
+                onClick={() => setPreviewOpen(true)}
+                title="Deal yourself the deck with your real teammates. Nothing is saved."
+                style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', cursor: 'pointer' }}
               >
-                Settings
+                Try the deck
               </button>
             )}
           </div>
         )}
       </div>
-      {sectionVisible && (
-        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
-          {!isStandalone && (
-            <TeamFeedbackSettingsSection
-              hideEnabled
-              controlled={{
-                row,
-                setRow,
-                loading,
-                onReload: load,
-              }}
-            />
-          )}
-          <TeamFeedbackDevReports />
-          <TeamFeedbackEligibilityOverview />
+      {visible && (
+        <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+          <p style={{ margin: '0.75rem 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: 720 }}>
+            At clock-out, people rate the teammates they shared jobs with (and their lead) on Ability, Drive, and Integrity, then write anything else. Crew ratings are anonymous to everyone but dev: the
+            office sees averages in Team → Review once two people have rated someone.
+          </p>
+          <div role="tablist" aria-label="Team feedback views" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', padding: '0.25rem 0 0.5rem', borderBottom: '1px solid var(--border)' }}>
+            {PANELS.map((p) => (
+              <button key={p.id} type="button" role="tab" aria-selected={panel === p.id} onClick={() => setPanel(p.id)} style={pageSubTabStyle(panel === p.id)}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {panel === 'ratings' && <CrewRatingsPanel />}
+          {panel === 'words' && <OpenWordsPanel settings={row} />}
+          {panel === 'due' && <TeamFeedbackEligibilityOverview />}
+          {panel === 'settings' && <CrewFeedbackSettingsForm row={row} onSaved={setRow} />}
+          {panel === 'retired' && <RetiredQuestionsPanel settings={row} />}
         </div>
       )}
-      {isStandalone &&
-        settingsModalOpen &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            role="presentation"
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 1000,
-              background: 'rgba(15, 23, 42, 0.45)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '1rem',
-              boxSizing: 'border-box',
-            }}
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) setSettingsModalOpen(false)
-            }}
-          >
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="team-feedback-settings-modal-title"
-              onMouseDown={(e) => e.stopPropagation()}
-              style={{
-                width: '100%',
-                maxWidth: 720,
-                maxHeight: 'min(90vh, 900px)',
-                display: 'flex',
-                flexDirection: 'column',
-                background: 'var(--surface)',
-                borderRadius: 10,
-                border: '1px solid var(--border)',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem',
-                  padding: '0.85rem 1rem',
-                  borderBottom: '1px solid var(--border)',
-                  background: 'var(--bg-subtle)',
-                }}
-              >
-                <h2
-                  id="team-feedback-settings-modal-title"
-                  style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-strong)' }}
-                >
-                  Settings
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setSettingsModalOpen(false)}
-                  style={{
-                    padding: '0.35rem 0.65rem',
-                    borderRadius: 6,
-                    border: '1px solid var(--border-strong)',
-                    background: 'var(--surface)',
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
-                    color: 'var(--text-700)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Close
-                </button>
-              </div>
-              <div style={{ overflow: 'auto', padding: '1rem', flex: '1 1 auto', minHeight: 0 }}>
-                <TeamFeedbackSettingsSection
-                  hideEnabled
-                  controlled={{
-                    row,
-                    setRow,
-                    loading,
-                    onReload: load,
-                  }}
-                />
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+      {authUser?.id && previewOpen && <CrewReviewDeck open onClose={() => setPreviewOpen(false)} userId={authUser.id} source="home_button" skipIntro preview />}
     </div>
   )
 }

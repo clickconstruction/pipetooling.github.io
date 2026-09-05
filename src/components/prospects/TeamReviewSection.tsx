@@ -129,7 +129,8 @@ export default function TeamReviewSection({
     setError(null)
     const [usersRes, reviewsRes, jobsRes, tenureRes] = await Promise.all([
       supabase.from('users').select('id, name, role').is('archived_at', null),
-      supabase.from('team_member_reviews').select('*'),
+      // Office rows only: crew rows (v2.2824) are anonymous and reach Reflect through crew_review_aggregates.
+      supabase.from('team_member_reviews').select('*').eq('source', 'office'),
       supabase.rpc('list_team_member_recent_jobs'),
       supabase.rpc('list_team_member_start_dates'),
     ])
@@ -235,6 +236,7 @@ export default function TeamReviewSection({
           subject_user_id: subject.id,
           reviewer_user_id: authUserId,
           review_month: reviewMonth,
+          source: 'office',
           rating_ability: draft.rating_ability,
           rating_drive: draft.rating_drive,
           rating_integrity: draft.rating_integrity,
@@ -242,7 +244,7 @@ export default function TeamReviewSection({
           comment_drive: draft.comment_drive.trim() || null,
           comment_integrity: draft.comment_integrity.trim() || null,
         },
-        { onConflict: 'subject_user_id,reviewer_user_id,review_month' },
+        { onConflict: 'subject_user_id,reviewer_user_id,review_month,source' },
       )
       .select()
       .single()

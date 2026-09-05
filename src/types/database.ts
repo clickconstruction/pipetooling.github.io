@@ -14900,6 +14900,7 @@ export type Database = {
         Row: {
           cadence_days: number
           comment_only_enabled: boolean
+          crew_lookback_days: number
           enabled: boolean
           home_entry_enabled: boolean
           id: number
@@ -14913,15 +14914,18 @@ export type Database = {
           manager_overall_prompt: string | null
           manager_section_enabled: boolean
           manager_step_heading: string | null
+          open_prompts: Json | null
           peer_likert_prompts: Json | null
           peer_section_enabled: boolean
           peer_step_heading: string | null
+          questions_retired_at: string | null
           thank_you_copy: string | null
           updated_at: string
         }
         Insert: {
           cadence_days?: number
           comment_only_enabled?: boolean
+          crew_lookback_days?: number
           enabled?: boolean
           home_entry_enabled?: boolean
           id?: number
@@ -14935,15 +14939,18 @@ export type Database = {
           manager_overall_prompt?: string | null
           manager_section_enabled?: boolean
           manager_step_heading?: string | null
+          open_prompts?: Json | null
           peer_likert_prompts?: Json | null
           peer_section_enabled?: boolean
           peer_step_heading?: string | null
+          questions_retired_at?: string | null
           thank_you_copy?: string | null
           updated_at?: string
         }
         Update: {
           cadence_days?: number
           comment_only_enabled?: boolean
+          crew_lookback_days?: number
           enabled?: boolean
           home_entry_enabled?: boolean
           id?: number
@@ -14957,9 +14964,11 @@ export type Database = {
           manager_overall_prompt?: string | null
           manager_section_enabled?: boolean
           manager_step_heading?: string | null
+          open_prompts?: Json | null
           peer_likert_prompts?: Json | null
           peer_section_enabled?: boolean
           peer_step_heading?: string | null
+          questions_retired_at?: string | null
           thank_you_copy?: string | null
           updated_at?: string
         }
@@ -14977,6 +14986,7 @@ export type Database = {
           manager_likert_5: number | null
           manager_overall_1_10: number | null
           manager_user_id: string | null
+          open_anything: string | null
           open_fix_improve: string | null
           open_safety_tools: string | null
           open_training: string | null
@@ -14994,6 +15004,7 @@ export type Database = {
           manager_likert_5?: number | null
           manager_overall_1_10?: number | null
           manager_user_id?: string | null
+          open_anything?: string | null
           open_fix_improve?: string | null
           open_safety_tools?: string | null
           open_training?: string | null
@@ -15011,6 +15022,7 @@ export type Database = {
           manager_likert_5?: number | null
           manager_overall_1_10?: number | null
           manager_user_id?: string | null
+          open_anything?: string | null
           open_fix_improve?: string | null
           open_safety_tools?: string | null
           open_training?: string | null
@@ -15159,6 +15171,7 @@ export type Database = {
           rating_integrity: number | null
           review_month: string
           reviewer_user_id: string
+          source: string
           subject_user_id: string
           updated_at: string | null
         }
@@ -15173,6 +15186,7 @@ export type Database = {
           rating_integrity?: number | null
           review_month: string
           reviewer_user_id: string
+          source?: string
           subject_user_id: string
           updated_at?: string | null
         }
@@ -15187,6 +15201,7 @@ export type Database = {
           rating_integrity?: number | null
           review_month?: string
           reviewer_user_id?: string
+          source?: string
           subject_user_id?: string
           updated_at?: string | null
         }
@@ -17741,6 +17756,27 @@ export type Database = {
       create_view_link: {
         Args: { p_expires_at?: string; p_name?: string; p_project_id: string }
         Returns: Json
+      }
+      crew_review_aggregates: {
+        Args: never
+        Returns: {
+          rater_count: number
+          rating_ability: number | null
+          rating_drive: number | null
+          rating_integrity: number | null
+          review_month: string
+          subject_user_id: string
+        }[]
+      }
+      crew_review_teammates: {
+        Args: { p_extra_user_ids?: string[]; p_lookback_days?: number }
+        Returns: {
+          days_together: number
+          jobs: string[]
+          name: string | null
+          role: string
+          user_id: string
+        }[]
       }
       customer_date_met_apply: {
         Args: { p_customer_id: string; p_work_date: string }
