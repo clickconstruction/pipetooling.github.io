@@ -24,6 +24,7 @@
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",
+    "forms:author": "vite-node scripts/forms/author/index.ts",
     "sessions": "vite-node scripts/sessions-status.ts",
     "test": "vitest run",
     "e2e": "playwright test",

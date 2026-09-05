@@ -1,0 +1,256 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "width": 612,
+      "height": 792
+    }
+  ],
+  "boxes": [
+    {
+      "key": "employee_name",
+      "type": "text",
+      "label": "Your full name",
+      "labelEs": "Su nombre completo",
+      "required": true,
+      "prefill": "person_name",
+      "sample": "Taunya Rachelle",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 564.52,
+        "w": 308.68,
+        "h": 16
+      },
+      "order": 10
+    },
+    {
+      "key": "employee_phone",
+      "type": "digits",
+      "label": "Your phone",
+      "labelEs": "Su teléfono",
+      "mask": "###-###-####",
+      "prefill": "person_phone",
+      "sample": "5125550142",
+      "page": 1,
+      "rect": {
+        "x": 372.68,
+        "y": 564.52,
+        "w": 185.32,
+        "h": 16
+      },
+      "order": 20
+    },
+    {
+      "key": "bank_name",
+      "type": "text",
+      "label": "Bank or credit union name",
+      "labelEs": "Nombre del banco o cooperativa",
+      "required": true,
+      "sample": "Frost Bank",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 514.7,
+        "w": 308.68,
+        "h": 16
+      },
+      "order": 30
+    },
+    {
+      "key": "bank_city_state",
+      "type": "text",
+      "label": "Bank city and state",
+      "labelEs": "Ciudad y estado del banco",
+      "sample": "Austin, TX",
+      "page": 1,
+      "rect": {
+        "x": 372.68,
+        "y": 514.7,
+        "w": 185.32,
+        "h": 16
+      },
+      "order": 40
+    },
+    {
+      "key": "routing_number",
+      "type": "digits",
+      "label": "Routing number (9 digits)",
+      "labelEs": "Número de ruta (9 dígitos)",
+      "mask": "#########",
+      "required": true,
+      "sensitive": true,
+      "help": "The nine digits at the bottom left of a check. Kept only in the signed form.",
+      "helpEs": "Los nueve dígitos abajo a la izquierda de un cheque. Se guardan solo en el formulario firmado.",
+      "sample": "114000093",
+      "fontSize": 11,
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 475.7,
+        "w": 205.88,
+        "h": 18
+      },
+      "order": 50
+    },
+    {
+      "key": "account_number",
+      "type": "text",
+      "label": "Account number",
+      "labelEs": "Número de cuenta",
+      "required": true,
+      "sensitive": true,
+      "maxLength": 17,
+      "help": "Up to 17 digits. Kept only in the signed form.",
+      "helpEs": "Hasta 17 dígitos. Se guarda solo en el formulario firmado.",
+      "sample": "0004417802",
+      "fontSize": 11,
+      "page": 1,
+      "rect": {
+        "x": 269.88,
+        "y": 475.7,
+        "w": 288.12,
+        "h": 18
+      },
+      "order": 60
+    },
+    {
+      "key": "type_checking",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 119.56,
+        "y": 449.2,
+        "w": 10,
+        "h": 10
+      },
+      "order": 70,
+      "label": "Checking",
+      "labelEs": "Cuenta de cheques",
+      "group": "account_type",
+      "sample": "true"
+    },
+    {
+      "key": "type_savings",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 190.97,
+        "y": 449.2,
+        "w": 10,
+        "h": 10
+      },
+      "order": 80,
+      "label": "Savings",
+      "labelEs": "Cuenta de ahorros",
+      "group": "account_type"
+    },
+    {
+      "key": "deposit_all",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 414.37,
+        "w": 10,
+        "h": 10
+      },
+      "order": 90,
+      "label": "My entire net pay",
+      "labelEs": "Todo mi pago neto",
+      "group": "deposit_kind",
+      "sample": "true"
+    },
+    {
+      "key": "deposit_partial",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 158.58,
+        "y": 414.37,
+        "w": 10,
+        "h": 10
+      },
+      "order": 100,
+      "label": "A fixed amount each pay period (write it here):",
+      "labelEs": "Una cantidad fija cada período de pago",
+      "group": "deposit_kind"
+    },
+    {
+      "key": "deposit_amount",
+      "type": "text",
+      "label": "Fixed amount per pay period, if not the whole check",
+      "labelEs": "Cantidad fija por período de pago",
+      "advanced": true,
+      "help": "Only if you chose a fixed amount above. The rest of your pay is paid by check.",
+      "helpEs": "Solo si eligió una cantidad fija. El resto se paga con cheque.",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 381.87,
+        "w": 164.76,
+        "h": 16
+      },
+      "order": 110
+    },
+    {
+      "key": "notes",
+      "type": "text",
+      "label": "Anything the office should know",
+      "labelEs": "Algo que la oficina deba saber",
+      "advanced": true,
+      "page": 1,
+      "rect": {
+        "x": 228.76,
+        "y": 381.87,
+        "w": 329.24,
+        "h": 16
+      },
+      "order": 120
+    },
+    {
+      "key": "signature",
+      "type": "signature",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 299.1,
+        "w": 312.48,
+        "h": 22
+      },
+      "order": 130,
+      "label": "Employee signature",
+      "labelEs": "Firma del empleado"
+    },
+    {
+      "key": "date",
+      "type": "date",
+      "page": 1,
+      "rect": {
+        "x": 386.64,
+        "y": 299.1,
+        "w": 171.36,
+        "h": 16
+      },
+      "order": 140,
+      "label": "Date",
+      "dateMode": "today",
+      "labelEs": "Fecha"
+    }
+  ],
+  "groups": [
+    {
+      "key": "account_type",
+      "label": "Account type",
+      "exactlyOne": true,
+      "required": true
+    },
+    {
+      "key": "deposit_kind",
+      "label": "How much to deposit",
+      "exactlyOne": true,
+      "required": true
+    }
+  ],
+  "oneOfs": []
+}
