@@ -61,6 +61,12 @@ import {
 } from '../../lib/jobs/jobFormUndo'
 import { useJobFormAutosaveSlice } from './useJobFormAutosaveSlice'
 import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
+import {
+  JOB_DISPATCH_AUTO_CLOSE_NOTES,
+  pickJobDispatchAutoCloses,
+  type JobDispatchAutoCloseAction,
+} from '../../lib/jobDispatchAutoClose'
+import { notifyDispatchRequestClosure } from '../../lib/dispatchRequestClosure'
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -754,6 +760,8 @@ export default function JobFormModal({
   editingMasterUserIdRef.current = editing?.master_user_id ?? null
   /** Last PERSISTED pictures link — drives the blank→set dispatch auto-close. */
   const persistedPicturesLinkRef = useRef('')
+  /** Last saved customer phone — a blank→set transition auto-closes the job's red-phone request. */
+  const persistedCustomerPhoneRef = useRef('')
 
   // Property-record candidates (v2.2638): the job customer's + GC's saved
   // addresses. Fail-soft; a stale link (customer changed away from the row's
@@ -789,11 +797,18 @@ export default function JobFormModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, gcCustomerId, open])
 
-  /** Same auto-close saveJob performs when the pictures link goes blank→set. */
-  async function autoClosePicturesDispatchRequests(jobId: string): Promise<void> {
+  /**
+   * Retire this job's open dispatch request of one kind (`link_job_pictures` /
+   * `add_job_phone`) after the matching field went blank→set, then tell each
+   * requester (v2.2880, journey-map #25). RLS lets only devs / dispatch members
+   * update the rows, so for anyone else the update quietly matches nothing —
+   * `.select()` tells us which rows actually closed, and only those notify.
+   */
+  async function autoCloseJobDispatchRequests(jobId: string, action: JobDispatchAutoCloseAction): Promise<void> {
     if (!authUser?.id) return
+    const closedNote = JOB_DISPATCH_AUTO_CLOSE_NOTES[action]
     try {
-      await withSupabaseRetry(
+      const closedRows = await withSupabaseRetry<Array<{ id: string; from_user_id: string; title: string }>>(
         async () =>
           supabase
             .from('dispatch_requests')
@@ -801,14 +816,24 @@ export default function JobFormModal({
               status: 'closed',
               closed_at: new Date().toISOString(),
               closed_by_user_id: authUser.id,
-              closed_note: 'Customer Pictures URL added',
+              closed_note: closedNote,
             })
             .eq('job_ledger_id', jobId)
-            .eq('pending_action', 'link_job_pictures')
-            .eq('status', 'open'),
-        'auto-close link_job_pictures dispatch requests',
+            .eq('pending_action', action)
+            .eq('status', 'open')
+            .select('id, from_user_id, title'),
+        `auto-close ${action} dispatch requests`,
       )
       notifyDispatchRequestsChanged()
+      for (const row of closedRows ?? []) {
+        void notifyDispatchRequestClosure({
+          request: row,
+          note: closedNote,
+          mode: 'closed',
+          userId: authUser.id,
+          role: authRole,
+        })
+      }
     } catch (closeErr) {
       console.warn('auto-close dispatch_requests failed', closeErr)
     }
@@ -831,10 +856,18 @@ export default function JobFormModal({
       const { error: updErr } = await supabase.from('jobs_ledger').update(payload).eq('id', jobId)
       if (updErr) throw updErr
       const newPicturesLink = fields.jobPicturesLink.trim()
-      if (newPicturesLink && !persistedPicturesLinkRef.current) {
-        await autoClosePicturesDispatchRequests(jobId)
+      const newPhone = fields.customerPhone.trim()
+      const autoCloses = pickJobDispatchAutoCloses({
+        prevPicturesLink: persistedPicturesLinkRef.current,
+        nextPicturesLink: newPicturesLink,
+        prevPhone: persistedCustomerPhoneRef.current,
+        nextPhone: newPhone,
+      })
+      for (const action of autoCloses) {
+        await autoCloseJobDispatchRequests(jobId, action)
       }
       persistedPicturesLinkRef.current = newPicturesLink
+      persistedCustomerPhoneRef.current = newPhone
       return true
     } catch (identityErr) {
       showToast(
@@ -1498,6 +1531,7 @@ export default function JobFormModal({
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPicturesLink(job.job_pictures_link ?? '')
     persistedPicturesLinkRef.current = (job.job_pictures_link ?? '').trim()
+    persistedCustomerPhoneRef.current = (job.customer_phone ?? '').trim()
     setJobPlansLink(job.job_plans_link ?? '')
     setProjectFilesPlansExpanded(false)
     setPayments(paymentRowsFromJob(job))

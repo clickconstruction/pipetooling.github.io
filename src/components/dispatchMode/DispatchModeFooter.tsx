@@ -1,10 +1,17 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
 import { useAuth } from '../../hooks/useAuth'
 import { recordNavClick } from '../../lib/navClickTelemetry'
+import {
+  addDispatchBadgeCounts,
+  dispatchBadgeAriaLabel,
+  dispatchBadgeShownTarget,
+  DISPATCH_BADGE_SHOWN_CONTROL,
+  EMPTY_DISPATCH_BADGE_COUNTS,
+} from '../../lib/dispatchInboxBadge'
 
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
 
@@ -191,7 +198,8 @@ export function DispatchModeFooter({
               {tab.icon}
               {tab.key === 'inbox' && inboxBadgeCount > 0 ? (
                 <span
-                  aria-label={`${inboxBadgeCount} unread`}
+                  aria-label={dispatchBadgeAriaLabel(inboxBadgeCount)}
+                  title={dispatchBadgeAriaLabel(inboxBadgeCount)}
                   style={{
                     position: 'absolute',
                     top: -5,
@@ -223,14 +231,37 @@ export function DispatchModeFooter({
 }
 
 /**
- * Footer + live Inbox badge (open dispatch + estimator requests). Mounted only
- * while Dispatch Mode is on, so the inbox engines don't run for everyone.
+ * Footer + live Inbox badge. Mounted only while Dispatch Mode is on, so the
+ * inbox engines don't run for everyone.
+ *
+ * The badge counts OPEN dispatch + estimator requests only (v2.2880,
+ * journey-map #24). It used to sum every row the viewer hadn't dismissed —
+ * closed rows included — so it read "7" over "3 open", and since dismissal is
+ * per viewer every closed row had to be dismissed by each group member to
+ * bring it down. Dismissal still hides closed rows from your list; it just no
+ * longer moves the badge.
  */
 export function DispatchModeFooterLive({ showPoTab = false }: { showPoTab?: boolean }) {
   const dispatchInbox = useDispatchInbox()
   const estimatorInbox = useEstimatorInbox()
-  const count =
-    (dispatchInbox.dispatchInboxEligible ? dispatchInbox.dispatchRequests.length : 0) +
-    (estimatorInbox.estimatorInboxEligible ? estimatorInbox.estimatorRequests.length : 0)
-  return <DispatchModeFooter inboxBadgeCount={count} showPoTab={showPoTab} />
+  const { user: authUser, role } = useAuth()
+  const counts = addDispatchBadgeCounts(
+    dispatchInbox.dispatchInboxEligible ? dispatchInbox.dispatchBadgeCounts : EMPTY_DISPATCH_BADGE_COUNTS,
+    estimatorInbox.estimatorInboxEligible ? estimatorInbox.estimatorBadgeCounts : EMPTY_DISPATCH_BADGE_COUNTS,
+  )
+
+  // `dispatch_badge_shown{open, closed}` — once per mount and again only when
+  // the pair changes, after the dispatch rows have loaded (never the 0/0 the
+  // first render paints while the fetch is in flight).
+  const lastRecordedRef = useRef<string | null>(null)
+  const target = dispatchBadgeShownTarget(counts)
+  const ready = dispatchInbox.dispatchInboxEligible ? dispatchInbox.dispatchRequestsLoaded : true
+  useEffect(() => {
+    if (!ready || !authUser?.id) return
+    if (lastRecordedRef.current === target) return
+    lastRecordedRef.current = target
+    recordNavClick(authUser.id, role, DISPATCH_BADGE_SHOWN_CONTROL, target)
+  }, [ready, target, authUser?.id, role])
+
+  return <DispatchModeFooter inboxBadgeCount={counts.open} showPoTab={showPoTab} />
 }

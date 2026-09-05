@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import {
+  dispatchBadgeCounts as computeBadgeCounts,
+  EMPTY_DISPATCH_BADGE_COUNTS,
+  type DispatchBadgeCounts,
+} from '../lib/dispatchInboxBadge'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from './useAuth'
 import { useRealtimeChannel } from './useRealtimeChannel'
@@ -16,6 +21,8 @@ export function useEstimatorInbox() {
   const [estimatorInboxEligible, setEstimatorInboxEligible] = useState(false)
   const [estimatorRequests, setEstimatorRequests] = useState<EstimatorInboxRow[]>([])
   const [estimatorRequestsLoading, setEstimatorRequestsLoading] = useState(false)
+  /** Footer-badge counts over every row (open ignores per-viewer dismissal) — see dispatchInboxBadge.ts. */
+  const [estimatorBadgeCounts, setEstimatorBadgeCounts] = useState<DispatchBadgeCounts>(EMPTY_DISPATCH_BADGE_COUNTS)
   const [estimatorRequestDismissingId, setEstimatorRequestDismissingId] = useState<string | null>(null)
   const [expandedEstimatorRequestId, setExpandedEstimatorRequestId] = useState<string | null>(null)
   const [estimatorThreadNotesByRequestId, setEstimatorThreadNotesByRequestId] = useState<
@@ -52,6 +59,7 @@ export function useEstimatorInbox() {
   const loadEstimatorRequests = useCallback(() => {
     if (!authUser?.id || !estimatorInboxEligible) {
       setEstimatorRequests([])
+      setEstimatorBadgeCounts(EMPTY_DISPATCH_BADGE_COUNTS)
       return
     }
     setEstimatorRequestsLoading(true)
@@ -70,9 +78,9 @@ export function useEstimatorInbox() {
       const dismissedIds = new Set(
         (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
       )
-      const rows = ((requestsRes.data ?? []) as EstimatorInboxRow[]).filter(
-        (r) => !dismissedIds.has(r.id),
-      )
+      const allRows = (requestsRes.data ?? []) as EstimatorInboxRow[]
+      setEstimatorBadgeCounts(computeBadgeCounts(allRows, dismissedIds))
+      const rows = allRows.filter((r) => !dismissedIds.has(r.id))
       rows.sort((a, b) => {
         const aOpen = a.status === 'open' ? 1 : 0
         const bOpen = b.status === 'open' ? 1 : 0
@@ -362,6 +370,7 @@ export function useEstimatorInbox() {
   return {
     estimatorInboxEligible,
     estimatorRequests,
+    estimatorBadgeCounts,
     estimatorRequestsLoading,
     estimatorRequestDismissingId,
     expandedEstimatorRequestId,

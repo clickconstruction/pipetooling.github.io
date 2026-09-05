@@ -4,11 +4,14 @@ import { useDashboardBoot } from '../../hooks/useDashboardBoot'
 import { getCurrentUserName as getCurrentUserNameById } from '../../lib/getCurrentUserName'
 import { DashboardMyInboxCard } from '../dashboard/DashboardMyInboxCard'
 import { DashboardPinnedQuickRow } from '../dashboard/DashboardPinnedQuickRow'
-import SettingsRecentPushNotifications from '../settings/SettingsRecentPushNotifications'
+import JobModeMyRequests from './JobModeMyRequests'
 
 /**
- * Job Mode → Inbox tab: the tech's own inbox only — their recent push
- * notifications plus the Dashboard's My Inbox card (no team inboxes).
+ * Job Mode → Inbox tab: the tech's own inbox only — the Dashboard's My Inbox
+ * card plus **My requests** (what they sent to Dispatch and what the office
+ * answered; v2.2880). It used to mount the Settings push-log component
+ * verbatim, which on day one said "No push notifications have been logged"
+ * (J2-F4) and never showed a request's outcome.
  */
 export default function JobModeInbox() {
   const { user: authUser, role } = useAuth()
@@ -56,11 +59,7 @@ export default function JobModeInbox() {
         onVisibleChange={() => {}}
         loadOnMount
       />
-      {authUser?.id ? (
-        <section aria-label="My notifications">
-          <SettingsRecentPushNotifications userId={authUser.id} />
-        </section>
-      ) : null}
+      {authUser?.id ? <JobModeMyRequests userId={authUser.id} /> : null}
     </div>
   )
 }
