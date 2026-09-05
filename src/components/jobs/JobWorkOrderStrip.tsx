@@ -56,8 +56,8 @@ export default function JobWorkOrderStrip({
       ? 'Draft a work order…'
       : coverage.kind === 'draft'
         ? coverage.unpriced
-          ? 'Set a price…'
-          : 'Open draft'
+          ? 'Price…'
+          : 'Send…'
         : coverage.kind === 'sent'
           ? 'View'
           : coverage.kind === 'signed'
@@ -107,13 +107,13 @@ export default function JobWorkOrderStrip({
       <span style={{ color: 'var(--text-muted)' }}>Sub work order:</span>
       <span style={{ flex: 1, minWidth: 0, fontWeight: 600 }}>
         {coverage.kind === 'none'
-          ? 'No sub work order on this job'
+          ? 'No agreement — nothing signed for a sub on this job'
           : coverage.kind === 'signed'
             ? `${coverage.subName} signed${coverage.signedOn ? ` ${coverage.signedOn}` : ''}${coverage.recordId ? ` · ${coverage.recordId}` : ''}`
             : coverage.kind === 'sent'
               ? `Sent to ${coverage.subName}${coverage.expired ? ' — offer expired' : ''}`
               : coverage.kind === 'draft'
-                ? `Draft for ${coverage.subName}${coverage.unpriced ? ' — no price yet' : ''}`
+                ? `Drafted for ${coverage.subName}${coverage.unpriced ? ' — no price yet' : ''}`
                 : `${coverage.subName} declined`}
       </span>
       {controls}

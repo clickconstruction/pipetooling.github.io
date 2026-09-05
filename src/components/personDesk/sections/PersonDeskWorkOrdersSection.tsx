@@ -36,9 +36,9 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-
 function statusChip(r: Row) {
   if (r.status === 'settled') return <Chip tone="green">Settled {fmt(r.settled_at)}</Chip>
   if (r.status === 'accepted' || r.status === 'approved') return <Chip tone="green">{r.signed_at ? `Signed ${fmt(r.signed_at)}` : `Accepted ${fmt(r.accepted_at)}`}</Chip>
-  if (r.status === 'offered') return <Chip tone="amber">Awaiting answer{r.offered_at ? ` · sent ${fmt(r.offered_at)}` : ''}</Chip>
+  if (r.status === 'offered') return <Chip tone="amber">Sent{r.offered_at ? ` ${fmt(r.offered_at)}` : ''} · awaiting signature</Chip>
   if (r.status === 'declined') return <Chip tone="red">Declined {fmt(r.declined_at)}</Chip>
-  if (r.status === 'draft') return <Chip tone="gray">Draft</Chip>
+  if (r.status === 'draft') return <Chip tone="gray">{r.amount == null ? 'Drafted · no price yet' : 'Drafted'}</Chip>
   return <Chip tone="gray">{r.status}</Chip>
 }
 

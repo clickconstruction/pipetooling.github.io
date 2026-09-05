@@ -333,7 +333,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       severity: 'amber',
       kicker: 'Work orders',
       title: n === 1 ? 'A sub work order is waiting for a price' : `${n} sub work orders are waiting for a price`,
-      detail: `Drafted${who} without a subcontract amount${oldestDays != null && oldestDays > 0 ? ` — the oldest ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago` : ''}. Open the draft, type the price, send it for signature.`,
+      detail: `Drafted${who} without a subcontract amount${oldestDays != null && oldestDays > 0 ? ` — the oldest ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago` : ''}. Next: price it and send.`,
       figure: String(n),
       actionLabel: n === 1 ? 'Price it' : 'Price them',
     })

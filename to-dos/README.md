@@ -20,7 +20,6 @@ Index (validated against code and the live app on 2026-09-05 — see [`2026-09-0
 
 | To-do | Status | Summary |
 |---|---|---|
-| [`work-orders-one-row-spine.md`](./work-orders-one-row-spine.md) | not started | Work Orders and Sub Labor share one row, with the sub portal's progress rail on it; two derivation bugs to fix first. |
 | [`takeoffs-retire-old.md`](./takeoffs-retire-old.md) | blocked until ~2026-09-11 | Re-measure coverage after a week of New 1 / New 2, then retire the Old takeoffs view. |
 | [`rfq-apply-picks-to-bid-costs.md`](./rfq-apply-picks-to-bid-costs.md) | not started (owner approved) | Quote picks and vendor lots write a fixture-level cost override with provenance and revert. |
 | [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | not started | PTO / overtime on Capacity, the under-60% Needs-you card, travel on Days, bid vs actual, the % provenance badge. |
