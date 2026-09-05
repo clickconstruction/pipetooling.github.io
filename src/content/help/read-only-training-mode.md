@@ -9,10 +9,14 @@ Training mode lets someone explore the whole app without being able to change an
 
 It works for **any role**, not just assistants: use it for a new hire finding their feet, or to temporarily freeze an account you have questions about.
 
-## Turn it on
+## Start them in training mode when you invite them
+
+The easiest moment is before they exist. On **Active Accounts**, both {{button:blue|Invite via email}} and {{button:outline|Manually add user}} have a **Start in training mode (read-only)** checkbox under the role. Tick it and the account is flagged before their first sign-in — nothing to remember afterwards. See *invite someone to sign in*.
+
+## Turn it on for an existing account
 
 1. Open the **Active Accounts** panel (Settings → People & teams, or **Manage accounts** on People → Users).
-2. Find the person's row. In the **Last login** column, tick the {{chip:yellow|Read-only}} checkbox under their last-login time.
+2. Find the person's row. In the **Last login** column, tick the {{chip:yellow|Read-only}} checkbox under their last-login time. The Person Desk's *Access & account* section has the same switch on its **Training mode** row.
 
 :::example What they experience
 They sign in normally and see an amber **Training mode — read-only** banner at the top of every page. Browsing, searching, and opening records all work; anything that would save a change is rejected with an error instead of saving. Clocking in and out is the exception — punches save normally and go through the usual hours approval.

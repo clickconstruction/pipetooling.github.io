@@ -1,10 +1,12 @@
 import type { UserRole } from '../hooks/useAuth'
+import { humanRoleLabel } from './roleLabels'
 
 /**
- * Labels for Settings "Manually add user" and similar dropdowns (`value` stays DB enum slug).
- * Preserves legacy formatting for other roles (`Master_technician`, etc.).
+ * Labels for role dropdowns and role lists (`value` stays the DB enum slug).
+ * Delegates to the one human-label helper (`roleLabels.ts`) since v2 "the invite
+ * moment" — this used to preserve the raw enum ("Master_technician"), which is
+ * what the invitation email ended up saying.
  */
 export function displayLabelForUserRole(role: UserRole): string {
-  if (role === 'helpers') return 'Helper'
-  return role.charAt(0).toUpperCase() + role.slice(1)
+  return humanRoleLabel(role)
 }
