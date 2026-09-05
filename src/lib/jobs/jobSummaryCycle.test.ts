@@ -72,6 +72,7 @@ describe('cycle (v2.2823)', () => {
       { id: 'y', hcp_number: '902', job_name: 'Open fresh', status: 'working', last_work_date: '2026-08-30', revenue: 800 },
       { id: 'z', hcp_number: '903', job_name: 'Billed', status: 'billed', last_work_date: '2026-06-01', revenue: 900 },
       { id: 'w', hcp_number: '904', job_name: 'Never worked', status: 'working', last_work_date: null, created_at: '2026-07-01T10:00:00Z', revenue: 1200 },
+      { id: 'v', hcp_number: '905', job_name: 'Queued', status: 'waiting', last_work_date: null, created_at: '2026-05-01T10:00:00Z', revenue: 7000 },
     ]
     const stale = staleOpenJobs(jobs, '2026-09-05', 21, null)
     expect(stale.map((s) => [s.number, s.idleDays, s.gcLabel])).toEqual([

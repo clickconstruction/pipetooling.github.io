@@ -1420,6 +1420,7 @@ export default function Jobs() {
     reportPctByJobId: jobSummaryReportPctByJobId,
     search: jobSummarySearch,
     userNameById: jobSummaryUserNameById,
+    initialView: searchParams.get('view'),
   })
 
   const subLaborOutstandingByPerson = useMemo(
