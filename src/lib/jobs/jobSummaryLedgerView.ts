@@ -1,4 +1,5 @@
 import { resolveJobSummaryPercentComplete, jobInvoicesAllPaidWithAmount } from '../jobSummaryPercentComplete'
+import type { JobSummaryMonthsBookBy } from './jobSummaryMonths'
 import {
   allocateJobOverheadDayShare,
   jobOverheadByMethod,
@@ -54,8 +55,8 @@ export const JOB_SUMMARY_CUT_OPTIONS: ReadonlyArray<{ key: JobSummaryCutBy; labe
 ]
 const CUT_KEYS: readonly JobSummaryCutBy[] = JOB_SUMMARY_CUT_OPTIONS.map((o) => o.key)
 
-/** Jobs = the ledger table; Days = jobs carried per day (v2.2695); Timeline = jobs running at once, over time (v2.2711). */
-export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline'
+/** Jobs = the ledger table; Days = jobs carried per day (v2.2695); Timeline = jobs running at once, over time (v2.2711); Months = the monthly P&L (v2.2821). */
+export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline' | 'months'
 
 /** Timeline coloring (v2.2745): by today's status, by the state on each day, or by run length. */
 export type JobSummaryTimelineColorBy = 'status' | 'stateOnDay' | 'runLength'
@@ -97,6 +98,8 @@ export type JobSummaryViewPrefs = {
   targetTrueMarginPct: number
   /** Cut by (v2.2820): the grouping key for the Jobs table. */
   cutBy: JobSummaryCutBy
+  /** Months view booking (v2.2821): spread by work month, or whole by bill month. */
+  monthsBookBy: JobSummaryMonthsBookBy
 }
 
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
@@ -114,12 +117,14 @@ export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
   compareTo: 'none',
   targetTrueMarginPct: 0,
   cutBy: 'none',
+  monthsBookBy: 'work',
 }
 
 export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewMode; label: string; title: string }> = [
   { key: 'jobs', label: 'Jobs', title: 'One row per job — costs, overhead share, true profit' },
   { key: 'days', label: 'Days', title: 'One row per day — how many jobs the crew carried, and what a job-day of overhead cost' },
   { key: 'timeline', label: 'Timeline', title: 'How many jobs were running at once, over time — every job as a bar from start to finish' },
+  { key: 'months', label: 'Months', title: 'One bar per month — revenue split into labor, subs, parts, overhead, and true profit' },
 ]
 
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
@@ -149,7 +154,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
   try {
     const p = JSON.parse(raw) as Partial<JobSummaryViewPrefs>
     return {
-      view: p.view === 'days' || p.view === 'timeline' ? p.view : 'jobs',
+      view: p.view === 'days' || p.view === 'timeline' || p.view === 'months' ? p.view : 'jobs',
       status: STATUS_KEYS.includes(p.status as JobSummaryStatusFilter) ? (p.status as JobSummaryStatusFilter) : JOB_SUMMARY_VIEW_DEFAULTS.status,
       window: WINDOW_KEYS.includes(p.window as JobSummaryWindowKey) ? (p.window as JobSummaryWindowKey) : JOB_SUMMARY_VIEW_DEFAULTS.window,
       method: METHOD_KEYS.includes(p.method as JobOverheadMethod) ? (p.method as JobOverheadMethod) : JOB_SUMMARY_VIEW_DEFAULTS.method,
@@ -161,6 +166,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
       compareTo: COMPARE_KEYS.includes(p.compareTo as JobSummaryCompareTo) ? (p.compareTo as JobSummaryCompareTo) : 'none',
       targetTrueMarginPct: TARGET_KEYS.includes(p.targetTrueMarginPct as number) ? (p.targetTrueMarginPct as number) : 0,
       cutBy: CUT_KEYS.includes(p.cutBy as JobSummaryCutBy) ? (p.cutBy as JobSummaryCutBy) : 'none',
+      monthsBookBy: p.monthsBookBy === 'bill' ? 'bill' : 'work',
     }
   } catch {
     return { ...JOB_SUMMARY_VIEW_DEFAULTS }

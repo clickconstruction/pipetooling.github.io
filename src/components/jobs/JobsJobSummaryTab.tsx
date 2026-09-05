@@ -56,6 +56,7 @@ import JobSummaryChargesTimelineChart from './JobSummaryChargesTimelineChart'
 import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedgerToolbar'
 import JobSummaryCutByPanel, { JobSummaryGroupRow } from './JobSummaryCutByPanel'
 import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
+import JobSummaryMonthsView from './JobSummaryMonthsView'
 import JobSummaryTimelineView from './JobSummaryTimelineView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
@@ -502,6 +503,20 @@ export default function JobsJobSummaryTab({
               canOpenSessionNotes={canOpenSessionNotes}
               users={users}
               jobs={jobSummaryLedgerAllJobs ?? []}
+            />
+          ) : view.prefs.view === 'months' ? (
+            <JobSummaryMonthsView
+              rows={view.rows}
+              ledger={view.ledger}
+              ledgerLoading={view.ledgerLoading}
+              ledgerError={view.ledgerError}
+              startYmd={view.startYmd}
+              endYmd={view.endYmd}
+              bookBy={view.prefs.monthsBookBy}
+              targetTrueMarginPct={view.prefs.targetTrueMarginPct}
+              compare={view.compare}
+              compareLabel={view.prefs.compareTo === 'lastYear' ? 'last year' : 'prior period'}
+              showMoney={showTeamLaborAndProfit}
             />
           ) : view.prefs.view === 'days' ? (
             <JobSummaryDaysView

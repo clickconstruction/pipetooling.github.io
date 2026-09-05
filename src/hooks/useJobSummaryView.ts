@@ -56,6 +56,9 @@ export type JobSummaryViewBundle<R extends JobSummaryLedgerRowInput> = {
 export type JobSummaryCompareBundle = {
   startYmd: string
   endYmd: string
+  /** The compare window's visible rows and ledger, for views that rebuild their own series (Months, v2.2821). */
+  rows: JobSummaryEnrichedRow[]
+  ledger: JobDayLedger | null
   totals: JobSummaryTotals
   comparison: JobSummaryComparison
   /** The compare window's true margin per Cut by group key (v2.2820). */
@@ -211,7 +214,7 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     const visiblePrior = filterAndSortJobSummaryRows({ rows: enrichedPrior, prefs, search, startYmd: compareWindow.startYmd, endYmd: compareWindow.endYmd })
     const priorTotals = summarizeJobSummaryRows(visiblePrior)
     const trueMarginPctByGroupKey = new Map(groupJobSummaryRows(visiblePrior, prefs.cutBy, cutCtx).map((g) => [g.key, g.totals.trueMarginPct]))
-    return { ...compareWindow, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), trueMarginPctByGroupKey, ledgerLoading: cmp.loading, ledgerError: cmp.error }
+    return { ...compareWindow, rows: visiblePrior, ledger: cmp.ledger, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), trueMarginPctByGroupKey, ledgerLoading: cmp.loading, ledgerError: cmp.error }
   }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals, cutCtx])
 
   return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, totals, hygiene, compare, groups, concentration }
