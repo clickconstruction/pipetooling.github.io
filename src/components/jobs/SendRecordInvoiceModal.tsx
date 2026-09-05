@@ -92,7 +92,8 @@ import {
   invoiceBillToFromRow,
   type InvoiceBillTo,
 } from '../../lib/jobs/invoiceBillTo'
-import { isMintedPrimaryDraftStillUntouched } from '../../lib/jobs/mintedPrimaryDraftCleanup'
+import { planPrimaryRtbForBillCustomer } from '../../lib/billing/proposedPrimaryRtbAmount'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
 import { buildHazmatNoticeEmailPreviewHtml } from '../../lib/hazmatNoticeEmailPreview'
@@ -414,7 +415,7 @@ export default function SendRecordInvoiceModal({
   const onAfterOobUnwindSuccessRef = useRef(onAfterOobUnwindSuccess)
   onAfterOobUnwindSuccessRef.current = onAfterOobUnwindSuccess
 
-  const { role: authRole } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
 
   const [tab, setTab] = useState<BillCustomerMainTab>('stripe')
@@ -435,13 +436,14 @@ export default function SendRecordInvoiceModal({
   /** Full job row for physical invoice line items + payments (same fetch as Stripe fixture multiline). */
   const [billCustomerJobDetails, setBillCustomerJobDetails] = useState<JobWithDetails | null>(null)
 
-  const [ensuredInvoice, setEnsuredInvoice] = useState<{ jobId: string; id: string; amount: number } | null>(null)
-  const [ensureError, setEnsureError] = useState<string | null>(null)
-  const [ensureLoading, setEnsureLoading] = useState(false)
-  /** Set when THIS open's ensure INSERTed the primary draft (`created: true`) — the cancel-leak guard's memory. */
-  const mintedPrimaryDraftRef = useRef<{ jobId: string; invoiceId: string } | null>(null)
-  /** Job id the modal is currently open for (kind:'job'), so a late cleanup never deletes a row a re-open is using. */
-  const openJobIdRef = useRef<string | null>(null)
+  /** True once the detail fetch for the open job has settled (row or null). */
+  const [billCustomerJobDetailsLoaded, setBillCustomerJobDetailsLoaded] = useState(false)
+  /**
+   * The row the commit-time ensure returned (decision 17, v2.2876: the ensure
+   * RPC runs inside Send / Record, never on open). Until then the billing
+   * target is the client-side plan derived below from the job's invoices.
+   */
+  const [committedPrimary, setCommittedPrimary] = useState<{ jobId: string; id: string; amount: number } | null>(null)
 
   const [stripeDueDate, setStripeDueDate] = useState(todayIsoDate)
   const [editDueDateOpen, setEditDueDateOpen] = useState(false)
@@ -548,6 +550,40 @@ export default function SendRecordInvoiceModal({
   const [billToOverride, setBillToOverride] = useState<InvoiceBillTo | null>(null)
   const jobWithBillTo = jobRaw ? applyBillToToJobBillingContext(jobRaw, billToOverride) : jobRaw
   const job = jobWithBillTo && emailOverride ? { ...jobWithBillTo, customer_email: emailOverride } : jobWithBillTo
+  const jobId = job?.id ?? null
+
+  // Bill Customer's billing target for kind:'job' (v2.2876, decision 17): what
+  // the ensure RPC WOULD do, computed from the job row + invoices already
+  // fetched for the previews — nothing is written on open. `id` is null when
+  // the RPC would INSERT the primary at commit time (Stripe's live preview
+  // needs a row, so the panel shows the static draft line until then).
+  const primaryPlan = useMemo(
+    () =>
+      kind === 'job' && jobId && billCustomerJobDetails && billCustomerJobDetails.id === jobId
+        ? planPrimaryRtbForBillCustomer(billCustomerJobDetails, billCustomerJobDetails.invoices ?? [])
+        : null,
+    [kind, jobId, billCustomerJobDetails],
+  )
+  const ensureLoading = open && kind === 'job' && !billCustomerJobDetailsLoaded
+  const ensureError: string | null =
+    kind !== 'job' || ensureLoading
+      ? null
+      : !billCustomerJobDetails
+        ? 'Could not load this job'
+        : primaryPlan?.kind === 'blocked'
+          ? primaryPlan.message
+          : null
+  const ensuredInvoice = useMemo((): { jobId: string; id: string | null; amount: number } | null => {
+    if (kind !== 'job' || !jobId) return null
+    if (committedPrimary && committedPrimary.jobId === jobId) return committedPrimary
+    if (primaryPlan?.kind === 'bill') return { jobId, id: primaryPlan.invoiceId, amount: primaryPlan.amount }
+    return null
+  }, [kind, jobId, committedPrimary, primaryPlan])
+  // The bill amount has no input (BILLING_FLOWS: programmatic only) — it tracks the plan.
+  useEffect(() => {
+    if (!open || kind !== 'job' || primaryPlan?.kind !== 'bill') return
+    setBillAmountStr(String(primaryPlan.amount))
+  }, [open, kind, primaryPlan])
   useEffect(() => {
     setEmailOverride(null)
     setEmailFixDraft('')
@@ -709,11 +745,10 @@ export default function SendRecordInvoiceModal({
 
   useEffect(() => {
     if (!open) {
-      setEnsuredInvoice(null)
-      setEnsureError(null)
-      setEnsureLoading(false)
+      setCommittedPrimary(null)
       setPhysicalPdfPreviewLoading(false)
       setBillCustomerJobDetails(null)
+      setBillCustomerJobDetailsLoaded(false)
       return
     }
     if (!job) return
@@ -732,9 +767,7 @@ export default function SendRecordInvoiceModal({
     setPhysicalSubmitting(false)
     setPhysicalPdfPreviewLoading(false)
     setPhysicalError(null)
-    setEnsuredInvoice(null)
-    setEnsureError(null)
-    setEnsureLoading(false)
+    setCommittedPrimary(null)
     setEditDueDateOpen(false)
     setDraftDueYmd('')
     setDraftServiceYmd('')
@@ -935,13 +968,16 @@ export default function SendRecordInvoiceModal({
     if (!open || !job?.id) {
       setStripeFixtureMultiLineAvailable(null)
       setBillCustomerJobDetails(null)
+      setBillCustomerJobDetailsLoaded(false)
       return
     }
     let cancelled = false
+    setBillCustomerJobDetailsLoaded(false)
     void (async () => {
       const fresh = await fetchJobWithDetailsById(job.id)
       if (cancelled) return
       setBillCustomerJobDetails(fresh)
+      setBillCustomerJobDetailsLoaded(true)
       // v2.1133: a segment invoice's multi-line availability considers only its
       // OWN linked line items (kind 'job' bills the unlinked remainder — the
       // scoping helper falls back to the full list there).
@@ -955,151 +991,69 @@ export default function SendRecordInvoiceModal({
     }
   }, [open, job?.id, kind, invoice?.id])
 
-  // v2.2464 cancel-leak guard: when THIS open's ensure MINTED the primary
-  // draft and the modal closes with the row still exactly as the mint left it
-  // (no Stripe object, never sent/billed, no outside-send record, no bill-to
-  // override, no payment), delete it again. Opening Bill Customer and backing
-  // out must not permanently plant the full-remainder "auto" draft — that is
-  // what seeded job 978's confusion. Best-effort: on any doubt, keep the row
-  // (a kept draft resizes/deletes on the next remainder resync anyway).
-  const cleanupMintedPrimaryDraft = useCallback(async () => {
-    const minted = mintedPrimaryDraftRef.current
-    if (!minted) return
-    // A fast close→reopen of the same job reuses the same primary row (the
-    // reopen's ensure finds it, created:false) — a late cleanup from the
-    // first open must not delete it out from under the live modal.
-    if (openJobIdRef.current === minted.jobId) return
-    mintedPrimaryDraftRef.current = null
+  /**
+   * Decision 17 (v2.2876): the ensure RPC runs HERE — inside Send / Record,
+   * immediately before the write — never on open. It INSERTs / resizes /
+   * adopts the primary Ready-to-Bill row exactly as before and hands back the
+   * id the channel bills against. A remainder that moved since the modal
+   * opened (a payment landed, a partial was carved) is shown, not silently
+   * billed at the new number.
+   */
+  async function ensurePrimaryRowForCommit(
+    amountShown: number,
+  ): Promise<{ ok: true; invoiceId: string } | { ok: false; error: string }> {
+    if (kind === 'invoice') {
+      return invoice?.id ? { ok: true, invoiceId: invoice.id } : { ok: false, error: 'Invoice row missing' }
+    }
+    if (!job) return { ok: false, error: 'Job missing' }
+    if (ensureError) return { ok: false, error: ensureError }
+    const raw = await withOperationTimeout(
+      withSupabaseRetry(
+        async () =>
+          await supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
+            p_job_id: job.id,
+          }),
+        'ensure RTB invoice before billing',
+      ),
+      BILL_DB_WRITE_TIMEOUT_MS,
+      'Prepare bill line',
+    )
+    const obj = raw as Record<string, unknown> | null
+    if (obj && typeof obj.error === 'string' && obj.error.length > 0) return { ok: false, error: obj.error }
+    if (obj?.ok === true && obj.fully_allocated === true) {
+      void refreshBillCustomerJobDetails()
+      return { ok: false, error: 'Nothing left to bill for this job — every dollar is already on an invoice.' }
+    }
+    if (obj?.ok !== true || typeof obj.invoice_id !== 'string') {
+      return { ok: false, error: 'Unexpected response from server' }
+    }
+    const rawAmt = obj.amount
+    const amt = typeof rawAmt === 'number' ? rawAmt : typeof rawAmt === 'string' ? Number(rawAmt) : NaN
+    if (!Number.isFinite(amt)) return { ok: false, error: 'Unexpected response from server' }
+    setCommittedPrimary({ jobId: job.id, id: obj.invoice_id, amount: amt })
     try {
-      const rowRes = await supabase
-        .from('jobs_ledger_invoices')
-        .select(
-          'status, is_primary_rtb_bundle, stripe_invoice_id, stripe_invoice_status, hosted_invoice_url, sent_to_customer_at, billed_at, external_send_channel, bill_to_name, bill_to_email, bill_to_phone, bill_to_stripe_customer_id',
-        )
-        .eq('id', minted.invoiceId)
-        .maybeSingle()
-      if (rowRes.error) return
-      const payRes = await supabase
-        .from('jobs_ledger_payments')
-        .select('id', { count: 'exact', head: true })
-        .eq('invoice_id', minted.invoiceId)
-      if (payRes.error) return
-      if (!isMintedPrimaryDraftStillUntouched(rowRes.data, payRes.count ?? 0)) return
-      const del = await supabase.rpc('delete_ready_to_bill_invoice', { p_invoice_id: minted.invoiceId })
-      const delOk = (del.data as { ok?: boolean } | null)?.ok === true
-      if (del.error || !delOk) return
-      try {
-        await onAfterEnsureSuccessRef.current?.()
-      } catch {
-        /* ignore */
-      }
+      await onAfterEnsureSuccessRef.current?.()
     } catch {
-      /* best-effort — never surface cleanup noise over a routine close */
+      /* ignore */
     }
-  }, [])
-
-  useEffect(() => {
-    openJobIdRef.current = open && kind === 'job' ? (job?.id ?? null) : null
-    if (!open) void cleanupMintedPrimaryDraft()
-    // Cleared here (declared before the unmount effect below, so this runs
-    // first) so the unmount cleanup isn't blocked by the open-job guard.
-    return () => {
-      openJobIdRef.current = null
-    }
-  }, [open, kind, job?.id, cleanupMintedPrimaryDraft])
-
-  // Provider teardown / route change while open: same guard on unmount.
-  useEffect(
-    () => () => {
-      void cleanupMintedPrimaryDraft()
-    },
-    [cleanupMintedPrimaryDraft],
-  )
-
-  // Ensure primary RTB line when opening for a job row (shared for Outside submit).
-  useEffect(() => {
-    if (!open || !job?.id || kind !== 'job') return
-    if (ensuredInvoice?.jobId === job.id) return
-    // Payload swapped to another job while open: settle the previous job's
-    // minted draft before this job can record its own.
-    if (mintedPrimaryDraftRef.current && mintedPrimaryDraftRef.current.jobId !== job.id) {
-      void cleanupMintedPrimaryDraft()
-    }
-
-    let cancelled = false
-    setEnsureLoading(true)
-    setEnsureError(null)
-
-    void (async () => {
-      try {
-        const raw = await withSupabaseRetry(
-          async () =>
-            await supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
-              p_job_id: job.id,
-            }),
-          'ensure RTB invoice for Bill Customer'
-        )
-        const obj = raw as Record<string, unknown> | null
-        // Record a mint BEFORE the cancelled bail-out — the row exists
-        // server-side either way, and the close cleanup must know about it.
-        if (obj?.ok === true && obj.created === true && typeof obj.invoice_id === 'string') {
-          mintedPrimaryDraftRef.current = { jobId: job.id, invoiceId: obj.invoice_id }
-        }
-        if (cancelled) {
-          // Modal closed (or moved on) while the ensure was in flight — the
-          // close-time cleanup ran before the mint was recorded, so settle it
-          // now.
-          void cleanupMintedPrimaryDraft()
-          return
-        }
-        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
-          setEnsuredInvoice(null)
-          setEnsureError(obj.error)
-          return
-        }
-        // Post-fix RPC: fully allocated with no primary to bill returns ok
-        // without an invoice — same dead-end as the old "nothing left" error,
-        // said plainly.
-        if (obj?.ok === true && obj.fully_allocated === true) {
-          setEnsuredInvoice(null)
-          setEnsureError('Nothing left to bill for this job — every dollar is already on an invoice.')
-          return
-        }
-        if (obj?.ok === true && typeof obj.invoice_id === 'string') {
-          const rawAmt = obj.amount
-          const amt =
-            typeof rawAmt === 'number' ? rawAmt : typeof rawAmt === 'string' ? Number(rawAmt) : NaN
-          if (!Number.isFinite(amt)) {
-            setEnsuredInvoice(null)
-            setEnsureError('Unexpected response from server')
-            return
-          }
-          setEnsuredInvoice({ jobId: job.id, id: obj.invoice_id, amount: amt })
-          setBillAmountStr(String(amt))
-          setEnsureError(null)
-          try {
-            await onAfterEnsureSuccessRef.current?.()
-          } catch {
-            /* ignore */
-          }
-        } else {
-          setEnsuredInvoice(null)
-          setEnsureError('Unexpected response from server')
-        }
-      } catch (e) {
-        if (cancelled) return
-        setEnsuredInvoice(null)
-        setEnsureError(e instanceof Error ? e.message : 'Failed to ensure invoice')
-      } finally {
-        if (!cancelled) setEnsureLoading(false)
+    if (Math.abs(amt - amountShown) > 0.005) {
+      setBillAmountStr(String(amt))
+      void refreshBillCustomerJobDetails()
+      return {
+        ok: false,
+        error: `The amount left to bill changed to $${amt.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })} since you opened this — review the bill, then send again.`,
       }
-    })()
-
-    return () => {
-      cancelled = true
-      setEnsureLoading(false)
     }
-  }, [open, job?.id, kind])
+    return { ok: true, invoiceId: obj.invoice_id }
+  }
+
+  /** Measurement (ui_nav_clicks, v2.2876): a bill left the modal — payload kind + channel. */
+  function recordBillCustomerCommitted(channel: 'stripe' | 'housecallpro' | 'physical') {
+    recordNavClick(authUser?.id, authRole, 'bill_customer_committed', `#${kind}:${channel}`)
+  }
 
   useEffect(() => {
     if (!open || !job || tab !== 'stripe' || stripeResult || stripeSuccessInvoice) {
@@ -1250,8 +1204,7 @@ export default function SendRecordInvoiceModal({
       setPhysicalError('Choose a due date')
       return
     }
-    const invId = kind === 'invoice' ? invoice?.id : ensuredInvoice?.id
-    if (!invId) {
+    if (kind === 'invoice' ? !invoice?.id : !ensuredInvoice || ensureError) {
       setPhysicalError(ensureError || 'Could not prepare invoice line for this job')
       return
     }
@@ -1323,6 +1276,13 @@ export default function SendRecordInvoiceModal({
       const sentAt = sentDate.trim()
         ? new Date(sentDate.trim() + 'T12:00:00').toISOString()
         : new Date().toISOString()
+      // The only write before the send: the primary row is created / resized here (decision 17).
+      const ensured = await ensurePrimaryRowForCommit(amt)
+      if (!ensured.ok) {
+        setPhysicalError(ensured.error)
+        return
+      }
+      const invId = ensured.invoiceId
       const { text, html } = buildPhysicalInvoiceEmailBodies(doc)
       const { data: invokeData, error: fnErr } = await withOperationTimeout(
         supabase.functions.invoke('send-physical-invoice-email', {
@@ -1371,6 +1331,7 @@ export default function SendRecordInvoiceModal({
           console.error('hazmat job-total repoint failed (physical invoice sent ok)', linked.error)
         }
       }
+      recordBillCustomerCommitted('physical')
       await onSuccess()
       onClose()
     } catch (e) {
@@ -1425,10 +1386,10 @@ export default function SendRecordInvoiceModal({
           'Record outside bill',
         )
       } else {
-        const invId = ensuredInvoice?.id
-        if (!invId) {
-          throw new Error(ensureError || 'Could not prepare invoice line for this job')
-        }
+        // The only write before the record: the primary row is created / resized here (decision 17).
+        const ensured = await ensurePrimaryRowForCommit(amt)
+        if (!ensured.ok) throw new Error(ensured.error)
+        const invId = ensured.invoiceId
         await withOperationTimeout(
           withSupabaseRetry(
             () =>
@@ -1453,6 +1414,7 @@ export default function SendRecordInvoiceModal({
         setOutsideError(promote.error)
         return
       }
+      recordBillCustomerCommitted('housecallpro')
       await onSuccess()
       onClose()
     } catch (e) {
@@ -1481,8 +1443,7 @@ export default function SendRecordInvoiceModal({
       setStripeError('Customer email is required for Stripe invoices. Add it on Edit Job.')
       return
     }
-    const invId = kind === 'invoice' ? invoice?.id : ensuredInvoice?.id
-    if (!invId) {
+    if (kind === 'invoice' ? !invoice?.id : !ensuredInvoice || ensureError) {
       setStripeError(ensureError || 'Could not prepare invoice line for this job')
       return
     }
@@ -1515,6 +1476,13 @@ export default function SendRecordInvoiceModal({
       const feeLines = lineOverrideActive ? [] : hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
       const extraLines = [...feeLines, ...rollIns]
       const totalAmountDollars = amt + hazmatRollInTotalDollars(rollIns)
+      // The only write before the send: the primary row is created / resized here (decision 17).
+      const ensured = await ensurePrimaryRowForCommit(amt)
+      if (!ensured.ok) {
+        setStripeError(ensured.error)
+        return
+      }
+      const invId = ensured.invoiceId
       const { data: invokeData, error: fnErr } = await withOperationTimeout(
         supabase.functions.invoke('create-stripe-invoice', {
           body: {
@@ -1561,6 +1529,7 @@ export default function SendRecordInvoiceModal({
         setStripeError(promote.error)
         return
       }
+      recordBillCustomerCommitted('stripe')
 
       // Fold rolled-in riders: repoint each incident at the final invoice FIRST
       // (a dangling incident -> deleted-invoice link is worse than a leftover
@@ -3253,7 +3222,9 @@ export default function SendRecordInvoiceModal({
                         ? 'Preparing billing line…'
                         : kind === 'job' && !ensureLoading && ensureError
                           ? 'Fix the billing line error above, then edit due date in What the customer will see when ready.'
-                          : null
+                          : kind === 'job' && ensuredInvoice && !ensuredInvoice.id
+                            ? 'Nothing is saved until you send. Stripe\'s exact layout appears once the bill exists — the line below is what the customer will see.'
+                            : null
                     }
                     onEditDueDate={() => {
                       setDraftDueYmd(stripeDueDate)

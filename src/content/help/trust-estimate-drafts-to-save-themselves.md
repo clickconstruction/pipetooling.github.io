@@ -17,6 +17,16 @@ Draft estimates and change orders **autosave** while you work — you don't have
 You're pricing a pool liner job and need the customer's gate code from a text thread. You switch to Messages, get pulled into two other things, and come back twenty minutes later after a reload. The line items, option names, and pitch you'd written are all still there.
 :::
 
+## A draft you never touch disappears
+
+{{button:blue|New estimate}}, {{button:outline|New change order}} and a Projects card's **+ Estimate** open a fresh draft right away so you can start typing. If you leave that draft without typing anything — no title, no customer, no priced line, no terms — it removes itself on the way out. The first real edit (which autosaves), {{button:outline|Save draft}}, or sending keeps it.
+
+:::example Opened one by mistake
+You press New estimate, realise the customer already has one, and go back to the list. Nothing is left behind — the list shows exactly what it showed before.
+:::
+
+Drafts you opened from the list are never removed this way, and a draft with anything typed into it stays. Empty drafts left over from before (or from a tab closed mid-way) still collapse behind the Pipeline's **Clean up empty drafts** button.
+
 ## If autosave can't save
 
 - If a save fails (bad connection, for instance), the note turns into **Autosave failed — press Save draft**. Fix the connection and press {{button:outline|Save draft}} yourself.
