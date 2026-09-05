@@ -11,7 +11,7 @@ last_updated: 2026-08-01
 
 ## What this surface is
 
-> **v2.1675 — the tabbed Job window.** `DetailJobModal` and `JobFormModal` now usually render inside [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx) (Job · Edit · Bill tabs, one ✕) for editor roles: the detail modal gains a `paneMode` (no own overlay/Esc/✕, ⚙ → tab switch, `externalRefreshKey`, `onEscBlockedChange`), the form gains `embeddedRegion`/`registerRequestClose`/`externalEscBlocked`. Both keep their standalone renders (non-editor roles, New Job, fallback paths), so everything in this map still applies — the window is chrome around unchanged internals.
+> **v2.1675 — the tabbed Job window.** `DetailJobModal` and `JobFormModal` now usually render inside [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx) (Job · Edit · Bill tabs, one ✕) for roles in `isStaffFullJobLedgerDetailRole` (dev / master / assistant / primary — [`resolveJobWindowMode`](../src/lib/jobDetailModalRole.ts), v2.2848; superintendent, estimator, controller and the sub-like roles get the standalone read-only `DetailJobModal`, because the window's embedded edit form runs the full-ledger fetch that RLS refuses them and closed the window on null): the detail modal gains a `paneMode` (no own overlay/Esc/✕, ⚙ → tab switch, `externalRefreshKey`, `onEscBlockedChange`), the form gains `embeddedRegion`/`registerRequestClose`/`externalEscBlocked`. Both keep their standalone renders (non-editor roles, New Job, fallback paths), so everything in this map still applies — the window is chrome around unchanged internals.
 
 Two Jobs-area modal "God components", mapped together because they are the Jobs area's two biggest remaining files after the page-level decompositions, but **they are independent surfaces** — they share no state, no selection pointer, and no supabase tables beyond the app-wide `jobs_ledger`/`users` reads. Line counts at 2026-07-29:
 
@@ -240,7 +240,7 @@ Component: default-export function `DetailJobModal`. ~25 `useState`, 10 `useEffe
 
 ### DetailJobModal
 
-16. **Two-tier fetch by role:** `isStaffFullJobLedgerDetailRole` → full `fetchJobWithDetailsById`; everyone else gets the limited `jobs_ledger` row merged over the `assignedJobsRows` prop (ledger wins; the assigned-row stub hardcodes `status: 'working'` and null customer fields).
+16. **Two-tier fetch by role:** `isStaffFullJobLedgerDetailRole` → full `fetchJobWithDetailsById`; everyone else gets the limited `jobs_ledger` row merged over the `assignedJobsRows` prop (ledger wins; the assigned-row stub hardcodes `status: 'working'` and null customer fields). Since v2.2848 the same predicate (via `resolveJobWindowMode`) decides window vs. standalone pane in `JobDetailModalContext`, and gates the standalone ⚙ Edit gear — the two tiers and the two surfaces must never disagree, or the edit form mounts for a role whose fetch returns null and self-closes.
 17. **`detailFetchIdRef` race guard** — every open/close/jobId change bumps it; stale fetches are dropped. Preserve in any `useJobDetailData` hook extraction.
 18. **Edit Job replaces (not stacks on) Job Detail** — `handleEditJobClick` opens the singleton Edit Job and then `onClose()`es itself; Edit Job's footer reopens Job Detail via the opener bridge. Closing/saving Edit lands on whatever was under Job Detail.
 19. **`commitPctWithNote` posts the thread note first and bails silently if it fails** — `pct_complete` is never written without its note.

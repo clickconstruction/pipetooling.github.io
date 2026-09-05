@@ -1,3 +1,5 @@
+import { shouldBlockBillOnPaidJob } from '../../supabase/functions/_shared/paidJobBillGuard'
+
 /** One display row for Dashboard Ready to Bill (job, merged job+line, or standalone invoice). */
 export type ReadyToBillDashboardUnit<J, I> =
   | { kind: 'job'; job: J }
@@ -16,6 +18,8 @@ type ReadyToBillInvoiceShape = {
   amount: number | null
   status: string
   is_primary_rtb_bundle: boolean | null
+  /** Parent job status when the loader joined it; a `paid` job's drafts never make a unit (J3-1). */
+  job_status?: string | null
 }
 
 function jobRemainingCents(job: ReadyToBillJobShape): number {
@@ -46,7 +50,11 @@ function dashboardJobBillingUnallocCents<
 export function buildReadyToBillDashboardUnits<
   J extends ReadyToBillJobShape,
   I extends ReadyToBillInvoiceShape,
->(jobs: J[], invoices: I[]): ReadyToBillDashboardUnit<J, I>[] {
+>(jobs: J[], invoicesIn: I[]): ReadyToBillDashboardUnit<J, I>[] {
+  // Stale never-sent drafts on Paid-in-Full jobs (live specimens: jobs 688 and
+  // 903, J3-1) are not "ready to bill" — the board's rule is job-status based
+  // and a paid job can never be in Ready to Bill, so the Dashboard matches it.
+  const invoices = invoicesIn.filter((i) => !shouldBlockBillOnPaidJob({ jobStatus: i.job_status }))
   const bundledIds = new Set<string>()
   const out: ReadyToBillDashboardUnit<J, I>[] = []
   for (const job of jobs) {

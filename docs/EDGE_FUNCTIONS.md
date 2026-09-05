@@ -2492,6 +2492,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.2846 — never bill a paid job twice** (journey-map J3-1): after the job row loads, `shouldBlockBillOnPaidJob({ jobStatus: jobRow.status, allowRebill })` from the shared [`paidJobBillGuard.ts`](../supabase/functions/_shared/paidJobBillGuard.ts) refuses with **409** `{ error: "This job is already paid in full — nothing to bill.", code: "job_already_paid" }` when `jobs_ledger.status = 'paid'` and the body did not send **`allow_rebill: true`** (the Bill Customer modal's "Bill this job again anyway" checkbox). The existing `Invoice must be Ready to Bill` check, the idempotent-retry branch and the v2.2045 conversion branch run first and are unchanged. Each refusal writes a `job_activity_events` row `event_type = 'rtb_paid_job_blocked'` (service role, best-effort). **Redeploy required.**
+
 > **v2.2045 — convert a billed non-Stripe line** (`convert_billed: true`): relaxes the ready_to_bill gate for a row already `billed` with no `stripe_invoice_id` and **zero payments applied** (checked via the caller's RLS client) — the one-button "Make Stripe bill" on Edit Job → Bill. `billed_at` is never written by this function (and the DB trigger COALESCEs), so the original billed date survives conversion by construction. Full flow: `docs/BILLING_FLOWS.md` → "Converting a non-Stripe bill to Stripe". Redeploy required.
 
 > **v2.1133 — segment invoices bill only their own line items**: the fixtures query now selects `invoice_id` and both this function and `preview-stripe-invoice` pass the rows through `scopeFixturesToInvoice` ([`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)): rows linked to the invoice when any exist (an invoice created from selected segments lists exactly those lines at their real amounts), else all rows (dollar break-off invoices keep the historical whole-job proration). Before this, a $454 change-order invoice rendered with every job stage on it, each carrying a prorated sliver. Client mirror: `src/lib/invoiceScopedFixtures.ts` (physical PDFs + previews + line-edit refs). Redeploy both functions.
@@ -2520,6 +2522,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ```typescript
 interface CreateStripeInvoiceBody {
+  /** v2.2846: explicit re-bill of a job whose `jobs_ledger.status` is `paid`; without `true` the request is refused (409 `job_already_paid`). */
+  allow_rebill?: boolean
   jobs_ledger_invoice_id: string
   customer_id: string
   amount_dollars: number
@@ -2582,6 +2586,7 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 #### Error responses (400)
 
+- **409 `This job is already paid in full — nothing to bill.`** (`code: job_already_paid`, v2.2846) — the invoice's job is `paid` and the body lacks `allow_rebill: true`.
 - **`Job must be linked to a customer before creating a Stripe invoice.`** — **`jobs_ledger.customer_id`** is null.
 - **`Customer must match the job linked customer.`** — body **`customer_id`** does not equal the job’s **`customer_id`**.
 - **`Line description too long (max 500 characters)`** — **`line_description`** exceeds the limit.
@@ -2622,6 +2627,8 @@ Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, 
 
 ### send-physical-invoice-email
 
+> **v2.2846 — never bill a paid job twice** (journey-map J3-1): the `jobs_ledger` select adds `status`; a **first send** (not `resend`) on a job whose status is `paid` is refused with **409** `{ error: "This job is already paid in full — nothing to bill.", code: "job_already_paid" }` unless the body carries **`allow_rebill: true`** — same shared predicate as `create-stripe-invoice` ([`paidJobBillGuard.ts`](../supabase/functions/_shared/paidJobBillGuard.ts)). The refusal writes `job_activity_events` `rtb_paid_job_blocked` with a service-role client when `SUPABASE_SERVICE_ROLE_KEY` is set (best-effort; the function otherwise stays user-client only). `resend: true` is unaffected — re-emailing an already-billed invoice is not a new bill. **Redeploy required.**
+
 > **v2.2605 — Resend mode**: `resend: true` re-emails an already-**billed** invoice (the Who-owes-what cards' "Email again — PDF attached", client helper [`resendPhysicalInvoiceEmail.ts`](../src/lib/resendPhysicalInvoiceEmail.ts)): the status gate flips to require `status = 'billed'` and the function **writes nothing** — no status change, no `sent_to_customer_at` bump (the bill keeps its first-send evidence; the send is still captured by the shared email log). Without the flag, first-send behavior is unchanged.
 
 > **v2.1085 — Bill-to override**: when the invoice row has `bill_to_email`, the target `customer_email` may match **either** that address or `jobs_ledger.customer_email` (a blank job customer email is fine in that case). Without the override, the job-customer-email match requirement is unchanged.
@@ -2660,6 +2667,8 @@ interface SendPhysicalInvoiceEmailBody {
   extra_attachments?: Array<{ filename?: string; content_base64: string }>
   /** v2.2605: re-email a billed invoice — requires `status = 'billed'`, records nothing on the row. */
   resend?: boolean
+  /** v2.2846: explicit re-bill of a `paid` job; without `true` a first send on a paid job is refused (409 `job_already_paid`). */
+  allow_rebill?: boolean
 }
 ```
 
@@ -2674,6 +2683,7 @@ interface SendPhysicalInvoiceEmailBody {
 - **400** — Missing fields, invalid email, invoice not **ready_to_bill**, **`customer_email`** mismatch vs **`jobs_ledger.customer_email`**, invoice **`job_id`** mismatch, oversized PDF payload.
 - **401** — Missing or invalid JWT.
 - **403** — Invoice or job not visible under RLS.
+- **409** — Job is `paid` and `allow_rebill` is not `true` (`code: job_already_paid`, v2.2846).
 - **502** — Resend API error.
 
 **Client**: [`SendRecordInvoiceModal.tsx`](../src/components/jobs/SendRecordInvoiceModal.tsx) (**Physical invoice** tab) invokes this Edge Function, then **`maybePromoteJobToBilledAfterCustomerInvoice`** on success. **`subject`** is **[`physicalInvoiceEmailSubject`](../src/lib/physicalInvoiceDocument.ts)** (**`Click Plumbing Invoice [#…]`**). **`email_text`** / **`email_html`** are built by **[`buildPhysicalInvoiceEmailBodies`](../src/lib/physicalInvoiceDocument.ts)** (HTML summary: bold issuer **tagline** under the intro; no **Service date** or **Issuer** block—PDF is authoritative).

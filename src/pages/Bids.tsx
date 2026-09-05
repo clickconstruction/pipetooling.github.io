@@ -90,6 +90,9 @@ import {
 } from '../lib/bids/bidFormatting'
 import { tabStyle, bidsTabStyle } from '../lib/bids/bidStyles'
 import { pricingResolvePanel } from '../lib/bids/pricingResolve'
+import { laborEmptyState, loadAfterResolve, shouldLoadCostEstimate } from '../lib/bids/laborTabLoadGate'
+import { pickActiveVersion } from '../lib/bids/pickActiveVersion'
+import { recordNavClick } from '../lib/navClickTelemetry'
 import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
@@ -776,8 +779,8 @@ export default function Bids() {
     bidPricingAssignments,
     bidCountRowCustomPrices,
     bidCountRowSubmissionHides,
-    bidVersions, selectedBidVersionId, switchActiveVersion,
-    pricingResolve, retryPricingResolve,
+    bidVersions, selectedBidVersionId, setSelectedBidVersionId, selectedBidVersionIdRef, switchActiveVersion,
+    pricingResolve, retryPricingResolve, costEstimateResolve,
     selectedPricingVersionId, setSelectedPricingVersionId,
     pricingCountRows,
     pricingCostEstimate,
@@ -1833,7 +1836,25 @@ export default function Bids() {
     const laborBookVersionId = bidJustChanged
       ? (selectedBidForCostEstimate.selected_labor_book_version_id ?? (laborBookVersions.length > 0 ? laborBookVersions[0]?.id ?? null : null))
       : selectedLaborBookVersionId
-    loadCostEstimateData(bidId, laborBookVersionId)
+    // J11-F1: count rows are per Version, and the engine reads the active version from a
+    // bid-tagged ref. Loading before that ref points at THIS bid filtered on the wrong version
+    // and rendered "Add fixtures in the Counts tab first." on every versioned bid until a tab
+    // round-trip. Mirror the Counts effect: resolve the version first, then load.
+    let cancelled = false
+    void (async () => {
+      if (!shouldLoadCostEstimate({ bidId, resolvedFor: selectedBidVersionIdRef.current, versionId: selectedBidVersionId })) {
+        if (selectedBidVersionIdRef.current?.bidId === bidId) return // ref ahead of state; the pending state change re-runs this effect
+        const versions = (await loadBidVersions(bidId)) ?? []
+        if (cancelled) return
+        const picked = pickActiveVersion({ savedVersionId: selectedBidForCostEstimate.selected_bid_version_id, bidVersions: versions })
+        setSelectedBidVersionId(bidId, picked)
+        if (!loadAfterResolve({ picked, versionId: selectedBidVersionId })) return // the state change re-runs this effect
+      }
+      if (cancelled) return
+      await loadCostEstimateData(bidId, laborBookVersionId)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeTab,
     selectedBidForCostEstimate?.id,
@@ -1841,7 +1862,26 @@ export default function Bids() {
     selectedBidForCostEstimate?.materials_model,
     selectedLaborBookVersionId,
     laborBookVersions,
+    selectedBidVersionId,
   ])
+
+  // J11 telemetry: the genuine empty state, once per bid it is shown for. `version_resolved`
+  // is true by construction (the panel kernel never yields 'empty' while unresolved) — a row
+  // with anything else means the false-empty bug is back.
+  const laborPanel = laborEmptyState({
+    resolved: pricingResolvePanel(costEstimateResolve, selectedBidForCostEstimate?.id ?? null) !== 'skeleton',
+    rowCount: costEstimateCountRows.length,
+  })
+  useEffect(() => {
+    if (activeTab !== 'labor' || laborPanel !== 'empty' || !selectedBidForCostEstimate?.id) return
+    recordNavClick(
+      authUser?.id,
+      myRole,
+      'labor_tab_empty_state_shown',
+      `/bids?tab=labor&rows=${costEstimateCountRows.length}&version_resolved=${costEstimateResolve.bidId === selectedBidForCostEstimate.id}`,
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, laborPanel, selectedBidForCostEstimate?.id])
 
 
   function openNewBid() {
@@ -3775,6 +3815,7 @@ export default function Bids() {
           costEstimateLaborRows={costEstimateLaborRows}
           setCostEstimateLaborRows={setCostEstimateLaborRows}
           costEstimateCountRows={costEstimateCountRows}
+          panel={laborPanel}
           purchaseOrdersForCostEstimate={purchaseOrdersForCostEstimate}
           costEstimateMaterialTotalRoughIn={costEstimateMaterialTotalRoughIn}
           costEstimateMaterialTotalTopOut={costEstimateMaterialTotalTopOut}

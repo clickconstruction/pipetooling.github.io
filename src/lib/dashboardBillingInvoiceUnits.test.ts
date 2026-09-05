@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   DASHBOARD_INVOICES_JOBS_LEDGER_SELECT,
   buildBilledWaitingDashboardUnits,
+  isDashboardBillOnPaidJob,
+  withoutDashboardBillsOnPaidJobs,
   buildPaymentsByInvoiceIdMap,
   countDashboardRtbDraftsForJob,
   dashboardBilledInvoiceAmounts,
@@ -69,6 +71,7 @@ const BASE_JOBS_LEDGER = {
   customer_email: 'casey@example.com',
   customer_phone: '555-0100',
   last_work_date: '2026-06-30',
+  status: 'billed',
 }
 
 function mkJoinRow(over: Record<string, unknown> = {}, jl: Record<string, unknown> = {}): DashboardInvoiceJoinRow {
@@ -80,9 +83,11 @@ function mkJoinRow(over: Record<string, unknown> = {}, jl: Record<string, unknow
 }
 
 function mkInvoice(over: Partial<InvoiceForDashboard> = {}): InvoiceForDashboard {
+  const { status: jobStatus, ...jobFields } = BASE_JOBS_LEDGER
   return {
     ...BASE_INVOICE_FIELDS,
-    ...BASE_JOBS_LEDGER,
+    ...jobFields,
+    job_status: jobStatus,
     open_since_at: BASE_JOBS_LEDGER.created_at,
     invoice_payments: [],
     ...over,
@@ -146,6 +151,12 @@ describe('mapJoinedInvoiceToDashboard', () => {
     expect(out.last_work_date).toBe('2026-06-30')
     expect(out.google_drive_link).toBe('https://drive')
     expect(out.job_plans_link).toBeNull()
+    expect(out.job_status).toBe('billed')
+  })
+
+  it('flattens the parent job status so the unit builders can drop bills on paid jobs (J3-1)', () => {
+    expect(mapJoinedInvoiceToDashboard(mkJoinRow({}, { status: 'paid' }), new Map()).job_status).toBe('paid')
+    expect(mapJoinedInvoiceToDashboard(mkJoinRow({}, { status: 'working' }), new Map()).job_status).toBe('working')
   })
 
   it('prefers the job created_at for open_since_at, falling back to the invoice created_at', () => {
@@ -173,6 +184,7 @@ describe('mapJoinedInvoiceToDashboard', () => {
     expect(out.customer_id).toBeNull()
     expect(out.customer_phone).toBeNull()
     expect(out.last_work_date).toBeNull()
+    expect(out.job_status).toBeNull()
     expect(out.open_since_at).toBe('2026-07-01T00:00:00Z')
   })
 
@@ -255,6 +267,7 @@ describe('dashboardInvoiceToPaymentModal', () => {
       'customer_email',
       'customer_phone',
       'last_work_date',
+      'job_status',
       'open_since_at',
       'invoice_payments',
     ]) {
@@ -326,7 +339,37 @@ describe('countDashboardRtbDraftsForJob', () => {
   })
 })
 
+describe('isDashboardBillOnPaidJob / withoutDashboardBillsOnPaidJobs', () => {
+  it('flags only bills whose parent job is paid', () => {
+    expect(isDashboardBillOnPaidJob(mkInvoice({ job_status: 'paid' }))).toBe(true)
+    expect(isDashboardBillOnPaidJob(mkInvoice({ job_status: 'billed' }))).toBe(false)
+    expect(isDashboardBillOnPaidJob(mkInvoice({ job_status: 'working' }))).toBe(false)
+    expect(isDashboardBillOnPaidJob(mkInvoice({ job_status: null }))).toBe(false)
+  })
+
+  it('filters a mixed list, preserving order', () => {
+    const keep1 = mkInvoice({ id: 'k1', job_status: 'billed' })
+    const drop = mkInvoice({ id: 'd', job_status: 'paid' })
+    const keep2 = mkInvoice({ id: 'k2', job_status: 'working' })
+    expect(withoutDashboardBillsOnPaidJobs([keep1, drop, keep2])).toEqual([keep1, keep2])
+  })
+})
+
 describe('buildBilledWaitingDashboardUnits', () => {
+  it('drops a billed invoice riding a paid job (J4-1: 1 of 65 billed rows sat on a paid job) so the count matches the board', () => {
+    const job = mkJob({ id: 'job-1' })
+    const onBilledJob = mkInvoice({ id: 'a', job_id: 'job-1', job_status: 'billed' })
+    const onPaidJob = mkInvoice({ id: 'b', job_id: 'job-paid', job_status: 'paid' })
+    expect(buildBilledWaitingDashboardUnits([job], [onBilledJob, onPaidJob])).toEqual([
+      { kind: 'job_bundle', job, inv: onBilledJob },
+    ])
+  })
+
+  it('keeps a billed invoice on a working job (owed regardless of job stage — N1: 8 of 65 live rows)', () => {
+    const onWorkingJob = mkInvoice({ id: 'w', job_id: 'job-working', job_status: 'working' })
+    expect(buildBilledWaitingDashboardUnits([], [onWorkingJob])).toEqual([{ kind: 'invoice', inv: onWorkingJob }])
+  })
+
   it('merges a job with exactly one billed invoice into one job_bundle row', () => {
     const job = mkJob({ id: 'job-1' })
     const inv = mkInvoice({ id: 'inv-1', job_id: 'job-1' })

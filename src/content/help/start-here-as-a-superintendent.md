@@ -23,10 +23,15 @@ Red needs your decision now (a completed step waiting on approval); amber is wor
 2. **Assign and schedule.** Open a project's Workflow to assign a person to a step and set its expected dates, or use [Schedule](?g=schedule-dispatch) for the day-by-day board.
 3. **Approve or send back.** When a tech marks a step complete, you can approve it or send it back with a reason — the previous step reopens for rework automatically.
 4. **Watch the sub board.** Projects → Forecast → **Subs** shows every sub's committed work on a timeline, with overlapping bookings outlined in red.
+5. **Open a job from your Dashboard.** Tap a row under **Superintendent Jobs** or **Assigned Jobs** and the job opens: address, status, files and plans, reports, and the job's notes thread. Post a note, or tap {{button:outline|Arrived}} / {{button:outline|Leaving}} — the office sees it on the same job. You read the job here; the office edits it.
+
+:::example Leaving a note on a job
+Open **706 · Maple St rough-in** from your Dashboard, scroll to the notes, type "Inspector wants the cleanout moved 6 in. — crew back Thursday," and post. The office sees it on the job the moment it lands.
+:::
 
 ## Work orders
 
-You can mark a sub's work order **accepted** when they tell you directly. Creating, offering, and settling work orders (the money side) stays with the office — see [pay a sub per step](?g=pay-a-sub-per-step).
+You see the work orders on your own jobs and projects — the ones you're assigned to or on the team for. You can mark a sub's work order **accepted** when they tell you directly. Creating, offering, and settling work orders (the money side) stays with the office — see [pay a sub per step](?g=pay-a-sub-per-step).
 
 ## What your people see
 

@@ -137,11 +137,14 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 - **Scope**: own rows only. On `people_labor_jobs`: the caller is an account-linked assignee of the sheet, OR (legacy fallback) the caller's trimmed `users.name` matches a segment of `assigned_to_name` (`' | '`-separated). Items/payments follow the parent via an EXISTS on the readable `people_labor_jobs` row. Office policies untouched; subs still cannot write anything.
 - **Hotfix (v2.1225)**: the original junction-based policy recursed — `people_labor_jobs`'s new policy queried `people_labor_job_assignees`, whose own `plja_select` policy queries `people_labor_jobs` back (42P17), breaking every Sub Labor ledger read for everyone. `20260802010000` replaces the junction EXISTS with SECURITY DEFINER helper **`user_is_assignee_of_labor_job(uuid)`** (evaluates the assignee link without invoking RLS); same intended grants, name fallback unchanged.
 
-### Sub work orders: `step_commitments` (v2.1208, `20260801150000_step_commitments.sql`)
-- **SELECT**: anyone with project access via the step (`can_access_project_via_step(step_id)` — dev/master/adopted/shared/superintendent), **OR** the sub's own rows (`people.account_user_id` link first, trimmed-name match on `display_name` as fallback).
-- **INSERT**: office roles with project access — dev, master_technician, assistant, controller, estimator (+ `can_access_project_via_step`).
-- **UPDATE**: the office set **plus superintendent** (client limits supers to offered → accepted; the DB grants row access, not transition logic).
-- **DELETE**: dev/master_technician only — money records cancel via status, not deletion.
+### Sub work orders: `step_commitments` (v2.1208, `20260801150000_step_commitments.sql`; anchors v2.2785 / v2.2814; superintendent scope v2.2844)
+- Three anchors: a workflow step (`step_id`), a Sub Labor sheet (`labor_job_id`, v2.2785), or a job (`job_id`, v2.2814). Every policy routes through **`can_access_sub_work_order(step_id, labor_job_id, job_id)`** (`20260905050035`, superintendent branch `20260905120000`):
+  - step-anchored → `can_access_project_via_step(step_id)` (dev/master/adopted-office/shared; superintendents only on assigned projects since v2.2836);
+  - sheet- or job-anchored → the office set (dev, master_technician, assistant, controller, estimator), **or** a superintendent whose job it is: `superintendent_can_access_sub_work_order(labor_job_id, job_id)` → `superintendent_report_job_anchor_allowed(job)` (assigned project via the strict 1-arg `can_access_project_row`, or `jobs_ledger_team_members`), resolving a sheet's job via `job_id`, the sheet's `project_id`, or its `job_number` ↔ `hcp_number`. Before v2.2844 this branch admitted `superintendent` by role literal — every superintendent saw and could edit every non-step work order in the company.
+- **SELECT**: the helper above, **OR** the sub's own rows (`people.account_user_id` link first, trimmed-name match on `display_name` as fallback).
+- **INSERT**: the helper **AND** an office role — dev, master_technician, assistant, controller, estimator.
+- **UPDATE**: the helper **AND** the office set plus superintendent (client limits supers to offered → accepted; the DB grants row access, not transition logic). Because the helper scopes superintendents per row, a superintendent can edit only work orders on their own jobs/projects.
+- **DELETE**: the helper **AND** dev/master_technician only — money records cancel via status, not deletion.
 - New table: ends with both read-only sweep calls (training-mode users blocked).
 
 ### `settle_step_commitment` RPC (v2.1210, `20260801170000_settle_step_commitment_rpc.sql`)
@@ -454,6 +457,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - Dashboard, Materials, Estimates, Bids, **Map** (`/map`), Calendar, Checklist, People, Settings, Tally, Prospects (if enabled)
 - **Customers** (`/customers`): list, search, notes, create (master required), edit **basic fields** (name, address, contact, customer type, date met). **Advanced** (customer owner), **merge**, and **delete** are not available in the UI; DB blocks changing **owner** (`master_user_id`) and **Stripe** (`stripe_customer_id`) on save.
 - **Blocked**: Projects, People, Jobs, Templates
+- **Opening a job** (v2.2848): from Estimates / Customers, a job opens the **read-only Job Detail pane** (`resolveJobWindowMode('estimator') === 'read-only'`), not the tabbed Job window — estimators are outside the `jobs_ledger` SELECT policy's role array, so the window's edit form fetched null and closed itself
 
 **Service Type Filtering**:
 - Devs can restrict an estimator to specific service types (e.g., Electrical only, Plumbing only)
@@ -604,6 +608,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - Crew Day email — **NO access since v2.2615** (briefly allowed in v2.2603): superintendents can neither schedule nor receive the `crew_day` stream — the ✉ hides on their card, and the INSERT policy + dispatcher roles are office-only (owner decision: the dashboard is their window)
 - **Collect Payment** (v2.2637): the field collect flow's Collect button on Team Ready to Bill rows — the three collect RPCs (`get_collect_payment_certify_payload` / `add_collect_payment_fixture_from_job_book` / `submit_collect_payment_certification`, migration `20260902152109`) and the two collect edge fns widened their role gates to include superintendent, keeping the `jobs_ledger_team_members` requirement and the office approval step (`approve_collect_payment_for_terminal`, office-only) unchanged
 - **Job thread notes** (v2.2647): superintendents can SELECT and INSERT `jobs_ledger_thread_notes` (Post note / Arrived / Leaving in the job activity panel) on jobs where they have project access, are a team member, or are a dispatch schedule assignee — additive policies gated by `superintendent_can_touch_job_thread()` (migration `20260902165836`). Previously both baseline branches excluded them: the office branch's team-member check sits inside a caller-RLS `jobs_ledger` EXISTS (supers have no `jobs_ledger` SELECT policy), and the field branch is helpers/subcontractor-only
+- **Opening a job** (v2.2848): tapping a job anywhere (Dashboard Superintendent Jobs / Assigned Jobs rows, Workflow chips) opens the **read-only Job Detail pane** — `resolveJobWindowMode('superintendent') === 'read-only'` — with the thread-notes panel above. Not the tabbed Job · Edit · Bill window: its embedded edit form's full `jobs_ledger` fetch is refused by RLS and used to close the window ~1 s after opening. No per-project **+ Create Job** link (Projects rail, Workflow) — the `jobs_ledger` INSERT policy refuses superintendents (`canCreateJobsLedgerRow`)
 
 **Workflow**:
 - Can see all stages in accessible workflows (like assistant)
@@ -640,6 +645,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - **Everything an assistant can do** — the DB's `is_assistant()` and client's `isAssistantLike()` are assistant-LIKE (`assistant` OR `controller`), so every assistant capability (clock cards, hours, crew grids, dispatch, contracts, licenses, vehicles, housing, write-ups) applies automatically
 - **Plus the full payroll principal** via `has_payroll_access()` (v2.663 sweep): `people_pay_config` wages (read/write), the entire pay-stub family, `person_offsets`, People → **Payroll** / **Employment** / **Pay Stubs** tabs with pay-config editing, Hours-tab teams/due totals, unredacted Dashboard financials, Jobs → Job Summary **Team Labor**/profit, Job Detail profit band and Cost breakdown team labor, Projects day-modal team labor
 - **Not dev admin**: no user management / Active Accounts, no imitation, no backups, no dev-only deletes, `is_dev()` stays false
+- **Opening a job** (v2.2848): the **read-only Job Detail pane**, not the tabbed window (`resolveJobWindowMode('controller') === 'read-only'`), and no per-project **+ Create Job** link. This is an assistant-parity gap, not a design choice: the baseline `jobs_ledger` SELECT / INSERT / UPDATE / DELETE policies gate on literal role arrays that omit controller (and `is_dev()` is dev-only), so v2.662's `is_assistant()` widening never reached them. Widen the DB first, then `isStaffFullJobLedgerDetailRole` + `canCreateJobsLedgerRow`
 
 **Matrices below**: read the **assistant** column for a controller, then add the pay/financial surfaces above — controller is not broken out as its own column.
 

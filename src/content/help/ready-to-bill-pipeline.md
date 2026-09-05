@@ -96,6 +96,8 @@ On the Dashboard, office roles see **Ready to Bill (N)** — every job and invoi
 {{button:blue|Bill Customer}} &nbsp; {{button:outline|Delete draft bill}}
 :::
 
+A paid-up job never sits in Ready to Bill (or in Billed Waiting for Payment): once a job is {{chip:green|Paid}}, any old draft bill on it drops out of these queues, and the Dashboard counts match the Pipeline board. If you remember an old draft there, it has been retired.
+
 The **Not Billed Out** card in Dashboard Financials shows the total revenue that hasn't reached a customer invoice yet, so nothing slips.
 
 ## Breaking off a partial invoice
@@ -128,6 +130,13 @@ Press {{button:blue|Bill Customer}}. The modal opens on **Stripe bill** and show
 - **▾** — reveals **HouseCall Pro**, which records a bill you sent through HCP. It's tucked away on purpose; most billing should go through Stripe.
 
 A job needs a linked customer (with an email, for Stripe) before it can be billed — the modal guides you if something's missing.
+
+If the job is already {{chip:green|Paid}}, Bill Customer says so instead of showing a preview — **"This job is already paid in full — nothing to bill."** — and all three send buttons stay off. The safe move is Cancel. Only when the customer really does owe more on that job, tick **Bill this job again anyway** to unlock the buttons; the same check runs on the server, so an old browser tab can't slip a bill past it.
+
+:::example Bill Customer on a paid job
+**This job is already paid in full — nothing to bill.**
+{{chip:gray|☐ Bill this job again anyway}} &nbsp; {{button:outline|Cancel}} &nbsp; {{button:gray|Create Stripe invoice}}
+:::
 
 ## Billed → Paid
 

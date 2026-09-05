@@ -48,6 +48,8 @@ The statement groups everything **by job**: each job opens with its own header b
 Bills newest first (each with its billed date and its own {{button:blue|Pay online}} or check reference), and on the right a boxed recap that reads like a little ledger: **Billed to date**, then **each payment by the date it was received** with its amount, then **Balance on this job**.
 :::
 
+On a phone each bill is a card with its own {{button:blue|Pay online}} button — date, amount due, and the button stack top to bottom, so nothing sits off the edge of the screen and there is no sideways scrolling. On a desktop or tablet the same bills read as one ruled ledger.
+
 A **Print all** button at the top of the statement prints the whole account for paper review: a cover with the balance, then **every job on its own page** — bills, payments received, and the balance recap — then a closing page with the total and the portal QR code. Each page says whose it is and which job it covers (Job 3 of 11), so a customer can work through them one at a time or a GC can hand each owner their page. Choosing "Save as PDF" in the print dialog turns the same packet into a file. Pay-online buttons don't print; check references and the QR do.
 
 The recap box is the same payment-totals box that prints on the invoice itself (preview, PDF, and the invoice email), so customers see one consistent story everywhere. A customer can confirm their check landed without calling the office. Internal payment notes never appear; customers see the payment method only — and a payment recorded with the catch-all type "other" simply reads "Payment".

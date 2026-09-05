@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -12,8 +13,9 @@ import DetailJobModal, {
   type DetailJobScheduleContext,
 } from '../components/jobs/DetailJobModal'
 import { JobWindowModal, type JobWindowTab } from '../components/jobs/JobWindowModal'
-import { useAuth, type UserRole } from '../hooks/useAuth'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { useAuth } from '../hooks/useAuth'
+import { resolveJobWindowMode } from '../lib/jobDetailModalRole'
+import { recordNavClick } from '../lib/navClickTelemetry'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobDetailOpenerBridge, type JobWindowEditOpenOptions } from './JobDetailOpenerBridgeContext'
 import { useJobsListCache } from './JobsListCacheContext'
@@ -74,7 +76,7 @@ type OpenState =
 let jobDetailModalInstanceSeed = 0
 
 export function JobDetailModalProvider({ children }: { children: ReactNode }) {
-  const { role: authRole } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const { jobs, runFetchJobs } = useJobsListCache()
   const [openState, setOpenState] = useState<OpenState>({ kind: 'closed' })
 
@@ -149,9 +151,24 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
     [openJobDetail, closeJobDetail, openState.kind],
   )
 
-  // Roles that can edit jobs get the tabbed Job window (v2.1675); everyone else
-  // keeps the plain read-only Job Detail modal, unchanged.
-  const canEditJobs = authRole !== null && !isSubcontractorLikeRole(authRole as UserRole)
+  // Roles whose full-ledger fetch RLS admits get the tabbed Job window (v2.1675);
+  // everyone else keeps the plain read-only Job Detail modal. Until v2.2848 the
+  // branch was "not sub-like", which handed superintendent / estimator /
+  // controller a window whose embedded edit form fetched null and closed the
+  // whole window ~1 s later ("Job not found or you do not have access").
+  const windowMode = resolveJobWindowMode(authRole)
+
+  // Telemetry: one `ui_nav_clicks` row per open — control `job_window_opened`,
+  // target `#window` / `#read-only`. Invariant: the self-close above must stay
+  // at zero; a spike in `#read-only` opens with no matching thread-note or
+  // report activity would say the read pane is not enough for some role.
+  const openInstanceKey = openState.kind === 'open' ? openState.instanceKey : null
+  const lastRecordedOpenRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (openInstanceKey === null || lastRecordedOpenRef.current === openInstanceKey) return
+    lastRecordedOpenRef.current = openInstanceKey
+    recordNavClick(authUser?.id, authRole, 'job_window_opened', `#${windowMode}`)
+  }, [openInstanceKey, authUser?.id, authRole, windowMode])
 
   const handleSaved = useCallback(() => {
     if (openState.kind !== 'open') return
@@ -171,7 +188,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
     <JobDetailModalContext.Provider value={value}>
       {children}
       {openState.kind === 'open' ? (
-        canEditJobs ? (
+        windowMode === 'window' ? (
           <JobWindowModal
             key={openState.instanceKey}
             jobId={openState.jobId}
