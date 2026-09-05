@@ -44,6 +44,25 @@ export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline'
 /** Timeline coloring (v2.2745): by today's status, by the state on each day, or by run length. */
 export type JobSummaryTimelineColorBy = 'status' | 'stateOnDay' | 'runLength'
 
+/** Compare to (v2.2817): run the same view on a second window and show the difference. */
+export type JobSummaryCompareTo = 'none' | 'prior' | 'lastYear'
+
+export const JOB_SUMMARY_COMPARE_OPTIONS: ReadonlyArray<{ key: JobSummaryCompareTo; label: string; title: string }> = [
+  { key: 'none', label: 'none', title: 'Show this window only' },
+  { key: 'prior', label: 'prior period', title: 'The same number of days immediately before this window — every tile shows the change' },
+  { key: 'lastYear', label: 'last year', title: 'The same dates one year earlier — every tile shows the change' },
+]
+
+/** Target true margin (v2.2817), whole percent; 0 = off. */
+export const JOB_SUMMARY_TARGET_OPTIONS: ReadonlyArray<{ key: number; label: string; title: string }> = [
+  { key: 0, label: 'off', title: 'No target line' },
+  { key: 30, label: '30%', title: 'Flag jobs whose true margin is under 30%' },
+  { key: 35, label: '35%', title: 'Flag jobs whose true margin is under 35%' },
+  { key: 40, label: '40%', title: 'Flag jobs whose true margin is under 40%' },
+]
+const TARGET_KEYS: readonly number[] = JOB_SUMMARY_TARGET_OPTIONS.map((o) => o.key)
+const COMPARE_KEYS: readonly JobSummaryCompareTo[] = ['none', 'prior', 'lastYear']
+
 export type JobSummaryViewPrefs = {
   view: JobSummaryViewMode
   status: JobSummaryStatusFilter
@@ -56,6 +75,10 @@ export type JobSummaryViewPrefs = {
   timelineGranularity: 'daily' | 'weekly'
   /** Timeline "As of" slider row shown (v2.2807); the slider position itself always opens on today. */
   timelineAsOf: boolean
+  /** Compare to (v2.2817): a second window whose totals sit under every tile as a delta. */
+  compareTo: JobSummaryCompareTo
+  /** Target true margin in whole percent (v2.2817); 0 = off. Under-target jobs are flagged wherever margin shows. */
+  targetTrueMarginPct: number
 }
 
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
@@ -70,6 +93,8 @@ export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
   timelineColorBy: 'status',
   timelineGranularity: 'daily',
   timelineAsOf: false,
+  compareTo: 'none',
+  targetTrueMarginPct: 0,
 }
 
 export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewMode; label: string; title: string }> = [
@@ -114,6 +139,8 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
       timelineColorBy: p.timelineColorBy === 'stateOnDay' || p.timelineColorBy === 'runLength' ? p.timelineColorBy : 'status',
       timelineGranularity: p.timelineGranularity === 'weekly' ? 'weekly' : 'daily',
       timelineAsOf: p.timelineAsOf === true,
+      compareTo: COMPARE_KEYS.includes(p.compareTo as JobSummaryCompareTo) ? (p.compareTo as JobSummaryCompareTo) : 'none',
+      targetTrueMarginPct: TARGET_KEYS.includes(p.targetTrueMarginPct as number) ? (p.targetTrueMarginPct as number) : 0,
     }
   } catch {
     return { ...JOB_SUMMARY_VIEW_DEFAULTS }
@@ -126,6 +153,74 @@ export function jobSummaryWindowStartYmd(todayYmd: string, window: JobSummaryWin
   if (window === '12mo') return addDays(todayYmd, -364)
   if (window === 'ytd') return `${todayYmd.slice(0, 4)}-01-01`
   return JOB_SUMMARY_ALL_TIME_START_YMD
+}
+
+/**
+ * The window a Compare to runs on (v2.2817). "prior" is the same number of days
+ * ending the day before this window starts; "last year" is the same dates a
+ * year earlier (Feb 29 → Feb 28). "All" has no prior, so it compares to nothing.
+ */
+export function jobSummaryCompareWindow(
+  startYmd: string,
+  endYmd: string,
+  compareTo: JobSummaryCompareTo,
+  window: JobSummaryWindowKey,
+  addDays: (ymd: string, delta: number) => string,
+): { startYmd: string; endYmd: string } | null {
+  if (compareTo === 'none' || window === 'all') return null
+  if (compareTo === 'prior') {
+    const days = Math.round((Date.UTC(+endYmd.slice(0, 4), +endYmd.slice(5, 7) - 1, +endYmd.slice(8, 10)) - Date.UTC(+startYmd.slice(0, 4), +startYmd.slice(5, 7) - 1, +startYmd.slice(8, 10))) / 86_400_000) + 1
+    const priorEnd = addDays(startYmd, -1)
+    return { startYmd: addDays(priorEnd, -(days - 1)), endYmd: priorEnd }
+  }
+  const backOneYear = (ymd: string): string => {
+    const y = +ymd.slice(0, 4) - 1
+    const md = ymd.slice(5)
+    return `${y}-${md === '02-29' ? '02-28' : md}`
+  }
+  return { startYmd: backOneYear(startYmd), endYmd: backOneYear(endYmd) }
+}
+
+export type JobSummaryDelta = { now: number | null; prior: number | null; delta: number | null }
+
+export type JobSummaryComparison = {
+  jobs: JobSummaryDelta
+  revenueUsd: JobSummaryDelta
+  grossUsd: JobSummaryDelta
+  /** Percentage points. */
+  marginPts: JobSummaryDelta
+  hours: JobSummaryDelta
+  overheadUsd: JobSummaryDelta
+  trueProfitUsd: JobSummaryDelta
+  /** Percentage points. */
+  trueMarginPts: JobSummaryDelta
+  truePerHourUsd: JobSummaryDelta
+}
+
+const delta = (now: number | null, prior: number | null): JobSummaryDelta => ({ now, prior, delta: now == null || prior == null ? null : now - prior })
+
+/** This window's totals against the compare window's, measure by measure (v2.2817). */
+export function compareJobSummaryTotals(now: JobSummaryTotals, prior: JobSummaryTotals): JobSummaryComparison {
+  return {
+    jobs: delta(now.jobs, prior.jobs),
+    revenueUsd: delta(now.revenueUsd, prior.revenueUsd),
+    grossUsd: delta(now.grossUsd, prior.grossUsd),
+    marginPts: delta(now.marginPct, prior.marginPct),
+    hours: delta(now.hours, prior.hours),
+    overheadUsd: delta(now.overheadUsd, prior.overheadUsd),
+    trueProfitUsd: delta(now.trueProfitUsd, prior.trueProfitUsd),
+    trueMarginPts: delta(now.trueMarginPct, prior.trueMarginPct),
+    truePerHourUsd: delta(now.truePerHourUsd, prior.truePerHourUsd),
+  }
+}
+
+/** Under the target when a target is set, the row has a true margin, and it's below (v2.2817). */
+export function jobSummaryRowUnderTarget(row: Pick<JobSummaryEnrichedRow, 'trueMarginPct'>, targetTrueMarginPct: number): boolean {
+  return targetTrueMarginPct > 0 && row.trueMarginPct != null && row.trueMarginPct < targetTrueMarginPct
+}
+
+export function countJobSummaryUnderTarget(rows: readonly Pick<JobSummaryEnrichedRow, 'trueMarginPct'>[], targetTrueMarginPct: number): number {
+  return rows.reduce((n, r) => n + (jobSummaryRowUnderTarget(r, targetTrueMarginPct) ? 1 : 0), 0)
 }
 
 /** The structural slice of a `JobSummaryRow` the view needs (keeps the kernel free of component types). */

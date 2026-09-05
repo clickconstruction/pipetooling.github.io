@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   JOB_SUMMARY_VIEW_DEFAULTS,
+  compareJobSummaryTotals,
+  countJobSummaryUnderTarget,
   enrichJobSummaryRows,
+  jobSummaryCompareWindow,
+  jobSummaryRowUnderTarget,
   filterAndSortJobSummaryRows,
   jobSummaryHygiene,
   jobSummaryRowInWindow,
@@ -78,7 +82,11 @@ describe('prefs + window', () => {
       timelineColorBy: 'status',
       timelineGranularity: 'daily',
       timelineAsOf: false,
+      compareTo: 'none',
+      targetTrueMarginPct: 0,
     })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ compareTo: 'lastYear', targetTrueMarginPct: 35 }))).toMatchObject({ compareTo: 'lastYear', targetTrueMarginPct: 35 })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ compareTo: 'yesterday', targetTrueMarginPct: 33 }))).toMatchObject({ compareTo: 'none', targetTrueMarginPct: 0 })
   })
 
   it('computes window starts', () => {
@@ -198,5 +206,35 @@ describe('filter + sort + totals', () => {
   it('reports unallocated overhead and pending sessions from the ledger', () => {
     expect(jobSummaryHygiene(ledger)).toEqual({ unallocatedUsd: 90, unallocatedDays: 1, pendingFieldSessions: 2, pendingFieldHours: 9 })
     expect(jobSummaryHygiene(null)).toBeNull()
+  })
+})
+
+describe('compare to + target (v2.2817)', () => {
+  it('prior period is the same length ending the day before; last year keeps the dates; all compares to nothing', () => {
+    expect(jobSummaryCompareWindow('2026-06-06', '2026-09-03', 'prior', '90d', ymdAddDays)).toEqual({ startYmd: '2026-03-08', endYmd: '2026-06-05' })
+    expect(jobSummaryCompareWindow('2026-01-01', '2026-09-03', 'lastYear', 'ytd', ymdAddDays)).toEqual({ startYmd: '2025-01-01', endYmd: '2025-09-03' })
+    expect(jobSummaryCompareWindow('2024-02-29', '2024-05-01', 'lastYear', '90d', ymdAddDays)).toEqual({ startYmd: '2023-02-28', endYmd: '2023-05-01' })
+    expect(jobSummaryCompareWindow('2025-01-01', '2026-09-03', 'prior', 'all', ymdAddDays)).toBeNull()
+    expect(jobSummaryCompareWindow('2026-06-06', '2026-09-03', 'none', '90d', ymdAddDays)).toBeNull()
+  })
+
+  it('compares totals measure by measure and leaves unknowns null', () => {
+    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0 }
+    const prior = { ...base, jobs: 8, revenueUsd: 800, grossUsd: 400, marginPct: 50, trueProfitUsd: 300, trueMarginPct: 37.5, overheadUsd: null, truePerHourUsd: null }
+    const c = compareJobSummaryTotals(base, prior)
+    expect(c.jobs).toEqual({ now: 10, prior: 8, delta: 2 })
+    expect(c.revenueUsd.delta).toBe(200)
+    expect(c.trueMarginPts.delta).toBe(12.5)
+    expect(c.overheadUsd).toEqual({ now: 100, prior: null, delta: null })
+    expect(c.truePerHourUsd.delta).toBeNull()
+  })
+
+  it('flags rows under the target only when a target is set and the margin is known', () => {
+    const rows = [{ trueMarginPct: 20 }, { trueMarginPct: 35 }, { trueMarginPct: 48 }, { trueMarginPct: null }]
+    expect(jobSummaryRowUnderTarget(rows[0]!, 35)).toBe(true)
+    expect(jobSummaryRowUnderTarget(rows[1]!, 35)).toBe(false)
+    expect(jobSummaryRowUnderTarget(rows[3]!, 35)).toBe(false)
+    expect(jobSummaryRowUnderTarget(rows[0]!, 0)).toBe(false)
+    expect(countJobSummaryUnderTarget(rows, 40)).toBe(2)
   })
 })
