@@ -3,12 +3,12 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.2837',
   date: '2026-09-05',
-  title: 'The bench reaches the pickers and the nags',
-  kind: 'feature',
+  title: 'Sign-in doors closed: roster needs a sign-in, invite page cannot reset your password',
+  kind: 'fix',
   highlights: [
-    'The work order Sub step lists active subs first; benched subs sit behind "+ N on the bench" and can still be picked, since offering work is how they come back.',
-    'The Assign… list on People → Subs groups the roster into Active and On the bench.',
-    'A benched sub shows one gray "on the bench" chip on People → Users and the Person rail, and their paperwork nags pause while they are benched. Sessions waiting still count.',
+    'The list of who works here is now readable only after you sign in. Before, anyone holding the app\'s public key could pull names without an account.',
+    'Opening the invite page while already signed in now says "You\'re already set up — sign in" with a Sign in button and a "Not you? Sign out" link, instead of showing a password form that would have quietly replaced your current password. A fresh invite from the email still lands on the normal set-password step.',
+    'The old self-service "Create an account" page is gone. New people join by invitation from People → Users, the way they already did.',
   ],
 }
 
