@@ -10,6 +10,8 @@ last_updated: 2026-08-02
 
 ## What this is
 
+> The large-file inventory below is stale (measured 2026-09-05); refresh tracked in [`to-dos/engineering-hygiene.md`](../to-dos/engineering-hygiene.md).
+
 The repo still has several God components (line counts at 2026-07-29, the date of the 20-map Step-0 sweep — v2.1089):
 
 **Pages and page-scale surfaces:**

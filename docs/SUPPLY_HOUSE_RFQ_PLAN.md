@@ -130,6 +130,8 @@ ends with all three fence appliers. Names snapshot as text.
 
 ## Deferred (deliberate, revisit on demand)
 
+> Still-open items tracked in [`to-dos/rfq-apply-picks-to-bid-costs.md`](../to-dos/rfq-apply-picks-to-bid-costs.md); lane B, contacts and file replies shipped (2026-09-05 sweep).
+
 - ~~**Lane B, the RFQ desk**~~ — SHIPPED v2.2636 on owner request
   (2026-09-02): send-rfq-email edge function + RfqDeskModal/RfqComposeModal,
   Sent→Delivered→Viewed→Quoted trails on the existing resend-webhook rail,

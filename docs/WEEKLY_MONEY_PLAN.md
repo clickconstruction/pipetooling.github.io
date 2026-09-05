@@ -91,6 +91,8 @@ Shared shell first, then queues by dollar-risk order. Each queue = week-scoped c
 
 ### Phase 6 — later (not in this train)
 
+> Tracked in [`to-dos/weekly-money-later.md`](../to-dos/weekly-money-later.md) (2026-09-05 sweep).
+
 Per-row drilldowns beyond Job Detail links; GC/development grouping lens; month roll-up; feeding the Charges & Value timeline; widening access to pay-approved masters.
 
 ## The PR train

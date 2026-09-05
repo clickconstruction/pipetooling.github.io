@@ -8,7 +8,7 @@ audience: Developers, AI Agents
 last_updated: 2026-08-19
 ---
 
-## Status: APPROVED — building (2026-08-19)
+## Status: SHIPPED (v2.1903–v2.2000, 2026-08-20/21); the off-toggle terms are tracked in [`to-dos/partnerships-off-toggles.md`](../to-dos/partnerships-off-toggles.md)
 
 Owner approved the plan and the final prototype with **all default decisions** (see the decisions section — now recorded as taken, not open). The clickable prototype (artifact: "Partnerships Prototype") is the agreed UX reference; the "Bryan Partner Ledger" artifact (rev 4) is the annotated design record. Build progress is logged per-PR in RECENT_FEATURES.md as the train ships.
 

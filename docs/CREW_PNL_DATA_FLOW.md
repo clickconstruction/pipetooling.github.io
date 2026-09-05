@@ -43,6 +43,8 @@ Rows table (sortable), totals row, per-job drilldown (`crew` / `sub` / `billing-
 
 ## 5. Known weaknesses / improvement backlog
 
+> Validated 2026-09-05: item 1 is resolved (`crewPnlSummary.ts` is person-keyed); items 3–6 tracked in [`to-dos/crew-pnl-and-wheels.md`](../to-dos/crew-pnl-and-wheels.md).
+
 1. **Wage name-join** (input #3): a `users.name` ↔ `people_pay_config.person_name` mismatch silently zeroes a person's labor cost (inflating their profit). App-wide issue (`docs/SALARY_CLOCK_SESSIONS.md`).
 2. **`revenue` semantics**: the split uses `jobs_ledger.revenue` (job total), not payments collected — this is a *bid-value* P&L, not cash. Jobs with revenue unset contribute cost-only rows.
 3. **Exact-match sheet linking**: normalization beyond trim/lower (e.g. stripping an "HCP " prefix) is deliberate future work — decide after reading the audit's raw job # texts.
