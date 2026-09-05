@@ -39,7 +39,9 @@ import {
 } from '../../lib/prospects/teamComposite'
 import { buildRoleLeaderboards, replaceFocusEntries } from '../../lib/prospects/teamLeaderboard'
 import type { CompositeWeights } from '../../lib/prospects/teamComposite'
-import { APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS, APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS } from '../../lib/appSettingsKeys'
+import { APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS, APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS, APP_SETTINGS_KEY_TEAM_REVIEW_INCLUDE_CREW } from '../../lib/appSettingsKeys'
+import { fetchCrewReviewAggregates, type CrewReviewAggregateRow } from '../../lib/teamFeedback'
+import { crewPseudoReviews, latestCrewLane } from '../../lib/people/crewReview'
 import {
   DEFAULT_TEAM_REVIEW_CADENCE_DAYS,
   nextDueIndexAfter,
@@ -118,11 +120,18 @@ export default function TeamReviewSection({
   const [weightsDraft, setWeightsDraft] = useState<{ ability: string; drive: string; integrity: string }>({ ability: '', drive: '', integrity: '' })
   const [weightsSaving, setWeightsSaving] = useState(false)
   const [cadenceDays, setCadenceDays] = useState(DEFAULT_TEAM_REVIEW_CADENCE_DAYS)
+  /** The anonymous crew lane (v2.2827): per subject per month averages from crew_review_aggregates (2+ raters). */
+  const [crewAggregates, setCrewAggregates] = useState<CrewReviewAggregateRow[]>([])
+  /** Dev toggle: the crew lane counts as one more reviewer in the composite + leaderboard. */
+  const [includeCrew, setIncludeCrew] = useState(false)
+  const [includeCrewSaving, setIncludeCrewSaving] = useState(false)
   /** The due pill's "Upcoming reviews" schedule modal (who's due when). */
   const [scheduleOpen, setScheduleOpen] = useState(false)
 
   const baselines = useMemo(() => reviewerBaselines(reviews), [reviews])
   const company = useMemo(() => companyDimensionMeans(reviews), [reviews])
+  /** What the composite and leaderboard read: office reviews, plus the crew lane as one pseudo-reviewer when the toggle is on. */
+  const compositeReviews = useMemo(() => (includeCrew ? [...reviews, ...crewPseudoReviews(crewAggregates)] : reviews), [includeCrew, reviews, crewAggregates])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -151,6 +160,18 @@ export default function TeamReviewSection({
       .eq('key', APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS)
       .maybeSingle()
     setCadenceDays(parseTeamReviewCadenceDays(cadenceRow?.value_num))
+    // The crew lane is additive: a failed RPC (migration not yet applied) just hides it.
+    try {
+      setCrewAggregates(await fetchCrewReviewAggregates())
+    } catch {
+      setCrewAggregates([])
+    }
+    const { data: includeCrewRow } = await supabase
+      .from('app_settings')
+      .select('value_text')
+      .eq('key', APP_SETTINGS_KEY_TEAM_REVIEW_INCLUDE_CREW)
+      .maybeSingle()
+    setIncludeCrew(includeCrewRow?.value_text === 'true')
     const firstError = usersRes.error ?? reviewsRes.error ?? jobsRes.error
     if (firstError) {
       setError(firstError.message)
@@ -318,6 +339,22 @@ export default function TeamReviewSection({
     }
     setWeights(parsed)
     setWeightsEditorOpen(false)
+  }
+
+  /** Dev-only: whether the crew lane joins the composite as one pseudo-reviewer (app_settings, immediate). */
+  async function saveIncludeCrew(next: boolean) {
+    if (includeCrewSaving) return
+    setIncludeCrewSaving(true)
+    setError(null)
+    const { error: saveError } = await supabase
+      .from('app_settings')
+      .upsert({ key: APP_SETTINGS_KEY_TEAM_REVIEW_INCLUDE_CREW, value_text: next ? 'true' : 'false' }, { onConflict: 'key' })
+    setIncludeCrewSaving(false)
+    if (saveError) {
+      setError(saveError.message)
+      return
+    }
+    setIncludeCrew(next)
   }
 
   const cardStyle = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.9rem 1rem' } as const
@@ -709,6 +746,18 @@ export default function TeamReviewSection({
                       : `Avg ${[averages.ability, averages.drive, averages.integrity].map((v) => (v == null ? '—' : v)).join(' · ')} (${averages.reviewerCount} reviewer${averages.reviewerCount === 1 ? '' : 's'})`}
                   </span>
                   {(() => {
+                    const lane = latestCrewLane(crewAggregates, u.id)
+                    if (!lane) return null
+                    return (
+                      <span
+                        style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', opacity: 0.85 }}
+                        title={`What the crew said, averaged and anonymous: Ability · Drive · Integrity from ${lane.rater_count} teammates in ${formatReviewMonthLabel(lane.review_month)}. Never names.`}
+                      >
+                        {`Crew ${[lane.rating_ability, lane.rating_drive, lane.rating_integrity].map((v) => (v == null ? '—' : Math.round(v))).join(' · ')} (${lane.rater_count} crew)`}
+                      </span>
+                    )
+                  })()}
+                  {(() => {
                     if (latest.length === 0) return null
                     const adjusted = adjustedAverages(latest, baselines, company)
                     if (adjusted.calibratedCount === 0) return null
@@ -722,7 +771,7 @@ export default function TeamReviewSection({
                     )
                   })()}
                   {(() => {
-                    const composite = compositeScore(reviews, u.id, baselines, company, weights, currentReviewMonth(APP_CALENDAR_TZ))
+                    const composite = compositeScore(compositeReviews, u.id, baselines, company, weights, currentReviewMonth(APP_CALENDAR_TZ))
                     if (composite.score == null) return null
                     return composite.confident ? (
                       <span
@@ -743,7 +792,7 @@ export default function TeamReviewSection({
                   <TeamMemberRatingChart
                     reviews={reviews}
                     subjectUserId={u.id}
-                    compositeSeries={monthlyCompositeSeries(reviews, u.id, baselines, company, weights)}
+                    compositeSeries={monthlyCompositeSeries(compositeReviews, u.id, baselines, company, weights)}
                   />
                 )}
                 {latest.length > 0 && reflectView === 'dimension' && (
@@ -839,7 +888,7 @@ export default function TeamReviewSection({
       )}
 
       {subTab === 'leaderboard' && (() => {
-        const boards = buildRoleLeaderboards(roster, reviews, baselines, company, weights, currentReviewMonth(APP_CALENDAR_TZ))
+        const boards = buildRoleLeaderboards(roster, compositeReviews, baselines, company, weights, currentReviewMonth(APP_CALENDAR_TZ))
         const focus = replaceFocusEntries(boards, 3)
         const compositePill = (score: number) => (
           <span style={{ fontSize: '0.8125rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0 0.5rem' }}>
@@ -864,6 +913,10 @@ export default function TeamReviewSection({
                         />
                       </label>
                     ))}
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem', alignSelf: 'center' }} title="Count each person's anonymous crew average as one more reviewer per month in the composite and leaderboard">
+                      <input type="checkbox" checked={includeCrew} disabled={includeCrewSaving} onChange={(e) => void saveIncludeCrew(e.target.checked)} />
+                      Crew lane counts as a reviewer
+                    </label>
                     <button type="button" onClick={saveWeights} disabled={weightsSaving} style={{ padding: '0.35rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: weightsSaving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}>
                       {weightsSaving ? 'Saving…' : 'Save weights'}
                     </button>

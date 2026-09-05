@@ -149,6 +149,8 @@ export function parseBulkDeleteAlertEnabled(valueText: string | null | undefined
  * @see `src/lib/prospects/teamComposite.ts`
  */
 export const APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS = 'team_review_composite_weights_v1' as const
+/** 'true' when the anonymous crew lane counts as one more reviewer in the Team → Review composite + leaderboard (v2.2827). */
+export const APP_SETTINGS_KEY_TEAM_REVIEW_INCLUDE_CREW = 'team_review_composite_include_crew_v1' as const
 
 /**
  * JSON array of `users.id` uuid strings in `value_text`: who receives the "Customer paid" email

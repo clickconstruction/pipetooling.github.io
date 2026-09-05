@@ -17761,9 +17761,9 @@ export type Database = {
         Args: never
         Returns: {
           rater_count: number
-          rating_ability: number | null
-          rating_drive: number | null
-          rating_integrity: number | null
+          rating_ability: number
+          rating_drive: number
+          rating_integrity: number
           review_month: string
           subject_user_id: string
         }[]
@@ -17773,7 +17773,7 @@ export type Database = {
         Returns: {
           days_together: number
           jobs: string[]
-          name: string | null
+          name: string
           role: string
           user_id: string
         }[]
