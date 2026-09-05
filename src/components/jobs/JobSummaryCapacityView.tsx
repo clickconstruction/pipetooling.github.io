@@ -49,7 +49,10 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
   const gridStep = maxY <= 120 ? 20 : maxY <= 400 ? 50 : maxY <= 1000 ? 100 : 250
   const gridVals: number[] = []
   for (let v = 0; v <= maxY; v += gridStep) gridVals.push(v)
-  const monthTicks = series.weeks.map((w, i) => ({ i, ym: w.weekStartYmd.slice(0, 7) })).filter((t, k, arr) => k === 0 || arr[k - 1]!.ym !== t.ym)
+  const monthTicksAll = series.weeks.map((w, i) => ({ i, ym: w.weekStartYmd.slice(0, 7) })).filter((t, k, arr) => k === 0 || arr[k - 1]!.ym !== t.ym)
+  // A window that starts in the last days of a month would print two labels on top of each other.
+  const monthTicks = monthTicksAll.filter((t, k) => !(k === 0 && monthTicksAll[1] && monthTicksAll[1].i - t.i < 2))
+  const noHourWeeks = series.weeks.filter((w) => w.workdays > 0 && w.fieldHours === 0).length
   const monthName = (ym: string) => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(ym.slice(5, 7)) - 1]
   const tone = (u: number | null) => (u == null ? 'var(--text-muted)' : u > 100 ? 'var(--text-red-700)' : u < 60 ? 'var(--text-amber-800)' : 'var(--text-muted)')
 
@@ -109,9 +112,15 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
                 <rect x={x} y={yOf(w.availableHours)} width={bw} height={Math.max(0, yOf(0) - yOf(w.availableHours))} fill="var(--bg-subtle)" stroke="var(--border-strong)" />
                 <rect x={x + 2} y={yOf(w.fieldHours)} width={Math.max(1, bw - 4)} height={Math.max(0, yOf(0) - yOf(w.fieldHours))} rx={2} fill={USED} opacity={0.9} />
                 {u != null && showLabel ? (
-                  <text x={x + bw / 2} y={yOf(Math.max(w.availableHours, w.fieldHours)) - 4} textAnchor="middle" fontSize={9.5} fontWeight={u > 100 || u < 60 ? 700 : 400} fill={tone(u)}>
-                    {Math.round(u)}%
-                  </text>
+                  w.fieldHours === 0 ? (
+                    <text x={x + bw / 2} y={yOf(w.availableHours) - 4} textAnchor="middle" fontSize={8.5} fill="var(--text-muted)">
+                      no hours
+                    </text>
+                  ) : (
+                    <text x={x + bw / 2} y={yOf(Math.max(w.availableHours, w.fieldHours)) - 4} textAnchor="middle" fontSize={9.5} fontWeight={u > 100 || u < 60 ? 700 : 400} fill={tone(u)}>
+                      {Math.round(u)}%
+                    </text>
+                  )
                 ) : null}
                 <rect x={L + i * cw} y={T} width={cw} height={plotH} fill="transparent" onMouseEnter={() => setHoverIdx(i)}>
                   <title>{`${weekLabel(w)} · ${w.fieldHours.toFixed(0)} field h of ${w.availableHours.toFixed(0)} available (${w.people} ${series.source === 'roster' ? 'on the roster' : 'clocked in'}, ${w.workdays} workdays) · ${pct(u)} · ${w.peopleWorked} people on jobs`}</title>
@@ -145,7 +154,7 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
       </div>
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         {series.source === 'roster'
-          ? `Available hours count every master technician and helper active on the roster that weekday, at ${CAPACITY_HOURS_PER_DAY} hours each. PTO and holidays aren’t subtracted yet, so a holiday week reads low.`
+          ? `Available hours count every master technician and helper active on the roster that weekday, at ${CAPACITY_HOURS_PER_DAY} hours each. PTO and holidays aren’t subtracted yet, so a holiday week reads low.${noHourWeeks > 0 ? ` ${noHourWeeks} ${noHourWeeks === 1 ? 'week has' : 'weeks have'} no approved field hours at all — before the clock history starts, or sessions still awaiting approval — and they pull the window’s utilization down.` : ''}`
           : `The roster couldn’t be read${rosterError ? ` (${rosterError})` : ''}, so available hours are estimated from the people who clocked field hours that week — a week nobody worked reads as no capacity.`}{' '}
         Office hours by field people count against capacity, not toward it.
       </p>
