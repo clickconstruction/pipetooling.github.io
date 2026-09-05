@@ -43,3 +43,7 @@ Hand an agent the PDF and say "help me draft this". It can run `npm run forms:in
 ## Forms with an office half
 
 Some forms are signed by one person and completed by another (the I-9). In the inspector, set **Filled by** to *the office* on the boxes the office completes. The signer never sees them; after the signer signs, the record offers **Complete the office section**, which fills those boxes on the filed PDF and finishes it. **Preview filled PDF** shows both halves with sample answers.
+
+## A PDF that will not load
+
+Some official PDFs are saved in a way the studio cannot read (the Texas DWC-83 is one). The studio tells you when that happens: re-save the file — **Print to PDF** from any viewer works — and upload that copy instead. Re-saving usually drops the PDF's own fillable fields, so you place every box by hand.

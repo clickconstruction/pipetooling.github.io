@@ -18,7 +18,7 @@ key_sections:
 
 ## Status
 
-**Eight PRs built (PR 6–8 on 2026-09-05); the W-9 is published in the Subs packet and was filled and signed end to end by the test sub; hand-filled forms can be entered from paper; two-party forms have an office section, and the I-9 is published into All Teammates.** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
+**Nine PRs built (PR 6–9 on 2026-09-05); the W-9 is published in the Subs packet and was filled and signed end to end by the test sub; hand-filled forms can be entered from paper; two-party forms have an office section, the I-9 is published into All Teammates, and the DWC-83 into Subs.** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
 
 | # | PR | Version | Landed as |
 |---|---|---|---|
@@ -30,6 +30,7 @@ key_sections:
 | 6 | Enter from paper (new fn `contract-form-paper-entry`, migration `20260905010500`, record modal scan door); the new-revision flow turned out to be the studio's Replace PDF… + Import PDF fields; Spanish labels already ride in the schema | v2.2801 | PR 6 |
 | 7 | Two-party forms: `party` on boxes, office section completed from the record (new fn `complete-contract-form-office`, migration `20260905013000`), executor fixes (draw after flatten, dropdowns, per-op tolerance); the **I-9** (`docs/forms/i9-2025-01.schema.json`) published into All Teammates | v2.2802 | PR 7 |
 | 8 | The office flow (owner-picked mockups): office-sections queue strip + Needs attention + row chip + Desk line, signer-side shading of the office half, attestation gate (`office_attested_at`, migration `20260905020000`), context + locked half in the office modal, PDF door labels, day-one hand-off from the thank-you page | v2.2803 | PR 8 |
+| 9 | The **DWC-83** (Texas workers' comp joint agreement, two-party the other way: sub signs Part 3, office completes Parts 1–2; `docs/forms/dwc083-2021-10.schema.json`, all boxes drawn, template re-saved with `pdftocairo`) + the studio's PDF-repair hint | v2.2804 | PR 9 |
 
 ## Why (ground truth, 2026-09-04)
 
