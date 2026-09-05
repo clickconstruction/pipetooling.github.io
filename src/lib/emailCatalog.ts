@@ -86,13 +86,15 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
   },
   {
     id: 'gc_statement_manual',
-    name: 'GC statement (manual share)',
+    name: 'GC statement (Draft Message)',
     group: 'billing',
     audience: 'customer',
     builtWhere: 'client',
     sender: 'send-gc-statement-email',
-    editable: { kind: 'hardcoded' },
-    subjectExample: 'Click Plumbing open balances — {{gc_name}} (subject editable per send)',
+    // Journey-map #46: the Draft Message lane reads the same template row as the
+    // scheduled lane, so the two app-sent statements share one subject + intro.
+    editable: { kind: 'templates', templateTypes: ['gc_statement_scheduled'] },
+    subjectExample: 'Click Plumbing open balances: {{date}} (subject editable per send)',
   },
   {
     id: 'gc_statement_scheduled',

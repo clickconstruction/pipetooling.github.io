@@ -2,7 +2,7 @@
 title: track a general contractor on a job
 category: Office
 roles: dev, master_technician, assistant
-keywords: GC, general contractor, builder, gc/builder, second customer, manage by gc, hard hat, stages, job customer
+keywords: GC, general contractor, builder, gc/builder, second customer, manage by gc, hard hat, stages, job customer, statement, draft message, pay online, nothing owed, portal card, email template
 order: 73
 ---
 A job's **customer** is who you bill. But on commercial work there's often a second party that matters day to day — the **General Contractor** running the site. You can now link a GC to any job and manage work by GC without touching billing.
@@ -52,9 +52,15 @@ Prefer the app to send it? Choose **Draft Message** from the same Share menu. Th
 
 Need someone else on the thread? The **CC** row under To takes teammates (tap a chip to add, tap again to remove) or any typed addresses, comma-separated, up to ten — it applies to Send now and to scheduled sends, and a weekly schedule keeps its CC list.
 
-If the GC has a portal, the dialog's **Include portal link** box is checked: the email ends with a small *Your account, any time* card pointing at their portal address, where the statement stays current and every bill has **Pay online**. Untick it to send the plain statement. Scheduled sends include the card automatically while the portal is active.
+If the GC has a portal, the dialog's **Include portal link** box is checked: the email ends with a small *Your account, any time* card that tells the GC how to pay — **"Pay online any time at my.clickplumbing.com/their-name — this statement stays current there."** Untick it to send the plain statement. Scheduled sends include the card automatically while the portal is active, and **Copy** pastes the same card, so what you preview is what they get.
 
-Don't want to remember to send it? Flip **When** to **Schedule…**, pick a date and time (Central), and optionally tick **Repeat weekly** — the app sends the statement by itself, rebuilt fresh at send time so it always shows that morning's numbers. A GC with nothing outstanding is skipped, never emailed an empty statement. Your pending sends appear in a **Scheduled statement sends** list at the top of GC Review, each with a **Cancel** (cancelling ends a weekly repeat). The **Share all** dialog's email can be scheduled the same way.
+:::example Nothing owed? Nothing goes out
+Open Draft Message on a GC whose total is $0.00 and the dialog says **Nothing owed — no statement goes out.** with {{button:blue|Send statement}} greyed out — the app will not email anyone a "Total owed $0.00". (Schedule… is still allowed: a scheduled send rebuilds the statement that morning and skips itself if the balance is still zero.)
+:::
+
+Want the statement to open with a line of your own? {{icon:gear}} **Settings → Email templates → GC statement (Draft Message + scheduled)** holds the subject and an intro paragraph; save it once and both Draft Message and the scheduled sends carry it. The subject prefills in the dialog (still editable per send); {{button:outline|Preview}} shows the intro in place.
+
+Don't want to remember to send it? Flip **When** to **Schedule…**, pick a date and time (Central), and optionally tick **Repeat weekly** — the app sends the statement by itself, rebuilt fresh at send time so it always shows that morning's numbers. A GC with nothing outstanding is skipped, never emailed an empty statement — the same rule Draft Message applies before you click. Your pending sends appear in a **Scheduled statement sends** list at the top of GC Review, each with a **Cancel** (cancelling ends a weekly repeat). The **Share all** dialog's email can be scheduled the same way.
 - When any job has a **development** set, a **Group by** toggle appears — flip to **By Development** to see the same rollup per development instead.
 
 ## Share the whole report
