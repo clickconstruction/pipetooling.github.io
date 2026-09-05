@@ -8,7 +8,7 @@ audience: Developers, AI Agents
 last_updated: 2026-08-02
 ---
 
-Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx) (tab on `/jobs?tab=teams-summary`; the `showTeamsTab` gate in `Jobs.tsx` excludes primary/master_technician/assistant-like/superintendent — in practice dev and estimator see it). Math kernel: [`src/lib/crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (`buildCrewPnlSummary`, fully unit-tested). Per person: **hours, labor cost, billing (revenue credit), profit, billing/hr** + per-job drilldown.
+Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx) (tab on `/jobs?tab=teams-summary`; the `showTeamsTab` gate in `Jobs.tsx` excludes primary/master_technician/assistant-like/superintendent — in practice dev and estimator see it). Math kernel: [`src/lib/crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (`buildCrewPnlSummary`, fully unit-tested). Per person: **hours, labor cost, billing (revenue credit — column header **Billed (gross)** since v2.2852: it splits the job's gross total bill by hours, not cash collected and not revenue before overhead), profit, billing/hr** + per-job drilldown.
 
 ## 1. Inputs (six sources)
 

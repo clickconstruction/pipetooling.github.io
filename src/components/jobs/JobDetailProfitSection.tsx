@@ -1,4 +1,5 @@
 import type { JobProfitSummary } from '../../lib/jobs/jobProfitSummary'
+import { JOB_DETAIL_MARGIN_FOOTNOTE, PROFIT_FIGURE_LABELS } from '../../lib/jobs/profitLabels'
 
 function formatCurrency(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
@@ -20,9 +21,9 @@ export function JobDetailProfitSection({
   failed: boolean
   summary: JobProfitSummary | null
 }) {
-  const cell = (label: string, value: string, valueColor?: string) => (
+  const cell = (label: string, value: string, valueColor?: string, title?: string) => (
     <div style={{ flex: '1 1 120px', minWidth: 0, textAlign: 'center' }}>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
+      <div title={title} style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
       <div
         style={{
           fontSize: '0.9375rem',
@@ -59,13 +60,17 @@ export function JobDetailProfitSection({
             {cell('Parts Cost', show ? formatCurrency(summary.partsCost) : '—')}
             {cell('Total Bill', show ? formatCurrency(summary.totalBill) : '—')}
             {cell(
-              'Profit',
+              PROFIT_FIGURE_LABELS.jobDetailMargin.label,
               show ? formatCurrency(summary.profit) : '—',
               show ? (summary.profit >= 0 ? '#16a34a' : 'var(--text-red-700)') : undefined,
+              PROFIT_FIGURE_LABELS.jobDetailMargin.tooltip,
             )}
           </>
         )}
       </div>
+      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+        {JOB_DETAIL_MARGIN_FOOTNOTE}
+      </p>
     </div>
   )
 }

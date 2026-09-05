@@ -11,9 +11,9 @@ order: 32
 
 - **Hours** — clocked crew hours (from approved time, split by each day's job assignments) plus their share of sub-sheet labor hours.
 - **Labor Cost** — those hours × their wage, plus their share of sub-sheet labor cost (including drive).
-- **Billing** — their credit of job revenue, **weighted by hours**: a job's total is credited as *job total × (their hours on the job ÷ everyone's hours on the job)*. Someone who worked 8 of a job's 10 hours gets 80% of the credit.
-- **Profit** — Billing − Labor Cost, green when positive.
-- **$/hr** — Billing ÷ Hours.
+- **Billed (gross)** — their credit of the job's gross total bill (what was billed — not cash collected, not revenue before overhead), **weighted by hours**: a job's total is credited as *job total × (their hours on the job ÷ everyone's hours on the job)*. Someone who worked 8 of a job's 10 hours gets 80% of the credit.
+- **Profit** — Billed (gross) − Labor Cost, green when positive.
+- **$/hr** — Billed (gross) ÷ Hours.
 
 :::example The ≈ marker
 A job with revenue but **no clocked crew hours** can't be weighted, so its total is split equally among the job's team members as an **estimate**, marked with **≈** on the row and its drill-down lines.

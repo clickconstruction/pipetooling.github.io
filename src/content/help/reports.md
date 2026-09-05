@@ -25,6 +25,8 @@ How complete is the job? `100` %
 
 The most common type is the **Status Report** — a general progress update with "How complete is the job?" as a percentage. That percentage becomes the job's **% done** everywhere: the Jobs Pipeline progress bar and "% done" box, the dashboard cards, and the job's activity feed (a "N% complete — from field report" note) all update the moment the report saves. Reporting **100%** on a Working job also triggers the prompt below, which is how finished work flows straight into billing (see the billing guide):
 
+The slider opens on the job's **current %**, and the line under it says where that number came from — *Currently 30% — move to update · crew report Aug 27*, or *· set by office*. Leave it where it is and the report files that same number, so the job's % doesn't move; drag it or tap a quick pick and the job follows (the line changes to *Was 30%*).
+
 :::example After a 100%-complete report
 **Move to Ready to Bill?**
 ☑ I have reported all the Job Parts I've used

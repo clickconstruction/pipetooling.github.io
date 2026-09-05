@@ -227,7 +227,7 @@ export default function JobChargesTimelineStandalone({
           >
             Cost Timeline
           </div>
-          <JobChargesTimelineChartView
+          <JobChargesTimelineChartView teamLaborIncluded={includeTeamLabor}
             data={state.data}
             revenue={job.revenue != null ? Number(job.revenue) : null}
             cardChargesExcluded={state.cardChargesExcluded}

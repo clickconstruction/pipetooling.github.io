@@ -9,6 +9,7 @@ import { isTurnawayTemplateName } from '../lib/turnaway'
 import { fieldValueForSubmit, normalizePercentFieldValueToString } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
+import { recordedPercentProvenance, reportPercentSeedHint, seedUntouchedPercentFields, type JobPercentProvenance } from '../lib/jobPercentProvenance'
 import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
@@ -68,6 +69,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   /** Turnaway door (v2.2210): true when the picked ledger job has a schedule block for me today. */
   const [scheduledToday, setScheduledToday] = useState(false)
   const [turnawayOpen, setTurnawayOpen] = useState(false)
+  /** The picked job's recorded % and who set it (v2.2852) — seeds the percent slider ("Currently 30%"). */
+  const [jobPctSeed, setJobPctSeed] = useState<{ jobId: string; pct: number | null; provenance: JobPercentProvenance } | null>(null)
   /** Once the tech taps Change, emptying the search box must not re-auto-select the last job. */
   const suppressAutoSelectRef = useRef(false)
 
@@ -112,6 +115,45 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, authUserId, selectedJob?.id, selectedJob?.source])
+
+  useEffect(() => {
+    // Slider seed (v2.2852, J2-F1): the job's recorded % and who set it, so the form opens on
+    // "Currently 30% — move to update" instead of 0. Best-effort — a failed read keeps the old 0 start.
+    let cancelled = false
+    if (!open || !selectedJob || selectedJob.source !== 'job_ledger') {
+      setJobPctSeed(null)
+      return
+    }
+    const jobId = selectedJob.id
+    void (async () => {
+      try {
+        const [{ data: jobRow }, { data: reportRows }] = await Promise.all([
+          supabase.from('jobs_ledger').select('pct_complete').eq('id', jobId).maybeSingle(),
+          supabase.from('reports').select('created_at, field_values').eq('job_ledger_id', jobId).order('created_at', { ascending: false }).limit(25),
+        ])
+        if (cancelled) return
+        const pct = (jobRow as { pct_complete?: number | null } | null)?.pct_complete ?? null
+        const reports = ((reportRows ?? []) as Array<{ created_at: string; field_values: unknown }>).map((r) => ({
+          created_at: r.created_at,
+          field_values:
+            r.field_values && typeof r.field_values === 'object' && !Array.isArray(r.field_values)
+              ? (r.field_values as Record<string, unknown>)
+              : null,
+        }))
+        setJobPctSeed({ jobId, pct, provenance: recordedPercentProvenance(pct, reports) })
+      } catch {
+        if (!cancelled) setJobPctSeed(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, selectedJob])
+
+  const seedForSelected =
+    selectedJob && selectedJob.source === 'job_ledger' && jobPctSeed && jobPctSeed.jobId === selectedJob.id ? jobPctSeed : null
+  /** Percent fields the tech has not touched read as the job's current % — display, copy and save all agree. */
+  const seededFieldValues = (fields: ReportTemplateField[]) => seedUntouchedPercentFields(fields, fieldValues, seedForSelected?.pct ?? null)
 
   useEffect(() => {
     if (open && initialJob) {
@@ -237,7 +279,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     for (const f of fields) {
       const t = f.input_type ?? 'long_text'
       if (t === 'percent_0_100') {
-        const n = normalizePercentFieldValueToString(fieldValues[f.label])
+        const n = normalizePercentFieldValueToString(seededFieldValues(fields)[f.label])
         parts.push(`${f.label}:\n${n}%`)
       } else if (t === 'signature_png') {
         const raw = (fieldValues[f.label] ?? '').trim()
@@ -281,7 +323,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     }
     const fv: Record<string, string> = {}
     for (const f of fields) {
-      fv[f.label] = fieldValueForSubmit(f, fieldValues)
+      fv[f.label] = fieldValueForSubmit(f, seededFieldValues(fields))
     }
     const jobLedgerId = selectedJob.source === 'job_ledger' ? selectedJob.id : null
     const projectId = selectedJob.source === 'project' ? selectedJob.id : null
@@ -598,7 +640,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                       key={f.id}
                       id={`new-report-pct-${f.id}`}
                       label={f.label}
-                      value={fieldValues[f.label] ?? '0'}
+                      value={seededFieldValues(fields)[f.label] ?? '0'}
+                      hint={reportPercentSeedHint(seedForSelected?.pct, fieldValues[f.label], seedForSelected?.provenance)}
                       onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
                     />
                   )

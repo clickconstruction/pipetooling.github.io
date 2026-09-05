@@ -35,6 +35,9 @@ import {
 } from '../../lib/partsPerPersonCostSummary'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
 import { formatJobSummaryPercentComplete } from '../../lib/jobSummaryPercentComplete'
+import { latestReportPercent } from '../../lib/jobPercentProvenance'
+import { PROFIT_FIGURE_LABELS } from '../../lib/jobs/profitLabels'
+import { PercentProvenanceChip } from './PercentProvenanceChip'
 import {
   deriveStagesBillingActivityDetail,
   deriveStagesFieldReferenceYmd,
@@ -622,18 +625,18 @@ export default function JobsJobSummaryTab({
                     <JobSummarySortHeader label="Labor" sortKey="labor" view={view} title="Team labor from payroll crew-days × wage" />
                     <JobSummarySortHeader label="Subs" sortKey="subs" view={view} title="Sub labor sheets matched to this job" />
                     <JobSummarySortHeader label="Parts" sortKey="parts" view={view} title="Tally + supply invoices + billed materials + card charges (internal transfers excluded; card charges linked to an invoice counted once)" />
-                    <JobSummarySortHeader label="Gross" sortKey="gross" view={view} title="Revenue − labor − subs − parts" />
+                    <JobSummarySortHeader label={PROFIT_FIGURE_LABELS.gross.label} sortKey="gross" view={view} title={PROFIT_FIGURE_LABELS.gross.tooltip} />
                     <JobSummarySortHeader label="Margin" sortKey="margin" view={view} title="Gross ÷ revenue" />
                     <JobSummarySortHeader label="Hours · days" sortKey="hours" view={view} title="Approved field hours and days worked inside the window" />
                     <JobSummarySortHeader label="Overhead" sortKey="overhead" view={view} title={JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.title} />
-                    <JobSummarySortHeader label="True profit" sortKey="trueProfit" view={view} title="Gross − overhead share" />
+                    <JobSummarySortHeader label={PROFIT_FIGURE_LABELS.trueProfit.label} sortKey="trueProfit" view={view} title={PROFIT_FIGURE_LABELS.trueProfit.tooltip} />
                     <JobSummarySortHeader label="True %" sortKey="trueMargin" view={view} title="True profit ÷ revenue" />
                     <JobSummarySortHeader label="$/hr" sortKey="revPerHour" view={view} title="Revenue ÷ approved field hours in the window — the realized rate" />
                     <JobSummarySortHeader
                       label="%"
                       sortKey="pct"
                       view={view}
-                      title="Percent complete — 100% when all invoices are paid; otherwise latest field report %, or the job's % complete field when no report has one"
+                      title="Percent complete — the badge under each % says who set it: fully collected (every invoice paid, covering the contract) · crew report (latest field report %) · set by office (the job's own % complete)"
                     />
                   </tr>
                 </thead>
@@ -785,8 +788,15 @@ export default function JobsJobSummaryTab({
                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)', whiteSpace: 'nowrap' }} title="Revenue ÷ approved field hours in the window">
                               {enriched.revenuePerHourUsd == null ? '—' : `$${Math.round(enriched.revenuePerHourUsd)}`}
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
                               {formatJobSummaryPercentComplete(enriched.pct)}
+                              {enriched.pct != null ? (
+                                <PercentProvenanceChip
+                                  source={enriched.pctSource}
+                                  reportedOn={enriched.pctSource === 'crew-report' ? latestReportPercent(jobSummaryReportsByJobId.get(job.id))?.createdAt ?? null : null}
+                                  style={{ display: 'block', marginLeft: 0, marginTop: 2 }}
+                                />
+                              ) : null}
                             </td>
                           </tr>
                         )
@@ -858,6 +868,7 @@ export default function JobsJobSummaryTab({
                                   invoiceLines={jobSummaryInvoiceLinesByJobId.get(job.id)}
                                   reports={jobSummaryReportsByJobId.get(job.id)}
                                   canAccessBankingForParts={canAccessBankingForParts}
+                                  teamLaborIncluded={showTeamLaborAndProfit}
                                   mileageCost={mileageCost}
                                   timePerMile={timePerMile}
                                 />

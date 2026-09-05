@@ -52,7 +52,9 @@ Revenue · Labor · Subs · Parts · **Gross** · Margin · Hours · days · **O
 - **Revenue** is the contract on the job. For an in-progress job it's **earned** revenue instead: contract × % complete, marked *earned* — so its costs-to-date sit next to value-to-date. No % yet? It's assumed 50% and marked *½?*.
 - **Parts** now leaves out Internal Transfers (money moving between the company's own accounts) and counts a card charge only once when it's linked to a supply-house invoice. When a job's parts include purchases in a tag that has **Show as its own cost line** ticked (Banking → Accounting → Tags), the cell carries a small line per tag — {{chip:yellow|⛽ fuel & gas $X}} out of the box — so pipe and fill-ups read apart. A purchase lands in a line by its accounting label's tag first, then by the bank's category. Parts and profit don't change; the lines are slices of what was already counted.
 - **Hours · days** are approved field hours and days worked inside the window. A small **+** means the job also has hours before the window; widen the window to charge those.
-- **Overhead** is the job's share under the method you picked. **True profit** is gross minus that. Expand a row and open **Overhead — the math** to see every day line.
+- **Gross** is revenue − team labor − subs − parts, before overhead. **Overhead** is the job's share under the method you picked. **True profit** is gross minus that — the bottom line. Hover either header for the formula. Expand a row and open **Overhead — the math** to see every day line.
+- **%** carries a small badge saying who set it: {{chip:gray|crew report Aug 27}} (the latest field report with a %), {{chip:gray|set by office}} (the job's own % complete) or {{chip:gray|fully collected}} (every invoice paid and covering the contract). The report date fills in once the row has been expanded.
+- In the expanded row's chart, the green line is the job's **cash position** — payments received minus charges to date — not a margin. If your role can't see wages, the legend says *before team labor*.
 
 ## How day-share works
 
