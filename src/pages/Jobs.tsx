@@ -1816,6 +1816,7 @@ export default function Jobs() {
           onSetLaborJobStage={setLaborJobStage}
           onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
           onOpenBackcharge={(target) => subLaborPaymentModalsRef.current?.openBackcharge(target)}
+          onReloadLaborJobs={() => void loadLaborJobs()}
         />
       )}
 

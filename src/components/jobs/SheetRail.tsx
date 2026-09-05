@@ -19,12 +19,14 @@ export type SheetRailProps = {
   compact?: boolean
   /** Sits on the current dot — the stage menu door on Sub Labor (PR 4). */
   onCurrentClick?: () => void
+  /** The rest of the rail opens the sheet's story (PR 6). */
+  onClick?: () => void
   title?: string
 }
 
 const isOffice = (s: SheetRailStep) => s.key === 'drafted' || s.key === 'sent' || s.key === 'signed'
 
-export function SheetRail({ rail, showLabel = true, compact = false, onCurrentClick, title }: SheetRailProps) {
+export function SheetRail({ rail, showLabel = true, compact = false, onCurrentClick, onClick, title }: SheetRailProps) {
   const big = compact ? 8 : 10
   const small = compact ? 6 : 8
   const nowSize = compact ? 11 : 14
@@ -61,7 +63,16 @@ export function SheetRail({ rail, showLabel = true, compact = false, onCurrentCl
     }
     const isCurrent = s.key === rail.current
     const el = isCurrent && onCurrentClick ? (
-      <button key={s.key} type="button" onClick={onCurrentClick} aria-label={`${s.label} — change stage`} style={{ ...style, padding: 0, cursor: 'pointer' }} />
+      <button
+        key={s.key}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onCurrentClick()
+        }}
+        aria-label={`${s.label} — change stage`}
+        style={{ ...style, padding: 0, cursor: 'pointer' }}
+      />
     ) : (
       <span key={s.key} style={style} aria-hidden="true" />
     )
@@ -78,12 +89,27 @@ export function SheetRail({ rail, showLabel = true, compact = false, onCurrentCl
     return [el, <span key={`${s.key}-l`} style={lineStyle} aria-hidden="true" />]
   }
 
+  const accessible = `${rail.label}${rail.sublabel ? ` — ${rail.sublabel}` : ''}`
+  const tooltip = title ?? rail.steps.map((s) => `${s.label}: ${s.state === 'now' ? 'here' : s.state === 'gap' ? 'nothing signed' : s.state}`).join(' · ')
+  const doorProps = onClick
+    ? {
+        role: 'button' as const,
+        tabIndex: 0,
+        'aria-label': `${accessible} — open the sheet's story`,
+        onClick,
+        onKeyDown: (e: React.KeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick()
+          }
+        },
+      }
+    : { role: 'img' as const, 'aria-label': accessible }
   return (
     <span
-      role="img"
-      aria-label={`${rail.label}${rail.sublabel ? ` — ${rail.sublabel}` : ''}`}
-      title={title ?? rail.steps.map((s) => `${s.label}: ${s.state === 'now' ? 'here' : s.state === 'gap' ? 'nothing signed' : s.state}`).join(' · ')}
-      style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle' }}
+      {...doorProps}
+      title={onClick ? `${tooltip} · click for the sheet's story` : tooltip}
+      style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: onClick ? 'pointer' : undefined, borderRadius: 6 }}
     >
       {rail.steps.flatMap(dot)}
       {showLabel ? (

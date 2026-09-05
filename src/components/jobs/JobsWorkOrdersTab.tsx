@@ -36,6 +36,7 @@ import {
 } from '../../lib/subWorkOrders/workOrderBoardRows'
 import { SHEET_RAIL_GAP } from '../../lib/subWorkOrders/sheetRailTone'
 import { SheetRail } from './SheetRail'
+import { SheetStoryModal } from './SheetStoryModal'
 import { emitWorkOrderChanged, WORK_ORDER_CHANGED_EVENT } from '../../hooks/useJobWorkOrderCoverage'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
@@ -95,6 +96,7 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
   const [busyId, setBusyId] = useState<string | null>(null)
   const [assembler, setAssembler] = useState<WorkOrderAssemblerInitial | null>(null)
   const [linkRow, setLinkRow] = useState<WorkOrderBoardRow | null>(null)
+  const [storySheetId, setStorySheetId] = useState<string | null>(null)
   const [linkSearch, setLinkSearch] = useState('')
   const [linkNumber, setLinkNumber] = useState('')
 
@@ -509,7 +511,7 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
                       <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{money(row.paid)}</td>
                       <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{openCell(row)}</td>
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                        <SheetRail rail={row.rail} />
+                        <SheetRail rail={row.rail} onClick={row.sheetId ? () => setStorySheetId(row.sheetId) : undefined} />
                       </td>
                       <td style={td}>{nextCell(row)}</td>
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>
@@ -549,7 +551,7 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
                     <div><div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Open</div>{openCell(row)}</div>
                   </div>
                   <div style={{ overflowX: 'auto' }}>
-                    <SheetRail rail={row.rail} compact />
+                    <SheetRail rail={row.rail} compact onClick={row.sheetId ? () => setStorySheetId(row.sheetId) : undefined} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 auto' }}>{nextCell(row)}</div>
@@ -640,6 +642,7 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
       ) : null}
 
       <WorkOrderAssemblerModal open={assembler != null} onClose={() => setAssembler(null)} jobs={jobs} initial={assembler} authUserId={authUserId} onChanged={() => void load()} />
+      <SheetStoryModal sheetId={storySheetId} onClose={() => setStorySheetId(null)} jobs={jobs} authUserId={authUserId} onOpenSheet={onOpenSheet} onSheetChanged={() => void load()} />
     </div>
   )
 }

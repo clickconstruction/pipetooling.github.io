@@ -23,6 +23,7 @@ import { buildJobWorkOrderCoverage, type WorkOrderRowLike } from '../../lib/subW
 import { buildSheetRail } from '../../lib/subWorkOrders/sheetRail'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { SheetRail } from './SheetRail'
+import { SheetStoryModal } from './SheetStoryModal'
 import SubPortalGlobeButton from '../people/SubPortalGlobeButton'
 
 /**
@@ -170,6 +171,7 @@ export function SubSheetWorkOrderPanel({
 }: SubSheetWorkOrderPanelProps) {
   const { showToast } = useToastContext()
   const [loading, setLoading] = useState(true)
+  const [storyOpen, setStoryOpen] = useState(false)
   const [commitment, setCommitment] = useState<StepCommitmentRow | null>(null)
   const [assignees, setAssignees] = useState<Array<{ id: string; name: string; email: string | null }>>([])
   const [scopeItems, setScopeItems] = useState<SubScopeItem[]>([])
@@ -490,7 +492,8 @@ export function SubSheetWorkOrderPanel({
 
   const railEl = (
     <div style={{ margin: '0.5rem 0 0.25rem' }}>
-      <SheetRail rail={rail} />
+      <SheetRail rail={rail} onClick={() => setStoryOpen(true)} />
+      <SheetStoryModal sheetId={storyOpen ? laborJobId : null} onClose={() => setStoryOpen(false)} authUserId={authUserId} />
     </div>
   )
 
