@@ -20,6 +20,7 @@ import TeamCrewIcon from '../icons/TeamCrewIcon'
 import { customerAddressLienReady, suggestCustomerAddressForJob } from '../../lib/jobs/lienProperty'
 import { JobFormFactRow } from './JobFormFactRow'
 import JobContractStrip from './JobContractStrip'
+import JobWorkOrderStrip from './JobWorkOrderStrip'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
@@ -75,6 +76,9 @@ const fieldInputStyle = {
 type JobFormEditFactRowsProps = {
   /** Contract Desk PR 3: when set, a read-only Contract row (chip + send / view record) follows the customer rows. */
   contractJob?: JobWithDetails | null
+  /** Work Orders tab PR 3: a Sub work order row under Contract — chip + the door into the assembler. */
+  workOrderJob?: JobWithDetails | null
+  workOrderAuthUserId?: string | undefined
   users: Array<{ id: string; name: string }>
   teamMemberIds: string[]
   setTeamMemberIds: Dispatch<SetStateAction<string[]>>
@@ -536,6 +540,9 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
       {props.contractJob ? (
         <JobFormFactRow label="Contract" labelIcon={CUSTOMER_SUBROW_INDENT} value={<JobContractStrip job={props.contractJob} variant="inline" />} />
+      ) : null}
+      {props.workOrderJob ? (
+        <JobFormFactRow label="Sub work order" labelIcon={CUSTOMER_SUBROW_INDENT} value={<JobWorkOrderStrip job={props.workOrderJob} variant="inline" authUserId={props.workOrderAuthUserId} />} />
       ) : null}
       {/* Property record (v2.2638): which of the customer's/GC's saved
           addresses this job sits at — county / legal description / owner of

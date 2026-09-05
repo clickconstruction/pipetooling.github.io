@@ -21,6 +21,7 @@ import { resolvedLaborInvoiceLink } from '../../lib/jobs/jobAddressUrls'
 import { SubSheetPortalFieldsBox } from './SubSheetPortalFieldsBox'
 import { normalizeSubSheetStage, type SubSheetStage } from '../../lib/subSheetStage'
 import { SubSheetWorkOrderPanel } from './SubSheetWorkOrderPanel'
+import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkOrderAssemblerModal'
 import {
   resolveSubLaborJobByNumber,
   subLaborAssignPickerRows,
@@ -180,6 +181,13 @@ function JobsSubLaborFormModalInner(
    * address text), so edit mode and every rollup keep working as before.
    */
   const [laborPickedJobId, setLaborPickedJobId] = useState<string | null>(null)
+  // Work Orders tab PR 3: the sheet box opens the assembler when the sheet's job is in the cache.
+  const [assemblerInitial, setAssemblerInitial] = useState<WorkOrderAssemblerInitial | null>(null)
+  const sheetJobForAssembler = editingLaborJob
+    ? (laborPickedJobId ? jobs.find((j) => j.id === laborPickedJobId) : undefined) ??
+      jobs.find((j) => (j.hcp_number ?? '').trim().toLowerCase() === (editingLaborJob.job_number ?? '').trim().toLowerCase()) ??
+      null
+    : null
   /**
    * v2.1617: NEW entries walk a 3-step sheet — Job → Crew → Work and cost —
    * so the phone-width modal shows one decision at a time. Edit mode keeps
@@ -1983,6 +1991,21 @@ function JobsSubLaborFormModalInner(
                     null
                   }
                   serviceTypes={serviceTypes.map((t) => ({ id: t.id, name: t.name }))}
+                  authUserId={authUserId}
+                  onChanged={() => void loadLaborJobs()}
+                  onOpenAssembler={
+                    sheetJobForAssembler
+                      ? (init) => setAssemblerInitial({ jobId: sheetJobForAssembler.id, personId: init.personId, laborJobId: init.laborJobId, commitmentId: init.commitmentId, amount: init.amount })
+                      : undefined
+                  }
+                />
+              )}
+              {editingLaborJob && sheetJobForAssembler && (
+                <WorkOrderAssemblerModal
+                  open={assemblerInitial != null}
+                  onClose={() => setAssemblerInitial(null)}
+                  jobs={jobs}
+                  initial={assemblerInitial}
                   authUserId={authUserId}
                   onChanged={() => void loadLaborJobs()}
                 />

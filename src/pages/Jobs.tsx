@@ -1778,6 +1778,7 @@ export default function Jobs() {
           jobsLoading={jobsListLoading}
           authUserId={authUser?.id}
           deepLinkWorkOrderId={searchParams.get('wo')}
+          initialFilter={(['drafts', 'awaiting', 'signed', 'declined', 'expired'] as const).find((f) => f === searchParams.get('wof')) ?? null}
           onDeepLinkConsumed={() =>
             setSearchParams((p) => {
               const next = new URLSearchParams(p)

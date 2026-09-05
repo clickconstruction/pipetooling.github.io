@@ -57,6 +57,21 @@ function burst(over: Partial<{ actor_name: string; bundles: number; window_start
 }
 
 describe('buildNeedsYouItems', () => {
+  it('unpriced work-order drafts (v2.2829): one item, names the subs, gated by the flag', () => {
+    const one = buildNeedsYouItems(inputs({ unpricedWorkOrdersEnabled: true, unpricedWorkOrders: { count: 1, subNames: ['Rudy'], oldestDays: 2 } }))
+    expect(one.map((i) => i.key)).toEqual(['work-orders-unpriced'])
+    expect(one[0]!.title).toBe('A sub work order is waiting for a price')
+    expect(one[0]!.detail).toContain('for Rudy')
+    expect(one[0]!.detail).toContain('2 days ago')
+    expect(one[0]!.actionLabel).toBe('Price it')
+    const many = buildNeedsYouItems(inputs({ unpricedWorkOrdersEnabled: true, unpricedWorkOrders: { count: 4, subNames: ['A', 'B', 'C', 'D'], oldestDays: 0 } }))
+    expect(many[0]!.title).toBe('4 sub work orders are waiting for a price')
+    expect(many[0]!.detail).toContain('for A, B and 2 more')
+    expect(many[0]!.figure).toBe('4')
+    expect(buildNeedsYouItems(inputs({ unpricedWorkOrdersEnabled: false, unpricedWorkOrders: { count: 3, subNames: [], oldestDays: null } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ unpricedWorkOrdersEnabled: true, unpricedWorkOrders: null }))).toEqual([])
+  })
+
   it('returns nothing when every source is quiet', () => {
     expect(buildNeedsYouItems(inputs())).toEqual([])
   })
