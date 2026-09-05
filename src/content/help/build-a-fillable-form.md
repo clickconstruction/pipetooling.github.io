@@ -47,3 +47,7 @@ Some forms are signed by one person and completed by another (the I-9). In the i
 ## A PDF that will not load
 
 Some official PDFs are saved in a way the studio cannot read (the Texas DWC-83 is one). The studio tells you when that happens: re-save the file — **Print to PDF** from any viewer works — and upload that copy instead. Re-saving usually drops the PDF's own fillable fields, so you place every box by hand.
+
+## Forms we write ourselves
+
+Some forms are ours, not a government's: the direct deposit authorization, the Texas lien waivers. A dev builds those from source with `npm run forms:author`, which writes the PDF and its boxes together under `docs/forms/authored/`. Upload the PDF in the studio with **Import the PDF's fillable fields** off, then **Import JSON** with the matching schema file, and publish as usual. To change the wording or the company address, change the source and re-run — never edit the PDF by hand.

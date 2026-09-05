@@ -1,0 +1,215 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "width": 612,
+      "height": 792
+    }
+  ],
+  "boxes": [
+    {
+      "key": "project",
+      "type": "text",
+      "label": "Project",
+      "labelEs": "Proyecto",
+      "required": true,
+      "help": "The job or project name, as on your work order.",
+      "helpEs": "El nombre del trabajo o proyecto, como en su orden de trabajo.",
+      "sample": "Cedar Bend Phase 2",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 565.6,
+        "w": 308.68,
+        "h": 16
+      },
+      "order": 10
+    },
+    {
+      "key": "job_no",
+      "type": "text",
+      "label": "Job No.",
+      "labelEs": "Núm. de trabajo",
+      "required": true,
+      "help": "Click’s job number, e.g. J1042.",
+      "helpEs": "El número de trabajo de Click, p. ej. J1042.",
+      "sample": "J1042",
+      "page": 1,
+      "rect": {
+        "x": 372.68,
+        "y": 565.6,
+        "w": 185.32,
+        "h": 16
+      },
+      "order": 20
+    },
+    {
+      "key": "amount",
+      "label": "Amount of this progress payment ($)",
+      "labelEs": "Monto de este pago parcial ($)",
+      "required": true,
+      "help": "Dollars and cents, as on the check.",
+      "helpEs": "Dólares y centavos, como en el cheque.",
+      "sample": "4,250.00",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 454.17,
+        "y": 539.55,
+        "w": 82,
+        "h": 12
+      },
+      "order": 30,
+      "fontSize": 9
+    },
+    {
+      "key": "contracted_with",
+      "label": "",
+      "type": "constant",
+      "text": "Click Plumbing, LLC",
+      "page": 1,
+      "rect": {
+        "x": 362.25,
+        "y": 521.5,
+        "w": 150,
+        "h": 12
+      },
+      "order": 40,
+      "fontSize": 9
+    },
+    {
+      "key": "owner",
+      "label": "Property owner",
+      "labelEs": "Propietario",
+      "required": true,
+      "help": "The owner of the property you worked on, as shown on your work order.",
+      "helpEs": "El propietario de la propiedad donde trabajó, como en su orden de trabajo.",
+      "sample": "Cowboy Creek Builders LLC",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 102.43,
+        "y": 503.45,
+        "w": 150,
+        "h": 12
+      },
+      "order": 50,
+      "fontSize": 9
+    },
+    {
+      "key": "location",
+      "label": "Property address",
+      "labelEs": "Dirección de la propiedad",
+      "required": true,
+      "sample": "1408 Cedar Bend, Kyle, TX 78640",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 300.91,
+        "y": 503.45,
+        "w": 200,
+        "h": 12
+      },
+      "order": 60,
+      "fontSize": 9
+    },
+    {
+      "key": "job_description",
+      "label": "Job description (the extent of this release)",
+      "labelEs": "Descripción del trabajo (alcance de esta liberación)",
+      "required": true,
+      "help": "What this payment covers, e.g. \"rough-in plumbing, building 2\".",
+      "helpEs": "Lo que cubre este pago, p. ej. \"plomería preliminar, edificio 2\".",
+      "sample": "Rough-in plumbing, building 2",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 124.04,
+        "y": 485.4,
+        "w": 200,
+        "h": 12
+      },
+      "order": 70,
+      "fontSize": 9
+    },
+    {
+      "key": "contracted_with_2",
+      "label": "",
+      "type": "constant",
+      "text": "Click Plumbing, LLC",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 365.1,
+        "w": 150,
+        "h": 12
+      },
+      "order": 80,
+      "fontSize": 9
+    },
+    {
+      "key": "signature",
+      "type": "signature",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 213.85,
+        "w": 312.48,
+        "h": 22
+      },
+      "order": 90,
+      "label": "By (Signature)",
+      "labelEs": "Firma"
+    },
+    {
+      "key": "date",
+      "type": "date",
+      "page": 1,
+      "rect": {
+        "x": 386.64,
+        "y": 213.85,
+        "w": 171.36,
+        "h": 16
+      },
+      "order": 100,
+      "label": "Date",
+      "dateMode": "today",
+      "labelEs": "Fecha"
+    },
+    {
+      "key": "company_name",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 175.85,
+        "w": 312.48,
+        "h": 16
+      },
+      "order": 110,
+      "label": "Company name (the signer’s business)",
+      "labelEs": "Nombre de la empresa (el negocio del firmante)",
+      "required": true,
+      "prefill": "person_name",
+      "sample": "Misses Taunya TESTING"
+    },
+    {
+      "key": "title",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 386.64,
+        "y": 175.85,
+        "w": 171.36,
+        "h": 16
+      },
+      "order": 120,
+      "label": "Your title",
+      "labelEs": "Su cargo",
+      "required": true,
+      "sample": "Owner"
+    }
+  ],
+  "groups": [],
+  "oneOfs": []
+}
