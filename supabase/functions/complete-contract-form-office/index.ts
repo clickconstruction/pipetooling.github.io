@@ -26,6 +26,7 @@ import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorage, validateFormValues, type FormSchema, type FormValues } from '../_shared/formSchema.ts'
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
+import { partyRegions } from '../_shared/formParties.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 
 const FORM_PDFS_BUCKET = 'contract-form-pdfs'
@@ -66,6 +67,10 @@ type Row = {
   office_completed_at: string | null
   office_completed_by_user_id: string | null
   office_signer_printed_name: string | null
+  office_attested_at: string | null
+  signed_at: string | null
+  signer_printed_name: string | null
+  form_source: string | null
 }
 
 serve(async (req) => {
@@ -102,7 +107,7 @@ serve(async (req) => {
     // The caller must be able to read the row under their own policies.
     const { data: rowData, error: rowErr } = await userClient
       .from('person_contract_documents')
-      .select('id, status, document_name, person_name, form_template_id, form_pdf_storage_path, office_values, office_completed_at, office_completed_by_user_id, office_signer_printed_name')
+      .select('id, status, document_name, person_name, form_template_id, form_pdf_storage_path, office_values, office_completed_at, office_completed_by_user_id, office_signer_printed_name, office_attested_at, signed_at, signer_printed_name, form_source')
       .eq('id', docId)
       .maybeSingle()
     if (rowErr || !rowData) return json({ error: 'Document not found or access denied' }, 404)
@@ -121,7 +126,10 @@ serve(async (req) => {
       const { data: u } = await admin.from('users').select('name').eq('id', row.office_completed_by_user_id).maybeSingle()
       completedBy = (u as { name?: string } | null)?.name ?? null
     }
-    const completed = row.office_completed_at ? { at: row.office_completed_at, by: completedBy, printedName: row.office_signer_printed_name } : null
+    const completed = row.office_completed_at ? { at: row.office_completed_at, by: completedBy, printedName: row.office_signer_printed_name, attestedAt: row.office_attested_at } : null
+    // The signer's half, so the modal can shade it as locked (PR 8).
+    const signerRegions = partyRegions(schema, 'signer')
+    const signer = { printedName: row.signer_printed_name, signedAt: row.signed_at, source: row.form_source }
 
     if (action === 'prepare') {
       const { data: signed, error: sErr } = await admin.storage.from(FORM_PDFS_BUCKET).createSignedUrl(row.form_pdf_storage_path, LINK_SECONDS)
@@ -129,13 +137,14 @@ serve(async (req) => {
         console.error('filed pdf url', sErr)
         return json({ error: 'Could not load the filed PDF.' }, 500)
       }
-      return json({ ok: true, schema: officeSchema, pdfUrl: signed.signedUrl, officeValues: row.office_values ?? {}, completed, documentName: row.document_name, personName: row.person_name })
+      return json({ ok: true, schema: officeSchema, pdfUrl: signed.signedUrl, officeValues: row.office_values ?? {}, completed, signer, signerRegions, documentName: row.document_name, personName: row.person_name })
     }
 
     // ── complete ───────────────────────────────────────────────────────────────
     if (completed) return json({ error: `The office section was already completed${completedBy ? ` by ${completedBy}` : ''}; the PDF is final.`, code: 'already_completed' }, 409)
     const printedName = typeof body.office_signer_printed_name === 'string' ? body.office_signer_printed_name.trim().slice(0, 200) : ''
     if (!printedName) return json({ error: 'Type the name that signs for the office.' }, 400)
+    if (body.attested !== true) return json({ error: 'Tick the attestation before completing the office section.', code: 'not_attested' }, 400)
     const values: FormValues = body.officeValues && typeof body.officeValues === 'object' && !Array.isArray(body.officeValues) ? (body.officeValues as FormValues) : {}
     const known = new Set(officeSchema.boxes.map((b) => b.key))
     for (const k of Object.keys(values)) {
@@ -169,7 +178,7 @@ serve(async (req) => {
     const split = splitFormValuesForStorage(officeSchema, values)
     const { error: updErr } = await admin
       .from('person_contract_documents')
-      .update({ office_values: split.values, office_completed_at: new Date().toISOString(), office_completed_by_user_id: user.id, office_signer_printed_name: printedName })
+      .update({ office_values: split.values, office_completed_at: new Date().toISOString(), office_attested_at: new Date().toISOString(), office_completed_by_user_id: user.id, office_signer_printed_name: printedName })
       .eq('id', row.id)
     if (updErr) {
       console.error('office update', updErr)

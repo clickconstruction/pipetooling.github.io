@@ -31,3 +31,7 @@ Under the page, type your full legal name or draw your signature, tick the certi
 ## Afterward
 
 The signed form appears on your portal page under **Your paperwork on file**, so no builder holds up a check over missing paperwork, and you never have to send it again. If your name, business, or address changes, tell the office and they will send a fresh form.
+
+## A shaded part of the form
+
+Some forms have a part the office fills after you (on the I-9, Section 2). That part is shaded and labelled **This part is completed by the office**. You are never asked about it, and the lens skips it.

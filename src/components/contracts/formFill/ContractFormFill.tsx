@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { PdfPageCanvas } from '../formStudio/PdfPageCanvas'
 import { FormFillOverlay, type SignaturePreview } from './FormFillOverlay'
-import type { FormBox, FormSchema, FormValues } from '../../../lib/forms/formSchema'
+import { pdfRectToScreen, type FormBox, type FormSchema, type FormValues } from '../../../lib/forms/formSchema'
+import type { PartyRegion } from '../../../lib/forms/formParties'
 import { acceptDigitsInput, boxHelp, boxLabel, displayValue, fillProgress, fillString, fitScale, hasAdvancedBoxes, lensSequence, setOneOfValue, toggleCheckbox, type FillLang } from '../../../lib/forms/formFillState'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
 import { CARD, COPPER, HAIR, INK, MUTED, NOTE_BAND as BAND, PAPER_RED } from '../../../lib/portal/portalTheme'
@@ -26,6 +27,7 @@ export function ContractFormFill({
   errors,
   todayLabel,
   signature,
+  shadedRegions = [],
 }: {
   schema: FormSchema
   templateUrl: string
@@ -36,6 +38,8 @@ export function ContractFormFill({
   errors: Record<string, string>
   todayLabel: string
   signature: SignaturePreview
+  /** Two-party forms (v2.2803): the office's regions, hatched and labelled so the signer knows they are not asked. */
+  shadedRegions?: PartyRegion[]
 }) {
   const narrow = useMatchMedia(LENS_QUERY)
   const [pdf, setPdf] = useState<ArrayBuffer | null>(null)
@@ -151,6 +155,16 @@ export function ContractFormFill({
           pages.map(({ page, pageNo }, i) => (
             <div key={pageNo} style={{ position: 'relative', width: page.width * scale, height: page.height * scale, margin: `${i === 0 ? 0 : 10}px auto 0`, boxShadow: '0 1px 4px rgba(0,0,0,.18)', background: CARD }}>
               <PdfPageCanvas bytes={pdf} page={pageNo} scale={scale} />
+              {shadedRegions
+                .filter((r) => r.page === pageNo)
+                .map((r, ri) => {
+                  const sr = pdfRectToScreen(r.rect, page, scale)
+                  return (
+                    <div key={ri} aria-hidden style={{ position: 'absolute', left: sr.left, top: sr.top, width: sr.width, height: sr.height, background: 'repeating-linear-gradient(135deg, rgba(90,107,126,0.14) 0 6px, rgba(90,107,126,0.04) 6px 12px)', border: '1px dashed rgba(90,107,126,0.7)', borderRadius: 3, pointerEvents: 'none' }}>
+                      <span style={{ position: 'absolute', left: '50%', top: 6, transform: 'translateX(-50%)', background: INK, color: CARD, fontSize: Math.max(9, 8 * scale), fontWeight: 600, padding: '2px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>{t('officeRegion')}</span>
+                    </div>
+                  )
+                })}
               <FormFillOverlay schema={schema} pageNo={pageNo} scale={scale} values={values} lang={lang} focusedKey={focusedKey} errors={errors} todayLabel={todayLabel} signature={signature} onFocus={focusBox} onText={setText} onToggle={toggle} />
             </div>
           ))

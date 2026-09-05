@@ -22,6 +22,9 @@ import { effectiveBookVersionLabel, effectiveBookVersionPlainDate } from '../../
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
 import { ContractLibraryModal } from '../contracts/ContractLibraryModal'
 import { ContractFormPaperEntryModal } from '../contracts/formFill/ContractFormPaperEntryModal'
+import { ContractFormOfficeModal } from '../contracts/formFill/ContractFormOfficeModal'
+import { officeQueue, officeSectionPending, twoPartyTemplateIdSet } from '../../lib/forms/formParties'
+import type { FormSchema } from '../../lib/forms/formSchema'
 import { assignPacketsConsequence } from '../../lib/contractPackets'
 import { ContractsTabHelpModal } from './ContractsTabHelpModal'
 import { countPersonContractStatuses } from '../../lib/personContractStatusCounts'
@@ -166,6 +169,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     lineage_version: number
     supersedes_person_contract_document_id: string | null
     form_template_id?: string | null
+    /** Two-party forms (v2.2803): when the office completed its section; null while pending. */
+    office_completed_at?: string | null
   }
 
   /** One table row: a specific version row, or placeholder when template lists doc but no person row yet. */
@@ -236,6 +241,17 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   const [contractAddDocSource, setContractAddDocSource] = useState<'choose' | 'book' | 'custom'>('choose')
   /** Enter from paper (Contract Forms v2.2801): the person whose handwritten form is being keyed in. */
   const [paperEntryFor, setPaperEntryFor] = useState<string | null>(null)
+  /** Two-party forms (v2.2803): templates with office boxes, and the office modal opened from the queue strip. */
+  const [twoPartyTemplateIds, setTwoPartyTemplateIds] = useState<Set<string>>(() => new Set())
+  const [officeModalDocId, setOfficeModalDocId] = useState<string | null>(null)
+
+  // Deep link from the signing page's thank-you (PR 8): /people?tab=contracts&doc=<id> opens that record.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const id = new URLSearchParams(window.location.search).get('doc')
+    if (id && /^[0-9a-f-]{36}$/i.test(id)) setContractSignedRecordModalDocId(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on mount
+  }, [])
   const [contractAddBookPickedRowId, setContractAddBookPickedRowId] = useState<string | null>(null)
   const [contractAddBookCustomizeOpen, setContractAddBookCustomizeOpen] = useState(false)
   const [contractDocumentFormDashboardPrompt, setContractDocumentFormDashboardPrompt] = useState(false)
@@ -615,7 +631,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       supabase
         .from('person_contract_documents')
         .select(
-          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, signer_last_viewed_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, applied_version_date, contract_lineage_id, lineage_version, supersedes_person_contract_document_id, form_template_id',
+          'id, person_name, document_name, url, signing_body_html, signing_body_format, canonical_document_url, status, signed_at, sent_at, signer_last_viewed_at, note, dashboard_prompt_after_clock_in, applied_contract_template_document_id, applied_version_date, contract_lineage_id, lineage_version, supersedes_person_contract_document_id, form_template_id, office_completed_at',
         ),
     ])
     setContractsLoading(false)
@@ -626,8 +642,14 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     else {
       setContractTemplates((templatesRes.data ?? []) as ContractTemplate[])
       setContractTemplateDocuments((templateDocsRes.data ?? []) as ContractTemplateDocument[])
+      // Which forms have an office half (PR 8): read those templates' schemas once.
+      const formIds = [...new Set(((templateDocsRes.data ?? []) as ContractTemplateDocument[]).map((d) => d.form_template_id).filter((x): x is string => !!x))]
+      if (formIds.length > 0) {
+        const { data: tpls } = await supabase.from('contract_form_templates' as never).select('id, schema').in('id', formIds)
+        setTwoPartyTemplateIds(twoPartyTemplateIdSet((tpls ?? []) as unknown as Array<{ id: string; schema: FormSchema | null }>))
+      } else setTwoPartyTemplateIds(new Set())
       setPersonContractAssignments((assignmentsRes.data ?? []) as PersonContractAssignment[])
-      setPersonContractDocuments((documentsRes.data ?? []) as PersonContractDocument[])
+      setPersonContractDocuments((documentsRes.data ?? []) as unknown as PersonContractDocument[])
     }
   }
 
@@ -832,6 +854,11 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   /** Actions cluster for one document row — shared verbatim by the desktop table cell and the narrow-viewport cards (v2.1405). */
   const renderContractDocActions = (personName: string, document_name: string, doc: PersonContractDocument | null) => (
     <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}>
+                                                  {doc && officeSectionPending(doc, twoPartyTemplateIds) ? (
+                                                    <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: 999, background: 'var(--bg-amber-tint, #fdf1e3)', color: 'var(--text-amber-700, #9a5b12)', whiteSpace: 'nowrap' }} title="Signed; the office has not completed its section yet">
+                                                      office section pending
+                                                    </span>
+                                                  ) : null}
                                                   {doc?.status === 'signed' ? (
                                                     <button
                                                       type="button"
@@ -1142,7 +1169,9 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     const bucketByPerson = new Map<string, ContractsRosterBucket>()
     const totals = { attention: 0, waiting: 0, done: 0, everyone: contractsPersonNamesSorted.length }
     for (const personName of contractsPersonNamesSorted) {
-      const bucket = contractsRosterBucket(countPersonContractStatuses(getDocumentsForPerson(personName)))
+      const personRows = getDocumentsForPerson(personName)
+      const officePending = personRows.filter((r) => r.version && officeSectionPending(r.version, twoPartyTemplateIds)).length
+      const bucket = contractsRosterBucket(countPersonContractStatuses(personRows), officePending)
       bucketByPerson.set(personName, bucket)
       if (bucket === 'attention') totals.attention++
       else if (bucket === 'waiting') totals.waiting++
@@ -1900,6 +1929,34 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                   }}
                 />
               </div>
+              {(() => {
+                const queue = officeQueue(personContractDocuments, twoPartyTemplateIds)
+                if (queue.length === 0) return null
+                return (
+                  <section aria-label="Office sections to complete" style={{ border: '1px solid var(--border)', borderLeft: '3px solid var(--border-amber, #d97706)', borderRadius: 6, background: 'var(--bg-amber-tint, #fdf1e3)', padding: '0.6rem 0.8rem', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+                      Office sections to complete
+                      <span style={{ fontSize: '0.6875rem', fontWeight: 700, background: 'var(--text-amber-700, #9a5b12)', color: '#fff', borderRadius: 999, padding: '0 0.45rem' }}>{queue.length}</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>signed by the person; the PDF is not final until the office finishes its part</span>
+                    </div>
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      {queue.map((q) => (
+                        <li key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.8125rem', padding: '0.25rem 0', borderTop: '1px solid var(--border)' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-strong)', minWidth: 140 }}>{q.personName}</span>
+                          <span style={{ color: 'var(--text-muted)', flex: 1 }}>
+                            {q.documentName}
+                            {q.signedAt ? ` · signed ${q.signedAt.slice(0, 10)}` : ''}
+                            {/^Form I-9/i.test(q.documentName) ? ' · Section 2 is due within 3 business days of the first day of work' : ''}
+                          </span>
+                          <button type="button" onClick={() => setOfficeModalDocId(q.id)} style={{ padding: '0.3rem 0.7rem', fontWeight: 700, fontSize: '0.8125rem' }}>
+                            Complete
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )
+              })()}
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.75rem' }} role="group" aria-label="Filter people by contract status">
                 {(
                   [
@@ -3374,6 +3431,14 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
           canDeleteLibraryEntries={canDeletePeopleContracts}
         />
       )}
+
+      {officeModalDocId ? (
+        <ContractFormOfficeModal
+          documentId={officeModalDocId}
+          onClose={() => setOfficeModalDocId(null)}
+          onCompleted={() => void loadContracts()}
+        />
+      ) : null}
 
       {paperEntryFor ? (
         <ContractFormPaperEntryModal

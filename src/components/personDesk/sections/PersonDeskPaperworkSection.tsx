@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
+import { officeSectionPending, twoPartyTemplateIdSet } from '../../../lib/forms/formParties'
+import type { FormSchema } from '../../../lib/forms/formSchema'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import type { PersonDeskViewer } from '../../../lib/people/personDeskGates'
@@ -39,14 +41,23 @@ export function PersonDeskPaperworkSection({ payName, personId, viewer, changeKe
       const [d, t, td, a] = await Promise.all([
         supabase
           .from('person_contract_documents')
-          .select('id, person_name, person_id, document_name, status, signed_at, sent_at, expires_at, dashboard_prompt_after_clock_in, contract_lineage_id, lineage_version, signing_body_html, doc_type, form_template_id')
+          .select('id, person_name, person_id, document_name, status, signed_at, sent_at, expires_at, dashboard_prompt_after_clock_in, contract_lineage_id, lineage_version, signing_body_html, doc_type, form_template_id, office_completed_at')
           .or(orParts.join(',')),
         supabase.from('contract_templates').select('id, name').order('sequence_order'),
         supabase.from('contract_template_documents').select('id, template_id, document_name, book_body_html, book_body_format, canonical_document_url'),
         payName ? supabase.from('person_contract_assignments').select('template_id').eq('person_name', payName) : Promise.resolve({ data: [] }),
       ])
       if (cancelled) return
-      setDocs(((d.data ?? []) as DocRow[]).filter((r) => !payName || r.person_name === payName || r.person_id === personId))
+      const mine = ((d.data ?? []) as unknown as DocRow[]).filter((r) => !payName || r.person_name === payName || r.person_id === personId)
+      // Two-party forms (v2.2803): which of these still wait on the office.
+      const formIds = [...new Set(mine.map((r) => r.form_template_id).filter((x): x is string => !!x))]
+      let twoParty = new Set<string>()
+      if (formIds.length > 0) {
+        const { data: tpls } = await supabase.from('contract_form_templates' as never).select('id, schema').in('id', formIds)
+        twoParty = twoPartyTemplateIdSet((tpls ?? []) as unknown as Array<{ id: string; schema: FormSchema | null }>)
+      }
+      if (cancelled) return
+      setDocs(mine.map((r) => ({ ...r, office_pending: officeSectionPending({ ...r, person_name: r.person_name ?? '' }, twoParty) })))
       setTemplates((t.data ?? []) as Array<{ id: string; name: string }>)
       setTemplateDocs((td.data ?? []) as PacketTemplateDoc[])
       setAssigned((((a as { data: Array<{ template_id: string }> | null }).data) ?? []).map((r) => r.template_id))

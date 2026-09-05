@@ -39,6 +39,7 @@ type PersonContractDocumentRow = Pick<
   form_keyed_by_user_id?: string | null
   office_completed_at?: string | null
   office_signer_printed_name?: string | null
+  office_attested_at?: string | null
 }
 
 type PersonContractSignedRecordModalProps = {
@@ -92,7 +93,7 @@ export function PersonContractSignedRecordModal({
             await supabase
               .from('person_contract_documents')
               .select(
-                'id, document_name, person_name, signing_body_html, signing_body_format, canonical_document_url, url, status, signed_at, signer_printed_name, signer_consented_at, signer_signature_storage_path, form_template_id, form_values, form_hints, form_source, form_pdf_storage_path, form_scan_storage_path, form_keyed_by_user_id, office_completed_at, office_signer_printed_name',
+                'id, document_name, person_name, signing_body_html, signing_body_format, canonical_document_url, url, status, signed_at, signer_printed_name, signer_consented_at, signer_signature_storage_path, form_template_id, form_values, form_hints, form_source, form_pdf_storage_path, form_scan_storage_path, form_keyed_by_user_id, office_completed_at, office_signer_printed_name, office_attested_at',
               )
               .eq('id', id)
               .maybeSingle(),
@@ -362,7 +363,7 @@ export function PersonContractSignedRecordModal({
                     <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                       {row.form_pdf_storage_path ? (
                         <button type="button" onClick={() => void openFormPdf('pdf')} disabled={pdfBusy} style={{ padding: '0.35rem 0.8rem', fontWeight: 600, fontSize: '0.8125rem' }}>
-                          {pdfBusy ? 'Opening…' : row.form_source === 'paper' ? 'Open the filled PDF' : 'Open signed PDF'}
+                          {pdfBusy ? 'Opening…' : twoParty && !row.office_completed_at ? 'Open the PDF so far' : twoParty ? 'Open the finished PDF' : row.form_source === 'paper' ? 'Open the filled PDF' : 'Open signed PDF'}
                         </button>
                       ) : null}
                       {row.form_scan_storage_path ? (
@@ -381,7 +382,7 @@ export function PersonContractSignedRecordModal({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', margin: '0 0 0.6rem', padding: '0.5rem 0.7rem', borderRadius: 6, background: row.office_completed_at ? 'var(--bg-green-tint, #e8f3ea)' : 'var(--bg-amber-tint, #fdf1e3)', fontSize: '0.8125rem' }}>
                       <span style={{ fontWeight: 600 }}>Office section</span>
                       <span style={{ color: 'var(--text-muted)' }}>
-                        {row.office_completed_at ? `completed ${new Date(row.office_completed_at).toLocaleDateString()}${row.office_signer_printed_name ? `, signed as ${row.office_signer_printed_name}` : ''}` : 'not completed yet — the PDF is not final until it is'}
+                        {row.office_completed_at ? `completed ${new Date(row.office_completed_at).toLocaleDateString()}${row.office_signer_printed_name ? `, signed as ${row.office_signer_printed_name}` : ''}${row.office_attested_at ? ' · attested' : ''}` : 'not completed yet — the PDF is not final until it is'}
                       </span>
                       <button type="button" onClick={() => setOfficeOpen(true)} style={{ marginLeft: 'auto', padding: '0.3rem 0.7rem', fontWeight: 600, fontSize: '0.8125rem' }}>
                         {row.office_completed_at ? 'View office section' : 'Complete the office section'}

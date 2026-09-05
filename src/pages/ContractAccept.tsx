@@ -10,6 +10,7 @@ import { ContractBodyDisplay } from '../components/contracts/ContractBodyDisplay
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
 import { ContractFormFill } from '../components/contracts/formFill/ContractFormFill'
 import { applyPrefill, schemaForParty, type FormPerson, type FormSchema, type FormValues, validateFormValues } from '../lib/forms/formSchema'
+import { partyRegions, type PartyRegion } from '../lib/forms/formParties'
 import { errorsByBox, fillString, type FillLang } from '../lib/forms/formFillState'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
@@ -43,6 +44,8 @@ type FormPayload = {
   revisionLabel: string | null
   person: FormPerson
   todayLabel: string
+  /** Two-party forms (v2.2803): the office's regions, shaded on the page. */
+  officeRegions?: PartyRegion[]
 }
 
 type LoadPayload = {
@@ -73,6 +76,8 @@ export default function ContractAccept() {
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [thankYouCta, setThankYouCta] = useState<ContractThankYouCtaState>({ status: 'waiting_auth' })
+  /** Two-party forms (v2.2803): the just-signed document still needs its office section — offered to a signed-in staff member on this device. */
+  const [officePendingDocId, setOfficePendingDocId] = useState<string | null>(null)
   const [formValues, setFormValues] = useState<FormValues>({})
   const [formLang, setFormLang] = useState<FillLang>('en')
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
@@ -162,7 +167,7 @@ export default function ContractAccept() {
             typeof json.signing_body_format === 'string' && json.signing_body_format ? json.signing_body_format : 'html',
           canonical_document_url: json.canonical_document_url ?? null,
           // Two-party forms (v2.2802): the signer sees only their boxes; the office's half is completed from the record.
-          form: json.form && json.form.schema ? { ...json.form, schema: schemaForParty(json.form.schema, 'signer') } : null,
+          form: json.form && json.form.schema ? { ...json.form, schema: schemaForParty(json.form.schema, 'signer'), officeRegions: partyRegions(json.form.schema, 'office') } : null,
         })
         if (json.form && json.form.schema) {
           setFormValues(applyPrefill(schemaForParty(json.form.schema, 'signer'), {}, json.form.person))
@@ -223,7 +228,7 @@ export default function ContractAccept() {
         },
         body: JSON.stringify(body),
       })
-      const json = (await res.json()) as { error?: string; ok?: boolean; alreadySigned?: boolean }
+      const json = (await res.json()) as { error?: string; ok?: boolean; alreadySigned?: boolean; documentId?: string; officeSectionPending?: boolean }
       if (!res.ok) {
         setError(json.error || 'Could not record signature.')
         return
@@ -236,6 +241,7 @@ export default function ContractAccept() {
       }
       setThankYouTitle('Thank you')
       setThankYouBody('')
+      if (json.officeSectionPending && json.documentId) setOfficePendingDocId(json.documentId)
       setDone(true)
     } catch {
       setError('Could not record signature. Try again later.')
@@ -282,6 +288,13 @@ export default function ContractAccept() {
                 <Link to="/sign-in" style={contractThankYouPrimaryLinkStyle}>
                   Sign in
                 </Link>
+              ) : thankYouCta.status === 'signed_in' && officePendingDocId ? (
+                <>
+                  <p style={{ margin: '0 0 0.6rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>You are signed in on this device. The office section can be completed now, while the documents are in front of you.</p>
+                  <Link to={`/people?tab=contracts&doc=${encodeURIComponent(officePendingDocId)}`} style={contractThankYouPrimaryLinkStyle}>
+                    Complete the office section
+                  </Link>
+                </>
               ) : thankYouCta.status === 'signed_in' && thankYouCta.pendingCount > 0 ? (
                 <Link to="/dashboard" style={contractThankYouPrimaryLinkStyle}>
                   Go to dashboard
@@ -348,6 +361,7 @@ export default function ContractAccept() {
           {payload.form ? (
             <ContractFormFill
               schema={payload.form.schema}
+              shadedRegions={payload.form.officeRegions ?? []}
               templateUrl={payload.form.templateUrl}
               values={formValues}
               onValuesChange={(next) => {

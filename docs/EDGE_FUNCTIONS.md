@@ -1342,7 +1342,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### accept-contract
 
-**Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn. **Two-party forms (v2.2802):** the signer's boxes only are validated and filled (`schemaForParty(schema, 'signer')`); when the template has office boxes the PDF is filed unflattened with the filled fields read-only, and `complete-contract-form-office` finishes it.
+**Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn. **Two-party forms (v2.2802):** the signer's boxes only are validated and filled (`schemaForParty(schema, 'signer')`); when the template has office boxes the PDF is filed unflattened with the filled fields read-only, and `complete-contract-form-office` finishes it. The success response is `{ ok, documentId, officeSectionPending }` (v2.2803) so the thank-you page can offer the office step to a signed-in staff member on the same device.
 
 **Endpoint**: `POST /functions/v1/accept-contract`
 
@@ -1422,8 +1422,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Gate**: `users.role` in dev · master_technician · assistant · controller, and the row must be readable under the caller's own contracts RLS (read through their client).
 
 **Body**:
-- `{ "action": "prepare", "person_contract_document_id": uuid }` → `{ ok, schema (office boxes only, via schemaForParty), pdfUrl (15-min signed URL of the current filed PDF), officeValues, completed: { at, by, printedName } | null, documentName, personName }`. 400 when the form has no office section; 409 when the signer has not completed their part.
-- `{ "action": "complete", "person_contract_document_id", "officeValues", "office_signer_printed_name" }` → validates the office half (`validateFormValues` on the office schema; unknown keys dropped), downloads the filed PDF, fills the office boxes (office signature typed in cursive, office `today` dates = today), **flattens**, overwrites `<id>/signed.pdf` in `contract-form-pdfs`, and stores `office_values` (non-sensitive) + `office_completed_at` + `office_completed_by_user_id` + `office_signer_printed_name`. One-shot: **409** `already_completed` afterwards. → `{ ok }`.
+- `{ "action": "prepare", "person_contract_document_id": uuid }` → `{ ok, schema (office boxes only, via schemaForParty), pdfUrl (15-min signed URL of the current filed PDF), officeValues, completed: { at, by, printedName, attestedAt } | null, signer: { printedName, signedAt, source }, signerRegions (the signer's half as padded page rects, shaded as locked — v2.2803), documentName, personName }`. 400 when the form has no office section; 409 when the signer has not completed their part.
+- `{ "action": "complete", "person_contract_document_id", "officeValues", "office_signer_printed_name", "attested": true }` → **400** `not_attested` without the attestation (v2.2803; stamps `office_attested_at`); validates the office half (`validateFormValues` on the office schema; unknown keys dropped), downloads the filed PDF, fills the office boxes (office signature typed in cursive, office `today` dates = today), **flattens**, overwrites `<id>/signed.pdf` in `contract-form-pdfs`, and stores `office_values` (non-sensitive) + `office_completed_at` + `office_completed_by_user_id` + `office_signer_printed_name`. One-shot: **409** `already_completed` afterwards. → `{ ok }`.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font.
 

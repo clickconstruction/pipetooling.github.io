@@ -153,6 +153,7 @@ export function fitScale(containerWidth: number, pageWidth: number): number {
 
 const STRINGS: Record<FillLang, Record<string, string>> = {
   en: {
+    officeRegion: 'This part is completed by the office',
     fillTitle: 'Fill in this form',
     fillIntro: 'Type into the boxes on the page. What you enter goes onto this form and nowhere else.',
     lensIntro: 'Tap a box on the form, or use Next.',
@@ -177,6 +178,7 @@ const STRINGS: Record<FillLang, Record<string, string>> = {
     signatureHere: 'Your signature will appear here',
   },
   es: {
+    officeRegion: 'Esta parte la completa la oficina',
     fillTitle: 'Complete este formulario',
     fillIntro: 'Escriba en las casillas de la página. Lo que ingrese va a este formulario y a ningún otro lugar.',
     lensIntro: 'Toque una casilla en el formulario o use Siguiente.',

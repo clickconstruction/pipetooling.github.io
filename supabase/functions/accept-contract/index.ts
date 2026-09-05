@@ -198,6 +198,7 @@ serve(async (req) => {
     // ── Contract Forms: fill the template, flatten, file the signed PDF ─────────
     let formUpdate: Record<string, unknown> = {}
     let formPdfPath: string | null = null
+    let officeSectionPending = false
     if (doc.form_template_id) {
       const fail = (status: number, error: string, extra: Record<string, unknown> = {}) => {
         if (storagePath) void admin.storage.from(SIGNATURE_BUCKET).remove([storagePath])
@@ -212,6 +213,7 @@ serve(async (req) => {
       // until then and is flattened by complete-contract-form-office.
       const signerSchema = schemaForParty(t.schema, 'signer')
       const twoParty = hasOfficeBoxes(t.schema)
+      officeSectionPending = twoParty
       const problems = validateFormValues(signerSchema, values)
       if (problems.length > 0) return fail(400, problems[0]!.message, { code: 'form_invalid', problems })
       const { data: file, error: dlErr } = await admin.storage.from(FORM_TEMPLATES_BUCKET).download(t.pdf_storage_path)
@@ -313,7 +315,8 @@ serve(async (req) => {
       })
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
+    // Two-party forms (PR 8): the thank-you page offers the office step to a signed-in staff member on the same device.
+    return new Response(JSON.stringify({ ok: true, documentId: doc.id, officeSectionPending: officeSectionPending }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

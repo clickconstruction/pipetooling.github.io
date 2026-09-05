@@ -5,7 +5,10 @@ import { FormFillOverlay } from './FormFillOverlay'
 import type { FormBox, FormSchema, FormValues } from '../../../lib/forms/formSchema'
 import { acceptDigitsInput, errorsByBox, fillProgress, setOneOfValue, toggleCheckbox } from '../../../lib/forms/formFillState'
 import { missingRequired } from '../../../lib/forms/formPaperEntry'
-import { CARD } from '../../../lib/portal/portalTheme'
+import { OFFICE_ATTESTATION, type PartyRegion } from '../../../lib/forms/formParties'
+import { pdfRectToScreen } from '../../../lib/forms/formSchema'
+import { useMatchMedia } from '../../../hooks/useMatchMedia'
+import { CARD, INK } from '../../../lib/portal/portalTheme'
 
 /**
  * Complete the office section (Contract Forms PR 7). For a two-party form
@@ -15,7 +18,18 @@ import { CARD } from '../../../lib/portal/portalTheme'
  * finished document. One-shot: once completed the PDF is final.
  */
 
-type Prepared = { schema: FormSchema; pdfUrl: string; officeValues: FormValues; completed: { at: string; by: string | null; printedName: string | null } | null; documentName: string; personName: string }
+type Prepared = {
+  schema: FormSchema
+  pdfUrl: string
+  officeValues: FormValues
+  completed: { at: string; by: string | null; printedName: string | null; attestedAt?: string | null } | null
+  /** Who signed the signer's half, when, and how (PR 8). */
+  signer?: { printedName: string | null; signedAt: string | null; source: string | null }
+  /** The signer's regions, shaded as locked (PR 8). */
+  signerRegions?: PartyRegion[]
+  documentName: string
+  personName: string
+}
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -28,6 +42,8 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
   const [values, setValues] = useState<FormValues>({})
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const [signerName, setSignerName] = useState('')
+  const [attested, setAttested] = useState(false)
+  const narrow = useMatchMedia('(max-width: 900px)')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -93,6 +109,11 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
   const blockers: string[] = []
   if (!signerName.trim()) blockers.push('Type the name that signs for the office.')
   if (Object.keys(errors).length > 0) blockers.push(Object.values(errors)[0]!)
+  if (!attested) blockers.push('Tick the attestation.')
+  const signedLine = prepared?.signer
+    ? `${prepared.signer.source === 'paper' ? 'Keyed from paper' : 'Signed'}${prepared.signer.printedName ? ` by ${prepared.signer.printedName}` : ''}${prepared.signer.signedAt ? ` on ${prepared.signer.signedAt.slice(0, 10)}` : ''}`
+    : null
+  const isI9 = /I-9/i.test(prepared?.documentName ?? '')
 
   async function complete() {
     setSubmitting(true)
@@ -104,7 +125,7 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
       const res = await fetch(`${supabaseUrl}/functions/v1/complete-contract-form-office`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, apikey: anonKey },
-        body: JSON.stringify({ action: 'complete', person_contract_document_id: documentId, officeValues: values, office_signer_printed_name: signerName.trim() }),
+        body: JSON.stringify({ action: 'complete', person_contract_document_id: documentId, officeValues: values, office_signer_printed_name: signerName.trim(), attested: true }),
       })
       const j = (await res.json()) as { ok?: boolean; error?: string }
       if (!res.ok || !j.ok) throw new Error(j.error || `HTTP ${res.status}`)
@@ -129,21 +150,45 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
         </div>
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {done
-            ? `Completed ${new Date(done.at).toLocaleString()}${done.by ? ` by ${done.by}` : ''}${done.printedName ? `, signed as ${done.printedName}` : ''}. The PDF is final.`
-            : 'The signer’s half is already on the page. Fill the office boxes, then sign for the office with your typed name. This finishes the PDF; it cannot be edited afterwards.'}
+            ? `Completed ${new Date(done.at).toLocaleString()}${done.by ? ` by ${done.by}` : ''}${done.printedName ? `, signed as ${done.printedName}` : ''}${done.attestedAt ? ', attested' : ''}. The PDF is final.`
+            : 'The signer’s half is already on the page and locked. Fill the office boxes, tick the attestation, and sign for the office with your typed name. This finishes the PDF; it cannot be edited afterwards.'}
         </p>
+        {!done && prepared ? (
+          <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            {signedLine ? (
+              <span>
+                Signer&rsquo;s half <strong style={{ color: 'var(--text-strong)' }}>{signedLine}</strong>
+              </span>
+            ) : null}
+            {isI9 ? (
+              <span>
+                Section 2 <strong style={{ color: 'var(--text-strong)' }}>due within 3 business days of the first day of work</strong>
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {loadError ? (
           <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadError}</p>
         ) : !schema || !pdf ? (
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the filed PDF…</p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: `minmax(0, ${PAGE_WIDTH_PX}px) minmax(240px, 1fr)`, gap: '1rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : `minmax(0, ${PAGE_WIDTH_PX}px) minmax(240px, 1fr)`, gap: '1rem', alignItems: 'start' }}>
             <div>
               <div style={{ overflow: 'auto', maxHeight: '64vh', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem' }}>
                 {pages.map(({ page, pageNo }, i) => (
                   <div key={pageNo} style={{ position: 'relative', width: page.width * scale, height: page.height * scale, margin: `${i === 0 ? 0 : 10}px auto 0`, boxShadow: '0 1px 4px rgba(0,0,0,.18)', background: CARD }}>
                     <PdfPageCanvas bytes={pdf} page={pageNo} scale={scale} />
+                    {(prepared?.signerRegions ?? [])
+                      .filter((r) => r.page === pageNo)
+                      .map((r, ri) => {
+                        const sr = pdfRectToScreen(r.rect, page, scale)
+                        return (
+                          <div key={ri} aria-hidden style={{ position: 'absolute', left: sr.left, top: sr.top, width: sr.width, height: sr.height, background: 'rgba(22,40,60,0.05)', borderBottom: '1px dashed rgba(22,40,60,0.35)', pointerEvents: 'none' }}>
+                            <span style={{ position: 'absolute', right: 8, top: 6, fontSize: 10, fontWeight: 600, color: INK, background: CARD, border: '1px solid rgba(22,40,60,0.25)', borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{done ? 'Signed by the employee' : 'Signed by the employee · locked'}</span>
+                          </div>
+                        )
+                      })}
                     {done ? null : <FormFillOverlay schema={schema} pageNo={pageNo} scale={scale} values={values} lang="en" focusedKey={focusedKey} errors={errors} todayLabel={todayLabel} signature={signerName.trim() ? { mode: 'type', text: signerName.trim() } : null} onFocus={setFocusedKey} onText={setText} onToggle={toggle} />}
                   </div>
                 ))}
@@ -158,12 +203,29 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
               {!done ? (
                 <>
                   <section style={card}>
+                    <h4 style={h4}>{isI9 ? 'What you examined' : 'The office boxes'}</h4>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.45 }}>
+                      {isI9 ? 'One List A document, or one from List B and one from List C, exactly as each document reads. ' : 'Type each box as it should appear on the finished form. '}
+                      {progress ? `${progress.requiredDone} of ${progress.required} required done.` : ''}
+                    </p>
+                  </section>
+                  <section style={card}>
                     <h4 style={h4}>Signing for the office</h4>
                     <label>
                       <span style={k}>Your name and title, as it should appear</span>
                       <input style={inp} value={signerName} onChange={(e) => setSignerName(e.target.value)} placeholder="e.g. Robert Douglas, Owner" />
                     </label>
                     <p style={{ margin: '0.4rem 0 0', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Typed in cursive into the office signature box; office date boxes get today&rsquo;s date.</p>
+                  </section>
+                  <section style={{ ...card, borderColor: 'var(--border-strong)' }}>
+                    <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', cursor: 'pointer', fontSize: '0.8125rem', lineHeight: 1.45 }}>
+                      <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} style={{ marginTop: 3 }} />
+                      <span>
+                        <strong>I attest, under penalty of perjury,</strong>
+                        {OFFICE_ATTESTATION.replace(/^I attest, under penalty of perjury,/, '')}
+                      </span>
+                    </label>
+                    <p style={{ margin: '0.4rem 0 0', color: 'var(--text-muted)', fontSize: '0.75rem' }}>The form&rsquo;s own certification is printed on the page. The button stays off until this is ticked.</p>
                   </section>
                   <div style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.5rem 0.7rem', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                     Completing flattens the PDF: the signer&rsquo;s answers and yours become page content nobody can edit. Sensitive office boxes, if any, live in the PDF only.
