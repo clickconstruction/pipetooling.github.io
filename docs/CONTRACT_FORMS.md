@@ -5,7 +5,7 @@ file: docs/CONTRACT_FORMS.md
 type: Specialist
 purpose: How a Contract Book entry becomes a fillable form (an uploaded PDF plus dev-placed entry boxes), the FormSchema reference, the agent workflow for drafting a form from a PDF, and the out-of-band storage setup.
 audience: Developers, AI Agents
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 key_sections:
   - name: "What a form is"
   - name: "FormSchema reference"
@@ -101,6 +101,14 @@ npm run forms:preview -- ~/Desktop/W9.pdf /tmp/w9.json --out /tmp/w9-preview.pdf
 The IRS W-9 fixture used by the tests lives at `src/test/fixtures/fw9-2024-03.pdf` (a US government work).
 
 **The shipped W-9 schema** is checked in at [`docs/forms/w9-2024-03.schema.json`](./forms/w9-2024-03.schema.json): 22 boxes — name (prefilled from the roster), business name, the seven-way classification group (LLC letter and Other under *rarely needed*), 3b, the exempt / FATCA codes and account numbers as *rarely needed*, address and city / state / ZIP, the requester block as a constant, SSN and EIN as one masked `digits` box each in a required one-of set (both sensitive, each segment bound to its IRS field), the signature and date drawn on the Sign Here line (x 131 / 400, y 196). To re-create the form: Form Studio → New form from the IRS PDF (import fields off) → Import JSON → paste this file → Publish into the Subs packet as **W-9** with paperwork type W-9. Re-run `forms:preview` on it after any IRS revision to check the binds still resolve (`skipped` must stay empty).
+
+## Enter from paper (v2.2801)
+
+A sub hands the office a hand-filled form. **People → Contracts → person → + Add document → Enter from paper** opens `ContractFormPaperEntryModal`: the form's pages with the signer's overlay (`FormFillOverlay`, desktop scale, no lens, `signature={null}`), a scan attachment (photo / PDF ≤ 8 MB), "signed by (printed)" + "date on the paper", and the attestation checkbox. Filing posts to `contract-form-paper-entry` (`prepare` → schema + 15-minute template URL; `file` → fill + flatten with **no signature drawn**, upload `<id>/signed.pdf` + `<id>/source.<ext>` to `contract-form-pdfs`, insert the signed row with `form_source = 'paper'`, `form_scan_storage_path`, `form_keyed_by_user_id`). **Skip the boxes, just file the scan** files the scan alone (a `note` records it). Missing required boxes never block; `missingRequired` (`src/lib/forms/formPaperEntry.ts`) lists them on the record. The record modal shows the paper facts and two doors, **Open the filled PDF** / **Open the paper scan**, both through `open-contract-form-pdf` (`which`).
+
+## New revisions of a form
+
+When the IRS (or anyone) issues a new PDF: open the form in the studio, **Replace PDF…** (boxes are kept; pages re-measured), then **Import PDF fields** (adds only fields no box binds yet), fix labels, **Preview filled PDF**, republish. Person copies already signed are untouched; new copies use the new PDF. From the terminal, `npm run forms:preview -- new.pdf docs/forms/<schema>.json --out /tmp/p.pdf` prints any binds the new PDF no longer has as `skipped` — that list must be empty before republishing.
 
 ## The Form Studio (dev-only)
 

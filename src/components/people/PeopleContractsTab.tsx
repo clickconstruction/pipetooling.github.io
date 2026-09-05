@@ -21,6 +21,7 @@ import { formatAppliedVersionPlainDate, todayPlainDateInAppTz } from '../../lib/
 import { effectiveBookVersionLabel, effectiveBookVersionPlainDate } from '../../lib/contractBookVersionDate'
 import { ContractBookModal, type ContractBookTemplateDocument } from '../contracts/ContractBookModal'
 import { ContractLibraryModal } from '../contracts/ContractLibraryModal'
+import { ContractFormPaperEntryModal } from '../contracts/formFill/ContractFormPaperEntryModal'
 import { assignPacketsConsequence } from '../../lib/contractPackets'
 import { ContractsTabHelpModal } from './ContractsTabHelpModal'
 import { countPersonContractStatuses } from '../../lib/personContractStatusCounts'
@@ -233,6 +234,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   )
   /** Add-document chooser (v2.1410): pick a Contract Book document (everything prefills) or fall through to the full custom form. */
   const [contractAddDocSource, setContractAddDocSource] = useState<'choose' | 'book' | 'custom'>('choose')
+  /** Enter from paper (Contract Forms v2.2801): the person whose handwritten form is being keyed in. */
+  const [paperEntryFor, setPaperEntryFor] = useState<string | null>(null)
   const [contractAddBookPickedRowId, setContractAddBookPickedRowId] = useState<string | null>(null)
   const [contractAddBookCustomizeOpen, setContractAddBookCustomizeOpen] = useState(false)
   const [contractDocumentFormDashboardPrompt, setContractDocumentFormDashboardPrompt] = useState(false)
@@ -2671,6 +2674,29 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                     Blank one-off document, or record a copy that&rsquo;s already signed. Opens the full form.
                   </span>
                 </button>
+                {contractTemplateDocuments.some((d) => d.form_template_id) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaperEntryFor(contractDocumentFormPersonName.trim())
+                      setContractDocumentModalOpen(false)
+                    }}
+                    style={{
+                      textAlign: 'left',
+                      padding: '0.8rem 0.9rem',
+                      border: '1.5px solid var(--border-strong)',
+                      borderRadius: 8,
+                      background: 'var(--surface)',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                    }}
+                  >
+                    <span style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-strong)' }}>Enter from paper</span>
+                    <span style={{ display: 'block', marginTop: '0.3rem', fontSize: '0.78rem', color: 'var(--text-600)', lineHeight: 1.4 }}>
+                      They handed you a filled-out form (a W-9). Type it into the boxes, attach the scan, file it as signed on paper.
+                    </span>
+                  </button>
+                ) : null}
               </div>
             ) : null}
             {!editingContractDocument && contractAddDocSource === 'custom' ? (
@@ -3348,6 +3374,18 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
           canDeleteLibraryEntries={canDeletePeopleContracts}
         />
       )}
+
+      {paperEntryFor ? (
+        <ContractFormPaperEntryModal
+          personName={paperEntryFor}
+          personId={people.find((p) => (p.name ?? '').trim() === paperEntryFor)?.id ?? null}
+          forms={listQuickAddBookDocuments(contractTemplateDocuments)
+            .filter(({ row }) => row.form_template_id)
+            .map(({ documentName, row }) => ({ bookEntryId: row.id, documentName }))}
+          onClose={() => setPaperEntryFor(null)}
+          onFiled={() => void loadContracts()}
+        />
+      ) : null}
 
       {contractLibraryModalOpen && (
         <ContractLibraryModal

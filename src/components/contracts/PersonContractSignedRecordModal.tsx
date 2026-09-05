@@ -7,6 +7,7 @@ import { EstimateAcceptTypedSignatureLine } from '../estimates/EstimateAcceptTyp
 import type { Tables } from '../../types/database'
 import type { FormSchema, FormValues } from '../../lib/forms/formSchema'
 import { FORM_SOURCE_LABEL, formFacts } from '../../lib/forms/formRecord'
+import { missingRequired } from '../../lib/forms/formPaperEntry'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -32,6 +33,8 @@ type PersonContractDocumentRow = Pick<
   form_hints?: Record<string, string> | null
   form_source?: string | null
   form_pdf_storage_path?: string | null
+  form_scan_storage_path?: string | null
+  form_keyed_by_user_id?: string | null
 }
 
 type PersonContractSignedRecordModalProps = {
@@ -83,7 +86,7 @@ export function PersonContractSignedRecordModal({
             await supabase
               .from('person_contract_documents')
               .select(
-                'id, document_name, person_name, signing_body_html, signing_body_format, canonical_document_url, url, status, signed_at, signer_printed_name, signer_consented_at, signer_signature_storage_path, form_template_id, form_values, form_hints, form_source, form_pdf_storage_path',
+                'id, document_name, person_name, signing_body_html, signing_body_format, canonical_document_url, url, status, signed_at, signer_printed_name, signer_consented_at, signer_signature_storage_path, form_template_id, form_values, form_hints, form_source, form_pdf_storage_path, form_scan_storage_path, form_keyed_by_user_id',
               )
               .eq('id', id)
               .maybeSingle(),
@@ -152,7 +155,7 @@ export function PersonContractSignedRecordModal({
 
   if (!open) return null
 
-  async function openFormPdf() {
+  async function openFormPdf(which: 'pdf' | 'scan' = 'pdf') {
     if (!row) return
     setPdfBusy(true)
     setPdfError(null)
@@ -163,7 +166,7 @@ export function PersonContractSignedRecordModal({
       const res = await fetch(`${supabaseUrl}/functions/v1/open-contract-form-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, apikey: anonKey },
-        body: JSON.stringify({ person_contract_document_id: row.id }),
+        body: JSON.stringify({ person_contract_document_id: row.id, which }),
       })
       const json = (await res.json()) as { ok?: boolean; url?: string; error?: string }
       if (!res.ok || !json.url) throw new Error(json.error || 'Could not open the PDF.')
@@ -177,6 +180,7 @@ export function PersonContractSignedRecordModal({
 
   const isForm = Boolean(row?.form_template_id)
   const facts = row && formSchema ? formFacts(formSchema, row.form_values ?? null, row.form_hints ?? null) : []
+  const paperMissing = row && formSchema && row.form_source === 'paper' ? missingRequired(formSchema, { ...(row.form_values ?? {}), ...Object.fromEntries(Object.keys(row.form_hints ?? {}).map((k) => [k, 'x'])) }) : []
 
   const hasRenderableSigningBody =
     row?.status === 'signed' &&
@@ -348,19 +352,32 @@ export function PersonContractSignedRecordModal({
                       Form answers{' '}
                       {row.form_source ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {FORM_SOURCE_LABEL[row.form_source] ?? row.form_source}</span> : null}
                     </div>
-                    {row.form_pdf_storage_path ? (
-                      <button type="button" onClick={() => void openFormPdf()} disabled={pdfBusy} style={{ padding: '0.35rem 0.8rem', fontWeight: 600, fontSize: '0.8125rem' }}>
-                        {pdfBusy ? 'Opening…' : 'Open signed PDF'}
-                      </button>
-                    ) : null}
+                    <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {row.form_pdf_storage_path ? (
+                        <button type="button" onClick={() => void openFormPdf('pdf')} disabled={pdfBusy} style={{ padding: '0.35rem 0.8rem', fontWeight: 600, fontSize: '0.8125rem' }}>
+                          {pdfBusy ? 'Opening…' : row.form_source === 'paper' ? 'Open the filled PDF' : 'Open signed PDF'}
+                        </button>
+                      ) : null}
+                      {row.form_scan_storage_path ? (
+                        <button type="button" onClick={() => void openFormPdf('scan')} disabled={pdfBusy} style={{ padding: '0.35rem 0.8rem', fontWeight: 600, fontSize: '0.8125rem' }}>
+                          {pdfBusy ? 'Opening…' : 'Open the paper scan'}
+                        </button>
+                      ) : null}
+                    </span>
                   </div>
                   {pdfError ? (
                     <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }} role="alert">
                       {pdfError}
                     </p>
                   ) : null}
+                  {row.form_source === 'paper' ? (
+                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      Signed on paper{row.signed_at ? ` on ${row.signed_at}` : ''}{row.signer_printed_name ? ` by ${row.signer_printed_name}` : ''}; the signature is on the scan, not typed.
+                      {paperMissing.length > 0 ? ` Blank on the paper (required): ${paperMissing.map((m) => m.label).join(', ')}.` : ''}
+                    </p>
+                  ) : null}
                   {facts.length === 0 ? (
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formSchema ? 'No answers were stored on this row.' : 'Loading the form’s layout…'}</p>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{formSchema ? (row.form_scan_storage_path ? 'The boxes were not keyed in; the scan is the record.' : 'No answers were stored on this row.') : 'Loading the form’s layout…'}</p>
                   ) : (
                     <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, max-content) 1fr', gap: '0.25rem 0.9rem', margin: 0, fontSize: '0.875rem' }}>
                       {facts.map((f) => (
