@@ -47,6 +47,7 @@ import {
 } from '../lib/pinnedTabs'
 import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
 import { recordNavClickFromEvent } from '../lib/navClickTelemetry'
+import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
 import {
   HeaderGlobalSearchNavLayer,
@@ -127,7 +128,8 @@ export default function Layout() {
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
   // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
   useAssistantDispatchLanding()
-  const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
+  // Role-aware (v2.2877): absent key ⇒ ON for sub-like roles, OFF otherwise; a stored value wins.
+  const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null, role)
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
   // Farm Mode: checklist-only lens, any role. Wins over the Dispatch/Job Mode
   // shells while on; their toggles keep their stored state for when it's off.
@@ -1253,7 +1255,9 @@ export default function Layout() {
                   <button
                     type="button"
                     onClick={() => {
-                      setJobModeEnabled(!jobModeEnabled)
+                      const next = !jobModeEnabled
+                      if (next) recordJobModeEnabledOncePerSession(authUser?.id, role, 'gear')
+                      setJobModeEnabled(next, 'gear')
                       setGearOpen(false)
                     }}
                     title={jobModeEnabled ? 'Turn Job Mode off' : 'Turn Job Mode on'}

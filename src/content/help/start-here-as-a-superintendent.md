@@ -29,6 +29,10 @@ Red needs your decision now (a completed step waiting on approval); amber is wor
 Open **706 · Maple St rough-in** from your Dashboard, scroll to the notes, type "Inspector wants the cleanout moved 6 in. — crew back Thursday," and post. The office sees it on the job the moment it lands.
 :::
 
+## Working from the truck
+
+The first time you open the Dashboard it offers **Working in the field? Turn on Job Mode.** Tap {{button:green|Turn on Job Mode}} for the one-card field view (current job, today's stops, Clock In, Leave Report, Next Job) with your Schedule and Customers on a bottom tab bar; {{button:outline|Not now}} keeps the full Dashboard. The {{icon:gear}} gear menu toggles it any time — see [clocking in and out with Job Mode](?g=job-mode-clocking).
+
 ## Work orders
 
 You see the work orders on your own jobs and projects — the ones you're assigned to or on the team for. You can mark a sub's work order **accepted** when they tell you directly. Creating, offering, and settling work orders (the money side) stays with the office — see [pay a sub per step](?g=pay-a-sub-per-step).

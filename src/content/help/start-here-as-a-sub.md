@@ -7,6 +7,8 @@ order: 5
 ---
 Everything you need is on your **Dashboard**. You won't see the office's jobs, customers, or anyone else's money — just your work and your pay.
 
+Your Dashboard opens in **Job Mode** — one big card with your current job, today's stops, {{button:green|Clock In}}, {{button:blue|Leave Report}} and {{button:green|Next Job}}, and a tab bar along the bottom (Schedule / Inbox / Customers). It's already on; there is nothing to set up. Prefer the full Dashboard? Tap {{button:outline|Show full dashboard}} under the card for today, or turn Job Mode off for good on this phone from the {{icon:gear}} gear menu (top-right) — the same place turns it back on. See [clocking in and out with Job Mode](?g=job-mode-clocking).
+
 ## Your day
 
 1. **Clock in.** The clock button is at the top of your Dashboard. Pick the job or bid you're working on, add a quick note, and you're on the clock.
@@ -26,7 +28,7 @@ If the office offers you a job for a set amount, it arrives as an offer card wit
 
 ## The other tabs
 
-- **Job Mode** (Schedule / Inbox / Customers) — your schedule and customer contacts for the jobs you're on.
+- **Schedule / Inbox / Customers** (the Job Mode tab bar) — your schedule and customer contacts for the jobs you're on.
 - **Job Parts Tally** — log the parts you used on a job.
 - **Checklist** — recurring tasks, if the office assigns you any.
 - **Calendar** — what's coming up for you.

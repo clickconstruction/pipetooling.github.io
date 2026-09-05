@@ -16,7 +16,7 @@ last_updated: 2026-08-29
 
 1. **Dashboard is NOT tab-switched.** There is no `activeTab`, no `?tab=` URL router, and no shared selection pointer. It is a **role-gated stack of sections** rendered top to bottom; every section's render gate is a role/data predicate, and everything mounts at once. Where the playbook says "tab", read "section". (Like People, only *data* is shared — there is no cross-section UI selection to lift.)
 2. **Role-variant rendering.** The same section can render in *different positions per role*, and two big blocks are **literal duplicated copies** per role branch (see [Duplicated-render quirks](#duplicated-render-quirks-preserve-dont-fix)). The role sets: `assistant`/`controller` (via `isAssistantLike`), `dev`/`master_technician`, `subcontractor`/`helpers` (via `isSubcontractorLikeRole`), `estimator`, `primary`, `superintendent`.
-3. **Job Mode replaces the top of the page.** When `useJobModeEnabled` is on, an early `return` renders only the banner/pins block + `DashboardJobModeCard` until the user taps "Show full dashboard" (`jobModeShowFullDashboard`, resets each page load).
+3. **Job Mode replaces the top of the page.** When `useJobModeEnabled(userId, role)` is on — absent key ⇒ ON for sub-like roles, OFF otherwise, stored value wins (v2.2877, `isJobModeEnabled` in `jobModeToggle.ts`) — an early `return` renders only the banner/pins block + `DashboardJobModeCard` until the user taps "Show full dashboard" (`jobModeShowFullDashboard`, resets each page load). The full render mounts `DashboardJobModeFirstRunCard` (master/superintendent, nothing stored) above the pinned/quick row.
 4. **The file layout is loader-block then JSX-block.** Module helpers at lines ~1–175; all state/effects/handlers inside `Dashboard()` at ~177–1130; JSX from `quickActionDefs` (~1130) to the end (post-extraction layout, as of v2.782).
 
 ### How to read a dossier
@@ -70,7 +70,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 | Section | dev | master_technician | assistant/controller | estimator | primary | superintendent | subcontractor/helpers |
 |---|---|---|---|---|---|---|---|
-| Job Mode variant | per-user `useJobModeEnabled` flag (any role) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Job Mode variant | per-user `useJobModeEnabled(userId, role)` flag — default ON for sub-like, OFF otherwise; any eligible role can turn it on | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Financials (`showFinancials`) | ✓ | ✓ | ✓ | — | — | — | — |
 | Overhead card inside Financials (v2.2676, `DashboardOverheadCard`, self-gating) | ✓ | ✓ only with pay approval (`usePeopleAccess.canAccessPay`) | — | — | — | — | — |
 | Quick action buttons (`showDashboardQuickButtons`) | ✓ | ✓ | ✓ (Builder Review button master_technician-only) | — | — | — | — |
@@ -106,7 +106,8 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 - **Render location:** gate `if (jobModeEnabled && !jobModeShowFullDashboard && authUser?.id)`. Renders `tallyAndPinnedBlock` + `DashboardJobModeCard` + "Show full dashboard" button + its own `AdditionalReportModal` (`leaveReportJob`) + `TurnawayModal` (`turnawayJob`).
 - **Owned local state:** `jobModeShowFullDashboard` (~1186, resets each load — the gear-menu toggle is the persistent setting), `turnawayJob` (~1181 — **only settable/renderable in this branch**).
 - **Cross-section/shared state:** `leaveReportJob` (shared with My Schedule / job-row sections), `refreshDashboardAssignedJobLists`, the whole `tallyAndPinnedBlock`.
-- **Data deps / supabase:** `useJobModeEnabled(authUser.id)`; `DashboardJobModeCard` self-loads its data.
+- **Data deps / supabase:** `useJobModeEnabled(authUser.id, role)` (v2.2877: role default + `'0'` explicit off — see `jobModeToggle.ts`); `DashboardJobModeCard` self-loads its data. A `useEffect` records `job_mode_enabled{source}` once per session when the flag is on (`jobModeTelemetry.ts`).
+- **First-run card (v2.2877):** `DashboardJobModeFirstRunCard` sits at the top of the **main** return (above `DashboardPinnedQuickRow`); self-gated by `showJobModeFirstRunCard(role, stored, dismissed)` → master_technician / superintendent only; its tap calls the hook setter with source `'card'` and resets `jobModeShowFullDashboard`, so the page flips into this branch without a reload.
 - **Sub-components:** `DashboardJobModeCard`, `TurnawayModal`, `AdditionalReportModal` (all extracted).
 - **Extraction status + approach:** Mostly extracted already. **Stays in the parent** — it is the page-level fork. As of v2.723 the branch renders `<DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} />` instead of the old `tallyAndPinnedBlock` const (~60 lines total). Note: because the block is now a component, flipping "Show full dashboard" remounts it (its tally/lost-bids counts reload); previously those counts lived in the parent and survived the toggle.
 

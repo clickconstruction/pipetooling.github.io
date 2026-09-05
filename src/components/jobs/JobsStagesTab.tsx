@@ -1096,10 +1096,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       return false
     }
   })
-  /** ⋯ tools menu "Mobile cards" (v2.1241): render sections as full-width cards instead of tables. */
+  /** ⋯ tools menu "Mobile cards" (v2.1241): render sections as full-width cards instead of tables.
+   *  Width-gated default (v2.2877): with nothing stored, phones narrower than 560px start on cards. */
   const [stagesMobileCards, setStagesMobileCards] = useState(() => {
     try {
-      return localStorage.getItem('jobs-stages-mobile-cards') === 'true'
+      const stored = localStorage.getItem('jobs-stages-mobile-cards')
+      if (stored === 'true' || stored === 'false') return stored === 'true'
+      return typeof window !== 'undefined' && window.matchMedia('(max-width: 559px)').matches
     } catch {
       return false
     }

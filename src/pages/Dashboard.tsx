@@ -16,6 +16,9 @@ import { useAuth } from '../hooks/useAuth'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
+import { jobModeActiveSource, readJobModeStoredValue } from '../lib/jobModeToggle'
+import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
+import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import TurnawayModal from '../components/jobMode/TurnawayModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -418,7 +421,14 @@ export default function Dashboard() {
   } | null>(null)
   const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [turnawayJob, setTurnawayJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
-  const [jobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
+  // Role-aware (v2.2877, journey-map Tier-2 #26): absent key ⇒ ON for sub-like roles
+  // (subcontractor, helpers), OFF otherwise; a stored value wins; ineligible roles never.
+  const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null, role)
+  // `job_mode_enabled{source}` — once per session, on the first render with Job Mode active.
+  useEffect(() => {
+    if (!jobModeEnabled || !authUser?.id) return
+    recordJobModeEnabledOncePerSession(authUser.id, role, jobModeActiveSource(readJobModeStoredValue(authUser.id)))
+  }, [jobModeEnabled, authUser?.id, role])
   // Component-local "show full dashboard" override; resets every page load so
   // the field-first paint is consistent. The Job Mode toggle in the gear menu
   // remains the persistent setting.
@@ -1305,6 +1315,16 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+      {/* First-run nudge for masters / superintendents who work in the field (v2.2877);
+          self-gated — never renders for sub-like (already on) or office roles. */}
+      <DashboardJobModeFirstRunCard
+        userId={authUser?.id}
+        role={role}
+        onEnable={() => {
+          setJobModeEnabled(true, 'card')
+          setJobModeShowFullDashboard(false)
+        }}
+      />
       <DashboardPinnedQuickRow
         {...pinnedQuickRowSharedProps}
         renderModals
