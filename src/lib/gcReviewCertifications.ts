@@ -34,6 +34,7 @@ export async function insertGcReviewCertification(row: {
 export type GcReviewWeekStatus = {
   gcs_outstanding: number
   gcs_certified: number
+  /** GCs with a statement out this week: an app send (gc_statement_emails) OR a "Sent it" round mark (action = 'sent' — never 'contacted'), RPC v3 (v2.2842). */
   gcs_sent: number
   /** GCs both certified (still matching the live total) AND sent this week (RPC v2, v2.2705); absent from the v1 RPC. */
   gcs_done?: number
