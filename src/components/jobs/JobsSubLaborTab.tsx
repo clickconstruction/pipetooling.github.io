@@ -10,6 +10,7 @@ import { normalizePersonNameKey } from '../../lib/personNameKey'
 import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
 import { emitWorkOrderChanged, WORK_ORDER_CHANGED_EVENT } from '../../hooks/useJobWorkOrderCoverage'
 import { SheetRail } from './SheetRail'
+import { SheetStoryModal } from './SheetStoryModal'
 import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkOrderAssemblerModal'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -63,6 +64,8 @@ export type JobsSubLaborTabProps = {
   onOpenMakePayment: (target: SubLaborPaymentTarget, defaultAmount: string) => void
   /** Seed + open the parent-owned Backcharge modal. */
   onOpenBackcharge: (target: SubLaborBackchargeTarget) => void
+  /** The sheet story changed a stage or a payable-after date — reload the ledger. */
+  onReloadLaborJobs?: () => void
 }
 
 export default function JobsSubLaborTab({
@@ -84,6 +87,7 @@ export default function JobsSubLaborTab({
   onSetLaborJobStage,
   onOpenMakePayment,
   onOpenBackcharge,
+  onReloadLaborJobs,
 }: JobsSubLaborTabProps) {
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
   const [stageMenuJobId, setStageMenuJobId] = useState<string | null>(null)
@@ -107,6 +111,7 @@ export default function JobsSubLaborTab({
   }, [loadCommitments])
   const { roster } = useRosterSubKinds()
   const [assembler, setAssembler] = useState<WorkOrderAssemblerInitial | null>(null)
+  const [storySheetId, setStorySheetId] = useState<string | null>(null)
   useEffect(() => {
     if (!stageMenuJobId) return
     const close = () => setStageMenuJobId(null)
@@ -445,6 +450,7 @@ export default function JobsSubLaborTab({
                           setStageMenuJobId(null)
                           void onSetLaborJobStage(job.id, stage)
                         }}
+                        onOpenStory={() => setStorySheetId(job.id)}
                       />
                     </td>
                     <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
@@ -603,6 +609,7 @@ export default function JobsSubLaborTab({
         The rail is the one the sub sees on their portal — Work · Walk-through · Customer pays · Paid — with the office's Drafted · Sent · Signed in front of it. A dashed red run means work is happening with nothing signed. Click the current dot to move the stage.
       </p>
       <WorkOrderAssemblerModal open={assembler != null} onClose={() => setAssembler(null)} jobs={jobs} initial={assembler} authUserId={authUserId} onChanged={() => { void loadCommitments(); emitWorkOrderChanged() }} />
+      <SheetStoryModal sheetId={storySheetId} onClose={() => setStorySheetId(null)} jobs={jobs} authUserId={authUserId} onOpenSheet={(id) => { const j = laborJobs.find((x) => x.id === id); if (j) onEditLaborJob(j) }} onSheetChanged={() => { void loadCommitments(); onReloadLaborJobs?.() }} />
     </div>
   )
 }
@@ -626,6 +633,7 @@ function SubSheetStageCell({
   menuOpen,
   onToggleMenu,
   onPick,
+  onOpenStory,
 }: {
   job: LaborJob
   rail: SheetRailShape
@@ -633,6 +641,7 @@ function SubSheetStageCell({
   menuOpen: boolean
   onToggleMenu: () => void
   onPick: (stage: SubSheetStage) => void
+  onOpenStory?: () => void
 }) {
   const stage = normalizeSubSheetStage(job.stage)
   const next = nextSubSheetStage(stage)
@@ -647,12 +656,12 @@ function SubSheetStageCell({
     .filter(Boolean)
     .join(' · ')
   if (paid) {
-    return <SheetRail rail={rail} title={title} />
+    return <SheetRail rail={rail} title={title} onClick={onOpenStory} />
   }
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-        <SheetRail rail={rail} title={`${title} · click the current dot to move the stage`} onCurrentClick={onToggleMenu} />
+        <SheetRail rail={rail} title={`${title} · click the current dot to move the stage`} onCurrentClick={onToggleMenu} onClick={onOpenStory} />
         {job.stage_source === 'portal' ? <span style={{ fontSize: '0.68rem', fontWeight: 600, color: tone.fg }} title="The sub moved it from their portal">· sub</span> : null}
         {next ? (
           <button

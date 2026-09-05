@@ -38,6 +38,8 @@ Three tiles lead: **On a handshake** (open money on sheets with nothing signed �
 
 **Next** names the office's move, and its button sits first in the row: *Get it in writing* → {{button:blue|Draft a work order…}}; *Price it and send* → {{button:blue|Price…}}; *Waiting on ‹sub› · 3 days* → {{button:blue|Nudge}} once three days have passed; then, once signed, *Wait for "done"* (the sub taps Done on their portal), *Schedule the walk-through*, *Bill and collect*, *Pay ‹sub›*, *Nothing — done*.
 
+**Click the rail** (anywhere but the current dot) for the sheet's **story**: one row per dot with the facts behind it — who drafted it and when, when it went out and until when, how it was signed and the paperwork it binds under, when the sub said "done" and what they wrote, the job's bill, every payment — plus what the sub sees on their portal at that step, and the office's move for the live one.
+
 The groups follow the rail: **Working with no agreement**, **Drafted**, **Sent**, **Signed** (collapsed — {{button:outline|Show ▾}} opens the record). The filter chips are the same four groups with counts. Search by job number, sub, customer, or WO number. {{button:outline|Sheet ›}} on any row opens the Sub Labor sheet; a signed order's **WO-977-01 ›** opens the record.
 
 :::example A sheet on a job that is not in the Pipeline
