@@ -58,6 +58,7 @@ import JobSummaryCutByPanel, { JobSummaryGroupRow } from './JobSummaryCutByPanel
 import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
 import JobSummaryMonthsView from './JobSummaryMonthsView'
 import JobSummaryCycleView from './JobSummaryCycleView'
+import JobSummaryScatterView from './JobSummaryScatterView'
 import JobSummaryTimelineView from './JobSummaryTimelineView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
@@ -504,6 +505,22 @@ export default function JobsJobSummaryTab({
               canOpenSessionNotes={canOpenSessionNotes}
               users={users}
               jobs={jobSummaryLedgerAllJobs ?? []}
+            />
+          ) : view.prefs.view === 'scatter' ? (
+            <JobSummaryScatterView
+              rows={view.rows}
+              ledgerLoading={view.ledgerLoading}
+              colorBy={view.prefs.scatterColorBy}
+              onColorByChange={(scatterColorBy) => view.setPrefs({ scatterColorBy })}
+              sizeBy={view.prefs.scatterSizeBy}
+              onSizeByChange={(scatterSizeBy) => view.setPrefs({ scatterSizeBy })}
+              targetTrueMarginPct={view.prefs.targetTrueMarginPct}
+              userNameById={new Map(users.map((u) => [u.id, u.name]))}
+              showMoney={showTeamLaborAndProfit}
+              onOpenJob={(jobNumber) => {
+                setJobSummarySearch(jobNumber)
+                view.setPrefs({ view: 'jobs', status: 'all' })
+              }}
             />
           ) : view.prefs.view === 'cycle' ? (
             <JobSummaryCycleView

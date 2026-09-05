@@ -89,7 +89,10 @@ describe('prefs + window', () => {
       targetTrueMarginPct: 0,
       cutBy: 'none',
       monthsBookBy: 'work',
+      scatterColorBy: 'trade',
+      scatterSizeBy: 'hours',
     })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'scatter', scatterColorBy: 'gc', scatterSizeBy: 'none' }))).toMatchObject({ view: 'scatter', scatterColorBy: 'gc', scatterSizeBy: 'none' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'months', monthsBookBy: 'bill' }))).toMatchObject({ view: 'months', monthsBookBy: 'bill' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'cycle' }))).toMatchObject({ view: 'cycle' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ cutBy: 'gc' }))).toMatchObject({ cutBy: 'gc' })
