@@ -71,6 +71,8 @@ export function buildGcStatementRequestInsert(
 
 export type PendingGcStatementSend = {
   id: string
+  /** Who scheduled it (journey-map #45: the office sees every request; only the requester or a dev may Cancel). */
+  requested_by: string
   sent_to: string
   group_by: string
   gc_customer_id: string | null
