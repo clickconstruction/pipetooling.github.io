@@ -5,6 +5,7 @@ import { bankingPersonKindTag, buildBankingAttributionOptions } from '../../lib/
 import { BankingMercuryTxDetailModal, type TxDetailChange } from './BankingMercuryTxDetailModal'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchAllRows } from '../../lib/supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { fetchAllAttributions, fetchAllJobAllocations } from '../../lib/fetchMercuryRelationsByTxIds'
 import {
@@ -104,28 +105,65 @@ type VisualsData = {
   truncated: boolean
 }
 
+/** The `mercury_transactions` select shape below — `fetchVisualsData` derives `VisualsTxRow` from it. */
+type VisualsTxRaw = {
+  id: string
+  amount: number
+  kind: string
+  posted_at: string | null
+  mercury_account_id: string
+  duplicate_of_transaction_id: string | null
+  counterparty_name: string | null
+  external_memo: string | null
+  bank_description: string | null
+}
+
 async function fetchVisualsData(): Promise<VisualsData> {
   const [txRows, labelRows, assignmentRows, nicknameRows, debitNicknameRows, usersOptionRows, peopleOptionRows, allocRows, attrRows] =
     await Promise.all([
-      withSupabaseRetry(
-        async () =>
-          supabase
-            .from('mercury_transactions')
-            // bank_description pulls ONE string out of the raw JSON server-side —
-            // the raw column itself stays unfetched (it's large).
-            .select('id, amount, kind, posted_at, mercury_account_id, duplicate_of_transaction_id, counterparty_name, external_memo, bank_description:raw->>bankDescription')
-            .order('posted_at', { ascending: false })
-            .limit(VISUALS_TX_LIMIT),
+      // Paged up to the REAL ceiling (Phase 4 #3(c)): a bare `.limit(15000)` is cut to
+      // PostgREST's 1,000-row max_rows with no error, so every Visuals total covered the
+      // newest ~1,000 of ~13k transactions and the "most recent 15,000" chip could never fire.
+      fetchAllRows<VisualsTxRaw>(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('mercury_transactions')
+                // bank_description pulls ONE string out of the raw JSON server-side —
+                // the raw column itself stays unfetched (it's large).
+                .select('id, amount, kind, posted_at, mercury_account_id, duplicate_of_transaction_id, counterparty_name, external_memo, bank_description:raw->>bankDescription')
+                .order('posted_at', { ascending: false })
+                .order('id', { ascending: false })
+                .range(from, to),
+            'visuals mercury_transactions',
+          )) as unknown as VisualsTxRaw[] | null,
+          error: null,
+        }),
         'visuals mercury_transactions',
+        undefined,
+        { maxRows: VISUALS_TX_LIMIT },
       ),
       withSupabaseRetry(
         async () =>
           supabase.from('mercury_drag_sort_labels').select('id, name, schedule_c_line, default_key').order('sort_order'),
         'visuals labels',
       ),
-      withSupabaseRetry(
-        async () =>
-          supabase.from('mercury_transaction_drag_sort_assignments').select('mercury_transaction_id, label_id').limit(100000),
+      // Same cap on the label assignments (the un-ranged `.limit(100000)` returned 1,000 of
+      // 2,000+ rows, so most labeled transactions rendered as unlabeled here).
+      fetchAllRows<{ mercury_transaction_id: string; label_id: string }>(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('mercury_transaction_drag_sort_assignments')
+                .select('mercury_transaction_id, label_id')
+                .order('mercury_transaction_id')
+                .range(from, to),
+            'visuals label assignments',
+          )) as { mercury_transaction_id: string; label_id: string }[] | null,
+          error: null,
+        }),
         'visuals label assignments',
       ),
       withSupabaseRetry(

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchAllRows } from '../../lib/supabasePaging'
 import { parseCsv } from '../../lib/parseCsv'
 import {
   backfillPaymentNote,
@@ -90,27 +91,52 @@ export default function BackfillHcpPaymentsModal({
     let cancelled = false
     ;(async () => {
       try {
+        // Paged whole-set reads (Phase 4 #3(c)): the backfill decides "paid job with no
+        // payment row" from these lists, so a silent 1,000-row cap would offer to mint
+        // payments that already exist.
         const [jobRows, paymentRows, hcpJobRows, tipLineRows] = await Promise.all([
-          withSupabaseRetry(
-            async () =>
-              supabase
-                .from('jobs_ledger')
-                .select('id, hcp_number, click_number, job_name, customer_name, status, revenue, created_at')
-                .eq('status', 'paid')
-                .gt('revenue', 0),
+          fetchAllRows(
+            async (from, to) => ({
+              data: (await withSupabaseRetry(
+                async () =>
+                  supabase
+                    .from('jobs_ledger')
+                    .select('id, hcp_number, click_number, job_name, customer_name, status, revenue, created_at')
+                    .eq('status', 'paid')
+                    .gt('revenue', 0)
+                    .order('id')
+                    .range(from, to),
+                'payment backfill: paid jobs',
+              )) as BackfillJobInput[] | null,
+              error: null,
+            }),
             'payment backfill: paid jobs',
           ),
-          withSupabaseRetry(
-            async () => supabase.from('jobs_ledger_payments').select('job_id'),
+          fetchAllRows(
+            async (from, to) => ({
+              data: (await withSupabaseRetry(
+                async () => supabase.from('jobs_ledger_payments').select('job_id').order('id').range(from, to),
+                'payment backfill: payment rows',
+              )) as Array<{ job_id: string }> | null,
+              error: null,
+            }),
             'payment backfill: payment rows',
           ),
-          withSupabaseRetry(
-            async () =>
-              supabase
-                .from('jobs_ledger')
-                .select('id, hcp_number, click_number, job_name, customer_name, status, revenue, payments_made, created_at')
-                .not('hcp_number', 'is', null)
-                .neq('hcp_number', ''),
+          fetchAllRows(
+            async (from, to) => ({
+              data: (await withSupabaseRetry(
+                async () =>
+                  supabase
+                    .from('jobs_ledger')
+                    .select('id, hcp_number, click_number, job_name, customer_name, status, revenue, payments_made, created_at')
+                    .not('hcp_number', 'is', null)
+                    .neq('hcp_number', '')
+                    .order('id')
+                    .range(from, to),
+                'tips sweep: HCP jobs',
+              )) as TipsSweepJobInput[] | null,
+              error: null,
+            }),
             'tips sweep: HCP jobs',
           ),
           withSupabaseRetry(

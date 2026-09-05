@@ -15,6 +15,7 @@ function sampleRow(
     note: null,
     mercury_transaction_id: tx,
     attributionDisplayName: attribution,
+    linkedToSupplyInvoice: false,
     mercury_transactions: {
       posted_at: '2020-01-15',
       counterparty_name: 'X',

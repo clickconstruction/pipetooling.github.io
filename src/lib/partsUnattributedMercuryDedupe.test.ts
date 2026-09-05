@@ -15,6 +15,7 @@ function row(
     note: null,
     mercury_transaction_id: partial.mercury_transaction_id,
     attributionDisplayName: partial.attributionDisplayName ?? null,
+    linkedToSupplyInvoice: false,
     mercury_transactions: null,
   }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { fetchAllRows } from '../../lib/supabasePaging'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import CustomerSummaryModal from './CustomerSummaryModal'
 import {
@@ -82,8 +83,16 @@ export default function DispatchModeCustomers({
                 .order('name', { ascending: true }),
             'dispatch mode customers',
           ),
-          withSupabaseRetry(
-            async () => supabase.from('jobs_ledger').select('customer_id, last_work_date'),
+          // Paged: a whole-table read that PostgREST silently caps at 1,000 rows (J34-N1;
+          // `jobs_ledger` is within sight of the cap) — every customer's job count would drift.
+          fetchAllRows(
+            async (from, to) => ({
+              data: (await withSupabaseRetry(
+                async () => supabase.from('jobs_ledger').select('customer_id, last_work_date').order('id').range(from, to),
+                'dispatch mode customer job counts',
+              )) as Array<{ customer_id: string | null; last_work_date: string | null }> | null,
+              error: null,
+            }),
             'dispatch mode customer job counts',
           ),
           withSupabaseRetry(
