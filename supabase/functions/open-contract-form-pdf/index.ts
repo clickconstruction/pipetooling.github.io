@@ -6,6 +6,9 @@
  * Gate: dev, controller, or a pay-approved master (the Person Desk pay gate).
  * Assistants and everyone else get 403 even though they can read the row.
  * Every successful mint inserts a `contract_form_pdf_opens` row.
+ *
+ * `which: 'scan'` (Contract Forms PR 6) opens the paper scan a staff member
+ * keyed the answers from instead of the flattened PDF — same gate, same log.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -44,7 +47,8 @@ serve(async (req) => {
     } = await userClient.auth.getUser(token)
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
-    const body = (await req.json().catch(() => ({}))) as { person_contract_document_id?: string }
+    const body = (await req.json().catch(() => ({}))) as { person_contract_document_id?: string; which?: string }
+    const which: 'pdf' | 'scan' = body.which === 'scan' ? 'scan' : 'pdf'
     const docId = typeof body.person_contract_document_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.person_contract_document_id) ? body.person_contract_document_id : null
     if (!docId) return json({ error: 'person_contract_document_id is required' }, 400)
 
@@ -63,15 +67,17 @@ serve(async (req) => {
     // The caller must also be able to read the row (contracts RLS) — use their client.
     const { data: row, error: rowErr } = await userClient
       .from('person_contract_documents')
-      .select('id, status, form_pdf_storage_path, document_name, person_name')
+      .select('id, status, form_pdf_storage_path, form_scan_storage_path, document_name, person_name')
       .eq('id', docId)
       .maybeSingle()
     if (rowErr || !row) return json({ error: 'Document not found or access denied' }, 404)
-    const r = row as { id: string; status: string; form_pdf_storage_path: string | null; document_name: string; person_name: string }
-    if (r.status !== 'signed' || !r.form_pdf_storage_path?.trim()) return json({ error: 'No signed form PDF on file for this document.' }, 404)
+    const r = row as { id: string; status: string; form_pdf_storage_path: string | null; form_scan_storage_path: string | null; document_name: string; person_name: string }
+    const path = which === 'scan' ? r.form_scan_storage_path?.trim() : r.form_pdf_storage_path?.trim()
+    if (r.status !== 'signed' || !path) return json({ error: which === 'scan' ? 'No scan of the paper is on file for this document.' : 'No signed form PDF on file for this document.' }, 404)
+    const ext = path.split('.').pop() ?? 'pdf'
 
-    const { data: signed, error: sErr } = await admin.storage.from(FORM_PDFS_BUCKET).createSignedUrl(r.form_pdf_storage_path, LINK_SECONDS, {
-      download: `${r.document_name} - ${r.person_name}.pdf`.replace(/[\\/:*?"<>|]+/g, ' '),
+    const { data: signed, error: sErr } = await admin.storage.from(FORM_PDFS_BUCKET).createSignedUrl(path, LINK_SECONDS, {
+      download: `${r.document_name} - ${r.person_name}${which === 'scan' ? ' (paper)' : ''}.${ext}`.replace(/[\\/:*?"<>|]+/g, ' '),
     })
     if (sErr || !signed?.signedUrl) {
       console.error('signed form url', sErr)

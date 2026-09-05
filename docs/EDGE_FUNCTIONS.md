@@ -120,6 +120,7 @@ when_to_read:
    - [send-contract-for-signature](#send-contract-for-signature)
    - [get-contract-signing-link-for-self](#get-contract-signing-link-for-self)
    - [open-contract-form-pdf](#open-contract-form-pdf)
+   - [contract-form-paper-entry](#contract-form-paper-entry)
    - [check-estimate-attachment-url](#check-estimate-attachment-url)
    - [resolve-ip-geolocation](#resolve-ip-geolocation)
    - [street-view-preview](#street-view-preview)
@@ -1383,7 +1384,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Purpose**: Mint a short-lived link to a **signed form PDF** (Contract Forms, v2.2798) — the flattened copy in the private `contract-form-pdfs` bucket, the only place a form's sensitive answers exist — for a staff member allowed to see it, and log the open.
 
-**Endpoint**: `POST /functions/v1/open-contract-form-pdf`
+**Endpoint**: `POST /functions/v1/open-contract-form-pdf` — body `{ person_contract_document_id, which?: 'pdf' | 'scan' }`; `scan` (v2.2801) opens the paper scan of an *Enter from paper* filing instead of the flattened PDF, same gate, same log, download name suffixed "(paper)".
 
 **Body**: `{ "person_contract_document_id": string }`
 
@@ -1392,6 +1393,21 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Success** (**200**): `{ "ok": true, "url": string, "expires_in": 300 }` — a 5-minute signed URL with a download filename `<document_name> - <person_name>.pdf`. Inserts `contract_form_pdf_opens (person_contract_document_id, opened_by)`; a logging failure is logged, not fatal.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+
+### contract-form-paper-entry
+
+**Purpose** (v2.2801, Contract Forms PR 6 — *Enter from paper*): a staff member keys a sub's hand-filled form into the same boxes the signing page shows, attaches the scan, and files it as signed on paper. Two actions in one function.
+
+**Endpoint**: `POST /functions/v1/contract-form-paper-entry` (`verify_jwt = false`; JWT validated with `auth.getUser` in the body).
+
+**Gate**: `users.role` in dev · master_technician · assistant · controller (the roles that may insert person copies). Others → **403** `forbidden`.
+
+**Body**:
+- `{ "action": "prepare", "book_entry_id": uuid }` → `{ ok, schema, templateUrl (15-min signed URL into contract-form-templates), documentName, docType, revisionLabel }`. 404 when the entry is not a form.
+- `{ "action": "file", "book_entry_id", "person_name", "person_id"?, "formValues", "signer_printed_name", "signed_on_ymd", "attested": true, "skip_boxes", "scan"?: { base64, mime, filename } }` → `{ ok, id, filed_pdf, filed_scan }`. Validates known keys only, scan type (JPG / PNG / WEBP / HEIC / PDF) and size (8 MB), the attestation, and the date; `skip_boxes` requires a scan. Missing required boxes never block. Fills + flattens the template with **no signature drawn** (the date box gets the date on the paper), uploads `<id>/signed.pdf` (unless boxes were skipped) and `<id>/source.<ext>` to `contract-form-pdfs`, then inserts the `person_contract_documents` row: `status = signed`, `signed_at` = the paper's date, `signer_printed_name`, `applied_contract_template_document_id` (the resolver trigger stamps `form_template_id` + `doc_type`), `form_values` (non-sensitive) / `form_hints` (last four), `form_pdf_storage_path`, `form_scan_storage_path`, `form_source = 'paper'`, `form_keyed_by_user_id`, and a `note` when the boxes were skipped. Uploaded objects are removed if the insert fails.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font (unused here in practice since no signature is drawn).
 
 ---
 

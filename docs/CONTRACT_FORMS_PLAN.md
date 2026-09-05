@@ -18,7 +18,7 @@ key_sections:
 
 ## Status
 
-**PRs 1–5 built (2026-09-04); the W-9 is published in the Subs packet and was filled and signed end to end by the test sub.** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
+**All six PRs built (PR 6 on 2026-09-05); the W-9 is published in the Subs packet and was filled and signed end to end by the test sub; hand-filled forms can be entered from paper.** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
 
 | # | PR | Version | Landed as |
 |---|---|---|---|
@@ -27,7 +27,7 @@ key_sections:
 | 3 | Fill-on-the-document signer mode + `accept-contract` fills/flattens/files (4 fns redeployed 2026-09-04) | v2.2797 | #2534 |
 | 4 | Staff record: facts card, Open PDF (gated + logged, new fn `open-contract-form-pdf`), Person Desk line | v2.2798 | #2535 |
 | 5 | The W-9 itself (`docs/forms/w9-2024-03.schema.json`), published into the Subs packet, end-to-end tested with the test sub; signer page shows only pages with boxes | v2.2799 | PR 5 |
-| 6 | Enter from paper; new-revision flow; Spanish labels in the lens | — | — |
+| 6 | Enter from paper (new fn `contract-form-paper-entry`, migration `20260905010500`, record modal scan door); the new-revision flow turned out to be the studio's Replace PDF… + Import PDF fields; Spanish labels already ride in the schema | v2.2801 | PR 6 |
 
 ## Why (ground truth, 2026-09-04)
 
