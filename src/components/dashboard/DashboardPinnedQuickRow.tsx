@@ -27,6 +27,7 @@ import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useStatementRoundNudge } from '../../hooks/useStatementRoundNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
+import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
@@ -348,6 +349,9 @@ export function DashboardPinnedQuickRow({
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
   const contractNudgeEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
+  // Work Orders tab PR 3: drafts waiting for a price — the master's queue.
+  const unpricedWorkOrdersEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -383,6 +387,8 @@ export function DashboardPinnedQuickRow({
     lienUnconditionalOwed,
     contractNudgeEnabled,
     contractNudge,
+    unpricedWorkOrdersEnabled,
+    unpricedWorkOrders,
     demandDeadlineEnabled: lienUnconditionalEnabled,
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
@@ -572,6 +578,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&contractSweep=1')
             } else if (item.key === 'contract-stale') {
               navigate('/jobs?tab=stages&contract=sent')
+            } else if (item.key === 'work-orders-unpriced') {
+              navigate('/jobs?tab=work_orders&wof=drafts')
             } else if (item.key === 'team-reviews') {
               // Deep link (v2.1564): land the Rate deck ON the first due person, not on card 1 of N.
               const first = teamReviewsOverdue[0]

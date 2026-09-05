@@ -22,6 +22,14 @@ A **work order** is the short numbered document a sub signs before they start: w
 The master says "Rudy's doing the rough-in". The assistant opens Work Orders, picks the job and Rudy, ticks the plumbing defaults, leaves the price blank, saves the draft. The master opens it from the Drafts filter, types the price, sends.
 :::
 
+## From the job window
+
+Taking a job in and the master already knows who's doing it? Open the job, **Edit** tab: the **Sub work order** row sits right under Contract. {{button:blue|Draft a work order…}} opens the assembler with the job already picked — choose the sub, tick the scope, leave the price blank if that's the master's call, {{button:outline|Save draft}}. The row then shows {{chip:gray|Draft · needs a price}} with {{button:blue|Set a price…}}; once it's signed it shows {{chip:green|✍ Signed}} and {{button:outline|View record}}. The **Bill** tab shows the same line read-only above the invoice.
+
+## The master's queue
+
+Unpriced drafts show on the dashboard's **Needs You** card — *"2 sub work orders are waiting for a price"* — and {{button:blue|Price them}} opens **Jobs → Work Orders** on the Drafts filter. Open each draft, type the price, {{button:blue|Send for signature}}.
+
 ## Reading the board
 
 Filter chips count what's where: {{chip:gray|Drafts}}, {{chip:yellow|Awaiting signature}}, {{chip:green|✍ Signed}}, {{chip:red|Declined}}, {{chip:red|Expired}}. Search by job number, sub, or WO number.

@@ -49,6 +49,12 @@ export type SubSheetWorkOrderPanelProps = {
   authUserId: string | undefined
   /** Fires after a send / withdraw / cancel so the ledger row's chip can refresh. */
   onChanged?: () => void
+  /**
+   * Work Orders tab PR 3: when the sheet's job is in the cache the box is a door
+   * into the assembler (same document, live preview) instead of the inline editor.
+   * Receives the sub, the sheet, the order to re-offer, and the sheet total as the price.
+   */
+  onOpenAssembler?: (initial: { personId: string; laborJobId: string; commitmentId: string | null; amount: number }) => void
 }
 
 type AssigneeRow = { person_id: string; people: { id: string; name: string; email: string | null; kind: string } | null }
@@ -157,6 +163,7 @@ export function SubSheetWorkOrderPanel({
   serviceTypes,
   authUserId,
   onChanged,
+  onOpenAssembler,
 }: SubSheetWorkOrderPanelProps) {
   const { showToast } = useToastContext()
   const [loading, setLoading] = useState(true)
@@ -559,11 +566,15 @@ export function SubSheetWorkOrderPanel({
         </p>
       ) : !commitment && !editing ? (
         <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button type="button" style={primaryBtn(false)} onClick={() => seedDraft(null)}>
+          <button
+            type="button"
+            style={primaryBtn(false)}
+            onClick={() => (onOpenAssembler && assignees.length === 1 ? onOpenAssembler({ personId: assignees[0]!.id, laborJobId, commitmentId: null, amount: sheetTotal }) : seedDraft(null))}
+          >
             Write a work order for {assignees.length === 1 ? assignees[0]!.name : 'this sheet'}…
           </button>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            Scope from the library, the sheet total frozen as the price, signed on their portal.
+            {onOpenAssembler && assignees.length === 1 ? 'Opens the assembler with the sheet total as the price — the same document the Work Orders tab builds.' : 'Scope from the library, the sheet total frozen as the price, signed on their portal.'}
           </span>
         </div>
       ) : editing && draft ? (
@@ -850,7 +861,12 @@ export function SubSheetWorkOrderPanel({
               </>
             )}
             {commitment.status === 'declined' && (
-              <button type="button" style={primaryBtn(saving)} disabled={saving} onClick={() => seedDraft(commitment)}>
+              <button
+                type="button"
+                style={primaryBtn(saving)}
+                disabled={saving}
+                onClick={() => (onOpenAssembler ? onOpenAssembler({ personId: commitment.person_id, laborJobId, commitmentId: commitment.id, amount: sheetTotal }) : seedDraft(commitment))}
+              >
                 Re-offer…
               </button>
             )}

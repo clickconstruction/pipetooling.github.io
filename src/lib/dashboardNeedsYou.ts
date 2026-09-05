@@ -51,6 +51,7 @@ export type NeedsYouItem = {
     | 'hours-approvals'
     | 'contract-missing'
     | 'contract-stale'
+    | 'work-orders-unpriced'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -92,6 +93,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'hours-approvals': 50,
   'contract-missing': 40,
   'contract-stale': 50,
+  'work-orders-unpriced': 40,
   'lost-bids': 60,
   'd22-uncoded': 60,
 }
@@ -144,6 +146,14 @@ export type NeedsYouInputs = {
   /** Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet. */
   contractNudgeEnabled?: boolean
   contractNudge?: { missing: { count: number; revenueTotal: number }; stale: { count: number; oldestDays: number | null } } | null
+  /**
+   * Sub work-order drafts saved without a price (Work Orders tab PR 3,
+   * v2.2829) — an assistant drafted them while taking the job in; the master
+   * prices and sends. Null = nothing waiting / loading. Action opens Jobs →
+   * Work Orders on the Drafts filter.
+   */
+  unpricedWorkOrdersEnabled?: boolean
+  unpricedWorkOrders?: { count: number; subNames: string[]; oldestDays: number | null } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -303,6 +313,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `Sent 7+ days ago and still unsigned${oldestDays != null ? ` — the oldest ${oldestDays} days` : ''}. Resend, text the link, or call and sign it in person.`,
       figure: String(n),
       actionLabel: 'See them',
+    })
+  }
+
+  if (inputs.unpricedWorkOrdersEnabled && (inputs.unpricedWorkOrders?.count ?? 0) > 0) {
+    const { count: n, subNames, oldestDays } = inputs.unpricedWorkOrders!
+    const who = subNames.length === 0 ? '' : subNames.length <= 3 ? ` for ${subNames.join(', ')}` : ` for ${subNames.slice(0, 2).join(', ')} and ${subNames.length - 2} more`
+    items.push({
+      key: 'work-orders-unpriced',
+      severity: 'amber',
+      kicker: 'Work orders',
+      title: n === 1 ? 'A sub work order is waiting for a price' : `${n} sub work orders are waiting for a price`,
+      detail: `Drafted${who} without a subcontract amount${oldestDays != null && oldestDays > 0 ? ` — the oldest ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago` : ''}. Open the draft, type the price, send it for signature.`,
+      figure: String(n),
+      actionLabel: n === 1 ? 'Price it' : 'Price them',
     })
   }
 

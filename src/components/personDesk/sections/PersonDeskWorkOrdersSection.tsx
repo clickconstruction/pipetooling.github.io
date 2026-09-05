@@ -13,9 +13,11 @@ import { Chip, DeskEmpty, DeskRow, DeskSection } from '../personDeskShared'
 type Row = {
   id: string
   status: string
-  amount: number
+  amount: number | null
   step_id: string | null
   labor_job_id: string | null
+  job_id: string | null
+  record_id: string | null
   offered_at: string | null
   signed_at: string | null
   accepted_at: string | null
@@ -26,7 +28,7 @@ type Row = {
   offer_scope_snapshot: unknown
 }
 
-type Item = Row & { label: string; anchor: 'sheet' | 'step'; href: string | null; projectName: string | null }
+type Item = Row & { label: string; anchor: 'sheet' | 'step' | 'job'; href: string | null; projectName: string | null }
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
@@ -49,7 +51,7 @@ export function PersonDeskWorkOrdersSection({ personId, changeKey }: { personId:
     void (async () => {
       const { data } = await supabase
         .from('step_commitments')
-        .select('id, status, amount, step_id, labor_job_id, offered_at, signed_at, accepted_at, settled_at, declined_at, decline_reason, signer_printed_name, offer_scope_snapshot')
+        .select('id, status, amount, step_id, labor_job_id, job_id, record_id, offered_at, signed_at, accepted_at, settled_at, declined_at, decline_reason, signer_printed_name, offer_scope_snapshot')
         .eq('person_id', personId)
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false })
@@ -88,13 +90,14 @@ export function PersonDeskWorkOrdersSection({ personId, changeKey }: { personId:
           }
           const sh = r.labor_job_id ? sheetInfo.get(r.labor_job_id) : undefined
           const snap = parseSubWorkOrderSnapshot(r.offer_scope_snapshot)
-          const label = snap.sheetLabel ?? [sh?.jobNumber, sh?.address].filter(Boolean).join(' · ') ?? 'Sub sheet'
+          const label = snap.facts.jobLabel ?? snap.sheetLabel ?? [sh?.jobNumber, sh?.address].filter(Boolean).join(' · ') ?? 'Sub sheet'
+          // Work Orders tab PR 3: every non-step order opens on the board (the sheet is one click further).
           return {
             ...r,
-            anchor: 'sheet',
-            label: label || 'Sub sheet',
+            anchor: r.job_id && !r.labor_job_id ? 'job' : 'sheet',
+            label: (r.record_id ? `${r.record_id} · ` : '') + (label || 'Sub sheet'),
             projectName: null,
-            href: sh?.jobNumber ? `/jobs?tab=sub_sheet_ledger&editLabor=${encodeURIComponent(sh.jobNumber)}` : '/jobs?tab=sub_sheet_ledger',
+            href: `/jobs?tab=work_orders&wo=${r.id}`,
           }
         }),
       )
@@ -118,16 +121,16 @@ export function PersonDeskWorkOrdersSection({ personId, changeKey }: { personId:
       {items == null ? (
         <DeskEmpty>Loading…</DeskEmpty>
       ) : items.length === 0 ? (
-        <DeskEmpty>No work orders yet — offer one from a project step, or from a Sub Labor sheet's Work order box.</DeskEmpty>
+        <DeskEmpty>No work orders yet — assemble one on Jobs → Work Orders, from the job window, or from a project step.</DeskEmpty>
       ) : (
         items.map((i) => (
           <DeskRow
             key={i.id}
-            label={<span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{money(Number(i.amount))}</span>}
+            label={<span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{i.amount == null ? 'unpriced' : money(Number(i.amount))}</span>}
             actions={
               i.href ? (
                 <a href={i.href} style={{ fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                  {i.anchor === 'sheet' ? 'Sheet ›' : 'Step ›'}
+                  {i.anchor === 'step' ? 'Step ›' : 'Work order ›'}
                 </a>
               ) : null
             }
@@ -135,7 +138,7 @@ export function PersonDeskWorkOrdersSection({ personId, changeKey }: { personId:
             <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               {i.label}
               {i.projectName ? <span style={{ color: 'var(--text-muted)' }}> @ {i.projectName}</span> : null}
-              <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}> · {i.anchor === 'sheet' ? 'Sub Labor sheet' : 'Project step'}</span>
+              <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}> · {i.anchor === 'sheet' ? 'Sub Labor sheet' : i.anchor === 'job' ? 'Job' : 'Project step'}</span>
             </span>
             {statusChip(i)}
             {i.status === 'declined' && i.decline_reason ? <span style={{ color: 'var(--text-muted)' }}>“{i.decline_reason}”</span> : null}

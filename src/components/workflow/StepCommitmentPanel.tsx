@@ -418,6 +418,11 @@ export function StepCommitmentPanel({
 
             {(actions.length > 0 || (!isSuperintendentOnly && (c.status === 'accepted' || c.status === 'approved'))) && (
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {c.status !== 'draft' && (
+                  <a href={`/jobs?tab=work_orders&wo=${c.id}`} style={{ fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }} title="Open this work order on Jobs → Work Orders">
+                    Work Orders ›
+                  </a>
+                )}
                 {actions.includes('offer') && (
                   <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => openOfferEditor(c, false)}>
                     Offer to {c.display_name}…

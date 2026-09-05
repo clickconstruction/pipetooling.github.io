@@ -12,7 +12,7 @@ Most work orders now start on **Jobs → Work Orders** (see *assemble a sub work
 ## Write it on the sheet
 
 1. Open the sheet from **Jobs → Sub Labor** ({{button:outline|Edit}}) and scroll to the **Work order** box, just below {{chip:blue|Shown on the sub's portal}}.
-2. {{button:blue|Write a work order for …}} opens the editor with the trade's scope already ticked.
+2. {{button:blue|Write a work order for …}} opens the **assembler** (the same one as Jobs → Work Orders) with the job, the sub, and the sheet total as the price already filled — tick the scope and send. Sheets with more than one assignee, or whose job isn't loaded, keep the older inline editor described here.
    - **Scope** comes from the scope library for the job's trade (change the list with the dropdown). Tick what applies; type lines for this job underneath, one per line. Whatever is ticked is what the sub signs, word for word.
    - **Exclusions** are the library's standing exclusions, ticked the same way.
    - **Terms**: the **amount is the sheet total and it's fixed at send** — add the work and cost first. Set the work window, how long the offer is good for, retainage, and whether a bond is furnished. Special provisions is a free line.

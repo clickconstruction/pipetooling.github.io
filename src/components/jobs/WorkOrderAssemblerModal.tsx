@@ -40,6 +40,8 @@ export type WorkOrderAssemblerInitial = {
   personId?: string | null
   /** Anchor to carry when writing from a sheet or a step. */
   laborJobId?: string | null
+  /** Sheet door (PR 3): the sheet total, pre-filled as the price. */
+  amount?: number | null
   stepId?: string | null
 }
 
@@ -262,14 +264,14 @@ export function WorkOrderAssemblerModal({
       includeInsurance: true,
       bond: prior?.bond ?? 'none',
       specialProvisions: prior?.specialProvisions ?? '',
-      amount: existing?.amount != null ? String(Number(existing.amount)) : '',
+      amount: existing?.amount != null ? String(Number(existing.amount)) : initial?.amount != null && initial.amount > 0 ? String(initial.amount) : '',
       retainagePct: existing ? String(Number(existing.retainage_pct) || 0) : '0',
       proposedStart: existing?.proposed_start ?? '',
       proposedEnd: existing?.proposed_end ?? '',
       expires: existing?.offer_expires_at && existing.status === 'offered' ? existing.offer_expires_at : defaultExpires,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loading, step, existing, scopeItems, bookDocs, bidLines, serviceTypeIdOfJob])
+  }, [open, loading, step, existing, scopeItems, bookDocs, bidLines, serviceTypeIdOfJob, initial?.amount])
 
   useEffect(() => {
     if (!open) {

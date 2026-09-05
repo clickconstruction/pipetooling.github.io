@@ -41,6 +41,8 @@ export type JobsWorkOrdersTabProps = {
   /** `?wo=<id>` deep link — opens that order once, then the page clears the param. */
   deepLinkWorkOrderId: string | null
   onDeepLinkConsumed: () => void
+  /** `?wof=drafts` etc. — the Needs You item lands on the Drafts filter. */
+  initialFilter?: WorkOrderBoardFilter | null
 }
 
 const FILTERS: Array<{ key: WorkOrderBoardFilter; label: string }> = [
@@ -88,7 +90,7 @@ function ymd(v: string | null | undefined): string {
   return (v ?? '').slice(0, 10)
 }
 
-export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkOrderId, onDeepLinkConsumed }: JobsWorkOrdersTabProps) {
+export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkOrderId, onDeepLinkConsumed, initialFilter }: JobsWorkOrdersTabProps) {
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
   const [rows, setRows] = useState<StepCommitmentRow[]>([])
@@ -96,7 +98,7 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
   const [steps, setSteps] = useState<Record<string, StepLite>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<WorkOrderBoardFilter>('all')
+  const [filter, setFilter] = useState<WorkOrderBoardFilter>(initialFilter ?? 'all')
   const [search, setSearch] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [assembler, setAssembler] = useState<WorkOrderAssemblerInitial | null>(null)
