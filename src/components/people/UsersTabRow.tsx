@@ -51,6 +51,7 @@ export function UsersTabRow({
   narrowViewport,
   isDev,
   openDesk,
+  openHours,
   activeProjects,
   loggingInAsId,
   setLoggingInAsId,
@@ -65,6 +66,8 @@ export function UsersTabRow({
   isDev: boolean
   /** Opens the Person Desk at a section — the status column's doors; undefined when the viewer can't open the Desk. */
   openDesk?: (section: PersonDeskSectionId) => void
+  /** v2.2822: the hours cell opens the approvals queue pinned to this account. */
+  openHours?: () => void
   activeProjects: Array<{ id: string; name: string }>
   loggingInAsId: string | null
   setLoggingInAsId: (id: string | null) => void
@@ -173,9 +176,9 @@ export function UsersTabRow({
         {isAccount && item.notes ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: narrowViewport ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>— {item.notes}</span> : null}
         {rail.rowNeeds ? (
           narrowViewport ? (
-            <UsersNeedsPill rowNeeds={rail.rowNeeds} name={item.name} openDesk={openDesk} open={needsOpen} onToggle={() => setNeedsOpen((v) => !v)} />
+            <UsersNeedsPill rowNeeds={rail.rowNeeds} name={item.name} openDesk={openDesk} openHours={openHours} open={needsOpen} onToggle={() => setNeedsOpen((v) => !v)} />
           ) : (
-            <UsersRailCells rowNeeds={rail.rowNeeds} name={item.name} openDesk={openDesk} />
+            <UsersRailCells rowNeeds={rail.rowNeeds} name={item.name} openDesk={openDesk} openHours={openHours} />
           )
         ) : (
           <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap', marginLeft: narrowViewport ? 0 : 'auto', flexShrink: 0 }}>

@@ -33,6 +33,8 @@ A flag never blocks anything. It says "look before you approve this one":
 
 Tick **Flagged only** to see nothing but the flagged sessions, and the big green button becomes **Approve flagged** — handy for a second pass after you've cleared the ordinary ones.
 
+{{button:outline|Expand all}} opens every person and every week at once so you can read the sessions straight down; it turns into {{button:outline|Collapse all}} to fold them back. From People → Users, tapping a person's clock cell opens this window already pinned to them.
+
 ## Approving
 
 Every Approve button says what it's about to do — the count and the hours:

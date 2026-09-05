@@ -7,7 +7,9 @@ import { ROW_RAIL_SUBJECTS, type RowNeed, type RowNeeds } from '../../lib/people
  * renderings. Wide rows carry a three-cell icon rail — Hours · Paper · Acct — each cell a door
  * to the Person Desk section that answers it. Narrow rows carry a slate hours counter beside a
  * "Needs you · N" pill that unfolds one line per need, each ending in the verb that clears it.
- * Hours are a queue, not an alarm: slate, never amber, never the dot.
+ * Hours are a queue, not an alarm: slate, never amber, never the dot. v2.2822: the hours cell
+ * opens the approvals queue pinned to the person (`openHours`) — one tap to approving — and
+ * only falls back to the Desk's Hours section when no queue opener is wired.
  */
 
 type CellTone = 'hours' | 'amber' | 'red' | 'fact' | 'blue' | 'quiet'
@@ -88,7 +90,8 @@ function leadNeed(list: RowNeed[]): RowNeed | undefined {
 }
 
 /** Wide: three cells, fixed columns, quiet when empty. */
-export function UsersRailCells({ rowNeeds, name, openDesk }: { rowNeeds: RowNeeds; name: string; openDesk?: (section: PersonDeskSectionId) => void }) {
+export function UsersRailCells({ rowNeeds, name, openDesk, openHours }: { rowNeeds: RowNeeds; name: string; openDesk?: (section: PersonDeskSectionId) => void; openHours?: () => void }) {
+  const hoursDoor = openHours ?? (openDesk ? () => openDesk('hours') : undefined)
   const paper = needsBySubject(rowNeeds.needs, 'paperwork')
   const account = needsBySubject(rowNeeds.needs, 'account')
   const paperLead = leadNeed(paper)
@@ -100,7 +103,7 @@ export function UsersRailCells({ rowNeeds, name, openDesk }: { rowNeeds: RowNeed
         tone={rowNeeds.hoursWaiting > 0 ? 'hours' : 'quiet'}
         title={rowNeeds.hoursLine ?? 'No sessions waiting'}
         label={`${name}: ${rowNeeds.hoursLine ?? 'no sessions waiting'}`}
-        onClick={rowNeeds.hoursWaiting > 0 && openDesk ? () => openDesk('hours') : undefined}
+        onClick={rowNeeds.hoursWaiting > 0 ? hoursDoor : undefined}
       >
         <SubjectIcon subject="hours" />
         {rowNeeds.hoursWaiting > 0 ? rowNeeds.hoursWaiting : null}
@@ -137,7 +140,8 @@ const PILL_TONE: Record<'amber' | 'red', CSSProperties> = {
  * Narrow: the hours counter beside the pill. The row owns `open` and renders
  * `UsersNeedsFoldOut` under itself, so the ⋯ menu stays beside the pill while it is unfolded.
  */
-export function UsersNeedsPill({ rowNeeds, name, openDesk, open, onToggle }: { rowNeeds: RowNeeds; name: string; openDesk?: (section: PersonDeskSectionId) => void; open: boolean; onToggle: () => void }) {
+export function UsersNeedsPill({ rowNeeds, name, openDesk, openHours, open, onToggle }: { rowNeeds: RowNeeds; name: string; openDesk?: (section: PersonDeskSectionId) => void; openHours?: () => void; open: boolean; onToggle: () => void }) {
+  const hoursDoor = openHours ?? (openDesk ? () => openDesk('hours') : undefined)
   const counted = rowNeeds.needs.filter((n) => n.tone !== 'fact')
   const tone = rowNeeds.attention === 'red' ? 'red' : 'amber'
   return (
@@ -147,7 +151,7 @@ export function UsersNeedsPill({ rowNeeds, name, openDesk, open, onToggle }: { r
           tone={rowNeeds.hoursWaiting > 0 ? 'hours' : 'quiet'}
           title={rowNeeds.hoursLine ?? 'No sessions waiting'}
           label={`${name}: ${rowNeeds.hoursLine ?? 'no sessions waiting'}`}
-          onClick={rowNeeds.hoursWaiting > 0 && openDesk ? () => openDesk('hours') : undefined}
+          onClick={rowNeeds.hoursWaiting > 0 ? hoursDoor : undefined}
         >
           <SubjectIcon subject="hours" />
           {rowNeeds.hoursWaiting > 0 ? rowNeeds.hoursWaiting : null}

@@ -187,6 +187,18 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
     })
   }
 
+  /** v2.2822: every week of every person open at once, or everything folded. */
+  const allWeekKeys = useMemo(() => queue.people.flatMap((p) => p.weeks.map((w) => `${p.userId}|${w.weekStart}`)), [queue])
+  const allOpen = allWeekKeys.length > 0 && collapsedPeople.size === 0 && allWeekKeys.every((k) => openWeeks.has(k))
+  function expandAll() {
+    setCollapsedPeople(new Set())
+    setOpenWeeks(new Set(allWeekKeys))
+  }
+  function collapseAll() {
+    setOpenWeeks(new Set())
+    setCollapsedPeople(new Set(queue.people.map((p) => p.userId)))
+  }
+
   function toggleWeek(key: string) {
     setOpenWeeks((prev) => {
       const next = new Set(prev)
@@ -423,6 +435,9 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
             Flagged only
           </label>
           <span style={{ fontSize: '0.78125rem', color: 'var(--text-muted)' }}>People lead with the oldest stall. Open a week to see its sessions.</span>
+          <button type="button" disabled={loading || allWeekKeys.length === 0} onClick={() => (allOpen ? collapseAll() : expandAll())} style={{ ...BTN_QUIET, opacity: loading || allWeekKeys.length === 0 ? 0.55 : 1 }}>
+            {allOpen ? 'Collapse all' : 'Expand all'}
+          </button>
           <button
             type="button"
             disabled={busy || loading || queue.count === 0}

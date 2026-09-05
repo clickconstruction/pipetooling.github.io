@@ -10,6 +10,9 @@ import { useUsersTabSignals } from '../../hooks/useUsersTabSignals'
 import { buildRailRow, normaliseKind, type RailRow } from '../../lib/people/deskRailAttention'
 import { buildRowNeeds } from '../../lib/people/rowNeeds'
 import { UsersRailHeader } from './UsersTabStatusColumn'
+import { PeopleHoursApprovalsQueueModal } from './PeopleHoursApprovalsQueueModal'
+import { ClockSessionEditSplitModal } from '../ClockSessionEditSplitModal'
+import type { ClockSessionRow } from '../../types/clockSessions'
 import { USERS_TAB_FILTERS, describeGroupCount, foldNoLoginRows, orderUsersTabRows, rowMatchesFilter, type UsersTabFilter, applyRowNeeds } from '../../lib/people/usersTabRows'
 import { UsersTabRow, type UsersTabRowMenuAction } from './UsersTabRow'
 import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
@@ -125,11 +128,15 @@ export function PeopleUsersTab({
   // Person Desk door (v2.2701): the name opens the per-person drawer for office roles.
   const personDesk = useOptionalPersonDesk()
   const access = usePeopleAccess(authUserId)
-  const { facts: railFacts } = useUsersTabSignals(
+  const { facts: railFacts, refresh: refreshRailFacts } = useUsersTabSignals(
     { canAccessHours: access.canAccessHours, canAccessPay: access.canAccessPay, canAccessContracts: access.canAccessContracts, canAccessLicenses: access.canAccessLicenses },
     true,
   )
   const canManageTeamLeads = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  // v2.2822: the hours cell opens the approvals queue pinned to that account, right here.
+  const [hoursQueueFor, setHoursQueueFor] = useState<{ userId: string; name: string } | null>(null)
+  const [hoursQueueReload, setHoursQueueReload] = useState(0)
+  const [editSession, setEditSession] = useState<ClockSessionRow | null>(null)
   const [teamLeadsModalOpen, setTeamLeadsModalOpen] = useState(false)
 
   const byKind = useCallback(
@@ -265,6 +272,7 @@ export function PeopleUsersTab({
             ? (section) => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name, section } : { personId: item.id, displayName: item.name, section })
             : undefined
         }
+        openHours={item.source === 'user' && (access.canAccessHours || access.canAccessPay) ? () => setHoursQueueFor({ userId: item.id, name: item.name }) : undefined}
         activeProjects={activeProjectRows}
         loggingInAsId={loggingInAsId}
         setLoggingInAsId={setLoggingInAsId}
@@ -410,6 +418,42 @@ export function PeopleUsersTab({
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.15rem' }}>
           <UsersRailHeader />
         </div>
+      ) : null}
+      {hoursQueueFor ? (
+        <PeopleHoursApprovalsQueueModal
+          pinUserId={hoursQueueFor.userId}
+          pinDisplayName={hoursQueueFor.name}
+          reloadKey={hoursQueueReload}
+          authUserId={authUserId ?? undefined}
+          onClose={() => setHoursQueueFor(null)}
+          onChanged={() => {
+            setHoursQueueReload((k) => k + 1)
+            refreshRailFacts()
+          }}
+          onEditSession={(s) => setEditSession(s)}
+        />
+      ) : null}
+      {editSession ? (
+        <ClockSessionEditSplitModal
+          session={{
+            id: editSession.id,
+            user_id: editSession.user_id,
+            clocked_in_at: editSession.clocked_in_at,
+            clocked_out_at: editSession.clocked_out_at,
+            work_date: editSession.work_date,
+            notes: editSession.notes,
+            job_ledger_id: editSession.job_ledger_id,
+            bid_id: editSession.bid_id,
+            approved_at: editSession.approved_at,
+          }}
+          zIndex={110}
+          onClose={() => setEditSession(null)}
+          onSaved={() => {
+            setHoursQueueReload((k) => k + 1)
+            refreshRailFacts()
+          }}
+          showToast={(msg, kind) => showToast(msg, kind ?? 'success')}
+        />
       ) : null}
       {USERS_TAB_SECTIONS.map((sec) => (sec.type === 'dev' ? (isDev ? renderGroup('dev') : null) : renderGroup(sec.kind)))}
       {!usersTabSearchQ && filter !== 'all' && USERS_TAB_SECTIONS.every((sec) => (sec.type === 'dev' ? !isDev || renderGroup('dev') == null : renderGroup(sec.kind) == null)) ? (
