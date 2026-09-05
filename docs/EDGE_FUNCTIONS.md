@@ -1178,7 +1178,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `POST /functions/v1/sign-bid-room` — `{ token, revision_id, action: 'sign'|'decline', … }` (sign: `optionKey`, `printedName`, `agreedTerms`, optional `signaturePngBase64`; decline: `category`?, `note`?)
 
-**Staff notice** (v2.2743): a signed proposal goes through `notifySignedAgreement` (auto-create when `signed_agreements_auto_create_job_bids` is on; "Signed — …" letter to the stream list). Declines and change orders keep the short plain-text notice to the room's master + creator.
+**Staff notice** (v2.2743): a signed proposal goes through `notifySignedAgreement` (auto-create when `signed_agreements_auto_create_job_bids` is on; "Signed — …" letter to the stream list). Declines and change orders keep the short plain-text notice to the room's master + creator. Since v2.2838 the auto-create runs behind the `_shared/autoCreateJobGuard.ts` decision (already-linked / same-bid / same-customer-name-value twin → skip; see [accept-estimate](#accept-estimate)); a `bid_proposal` is treated like an estimate.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional staff notify), `APP_ORIGIN`
 
@@ -1286,7 +1286,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Endpoint**: `POST /functions/v1/accept-estimate`
 
-**Staff notice** (v2.2743): after the acceptance is saved, `notifySignedAgreement` (`_shared/signedAgreementNotify.ts`) runs — optional auto-create via `auto_create_job_from_signed_estimate` when `signed_agreements_auto_create_job_estimates` is on, then the "Signed — …" letter to `signed_agreement_notify_recipients` ∪ the estimate's own picks. Replaces the old per-estimate + org-wide notify.
+**Staff notice** (v2.2743): after the acceptance is saved, `notifySignedAgreement` (`_shared/signedAgreementNotify.ts`) runs — optional auto-create via `auto_create_job_from_signed_estimate` when `signed_agreements_auto_create_job_estimates` is on, then the "Signed — …" letter to `signed_agreement_notify_recipients` ∪ the estimate's own picks. Replaces the old per-estimate + org-wide notify. **Auto-create guard** (v2.2838): before the RPC, the pure kernel `_shared/autoCreateJobGuard.ts` decides against a bounded candidate set (jobs on the bid + the customer's jobs from the last 90 days) — skip when the estimate is already linked, is a `change_order` (never auto-created; the letter's Create the job opens Apply-to-job), a job carries the bid (linked, not duplicated), or a same-customer/name/value twin exists (`duplicate_by_name_value`, no write); otherwise create. One structured log line per decision: `signed_agreement_auto_create_decision {outcome, skipped_reason, matched_job_id, via}`. The SQL function enforces the CO and twin rules too (migration `20260905110000`).
 
 **Expiry** (v2.2703): same end-of-Central-day rule as `get-estimate-for-customer`.
 

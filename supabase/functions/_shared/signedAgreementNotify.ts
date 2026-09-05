@@ -9,6 +9,12 @@ import { logEmailSendBestEffort } from './logEmailSend.ts'
 import { EMAIL_FROM } from './emailFrom.ts'
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 import { buildSignedAgreementEmail, type SignedAgreementEmailInput } from './signedAgreementEmail.ts'
+import {
+  AUTO_CREATE_TWIN_WINDOW_DAYS,
+  decideAutoCreateJob,
+  type AutoCreateJobDecision,
+  type AutoCreateJobGuardCandidateJob,
+} from './autoCreateJobGuard.ts'
 
 export const SIGNED_AGREEMENTS_AUTO_CREATE_KEYS = {
   estimate: 'signed_agreements_auto_create_job_estimates',
@@ -34,27 +40,142 @@ async function readFlag(admin: SupabaseClient, key: string): Promise<boolean> {
   return v === '1' || v === 'true' || v === 'on'
 }
 
-/** Runs the auto-create (when its toggle is on) and sends the stream email. Never throws. */
+type JobRef = { id: string; hcpNumber: string }
+type GuardEstimateRow = {
+  id: string
+  doc_kind: string | null
+  job_ledger_id: string | null
+  bid_id: string | null
+  customer_id: string | null
+  title: string | null
+  total_cents: number | null
+  estimate_number: number | null
+}
+type CandidateRow = {
+  id: string
+  bid_id: string | null
+  customer_id: string | null
+  gc_customer_id: string | null
+  job_name: string | null
+  revenue: number | null
+  created_at: string | null
+}
+
+async function loadJobRef(admin: SupabaseClient, jobId: string): Promise<JobRef | null> {
+  const { data: j } = await admin.from('jobs_ledger').select('id, hcp_number').eq('id', jobId).maybeSingle()
+  return j ? { id: (j as { id: string }).id, hcpNumber: String((j as { hcp_number: string | null }).hcp_number ?? '') } : null
+}
+
+/**
+ * The jobs the guard compares against: any job carrying this estimate's bid, plus the customer's
+ * jobs from the last 90 days (the hand-typed-twin window). Bounded; never the whole ledger.
+ */
+async function loadCandidateJobs(admin: SupabaseClient, est: GuardEstimateRow): Promise<AutoCreateJobGuardCandidateJob[]> {
+  const cols = 'id, bid_id, customer_id, gc_customer_id, job_name, revenue, created_at'
+  const rows: CandidateRow[] = []
+  if (est.bid_id) {
+    const { data } = await admin.from('jobs_ledger').select(cols).eq('bid_id', est.bid_id).order('created_at', { ascending: false }).limit(50)
+    rows.push(...((data ?? []) as CandidateRow[]))
+  }
+  if (est.customer_id) {
+    const since = new Date(Date.now() - AUTO_CREATE_TWIN_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+    const { data } = await admin
+      .from('jobs_ledger')
+      .select(cols)
+      .or(`customer_id.eq.${est.customer_id},gc_customer_id.eq.${est.customer_id}`)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(200)
+    rows.push(...((data ?? []) as CandidateRow[]))
+  }
+  const seen = new Set<string>()
+  return rows
+    .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+    .map((r) => ({
+      id: r.id,
+      bidId: r.bid_id,
+      customerId: r.customer_id,
+      gcCustomerId: r.gc_customer_id,
+      jobName: r.job_name,
+      revenue: r.revenue,
+      createdAt: r.created_at,
+    }))
+}
+
+/**
+ * Decide (pure kernel), then act: create through the RPC, link a same-bid job, or skip. One
+ * structured log line per decision — `signed_agreement_auto_create_decision` — is the skip
+ * telemetry (`skipped_reason` ∈ switch_off | already_linked | change_order |
+ * duplicate_by_name_value); a real create also leaves a job_activity_events row (SQL side).
+ */
+async function decideAndCreateJob(admin: SupabaseClient, args: SignedAgreementNotifyArgs, autoCreateOn: boolean): Promise<JobRef | null> {
+  const { data: estRaw } = await admin
+    .from('estimates')
+    .select('id, doc_kind, job_ledger_id, bid_id, customer_id, title, total_cents, estimate_number')
+    .eq('id', args.estimateId)
+    .maybeSingle()
+  const est = estRaw as GuardEstimateRow | null
+  if (!est) return null
+  const candidateJobs = autoCreateOn && !est.job_ledger_id ? await loadCandidateJobs(admin, est) : []
+  const decision: AutoCreateJobDecision = decideAutoCreateJob({
+    estimate: {
+      id: est.id,
+      docKind: est.doc_kind,
+      jobLedgerId: est.job_ledger_id,
+      bidId: est.bid_id,
+      customerId: est.customer_id,
+      title: est.title,
+      totalCents: est.total_cents,
+    },
+    candidateJobs,
+    now: new Date(),
+    switchOn: autoCreateOn,
+  })
+  console.log(
+    JSON.stringify({
+      event: 'signed_agreement_auto_create_decision',
+      kind: args.kind,
+      estimate_id: est.id,
+      estimate_number: est.estimate_number,
+      doc_kind: est.doc_kind,
+      outcome: decision.create ? 'create' : 'skip',
+      skipped_reason: decision.create ? null : decision.reason,
+      matched_job_id: decision.matchedJobId,
+      via: decision.via,
+      candidates: candidateJobs.length,
+    }),
+  )
+
+  if (decision.create) {
+    const { data: jobId, error } = await admin.rpc('auto_create_job_from_signed_estimate', { p_estimate_id: args.estimateId })
+    if (error) {
+      console.error('signed-agreement auto-create', error)
+      return null
+    }
+    return typeof jobId === 'string' && jobId ? await loadJobRef(admin, jobId) : null
+  }
+  if (decision.reason === 'already_linked' && decision.via === 'bid_link' && decision.matchedJobId) {
+    // v2.2743 behaviour kept: a job someone already made for this bid is linked, never duplicated.
+    // The RPC does the link (and the v2.2741 trigger stamps the bid); it returns the same job.
+    const { data: jobId, error } = await admin.rpc('auto_create_job_from_signed_estimate', { p_estimate_id: args.estimateId })
+    if (error) console.error('signed-agreement link same-bid job', error)
+    return await loadJobRef(admin, typeof jobId === 'string' && jobId ? jobId : decision.matchedJobId)
+  }
+  if (decision.matchedJobId && decision.via === 'estimate_link') return await loadJobRef(admin, decision.matchedJobId)
+  // change_order (unlinked) and duplicate_by_name_value: no job in the letter, so it offers
+  // "Create the job" — which for a change order opens the Apply-to-job window. Never
+  // apply_estimate_to_job automatically: the office picks the job and owns the revenue move.
+  return null
+}
+
+/** Runs the auto-create guard (when its toggle is on) and sends the stream email. Never throws. */
 export async function notifySignedAgreement(args: SignedAgreementNotifyArgs): Promise<SignedAgreementNotifyResult> {
   const { admin } = args
-  let job: { id: string; hcpNumber: string } | null = null
+  let job: JobRef | null = null
   let autoCreateOn = false
   try {
     autoCreateOn = await readFlag(admin, SIGNED_AGREEMENTS_AUTO_CREATE_KEYS[args.kind])
-    if (autoCreateOn) {
-      const { data: jobId, error } = await admin.rpc('auto_create_job_from_signed_estimate', { p_estimate_id: args.estimateId })
-      if (error) console.error('signed-agreement auto-create', error)
-      else if (typeof jobId === 'string' && jobId) {
-        const { data: j } = await admin.from('jobs_ledger').select('id, hcp_number').eq('id', jobId).maybeSingle()
-        if (j) job = { id: (j as { id: string }).id, hcpNumber: String((j as { hcp_number: string | null }).hcp_number ?? '') }
-      }
-    }
-    if (!job) {
-      // Already linked by hand (or by a previous run)? Show it rather than offering to create another.
-      const { data: est } = await admin.from('estimates').select('job_ledger_id, jobs_ledger:job_ledger_id(id, hcp_number)').eq('id', args.estimateId).maybeSingle()
-      const linked = (est as { jobs_ledger?: { id: string; hcp_number: string | null } | null } | null)?.jobs_ledger ?? null
-      if (linked) job = { id: linked.id, hcpNumber: String(linked.hcp_number ?? '') }
-    }
+    job = await decideAndCreateJob(admin, args, autoCreateOn)
   } catch (e) {
     console.error('signed-agreement auto-create (non-fatal)', e)
   }
