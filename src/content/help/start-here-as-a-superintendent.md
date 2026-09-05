@@ -13,7 +13,7 @@ The top bar carries **Estimates**, **Jobs**, **Schedule**, **Projects**, and **B
 
 ## Your day
 
-1. **Check the Projects board.** Rows sort with the ones needing a decision first — a red or amber pill tells you what's stuck. See [project status at a glance](?g=see-project-status-at-a-glance).
+1. **Check the Projects board.** You see the projects you're assigned to — if one is missing, ask the office to add you under **Assigned Superintendents** on its Workflow page. Rows sort with the ones needing a decision first — a red or amber pill tells you what's stuck. See [project status at a glance](?g=see-project-status-at-a-glance).
 
 :::example Reading a project row's attention pills
 **Riverbend Phase 2** {{chip:red|Approve: Top Out}} {{chip:yellow|Unassigned: Trim Set}}

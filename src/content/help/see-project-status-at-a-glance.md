@@ -7,6 +7,14 @@ order: 77
 ---
 The Projects list reads like a job board: every project row shows a progress bar, who the current step is waiting on, and warning pills when something needs a decision.
 
+## Which projects you see
+
+Office accounts (dev, master, assistant, controller) see every project. A **superintendent sees only the projects they are assigned to** — the same rule covers the project's Workflow page, its step line items, and its sub work orders. To give a superintendent a project, open its Workflow page and add them under **Assigned Superintendents**; the project appears on their list right away.
+
+:::example A superintendent's Projects list
+The company has three projects. Sam is assigned to one of them, so Sam's list shows one row — the other two are not Sam's to see.
+:::
+
 ## The progress bar
 
 Each segment is one workflow step, in order, colored by where it stands:

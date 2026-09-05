@@ -20,7 +20,8 @@ export const PRIMARY_PATHS = [
   '/documents',
   '/jobs',
   '/bids',
-  '/workflows',
+  // '/workflows' dropped (v2.2836): the project_workflow_steps SELECT policy has no primary
+  // branch, so /workflows/:id was structurally empty for primaries and nothing linked to it.
   '/calendar',
   '/checklist',
   '/settings',
