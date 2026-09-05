@@ -8,6 +8,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { canCreateJobsLedgerRow } from '../lib/jobsLedgerCreateRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { buildWorkflowMoneyFlow, type WorkflowMoneyMarker } from '../lib/workflowMoneyFlow'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
@@ -211,6 +212,8 @@ export default function Workflow() {
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
   const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
+  // "+ Create Job" was a dead door for superintendents (v2.2848): the jobs_ledger INSERT policy refuses them.
+  const canCreateJobs = canCreateJobsLedgerRow(userRole)
 
   function isRowDefaultCollapsed(step: Step): boolean {
     return step.status === 'completed' || step.status === 'approved' || step.status === 'skipped' || step.status === 'pending'
@@ -2160,12 +2163,14 @@ export default function Workflow() {
                   {j.hcp_number || j.job_name || 'Job'}
                 </button>
               ))}
-              <Link
-                to={`/jobs?newJob=true&project=${projectId}&tab=stages`}
-                style={{ padding: '0.15rem 0.4rem', background: 'var(--bg-sky-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-sky-700)' }}
-              >
-                + Create Job
-              </Link>
+              {canCreateJobs && (
+                <Link
+                  to={`/jobs?newJob=true&project=${projectId}&tab=stages`}
+                  style={{ padding: '0.15rem 0.4rem', background: 'var(--bg-sky-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-sky-700)' }}
+                >
+                  + Create Job
+                </Link>
+              )}
             </div>
             {canManageStages && projectSubRoster.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
