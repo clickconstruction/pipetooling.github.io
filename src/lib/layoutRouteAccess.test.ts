@@ -36,7 +36,10 @@ describe('deep links into allowed roots (v2.2325: allowlists were exact-match an
     expect(isPathAllowedForRole('superintendent', '/estimates/123', false)).toBe(true)
     expect(isPathAllowedForRole('superintendent', '/workflows/abc', false)).toBe(true)
     expect(isPathAllowedForRole('primary', '/estimates/123', false)).toBe(true)
-    expect(isPathAllowedForRole('primary', '/workflows/abc', false)).toBe(true)
+    // v2.2836: primaries lost /workflows — the steps SELECT policy has no primary branch, so the
+    // page was always "No steps assigned to you"; Layout now redirects like it does for /projects.
+    expect(isPathAllowedForRole('primary', '/workflows/abc', false)).toBe(false)
+    expect(isPathAllowedForRole('primary', '/workflows', false)).toBe(false)
     expect(isPathAllowedForRole('subcontractor', '/checklist/', false)).toBe(true)
     expect(isPathAllowedForRole('helpers', '/my-statement/weekly', false)).toBe(true)
   })

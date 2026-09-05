@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-09-03
+last_updated: 2026-09-05
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -80,7 +80,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 5. **helpers** - Field workers with **the same app routing, RLS parity, and Clock/Dispatch service-type rules as subcontractors**; scoped via `helpers_service_type_ids` (same semantics as `subcontractor_service_type_ids`)
 6. **estimator** - Bid estimation specialists
 7. **primary** - Materials and job reports specialist, **scoped to their own work since v2.2174–2177**: bids they are estimator/account manager/creator of, estimates they created or on jobs they are Account Man for, jobs they are Account Man for; Jobs page shows the Reports tab only; Dashboard with Recent Reports, My Bids and Send task
-8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only; no People page)
+8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only — DB-enforced on every project surface since v2.2836; no People page)
 9. **controller** - Bookkeeper/financial controller (v2.662): **acts like an assistant everywhere** (client `isAssistantLike()`, DB `is_assistant()` are assistant-LIKE) **plus dev-level financial visibility** — Payroll tab, wages/pay stubs (`has_payroll_access()`), team labor totals, Job Summary labor/profit, Cost breakdown team labor, and the checklist/roadmap **task cost lens** (`checklist_item_costs` RLS `is_dev() OR is_controller()`, migration 20260824235336 — deliberately narrower than `has_payroll_access()`). Not dev admin (no user management, impersonation, backups, deletes).
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
@@ -559,13 +559,13 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Layout Behavior**:
 - Navigation shows: Dashboard, Estimates, Jobs, Bids ([`Layout.tsx`](../src/components/Layout.tsx)); other allowed routes (Materials, Documents, Calendar, Checklist, Settings, Tally, Help — `PRIMARY_PATHS` in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)) are reachable directly or via the gear menu. No Prospects access.
-- Attempts to access blocked pages (e.g. Projects) redirect to `/dashboard`
+- Attempts to access blocked pages (e.g. Projects, Workflow) redirect to `/dashboard`. `/workflows` left `PRIMARY_PATHS` in v2.2836: the `project_workflow_steps` SELECT policy has no primary branch, so the page was always empty for a primary and nothing in the app linked to it (journey map D3).
 
 ---
 
 ### superintendent (Superintendent)
 
-**Purpose**: Run jobs, manage subcontractors, and draft bids. Same access as assistants for projects, but only those they are assigned to.
+**Purpose**: Run jobs, manage subcontractors, and draft bids. Same access as assistants for projects, but only those they are assigned to (`project_superintendents`) — enforced by every project-access helper since v2.2836 (`20260905100000_project_access_assigned_superintendents.sql`); before that, the 3-arg `can_access_project_row` the `projects` policy calls still granted through `master_superintendents` adoption, which v2.921 made company-wide, so every superintendent read every project.
 
 **Access**:
 - Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
@@ -583,11 +583,11 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 **Project-Level Superintendent Assignment (Required for Project Access)**:
 - Devs, masters, and assistants assign superintendents to specific projects via the Workflow page (Assigned Superintendents section)
 - `project_superintendents(project_id, superintendent_id)` table; RLS uses `can_access_project_row` for assigners
-- Superintendents gain access **only** via project assignment. Adoption (`master_superintendents`) no longer grants project access.
+- Superintendents gain access **only** via project assignment. Adoption (`master_superintendents`) grants no project access — true in code since **v2.2836** for all of: `projects` (3-arg `can_access_project_row` takes the `project_superintendents` branch before any adoption check), `project_workflows` (`can_access_project`), `project_workflow_steps` (`can_access_project_via_workflow` → `can_access_project`), `workflow_step_line_items` CRUD and step-anchored `step_commitments` (`can_access_project_via_step`), and step actions (`can_access_step_for_action`). Each helper branches on `role = 'superintendent'` before consulting `master_adopted_current_user`.
 
-**Master-Superintendents Adoption** (legacy; does not grant project access):
+**Master-Superintendents Adoption** (roster scope, not a project grant):
 - Superintendents are adopted via `master_superintendents` — **auto-maintained company-wide since v2.921** (see `sync_company_access_grants()`)
-- Project access is via `project_superintendents` only
+- What adoption still does for a superintendent: sight of the adopting masters' accounts (`users` SELECT via `master_adopted_current_user`), their `people` roster (assign pickers), Dispatch/schedule blocks, dashboards, bids helpers. Project access is via `project_superintendents` only.
 
 **Permissions**:
 
@@ -648,8 +648,8 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 | **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Customers** | ✅ | ✅ | ✅ | ❌ | ✅ limited | ❌ | ❌ |
 | **Customer Hub** (`/customers/:id`, v2.1775–v2.1780) | ✅ | ✅ | ✅ | ❌ | ✅ (route allowed as a `/customers` subpath; sees the same money strip/tabs — mirrors the CustomerProfileModal precedent) | ❌ | ❌ |
-| **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only |
-| **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ✅ limited |
+| **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only (RLS, v2.2836) |
+| **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ (route dropped v2.2836 — steps SELECT has no primary branch) | ✅ limited, assigned projects only (RLS, v2.2836) |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports tab only (`Jobs.tsx` `primaryTabs`); job rows limited to Account-Man jobs (v2.2177) | ✅ Reports + Sub Ledger |
 | **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
@@ -1061,7 +1061,7 @@ master_user_id = auth.uid()
 2. **master_technician**: Full business access (own data + shared)
 3. **controller**: Assistant-level access everywhere plus full payroll/financial visibility (`has_payroll_access()`)
 4. **assistant**: Conditional access (depends on adoption)
-5. **superintendent**: Assigned projects only (run jobs, draft bids, no People/Customers pages)
+5. **superintendent**: Assigned projects only — `project_superintendents`, enforced by RLS on projects/workflows/steps/line items/step work orders since v2.2836 (run jobs, draft bids, no People/Customers pages)
 6. **estimator**: Focused access (bids + materials only)
 7. **primary**: Focused access (materials + job reports only)
 8. **subcontractor**: Minimal access (assigned stages only)
