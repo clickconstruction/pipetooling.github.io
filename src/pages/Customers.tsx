@@ -5,6 +5,8 @@ import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
 import { appliedByInvoiceId, openBillRowsForJob } from '../lib/billing/billTruth'
 import { legacyListOpenBalance, reportBillTruthShadow } from '../lib/billing/billTruthShadow'
+import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
+import { formatErrorMessage } from '../utils/errorHandling'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
@@ -245,55 +247,97 @@ export default function Customers() {
     setCustomers(customersWithMasters)
     const customerIds = customersWithMasters.map((c) => c.id)
     if (customerIds.length > 0) {
-      const [projectsRes, jobsRes, bidsRes, contactsRes, invoicesRes, paymentsRes, estimatesRes] = await Promise.all([
-        supabase.from('projects').select('customer_id').in('customer_id', customerIds),
-        supabase
-          .from('jobs_ledger')
-          .select('id, customer_id, status, revenue, payments_made, created_at')
-          .in('customer_id', customerIds),
-        supabase.from('bids').select('customer_id, created_at').in('customer_id', customerIds),
-        supabase.from('customer_contacts').select('customer_id').in('customer_id', customerIds),
-        supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount'),
-        supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on'),
-        supabase.from('estimates').select('customer_id, created_at').in('customer_id', customerIds),
-      ])
+      try {
+        // Chunked `.in()` + paged (Phase 4 #3(c) — J34-N1/N2): the per-customer reads used to
+        // put every customer id in ONE URL, and the invoice/payment reads were whole-table
+        // and silently capped at PostgREST's 1,000 rows — every money chip, the header
+        // total, "Owes money" and "$ Top customers" drifted with no error and no chip.
+        const [projectRows, jobRows, bidRows, contactRows, estimateRows] = await Promise.all([
+          fetchAllRowsChunkedIn(
+            customerIds,
+            (chunk, from, to) => supabase.from('projects').select('customer_id').in('customer_id', chunk).order('id').range(from, to),
+            'customers list projects',
+          ),
+          fetchAllRowsChunkedIn(
+            customerIds,
+            (chunk, from, to) =>
+              supabase
+                .from('jobs_ledger')
+                .select('id, customer_id, status, revenue, payments_made, created_at')
+                .in('customer_id', chunk)
+                .order('id')
+                .range(from, to),
+            'customers list jobs',
+          ),
+          fetchAllRowsChunkedIn(
+            customerIds,
+            (chunk, from, to) => supabase.from('bids').select('customer_id, created_at').in('customer_id', chunk).order('id').range(from, to),
+            'customers list bids',
+          ),
+          fetchAllRowsChunkedIn(
+            customerIds,
+            (chunk, from, to) => supabase.from('customer_contacts').select('customer_id').in('customer_id', chunk).order('id').range(from, to),
+            'customers list contacts',
+          ),
+          fetchAllRowsChunkedIn(
+            customerIds,
+            (chunk, from, to) => supabase.from('estimates').select('customer_id, created_at').in('customer_id', chunk).order('id').range(from, to),
+            'customers list estimates',
+          ),
+        ])
+        // Money rows exist per job, so key them by the jobs just loaded — the same join
+        // `customersListRollup` makes — instead of reading the whole invoice/payment tables.
+        const jobIds = jobRows.map((j) => j.id)
+        const [invoiceRows, paymentRows] = await Promise.all([
+          fetchAllRowsChunkedIn(
+            jobIds,
+            (chunk, from, to) => supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount').in('job_id', chunk).order('id').range(from, to),
+            'customers list invoices',
+          ),
+          fetchAllRowsChunkedIn(
+            jobIds,
+            (chunk, from, to) =>
+              supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', chunk).order('id').range(from, to),
+            'customers list payments',
+          ),
+        ])
       const counts: Record<string, { projects: number; jobs: number; bids: number; notes: number }> = {}
       for (const id of customerIds) counts[id] = { projects: 0, jobs: 0, bids: 0, notes: 0 }
-      for (const r of (projectsRes.data ?? [])) {
+      for (const r of projectRows) {
         const entry = r.customer_id ? counts[r.customer_id] : undefined
         if (entry) entry.projects++
       }
-      for (const r of (jobsRes.data ?? [])) {
+      for (const r of jobRows) {
         const entry = r.customer_id ? counts[r.customer_id] : undefined
         if (entry) entry.jobs++
       }
-      for (const r of (bidsRes.data ?? [])) {
+      for (const r of bidRows) {
         const entry = r.customer_id ? counts[r.customer_id] : undefined
         if (entry) entry.bids++
       }
-      for (const r of (contactsRes.data ?? [])) {
+      for (const r of contactRows) {
         const entry = r.customer_id ? counts[r.customer_id] : undefined
         if (entry) entry.notes++
       }
       setCountsByCustomerId(counts)
       const rollup = customersListRollup(
-        (jobsRes.data ?? []) as LcvJobRow[],
-        (invoicesRes.data ?? []) as LcvInvoiceRow[],
-        (paymentsRes.data ?? []) as LcvPaymentRow[],
+        jobRows as LcvJobRow[],
+        invoiceRows as LcvInvoiceRow[],
+        paymentRows as LcvPaymentRow[],
       )
       setRollupByCustomerId(rollup)
       // Bill-truth shadow (one release, journey J34-N6): the list used to clamp each CUSTOMER's
       // open balance at 0 after netting unclamped shells; the kernel clamps per row. Log-only.
       {
-        const applied = appliedByInvoiceId((paymentsRes.data ?? []) as LcvPaymentRow[])
+        const applied = appliedByInvoiceId(paymentRows as LcvPaymentRow[])
         const invByJob = new Map<string, LcvInvoiceRow[]>()
-        for (const inv of (invoicesRes.data ?? []) as LcvInvoiceRow[]) {
+        for (const inv of invoiceRows as LcvInvoiceRow[]) {
           const list = invByJob.get(inv.job_id)
           if (list) list.push(inv)
           else invByJob.set(inv.job_id, [inv])
         }
         const legacyByCustomer = new Map<string, ReturnType<typeof openBillRowsForJob>>()
-        for (const j of (jobsRes.data ?? []) as LcvJobRow[]) {
+        for (const j of jobRows as LcvJobRow[]) {
           if (!j.customer_id) continue
           const rows = openBillRowsForJob(
             { id: j.id, status: j.status, revenue: j.revenue, payments_made: j.payments_made ?? 0 },
@@ -313,10 +357,10 @@ export default function Customers() {
       // Paid jobs with zero payment rows (HCP imports): the money rail reads
       // rows, so these show $0 collected until backfilled.
       const jobIdsWithPaymentRows = new Set(
-        ((paymentsRes.data ?? []) as LcvPaymentRow[]).map((p) => p.job_id),
+        (paymentRows as LcvPaymentRow[]).map((p) => p.job_id),
       )
       setUnrecordedPaidCount(
-        ((jobsRes.data ?? []) as LcvJobRow[]).filter(
+        (jobRows as LcvJobRow[]).filter(
           (j) => j.status === 'paid' && Number(j.revenue ?? 0) > 0 && !jobIdsWithPaymentRows.has(j.id),
         ).length,
       )
@@ -326,13 +370,16 @@ export default function Customers() {
         const prev = signal[cid]
         if (!prev || iso > prev) signal[cid] = iso
       }
-      for (const r of (bidsRes.data ?? []) as Array<{ customer_id: string | null; created_at: string | null }>) {
+      for (const r of bidRows as Array<{ customer_id: string | null; created_at: string | null }>) {
         stampSignal(r.customer_id, r.created_at)
       }
-      for (const r of (estimatesRes.data ?? []) as Array<{ customer_id: string | null; created_at: string | null }>) {
+      for (const r of estimateRows as Array<{ customer_id: string | null; created_at: string | null }>) {
         stampSignal(r.customer_id, r.created_at)
       }
       setRecentSignalByCustomerId(signal)
+      } catch (e) {
+        setError(formatErrorMessage(e))
+      }
     }
     const unlinkedRes = await supabase
       .from('jobs_ledger')

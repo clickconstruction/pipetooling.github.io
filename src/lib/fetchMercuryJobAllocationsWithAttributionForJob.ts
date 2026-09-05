@@ -2,6 +2,9 @@ import { supabase } from './supabase'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { fetchAttributionsByMercuryTxIds } from './fetchMercuryRelationsByTxIds'
+import { fetchAllRows } from './supabasePaging'
+import { cardChargeAllocationCounts, cardChargeAllocationIsInvoiceLinked } from './jobs/cardChargeAllocationFilter'
+import { loadCardChargeExclusions } from './jobs/loadCardChargeExclusions'
 
 type MtSelect = {
   posted_at: string | null
@@ -21,6 +24,8 @@ export type MercuryJobAllocationWithAttributionRow = {
   /** Needed to open alloc modal or dedupe by transaction. */
   mercury_transaction_id: string
   attributionDisplayName: string | null
+  /** The charge is also linked to a supply-house invoice — Job Summary counts the purchase once (same rule as the bulk card-charge map). */
+  linkedToSupplyInvoice: boolean
   mercury_transactions: MtSelect | null
 }
 
@@ -36,23 +41,39 @@ type RawAlloc = {
  * Loads Mercury job allocations for one job and resolves `attributionDisplayName`
  * from `mercury_transaction_attributions` + `people` / `users` names.
  * Mirrors Job Summary’s client logic.
+ *
+ * Paged (a job can outgrow PostgREST's 1,000-row cap) and filtered by the same
+ * `cardChargeAllocationFilter` rule as the Jobs bulk card-charge map: rows whose
+ * transaction sits in the Internal Transfers bucket are not a cost and are
+ * dropped here too, so the detail / print rows always sum to the card total;
+ * invoice-linked rows stay and carry `linkedToSupplyInvoice`.
  */
 export async function fetchMercuryJobAllocationsWithAttributionForJob(
   jobId: string,
   operationLabel: string,
 ): Promise<MercuryJobAllocationWithAttributionRow[]> {
-  const data = await withSupabaseRetry(
-    async () =>
-      await supabase
-        .from('mercury_transaction_job_allocations')
-        .select(
-          'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, mercury_account_id, raw)',
-        )
-        .eq('job_id', jobId)
-        .order('created_at', { ascending: true }),
-    `${operationLabel} mercury allocations`,
-  )
-  const rawRows = (data ?? []) as RawAlloc[]
+  const label = `${operationLabel} mercury allocations`
+  const allRows = (await fetchAllRows(
+    async (from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('mercury_transaction_job_allocations')
+            .select(
+              'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, mercury_account_id, raw)',
+            )
+            .eq('job_id', jobId)
+            .order('created_at', { ascending: true })
+            .order('id')
+            .range(from, to),
+        label,
+      )) as RawAlloc[] | null,
+      error: null,
+    }),
+    label,
+  )) as RawAlloc[]
+  const exclusions = await loadCardChargeExclusions([...new Set(allRows.map((r) => r.mercury_transaction_id))])
+  const rawRows = allRows.filter((r) => cardChargeAllocationCounts(r, exclusions))
   const attrByTxId = new Map<string, { person_id: string | null; user_id: string | null }>()
   const personNameById = new Map<string, string>()
   const userNameById = new Map<string, string>()
@@ -110,6 +131,7 @@ export async function fetchMercuryJobAllocationsWithAttributionForJob(
       mercury_transaction_id: r.mercury_transaction_id,
       mercury_transactions: r.mercury_transactions,
       attributionDisplayName,
+      linkedToSupplyInvoice: cardChargeAllocationIsInvoiceLinked(r, exclusions),
     }
   })
 }

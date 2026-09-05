@@ -27,6 +27,7 @@
  */
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchAllRows } from '../supabasePaging'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
 import { buildJobsStagesBoardLists, type StageRow } from '../jobsStagesBoard'
 import {
@@ -70,33 +71,64 @@ export async function fetchStagesHeaderStats(
   now = new Date(),
 ): Promise<FetchStagesHeaderStatsResult> {
   try {
-    let jobsQ = supabase
-      .from('jobs_ledger')
-      .select(LEAN_STATS_JOB_COLUMNS)
-      .or(`status.in.(${LEAN_STATS_ACTIVE_JOB_STATUSES.join(',')}),status.is.null`)
-    if (customerFilter) jobsQ = jobsQ.eq('customer_id', customerFilter)
+    // Paged (Phase 4 #3(c)): these are bounded-but-unranged company-wide reads; the
+    // invoice-linked payments clause grows with company age and an un-ranged read is
+    // silently cut at PostgREST's 1,000 rows — the header's billed/collected numbers
+    // would drift with no error. Fresh builder per page; `.order('id')` keeps pages stable.
+    const makeJobsQ = () => {
+      let q = supabase
+        .from('jobs_ledger')
+        .select(LEAN_STATS_JOB_COLUMNS)
+        .or(`status.in.(${LEAN_STATS_ACTIVE_JOB_STATUSES.join(',')}),status.is.null`)
+      if (customerFilter) q = q.eq('customer_id', customerFilter)
+      return q.order('id')
+    }
     let paidQ = supabase.from('jobs_ledger').select('id', { count: 'exact', head: true }).eq('status', 'paid')
     if (customerFilter) paidQ = paidQ.eq('customer_id', customerFilter)
     const [jobRows, paidCount, invoiceRows, paymentRows] = await Promise.all([
-      withSupabaseRetry(async () => jobsQ, 'stages header stats: jobs'),
+      fetchAllRows(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(async () => makeJobsQ().range(from, to), 'stages header stats: jobs')) as unknown as
+            | LeanStatsJobRow[]
+            | null,
+          error: null,
+        }),
+        'stages header stats: jobs',
+      ),
       withSupabaseRetry(async () => {
         const { count, error } = await paidQ
         return { data: count ?? 0, error }
       }, 'stages header stats: paid count'),
-      withSupabaseRetry(
-        async () =>
-          supabase
-            .from('jobs_ledger_invoices')
-            .select(LEAN_STATS_INVOICE_COLUMNS)
-            .in('status', [...LEAN_STATS_ACTIVE_INVOICE_STATUSES]),
+      fetchAllRows(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('jobs_ledger_invoices')
+                .select(LEAN_STATS_INVOICE_COLUMNS)
+                .in('status', [...LEAN_STATS_ACTIVE_INVOICE_STATUSES])
+                .order('id')
+                .range(from, to),
+            'stages header stats: invoices',
+          )) as unknown as LeanStatsInvoiceRow[] | null,
+          error: null,
+        }),
         'stages header stats: invoices',
       ),
-      withSupabaseRetry(
-        async () =>
-          supabase
-            .from('jobs_ledger_payments')
-            .select(LEAN_STATS_PAYMENT_COLUMNS)
-            .or(`invoice_id.not.is.null,paid_on.gte.${collectedWindowStartYmd(now)}`),
+      fetchAllRows(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('jobs_ledger_payments')
+                .select(LEAN_STATS_PAYMENT_COLUMNS)
+                .or(`invoice_id.not.is.null,paid_on.gte.${collectedWindowStartYmd(now)}`)
+                .order('id')
+                .range(from, to),
+            'stages header stats: payments',
+          )) as unknown as LeanStatsPaymentRow[] | null,
+          error: null,
+        }),
         'stages header stats: payments',
       ),
     ])

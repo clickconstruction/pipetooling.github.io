@@ -14,27 +14,11 @@ import { isSelectableOption } from '../components/SearchableSelect'
 import { mercuryQuickAssignUserAttribution } from '../lib/mercuryQuickAssignUserAttribution'
 import type { BankingAttributionUser } from '../lib/mercuryCardNicknameUserMatch'
 import type { JobWithDetails } from '../types/jobWithDetails'
-import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
-import { fetchAccountingBucketByTxId } from '../lib/overheadPartsBucketLoader'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { costLineTags, sumTagChargesByJob } from '../lib/mercuryTagSplit'
 import { fetchLabelIdByTxId, useCategoryTags } from '../lib/banking/categoryTagsData'
-
-/** Mercury tx ids (among `txIds`) that carry a supply-house invoice link — the same purchase seen twice. */
-async function fetchMercuryTxIdsLinkedToSupplyInvoices(txIds: readonly string[]): Promise<Set<string>> {
-  if (txIds.length === 0) return new Set()
-  const rows = (await fetchAllRowsChunkedIn(
-    [...txIds],
-    (chunk, from, to) =>
-      supabase
-        .from('mercury_transaction_supply_house_invoice_links')
-        .select('mercury_transaction_id')
-        .in('mercury_transaction_id', chunk)
-        .order('id')
-        .range(from, to),
-    'mercury invoice links by tx',
-  )) as Array<{ mercury_transaction_id: string }>
-  return new Set(rows.map((r) => r.mercury_transaction_id))
-}
+import { summarizeCardChargeAllocations, sumCardChargeAllocationsForJob } from '../lib/jobs/cardChargeAllocationFilter'
+import { loadCardChargeExclusions } from '../lib/jobs/loadCardChargeExclusions'
 
 /**
  * Parts/Job Summary shared Mercury-allocation engine (Jobs.tsx decomposition
@@ -133,12 +117,12 @@ export function useJobsMercuryAllocations({
           'mercury card charges by job',
         )) as Array<{ job_id: string; amount: number; mercury_transaction_id: string }>
         const txIds = [...new Set(rows.map((r) => r.mercury_transaction_id))]
-        // Internal Transfers are money moving between the org's own accounts,
-        // not a cost — the same exclusion People → Overhead applies (v2.2692).
-        // Bucket/link lookups degrade to "everything counts" when RLS hides them.
-        const [bucketByTxId, linkedTxIds, categoryRows, labelIdByTxId] = await Promise.all([
-          fetchAccountingBucketByTxId(txIds).catch(() => new Map<string, string>()),
-          fetchMercuryTxIdsLinkedToSupplyInvoices(txIds).catch(() => new Set<string>()),
+        // Which rows count (Internal Transfers out) and which are invoice-linked is
+        // ONE rule shared with the per-job detail and the post-save refresh —
+        // `lib/jobs/cardChargeAllocationFilter` (v2.2692 exclusions; unified in
+        // Phase 4 #3(c)). Lookups degrade to "everything counts" when RLS hides them.
+        const [exclusions, categoryRows, labelIdByTxId] = await Promise.all([
+          loadCardChargeExclusions(txIds),
           // Bank category — the fallback for transactions nobody has labelled yet (v2.2708 → v2.2725).
           fetchAllRowsChunkedIn(
             txIds,
@@ -149,21 +133,11 @@ export function useJobsMercuryAllocations({
           fetchLabelIdByTxId(txIds).catch(() => new Map<string, string>()),
         ])
         if (cancelled) return
-        const m = new Map<string, number>()
-        const linked = new Map<string, number>()
-        const counted: typeof rows = []
-        for (const row of rows) {
-          if (bucketByTxId.get(row.mercury_transaction_id) === 'internal_transfer') continue
-          counted.push(row)
-          const jid = row.job_id
-          const usd = Math.abs(Number(row.amount))
-          m.set(jid, (m.get(jid) ?? 0) + usd)
-          if (linkedTxIds.has(row.mercury_transaction_id)) linked.set(jid, (linked.get(jid) ?? 0) + usd)
-        }
+        const { counted, chargesByJobId, invoiceLinkedByJobId } = summarizeCardChargeAllocations(rows, exclusions)
         const categoryByTxId = new Map<string, unknown>()
         for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
-        setMercuryCardChargesByJobId(m)
-        setMercuryInvoiceLinkedChargesByJobId(linked)
+        setMercuryCardChargesByJobId(chargesByJobId)
+        setMercuryInvoiceLinkedChargesByJobId(invoiceLinkedByJobId)
         setMercuryTagChargesByJobId(sumTagChargesByJob(counted, labelIdByTxId, categoryByTxId, tagLookups))
       } catch {
         if (cancelled) return
@@ -217,20 +191,41 @@ export function useJobsMercuryAllocations({
   )
 
   const updateMercuryCardTotalForOneJob = useCallback((jobId: string) => {
-    void withSupabaseRetry(
-      async () =>
-        supabase.from('mercury_transaction_job_allocations').select('amount').eq('job_id', jobId),
-      'mercury card charges for one job (parts refresh)',
-    )
-      .then((rows) => {
-        const sum = (rows ?? []).reduce((a, r) => a + Math.abs(Number(r.amount)), 0)
-        setMercuryCardChargesByJobId((m) => {
-          const n = new Map(m)
-          n.set(jobId, sum)
-          return n
-        })
+    // Same paging + the same exclusion rule as the bulk map above, so a saved
+    // split never shows a gross-including-Internal-Transfers total until the
+    // next full load (#3b asymmetry #2).
+    void (async () => {
+      const label = 'mercury card charges for one job (parts refresh)'
+      const rows = (await fetchAllRows(
+        async (from, to) => ({
+          data: (await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('mercury_transaction_job_allocations')
+                .select('amount, mercury_transaction_id')
+                .eq('job_id', jobId)
+                .order('id')
+                .range(from, to),
+            label,
+          )) as Array<{ amount: number; mercury_transaction_id: string }> | null,
+          error: null,
+        }),
+        label,
+      )) as Array<{ amount: number; mercury_transaction_id: string }>
+      const exclusions = await loadCardChargeExclusions([...new Set(rows.map((r) => r.mercury_transaction_id))])
+      const { charges, invoiceLinked } = sumCardChargeAllocationsForJob(rows, exclusions)
+      setMercuryCardChargesByJobId((m) => {
+        const n = new Map(m)
+        n.set(jobId, charges)
+        return n
       })
-      .catch(() => {})
+      setMercuryInvoiceLinkedChargesByJobId((m) => {
+        const n = new Map(m)
+        if (invoiceLinked > 0) n.set(jobId, invoiceLinked)
+        else n.delete(jobId)
+        return n
+      })
+    })().catch(() => {})
   }, [])
 
   const dismissPartsUnattributedList = useCallback(() => {

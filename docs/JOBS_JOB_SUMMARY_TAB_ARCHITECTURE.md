@@ -52,7 +52,7 @@ This file issues no queries. The props it calls resolve to:
 | Prop called here | Parent implementation | Tables / RPCs |
 |---|---|---|
 | `loadJobSummaryInvoiceLinesForJob` | `useJobSummaryData` | RPC `get_invoice_allocation_lines_for_jobs` |
-| `loadJobSummaryMercuryAllocationsForJob` | `useJobSummaryData` → `fetchMercuryJobAllocationsWithAttributionForJob` | `mercury_transaction_job_allocations` + `mercury_transactions` |
+| `loadJobSummaryMercuryAllocationsForJob` | `useJobSummaryData` → `fetchMercuryJobAllocationsWithAttributionForJob` (paged; Internal-Transfers rows dropped and invoice-linked rows flagged by `lib/jobs/cardChargeAllocationFilter`, the bulk card-charge map's rule — v2.2870) | `mercury_transaction_job_allocations` + `mercury_transactions` (+ drag-sort buckets, supply-invoice links) |
 | `printJobSummaryCostBreakdown` | Jobs.tsx thunk (~line 530) → `buildJobSummaryCostBreakdownHtml` | RPC `get_invoice_allocation_lines_for_jobs` (fallback when cache cold) |
 | `handleJobSummaryMercuryReassignFromDrilldown` | `useJobsMercuryAllocations` | mercury allocation modal flow (`mercury_transaction_job_allocations` etc.) |
 | (data props) `jobSummaryClockSessionsByJobId`, `jobSummaryReportsByJobId`, `jobSummaryReportPctByJobId`, ledger jobs | `useJobSummaryData` | `clock_sessions`, `reports`, RPC `list_latest_report_completion_pct`, ledger via `fetchJobsLedgerWithDetailsForStages` |

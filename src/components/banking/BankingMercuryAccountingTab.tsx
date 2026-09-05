@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import type { Database, Json } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { fetchAllRows, warnIfRowCapHit } from '../../lib/supabasePaging'
+import { fetchAllRows } from '../../lib/supabasePaging'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
@@ -608,9 +608,24 @@ export function BankingMercuryAccountingTab({
         withSupabaseRetry(async () => {
           return supabase.from('mercury_accounting_label_rules').select('*').order('sort_order').order('id')
         }, 'accounting load rules'),
-        withSupabaseRetry(async () => {
-          return supabase.from('mercury_accounting_label_suggestions').select('rule_id').eq('status', 'approved')
-        }, 'accounting rule usage'),
+        // Paged (Phase 4 #3(c)): approved suggestions outgrow PostgREST's 1,000-row cap after
+        // a few rule passes, and an un-ranged read under-counted every rule's "used N×".
+        fetchAllRows<{ rule_id: string }>(
+          async (from, to) => ({
+            data: (await withSupabaseRetry(
+              async () =>
+                supabase
+                  .from('mercury_accounting_label_suggestions')
+                  .select('rule_id')
+                  .eq('status', 'approved')
+                  .order('id')
+                  .range(from, to),
+              'accounting rule usage',
+            )) as { rule_id: string }[] | null,
+            error: null,
+          }),
+          'accounting rule usage',
+        ),
       ])
       const list = (rulesData as RuleRow[]) ?? []
       setRules(list)
@@ -751,19 +766,26 @@ export function BankingMercuryAccountingTab({
     async (ruleId: string, draft: AccountingRuleSaveDraft) => {
       if (draft.attributedPersonId == null && draft.attributedUserId == null) return
       try {
-        const rows = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('mercury_accounting_label_suggestions')
-              .select('mercury_transaction_id')
-              .eq('rule_id', ruleId)
-              .eq('status', 'approved')
-              .limit(100000),
+        // Paged (Phase 4 #3(c)): a `.limit(100000)` is still cut to 1,000 rows by PostgREST,
+        // so a big rule's backfill offer would have silently skipped the rest.
+        const rows = await fetchAllRows<{ mercury_transaction_id: string }>(
+          async (from, to) => ({
+            data: (await withSupabaseRetry(
+              async () =>
+                supabase
+                  .from('mercury_accounting_label_suggestions')
+                  .select('mercury_transaction_id')
+                  .eq('rule_id', ruleId)
+                  .eq('status', 'approved')
+                  .order('id')
+                  .range(from, to),
+              'accounting backfill candidates',
+            )) as { mercury_transaction_id: string }[] | null,
+            error: null,
+          }),
           'accounting backfill candidates',
         )
-        // Still un-ranged (a per-rule list; rarely near the cap) — surface the cap if it ever hits.
-        warnIfRowCapHit('accounting backfill candidates', (rows ?? []).length)
-        const ids = [...new Set(((rows ?? []) as { mercury_transaction_id: string }[]).map((r) => r.mercury_transaction_id))]
+        const ids = [...new Set(rows.map((r) => r.mercury_transaction_id))]
         if (ids.length === 0) return
         const value = draft.attributedPersonId ? `p:${draft.attributedPersonId}` : `u:${draft.attributedUserId}`
         setBackfillPrompt({

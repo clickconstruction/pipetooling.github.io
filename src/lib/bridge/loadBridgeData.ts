@@ -1,7 +1,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
-import { fetchAllRows } from '../supabasePaging'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { loadOverheadPoolSnapshot, loadOverheadPoolSnapshotInputs } from '../overheadPoolSnapshot'
 import { buildEarnedRevenue, type EarnedRevenueJob, type EarnedRevenueResult } from './earnedRevenue'
 import { upcomingFridays } from './cashForecast'
@@ -199,52 +199,115 @@ export async function loadBridgeData(): Promise<BridgeData> {
     if (d >= windowStart && d <= todayYmd) addTo(bankFlowByDay, d, Number(t.amount ?? 0))
   }
   const txDay = new Map(txRows.filter((t) => Number(t.amount ?? 0) < 0).map((t) => [t.id, calendarYmdInAppTzFromIso(t.posted_at)]))
-  for (const ids of chunks([...txDay.keys()], 200)) {
-    const rows = (await withSupabaseRetry(
-      async () => supabase.from('mercury_transaction_job_allocations').select('mercury_transaction_id, job_id, amount').in('mercury_transaction_id', ids),
-      'bridge tx allocations',
-    )) as Array<{ mercury_transaction_id: string; job_id: string | null; amount: number | null }> | null
-    for (const a of rows ?? []) {
-      if (!a.job_id || a.job_id === officeJobLedgerId) continue
-      const d = txDay.get(a.mercury_transaction_id)
-      if (d && d >= windowStart && d <= todayYmd) addTo(materialsByDay, d, Math.abs(Number(a.amount ?? 0)))
-    }
+  // Every read below is paged (Phase 4 #3(c)): a 200-id `.in()` chunk can still return
+  // >1,000 child rows, and the windowed whole-set reads cross PostgREST's silent cap as
+  // the window's history grows — either way a Bridge day total drops rows with no error.
+  type TxAllocRow = { mercury_transaction_id: string; job_id: string | null; amount: number | null }
+  const txAllocRows = await fetchAllRowsChunkedIn(
+    [...txDay.keys()],
+    async (chunk, from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('mercury_transaction_job_allocations')
+            .select('mercury_transaction_id, job_id, amount')
+            .in('mercury_transaction_id', chunk)
+            .order('id')
+            .range(from, to),
+        'bridge tx allocations',
+      )) as TxAllocRow[] | null,
+      error: null,
+    }),
+    'bridge tx allocations',
+    { chunkSize: 200 },
+  )
+  for (const a of txAllocRows) {
+    if (!a.job_id || a.job_id === officeJobLedgerId) continue
+    const d = txDay.get(a.mercury_transaction_id)
+    if (d && d >= windowStart && d <= todayYmd) addTo(materialsByDay, d, Math.abs(Number(a.amount ?? 0)))
   }
   // Materials: supply-house invoices allocated to non-office jobs, by invoice date.
-  const invRows = (await withSupabaseRetry(
-    async () => supabase.from('supply_house_invoices').select('id, amount, invoice_date, paid_at').gte('invoice_date', windowStart).lte('invoice_date', todayYmd),
+  type SupplyInvRow = { id: string; amount: number | null; invoice_date: string; paid_at: string | null }
+  const invRows = await fetchAllRows(
+    async (from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('supply_house_invoices')
+            .select('id, amount, invoice_date, paid_at')
+            .gte('invoice_date', windowStart)
+            .lte('invoice_date', todayYmd)
+            .order('id')
+            .range(from, to),
+        'bridge supply invoices',
+      )) as SupplyInvRow[] | null,
+      error: null,
+    }),
     'bridge supply invoices',
-  )) as Array<{ id: string; amount: number | null; invoice_date: string; paid_at: string | null }> | null
-  const invById = new Map((invRows ?? []).map((r) => [r.id, r]))
-  for (const ids of chunks([...invById.keys()], 200)) {
-    const rows = (await withSupabaseRetry(
-      async () => supabase.from('supply_house_invoice_job_allocations').select('invoice_id, job_id, pct').in('invoice_id', ids),
-      'bridge supply allocations',
-    )) as Array<{ invoice_id: string; job_id: string | null; pct: number | null }> | null
-    for (const a of rows ?? []) {
-      const inv = invById.get(a.invoice_id)
-      if (!inv || !a.job_id || a.job_id === officeJobLedgerId) continue
-      addTo(materialsByDay, inv.invoice_date, Number(inv.amount ?? 0) * (Number(a.pct ?? 0) / 100))
-    }
+  )
+  const invById = new Map(invRows.map((r) => [r.id, r]))
+  type SupplyAllocRow = { invoice_id: string; job_id: string | null; pct: number | null }
+  const supplyAllocRows = await fetchAllRowsChunkedIn(
+    [...invById.keys()],
+    async (chunk, from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('supply_house_invoice_job_allocations')
+            .select('invoice_id, job_id, pct')
+            .in('invoice_id', chunk)
+            .order('id')
+            .range(from, to),
+        'bridge supply allocations',
+      )) as SupplyAllocRow[] | null,
+      error: null,
+    }),
+    'bridge supply allocations',
+    { chunkSize: 200 },
+  )
+  for (const a of supplyAllocRows) {
+    const inv = invById.get(a.invoice_id)
+    if (!inv || !a.job_id || a.job_id === officeJobLedgerId) continue
+    addTo(materialsByDay, inv.invoice_date, Number(inv.amount ?? 0) * (Number(a.pct ?? 0) / 100))
   }
   // Sub labor sheets by job date.
   const subByDay = new Map<string, number>()
-  const sheets = (await withSupabaseRetry(
-    async () => supabase.from('people_labor_jobs').select('id, job_date').gte('job_date', windowStart).lte('job_date', todayYmd),
+  const sheets = await fetchAllRows(
+    async (from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase.from('people_labor_jobs').select('id, job_date').gte('job_date', windowStart).lte('job_date', todayYmd).order('id').range(from, to),
+        'bridge sub sheets',
+      )) as Array<{ id: string; job_date: string }> | null,
+      error: null,
+    }),
     'bridge sub sheets',
-  )) as Array<{ id: string; job_date: string }> | null
-  const sheetDay = new Map((sheets ?? []).map((s) => [s.id, s.job_date]))
-  for (const ids of chunks([...sheetDay.keys()], 200)) {
-    const items = (await withSupabaseRetry(
-      async () => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, labor_rate, direct_labor_amount').in('job_id', ids),
-      'bridge sub items',
-    )) as Array<{ job_id: string; count: number | null; hrs_per_unit: number | null; labor_rate: number | null; direct_labor_amount: number | null }> | null
-    for (const it of items ?? []) {
-      const d = sheetDay.get(it.job_id)
-      if (!d) continue
-      const v = it.direct_labor_amount != null ? Number(it.direct_labor_amount) : Number(it.count ?? 0) * Number(it.hrs_per_unit ?? 0) * Number(it.labor_rate ?? 0)
-      addTo(subByDay, d, v)
-    }
+  )
+  const sheetDay = new Map(sheets.map((s) => [s.id, s.job_date]))
+  type SubItemRow = { job_id: string; count: number | null; hrs_per_unit: number | null; labor_rate: number | null; direct_labor_amount: number | null }
+  const subItems = await fetchAllRowsChunkedIn(
+    [...sheetDay.keys()],
+    async (chunk, from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('people_labor_job_items')
+            .select('job_id, count, hrs_per_unit, labor_rate, direct_labor_amount')
+            .in('job_id', chunk)
+            .order('id')
+            .range(from, to),
+        'bridge sub items',
+      )) as SubItemRow[] | null,
+      error: null,
+    }),
+    'bridge sub items',
+    { chunkSize: 200 },
+  )
+  for (const it of subItems) {
+    const d = sheetDay.get(it.job_id)
+    if (!d) continue
+    const v = it.direct_labor_amount != null ? Number(it.direct_labor_amount) : Number(it.count ?? 0) * Number(it.hrs_per_unit ?? 0) * Number(it.labor_rate ?? 0)
+    addTo(subByDay, d, v)
   }
 
   // Net position history flows (v2.2726): invoices sent, payments received,
@@ -253,22 +316,55 @@ export async function loadBridgeData(): Promise<BridgeData> {
   const paymentsReceivedByDay = new Map<string, number>()
   const supplyDatedByDay = new Map<string, number>()
   const supplyPaidByDay = new Map<string, number>()
-  for (const inv of invRows ?? []) addTo(supplyDatedByDay, inv.invoice_date, Number(inv.amount ?? 0))
+  for (const inv of invRows) addTo(supplyDatedByDay, inv.invoice_date, Number(inv.amount ?? 0))
+  type SentRow = { amount: number | null; sent_to_customer_at: string | null }
+  type PaidRow = { amount: number | null; paid_on: string | null }
+  type SupplyPaidRow = { amount: number | null; paid_at: string | null }
   const [sentRows, paidRows, supplyPaidRows, settingRows, paySpeedRaw, promisesRaw] = await Promise.all([
-    withSupabaseRetry(
-      async () =>
-        supabase
-          .from('jobs_ledger_invoices')
-          .select('amount, sent_to_customer_at')
-          .gte('sent_to_customer_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`)
-          .or('stripe_mode.is.null,stripe_mode.neq.test'),
+    fetchAllRows(
+      async (from, to) => ({
+        data: (await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('jobs_ledger_invoices')
+              .select('amount, sent_to_customer_at')
+              .gte('sent_to_customer_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`)
+              .or('stripe_mode.is.null,stripe_mode.neq.test')
+              .order('id')
+              .range(from, to),
+          'bridge invoices sent',
+        )) as SentRow[] | null,
+        error: null,
+      }),
       'bridge invoices sent',
-    ) as Promise<Array<{ amount: number | null; sent_to_customer_at: string | null }> | null>,
-    withSupabaseRetry(async () => supabase.from('jobs_ledger_payments').select('amount, paid_on').gte('paid_on', windowStart).lte('paid_on', todayYmd), 'bridge payments') as Promise<Array<{ amount: number | null; paid_on: string | null }> | null>,
-    withSupabaseRetry(
-      async () => supabase.from('supply_house_invoices').select('amount, paid_at').gte('paid_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`),
+    ),
+    fetchAllRows(
+      async (from, to) => ({
+        data: (await withSupabaseRetry(
+          async () =>
+            supabase.from('jobs_ledger_payments').select('amount, paid_on').gte('paid_on', windowStart).lte('paid_on', todayYmd).order('id').range(from, to),
+          'bridge payments',
+        )) as PaidRow[] | null,
+        error: null,
+      }),
+      'bridge payments',
+    ),
+    fetchAllRows(
+      async (from, to) => ({
+        data: (await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('supply_house_invoices')
+              .select('amount, paid_at')
+              .gte('paid_at', `${ymdAddDays(windowStart, -1)}T00:00:00-00:00`)
+              .order('id')
+              .range(from, to),
+          'bridge supply paid',
+        )) as SupplyPaidRow[] | null,
+        error: null,
+      }),
       'bridge supply paid',
-    ) as Promise<Array<{ amount: number | null; paid_at: string | null }> | null>,
+    ),
     withSupabaseRetry(async () => supabase.from('app_settings').select('key, value_text').in('key', [BRIDGE_CASH_SETTING_KEY, BRIDGE_FLOOR_SETTING_KEY]), 'bridge settings') as Promise<Array<{ key: string; value_text: string | null }> | null>,
     (async (): Promise<unknown> => {
       try {
