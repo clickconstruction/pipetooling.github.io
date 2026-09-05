@@ -2,7 +2,7 @@
 title: see how many jobs are running at once, over time
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: timeline, jobs running, concurrent jobs, simultaneous jobs, load, capacity, gantt, job summary, peak, working billed paid
+keywords: as of, slider, rewind, replay, timeline, jobs running, concurrent jobs, simultaneous jobs, load, capacity, gantt, job summary, peak, working billed paid
 order: 38
 ---
 
@@ -39,6 +39,20 @@ The stack's colors are a choice, and the counts never change:
 - **run length** — colored by how long the job ran: 6 or more days at the bottom, 2 to 5 days, then 1-day jobs on top. The long-running carry and the service-call churn read as different colors without leaving the chart.
 
 Your pick is remembered on this device.
+
+## Walk the chart back
+
+Press {{chip:blue|⏮ As of}} at the end of the control row and a slider appears under it. Drag it left (or press the week chips: **1 wk**, **2 wk**, up to **8 wk**) and the chart rewinds to that day:
+
+- the window ends on that day, and every job is colored as it stood *then* — a job paid last Friday shows as {{chip:yellow|billed, awaiting payment}} when you're looking at Thursday
+- the days after fade to a dashed outline, so you can see what was coming
+- the tiles recompute to that day, and a strip under the chart counts what changed since: jobs opened, billed, paid, and how many open then are still open now
+
+{{button:outline|▶ Play}} walks forward a day at a time to today. Watch the orange turn green: that's collection speed, without reading a number. Arrow keys step the slider one day; the chip's off state snaps everything back to today.
+
+:::example What the replay can't know
+Jobs deleted since then are gone. A status move corrected later shows its corrected date. Hours approved after the fact count as if approved on the day.
+:::
 
 ## What "running" means
 

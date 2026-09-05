@@ -100,6 +100,24 @@ export function jobRunBucket(status: string | null | undefined): JobRunBucket {
   return 'working'
 }
 
+/**
+ * Where the job stood as of `asOfYmd` (v2.2807): today's bucket when the as-of
+ * day is today or later; otherwise paid / billed only when the matching move
+ * had already happened, else working. A job with no status history reads as
+ * working before today — the chart can't know what it can't see.
+ */
+export function jobRunBucketAsOf(
+  statusToday: string | null | undefined,
+  moves: { billedYmd?: string | null; paidYmd?: string | null } | undefined,
+  asOfYmd: string,
+  todayYmd: string,
+): JobRunBucket {
+  if (asOfYmd >= todayYmd) return jobRunBucket(statusToday)
+  if (moves?.paidYmd != null && moves.paidYmd <= asOfYmd) return 'paid'
+  if (moves?.billedYmd != null && moves.billedYmd <= asOfYmd) return 'billed'
+  return 'working'
+}
+
 export function runLengthBand(runDays: number): JobRunBand {
   if (runDays <= 1) return 'd1'
   if (runDays <= 5) return 'd2_5'
@@ -149,11 +167,12 @@ function finishRow(
   bucket: JobRunBucket,
   segments: JobRunSegment[],
   todayYmd: string,
+  moves?: { billedYmd?: string | null; paidYmd?: string | null },
 ): JobRunRow | null {
   if (segments.length === 0) return null
   const startYmd = segments[0]!.startYmd
   const endYmd = segments[segments.length - 1]!.endYmd
-  const span = ledger.statusSpansByJob?.get(jobId)
+  const span = ledger.statusSpansByJob?.get(jobId) ?? moves
   return {
     jobId,
     label: ledger.jobLabels?.get(jobId) ?? { number: jobId.slice(0, 8), name: '' },
@@ -174,13 +193,19 @@ export function buildWorkedSpans(args: {
   statusByJob: ReadonlyMap<string, string | null | undefined>
   todayYmd: string
   gapDays: number
+  /** Rewind (v2.2807): only days up to this one count, open jobs run to it, and buckets are as they stood then. */
+  asOfYmd?: string
 }): JobRunRow[] {
-  const { ledger, statusByJob, todayYmd, gapDays } = args
+  const { ledger, statusByJob, gapDays } = args
+  const todayYmd = args.asOfYmd != null && args.asOfYmd < args.todayYmd ? args.asOfYmd : args.todayYmd
   const daysByJob = new Map<string, string[]>()
-  for (const d of ledger.days) for (const [jobId, jd] of d.byJob) if (jd.hours > 0) (daysByJob.get(jobId) ?? daysByJob.set(jobId, []).get(jobId)!).push(d.ymd)
+  for (const d of ledger.days) {
+    if (d.ymd > todayYmd) break
+    for (const [jobId, jd] of d.byJob) if (jd.hours > 0) (daysByJob.get(jobId) ?? daysByJob.set(jobId, []).get(jobId)!).push(d.ymd)
+  }
   const rows: JobRunRow[] = []
   for (const [jobId, days] of daysByJob) {
-    const bucket = jobRunBucket(statusByJob.get(jobId))
+    const bucket = jobRunBucketAsOf(statusByJob.get(jobId), ledger.statusSpansByJob?.get(jobId), todayYmd, args.todayYmd)
     const segments = segmentsFromDays(days, gapDays)
     const last = segments[segments.length - 1]
     if (last && bucket === 'working' && ymdToDayNumber(todayYmd) - ymdToDayNumber(last.endYmd) <= gapDays + 1 && last.endYmd < todayYmd) {
@@ -192,7 +217,7 @@ export function buildWorkedSpans(args: {
   return rows.sort((a, b) => a.startYmd.localeCompare(b.startYmd) || a.label.number.localeCompare(b.label.number, undefined, { numeric: true }))
 }
 
-export type JobStatusSpan = { startYmd: string; endYmd: string | null }
+export type JobStatusSpan = { startYmd: string; endYmd: string | null; billedYmd?: string | null; paidYmd?: string | null }
 
 /** Status spans (Working → Billed/Paid), clipped to the window; open spans run to today. */
 export function buildStatusSpans(args: {
@@ -200,15 +225,21 @@ export function buildStatusSpans(args: {
   statusSpansByJob: ReadonlyMap<string, JobStatusSpan>
   statusByJob: ReadonlyMap<string, string | null | undefined>
   todayYmd: string
+  /** Rewind (v2.2807): spans that began after this day are dropped, the rest clip to it, and buckets are as they stood then. */
+  asOfYmd?: string
 }): JobRunRow[] {
-  const { ledger, statusSpansByJob, statusByJob, todayYmd } = args
+  const { ledger, statusSpansByJob, statusByJob } = args
+  const todayYmd = args.asOfYmd != null && args.asOfYmd < args.todayYmd ? args.asOfYmd : args.todayYmd
+  const lastYmd = ledger.endYmd < todayYmd ? ledger.endYmd : todayYmd
   const rows: JobRunRow[] = []
   for (const [jobId, span] of statusSpansByJob) {
     const start = span.startYmd < ledger.startYmd ? ledger.startYmd : span.startYmd
     const rawEnd = span.endYmd ?? todayYmd
-    const end = rawEnd > ledger.endYmd ? ledger.endYmd : rawEnd
+    const end = rawEnd > lastYmd ? lastYmd : rawEnd
     if (end < start) continue
-    const row = finishRow(jobId, ledger, jobRunBucket(statusByJob.get(jobId)), [{ startYmd: start, endYmd: end }], todayYmd)
+    const moves = ledger.statusSpansByJob?.get(jobId) ?? span
+    const bucket = jobRunBucketAsOf(statusByJob.get(jobId), moves, todayYmd, args.todayYmd)
+    const row = finishRow(jobId, ledger, bucket, [{ startYmd: start, endYmd: end }], todayYmd, moves)
     if (row) rows.push(row)
   }
   return rows.sort((a, b) => a.startYmd.localeCompare(b.startYmd) || a.label.number.localeCompare(b.label.number, undefined, { numeric: true }))
@@ -418,4 +449,57 @@ export function bucketRunningWeekly(rows: readonly JobRunRow[], dayYmds: readonl
     currentTotal: current?.total ?? 0,
     averageTotal: weeks.length > 0 ? weeks.reduce((s, w) => s + w.total, 0) / weeks.length : 0,
   }
+}
+
+
+// ---- As of (v2.2807): walk the chart back ----
+
+export type JobRunDeltaSince = {
+  /** Runs that began after the as-of day. */
+  opened: number
+  /** Billed moves between the as-of day (exclusive) and today. */
+  billed: number
+  /** Paid moves between the as-of day (exclusive) and today. */
+  paid: number
+  /** Running on the as-of day and still open today. */
+  stillOpen: number
+}
+
+/** What happened between the as-of day and today, counted over TODAY's rows (the full picture). */
+export function jobRunDeltaSince(rowsToday: readonly JobRunRow[], asOfYmd: string, todayYmd: string): JobRunDeltaSince {
+  const between = (ymd: string | null) => ymd != null && ymd > asOfYmd && ymd <= todayYmd
+  let opened = 0
+  let billed = 0
+  let paid = 0
+  let stillOpen = 0
+  for (const r of rowsToday) {
+    if (r.startYmd > asOfYmd) opened += 1
+    if (between(r.billedYmd)) billed += 1
+    if (between(r.paidYmd)) paid += 1
+    if (r.startYmd <= asOfYmd && r.open && r.segments.some((s) => s.startYmd <= asOfYmd && s.endYmd >= asOfYmd)) stillOpen += 1
+  }
+  return { opened, billed, paid, stillOpen }
+}
+
+/** The as-of day for a slider position: `daysBack` days before today, never before the window's first day. */
+export function asOfYmdForDaysBack(todayYmd: string, daysBack: number, firstYmd: string | undefined): string {
+  const target = dayNumberToYmd(ymdToDayNumber(todayYmd) - Math.max(0, Math.floor(daysBack)))
+  return firstYmd != null && target < firstYmd ? firstYmd : target
+}
+
+/** Quick-jump chips for the slider: today and whole weeks back, only those inside the window. */
+export const JOB_RUN_AS_OF_JUMPS: ReadonlyArray<{ daysBack: number; label: string }> = [
+  { daysBack: 0, label: 'today' },
+  { daysBack: 7, label: '1 wk' },
+  { daysBack: 14, label: '2 wk' },
+  { daysBack: 21, label: '3 wk' },
+  { daysBack: 28, label: '4 wk' },
+  { daysBack: 56, label: '8 wk' },
+]
+
+/** "3 wk ago" / "10 d ago" / "" for today. */
+export function daysBackLabel(daysBack: number): string {
+  if (daysBack <= 0) return ''
+  if (daysBack % 7 === 0) return `${daysBack / 7} wk ago`
+  return `${daysBack} d ago`
 }

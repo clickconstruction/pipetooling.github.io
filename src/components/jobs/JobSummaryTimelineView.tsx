@@ -1,10 +1,14 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { JobDayLedger } from '../../lib/jobs/jobDayLedger'
 import {
   JOB_RUN_BAND_LABEL,
   JOB_RUN_COLOR_BY_OPTIONS,
   JOB_RUN_DEFINITIONS,
   JOB_RUN_GAP_OPTIONS,
+  JOB_RUN_AS_OF_JUMPS,
+  asOfYmdForDaysBack,
+  daysBackLabel,
+  jobRunDeltaSince,
   bucketRunningWeekly,
   buildRunningSeriesBy,
   buildStatusSpans,
@@ -15,6 +19,7 @@ import {
   type JobRunBand,
   type JobRunColorBy,
   type JobRunDefinition,
+  type JobRunDeltaSince,
   type JobRunRow,
   type JobRunningWeeklySeries,
 } from '../../lib/jobs/jobRunningTimeline'
@@ -31,6 +36,9 @@ import SessionNotesModal from './SessionNotesModal'
  * Stack order (v2.2734, owner's call): the calm carry sets the floor and the
  * churn rides on top — working / billed / paid, or 6+ days / 2–5 / 1 day.
  * Color by (v2.2745): today's status, the state on each day, or run length.
+ * As of (v2.2807, mock-up "C"): a slider walks the chart back a day at a time —
+ * the window clips at that day, buckets are as they stood then, the days after
+ * ghost to a dashed outline, and a strip counts what changed since.
  */
 type Props = {
   ledger: JobDayLedger | null
@@ -44,6 +52,9 @@ type Props = {
   /** Daily columns or Monday-keyed weekly bars (v2.2746). */
   granularity: TimelineGranularity
   onGranularityChange: (g: TimelineGranularity) => void
+  /** The "As of" slider row is shown (v2.2807); the slider itself always opens on today. */
+  asOfOn: boolean
+  onAsOfOnChange: (on: boolean) => void
   canOpenSessionNotes: boolean
   users: ReadonlyArray<{ id: string; name: string | null }>
   jobs: ReadonlyArray<SessionNotesJobIdentity>
@@ -95,13 +106,16 @@ function dayLabel(ymd: string): string {
   return formatStagesNextDateLabel(ymd)
 }
 
-export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerError, statusByJob, todayYmd, colorBy, onColorByChange, granularity, onGranularityChange, canOpenSessionNotes, users, jobs }: Props) {
+export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerError, statusByJob, todayYmd, colorBy, onColorByChange, granularity, onGranularityChange, asOfOn, onAsOfOnChange, canOpenSessionNotes, users, jobs }: Props) {
   const [definition, setDefinition] = useState<JobRunDefinition>('status')
   const [gapDays, setGapDays] = useState(7)
   const [sessionNotesDay, setSessionNotesDay] = useState<string | null>(null)
   const [barsOpen, setBarsOpen] = useState(false)
   /** Hover guide (v2.2775): the day column under the cursor, so the click target is named before the click. */
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  /** As of (v2.2807): days before today the chart is rewound to; 0 = today. */
+  const [daysBack, setDaysBack] = useState(0)
+  const [playing, setPlaying] = useState(false)
 
   const mergedStatus = useMemo(() => {
     const m = new Map<string, string | null | undefined>()
@@ -110,16 +124,47 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
     return m
   }, [ledger, statusByJob])
 
-  const rows: JobRunRow[] = useMemo(() => {
+  const dayYmds = useMemo(() => (ledger ? ledger.days.map((d) => d.ymd) : []), [ledger])
+  const maxBack = Math.max(0, dayYmds.length - 1)
+  const effBack = asOfOn ? Math.min(daysBack, maxBack) : 0
+  const rewound = effBack > 0
+  const asOfYmd = rewound ? asOfYmdForDaysBack(todayYmd, effBack, dayYmds[0]) : todayYmd
+  useEffect(() => {
+    if (!asOfOn) {
+      setDaysBack(0)
+      setPlaying(false)
+    }
+  }, [asOfOn])
+  useEffect(() => {
+    if (!playing) return
+    if (effBack <= 0) {
+      setPlaying(false)
+      return
+    }
+    const t = window.setTimeout(() => setDaysBack((b) => Math.max(0, b - 1)), 140)
+    return () => window.clearTimeout(t)
+  }, [playing, effBack])
+
+  /** Today's rows: the full picture, also the source of the ghosted future and the "since" counts. */
+  const rowsToday: JobRunRow[] = useMemo(() => {
     if (!ledger) return []
     return definition === 'worked'
       ? buildWorkedSpans({ ledger, statusByJob: mergedStatus, todayYmd, gapDays })
       : buildStatusSpans({ ledger, statusSpansByJob: ledger.statusSpansByJob ?? new Map(), statusByJob: mergedStatus, todayYmd })
   }, [ledger, mergedStatus, todayYmd, definition, gapDays])
-  const dayYmds = useMemo(() => (ledger ? ledger.days.map((d) => d.ymd) : []), [ledger])
-  const series = useMemo(() => buildRunningSeriesBy(rows, dayYmds, todayYmd, colorBy), [rows, dayYmds, todayYmd, colorBy])
-  const weekly = useMemo(() => bucketRunningWeekly(rows, dayYmds, todayYmd), [rows, dayYmds, todayYmd])
+  const rows: JobRunRow[] = useMemo(() => {
+    if (!ledger || !rewound) return rowsToday
+    return definition === 'worked'
+      ? buildWorkedSpans({ ledger, statusByJob: mergedStatus, todayYmd, gapDays, asOfYmd })
+      : buildStatusSpans({ ledger, statusSpansByJob: ledger.statusSpansByJob ?? new Map(), statusByJob: mergedStatus, todayYmd, asOfYmd })
+  }, [ledger, rowsToday, rewound, mergedStatus, todayYmd, definition, gapDays, asOfYmd])
+  const dayYmdsAsOf = useMemo(() => (rewound ? dayYmds.filter((d) => d <= asOfYmd) : dayYmds), [dayYmds, rewound, asOfYmd])
+  const series = useMemo(() => buildRunningSeriesBy(rows, dayYmdsAsOf, asOfYmd, colorBy), [rows, dayYmdsAsOf, asOfYmd, colorBy])
+  const seriesToday = useMemo(() => (rewound ? buildRunningSeriesBy(rowsToday, dayYmds, todayYmd, colorBy) : null), [rewound, rowsToday, dayYmds, todayYmd, colorBy])
+  const weekly = useMemo(() => bucketRunningWeekly(rows, dayYmdsAsOf, asOfYmd), [rows, dayYmdsAsOf, asOfYmd])
+  const weeklyToday = useMemo(() => (rewound ? bucketRunningWeekly(rowsToday, dayYmds, todayYmd) : null), [rewound, rowsToday, dayYmds, todayYmd])
   const summary = useMemo(() => summarizeJobRuns(rows), [rows])
+  const delta: JobRunDeltaSince | null = useMemo(() => (rewound ? jobRunDeltaSince(rowsToday, asOfYmd, todayYmd) : null), [rewound, rowsToday, asOfYmd, todayYmd])
   const ticks = useMemo(() => monthTicks(dayYmds), [dayYmds])
   const isWeekly = granularity === 'weekly'
   const hasMoves = useMemo(() => rows.some((r) => r.billedYmd != null || r.paidYmd != null), [rows])
@@ -139,10 +184,10 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
   const R = 12
   const T = 16
   const B = 30
-  const n = Math.max(1, series.days.length)
+  const n = Math.max(1, dayYmds.length)
   const iw = (W - L - R) / n
   const plotH = H - T - B
-  const maxY = Math.max(4, Math.ceil(((series.peak?.total ?? 0) + 1) / 2) * 2)
+  const maxY = Math.max(4, Math.ceil((Math.max(series.peak?.total ?? 0, seriesToday?.peak?.total ?? 0) + 1) / 2) * 2)
   const yOf = (v: number) => T + plotH * (1 - v / maxY)
   const gridStep = maxY <= 8 ? 2 : maxY <= 20 ? 4 : Math.ceil(maxY / 5)
   const gridVals: number[] = []
@@ -167,8 +212,20 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
     })
   })()
   const avgPath = series.avg7.map((v, i) => `${i === 0 ? 'M' : 'L'}${(L + i * iw + iw / 2).toFixed(1)} ${yOf(v).toFixed(1)}`).join(' ')
-  const todayIdx = dayYmds.indexOf(todayYmd)
+  const todayIdx = dayYmds.indexOf(asOfYmd)
+  const realTodayIdx = dayYmds.indexOf(todayYmd)
   const peakIdx = series.peak ? dayYmds.indexOf(series.peak.ymd) : -1
+  /** The days after the as-of day, as today knows them: a dashed outline of the total (v2.2807). */
+  const ghostPath = (() => {
+    if (!seriesToday || todayIdx < 0) return ''
+    let d = ''
+    for (let i = todayIdx; i < seriesToday.days.length; i++) {
+      const x = L + i * iw
+      const y = yOf(seriesToday.days[i]!.total).toFixed(1)
+      d += `${d ? ' L' : 'M'}${x.toFixed(1)} ${y} L${(x + iw).toFixed(1)} ${y}`
+    }
+    return d
+  })()
   const splitText = (counts: Record<JobRunBand, number>) => bands.map((b) => `${counts[b]} ${JOB_RUN_BAND_LABEL[b]}`).join(' · ')
 
   // ---- bars geometry ----
@@ -185,6 +242,11 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
         {definition === 'worked' ? <Segmented label="Gap" value={gapDays} options={JOB_RUN_GAP_OPTIONS} onChange={setGapDays} /> : null}
         <Segmented label="Show" value={granularity} options={GRANULARITY_OPTIONS} onChange={onGranularityChange} />
         {isWeekly ? null : <Segmented label="Color by" value={colorBy} options={JOB_RUN_COLOR_BY_OPTIONS} onChange={onColorByChange} />}
+        <span style={segWrap}>
+          <button type="button" aria-pressed={asOfOn} title="Walk the chart back: see it as it stood on an earlier day" onClick={() => onAsOfOnChange(!asOfOn)} style={segButton(asOfOn, true)}>
+            ⏮ As of
+          </button>
+        </span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {definition === 'worked'
             ? 'A job runs from its first approved field day to its last; still-open jobs run to today. A pause longer than the gap splits the run.'
@@ -195,18 +257,73 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-amber-800)' }}>No Billed or Paid moves found for these jobs, so every day reads as working. Jobs moved through the Pipeline record the moves automatically.</p>
       ) : null}
 
+      {asOfOn ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.4rem 0.7rem' }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (playing) setPlaying(false)
+              else {
+                if (effBack === 0) setDaysBack(Math.min(56, maxBack))
+                setPlaying(true)
+              }
+            }}
+            disabled={maxBack === 0}
+            title={playing ? 'Pause' : 'Walk forward a day at a time to today'}
+            style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+          >
+            {playing ? '❚❚ Pause' : '▶ Play'}
+          </button>
+          <span style={segLabel}>As of</span>
+          <span style={{ fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', minWidth: '8.5rem' }}>{rewound ? dayLabel(asOfYmd) : `Today · ${dayLabel(todayYmd)}`}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '4.5rem' }}>{daysBackLabel(effBack)}</span>
+          <input
+            type="range"
+            min={0}
+            max={maxBack}
+            value={maxBack - effBack}
+            onChange={(e) => {
+              setPlaying(false)
+              setDaysBack(maxBack - Number(e.currentTarget.value))
+            }}
+            aria-label="As-of day: left is earlier, right is today"
+            title="Drag, or use the arrow keys — one day per step"
+            style={{ flex: '1 1 12rem', minWidth: '10rem', accentColor: '#2563eb' }}
+          />
+          <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+            {JOB_RUN_AS_OF_JUMPS.filter((j) => j.daysBack <= maxBack).map((j) => (
+              <button
+                key={j.daysBack}
+                type="button"
+                aria-pressed={effBack === j.daysBack}
+                onClick={() => {
+                  setPlaying(false)
+                  setDaysBack(j.daysBack)
+                }}
+                style={{ fontSize: '0.72rem', padding: '0.1rem 0.55rem', borderRadius: 999, border: `1px solid ${effBack === j.daysBack ? '#2563eb' : 'var(--border)'}`, background: effBack === j.daysBack ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+              >
+                {j.label}
+              </button>
+            ))}
+          </span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }} title="Replayed from each job's Working, Billed, and Paid moves. Jobs deleted since then are gone; moves corrected later show their corrected dates.">
+            replayed from status moves
+          </span>
+        </div>
+      ) : null}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
         {isWeekly ? (
           <>
             <div style={tile}>
-              <div style={tileK}>Running this week</div>
+              <div style={tileK}>{rewound ? 'Running that week' : 'Running this week'}</div>
               <div style={tileV}>{weekly.currentTotal}</div>
-              <div style={tileS}>jobs touched since Monday</div>
+              <div style={tileS}>{rewound ? `jobs touched in the week of ${dayLabel(asOfYmd)}` : 'jobs touched since Monday'}</div>
             </div>
             <div style={tile}>
               <div style={tileK}>Average per week</div>
               <div style={tileV}>{weekly.averageTotal.toFixed(1)}</div>
-              <div style={tileS}>jobs touched per week, every week in the window</div>
+              <div style={tileS}>jobs touched per week, every week {rewound ? 'through the as-of day' : 'in the window'}</div>
             </div>
             <div style={tile}>
               <div style={tileK}>Peak week</div>
@@ -217,14 +334,14 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
         ) : (
           <>
             <div style={tile}>
-              <div style={tileK}>Running today</div>
+              <div style={tileK}>{rewound ? `Running on ${dayLabel(asOfYmd)}` : 'Running today'}</div>
               <div style={tileV}>{series.todayTotal}</div>
-              <div style={tileS}>jobs open right now</div>
+              <div style={tileS}>{rewound ? 'jobs open that day' : 'jobs open right now'}</div>
             </div>
             <div style={tile}>
               <div style={tileK}>Average</div>
               <div style={tileV}>{series.averageTotal.toFixed(1)}</div>
-              <div style={tileS}>jobs running per day, every day in the window</div>
+              <div style={tileS}>jobs running per day, every day {rewound ? 'through the as-of day' : 'in the window'}</div>
             </div>
             <div style={tile}>
               <div style={tileK}>Peak</div>
@@ -241,12 +358,12 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
         <div style={tile}>
           <div style={tileK}>Median run</div>
           <div style={tileV}>{summary.medianRunDays == null ? '—' : `${Math.round(summary.medianRunDays)} d`}</div>
-          <div style={tileS}>{definition === 'worked' ? 'first to last work' : 'Working to Billed'}</div>
+          <div style={tileS}>{definition === 'worked' ? 'first to last work' : 'Working to Billed'}{rewound ? ', as of then' : ''}</div>
         </div>
       </div>
 
       {isWeekly ? (
-        <WeeklyChart weekly={weekly} dayYmds={dayYmds} todayYmd={todayYmd} ticks={ticks} />
+        <WeeklyChart weekly={weekly} weeklyToday={weeklyToday} dayYmds={dayYmds} todayYmd={asOfYmd} rewound={rewound} ticks={ticks} />
       ) : (
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.5rem 0.25rem' }}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Jobs running per day, stacked" style={{ display: 'block' }} onMouseLeave={() => setHoverIdx(null)}>
@@ -263,6 +380,13 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
             <path key={p.band} d={p.d} fill={BAND_COLOR[p.band]} opacity={0.82} />
           ))}
           <path d={avgPath} fill="none" stroke="var(--text-strong)" strokeWidth={1.5} />
+          {rewound && todayIdx >= 0 && todayIdx + 1 < n ? (
+            <g style={{ pointerEvents: 'none' }}>
+              <rect x={L + (todayIdx + 1) * iw} y={T} width={(n - todayIdx - 1) * iw} height={plotH} fill="var(--bg-subtle)" opacity={0.65} />
+              <path d={ghostPath} fill="none" stroke="var(--text-muted)" strokeWidth={1.2} strokeDasharray="3 3" />
+              {realTodayIdx >= 0 ? <line x1={L + realTodayIdx * iw + iw / 2} x2={L + realTodayIdx * iw + iw / 2} y1={T} y2={T + plotH} stroke="var(--text-muted)" strokeDasharray="2 3" opacity={0.6} /> : null}
+            </g>
+          ) : null}
           {ticks.map((t) => (
             <g key={t.index}>
               <line x1={L + t.index * iw} x2={L + t.index * iw} y1={T + plotH} y2={T + plotH + 5} stroke="var(--border-strong)" />
@@ -275,7 +399,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
             <g>
               <line x1={L + todayIdx * iw + iw / 2} x2={L + todayIdx * iw + iw / 2} y1={T} y2={T + plotH} stroke="var(--text-red-700)" strokeDasharray="3 3" />
               <text x={L + todayIdx * iw + iw / 2 - 3} y={T - 4} textAnchor="end" fontSize={9} fill="var(--text-red-700)">
-                today · {series.todayTotal}
+                {rewound ? 'as of' : 'today'} · {series.todayTotal}
               </text>
             </g>
           ) : null}
@@ -321,17 +445,25 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
             <span key={b} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <i style={{ display: 'inline-block', width: 12, height: 8, borderRadius: 2, background: BAND_COLOR[b] }} />
               {JOB_RUN_BAND_LABEL[b]}
-              {colorBy === 'status' && b === 'working' ? <span style={{ color: 'var(--text-muted)' }}>(as of today)</span> : null}
+              {colorBy === 'status' && b === 'working' ? <span style={{ color: 'var(--text-muted)' }}>(as of {rewound ? dayLabel(asOfYmd) : 'today'})</span> : null}
             </span>
           ))}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <i style={{ display: 'inline-block', width: 14, height: 2, background: 'var(--text-strong)' }} />
             7-day average
           </span>
+          {rewound ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <i style={{ display: 'inline-block', width: 12, height: 8, border: '1px dashed var(--text-muted)', borderRadius: 2 }} />
+              what came after
+            </span>
+          ) : null}
           <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>hover a day for its split{canOpenSessionNotes ? ' · click it for that day’s session notes' : ''}</span>
         </div>
       </div>
       )}
+
+      {delta ? <DeltaStrip delta={delta} asOfYmd={asOfYmd} /> : null}
 
       <details open={barsOpen} onToggle={(e) => setBarsOpen((e.currentTarget as HTMLDetailsElement).open)} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.4rem 0.6rem' }}>
         <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-700)', fontSize: '0.85rem' }}>
@@ -391,7 +523,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
 }
 
 /** Weekly roll-up (v2.2746): one bar per Monday-keyed week — carried over under new that week. */
-function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningWeeklySeries; dayYmds: readonly string[]; todayYmd: string; ticks: ReadonlyArray<{ index: number; label: string }> }) {
+function WeeklyChart({ weekly, weeklyToday, dayYmds, todayYmd, rewound, ticks }: { weekly: JobRunningWeeklySeries; weeklyToday: JobRunningWeeklySeries | null; dayYmds: readonly string[]; todayYmd: string; rewound: boolean; ticks: ReadonlyArray<{ index: number; label: string }> }) {
   const W = 1000
   const H = 250
   const L = 48
@@ -402,9 +534,12 @@ function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningW
   const n = Math.max(1, dayYmds.length)
   const iw = (W - L - R) / n
   const dayIndex = (ymd: string) => Math.max(0, Math.min(n - 1, dayYmds.indexOf(ymd)))
-  const maxY = Math.max(4, Math.ceil(((weekly.peak?.total ?? 0) + 1) / 4) * 4)
+  const maxY = Math.max(4, Math.ceil((Math.max(weekly.peak?.total ?? 0, weeklyToday?.peak?.total ?? 0) + 1) / 4) * 4)
   const yOf = (v: number) => T + plotH * (1 - v / maxY)
   const gridStep = maxY <= 12 ? 2 : maxY <= 40 ? 8 : Math.ceil(maxY / 5)
+  const lastShownYmd = weekly.weeks[weekly.weeks.length - 1]?.weekEndYmd
+  /** Weeks after the as-of week, as today knows them (v2.2807). */
+  const ghostWeeks = weeklyToday && lastShownYmd ? weeklyToday.weeks.filter((w) => w.weekStartYmd > lastShownYmd) : []
   const gridVals: number[] = []
   for (let v = 0; v <= maxY; v += gridStep) gridVals.push(v)
   const thisWeekStart = weekly.weeks.find((w) => todayYmd >= w.weekStartYmd && todayYmd <= w.weekEndYmd)?.weekStartYmd
@@ -432,6 +567,16 @@ function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningW
             plotRight={W - R}
             label={`week of ${dayLabel(hw.weekStartYmd)} · ${hw.total} jobs · ${hw.carried} carried · ${hw.fresh} new`}
           />
+        ) : null}
+        {ghostWeeks.length > 0 ? (
+          <g style={{ pointerEvents: 'none' }}>
+            <rect x={L + dayIndex(ghostWeeks[0]!.weekStartYmd) * iw} y={T} width={(n - dayIndex(ghostWeeks[0]!.weekStartYmd)) * iw} height={plotH} fill="var(--bg-subtle)" opacity={0.65} />
+            {ghostWeeks.map((w) => {
+              const a = dayIndex(w.weekStartYmd)
+              const b = dayIndex(w.weekEndYmd)
+              return w.total > 0 ? <rect key={w.weekStartYmd} x={L + a * iw + 1} y={yOf(w.total)} width={Math.max(2, (b - a + 1) * iw - 2)} height={yOf(0) - yOf(w.total)} fill="none" stroke="var(--text-muted)" strokeDasharray="3 3" rx={1.5} /> : null
+            })}
+          </g>
         ) : null}
         {weekly.weeks.map((w, wi) => {
           const a = dayIndex(w.weekStartYmd)
@@ -482,8 +627,14 @@ function WeeklyChart({ weekly, dayYmds, todayYmd, ticks }: { weekly: JobRunningW
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
           <i style={{ display: 'inline-block', width: 12, height: 8, border: '1px dashed var(--text-red-700)', borderRadius: 2 }} />
-          this week
+          {rewound ? 'as-of week' : 'this week'}
         </span>
+        {rewound ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <i style={{ display: 'inline-block', width: 12, height: 8, border: '1px dashed var(--text-muted)', borderRadius: 2 }} />
+            what came after
+          </span>
+        ) : null}
         <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>hover a week for its split · a job counts once per week it was running</span>
       </div>
     </div>
@@ -519,5 +670,31 @@ function AxisTitle({ x, y, label }: { x: number; y: number; label: string }) {
     <text transform={`rotate(-90 ${x} ${y})`} x={x} y={y} textAnchor="middle" fontSize={10} fill="var(--text-muted)" style={{ pointerEvents: 'none' }}>
       {label}
     </text>
+  )
+}
+
+/** What changed between the as-of day and today (v2.2807), in the chart's own colors. */
+function DeltaStrip({ delta, asOfYmd }: { delta: JobRunDeltaSince; asOfYmd: string }) {
+  const pill: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, border: '1px solid var(--border)', borderRadius: 999, padding: '0.1rem 0.6rem', background: 'var(--surface)', fontVariantNumeric: 'tabular-nums' }
+  const swatch = (color: string): CSSProperties => ({ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: color })
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-700)' }}>
+      <span>Since {dayLabel(asOfYmd)}:</span>
+      <span style={pill}>
+        <i style={swatch(BAND_COLOR.working)} />
+        <b>{delta.opened}</b> {delta.opened === 1 ? 'job' : 'jobs'} opened
+      </span>
+      <span style={pill}>
+        <i style={swatch(BAND_COLOR.billed)} />
+        <b>{delta.billed}</b> billed
+      </span>
+      <span style={pill}>
+        <i style={swatch(BAND_COLOR.paid)} />
+        <b>{delta.paid}</b> paid
+      </span>
+      <span style={pill}>
+        <b>{delta.stillOpen}</b> open then and still open
+      </span>
+    </div>
   )
 }
