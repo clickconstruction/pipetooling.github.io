@@ -9,6 +9,7 @@ import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { useUsersTabSignals } from '../../hooks/useUsersTabSignals'
 import { buildRailRow, normaliseKind, type RailRow } from '../../lib/people/deskRailAttention'
 import { buildRowNeeds } from '../../lib/people/rowNeeds'
+import { UsersRailHeader } from './UsersTabStatusColumn'
 import { USERS_TAB_FILTERS, describeGroupCount, foldNoLoginRows, orderUsersTabRows, rowMatchesFilter, type UsersTabFilter, applyRowNeeds } from '../../lib/people/usersTabRows'
 import { UsersTabRow, type UsersTabRowMenuAction } from './UsersTabRow'
 import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
@@ -259,9 +260,11 @@ export function PeopleUsersTab({
         rail={rail}
         narrowViewport={narrowViewport}
         isDev={isDev}
-        pushOn={item.source === 'user' && pushEnabledUserIds.has(item.id)}
-        showPush={canSeePushStatus}
-        signingLight={canAccessContracts ? contractSigningStatusByPersonName[item.name] : undefined}
+        openDesk={
+          personDesk?.canOpen
+            ? (section) => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name, section } : { personId: item.id, displayName: item.name, section })
+            : undefined
+        }
         activeProjects={activeProjectRows}
         loggingInAsId={loggingInAsId}
         setLoggingInAsId={setLoggingInAsId}
@@ -402,6 +405,11 @@ export function PeopleUsersTab({
         <p role="status" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
           No matches.
         </p>
+      ) : null}
+      {!narrowViewport ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.15rem' }}>
+          <UsersRailHeader />
+        </div>
       ) : null}
       {USERS_TAB_SECTIONS.map((sec) => (sec.type === 'dev' ? (isDev ? renderGroup('dev') : null) : renderGroup(sec.kind)))}
       {!usersTabSearchQ && filter !== 'all' && USERS_TAB_SECTIONS.every((sec) => (sec.type === 'dev' ? !isDev || renderGroup('dev') == null : renderGroup(sec.kind) == null)) ? (
