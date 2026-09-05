@@ -348,6 +348,8 @@ const data = await withSupabaseRetry(
 )
 ```
 
+**1b. Classification (v2.2843)** — every `DatabaseError` carries `kind: 'network' | 'server' | 'unknown'` plus `code`, `status`, `operationName`, `serverMessage`, decided by class, never by message text. `formatErrorMessage` / `formatPostgrestOrUnknownError` render the offline copy only for `network`; `server` errors render a sentence by code family (`42501` → "You don't have access to this <thing>.", `22P02` / `PGRST116` → "This link points to something that doesn't exist any more.", else "Couldn't load <thing>: <server message>"); retries happen only for `network` and transient server codes / 5xx / 429. Mapping table + console `[error-class]` line: `docs/TROUBLESHOOTING.md` → "No connection" section.
+
 **2. Error Checking**
 ```typescript
 import { checkSupabaseError } from '@/utils/errorHandling'
