@@ -1,6 +1,6 @@
 ---
 file: docs/twins/FEEDBACK_LOOP.md
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 purpose: The audit loop — how human estimator feedback on twin bids reaches the agent through the Audits tab, and what the agent must do with it. Read at the START of any twin/backtest session, alongside get_answers.
 ---
 
@@ -123,8 +123,9 @@ discarding it:
   reason recorded.
 - `open_backtest` returns the blind-safe `reference_grade` (field PRESENCE only).
   Kernel of record: `src/lib/bids/referenceGrade.ts`.
-- **At unseal (STG-6), compute the quality flags** and stamp grade+flags on the
-  scorecard note: `roundValue` (value % $100 == 0 — hand-entered, BT-11),
+- **At unseal (STG-6) call `score_backtest`** (v2.2800) — it computes the quality
+  flags below server-side, writes the `twin_run_scores` row and stamps the
+  scorecard; the flags, for reading the result: `roundValue` (value % $100 == 0 — hand-entered, BT-11),
   `weakLoss` (loss_category no_bid / project_died — the number never competed,
   BT-9/10), `lossUncategorized`, `stale` (>6 months). **Gate A/B denominators
   take only grade A/B references with every flag clear.** Tier C/D runs still

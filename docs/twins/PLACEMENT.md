@@ -5,7 +5,7 @@ file: docs/twins/PLACEMENT.md
 type: Harness procedure / Skill
 purpose: How an agent turns a substrate + plan-set PDF into a placed, imported CountTooling takeoff — the counters-first procedure, coordinate math, self-checks, and tooling. Wave 3.4 of ESTIMATOR_TWIN_PIPELINE_PLAN.md. The vision model IS the engine; this file is its operating manual (EXTRACTOR.md's sibling) Served by twin-mcp as get_placement_guide (bundled with CALIBRATION.md + EXTRACTOR.md).
 audience: AI Agents, harness operators, Developers
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 key_sections:
   - Tooling
   - The counters-first procedure
@@ -665,6 +665,14 @@ Rules the backtest/shadow scorecard MUST apply before a delta means anything:
   the number she would defend; landing under it means the takeoff or tiers
   are short. Report "under the human" as a miss every time — only a bid tab
   or a loss note bounds the market below her.
+- **Unseal through `score_backtest`, never by reading the reference yourself
+  (v2.2800)**: stamp your LOCK note, then call `score_backtest(bid, run_label,
+  axis, locked_total, …)` — it refuses without the lock, reads the reference's
+  value/outcome/flags server-side, writes the Scoreboard row and the scorecard
+  stamp, and hands the facts back. Only after that do you open the reference's
+  rows for the count/footage comparison. A re-run of a reference already
+  backtested takes `open_backtest(…, round: 2)`; the round-1 shell and its
+  audit are off limits until your scorecard is stamped.
 - **Check a reused shell's ledger BEFORE working it** (BT-4/BT-5 rediscovery):
   `open_backtest` with `reused: true` may hand back a shell that already ran
   through STG-6 — read `get_work_state`'s audit ledger first. A scored
