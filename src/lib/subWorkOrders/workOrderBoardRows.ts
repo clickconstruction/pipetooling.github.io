@@ -43,6 +43,8 @@ export type WorkOrderBoardRow = {
   notInPipeline: boolean
   subNames: string[]
   subName: string
+  /** The sub's roster id when the sheet has exactly one assignee — hands the assembler its sub. */
+  personId: string | null
   agreed: number
   paid: number
   open: number
@@ -124,6 +126,8 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
     if (!inPlay) continue
     const subNames = splitAssignedToNames(sheet.assigned_to_name)
     const subName = subNames.join(', ')
+    const ids = input.assigneesBySheetId.get(sheet.id)
+    const personId = ids && ids.length > 0 ? (ids.length === 1 ? ids[0]! : null) : subNames.length === 1 ? (personByNameKey.get(normalizePersonNameKey(subNames[0]!))?.id ?? null) : null
     const rail = buildSheetRail({ coverage, sheetStage: normalizeSubSheetStage(sheet.stage), payableAfter: sheet.payable_after ?? null, agreed: bal.totalCost, open, unpriced })
     const next = sheetNextAction(rail, coverage, { subName, agreed: bal.totalCost, open, unpriced, todayYmd: input.todayYmd, nudgeAfterDays: input.nudgeAfterDays })
     const jobNumber = (sheet.job_number ?? '').trim()
@@ -139,6 +143,7 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
       notInPipeline: !job,
       subNames,
       subName,
+      personId,
       agreed: bal.totalCost,
       paid: bal.paid,
       open,
@@ -176,6 +181,7 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
       notInPipeline: false,
       subNames: [r.display_name],
       subName: r.display_name,
+      personId: (r as { person_id?: string | null }).person_id ?? null,
       agreed,
       paid: 0,
       open: agreed,

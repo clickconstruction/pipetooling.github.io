@@ -73,6 +73,14 @@ describe('buildWorkOrderBoard — which sheets are rows', () => {
   })
 })
 
+describe('buildWorkOrderBoard — the sub behind a row', () => {
+  it('a single junction assignee hands the assembler its sub; a single legacy name resolves through the roster; two names give nothing', () => {
+    expect(board([sheet({ id: 's1' })], [], [['s1', ['p-mig']]]).rows[0]!.personId).toBe('p-mig')
+    expect(board([sheet({ id: 's2', assigned_to_name: 'Cale Yarbrough' })]).rows[0]!.personId).toBe('p-cale')
+    expect(board([sheet({ id: 's3', assigned_to_name: 'Miguel Rodriguez | Cale Yarbrough' })], [], [['s3', ['p-mig', 'p-cale']]]).rows[0]!.personId).toBeNull()
+  })
+})
+
 describe('buildWorkOrderBoard — orders with no sheet', () => {
   it('a job-anchored draft on a job with no sheets is its own row', () => {
     const b = board([], [order({ id: 'o1', status: 'draft', job_id: 'j-880', amount: null, display_name: 'Cale Yarbrough' })])

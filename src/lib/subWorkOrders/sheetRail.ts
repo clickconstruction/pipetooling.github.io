@@ -2,7 +2,7 @@
  * The sheet rail (Work Orders one-row spine, PR 2): seven dots on one line
  * for a sub sheet and the agreement behind it.
  *
- *   Drafted · Sent · Signed   ·   Work · Inspection · Customer pays · Paid
+ *   Drafted · Sent · Signed   ·   Work · Walk-through · Customer pays · Paid
  *   ── the office's three ──     ── the sub's four (their portal rail) ──
  *
  * One terracotta dot marks where the sheet stands. Work under way with
@@ -13,7 +13,8 @@
  * Vocabulary is shared, not invented: agreement states come from
  * `buildJobWorkOrderCoverage` (workOrderCoverage.ts), sheet stages from
  * subSheetStage.ts, and the sub's four labels match subPortalI18n's rail
- * (Work · Inspection · Customer pays · You're paid — "Paid" office-side).
+ * (Work · Walk-through · Customer pays · You're paid — "Paid" office-side;
+ * the live portal says Walk-through, so the office does too).
  * Pure: no React, no Supabase.
  */
 import type { JobWorkOrderCoverage } from './workOrderCoverage'
@@ -38,7 +39,7 @@ export const SHEET_RAIL_STEP_LABEL: Record<SheetRailStepKey, string> = {
   sent: 'Sent',
   signed: 'Signed',
   work: 'Work',
-  inspection: 'Inspection',
+  inspection: 'Walk-through',
   customer_pays: 'Customer pays',
   paid: 'Paid',
 }
@@ -223,7 +224,7 @@ export function sheetNextAction(rail: SheetRail, coverage: JobWorkOrderCoverage,
     case 'work':
       return { label: 'Wait for “done”', hint: `${sub} taps Done on their portal`, button: null, buttonLabel: null }
     case 'inspection':
-      return { label: 'Schedule the inspection', hint: `${sub} said the work is done`, button: null, buttonLabel: null }
+      return { label: 'Schedule the walk-through', hint: `${sub} said the work is done`, button: null, buttonLabel: null }
     case 'customer_pays':
       return { label: 'Bill and collect', hint: `${sub} is owed ${money(ctx.open)}`, button: null, buttonLabel: null }
     case 'paid':
