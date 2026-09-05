@@ -87,9 +87,10 @@ session artifacts; this is its doc home):
 - **The audit loop closed for the first time.** Wendi finished seven audits on
   2026-09-04 (b405–b409, b411, b418): 16 answers, 6 row notes, 4 one-tap teach
   verdicts. Every lesson is banked in `PLACEMENT.md` (scope-call standards, "Ask like
-  a junior estimator", pricing model, footage, reference protocol) and the twin's
-  next session owes the receipts + book re-mirrors (`FEEDBACK_LOOP.md` → Current
-  state). Three of her answers were "idk" — to questions written in twin vocabulary.
+  a junior estimator", pricing model, footage, reference protocol); the receipts and
+  the interceptor book re-mirrors landed the same evening as the twin (`FEEDBACK_LOOP.md`
+  → Current state). Three of her answers were "idk" — to questions written in twin
+  vocabulary.
 - **Seven audits were unpriceable**: the BT-16..19 slate (b422, b424–b429) opened
   audits with no PipeTooling count rows, so the tab showed draft $0 / −100% and drew
   a "we will not do this for free" note. STG-5 is now a pre-flight gate
@@ -146,9 +147,9 @@ Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
 
 ## Open threads, prioritized
 
-1. **Digest Wendi's 2026-09-04 pass** — 22 undigested notes across seven done audits:
-   post receipts, re-mirror the interceptor + travel book entries, then paste STG-5
-   counts on the seven $0 audits so the next pass can judge them.
+1. **Paste STG-5 counts on the seven $0 audits** (b422, b424–b429) so the next audit
+   pass can judge them — a real twin pipeline session (CT takeoff → Counts tab →
+   book assignment); the 2026-09-04 digest itself is done.
 2. **Audit throughput** — 15 pending after the pass; every blocked axis and undigested
    note waits on it. (The cockpit's one-tap verdicts exist; the backlog is human hours.)
 3. **Unblock the two blocked axes** — answer the b422 wage-tier multiplier question
