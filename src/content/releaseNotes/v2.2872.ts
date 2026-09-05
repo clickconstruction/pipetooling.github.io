@@ -3,11 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.2872',
   date: '2026-09-05',
-  title: 'Work orders: every small chip speaks the rail\'s words',
+  title: 'Inviting someone asks for their role — and can start them in training mode',
   kind: 'fix',
   highlights: [
-    'The sheet\'s Work order box (Edit a Sub Labor sheet) now draws the same seven-dot rail as Jobs → Work Orders and Sub Labor — Drafted · Sent · Signed, then Work · Walk-through · Customer pays · Paid — instead of its own segmented bar.',
-    'The job window\'s Sub work order chip and strip, the Person Desk\'s Work orders list, and the dashboard\'s Needs You card use the same words as the board: No agreement, Drafted · no price yet, Sent · awaiting signature, Signed, Declined. The job window\'s buttons read Price… and Send…, like the board\'s Next column.',
+    'Invite via email and Manually add user now open with no role selected. Pick one before Send or Create lights up — nobody gets Master access because a dropdown was left alone.',
+    'Roles read as words everywhere: the dialogs, the Person Desk, and the invitation email itself now say "as a Helper" or "as a Master" instead of the raw code name.',
+    'A "Start in training mode (read-only)" checkbox on both dialogs flags the account from its first minute, so a new hire can explore without being able to change anything.',
+    'Changing a role from the Active Accounts list asks you to confirm first, the same way the Person Desk does; Cancel leaves the role as it was.',
   ],
 }
 

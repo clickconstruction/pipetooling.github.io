@@ -278,8 +278,11 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 interface CreateUserRequest {
   email: string      // User's email address
   password: string   // Initial password (min 6 characters)
-  role: string       // User role
+  role: string       // User role — an explicit choice; the dialog has no default (v2.2872)
   name?: string      // Optional display name
+  service_type_ids?: string[] // Optional restriction for estimator/subcontractor/helpers/superintendent
+  read_only?: boolean // v2.2872: start in training mode (users.read_only = true). Absent = false.
+                      // Any non-boolean → 400 "read_only must be true or false".
 }
 ```
 
@@ -292,6 +295,7 @@ interface CreateUserRequest {
 - `'estimator'`
 - `'primary'`
 - `'superintendent'`
+- `'controller'`
 
 #### Example Request
 
@@ -317,7 +321,8 @@ const response = await supabase.functions.invoke('create-user', {
     "id": "uuid",
     "email": "newuser@example.com",
     "name": "John Doe",
-    "role": "assistant"
+    "role": "assistant",
+    "read_only": false
   },
   "message": "User created successfully"
 }
@@ -360,8 +365,10 @@ const response = await supabase.functions.invoke('create-user', {
 3. Creates auth user with `supabase.auth.admin.createUser()`
 4. Sets email as confirmed
 5. Stores role in `user_metadata` (triggers `handle_new_user()`)
-6. Creates corresponding `public.users` record
-7. Returns user details
+6. Upserts the corresponding `public.users` record with role, name, any service-type restriction, and `read_only` (the training-mode flag chosen in the dialog — v2.2872). The service-role write passes `users_guard_privileged_columns` (`auth.uid()` IS NULL), so no migration was needed.
+7. Returns user details (incl. `read_only`)
+
+**Called from**: Active Accounts → **Manually add user** ([`useActiveAccountsManagement.ts`](../src/hooks/useActiveAccountsManagement.ts) `handleManualAdd`). Since v2.2872 the dialog opens with no role selected and **Create user** stays disabled until one is chosen (`inviteFormValid`, [`src/lib/inviteUserForm.ts`](../src/lib/inviteUserForm.ts)).
 
 **Deployment**: See [`supabase/functions/create-user/DEPLOY.md`](../supabase/functions/create-user/DEPLOY.md)
 
@@ -377,15 +384,17 @@ const response = await supabase.functions.invoke('create-user', {
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
 
-**Called from**: Settings → People & Accounts → "Invite via email" ([`Settings.tsx`](../src/pages/Settings.tsx) `handleInvite`) and People → Users → invite roster entry ([`People.tsx`](../src/pages/People.tsx) `inviteAsUser`).
+**Called from**: Active Accounts → "Invite via email" ([`useActiveAccountsManagement.ts`](../src/hooks/useActiveAccountsManagement.ts) `handleInvite`; the dialog opens with no role selected and **Send invite** stays disabled until one is chosen — v2.2872) and People → Users → invite roster entry ([`People.tsx`](../src/pages/People.tsx) `inviteAsUser`, role derived from the roster kind).
 
 #### Request Parameters
 
 ```typescript
 interface InviteUserRequest {
   email: string             // Invitee's email address
-  role: string              // One of the 8 modern roles (same list as create-user)
+  role: string              // One of the 9 roles (same list as create-user)
   name?: string             // Optional display name
+  read_only?: boolean       // v2.2872: start in training mode (users.read_only = true). Absent = false;
+                            // any non-boolean → 400 "read_only must be true or false"
   redirectTo?: string       // Where the invite link lands; must match https://pipetooling.com/*,
                             // https://clicktooling.com/*, or http://localhost:5173|5175/*;
                             // defaults to APP_ORIGIN (else https://pipetooling.com) + /accept-invite
@@ -397,8 +406,8 @@ interface InviteUserRequest {
 
 1. Validates caller is `dev`; validates role and any `service_type_ids`.
 2. Duplicate check on `public.users.email`. A **pending invite** (auth user with `email_confirmed_at` and `last_sign_in_at` both null) is deleted and replaced — re-inviting the same address issues a fresh link ("resend invite"). Anyone else → 400 `User with this email already exists`.
-3. `auth.admin.generateLink({ type: 'invite' })` creates the auth user and returns the action link **without** sending Supabase SMTP mail. The `handle_new_user` trigger reads `invited_role` from user metadata; the function also upserts `public.users` explicitly with role, name, and service-type restriction.
-4. Renders the invitation template and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper (from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`)).
+3. `auth.admin.generateLink({ type: 'invite' })` creates the auth user and returns the action link **without** sending Supabase SMTP mail. The `handle_new_user` trigger reads `invited_role` from user metadata; the function also upserts `public.users` explicitly with role, name, service-type restriction, and `read_only` (training mode from the first minute — v2.2872; service-role writes pass `users_guard_privileged_columns`).
+4. Renders the invitation template — `{{role}}` is filled from the shared human labeler [`_shared/roleLabels.ts`](../supabase/functions/_shared/roleLabels.ts) (`humanRoleLabel`: "Helper", "Master", "Subcontractor" …, the twin of `src/lib/roleLabels.ts`; `src/lib/roleLabels.test.ts` fails when they drift), never the raw enum ("Master_technician") —  and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper (from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`)).
 5. **If the Resend send fails, the auth user is deleted** (FK cascade removes `public.users`) and a 500 is returned — a failed invite leaves nothing behind, so retrying is always safe. The action link is never returned in the response.
 
 #### Accepting the invite
@@ -408,7 +417,7 @@ The emailed link verifies through Supabase Auth and redirects to **`/accept-invi
 #### Success Response
 
 ```json
-{ "success": true, "message": "Invite sent to newuser@example.com" }
+{ "success": true, "message": "Invite sent to newuser@example.com", "read_only": false }
 ```
 
 **Gateway JWT**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml) (function validates the JWT itself).
@@ -1024,6 +1033,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **View counting** (v2.2341, migration `20260826160132`): each validated load appends a `public_page_views` row (`surface='portal'`, `entity_id` = customer id, `via` token/slug) via the service role, fire-and-forget — measurement can never fail the statement. No anon-writable path; reads are dev-only RLS. (Estimate-accept views were already counted separately — see `get-estimate-for-customer` → Audit.)
 
+**Who counts** (v2.2875, journey-map #37): the row is skipped when the request is an office peek — `?preview=1` (the globe modal's iframe / Preview as customer / Full screen / Edit-chips fetch add it; `CustomerPortal.tsx` forwards it) **or** an `Authorization` bearer that is a verifiable user access token (the page sends the browser's own session when it has one; `admin.auth.getUser` checks it — any valid account is staff, since customers never sign in). Shared decision: [`_shared/publicViewCounting.ts`](../supabase/functions/_shared/publicViewCounting.ts) `publicViewDecision(req, admin, anonKey)`, twin + tests in `src/lib/publicViewCounting*.ts`. Unverifiable tokens count as customers. **Staff-only payload block**: when the session verifies, the response also carries `officeViewStats: { opens, lastOpenedAt }` — the customer's own view rows, read with the service role — which feeds the globe gear's **Opened** row ("Opened 3 times · last Sep 3"). A customer's payload never includes it.
+
 ### submit-portal-request
 
 **Purpose**: Portal form intake (portal train PR 2, v2.1986): validates a visit/bid request from `/portal` (honeypot, length caps, https-only plans link, job-in-scope check), rate-limits 5/hour per portal link, inserts a `dispatch_requests` row (details in `pending_payload.source = 'portal'`; `from_user_id` = `app_settings.portal_requests_from_user_id` → link minter → first dev), then triggers `notify-dispatch-request` and (v2.1988) emails the `portal_request_email_recipients_v1` app_settings list via Resend, best-effort.
@@ -1048,7 +1059,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Auth**: none (`verify_jwt = false` — the link IS the capability, minted/rotated by `mint_sub_portal_link`). Service-role reads; never returns costs beyond the sub's own money, other people's data, or document contents.
 
-**View counting**: each validated load appends a `public_page_views` row (`surface='sub_portal'`, `entity_id` = person id, `via` token/slug), fire-and-forget.
+**View counting**: each validated load appends a `public_page_views` row (`surface='sub_portal'`, `entity_id` = person id, `via` token/slug), fire-and-forget. **v2.2875**: skipped for office peeks — `?preview=1` (the sub globe's iframe / Preview add it; `SubPortal.tsx` forwards it) or a verifiable staff access token in `Authorization` — via the same `publicViewDecision` as `customer-portal`.
 
 ### submit-sub-portal
 
@@ -1117,6 +1128,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Sample** (v2.2758, What customers see): `t=sample` / `sample-done` skips the room lookup — no sign-in (v2.2763 dropped the office-JWT gate) — and gets the fixture room (two options, one pending change order; `sample-done` = signed with the CO accepted) with `terms` / `exclusions` read live from the bid cover-letter defaults. No `room_view` is logged.
 
 **Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` — since v2.2697 the key is validated against the room's current revision and the write passes the shared throttle (30 s dedupe, 60/10 min per IP); always 200, invalid or throttled input dropped — browsing must never break. Requires migration `20260828215717`.
+
+**Staff opens don't count** (v2.2875, journey-map J35-F3): `room_view` (GET) and `option_viewed` (POST) are skipped when the request carries `?preview=1` or a verifiable user access token in `Authorization` — `BidRoom.tsx` now sends the browser's own session when it has one (an estimator checking their own link), the anon key otherwise. Decision shared with the portals: [`_shared/publicViewCounting.ts`](../supabase/functions/_shared/publicViewCounting.ts). Anonymous GC opens log exactly as before; signed / declined never depend on it.
 
 ---
 
@@ -2720,9 +2733,9 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### gc-statement-email-dispatch
 
-**Purpose** (v2.1426): Cron-only dispatcher for **scheduled** GC statement sends — Phase 2 of the `gc_statement` Report Subscriptions stream ([REPORT_SUBSCRIPTIONS.md](REPORT_SUBSCRIPTIONS.md)). Drains due `gc_statement_email_requests` rows (send_at ≤ now, unsent, attempts < 5, batch 10), rebuilds each statement **fresh at send time** via `get_gc_statement_email_payload` (v2.1425), renders HTML in-function ([`render.ts`](../supabase/functions/gc-statement-email-dispatch/render.ts) — keep in sync with `src/lib/jobsDocuments/gcStatementEmail.ts`; single-GC statements append the GC's portal card when `resolveGcPortalUrl` finds an active link — mirror of `src/lib/portal/gcPortalLink.ts`, v2.2151), sends via Resend with the **requester's email as reply-to**, audits into `gc_statement_emails` (single statements as `gc`/`development`, whole-report rows as `all`), best-effort logs to `email_send_log`, stamps `sent_at`, and re-enqueues `repeat_weekly` chains (+7 days, guarded against retry double-inserts; the row's `cc_emails` (v2.2160) rides along and is passed as Resend `cc` + audited).
+**Purpose** (v2.1426): Cron-only dispatcher for **scheduled** GC statement sends — Phase 2 of the `gc_statement` Report Subscriptions stream ([REPORT_SUBSCRIPTIONS.md](REPORT_SUBSCRIPTIONS.md)). Drains due `gc_statement_email_requests` rows (send_at ≤ now, unsent, attempts < 5, batch 10), rebuilds each statement **fresh at send time** via `get_gc_statement_email_payload` (v2.1425), renders HTML in-function ([`render.ts`](../supabase/functions/gc-statement-email-dispatch/render.ts) — keep in sync with `src/lib/jobsDocuments/gcStatementEmail.ts`; `src/lib/jobsDocuments/gcStatementEmailParity.test.ts` pins the two byte-for-byte since v2.2874; single-GC statements append the GC's portal card when `resolveGcPortalUrl` finds an active link — mirror of `src/lib/portal/gcPortalLink.ts`, v2.2151 — whose line reads **"Pay online any time at <portal> — this statement stays current there."** with `?src=gc-statement` on the href for attribution (v2.2874, journey-map #46); a job with no address prints its name once), sends via Resend with the **requester's email as reply-to**, audits into `gc_statement_emails` (single statements as `gc`/`development`, whole-report rows as `all`), best-effort logs to `email_send_log`, stamps `sent_at`, and re-enqueues `repeat_weekly` chains (+7 days, guarded against retry double-inserts; the row's `cc_emails` (v2.2160) rides along and is passed as Resend `cc` + audited).
 
-**Subject** (v2.2131): per-GC statements go out as `Click Plumbing open balances: <date>` (`gcStatementSubject` in `render.ts`, mirrored by the client's `gcStatementEmailSubject`); whole-report sends keep `Open balances (all GCs|all developments) — … — <date>`. `emailLogStreamForSubject` maps both shapes to the `gc_statement` stream. **Footer** (v2.2133): "Questions about a bill? Reply to this email or call the office at <phone>." — the dispatcher reads `app_settings.physical_invoice_issuer_v1` (`phone`) once per run (`gcStatementFooterLine` in `render.ts`, mirror of the client's); no number configured → the bare line.
+**Subject** (v2.2131): per-GC statements go out as `Click Plumbing open balances: <date>` (`gcStatementSubject` in `render.ts`, mirrored by the client's `gcStatementEmailSubject`); whole-report sends keep `Open balances (all GCs|all developments) — … — <date>`. `emailLogStreamForSubject` maps both shapes to the `gc_statement` stream. **Footer** (v2.2133): "Questions about a bill? Reply to this email or call the office at <phone>." — the dispatcher reads `app_settings.physical_invoice_issuer_v1` (`phone`) once per run (`gcStatementFooterLine` in `render.ts`, mirror of the client's); no number configured → the bare line. **Wording** (v2.2660; v2.2874): the `gc_statement_scheduled` template row (Settings → Email templates → "GC statement (Draft Message + scheduled)") supplies the subject and an intro paragraph; since v2.2874 the intro is passed *into* `renderGcStatementHtml/Text` (`introText`) and rendered inside the styled statement block — the same template the client's Draft Message lane now reads, so both app-sent lanes are one email.
 
 **Endpoint**: `POST /functions/v1/gc-statement-email-dispatch`
 

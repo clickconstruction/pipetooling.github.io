@@ -123,3 +123,16 @@ describe('daysBetweenYmd', () => {
     expect(daysBetweenYmd('2026-09-05', '2026-09-02')).toBe(-3)
   })
 })
+
+describe('buildSheetRail — crew pay', () => {
+  it('draws only the sub’s four dots, never a gap, and Next skips the agreement', () => {
+    const r = rail({ coverage: none, sheetStage: 'walkthrough', crewPay: true, agreed: 1000, open: 1000 })
+    expect(r.steps.map((s) => s.key)).toEqual(['work', 'inspection', 'customer_pays', 'paid'])
+    expect(states(r)).toBe('done now todo todo')
+    expect(r).toMatchObject({ crewPay: true, gap: false, current: 'inspection', label: 'Walk-through', position: 4 })
+    expect(sheetNextAction(r, none, { subName: 'Abraham, Misses Taunya TESTING', agreed: 1000, open: 1000, unpriced: false, todayYmd: TODAY }).label).toBe('Schedule the walk-through')
+    const paid = rail({ coverage: none, sheetStage: 'customer_pay', crewPay: true, agreed: 1000, open: 0 })
+    expect(paid).toMatchObject({ current: 'paid', tone: 'paid', label: 'Paid' })
+    expect(sheetNextAction(rail({ coverage: none, crewPay: true, agreed: 1000, open: 1000 }), none, { subName: 'Abraham', agreed: 1000, open: 1000, unpriced: false, todayYmd: TODAY })).toMatchObject({ label: 'Wait for “done”', hint: 'crew pay — no work order needed', button: null })
+  })
+})

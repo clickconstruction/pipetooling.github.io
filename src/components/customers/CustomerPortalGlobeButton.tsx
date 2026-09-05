@@ -25,6 +25,9 @@ import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShor
 import { formatPortalDate, formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
 import { buildStatementBillRows, type StatementBillRow } from '../../lib/portal/portalStatementJobLinks'
 import { setPortalMainOff, usePortalLinkOff } from '../../hooks/usePortalOffStates'
+import { staffAwarePublicHeaders } from '../../lib/publicFunctionStaffHeaders'
+import { withPreviewFlag } from '../../lib/publicViewCounting'
+import { parseOfficeViewStats, portalOpenedLabel, type OfficeViewStats } from '../../lib/portal/portalOpenedLabel'
 import type {
   MarkCustomerPortalSlugSharedResult,
   MintCustomerPortalLinkResult,
@@ -85,6 +88,9 @@ export default function CustomerPortalGlobeButton({
   const navigate = useNavigate()
   const [billRows, setBillRows] = useState<StatementBillRow[]>([])
   const [previewExpanded, setPreviewExpanded] = useState(false)
+  // "Opened N times · last <date>" (journey-map #37): customer opens on record, returned by the
+  // edge function only to a verified staff session. null = not available (old function build).
+  const [viewStats, setViewStats] = useState<OfficeViewStats | null>(null)
 
   // Office-only Edit-Job chips under the live preview (v2.2054): the public
   // payload carries job NUMBERS only (no ids, by design), so match them to
@@ -94,16 +100,23 @@ export default function CustomerPortalGlobeButton({
   useEffect(() => {
     if (!open || !activeToken) {
       setBillRows([])
+      setViewStats(null)
       return
     }
     let cancelled = false
     void (async () => {
       try {
+        // `?preview=1` + the office session: this fetch is a staff peek, never a customer view
+        // (journey-map #37 — it used to write one of the two "view" rows per modal open).
         const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/customer-portal?token=${encodeURIComponent(activeToken)}`,
+          withPreviewFlag(`${import.meta.env.VITE_SUPABASE_URL as string}/functions/v1/customer-portal?token=${encodeURIComponent(activeToken)}`),
+          { headers: await staffAwarePublicHeaders() },
         )
-        const payload = parsePortalPayload(await res.json().catch(() => null))
-        if (!res.ok || !payload || payload.bills.length === 0) return
+        const body: unknown = await res.json().catch(() => null)
+        if (cancelled || !res.ok) return
+        setViewStats(parseOfficeViewStats(body))
+        const payload = parsePortalPayload(body)
+        if (!payload || payload.bills.length === 0) return
         const { data: jobRows } = await supabase
           .from('jobs_ledger')
           .select('id, hcp_number, click_number')
@@ -242,6 +255,10 @@ export default function CustomerPortalGlobeButton({
   }
 
   const tokenUrl = main.kind === 'active' ? `${window.location.origin}/portal?t=${main.token}` : null
+  // Office openers (Preview as customer, Full screen, the live iframe) carry `?preview=1` so the
+  // load is not counted as the customer looking (journey-map #37). Copy never uses this URL.
+  const previewUrl = tokenUrl ? withPreviewFlag(tokenUrl) : null
+  const openedLine = portalOpenedLabel(viewStats)
 
   const saveSlug = async (value: string): Promise<boolean> => {
     const { data, error } = await supabase.rpc('set_customer_portal_slug' as never, {
@@ -656,7 +673,7 @@ export default function CustomerPortalGlobeButton({
                   <button type="button" onClick={() => void copyAddress()} disabled={busy} style={primaryBtn}>
                     Copy link
                   </button>
-                  <button type="button" onClick={() => window.open(tokenUrl, '_blank', 'noopener')} style={secondaryBtn}>
+                  <button type="button" onClick={() => window.open(previewUrl ?? undefined, '_blank', 'noopener')} style={secondaryBtn}>
                     Preview as customer
                   </button>
                   <span style={{ flex: 1 }} />
@@ -746,6 +763,14 @@ export default function CustomerPortalGlobeButton({
                         <p style={rowHint}>Rotate = new link, old one dies. Turn off = no portal at all.</p>
                       </div>,
                     )}
+                    {openedLine &&
+                      gearRow(
+                        'Opened',
+                        <div>
+                          <span style={{ fontSize: '0.8rem', color: viewStats && viewStats.opens > 0 ? 'var(--text-700)' : 'var(--text-muted)' }}>{openedLine}</span>
+                          <p style={rowHint}>Customer opens of this portal. Your previews and staff opens don't count.</p>
+                        </div>,
+                      )}
                     {timeline.length > 0 &&
                       gearRow(
                         'History',
@@ -777,7 +802,7 @@ export default function CustomerPortalGlobeButton({
                       </button>
                       <button
                         type="button"
-                        onClick={() => window.open(tokenUrl, '_blank', 'noopener')}
+                        onClick={() => window.open(previewUrl ?? undefined, '_blank', 'noopener')}
                         title="Open the portal page full screen in a new tab"
                         style={{ ...secondaryBtn, padding: '0.15rem 0.5rem', fontSize: '0.7rem' }}
                       >
@@ -787,7 +812,7 @@ export default function CustomerPortalGlobeButton({
                   </div>
                   <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: previewHeight, background: '#f6f3ec' }}>
                     <iframe
-                      src={tokenUrl}
+                      src={previewUrl ?? undefined}
                       title={`Portal preview — ${customerName}`}
                       sandbox="allow-scripts allow-same-origin allow-popups"
                       style={{

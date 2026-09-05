@@ -31,6 +31,8 @@ import {
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import { resolveEmailWording } from '../../lib/emailWording'
+import { dollarsToCents, gcStatementSendGuard } from '../../lib/gcStatementSendGuard'
 import {
   GC_ROUND_THRESHOLD,
   buildStatementRound,
@@ -300,6 +302,12 @@ export function JobsGcReviewModal({
   const [emailError, setEmailError] = useState<string | null>(null)
   /** Draft Message: include the GC's portal card (v2.2151) — on by default whenever the GC has an active portal. */
   const [emailIncludePortal, setEmailIncludePortal] = useState(true)
+  /**
+   * Draft Message intro (journey-map #46): the dev-saved `gc_statement_scheduled` template body,
+   * rendered — the same words the scheduled dispatcher prepends, so both app-sent lanes read alike.
+   * null = no template saved (the built-in statement stands alone).
+   */
+  const [emailIntroText, setEmailIntroText] = useState<string | null>(null)
   /** "Share all" dialog (v2.1420): print or email the whole report. */
   const [shareAllOpen, setShareAllOpen] = useState(false)
   const [shareAllTo, setShareAllTo] = useState('')
@@ -670,17 +678,36 @@ export function JobsGcReviewModal({
     if (open) void fetchPhysicalInvoiceIssuerFromAppSettings()
   }, [open])
   const openEmailDialogForGroup = (g: GcReviewGroup) => {
+    const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const fallbackSubject = gcStatementEmailSubject(g, dateStr)
     setEmailDialogGroup(g)
     setEmailDialogTo(!byDevelopment && g.gcId ? emailForGc(g.gcId) : '')
     setEmailDialogCcText('')
-    setEmailDialogSubject(
-      gcStatementEmailSubject(g, new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })),
-    )
+    setEmailDialogSubject(fallbackSubject)
+    setEmailIntroText(null)
     setEmailError(null)
     setEmailIncludePortal(true)
     setEmailWhen('now')
     setEmailRepeatWeekly(false)
+    // Same editable wording as the scheduled lane (Settings → Email templates → GC statement,
+    // v2.2660; journey-map #46 routes Draft Message through it too). Fail-soft: no row / no
+    // read → the built-in subject and no intro. The subject only follows the template while
+    // the person hasn't touched it.
+    void resolveEmailWording('gc_statement_scheduled', { date: dateStr, default_subject: fallbackSubject }, { subject: fallbackSubject, body: '' }).then((w) => {
+      if (!w.overridden) return
+      setEmailIntroText(w.text.trim() || null)
+      if (w.subject.trim()) setEmailDialogSubject((cur) => (cur === fallbackSubject ? w.subject.trim() : cur))
+    })
   }
+  /** Send guard (journey-map #46 / J20-F4): the one rule the Draft Message button, its status line, and the dispatcher's skip agree on. */
+  const emailSendGuard = emailDialogGroup
+    ? gcStatementSendGuard({
+        totalOwedCents: dollarsToCents(emailDialogGroup.subtotal),
+        emailSending,
+        hasAddress: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDialogTo.trim()),
+        scheduled: emailWhen === 'schedule',
+      })
+    : null
   if (!open) return null
   const EntityIcon = byDevelopment ? DevelopmentHouseIcon : GcHardHatIcon
   const groupByPillStyle = (active: boolean): React.CSSProperties => ({
@@ -1704,7 +1731,7 @@ export function JobsGcReviewModal({
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.8rem', color: 'var(--text-700)', marginBottom: '0.6rem', cursor: 'pointer' }}>
                   <input type="checkbox" checked={emailIncludePortal} onChange={(e) => setEmailIncludePortal(e.target.checked)} disabled={emailSending || emailWhen === 'schedule'} style={{ marginTop: 3 }} />
                   <span>
-                    Include portal link <span style={{ color: 'var(--text-muted)' }}>— a "Your account, any time" card under the table pointing at </span>
+                    Include portal link <span style={{ color: 'var(--text-muted)' }}>— a "Your account, any time" card under the table: Pay online any time at </span>
                     <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.76rem' }}>{link.url.replace(/^https?:\/\//, '')}</span>
                     <span style={{ color: 'var(--text-muted)' }}> ({gcPortalLinkCaption(link)}){emailWhen === 'schedule' ? ' · scheduled sends include it automatically while the portal is active' : ''}</span>
                   </span>
@@ -1725,6 +1752,10 @@ export function JobsGcReviewModal({
             {emailError ? (
               <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{emailError}</p>
             ) : null}
+            {/* Send guard (journey-map #46 / J20-F4): a $0 group cannot be sent now — the dispatcher's own skip, surfaced before the click. */}
+            {emailSendGuard?.message ? (
+              <p role="status" style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{emailSendGuard.message}</p>
+            ) : null}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               {/* Preview (v2.2061): the exact email the recipient gets, in a new window — nothing sends. */}
               <button
@@ -1733,7 +1764,7 @@ export function JobsGcReviewModal({
                   const g = emailDialogGroup
                   const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                   const subject = emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr)
-                  if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null }))) {
+                  if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(g, subject, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }))) {
                     setEmailError('Allow pop-ups to preview the statement.')
                   }
                 }}
@@ -1751,7 +1782,8 @@ export function JobsGcReviewModal({
               </button>
               <button
                 type="button"
-                disabled={emailSending || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDialogTo.trim())}
+                disabled={!emailSendGuard?.canSend}
+                title={emailSendGuard?.message ?? undefined}
                 onClick={() => {
                   const g = emailDialogGroup
                   if (emailWhen === 'schedule') {
@@ -1806,8 +1838,8 @@ export function JobsGcReviewModal({
                     toEmail: emailDialogTo.trim(),
                     ccEmails: ccNow.emails,
                     subject: emailDialogSubject.trim() || gcStatementEmailSubject(g, dateStr),
-                    emailHtml: buildGcStatementEmailHtml(g, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null }),
-                    emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null }),
+                    emailHtml: buildGcStatementEmailHtml(g, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }),
+                    emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }),
                     total: g.subtotal,
                     jobCount: g.jobCount,
                   }).then((res) => {
@@ -1831,7 +1863,8 @@ export function JobsGcReviewModal({
                   borderRadius: 4,
                   background: '#3b82f6',
                   color: 'white',
-                  cursor: emailSending ? 'wait' : 'pointer',
+                  cursor: emailSending ? 'wait' : emailSendGuard?.canSend ? 'pointer' : 'not-allowed',
+                  opacity: emailSendGuard?.canSend || emailSending ? 1 : 0.55,
                   fontWeight: 500,
                 }}
               >
@@ -1889,7 +1922,8 @@ export function JobsGcReviewModal({
                           type="button"
                           onClick={() => {
                             const subject = gcStatementEmailSubject(current.group, dateStr)
-                            if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(current.group, subject, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone }))) {
+                            // Preview == paste (journey-map #46): the same portal card Copy for email includes.
+                            if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(current.group, subject, { dateStr, groupBy: 'gc', officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: portalLinkFor(current.group)?.url ?? null }))) {
                               setRoundError('Allow pop-ups to preview the statement.')
                             }
                           }}

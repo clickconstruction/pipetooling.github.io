@@ -33,7 +33,7 @@ Swept: every plan doc under `docs/` (status logs, Deferred / Open questions / la
 
 | To-do | Verdict | Why it survived validation |
 |---|---|---|
-| work-orders-one-row-spine (shipped v2.2865–v2.2872, entry deleted) | done | both derivation bugs reproduced live 2026-09-05 (job 892 in "Needs a work order"; 977 / 1004 / 931 missing from it) |
+| work-orders-one-row-spine (shipped v2.2865–v2.2876, entry deleted) | done | both derivation bugs reproduced live 2026-09-05 (job 892 in "Needs a work order"; 977 / 1004 / 931 missing from it) |
 | [`takeoffs-retire-old.md`](./takeoffs-retire-old.md) | do, after 2026-09-11 | default view is still `old`; PRs 8–9 unstarted |
 | [`rfq-apply-picks-to-bid-costs.md`](./rfq-apply-picks-to-bid-costs.md) | do (owner approved) | no code past the lot-wording chip |
 | [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | do, smallest first | no PTO / overtime / Needs-you card / badge in the kernels |

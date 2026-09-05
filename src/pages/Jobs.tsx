@@ -1804,6 +1804,9 @@ export default function Jobs() {
           laborJobs={laborJobs}
           laborJobsLoading={laborJobsLoading}
           laborJobNamesByHcp={laborJobNamesByHcp}
+          jobs={jobs}
+          authUserId={authUser?.id}
+          laborJobAssigneesByJobId={laborJobAssigneesByJobId}
           subLaborDueTotal={subLaborDueTotal}
           subLaborOutstandingByPerson={subLaborOutstandingByPerson}
           onNewLaborJob={() => subLaborFormRef.current?.openNew()}

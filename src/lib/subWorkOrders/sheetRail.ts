@@ -57,6 +57,8 @@ export type SheetRailInput = {
   agreed: number
   open: number
   unpriced: boolean
+  /** A crew pay sheet (a teammate on it): only the sub's four dots — there is no agreement segment to draw. */
+  crewPay?: boolean
 }
 
 export type SheetRail = {
@@ -72,6 +74,8 @@ export type SheetRail = {
   /** The line under the label: "Sep 5 · no price", "good through Sep 12", "“too soon” · Sep 3" … */
   sublabel: string | null
   tone: 'gap' | 'now' | 'paid'
+  /** Four dots, no agreement segment (crew pay). */
+  crewPay: boolean
 }
 
 const stageRank = (s: SubSheetStage | null): number => (s === 'walkthrough' ? 1 : s === 'customer_pay' ? 2 : 0)
@@ -90,6 +94,29 @@ export function buildSheetRail(input: SheetRailInput): SheetRail {
   const hasSheet = input.sheetStage != null
   const moneyStep = sheetMoneyStep(input)
   const moneyIdx = STEP_ORDER.indexOf(moneyStep)
+
+  if (input.crewPay) {
+    const subSteps = STEP_ORDER.slice(STEP_ORDER.indexOf('work'))
+    const steps: SheetRailStep[] = subSteps.map((key) => {
+      const idx = STEP_ORDER.indexOf(key)
+      const state: SheetRailStepState = idx < moneyIdx ? 'done' : idx === moneyIdx ? (moneyStep === 'paid' ? 'done' : 'now') : 'todo'
+      return { key, label: SHEET_RAIL_STEP_LABEL[key], state }
+    })
+    const cur = steps.find((s) => s.key === moneyStep)
+    if (cur && cur.state !== 'done') cur.state = 'now'
+    const queued = moneyStep === 'paid' && input.open > 0
+    return {
+      steps,
+      current: moneyStep,
+      gap: false,
+      group: 'signed',
+      position: 3 + (moneyIdx - STEP_ORDER.indexOf('work')),
+      label: SHEET_RAIL_STEP_LABEL[moneyStep],
+      sublabel: queued ? 'queued for the pay run' : null,
+      tone: moneyStep === 'paid' ? 'paid' : 'now',
+      crewPay: true,
+    }
+  }
 
   const signed = c.kind === 'signed'
   const sentLive = c.kind === 'sent' && !c.expired
@@ -155,7 +182,7 @@ export function buildSheetRail(input: SheetRailInput): SheetRail {
   }
 
   const tone: SheetRail['tone'] = gap ? 'gap' : moneyStep === 'paid' && signed ? 'paid' : 'now'
-  return { steps, current, gap, group, position, label, sublabel, tone }
+  return { steps, current, gap, group, position, label, sublabel, tone, crewPay: false }
 }
 
 export type SheetNextButton = 'draft' | 'price' | 'send' | 'nudge' | 'reoffer' | null
@@ -196,6 +223,7 @@ const money = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
  */
 export function sheetNextAction(rail: SheetRail, coverage: JobWorkOrderCoverage, ctx: SheetNextActionContext): SheetNextAction {
   const sub = ctx.subName.trim() || 'the sub'
+  if (rail.crewPay) return crewPayNextAction(rail, sub, ctx)
   if (coverage.kind === 'declined') {
     return { label: 'Re-offer or re-price', hint: coverage.reason ? `${sub} said “${coverage.reason}”` : `${sub} declined`, button: 'reoffer', buttonLabel: 'Re-offer…' }
   }
@@ -233,5 +261,21 @@ export function sheetNextAction(rail: SheetRail, coverage: JobWorkOrderCoverage,
         : { label: 'Nothing — done', hint: null, button: null, buttonLabel: null }
     default:
       return { label: 'Signed', hint: null, button: null, buttonLabel: null }
+  }
+}
+
+/** Crew pay sheets skip the agreement steps: the office's move is the sheet's own step. */
+function crewPayNextAction(rail: SheetRail, sub: string, ctx: SheetNextActionContext): SheetNextAction {
+  switch (rail.current) {
+    case 'inspection':
+      return { label: 'Schedule the walk-through', hint: 'the crew said the work is done', button: null, buttonLabel: null }
+    case 'customer_pays':
+      return { label: 'Bill and collect', hint: `${sub} ${sub.includes(',') || sub.includes('|') ? 'are' : 'is'} owed ${money(ctx.open)}`, button: null, buttonLabel: null }
+    case 'paid':
+      return ctx.open > 0
+        ? { label: `Pay ${sub}`, hint: `${money(ctx.open)} queued for the pay run`, button: null, buttonLabel: null }
+        : { label: 'Nothing — done', hint: null, button: null, buttonLabel: null }
+    default:
+      return { label: 'Wait for “done”', hint: 'crew pay — no work order needed', button: null, buttonLabel: null }
   }
 }
