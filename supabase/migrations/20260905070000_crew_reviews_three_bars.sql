@@ -104,7 +104,7 @@ AS $$
     WHERE cs.user_id = (SELECT auth.uid())
       AND cs.job_ledger_id IS NOT NULL
       AND cs.approved_at IS NOT NULL
-      AND cs.work_date >= (CURRENT_DATE - GREATEST(COALESCE(p_lookback_days, 14), 1))
+      AND cs.work_date >= (public.app_today() - GREATEST(COALESCE(p_lookback_days, 14), 1))
   ),
   shared AS (
     SELECT cs.user_id, cs.job_ledger_id, cs.work_date
