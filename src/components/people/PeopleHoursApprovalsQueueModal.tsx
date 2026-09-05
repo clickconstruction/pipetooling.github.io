@@ -346,20 +346,24 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
     return (
       <section key={p.userId} style={{ flexShrink: 0, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.75rem', padding: '0.5rem 0.6rem', background: 'var(--bg-subtle)', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => togglePerson(p.userId)}
-            aria-expanded={!collapsed}
-            style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '0.5rem', border: 'none', background: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', flexWrap: 'wrap' }}
-          >
-            <span aria-hidden style={{ color: 'var(--text-muted)', width: '0.8rem', display: 'inline-block', alignSelf: 'center' }}>{collapsed ? '▸' : '▾'}</span>
+          {/* The name door is its own <button>, so it sits beside the toggle rather than inside it (nested buttons are invalid DOM). */}
+          <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)' }}><PersonNameDoor name={p.name} userId={p.userId} /></span>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              {p.count} session{p.count === 1 ? '' : 's'} · {formatHoursShort(p.hours)} · {p.weeks.length} week{p.weeks.length === 1 ? '' : 's'} · oldest {dayLabel(p.oldestWorkDate)}
-              {p.oldestAgeDays >= 7 ? ` (${p.oldestAgeDays}d)` : ''}
-            </span>
-            <FlagSummary counts={p.flagCounts} />
-          </button>
+            <button
+              type="button"
+              onClick={() => togglePerson(p.userId)}
+              aria-expanded={!collapsed}
+              aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${p.name}: ${p.count} session${p.count === 1 ? '' : 's'}, ${formatHoursShort(p.hours)}`}
+              style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '0.5rem', border: 'none', background: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', flexWrap: 'wrap', font: 'inherit' }}
+            >
+              <span aria-hidden style={{ color: 'var(--text-muted)', width: '0.8rem', display: 'inline-block', alignSelf: 'center' }}>{collapsed ? '▸' : '▾'}</span>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                {p.count} session{p.count === 1 ? '' : 's'} · {formatHoursShort(p.hours)} · {p.weeks.length} week{p.weeks.length === 1 ? '' : 's'} · oldest {dayLabel(p.oldestWorkDate)}
+                {p.oldestAgeDays >= 7 ? ` (${p.oldestAgeDays}d)` : ''}
+              </span>
+              <FlagSummary counts={p.flagCounts} />
+            </button>
+          </div>
           <button type="button" style={BTN_APPROVE} disabled={busy || p.count === 0} onClick={() => void approve(p.sessionIds, p.name, p.hours, true)}>
             Approve all {p.count} · {formatHoursShort(p.hours)}
           </button>
