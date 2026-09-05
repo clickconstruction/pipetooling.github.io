@@ -20,6 +20,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   canExpandJobDetailMaterials,
   isStaffFullJobLedgerDetailRole,
+  resolveJobWindowMode,
   showJobCostBreakdownTeamLabor,
   showJobDetailJobTotal,
   showJobDetailProfitSection,
@@ -1161,11 +1162,12 @@ export default function DetailJobModal({
     !loading &&
     !error &&
     Boolean(jobId) &&
-    !isSubcontractorLikeRole(authRole as UserRole) &&
-    authRole !== null
+    // Only roles that get the tabbed window can edit (v2.2848): for anyone else
+    // the ⚙ would route through the bridge straight back to this read pane.
+    resolveJobWindowMode(authRole) === 'window'
 
   const handleEditJobClick = () => {
-    if (!jobId || isSubcontractorLikeRole(authRole as UserRole)) return
+    if (!jobId || resolveJobWindowMode(authRole) !== 'window') return
     if (!jobFormModal) return
     jobFormModal.openEditJob(jobId, {
       ...(fullJob ? { initialJob: fullJob } : {}),

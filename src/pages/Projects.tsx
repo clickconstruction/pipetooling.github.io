@@ -7,6 +7,7 @@ import { estimateStatusDotColor } from '../lib/estimateStatusDotColor'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { canCreateJobsLedgerRow } from '../lib/jobsLedgerCreateRole'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useNewProjectModal } from '../contexts/NewProjectModalContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
@@ -231,6 +232,8 @@ export default function Projects() {
   const [statusFilter, setStatusFilter] = useState<Set<ProjectStatus>>(new Set())
 
   const canAssignSuperintendents = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
+  // The per-project "+ Job" link was a dead door for superintendent / primary (v2.2848): RLS refuses their INSERT.
+  const canCreateJobs = canCreateJobsLedgerRow(myRole)
   const narrow = useNarrowViewport640()
 
   const visibleProjects = useMemo(() => {
@@ -1005,15 +1008,17 @@ export default function Projects() {
                           +{hiddenCount} more
                         </button>
                       )}
-                      <Link
-                        to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
-                        title="Create job"
-                        aria-label={`Create job for ${p.name ?? 'project'}`}
-                        style={railPillPlusStyle}
-                      >
-                        <Plus size={14} aria-hidden="true" />
-                        {jobs.length === 0 && 'Job'}
-                      </Link>
+                      {canCreateJobs && (
+                        <Link
+                          to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
+                          title="Create job"
+                          aria-label={`Create job for ${p.name ?? 'project'}`}
+                          style={railPillPlusStyle}
+                        >
+                          <Plus size={14} aria-hidden="true" />
+                          {jobs.length === 0 && 'Job'}
+                        </Link>
+                      )}
                     </div>
                   )
                 })()}
