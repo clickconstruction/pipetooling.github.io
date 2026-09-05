@@ -1856,11 +1856,11 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### notify-dispatch-request
 
-**Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group).
+**Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group). Since **v2.2880** the same function also carries the answer back: `mode: 'closed' | 'reopened'` pushes the **requester** (`from_user_id`) with the office's closing note and always logs them a `notification_history` row (journey-map Tier-2 #25 — "closing a field request tells the tech nothing").
 
 **Endpoint**: `POST /functions/v1/notify-dispatch-request`
 
-**Required Role**: Authenticated user who is the request author (`from_user_id` on the row)
+**Required Role**: `mode` omitted / `'created'`: authenticated user who is the request author (`from_user_id` on the row). `mode: 'closed' | 'reopened'`: a dispatch group member, a dev, or the row's `closed_by_user_id` (checked with the service role after the RLS-scoped row read).
 
 **Required Secrets**:
 - `SUPABASE_URL`
@@ -1876,6 +1876,12 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 { "dispatch_request_id": "<uuid>" }
 ```
 
+Close / reopen (v2.2880) — `note` is the office's note (trimmed, ≤500 chars; falls back to the row's `closed_note` for `closed`):
+
+```json
+{ "dispatch_request_id": "<uuid>", "mode": "closed", "note": "Added — it's 555-0100" }
+```
+
 #### Success response
 
 ```json
@@ -1889,6 +1895,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `message`.
 
+Close / reopen: `{ success, mode, message, push_sent, recipients: 1, notified: push_sent > 0 }`; when the closer is the requester themselves nothing is sent (`recipients: 0`).
+
 #### Implementation notes
 
 1. User-scoped client loads `dispatch_requests` by id; rejects if not found or `from_user_id !== auth.uid()`.
@@ -1896,6 +1904,7 @@ When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `mes
 3. Logs `notification_history` with `template_type: dispatch_request` per recipient when at least one push succeeded for that recipient.
 4. Optional **job/bid** line in the push body uses **`service_types.ledger_job_prefix`** / **`ledger_bid_prefix`** (fallback **J** / **B**) via shared **[`_shared/ledgerDisplayPrefixes.ts`](../supabase/functions/_shared/ledgerDisplayPrefixes.ts)** when the referenced row includes **`service_type_id`** — **RECENT_FEATURES** **v2.432**.
 5. **`links[]`** is **optional** — empty arrays are tolerated (the function never dereferences `links` for push body composition). The Dashboard My Schedule *Link Customer Pictures* flow (**v2.556**) reuses this endpoint with `links: []` and the new **`pending_action = 'link_job_pictures'`** marker (used only by the inbox UI, not by the push payload), so no Edge-function change was required.
+6. **`mode: 'closed' | 'reopened'`** (**v2.2880**): one recipient — the requester. Push title **"Dispatch answered"** / **"Dispatch reopened your request"**, body `Handled: <title> — <note>` / `Reopened: <title> — <note>` (220-char cap; wording mirrored by `composeDispatchClosurePush` in [`src/lib/dispatchRequestClosure.ts`](../src/lib/dispatchRequestClosure.ts) — keep them in step), `url: /job-mode/inbox`, `tag: dispatch-<id>-<mode>`. The `notification_history` row (`template_type` `dispatch_request_closed` / `dispatch_request_reopened`, `channel: push`) is written **whether or not a push went out**, so Settings → Notifications shows the answer for people who never enabled push. Clients: `useDispatchInbox` (Add & Close → `closed`; note on a closed row → `reopened`) and `JobFormModal`'s blank→set auto-close of `link_job_pictures` / `add_job_phone` requests, both via `notifyDispatchRequestClosure`, which then records `dispatch_request_closed{notified}` in `ui_nav_clicks`.
 
 ---
 

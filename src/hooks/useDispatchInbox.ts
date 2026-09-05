@@ -11,6 +11,12 @@ import type {
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { DISPATCH_REQUESTS_CHANGED_EVENT } from '../lib/dispatchRequestHelpers'
 import {
+  dispatchBadgeCounts as computeDispatchBadgeCounts,
+  EMPTY_DISPATCH_BADGE_COUNTS,
+  type DispatchBadgeCounts,
+} from '../lib/dispatchInboxBadge'
+import { notifyDispatchRequestClosure } from '../lib/dispatchRequestClosure'
+import {
   jobIdsForPicturesRequestSweep,
   pickOrphanedPicturesRequestIds,
   PICTURES_REQUEST_SELF_HEAL_NOTE,
@@ -28,6 +34,15 @@ export function useDispatchInbox() {
   const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
   const [dispatchRequests, setDispatchRequests] = useState<DispatchInboxRow[]>([])
   const [dispatchRequestsLoading, setDispatchRequestsLoading] = useState(false)
+  /** True once the first load has settled — the footer badge waits for it before recording. */
+  const [dispatchRequestsLoaded, setDispatchRequestsLoaded] = useState(false)
+  /**
+   * Footer-badge counts (v2.2880, journey-map #24): `open` over EVERY row —
+   * dismissal is per viewer and open rows can't be dismissed, so the badge no
+   * longer depends on who tidied what; `closed` = closed rows this viewer
+   * hasn't dismissed (telemetry only — what the old badge over-counted).
+   */
+  const [dispatchBadgeCounts, setDispatchBadgeCounts] = useState<DispatchBadgeCounts>(EMPTY_DISPATCH_BADGE_COUNTS)
   const [dispatchRequestDismissingId, setDispatchRequestDismissingId] = useState<string | null>(null)
   const [expandedDispatchRequestId, setExpandedDispatchRequestId] = useState<string | null>(null)
   const [dispatchThreadNotesByRequestId, setDispatchThreadNotesByRequestId] = useState<
@@ -132,6 +147,7 @@ export function useDispatchInbox() {
   const loadDispatchRequests = useCallback(() => {
     if (!authUser?.id || !dispatchInboxEligible) {
       setDispatchRequests([])
+      setDispatchBadgeCounts(EMPTY_DISPATCH_BADGE_COUNTS)
       return
     }
     setDispatchRequestsLoading(true)
@@ -147,9 +163,9 @@ export function useDispatchInbox() {
       const dismissedIds = new Set(
         (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
       )
-      const rows = ((requestsRes.data ?? []) as DispatchInboxRow[]).filter(
-        (r) => !dismissedIds.has(r.id),
-      )
+      const allRows = (requestsRes.data ?? []) as DispatchInboxRow[]
+      setDispatchBadgeCounts(computeDispatchBadgeCounts(allRows, dismissedIds))
+      const rows = allRows.filter((r) => !dismissedIds.has(r.id))
       rows.sort((a, b) => {
         const aOpen = a.status === 'open' ? 1 : 0
         const bOpen = b.status === 'open' ? 1 : 0
@@ -195,6 +211,7 @@ export function useDispatchInbox() {
 
       setDispatchRequests(merged)
       setDispatchRequestsLoading(false)
+      setDispatchRequestsLoaded(true)
       void selfHealOrphanedPicturesRequests(merged)
     })
   }, [authUser?.id, dispatchInboxEligible, selfHealOrphanedPicturesRequests])
@@ -426,6 +443,16 @@ export function useDispatchInbox() {
           showToast(formatErrorMessage(reopenErr, 'Note saved, but reopen failed.'), 'error')
           return
         }
+        // The requester hears about the reopen the same way they hear about a close (v2.2880).
+        if (row) {
+          void notifyDispatchRequestClosure({
+            request: { id: row.id, from_user_id: row.from_user_id, title: row.title },
+            note: body,
+            mode: 'reopened',
+            userId: authUser.id,
+            role,
+          })
+        }
       }
 
       setDispatchNoteDraft('')
@@ -491,6 +518,19 @@ export function useDispatchInbox() {
         return
       }
 
+      // Tell the tech (v2.2880, journey-map #25): push + notification_history row
+      // carrying this note. Fire-and-forget — the close already happened; the
+      // helper records `dispatch_request_closed{notified}` when it settles.
+      if (row) {
+        void notifyDispatchRequestClosure({
+          request: { id: row.id, from_user_id: row.from_user_id, title: row.title },
+          note: body,
+          mode: 'closed',
+          userId: authUser.id,
+          role,
+        })
+      }
+
       setDispatchNoteDraft('')
       await loadDispatchNotesForRequest(requestId)
       loadDispatchRequests()
@@ -522,6 +562,8 @@ export function useDispatchInbox() {
     dispatchInboxEligible,
     dispatchRequests,
     dispatchRequestsLoading,
+    dispatchRequestsLoaded,
+    dispatchBadgeCounts,
     dispatchRequestDismissingId,
     expandedDispatchRequestId,
     dispatchThreadNotesByRequestId,
