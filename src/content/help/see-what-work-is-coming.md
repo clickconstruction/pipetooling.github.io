@@ -15,7 +15,7 @@ Go to **Jobs → Job Summary** and switch **View** to {{chip:blue|Ahead}}. **Wor
 ## The tiles
 
 - **Remaining on open jobs** — contract minus what's been earned so far, over every open job, the same earned-revenue rule the Jobs view uses.
-- **Won, not started** — bids marked won that have no job yet, with how many have no start date and how many are past the one they had.
+- **Won, not marked started** — bids whose outcome is still *won*, with how many have no start date and how many are past the one they had. Set a bid's outcome to *started or complete* when its job begins and it leaves this tile.
 - **Booked backlog** — the two together, and how many weeks that covers at this window's revenue per week.
 - **Expected true profit** — the backlog at this window's true margin, and at your **Target** if one is set.
 - **Field days booked** — person-days on the schedule for the next four weeks, as a share of the crew's days. Under 60% reads amber.
@@ -34,5 +34,5 @@ Won bids with no job, soonest start first. {{chip:yellow|no date}} means the bid
 
 ## Watch-outs
 
-- A won bid becomes a job when it's linked (Jobs → New job from bid, or the estimate flow). Until then it counts here, not on the Jobs view.
+- The office marks the hand-off by setting the bid's outcome to *started or complete*; jobs don't carry a link back to their bid today, so that outcome is the signal this view reads.
 - Capacity is the field roster × 5 days; the Capacity view explains who counts.

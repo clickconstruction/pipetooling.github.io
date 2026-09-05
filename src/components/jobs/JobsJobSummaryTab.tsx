@@ -724,7 +724,19 @@ export default function JobsJobSummaryTab({
                               </span>
                               <JobIdentityCell hcpNumber={job.hcp_number} clickNumber={job.click_number} serviceTypeName={job.serviceType?.name} />
                             </td>
-                            <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
+                            <td style={{ padding: '0.75rem' }}>
+                              {job.job_name ?? '—'}
+                              {showTeamLaborAndProfit && enriched.writeDownUsd > 0 ? (
+                                <span title={`$${formatCurrency(enriched.writeDownUsd)} agreed off the bill`} style={{ marginLeft: 6, fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
+                                  ✂ write-down
+                                </span>
+                              ) : null}
+                              {enriched.inCollections ? (
+                                <span title="Flagged for collections" style={{ marginLeft: 6, fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
+                                  ⚑ collections
+                                </span>
+                              ) : null}
+                            </td>
                             <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }} title={enriched.flags.includes('earned') ? `Earned: $${formatCurrency(enriched.contractUsd)} contract × ${enriched.flags.includes('assumed-50') ? '50% (no % yet — assumed)' : `${enriched.pct}%`}` : undefined}>
                               {enriched.revenueUsd === 0 ? '—' : `$${formatCurrency(enriched.revenueUsd)}`}

@@ -270,7 +270,9 @@ export type JobSummaryLedgerRowInput = {
     click_number?: string | null
     job_name: string | null
     pct_complete: number | null
-    invoices?: Array<{ status: string | null; amount: number | null; billed_at?: string | null }> | null
+    invoices?: Array<{ status: string | null; amount: number | null; billed_at?: string | null; agreed_write_down_at?: string | null; agreed_write_down_previous_amount?: number | null }> | null
+    /** Leakage (v2.2832): the job is flagged for collections. */
+    collections_at?: string | null
     /** Cycle view (v2.2823). */
     payments?: Array<{ paid_on: string | null; amount: number | null }> | null
     status?: string | null
@@ -299,7 +301,7 @@ export type JobSummaryLedgerRowInput = {
   totalBill: number
 }
 
-export type JobSummaryRowFlag = 'no-revenue' | 'no-hours' | 'no-pct' | 'assumed-50' | 'prior-hours' | 'earned'
+export type JobSummaryRowFlag = 'no-revenue' | 'no-hours' | 'no-pct' | 'assumed-50' | 'prior-hours' | 'earned' | 'write-down' | 'collections'
 
 export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummaryLedgerRowInput> = {
   row: R
@@ -324,6 +326,9 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   trueMarginPct: number | null
   /** Revenue ÷ approved field hours in the window (v2.2820); null without hours. */
   revenuePerHourUsd: number | null
+  /** Leakage (v2.2832): dollars agreed off the bills (previous amount − amount, over written-down invoices). */
+  writeDownUsd: number
+  inCollections: boolean
   lastWorkedYmd: string | null
   flags: JobSummaryRowFlag[]
 }
@@ -360,6 +365,10 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     }
     if (pct == null) flags.push('no-pct')
     if (!(contractUsd > 0)) flags.push('no-revenue')
+    const writeDownUsd = (job.invoices ?? []).reduce((a, i) => a + (i.agreed_write_down_at && i.agreed_write_down_previous_amount != null ? Math.max(0, i.agreed_write_down_previous_amount - (i.amount ?? 0)) : 0), 0)
+    if (writeDownUsd > 0) flags.push('write-down')
+    const inCollections = job.collections_at != null && job.status !== 'paid'
+    if (inCollections) flags.push('collections')
     const laborUsd = row.teamLaborCost
     const subsUsd = row.subLaborCost
     const partsUsd = row.partsCost
@@ -401,6 +410,8 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       trueProfitUsd,
       trueMarginPct,
       revenuePerHourUsd: hoursInWindow > 0 ? revenueUsd / hoursInWindow : null,
+      writeDownUsd,
+      inCollections,
       lastWorkedYmd: jobLastWorkedYmd(job, ledger),
       flags,
     }
@@ -520,6 +531,11 @@ export type JobSummaryTotals = {
   truePerHourUsd: number | null
   /** Revenue ÷ field hours over the rows (v2.2820). */
   revenuePerHourUsd: number | null
+  /** Leakage (v2.2832). */
+  writeDownUsd: number
+  writeDownJobs: number
+  collectionsJobs: number
+  collectionsUsd: number
   noRevenueJobs: number
   noPctJobs: number
   noHoursJobs: number
@@ -541,7 +557,19 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
   let noHoursJobs = 0
   let priorHoursJobs = 0
   let earnedRows = 0
+  let writeDownUsd = 0
+  let writeDownJobs = 0
+  let collectionsJobs = 0
+  let collectionsUsd = 0
   for (const r of rows) {
+    if (r.writeDownUsd > 0) {
+      writeDownUsd += r.writeDownUsd
+      writeDownJobs += 1
+    }
+    if (r.inCollections) {
+      collectionsJobs += 1
+      collectionsUsd += r.revenueUsd
+    }
     revenueUsd += r.revenueUsd
     laborUsd += r.laborUsd
     subsUsd += r.subsUsd
@@ -571,6 +599,10 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
     trueMarginPct: trueProfitUsd == null || !(revenueUsd > 0) ? null : (trueProfitUsd / revenueUsd) * 100,
     truePerHourUsd: trueProfitUsd == null || !(hours > 0) ? null : trueProfitUsd / hours,
     revenuePerHourUsd: hours > 0 ? revenueUsd / hours : null,
+    writeDownUsd,
+    writeDownJobs,
+    collectionsJobs,
+    collectionsUsd,
     noRevenueJobs,
     noPctJobs,
     noHoursJobs,
