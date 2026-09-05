@@ -36,6 +36,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'contract_voided',
   'contract_shared',
   'sub_stage_change',
+  'job_auto_created_from_estimate',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {
