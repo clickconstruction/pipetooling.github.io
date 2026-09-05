@@ -105,6 +105,7 @@ import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateC
 import EstimateResendLinkPanel from '../components/estimates/EstimateResendLinkPanel'
 import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
 import { recordNavClick } from '../lib/navClickTelemetry'
+import { estimateDraftFormSnapshot, shouldDiscardFreshEstimateDraftOnLeave } from '../lib/estimateFreshDraftDiscard'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import { SearchableMultiSelect } from '../components/SearchableMultiSelect'
 import { SearchableSelect, type SearchableSelectOption } from '../components/SearchableSelect'
@@ -2021,6 +2022,8 @@ function EstimateList() {
   // create a draft pre-linked to the project, then navigate to it. This INSERTS
   // a row, so it fires once per mount (ref guard) and strips its params before
   // creating (deep-link contract; no e2e spec — cold-loading it would write to prod).
+  // v2.2876: like the button, the row is marked fresh — leave it untouched and
+  // the editor deletes it again on the way out.
   const newEstimateParamFiredRef = useRef(false)
   useEffect(() => {
     if (searchParams.get('newEstimate') !== 'true') return
@@ -2033,12 +2036,16 @@ function EstimateList() {
       next.delete('project')
       return next
     }, { replace: true })
-    void createDraft(projectParam)
+    void createDraft(projectParam, 'estimate', 'deeplink')
     // createDraft reads latest state when it runs; ref guard prevents refire.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, user?.id, setSearchParams])
 
-  async function createDraft(projectId?: string | null, docKind: 'estimate' | 'change_order' = 'estimate') {
+  async function createDraft(
+    projectId?: string | null,
+    docKind: 'estimate' | 'change_order' = 'estimate',
+    trigger: 'button' | 'deeplink' = 'button',
+  ) {
     if (!user?.id || creating) return
     setCreating(true)
     try {
@@ -2069,7 +2076,13 @@ function EstimateList() {
         'create estimate',
       )
       const ins = inserted as { id: string; estimate_number: number } | null
-      if (ins?.estimate_number != null) navigate(`/estimates/${ins.estimate_number}`)
+      if (ins?.estimate_number != null) {
+        recordNavClick(user.id, role, 'estimate_draft_created', `#${trigger}:${docKind}`)
+        // Fresh-draft marker (decision 17, v2.2876): the editor deletes this row
+        // again on leave if nothing was ever committed to it — the button is not
+        // the insert, the first real edit / Save / Send is.
+        navigate(`/estimates/${ins.estimate_number}`, { state: { freshEstimateDraft: true } })
+      }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not create estimate'), 'error')
     } finally {
@@ -2492,6 +2505,15 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const editCustomerModal = useEditCustomerModal()
   const navigate = useNavigate()
   const location = useLocation()
+  // Fresh-draft marker from createDraft's navigate state (decision 17, v2.2876):
+  // captured per render into a ref so load() can stamp the row it hydrates.
+  const locationFreshDraftRef = useRef(false)
+  locationFreshDraftRef.current =
+    (location.state as { freshEstimateDraft?: boolean } | null | undefined)?.freshEstimateDraft === true
+  /** The row id this visit minted (New estimate / New change order / the Projects deep link). */
+  const freshDraftRowIdRef = useRef<string | null>(null)
+  /** The row id that received any write since hydration (autosave / Save draft / pre-send save / delete). */
+  const committedDraftRowIdRef = useRef<string | null>(null)
   const [row, setRow] = useState<EstimateDetailRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState('')
@@ -2866,6 +2888,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         navigate(`/estimates/${r.estimate_number}`, { replace: true })
       }
 
+      if (locationFreshDraftRef.current && r.status === 'draft') freshDraftRowIdRef.current = r.id
       setRow(r)
       setAcceptHeaderBrand(parseAcceptHeaderBrand(r.accept_header_brand))
       setTerms(r.terms_snapshot ?? '')
@@ -3873,6 +3896,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             .eq('status', 'draft'),
         'save estimate',
       )
+      committedDraftRowIdRef.current = row.id
       if (!quiet) showToast('Saved', 'success')
       // Autosave (v2.2592) skips the reload: load() re-seeds the whole editor
       // from the row (resets lines, options, the viewed option) and would
@@ -3921,6 +3945,49 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   })
   const draftAutosaveFlushRef = useRef(draftAutosave.flush)
   draftAutosaveFlushRef.current = draftAutosave.flush
+
+  // Leave hook (decision 17, v2.2876): a draft this visit minted that never
+  // received a commit — no autosave landed, no Save draft, no Send — and is
+  // still empty deletes itself when you navigate away or the editor unmounts.
+  // Keyed on routeSegment, not row.id: at a route change the state below is
+  // still the OLD row's (load() hasn't run yet), which is what must be judged.
+  const freshDraftLeaveRef = useRef<() => void>(() => {})
+  freshDraftLeaveRef.current = () => {
+    if (!row) return
+    const discard = shouldDiscardFreshEstimateDraftOnLeave({
+      fresh: freshDraftRowIdRef.current === row.id,
+      everSaved: committedDraftRowIdRef.current === row.id,
+      form: estimateDraftFormSnapshot({
+        status: row.status,
+        docKind: row.doc_kind,
+        title,
+        customerId,
+        lines,
+        terms,
+        changeOrderFields: coFields,
+      }),
+    })
+    if (!discard) return
+    draftAutosave.cancelPending()
+    freshDraftRowIdRef.current = null
+    void supabase
+      .from('estimates')
+      .delete()
+      .eq('id', row.id)
+      .eq('status', 'draft')
+      .then(
+        () => {},
+        () => {
+          /* best-effort — the Pipeline's Clean up empty drafts sweep catches stragglers */
+        },
+      )
+  }
+  useEffect(
+    () => () => {
+      freshDraftLeaveRef.current()
+    },
+    [routeSegment],
+  )
   useEffect(() => {
     // Her loss scenario is "ran off to look something up": flush the pending
     // debounce the moment the tab is hidden, so the save lands before any
@@ -4154,6 +4221,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         async () => await supabase.from('estimates').delete().eq('id', row.id).eq('status', 'draft'),
         'delete estimate',
       )
+      committedDraftRowIdRef.current = row.id
       showToast('Deleted', 'success')
       navigate('/estimates')
     } catch (e) {
