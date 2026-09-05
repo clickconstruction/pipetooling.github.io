@@ -26,7 +26,7 @@ Red needs your decision now (a completed step waiting on approval); amber is wor
 
 ## Work orders
 
-You can mark a sub's work order **accepted** when they tell you directly. Creating, offering, and settling work orders (the money side) stays with the office — see [pay a sub per step](?g=pay-a-sub-per-step).
+You see the work orders on your own jobs and projects — the ones you're assigned to or on the team for. You can mark a sub's work order **accepted** when they tell you directly. Creating, offering, and settling work orders (the money side) stays with the office — see [pay a sub per step](?g=pay-a-sub-per-step).
 
 ## What your people see
 
