@@ -40,6 +40,23 @@ Notes:
   it**: `mint_session` takes `app: 'counttooling'` (v2.2439) — the MCP server holds CT's
   twin secret, so one per-twin token signs into both apps.
 
+## Bootstrapping a Claude Code session (v2.2854)
+
+The repo's `.mcp.json` registers the `twin-mcp` connector and reads the key from
+`$TWIN_ESTIMATOR_1_TOKEN` — MCP servers connect at session start, so a session
+launched without the variable cannot repair the connector mid-flight. Keep the
+key in a file once (`~/pt-twin-digest/twin.token`, mode 600), then launch with:
+
+```bash
+bash scripts/twin-session.sh            # exports the key, execs claude
+TWIN_TOKEN_FILE=/path/to/key bash scripts/twin-session.sh
+```
+
+Mid-session (or from any non-MCP harness), the HTTP door is equivalent: POST
+`…/functions/v1/twin-mcp` with header `X-Twin-Token: <key>` and a JSON-RPC
+`tools/call` body — every verb works identically. Reference the key by file path
+(`$(cat ~/pt-twin-digest/twin.token)`), never paste its value into a transcript.
+
 ## What to load into the agent
 
 1. `docs/twins/estimator.md` — the role brief (identity, map, loops, vocabulary,
