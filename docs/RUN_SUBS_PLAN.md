@@ -199,6 +199,8 @@ Phases 1 and 2 interleave freely after 0.2/0.3. Every DB PR: file on main → `s
 
 ## Explicitly out of scope (updated after Phase 4 shipped)
 
+> The never-built polish and the roster decisions are tracked in [`to-dos/subs-residuals.md`](../to-dos/subs-residuals.md) (2026-09-05 sweep).
+
 Still out of scope: outbound payment rails (ACH/Stripe payouts); hard compliance blocks; schedule blocks per step; any change to Jobs → Stages; retiring the HCP-string job link on sub sheets. ~~Sub accept/decline on offers~~ and ~~dedicated work-order email templates~~ both **shipped with Phase 4** (`respond_to_work_order` RPC + the `work_order_offered/accepted/declined` template seeds in migration `20260801220000`).
 
 ## Status log

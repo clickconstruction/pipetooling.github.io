@@ -20,6 +20,8 @@ key_sections:
 
 ## Status
 
+> PRs 8–9 (re-measure, retire Old) are tracked in [`to-dos/takeoffs-retire-old.md`](../to-dos/takeoffs-retire-old.md) (2026-09-05 sweep).
+
 **PRs 1–7 built (2026-09-04)** — the parallel run is live; PR 8 (a week of real use, coverage re-measured) and PR 9 (retire Old) remain. Owner picked **B → New 1** and **C → New 2** from the "Takeoffs Refresh" canvas; Old is today's tab, untouched and still the default.
 
 | # | PR | Version | Landed as |

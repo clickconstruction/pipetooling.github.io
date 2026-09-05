@@ -18,6 +18,8 @@ key_sections:
 
 ## Status
 
+> PR 10 publish step tracked in [`to-dos/contract-forms-publish-authored.md`](../to-dos/contract-forms-publish-authored.md) (2026-09-05 sweep).
+
 **Ten PRs built (PR 6–10 on 2026-09-05); the W-9 is published in the Subs packet and was filled and signed end to end by the test sub; hand-filled forms can be entered from paper; two-party forms have an office section, the I-9 is published into All Teammates, and the DWC-83 into Subs.** Owner direction (rev 2 of the proposal, artifact `17017e46`): not a wizard, not a code catalog — the sub fills the **real one-page document** with entry fields the dev placed, and the dev adds documents through a **dev-only upload + placement studio**. "They're giving it right to the form they would have to give us anyway."
 
 | # | PR | Version | Landed as |
