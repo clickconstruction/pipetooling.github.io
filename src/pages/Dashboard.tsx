@@ -45,7 +45,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import ClockInOutButton from '../components/ClockInOutButton'
 import { DashboardContractSigningPromptModal } from '../components/DashboardContractSigningPromptModal'
-import TeamFeedbackWizard from '../components/team-feedback/TeamFeedbackWizard'
+import CrewReviewDeck from '../components/team-feedback/CrewReviewDeck'
 import { fetchTeamFeedbackSettings } from '../lib/teamFeedback'
 import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import DashboardMyVehicleCard from '../components/DashboardMyVehicleCard'
@@ -1368,12 +1368,12 @@ export default function Dashboard() {
               cursor: 'pointer',
             }}
           >
-            Quick feedback
+            Rate your crew
           </button>
         </div>
       )}
       {authUser?.id && teamFeedbackWizardOpen && (
-        <TeamFeedbackWizard
+        <CrewReviewDeck
           open
           onClose={() => setTeamFeedbackWizardOpen(false)}
           userId={authUser.id}

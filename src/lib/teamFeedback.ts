@@ -2,8 +2,10 @@ import { supabase } from './supabase'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { isAssistantLike } from './subcontractorLikeRole'
+import type { CrewTeammate } from './people/crewReview'
 
-export type TeamFeedbackSource = 'clock_out_prompt' | 'home_button' | 'comment_only'
+/** Where the deck was opened from. ('comment_only' is a retired value still allowed by the DB check.) */
+export type TeamFeedbackSource = 'clock_out_prompt' | 'home_button'
 
 export type TeamFeedbackSettingsRow = Database['public']['Tables']['team_feedback_settings']['Row']
 export type TeamFeedbackUserStateRow = Database['public']['Tables']['team_feedback_user_state']['Row']
@@ -222,106 +224,92 @@ export async function resolveManagerUserIdForFeedback(userId: string): Promise<s
   return p?.master_user_id ?? null
 }
 
-/** Exactly one of person_id or peer_user_id is set (people row vs login user without people row). */
-export type PeerCandidate = {
-  person_id: string | null
-  peer_user_id: string | null
-  peer_name: string
-  /** Labels shared with reviewer (auth user user_labels ∩ peer people_labels or user_labels). */
-  shared_tag_count: number
-}
+// ---- The clock-out deck (v2.2824): crew ratings on the three bars ----------------------------
 
-export function peerCandidateKey(c: PeerCandidate): string {
-  if (c.person_id) return `p:${c.person_id}`
-  if (c.peer_user_id) return `u:${c.peer_user_id}`
-  return ''
-}
+export type CrewReviewInsertRow = Database['public']['Tables']['team_member_reviews']['Insert'] & { source: 'crew' }
 
-export async function fetchPeerCandidates(): Promise<PeerCandidate[]> {
+/** Who the signed-in user shared approved clock sessions with, plus the extra ids (their lead). */
+export async function fetchCrewTeammates(lookbackDays: number, extraUserIds: string[]): Promise<CrewTeammate[]> {
   const data = await withSupabaseRetry(
-    () => supabase.rpc('list_feedback_peer_candidates'),
-    'list_feedback_peer_candidates'
+    () => supabase.rpc('crew_review_teammates', { p_lookback_days: lookbackDays, p_extra_user_ids: extraUserIds }),
+    'crew_review_teammates',
   )
-  const rows = (data ?? []) as PeerCandidate[]
-  return rows.map((r) => ({
-    ...r,
-    shared_tag_count: r.shared_tag_count ?? 0,
-  }))
+  return ((data ?? []) as CrewTeammate[]).map((r) => ({ ...r, jobs: Array.isArray(r.jobs) ? r.jobs : [] }))
 }
 
-export interface SubmitTeamFeedbackPayload {
-  /** Expected to match the signed-in user; inserts use `auth.getUser().id` for RLS. */
-  userId: string
+/** Subjects the user already gave a crew rating this month (their own rows are readable under RLS). */
+export async function fetchMyCrewRatedThisMonth(userId: string, reviewMonth: string): Promise<Set<string>> {
+  const data = await withSupabaseRetry(
+    async () =>
+      supabase
+        .from('team_member_reviews')
+        .select('subject_user_id')
+        .eq('reviewer_user_id', userId)
+        .eq('source', 'crew')
+        .eq('review_month', reviewMonth),
+    'fetch own crew reviews this month',
+  )
+  return new Set(((data ?? []) as { subject_user_id: string }[]).map((r) => r.subject_user_id))
+}
+
+/** One crew row per (subject, rater, month): saving again in the same month updates it. */
+export async function upsertCrewReview(row: CrewReviewInsertRow): Promise<void> {
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('team_member_reviews').upsert(row, { onConflict: 'subject_user_id,reviewer_user_id,review_month,source' }),
+    'upsert crew review',
+  )
+}
+
+export type OpenWordsSubmission = {
   source: TeamFeedbackSource
   cadenceDays: number
   managerUserId: string | null
-  mode: 'full' | 'comment_only'
-  managerLikert: [number, number, number, number, number] | null
-  managerOverall1_10: number | null
-  openFixImprove: string | null
-  openSafetyTools: string | null
-  openTraining: string | null
-  peerRows: Array<{
-    peer_person_id: string | null
-    peer_user_id: string | null
-    likert: [number, number, number, number, number]
-    trust: number | null
-  }>
+  fixImprove: string
+  safetyTools: string
+  training: string
+  anything: string
 }
 
-export async function submitTeamFeedback(payload: SubmitTeamFeedbackPayload): Promise<void> {
+/** The deck's last card. Inserts as the signed-in user (RLS: reviewer_user_id = auth.uid()). */
+export async function submitOpenWords(payload: OpenWordsSubmission): Promise<void> {
   const { data: authData, error: authError } = await supabase.auth.getUser()
   const reviewerUserId = authData.user?.id
-  if (authError || !reviewerUserId) {
-    throw new Error('Not authenticated')
-  }
-  // RLS: team_feedback_submissions_insert_own requires reviewer_user_id = auth.uid() (must not trust payload.userId).
-  const cycleStart = computeCyclePeriodStart(payload.cadenceDays)
-  const isCommentOnly = payload.mode === 'comment_only'
-
+  if (authError || !reviewerUserId) throw new Error('Not authenticated')
   const insertRow: Database['public']['Tables']['team_feedback_submissions']['Insert'] = {
     reviewer_user_id: reviewerUserId,
     source: payload.source,
-    cycle_period_start: cycleStart,
+    cycle_period_start: computeCyclePeriodStart(payload.cadenceDays),
     manager_user_id: payload.managerUserId,
-    manager_likert_1: isCommentOnly ? null : payload.managerLikert?.[0] ?? null,
-    manager_likert_2: isCommentOnly ? null : payload.managerLikert?.[1] ?? null,
-    manager_likert_3: isCommentOnly ? null : payload.managerLikert?.[2] ?? null,
-    manager_likert_4: isCommentOnly ? null : payload.managerLikert?.[3] ?? null,
-    manager_likert_5: isCommentOnly ? null : payload.managerLikert?.[4] ?? null,
-    manager_overall_1_10: isCommentOnly ? null : payload.managerOverall1_10,
-    open_fix_improve: payload.openFixImprove?.trim() || null,
-    open_safety_tools: payload.openSafetyTools?.trim() || null,
-    open_training: payload.openTraining?.trim() || null,
+    open_fix_improve: payload.fixImprove.trim() || null,
+    open_safety_tools: payload.safetyTools.trim() || null,
+    open_training: payload.training.trim() || null,
+    open_anything: payload.anything.trim() || null,
   }
+  await withSupabaseRetry(async () => supabase.from('team_feedback_submissions').insert(insertRow), 'insert open words')
+}
 
-  const inserted = await withSupabaseRetry(
-    async () => supabase.from('team_feedback_submissions').insert(insertRow).select('id').single(),
-    'insert team_feedback_submissions'
-  )
-  const submissionId = (inserted as { id: string } | null)?.id
-  if (!submissionId) throw new Error('Missing submission id')
+/** Stamps the cycle done: the prompt stays quiet for cadence_days and any snooze is cleared. */
+export async function markCrewDeckCompleted(userId: string): Promise<void> {
+  await upsertTeamFeedbackUserState(userId, { last_completed_at: new Date().toISOString(), snooze_until: null })
+}
 
-  for (const pr of payload.peerRows) {
-    await withSupabaseRetry(
-      async () =>
-        supabase.from('team_feedback_peer_ratings').insert({
-          submission_id: submissionId,
-          peer_person_id: pr.peer_person_id,
-          peer_user_id: pr.peer_user_id,
-          peer_likert_1: pr.likert[0],
-          peer_likert_2: pr.likert[1],
-          peer_likert_3: pr.likert[2],
-          peer_likert_4: pr.likert[3],
-          peer_likert_5: pr.likert[4],
-          peer_trust: pr.trust,
-        }),
-      'insert team_feedback_peer_ratings'
-    )
-  }
+export type CrewReviewAggregateRow = {
+  subject_user_id: string
+  review_month: string
+  rating_ability: number | null
+  rating_drive: number | null
+  rating_integrity: number | null
+  rater_count: number
+}
 
-  await upsertTeamFeedbackUserState(reviewerUserId, {
-    last_completed_at: new Date().toISOString(),
-    snooze_until: null,
-  })
+/** The anonymous crew lane: per subject per month averages + rater count (office: months with 2+ raters). */
+export async function fetchCrewReviewAggregates(): Promise<CrewReviewAggregateRow[]> {
+  const data = await withSupabaseRetry(() => supabase.rpc('crew_review_aggregates'), 'crew_review_aggregates')
+  return ((data ?? []) as CrewReviewAggregateRow[]).map((r) => ({
+    ...r,
+    rating_ability: r.rating_ability == null ? null : Number(r.rating_ability),
+    rating_drive: r.rating_drive == null ? null : Number(r.rating_drive),
+    rating_integrity: r.rating_integrity == null ? null : Number(r.rating_integrity),
+  }))
 }

@@ -19,6 +19,8 @@ export type TeamMemberReviewRow = {
   comment_integrity: string | null
   /** Present on select('*') rows; feeds cadence-due stamps (teamReviewDue.ts). */
   updated_at?: string | null
+  /** 'office' (Team → Review deck) or 'crew' (clock-out deck, v2.2824). Absent on rows typed before the column existed. */
+  source?: string
 }
 
 export type RatableUser = { id: string; name: string | null; role: string }

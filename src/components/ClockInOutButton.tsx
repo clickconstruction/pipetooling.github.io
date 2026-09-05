@@ -41,7 +41,7 @@ import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import AdditionalReportModal from './AdditionalReportModal'
-import TeamFeedbackWizard from './team-feedback/TeamFeedbackWizard'
+import CrewReviewDeck from './team-feedback/CrewReviewDeck'
 import { TallyPreClockOutModal } from './tally/TallyPreClockOutModal'
 import type { Database } from '../types/database'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
@@ -2242,7 +2242,7 @@ export default function ClockInOutButton({
         overlayZIndex={1100}
       />
     ) : null}
-    <TeamFeedbackWizard
+    <CrewReviewDeck
       open={teamFeedbackOpen}
       onClose={() => setTeamFeedbackOpen(false)}
       userId={userId}
