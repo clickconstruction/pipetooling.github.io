@@ -40,6 +40,11 @@ import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { maybePromoteJobToBilledAfterCustomerInvoice } from '../../lib/promoteJobToBilledIfFullyInvoiced'
+import {
+  PAID_JOB_BILL_BLOCKED_MESSAGE,
+  isPaidJobStatus,
+  shouldBlockBillOnPaidJob,
+} from '../../../supabase/functions/_shared/paidJobBillGuard'
 import BillCustomerLienReleaseStrip from './BillCustomerLienReleaseStrip'
 import JobContractStrip from './JobContractStrip'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
@@ -527,6 +532,13 @@ export default function SendRecordInvoiceModal({
   const [emailFixAlsoCustomer, setEmailFixAlsoCustomer] = useState(true)
   const [emailFixSaving, setEmailFixSaving] = useState(false)
   const [emailFixError, setEmailFixError] = useState<string | null>(null)
+  /**
+   * "Bill this job again anyway" (J3-1 guard): when the job is already Paid in
+   * Full every send is refused — here and server-side — unless the user ticks
+   * this, which rides to the edge functions as `allow_rebill: true`. Resets on
+   * every open so a tick never carries over to another job.
+   */
+  const [allowRebill, setAllowRebill] = useState(false)
   /** Per-invoice Bill-to override (v2.1086): when the billing target invoice
       has bill_to_email, overlay the alternate recipient onto the job context —
       every gate, preview payload, physical prefill, and notice send downstream
@@ -541,6 +553,7 @@ export default function SendRecordInvoiceModal({
     setEmailFixDraft('')
     setEmailFixAlsoCustomer(true)
     setEmailFixError(null)
+    setAllowRebill(false)
   }, [open, jobRaw?.id])
 
   /** Customer contact persons with emails (v2.940): offered as extra recipients on the
@@ -1320,6 +1333,7 @@ export default function SendRecordInvoiceModal({
             sent_to_customer_at: sentAt,
             external_send_note: externalNote.trim() || null,
             customer_email: (job.customer_email ?? '').trim(),
+            ...(allowRebill ? { allow_rebill: true } : {}),
             ...(physicalAdditionalEmails().length > 0 ? { additional_emails: physicalAdditionalEmails() } : {}),
             subject: physicalInvoiceEmailSubject(doc),
             pdf_base64: pdfBase64,
@@ -1376,6 +1390,12 @@ export default function SendRecordInvoiceModal({
 
   async function confirmOutsideBill() {
     if (!job) return
+    // HouseCall Pro is a direct row update with no edge function behind it, so
+    // this is the only stop on that channel (J3-1).
+    if (paidJobBlocked) {
+      setOutsideError(PAID_JOB_BILL_BLOCKED_MESSAGE)
+      return
+    }
     const amt = Number(billAmountStr)
     if (!Number.isFinite(amt) || amt <= 0) {
       setOutsideError('Enter a valid bill amount greater than 0')
@@ -1504,6 +1524,7 @@ export default function SendRecordInvoiceModal({
             customer_email: (job.customer_email ?? '').trim(),
             customer_name: (job.customer_name ?? '').trim() || 'Customer',
             due_date: stripeDueDate.trim(),
+            ...(allowRebill ? { allow_rebill: true } : {}),
             memo: stripeMemo.trim() || undefined,
             footer: stripeInvoiceFooter.trim() || undefined,
             ...(lineDescTrim ? { line_description: lineDescTrim } : {}),
@@ -1792,6 +1813,10 @@ export default function SendRecordInvoiceModal({
   if (!open || !job) return null
 
   const busy = jobUpdating || invoiceUpdating || outsideSubmitting || stripeSubmitting || physicalSubmitting
+  /** The job row says Paid in Full (from the same detail fetch the previews use). */
+  const jobIsPaid = isPaidJobStatus(billCustomerJobDetails?.status)
+  /** Paid and not explicitly overridden → every send button is off and the preview gives way to the notice. */
+  const paidJobBlocked = shouldBlockBillOnPaidJob({ jobStatus: billCustomerJobDetails?.status, allowRebill })
   const stripeFallbackLedgerInvoiceId =
     kind === 'invoice' ? (invoice?.id ?? '') : (ensuredInvoice?.id ?? '')
 
@@ -1832,9 +1857,10 @@ export default function SendRecordInvoiceModal({
   }
 
   const outsideReady =
-    kind === 'invoice'
+    !paidJobBlocked &&
+    (kind === 'invoice'
       ? invoice != null
-      : kind === 'job' && ensuredInvoice != null && !ensureLoading && !ensureError
+      : kind === 'job' && ensuredInvoice != null && !ensureLoading && !ensureError)
 
   const effectivePhysicalLineDesc = stripeLineDescription.trim()
   const previewInvId = kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null
@@ -2119,6 +2145,36 @@ export default function SendRecordInvoiceModal({
             </button>
           )}
         </div>
+
+        {jobIsPaid ? (
+          <div
+            role="status"
+            data-testid="bill-customer-paid-job-notice"
+            style={{
+              margin: '-0.25rem 0 1rem',
+              padding: '0.75rem 0.9rem',
+              border: '1px solid #dc2626',
+              borderRadius: 6,
+              background: 'var(--bg-red-tint)',
+              fontSize: '0.875rem',
+            }}
+          >
+            <p style={{ margin: 0, color: 'var(--text-red-700)', fontWeight: 600 }}>{PAID_JOB_BILL_BLOCKED_MESSAGE}</p>
+            <p style={{ margin: '0.35rem 0 0', color: 'var(--text-muted)' }}>
+              This job is marked Paid in Full. The bill here is an old draft that was never sent — the safe move is
+              Cancel and retire it. Only tick below if the customer really does owe more on this job.
+            </p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.6rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={allowRebill}
+                onChange={(e) => setAllowRebill(e.target.checked)}
+                disabled={busy}
+              />
+              <span style={{ color: 'var(--text-700)' }}>Bill this job again anyway</span>
+            </label>
+          </div>
+        ) : null}
 
         {tab === 'housecallpro' && (
           <>
@@ -3169,7 +3225,7 @@ export default function SendRecordInvoiceModal({
                   </div>
                   </div>
                 </div>
-                {job ? (
+                {job && !paidJobBlocked ? (
                   <StripeBillPreSubmitPreview
                     customerName={job.customer_name}
                     customerEmail={job.customer_email}

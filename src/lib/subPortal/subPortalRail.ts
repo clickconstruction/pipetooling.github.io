@@ -1,7 +1,7 @@
 import type { SubPortalSheet } from './subPortalPayload'
 
 /**
- * Which dot of the portal's four-dot rail is lit (v2.2767 / v2.2843):
+ * Which dot of the portal's four-dot rail is lit (v2.2767 / v2.2854):
  *
  *   0 Work · 1 Walk-through · 2 Customer pays · 3 You're paid
  *

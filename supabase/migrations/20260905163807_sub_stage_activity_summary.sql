@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- Sub sheet stages polish (v2.2843): the Activity line's summary began with
+-- Sub sheet stages polish (v2.2854): the Activity line's summary began with
 -- "Sub labor · ", which repeats the SUB LABOR tag the feed already paints on
 -- the row. Drop the prefix — the line now opens with the contractor's name.
 -- Same trigger and binding as 20260904195443 / 20260904210406; CREATE OR

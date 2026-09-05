@@ -132,7 +132,7 @@ const STRINGS = {
     en: "Thanks — we'll schedule the walk-through and let you know.",
     es: 'Gracias — programaremos la revisión y le avisamos.',
   },
-  // v2.2843: the fourth dot — a sheet at Waiting on customer with a payable-after date
+  // v2.2854: the fourth dot — a sheet at Waiting on customer with a payable-after date
   chipQueued: { en: 'Queued for {day}', es: 'En la corrida del {day}' },
   chipQueuedNoDay: { en: 'Payment queued', es: 'Pago en cola' },
   stageQueuedLine: {

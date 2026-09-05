@@ -613,7 +613,7 @@ function SheetCard({
   if (sheet.payableAfter) payWhenParts.push(t('payableAfter', { date: formatSubPortalDate(sheet.payableAfter, lang) }))
   if (sheet.payHoldReason) payWhenParts.push(sheet.payHoldReason)
 
-  // The fourth dot (v2.2843): Waiting on customer + a payable-after date = the
+  // The fourth dot (v2.2854): Waiting on customer + a payable-after date = the
   // office has promised a pay run; the calendar is all that is left.
   const queued = isSubPortalSheetQueued({ stage, payableAfter: sheet.payableAfter })
   const stageIndex = subPortalRailStep({ stage, payableAfter: sheet.payableAfter })

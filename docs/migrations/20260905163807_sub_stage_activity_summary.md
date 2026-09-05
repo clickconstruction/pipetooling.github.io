@@ -1,6 +1,6 @@
 # 20260905163807_sub_stage_activity_summary
 
-**Sub sheet stages polish (v2.2843)** — the stage → Activity line drops its "Sub labor · " prefix.
+**Sub sheet stages polish (v2.2854)** — the stage → Activity line drops its "Sub labor · " prefix.
 
 ## What it does
 
