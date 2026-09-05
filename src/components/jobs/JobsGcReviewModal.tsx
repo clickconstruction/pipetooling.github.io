@@ -945,12 +945,19 @@ export function JobsGcReviewModal({
                         ? canCertify
                           ? 'Pick who sends this GC their statement'
                           : undefined
-                        : `See ${userNameById(it.senderUserId)}’s round as they see it`
+                        : !it.senderUserId
+                          ? canCertify
+                            ? 'Click to undo this mark'
+                            : undefined
+                          : `See ${userNameById(it.senderUserId)}’s round as they see it`
                   }
                   onClick={() => {
                     // The sender card (v2.2792): every chip opens the sender's round; a GC with no sender opens the assign picker instead.
                     if (it.state === 'needs_sender' || !it.senderUserId) {
-                      if (canCertify) setAssigningGcId(it.gcId)
+                      // No sender means no sender card: a marked GC undoes from the chip (the v2.2761 door), an unmarked one opens the assign picker.
+                      if (!canCertify) return
+                      if (it.mark && !roundBusy) void undoRoundMark(it.gcId)
+                      else setAssigningGcId(it.gcId)
                       return
                     }
                     setSenderCard({ senderId: it.senderUserId, highlightGcId: it.gcId })
