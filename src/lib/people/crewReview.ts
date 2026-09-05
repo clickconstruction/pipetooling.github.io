@@ -304,3 +304,50 @@ export function retiredQuestionGroups(settings: {
     },
   ]
 }
+
+// ---- The crew lane in Prospects → Team → Review → Reflect (v2.2827) -------------------------
+
+/** One row from `crew_review_aggregates`: a subject's month, averaged over its crew raters. */
+export type CrewLaneMonth = {
+  subject_user_id: string
+  review_month: string
+  rating_ability: number | null
+  rating_drive: number | null
+  rating_integrity: number | null
+  rater_count: number
+}
+
+/** The newest month the office may see for a subject (the RPC already applies the 2-rater rule). */
+export function latestCrewLane(aggregates: CrewLaneMonth[], subjectUserId: string): CrewLaneMonth | null {
+  let best: CrewLaneMonth | null = null
+  for (const a of aggregates) {
+    if (a.subject_user_id !== subjectUserId) continue
+    if (!best || a.review_month > best.review_month) best = a
+  }
+  return best
+}
+
+/** The reviewer id the crew lane wears when it joins the composite as one pseudo-reviewer. */
+export const CREW_PSEUDO_REVIEWER_ID = 'crew'
+
+/**
+ * The crew lane as review rows so the composite and leaderboard can count it as ONE more
+ * reviewer per month (averages rounded to whole points, no notes, never calibrated — the
+ * pseudo-reviewer has no baseline, so it enters raw). Only used when the dev toggle is on.
+ */
+export function crewPseudoReviews(aggregates: CrewLaneMonth[]): TeamMemberReviewRow[] {
+  const round = (v: number | null) => (v == null ? null : Math.round(v))
+  return aggregates.map((a) => ({
+    id: `${CREW_PSEUDO_REVIEWER_ID}-${a.subject_user_id}-${a.review_month}`,
+    subject_user_id: a.subject_user_id,
+    reviewer_user_id: CREW_PSEUDO_REVIEWER_ID,
+    review_month: a.review_month,
+    rating_ability: round(a.rating_ability),
+    rating_drive: round(a.rating_drive),
+    rating_integrity: round(a.rating_integrity),
+    comment_ability: null,
+    comment_drive: null,
+    comment_integrity: null,
+    source: 'crew',
+  }))
+}

@@ -12,6 +12,10 @@ import {
   parseOpenPrompts,
   retiredQuestionGroups,
   summarizeCrewSubject,
+  latestCrewLane,
+  crewPseudoReviews,
+  CREW_PSEUDO_REVIEWER_ID,
+  type CrewLaneMonth,
   type CrewTeammate,
   type SourcedReviewRow,
 } from './crewReview'
@@ -194,5 +198,27 @@ describe('retiredQuestionGroups', () => {
     expect(groups[1]?.heading).toBe('P')
     expect(groups[1]?.items).toEqual(['p1', 'p2', 'p3', 'p4', 'p5'])
     expect(groups[2]?.items).toHaveLength(3)
+  })
+})
+
+describe('crew lane (Reflect)', () => {
+  const agg: CrewLaneMonth[] = [
+    { subject_user_id: 'mal', review_month: '2026-08-01', rating_ability: 80.4, rating_drive: 60.5, rating_integrity: null, rater_count: 2 },
+    { subject_user_id: 'mal', review_month: '2026-09-01', rating_ability: 88, rating_drive: 61, rating_integrity: 84, rater_count: 6 },
+    { subject_user_id: 'grace', review_month: '2026-09-01', rating_ability: 79, rating_drive: 86, rating_integrity: 90, rater_count: 4 },
+  ]
+
+  it('latestCrewLane picks the newest month per subject', () => {
+    expect(latestCrewLane(agg, 'mal')?.review_month).toBe('2026-09-01')
+    expect(latestCrewLane(agg, 'mal')?.rater_count).toBe(6)
+    expect(latestCrewLane(agg, 'nobody')).toBeNull()
+  })
+
+  it('pseudo reviews wear one reviewer id per month, round to whole points, carry no notes', () => {
+    const rows = crewPseudoReviews(agg)
+    expect(rows).toHaveLength(3)
+    expect(rows.every((r) => r.reviewer_user_id === CREW_PSEUDO_REVIEWER_ID)).toBe(true)
+    expect(rows[0]).toMatchObject({ subject_user_id: 'mal', review_month: '2026-08-01', rating_ability: 80, rating_drive: 61, rating_integrity: null, comment_drive: null, source: 'crew' })
+    expect(new Set(rows.map((r) => r.id)).size).toBe(3)
   })
 })
