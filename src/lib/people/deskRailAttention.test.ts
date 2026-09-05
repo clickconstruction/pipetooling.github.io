@@ -35,6 +35,20 @@ describe('buildRailRow', () => {
   })
 })
 
+describe('the bench (v2.2860)', () => {
+  it('a benched sub gets one gray chip and their paperwork nags pause; sessions waiting still count', () => {
+    const f: RailFacts = { ...facts, benchPersonIds: new Set(['p-tx']) }
+    const tx = buildRailRow(p({ name: 'Texas R & A Electrical', kind: 'sub', personId: 'p-tx' }), f)
+    expect(tx.attention).toBe('green')
+    expect(tx.signals).toEqual([{ key: 'bench', label: 'on the bench', tone: 'gray' }])
+    expect(tx.reasons).toEqual(['on the bench'])
+    const busy = buildRailRow(p({ name: 'Isiah', userId: 'u1', personId: 'p-isiah', kind: 'sub' }), { ...f, benchPersonIds: new Set(['p-isiah']) })
+    expect(busy.attention).toBe('green')
+    expect(busy.signals.map((s) => s.key)).toEqual(['pending', 'bench'])
+    expect(busy.reasons).toEqual(['23 sessions waiting', 'on the bench'])
+  })
+})
+
 describe('buildRailSections', () => {
   it('lists attention first (red before amber), groups by kind in the house order, and searches by name', () => {
     const people = [
