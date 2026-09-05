@@ -34,6 +34,9 @@ export type PaperworkLine = {
 
 export const PAPERWORK_EXPIRY_WARN_DAYS = 30
 
+/** Compliance types worth naming on the chip tooltip (v2.2857 "Add document"); agreement/other stay silent. */
+const PAPERWORK_TYPE_LABEL: Record<string, string> = { coi: 'COI', w9: 'W-9', license: 'License' }
+
 function daysBetween(fromYmd: string, toYmd: string): number {
   return Math.round((Date.parse(`${toYmd}T00:00:00Z`) - Date.parse(`${fromYmd}T00:00:00Z`)) / 86_400_000)
 }
@@ -60,6 +63,7 @@ export function buildPaperworkLines(docs: readonly PaperworkDocInput[], todayYmd
         detail = `expires in ${days} day${days === 1 ? '' : 's'}`
       }
     }
+    if (d.doc_type && d.doc_type !== 'agreement' && d.doc_type !== 'other') detail = `${detail} · ${PAPERWORK_TYPE_LABEL[d.doc_type] ?? d.doc_type}`
     if (d.form_template_id) detail = `${detail} · form`
     if (d.office_pending) detail = `${detail} · office section pending`
     lines.push({ id: d.id, name: d.document_name, state, detail, nag: Boolean(d.dashboard_prompt_after_clock_in) })

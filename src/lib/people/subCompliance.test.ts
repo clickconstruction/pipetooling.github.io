@@ -55,6 +55,19 @@ describe('buildSubComplianceBadges', () => {
     expect(withLicense.find((b) => b.key === 'license')?.state).toBe('ok')
   })
 
+  it('a typed COI with a future expiry clears the red; a row with no recognised type counts as nothing (Tier-2 #33)', () => {
+    // Before "Add document" existed, a sub could only get here via the Contracts-tab re-type ritual.
+    const before = buildSubComplianceBadges([doc({ doc_type: 'agreement', status: 'signed' })], TODAY)
+    expect(before.find((b) => b.key === 'coi')).toEqual({ key: 'coi', state: 'missing', label: 'COI missing' })
+
+    const after = buildSubComplianceBadges([doc({ doc_type: 'agreement', status: 'signed' }), doc({ doc_type: 'coi', expires_at: '2027-03-01' })], TODAY)
+    expect(after.find((b) => b.key === 'coi')).toEqual({ key: 'coi', state: 'ok', label: 'COI ✓' })
+
+    // A row whose type is blank/unknown never satisfies (or spoils) any badge — the kernel never guesses.
+    const untyped = buildSubComplianceBadges([doc({ doc_type: '' }), doc({ doc_type: 'mystery', expires_at: '2020-01-01' })], TODAY)
+    expect(untyped).toEqual(buildSubComplianceBadges([], TODAY))
+  })
+
   it('the expiring window is exactly COMPLIANCE_EXPIRING_DAYS days', () => {
     const edge = new Date(Date.UTC(2026, 7, 1 + COMPLIANCE_EXPIRING_DAYS)).toISOString().slice(0, 10)
     const badges = buildSubComplianceBadges([doc({ doc_type: 'coi', expires_at: edge })], TODAY)
