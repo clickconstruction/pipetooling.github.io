@@ -1181,7 +1181,7 @@ export default function Jobs() {
 
 
   useEffect(() => {
-    if ((activeTab === 'billing' || activeTab === 'sub_sheet_ledger' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
+    if ((activeTab === 'billing' || activeTab === 'sub_sheet_ledger' || activeTab === 'work_orders' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
       const t = setTimeout(() => loadLaborJobs(), 80)
       return () => clearTimeout(t)
     }
@@ -1780,7 +1780,12 @@ export default function Jobs() {
           jobsLoading={jobsListLoading}
           authUserId={authUser?.id}
           deepLinkWorkOrderId={searchParams.get('wo')}
-          initialFilter={(['drafts', 'awaiting', 'signed', 'declined', 'expired'] as const).find((f) => f === searchParams.get('wof')) ?? null}
+          initialFilter={searchParams.get('wof')}
+          onOpenSheet={(sheetId) => {
+            const sheet = laborJobs.find((j) => j.id === sheetId)
+            if (sheet) subLaborFormRef.current?.openEdit(sheet)
+            else showToast('That sheet is still loading — try again in a moment', 'info')
+          }}
           onDeepLinkConsumed={() =>
             setSearchParams((p) => {
               const next = new URLSearchParams(p)

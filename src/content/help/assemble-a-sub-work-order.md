@@ -2,14 +2,14 @@
 title: assemble a sub work order
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: sub, subcontractor, work order, work orders tab, assemble, scope, bid, price, draft, unpriced, sign, signature, portal, record number, WO, needs a work order, sub labor
+keywords: sub, subcontractor, work order, work orders tab, assemble, scope, bid, price, draft, unpriced, sign, signature, portal, record number, WO, needs a work order, sub labor, rail, handshake, no agreement, link to a job, not in pipeline
 order: 62
 ---
 A **work order** is the short numbered document a sub signs before they start: what they're doing, for how much, in what window, under which standing rules. **Jobs → Work Orders** is where they're assembled — like a bid cover letter, with the document taking shape on the right as you tick.
 
 ## Start one
 
-1. Open **Jobs → Work Orders** and click {{button:blue|+ New work order}} — or use {{button:blue|Draft a work order…}} on a sheet in the **Needs a work order** list at the top — every Sub Labor sheet for a roster sub with money still open (or never priced) and nothing signed, including sheets on jobs that are not in the Pipeline. Crew pay sheets never appear there.
+1. Open **Jobs → Work Orders**. Every row on the board is a **Sub Labor sheet** with the agreement behind it, and the first group — **Working with no agreement** — is the queue: sheets for roster subs with money still open (or never priced) and nothing signed, including sheets on jobs that are not in the Pipeline. Click {{button:blue|Draft a work order…}} on a row (the assembler opens on that sheet with its total as the price) or {{button:blue|+ New work order}} for a job with no sheet yet.
 2. **Job**: pick the job. The document's project block, customer, and trade come from it.
 3. **Sub**: pick the sub from the roster chips, or {{button:outline|Add sub}} for someone new — they get a roster row and a portal.
 4. **Scope and terms**:
@@ -32,9 +32,21 @@ Unpriced drafts show on the dashboard's **Needs You** card — *"2 sub work orde
 
 ## Reading the board
 
-Filter chips count what's where: {{chip:gray|Drafts}}, {{chip:yellow|Awaiting signature}}, {{chip:green|✍ Signed}}, {{chip:red|Declined}}, {{chip:red|Expired}}. Search by job number, sub, or WO number.
+Three tiles lead: **On a handshake** (open money on sheets with nothing signed — the number to drive to zero), **Offers out**, and **Signed this month**. The columns are the same on every row: **Job · Sub · Agreed · Paid · Open · Where it stands · Next**, and the same numbers the sub sees on their portal.
 
-While an offer waits: {{button:outline|Nudge}} resends the notification, {{button:outline|Signed on paper}} records a signature they gave you on a printed copy, {{button:outline|Withdraw}} takes it back to a draft. A decline shows its reason with {{button:blue|Re-offer…}} ready. Signed orders open read-only and {{button:outline|Print}} gives the paper copy.
+**Where it stands** is the rail — seven dots on one line. Three small dots are the office's steps (Drafted · Sent · Signed); four big ones are the sub's (Work · Inspection · Customer pays · Paid — the same four on their portal). The filled terracotta dot is where the sheet is today. A **dashed red run** through the first three dots means work is happening with nothing signed — a declined or expired offer draws the same gap, so it lands back in the first group with {{button:blue|Re-offer…}} or {{button:blue|Re-send…}} ready.
+
+**Next** names the office's move, and its button sits first in the row: *Get it in writing* → {{button:blue|Draft a work order…}}; *Price it and send* → {{button:blue|Price…}}; *Waiting on ‹sub› · 3 days* → {{button:blue|Nudge}} once three days have passed; then, once signed, *Wait for "done"* (the sub taps Done on their portal), *Schedule the inspection*, *Bill and collect*, *Pay ‹sub›*, *Nothing — done*.
+
+The groups follow the rail: **Working with no agreement**, **Drafted**, **Sent**, **Signed** (collapsed — {{button:outline|Show ▾}} opens the record). The filter chips are the same four groups with counts. Search by job number, sub, customer, or WO number. {{button:outline|Sheet ›}} on any row opens the Sub Labor sheet; a signed order's **WO-977-01 ›** opens the record.
+
+:::example A sheet on a job that is not in the Pipeline
+Springtown's $40,000 electrical sheet was written against job 977 before the job had a Pipeline row. It shows {{chip:yellow|Not in Pipeline}} with {{button:outline|Link to a job…}} — pick the job and the sheet's number follows it, so the work order, the bill and the Job Summary land on one job. {{button:outline|New job…}} opens the New Job form; give it number 977 and the sheet links itself.
+:::
+
+While an offer waits: {{button:outline|Nudge}} resends the notification, {{button:outline|Signed on paper}} records a signature they gave you on a printed copy, {{button:outline|Withdraw}} takes it back to a draft. Signed orders open read-only and {{button:outline|Print}} gives the paper copy.
+
+Crew pay sheets (a teammate on the sheet) never need a work order and are never listed here — they keep their own label on **Jobs → Sub Labor**.
 
 ## Where the words come from
 
