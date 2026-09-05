@@ -26,8 +26,38 @@ export type SubWorkOrderReference = {
 
 export type SubWorkOrderBond = 'none' | 'furnished'
 
+/** Facts frozen onto the document at send (Work Orders tab, v2.2814) — the portal and the PDF never look them up again. */
+export type SubWorkOrderDocumentFacts = {
+  jobLabel: string | null
+  jobAddress: string | null
+  customerName: string | null
+  trade: string | null
+  recordId: string | null
+  /** YYYY-MM-DD the order was issued. */
+  issuedOn: string | null
+  issuerName: string | null
+  issuerTitle: string | null
+  /** The sub's business name when it differs from the person. */
+  subCompany: string | null
+  /** YYYY-MM-DD the sub signed their Master Subcontract Agreement, when on file. */
+  msaSignedOn: string | null
+}
+
+export const EMPTY_DOCUMENT_FACTS: SubWorkOrderDocumentFacts = {
+  jobLabel: null,
+  jobAddress: null,
+  customerName: null,
+  trade: null,
+  recordId: null,
+  issuedOn: null,
+  issuerName: null,
+  issuerTitle: null,
+  subCompany: null,
+  msaSignedOn: null,
+}
+
 export type SubWorkOrderSnapshot = {
-  anchor: 'sheet' | 'step'
+  anchor: 'sheet' | 'step' | 'job'
   lines: SubWorkOrderLine[]
   startsLabel: string | null
   /** "J977 · 415 Springtown Way" — the portal card title for sheet work orders. */
@@ -38,6 +68,7 @@ export type SubWorkOrderSnapshot = {
   acknowledgements: string[]
   bond: SubWorkOrderBond
   specialProvisions: string | null
+  facts: SubWorkOrderDocumentFacts
 }
 
 export type SubScopeItemKind = 'scope' | 'exclusion' | 'acknowledgement'
@@ -103,11 +134,13 @@ export function parseSubWorkOrderSnapshot(raw: unknown): SubWorkOrderSnapshot {
     acknowledgements: [],
     bond: 'none',
     specialProvisions: null,
+    facts: { ...EMPTY_DOCUMENT_FACTS },
   }
   if (raw == null || typeof raw !== 'object') return empty
   const o = raw as Record<string, unknown>
+  const f = o.facts != null && typeof o.facts === 'object' ? (o.facts as Record<string, unknown>) : {}
   return {
-    anchor: o.anchor === 'sheet' ? 'sheet' : 'step',
+    anchor: o.anchor === 'sheet' ? 'sheet' : o.anchor === 'job' ? 'job' : 'step',
     lines: parseLines(o.lines),
     startsLabel: strOrNull(o.startsLabel),
     sheetLabel: strOrNull(o.sheetLabel),
@@ -116,6 +149,18 @@ export function parseSubWorkOrderSnapshot(raw: unknown): SubWorkOrderSnapshot {
     acknowledgements: parseStrings(o.acknowledgements),
     bond: o.bond === 'furnished' ? 'furnished' : 'none',
     specialProvisions: strOrNull(o.specialProvisions),
+    facts: {
+      jobLabel: strOrNull(f.jobLabel),
+      jobAddress: strOrNull(f.jobAddress),
+      customerName: strOrNull(f.customerName),
+      trade: strOrNull(f.trade),
+      recordId: strOrNull(f.recordId),
+      issuedOn: strOrNull(f.issuedOn),
+      issuerName: strOrNull(f.issuerName),
+      issuerTitle: strOrNull(f.issuerTitle),
+      subCompany: strOrNull(f.subCompany),
+      msaSignedOn: strOrNull(f.msaSignedOn),
+    },
   }
 }
 
@@ -137,6 +182,9 @@ export type BuildSheetWorkOrderSnapshotInput = {
   /** YYYY-MM-DD; drives the portal's "Starts …" line. */
   proposedStart: string | null
   proposedEnd: string | null
+  /** v2.2814: which anchor the order hangs off (defaults to 'sheet') and the facts frozen onto the document. */
+  anchor?: 'sheet' | 'job' | 'step'
+  facts?: Partial<SubWorkOrderDocumentFacts>
 }
 
 function fmtYmd(ymd: string): string {
@@ -172,7 +220,7 @@ export function buildSheetWorkOrderSnapshot(input: BuildSheetWorkOrderSnapshotIn
   }
   const window = workOrderWindowLabel(input.proposedStart, input.proposedEnd)
   return {
-    anchor: 'sheet',
+    anchor: input.anchor ?? 'sheet',
     lines: dedupe(input.scopeLines).map((label) => ({ label, amount: null })),
     startsLabel: window ? (input.proposedStart ? `Starts ${window}` : window) : null,
     sheetLabel: sheetWorkOrderLabel(input.sheet),
@@ -181,6 +229,7 @@ export function buildSheetWorkOrderSnapshot(input: BuildSheetWorkOrderSnapshotIn
     acknowledgements: dedupe(input.acknowledgements),
     bond: input.bond,
     specialProvisions: (input.specialProvisions ?? '').trim() || null,
+    facts: { ...EMPTY_DOCUMENT_FACTS, ...Object.fromEntries(Object.entries(input.facts ?? {}).map(([k, v]) => [k, typeof v === 'string' && v.trim() ? v.trim() : null])) } as SubWorkOrderDocumentFacts,
   }
 }
 

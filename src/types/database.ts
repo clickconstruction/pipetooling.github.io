@@ -13940,7 +13940,7 @@ export type Database = {
       step_commitments: {
         Row: {
           accepted_at: string | null
-          amount: number
+          amount: number | null
           approved_at: string | null
           created_at: string
           created_by: string | null
@@ -13948,6 +13948,7 @@ export type Database = {
           declined_at: string | null
           display_name: string
           id: string
+          job_id: string | null
           labor_job_id: string | null
           notes: string | null
           offer_expires_at: string | null
@@ -13956,6 +13957,7 @@ export type Database = {
           person_id: string
           proposed_end: string | null
           proposed_start: string | null
+          record_id: string | null
           retainage_pct: number
           settled_at: string | null
           signed_at: string | null
@@ -13980,6 +13982,7 @@ export type Database = {
           declined_at?: string | null
           display_name: string
           id?: string
+          job_id?: string | null
           labor_job_id?: string | null
           notes?: string | null
           offer_expires_at?: string | null
@@ -13988,6 +13991,7 @@ export type Database = {
           person_id: string
           proposed_end?: string | null
           proposed_start?: string | null
+          record_id?: string | null
           retainage_pct?: number
           settled_at?: string | null
           signed_at?: string | null
@@ -14004,7 +14008,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
-          amount?: number
+          amount?: number | null
           approved_at?: string | null
           created_at?: string
           created_by?: string | null
@@ -14012,6 +14016,7 @@ export type Database = {
           declined_at?: string | null
           display_name?: string
           id?: string
+          job_id?: string | null
           labor_job_id?: string | null
           notes?: string | null
           offer_expires_at?: string | null
@@ -14020,6 +14025,7 @@ export type Database = {
           person_id?: string
           proposed_end?: string | null
           proposed_start?: string | null
+          record_id?: string | null
           retainage_pct?: number
           settled_at?: string | null
           signed_at?: string | null
@@ -14035,6 +14041,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "step_commitments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "step_commitments_created_by_fkey"
             columns: ["created_by"]
@@ -17493,7 +17506,7 @@ export type Database = {
         Returns: boolean
       }
       can_access_sub_work_order: {
-        Args: { p_labor_job_id: string; p_step_id: string }
+        Args: { p_job_id: string; p_labor_job_id: string; p_step_id: string }
         Returns: boolean
       }
       can_define_task_style_checklist_items: { Args: never; Returns: boolean }
@@ -17640,6 +17653,10 @@ export type Database = {
             }
             Returns: string
           }
+      create_sheet_for_work_order: {
+        Args: { p_commitment_id: string }
+        Returns: Json
+      }
       create_pending_contract_versions_after_book_save: {
         Args: { p_contract_template_document_id: string }
         Returns: undefined
@@ -19297,6 +19314,10 @@ export type Database = {
       resolve_payment_chase_dispute: {
         Args: { p_touch_id: string }
         Returns: Json
+      }
+      next_work_order_record_id: {
+        Args: { p_job_id: string }
+        Returns: string
       }
       respond_to_work_order: {
         Args: { p_accept: boolean; p_commitment_id: string; p_reason?: string }
