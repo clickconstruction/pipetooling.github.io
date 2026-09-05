@@ -140,14 +140,15 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
     return () => window.removeEventListener(WORK_ORDER_CHANGED_EVENT, onChanged)
   }, [load])
 
-  // Deep link: open the named order once the rows are in.
+  // Deep link: open the named order once the rows and the jobs cache are in
+  // (the assembler labels the job from the cache when it opens).
   useEffect(() => {
-    if (!deepLinkWorkOrderId || loading) return
+    if (!deepLinkWorkOrderId || loading || jobsLoading) return
     const hit = rows.find((r) => r.id === deepLinkWorkOrderId)
     if (hit) setAssembler({ commitmentId: hit.id })
     else showToast('That work order is no longer on the board', 'info')
     onDeepLinkConsumed()
-  }, [deepLinkWorkOrderId, loading, rows, onDeepLinkConsumed, showToast])
+  }, [deepLinkWorkOrderId, loading, jobsLoading, rows, onDeepLinkConsumed, showToast])
 
   const jobsById = useMemo(() => new Map(jobs.map((j) => [j.id, j])), [jobs])
   const jobsByNumber = useMemo(() => new Map(jobs.map((j) => [j.hcp_number.trim().toLowerCase(), j])), [jobs])
