@@ -2731,7 +2731,9 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Body**: `gc_customer_id` (null for development and Share-all sends), `gc_name` (`All GCs` / `All developments` for Share all), `group_by` (`gc`|`development`|`all`), `to_email`, `subject`, `email_html` (≤300k chars), `email_text`, `total`, `job_count`.
 
-**Sends** via Resend from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`) with the **caller's email as reply-to** — replies land in a real inbox. Audit-insert failures never fail the request (the email is already out).
+**Sends** via Resend from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`) with the **caller's email as reply-to** — replies land in a real inbox. Audit-insert failures never fail the request (the email is already out). The `email_send_log` row is stamped **`email_type: 'gc_statement_manual'`** (v2.2881) — the lane.
+
+**Send-time dedupe** (v2.2881, journey-map #45): before sending, the function reads the last 20 `gc_statement_emails` rows to that address inside the **attended window (10 min)** and asks the shared [`_shared/gcStatementSendDedupe.ts`](../supabase/functions/_shared/gcStatementSendDedupe.ts) kernel (`findDuplicateStatementSend`; identity = entity + recipient, **lane-agnostic** — a scheduled send minutes ago counts). On a match it answers **200 `{ success: false, skipped: 'duplicate', error: 'skipped: duplicate — <GC> already went to <addr> N minutes ago' }`** and nothing goes out; the Draft Message dialog shows the sentence. An audit-read failure fails open (sends).
 
 **Deploy**: `supabase functions deploy send-gc-statement-email --no-verify-jwt` if the hosted gateway still enforces JWT. Requires the `gc_statement_emails` table (migration `20260806202622`); Share-all audit rows additionally need the widened `group_by` CHECK (migration `20260806221045` — a not-yet-pushed CHECK only loses the audit row, never the send).
 
@@ -2748,6 +2750,8 @@ interface SendPhysicalInvoiceEmailBody {
 **Authentication**: `X-Cron-Secret` must equal `CRON_SECRET` — **no user-JWT modes**. Immediate sends stay on `send-gc-statement-email`; scheduling and cancelling are direct RLS-gated writes to `gc_statement_email_requests` from the client.
 
 **Empty statements**: a single-entity request with nothing outstanding is stamped `skipped: nothing outstanding` and never emailed — but its weekly chain still advances.
+
+**Duplicates** (v2.2881, journey-map #45): the same statement (GC id, or group + name for development / whole-report rows) to the same address inside the **unattended window (12 h)** — by *any* lane, Draft Message included — is stamped `skipped: duplicate — <name> already went to <addr> N hours ago` (shared [`_shared/gcStatementSendDedupe.ts`](../supabase/functions/_shared/gcStatementSendDedupe.ts)), never emailed, and its weekly chain still advances; the run summary gains `duplicates`. The `email_send_log` row of every real send is stamped **`email_type: 'gc_statement_scheduled'`** — the lane the per-GC "What went out" list reads.
 
 **Deploy**: `supabase functions deploy gc-statement-email-dispatch --no-verify-jwt`. Requires migrations `20260806232759` (payload RPC) + `20260806233713` (requests table + pg_cron registration).
 

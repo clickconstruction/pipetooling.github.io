@@ -2,6 +2,14 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import {
+  GC_STATEMENT_DEDUPE_WINDOW_MS,
+  GC_STATEMENT_EMAIL_TYPES,
+  dedupeSinceIso,
+  describeDuplicateStatementSkip,
+  findDuplicateStatementSend,
+  type RecentStatementSend,
+} from '../_shared/gcStatementSendDedupe.ts'
 
 /**
  * Send a GC statement email (v2.1416, phase 2 of GC statements).
@@ -15,7 +23,14 @@ import { EMAIL_FROM } from '../_shared/emailFrom.ts'
  * Sends via Resend from the EMAIL_FROM sender with the caller's email
  * as reply-to, then audits into public.gc_statement_emails with the service
  * role (the table has no client write policies) and best-effort logs to
- * email_send_log like every other app send.
+ * email_send_log (email_type 'gc_statement_manual' — the lane) like every
+ * other app send.
+ *
+ * Send-time dedupe (journey-map #45): before sending, the recent
+ * gc_statement_emails rows for this recipient are checked with the shared
+ * `gcStatementSendDedupe` kernel — the same statement to the same address
+ * inside the attended window (10 min, any lane) answers 200
+ * `{ success: false, skipped: 'duplicate', error }` and nothing goes out.
  */
 
 const corsHeaders = {
@@ -142,6 +157,39 @@ serve(async (req) => {
       }
     }
 
+    const serviceClient = createClient(supabaseUrl, serviceKey)
+
+    // Send-time dedupe (journey-map #45): the same statement to the same
+    // address inside the attended window — by this lane or the scheduled one —
+    // is skipped, never emailed twice. Audit-read failures fail open: the send
+    // proceeds (the audit is best-effort by design).
+    const nowMs = Date.now()
+    const dedupeWindowMs = GC_STATEMENT_DEDUPE_WINDOW_MS.attended
+    try {
+      const { data: recentRows } = await serviceClient
+        .from('gc_statement_emails')
+        .select('gc_customer_id, group_by, gc_name, sent_to, sent_at')
+        .ilike('sent_to', toEmail)
+        .gte('sent_at', dedupeSinceIso(dedupeWindowMs, nowMs))
+        .order('sent_at', { ascending: false })
+        .limit(20)
+      const recent: RecentStatementSend[] = ((recentRows ?? []) as Array<{
+        gc_customer_id: string | null
+        group_by: string
+        gc_name: string
+        sent_to: string
+        sent_at: string
+      }>).map((r) => ({ gcCustomerId: r.gc_customer_id, groupBy: r.group_by, gcName: r.gc_name, sentTo: r.sent_to, sentAt: r.sent_at }))
+      const dup = findDuplicateStatementSend(recent, { gcCustomerId: gcCustomerId, groupBy, gcName, sentTo: toEmail }, dedupeWindowMs, nowMs)
+      if (dup) {
+        const reason = describeDuplicateStatementSkip(dup, nowMs)
+        console.log('send-gc-statement-email', reason)
+        return jsonResponse({ success: false, skipped: 'duplicate', error: reason })
+      }
+    } catch (dedupeErr) {
+      console.error('gc_statement_emails dedupe read failed (sending anyway)', dedupeErr)
+    }
+
     const replyTo = typeof me.email === 'string' && me.email.includes('@') ? me.email : undefined
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -170,12 +218,12 @@ serve(async (req) => {
       to: [toEmail, ...ccEmails],
       from: EMAIL_FROM,
       subject,
+      emailType: GC_STATEMENT_EMAIL_TYPES.manual,
     })
 
     // Audit row (service role — table has no client write policies). Failure
     // here must not report the send as failed: the email is already gone.
     try {
-      const serviceClient = createClient(supabaseUrl, serviceKey)
       await serviceClient.from('gc_statement_emails').insert({
         gc_customer_id: gcCustomerId,
         gc_name: gcName,

@@ -12,10 +12,15 @@
  *      (group_by + entity id + include_collections from the row).
  *   2. Entity statements with nothing outstanding are skipped (stamped with a
  *      note, never emailed empty) — but a repeat_weekly chain still advances.
+ *      Likewise a statement that already went to the same address inside the
+ *      unattended dedupe window (12 h, by ANY lane — journey-map #45) is
+ *      stamped `skipped: duplicate — …` via the shared gcStatementSendDedupe
+ *      kernel, and the chain still advances.
  *   3. Send via Resend from the EMAIL_FROM sender with the REQUESTER's
  *      email as reply-to (matches send-gc-statement-email).
  *   4. Audit into gc_statement_emails (group_by 'all' when no entity id) and
- *      best-effort email_send_log; stamp sent_at; re-enqueue weekly chains.
+ *      best-effort email_send_log (email_type 'gc_statement_scheduled' — the
+ *      lane); stamp sent_at; re-enqueue weekly chains.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, CRON_SECRET.
  */
@@ -25,6 +30,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import {
+  GC_STATEMENT_DEDUPE_WINDOW_MS,
+  GC_STATEMENT_EMAIL_TYPES,
+  dedupeSinceIso,
+  describeDuplicateStatementSkip,
+  findDuplicateStatementSend,
+  type RecentStatementSend,
+} from '../_shared/gcStatementSendDedupe.ts'
 import {
   chicagoDateStr,
   gcShareAllSubject,
@@ -139,7 +152,27 @@ serve(async (req) => {
 
     let sent = 0
     let skipped = 0
+    let duplicates = 0
     const errors: string[] = []
+
+    /** Recent audit rows for one recipient, shaped for the dedupe kernel. Fails open (empty) on a read error. */
+    const recentSendsTo = async (sentTo: string, nowMs: number): Promise<RecentStatementSend[]> => {
+      try {
+        const { data } = await admin
+          .from('gc_statement_emails')
+          .select('gc_customer_id, group_by, gc_name, sent_to, sent_at')
+          .ilike('sent_to', sentTo)
+          .gte('sent_at', dedupeSinceIso(GC_STATEMENT_DEDUPE_WINDOW_MS.unattended, nowMs))
+          .order('sent_at', { ascending: false })
+          .limit(20)
+        return ((data ?? []) as Array<{ gc_customer_id: string | null; group_by: string; gc_name: string; sent_to: string; sent_at: string }>).map(
+          (r) => ({ gcCustomerId: r.gc_customer_id, groupBy: r.group_by, gcName: r.gc_name, sentTo: r.sent_to, sentAt: r.sent_at }),
+        )
+      } catch (e) {
+        console.error('gc_statement_emails dedupe read failed (sending anyway)', e)
+        return []
+      }
+    }
 
     /** Advance a repeat_weekly chain (guarded against retry double-inserts). */
     const enqueueNextWeek = async (row: RequestRow) => {
@@ -209,6 +242,34 @@ serve(async (req) => {
           continue
         }
 
+        // Send-time dedupe (journey-map #45): same statement, same address,
+        // inside the unattended window, by any lane → skip; the chain advances.
+        const auditGcName = isSingle
+          ? singleGroup!.entity_name
+          : payload.group_by === 'development'
+            ? 'All developments'
+            : 'All GCs'
+        const auditGroupBy = isSingle ? row.group_by : 'all'
+        const nowMs = Date.now()
+        const dup = findDuplicateStatementSend(
+          await recentSendsTo(row.sent_to, nowMs),
+          { gcCustomerId: row.gc_customer_id, groupBy: auditGroupBy, gcName: auditGcName, sentTo: row.sent_to },
+          GC_STATEMENT_DEDUPE_WINDOW_MS.unattended,
+          nowMs,
+        )
+        if (dup) {
+          const reason = describeDuplicateStatementSkip(dup, nowMs)
+          console.log('gc-statement-email-dispatch', row.id, reason)
+          await admin
+            .from('gc_statement_email_requests')
+            .update({ sent_at: new Date().toISOString(), error: reason.slice(0, 900) })
+            .eq('id', row.id)
+          await enqueueNextWeek(row)
+          skipped += 1
+          duplicates += 1
+          continue
+        }
+
         // Dev-saved wording (Settings → Email templates, v2.2660) — also frees
         // the subject's baked-in company name for editing without a deploy.
         const wording = await resolveServerEmailWording(
@@ -257,6 +318,7 @@ serve(async (req) => {
           to: [row.sent_to, ...(Array.isArray(row.cc_emails) ? row.cc_emails : [])],
           from: FROM,
           subject,
+          emailType: GC_STATEMENT_EMAIL_TYPES.scheduled,
         })
 
         // Audit row (same table + semantics as send-gc-statement-email; failure
@@ -264,12 +326,8 @@ serve(async (req) => {
         try {
           await admin.from('gc_statement_emails').insert({
             gc_customer_id: row.gc_customer_id,
-            gc_name: isSingle
-              ? singleGroup!.entity_name
-              : payload.group_by === 'development'
-                ? 'All developments'
-                : 'All GCs',
-            group_by: isSingle ? row.group_by : 'all',
+            gc_name: auditGcName,
+            group_by: auditGroupBy,
             sent_to: row.sent_to,
             subject,
             total: isSingle ? singleGroup!.subtotal : payload.grand_total,
@@ -301,7 +359,7 @@ serve(async (req) => {
       }
     }
 
-    return jsonResponse({ ok: true, processed: rows.length, sent, skipped, errors })
+    return jsonResponse({ ok: true, processed: rows.length, sent, skipped, duplicates, errors })
   } catch (e) {
     console.error('gc-statement-email-dispatch', e)
     return jsonResponse({ error: e instanceof Error ? e.message : String(e) }, 500)

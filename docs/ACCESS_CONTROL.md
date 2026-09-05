@@ -106,6 +106,11 @@ on top of the normal role permissions:
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### Scheduled GC-statement sends readable by the GC Review cohort; statement rows of the email log too (v2.2881, `20260905190000_gc_statement_requests_office_read.sql`)
+
+- **What changed**: `gc_statement_email_requests` SELECT was `requested_by = auth.uid() OR is_dev()` — GC Review's "Scheduled statement sends" box showed a non-dev only their own rows, so an assistant running the round saw no box while two weekly chains ran (journey map J20-F5). The policy now reads `requested_by = auth.uid() OR is_dev() OR is_assistant() OR role IN ('master_technician','primary')` — the same cohort the table's INSERT policy already names. Additive policy `email_send_log_statement_office_select` lets the same cohort read `email_send_log` rows **only** where `email_type IN ('gc_statement_manual','gc_statement_scheduled')`, for the per-GC "What went out" list's lane + delivery status; the rest of the org-wide log stays dev-only.
+- **Unchanged**: Cancel (DELETE) stays requester-or-dev and unsent-only; there is still no client UPDATE policy; the client's `canCancelStatementRequest` mirrors the DELETE rule so non-owners see `by <name>` instead of a Cancel button. `get_my_email_schedule()` keeps its requester-or-recipient scoping for the `gc_statement` stream by design.
+
 ### `users` readable only by signed-in users (v2.2837, `20260905090000_users_select_requires_session.sql`)
 
 - **What changed**: the roster policy `"Users can select users"` keyed most of its disjuncts on the **row's** role (`role = 'assistant'`, `'estimator'`, `'primary'`, `'helpers'/'subcontractor'`, `'superintendent'`) with no `auth.uid()` term and no `TO authenticated`, so those rows were readable with the anon key alone (journey map J24-N1, live-proved 2026-09-04). The policy now reads `FOR SELECT TO authenticated USING ((SELECT auth.uid()) IS NOT NULL AND (<the same disjuncts, controller widening included>))`.
@@ -776,7 +781,7 @@ Route access for the restricted roles above comes from the per-role allowed-path
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
-| **Most recent emails sent** (Settings → Notifications, v2.1338): org-wide outbound email log (`email_send_log`, dev-only SELECT RLS; fed by `resend-webhook` + dev-triggered `sync-resend-emails`) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Most recent emails sent** (Settings → Notifications, v2.1338): org-wide outbound email log (`email_send_log`, dev-only SELECT RLS; fed by `resend-webhook` + dev-triggered `sync-resend-emails`; since v2.2881 the GC Review cohort — master, assistant/controller, primary — may read the two GC-statement `email_type`s only, for GC Review's per-GC "What went out" list, not this page) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents; dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Team leads (leader → member links for My Team; **People → Users → Team leads** modal and **People → Teams** `?tab=teams`; formerly Settings "Team Hours Sharing"); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Job Book** (`job_book_entries`): **SELECT** all **authenticated** (e.g. **Collect Payment** Step 1 catalog); **INSERT/UPDATE/DELETE** **dev** / **master_technician** / **assistant** only (**Settings → Job Book**) | ✅ | ✅ | ✅ | ✅ read | ✅ read | ✅ read | ✅ read |
