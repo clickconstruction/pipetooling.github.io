@@ -7,13 +7,17 @@ import {
   compareJobSummaryTotals,
   enrichJobSummaryRows,
   filterAndSortJobSummaryRows,
+  groupJobSummaryRows,
+  jobSummaryConcentration,
   jobSummaryCompareWindow,
   jobSummaryHygiene,
   jobSummaryWindowStartYmd,
   readJobSummaryViewPrefs,
   summarizeJobSummaryRows,
   type JobSummaryComparison,
+  type JobSummaryConcentration,
   type JobSummaryEnrichedRow,
+  type JobSummaryGroup,
   type JobSummaryHygiene,
   type JobSummaryLedgerRowInput,
   type JobSummarySortKey,
@@ -44,6 +48,9 @@ export type JobSummaryViewBundle<R extends JobSummaryLedgerRowInput> = {
   hygiene: JobSummaryHygiene | null
   /** Compare to (v2.2817): the second window's totals and the deltas; null when the chip is off or the window is "All". */
   compare: JobSummaryCompareBundle | null
+  /** Cut by (v2.2820): the visible rows grouped and ranked; empty when the cut is "none". */
+  groups: JobSummaryGroup<R>[]
+  concentration: JobSummaryConcentration
 }
 
 export type JobSummaryCompareBundle = {
@@ -51,6 +58,8 @@ export type JobSummaryCompareBundle = {
   endYmd: string
   totals: JobSummaryTotals
   comparison: JobSummaryComparison
+  /** The compare window's true margin per Cut by group key (v2.2820). */
+  trueMarginPctByGroupKey: ReadonlyMap<string, number | null>
   ledgerLoading: boolean
   ledgerError: string | null
 }
@@ -126,8 +135,10 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   rows: readonly R[]
   reportPctByJobId: ReadonlyMap<string, number>
   search: string
+  /** master_user_id → name, for the "lead tech" cut (v2.2820). */
+  userNameById?: ReadonlyMap<string, string | null | undefined>
 }): JobSummaryViewBundle<R> {
-  const { enabled, userId, rows, reportPctByJobId, search } = args
+  const { enabled, userId, rows, reportPctByJobId, search, userNameById } = args
   const [prefs, setPrefsState] = useState<JobSummaryViewPrefs>(() => {
     try {
       return readJobSummaryViewPrefs(localStorage.getItem(JOB_SUMMARY_VIEW_STORAGE_KEY))
@@ -190,13 +201,18 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   const totals = useMemo(() => summarizeJobSummaryRows(visible), [visible])
   const hygiene = useMemo(() => jobSummaryHygiene(ledgerForWindow), [ledgerForWindow])
 
+  const cutCtx = useMemo(() => ({ userNameById }), [userNameById])
+  const groups = useMemo(() => groupJobSummaryRows(visible, prefs.cutBy, cutCtx), [visible, prefs.cutBy, cutCtx])
+  const concentration = useMemo(() => jobSummaryConcentration(groups), [groups])
+
   const compare = useMemo<JobSummaryCompareBundle | null>(() => {
     if (!compareWindow) return null
     const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method })
     const visiblePrior = filterAndSortJobSummaryRows({ rows: enrichedPrior, prefs, search, startYmd: compareWindow.startYmd, endYmd: compareWindow.endYmd })
     const priorTotals = summarizeJobSummaryRows(visiblePrior)
-    return { ...compareWindow, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), ledgerLoading: cmp.loading, ledgerError: cmp.error }
-  }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals])
+    const trueMarginPctByGroupKey = new Map(groupJobSummaryRows(visiblePrior, prefs.cutBy, cutCtx).map((g) => [g.key, g.totals.trueMarginPct]))
+    return { ...compareWindow, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), trueMarginPctByGroupKey, ledgerLoading: cmp.loading, ledgerError: cmp.error }
+  }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals, cutCtx])
 
-  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, totals, hygiene, compare }
+  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, totals, hygiene, compare, groups, concentration }
 }

@@ -2,7 +2,7 @@
 title: read true profit on Job Summary
 category: Office
 roles: dev, master_technician, controller
-keywords: compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
+keywords: cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
 order: 36
 ---
 
@@ -31,9 +31,19 @@ Two chips at the end of the control row change everything above the table at onc
 "All" starts at the beginning of the clock history, so there is no earlier window to compare with. Pick a shorter Worked in and the chip wakes up.
 :::
 
+## Cut by
+
+{{chip:blue|Cut by}} groups the table by one key — **GC**, **service type**, **lead tech**, **Account Man**, **customer**, **development**, or **bill month** — and puts a bold subtotal row above each group: revenue, costs, overhead, true profit, true margin, and $/hr. Groups rank by true profit, so the money-makers are on top and the money-losers at the bottom, with jobs that have no value for the key (no GC, not billed yet) in a bucket of their own.
+
+A ranked bar chart sits above the table, one bar per group, green for profit and red for loss, with the margin and job count beside each. The line under the bars names the concentration — {{chip:gray|top 3 = 71% of true profit}} — which is how much of the year rides on three names. With **Target** on, groups under it get a red mark; with **Compare to** on, each subtotal shows how its margin moved in points.
+
+:::example The question this answers
+Sorted by true profit, the table says job 812 lost money. Cut by GC says one builder loses money on four jobs out of five. Cut by lead tech says whose jobs run thin. Cut by bill month is a monthly P&L in the same table.
+:::
+
 ## The columns
 
-Revenue · Labor · Subs · Parts · **Gross** · Margin · Hours · days · **Overhead** · **True profit** · True % · %.
+Revenue · Labor · Subs · Parts · **Gross** · Margin · Hours · days · **Overhead** · **True profit** · True % · **$/hr** (revenue ÷ approved field hours — the realized rate) · %.
 
 - **Revenue** is the contract on the job. For an in-progress job it's **earned** revenue instead: contract × % complete, marked *earned* — so its costs-to-date sit next to value-to-date. No % yet? It's assumed 50% and marked *½?*.
 - **Parts** now leaves out Internal Transfers (money moving between the company's own accounts) and counts a card charge only once when it's linked to a supply-house invoice. When a job's parts include purchases in a tag that has **Show as its own cost line** ticked (Banking → Accounting → Tags), the cell carries a small line per tag — {{chip:yellow|⛽ fuel & gas $X}} out of the box — so pipe and fill-ups read apart. A purchase lands in a line by its accounting label's tag first, then by the bank's category. Parts and profit don't change; the lines are slices of what was already counted.
