@@ -42,10 +42,15 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { buildAgreementSummaries } from '../../lib/contractsAgreementsPanel'
 import {
   listQuickAddBookDocuments,
+  quickSendPlan,
+  quickSendPlanWrites,
   quickSendReusablePersonRow,
+  type QuickSendPlan,
   resolveQuickSendSource,
 } from '../../lib/contractsQuickSend'
 import { ContractQuickSendPicker } from './ContractQuickSendPicker'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import { useAuth } from '../../hooks/useAuth'
 import { ContractsAgreementsPanel } from './ContractsAgreementsPanel'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
@@ -109,6 +114,7 @@ export type PeopleContractsTabProps = {
 }
 
 export default function PeopleContractsTab({ people, users, archivedPeople, archivedUserNames, canDeletePeopleContracts, currentUserId, isDev = false }: PeopleContractsTabProps) {
+  const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const [contractsHelpModalOpen, setContractsHelpModalOpen] = useState(false)
@@ -223,7 +229,18 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   const [contractSendDocId, setContractSendDocId] = useState<string | null>(null)
   /** Quick send (v2.1410): document whose person picker is open, and the in-flight guard. */
   const [quickSendDocumentName, setQuickSendDocumentName] = useState<string | null>(null)
-  const [quickSendBusy, setQuickSendBusy] = useState(false)
+  /**
+   * A quick-send pick that has NOT been written yet (decision 17, 2026-09-05):
+   * the Send modal carries the person, document and resolved plan in state;
+   * the `person_contract_documents` INSERT/UPDATE happens inside Send email,
+   * right before `send-contract-for-signature`. Null for reuse (row exists) and
+   * for the Add-document path (which saved its row on purpose).
+   */
+  const [contractSendQuickSend, setContractSendQuickSend] = useState<{
+    personName: string
+    documentName: string
+    plan: QuickSendPlan
+  } | null>(null)
   const [contractSendEmail, setContractSendEmail] = useState('')
   const [contractSendSubject, setContractSendSubject] = useState('')
   const [contractSendIntro, setContractSendIntro] = useState('')
@@ -745,95 +762,99 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   }, [agreementSummaries, contractTemplateDocuments, personContractDocuments])
 
   /**
-   * Quick send, step 2 (v2.1410): a person was picked for a document. Reuse
-   * their best unsent/sent copy when it already has signing content; fill an
-   * empty placeholder from the resolved source; otherwise create a fresh
-   * ad-hoc unsent copy — no template assignment involved. Then open the
-   * normal Send modal on that row (canceling there keeps the unsent copy,
-   * same as Add document → Save).
+   * Quick send, step 2 (v2.1410; write-after-confirm since decision 17,
+   * 2026-09-05): a person was picked for a document. Decide the plan from the
+   * caches — reuse their best unsent/sent copy when it already has signing
+   * content, fill an empty placeholder, or create a fresh ad-hoc unsent copy —
+   * but WRITE NOTHING here. The Send modal opens on the plan; `fill`/`insert`
+   * run inside Send email, so canceling the modal leaves nothing behind and
+   * an abandoned pick never counts toward "Needs attention" or the rail's
+   * unsent totals.
    */
-  async function openQuickSendForPerson(documentName: string, personName: string) {
-    setQuickSendBusy(true)
+  function openQuickSendForPerson(documentName: string, personName: string) {
     setContractsError(null)
-    try {
-      const existing = quickSendReusablePersonRow({
+    const existing = quickSendReusablePersonRow({
+      documentName,
+      personName,
+      personDocuments: personContractDocuments,
+    })
+    const plan = quickSendPlan({
+      existing,
+      source: resolveQuickSendSource({
         documentName,
-        personName,
+        templateDocuments: contractTemplateDocuments,
         personDocuments: personContractDocuments,
-      })
-      let docId: string
-      if (existing && hasContractSigningContent(existing)) {
-        docId = existing.id
-      } else {
-        const source = resolveQuickSendSource({
-          documentName,
-          templateDocuments: contractTemplateDocuments,
-          personDocuments: personContractDocuments,
-        })
-        if (!source) {
-          setContractsError(
-            `No signable content found for “${documentName}” — add contract text to its Contract Book entry first.`,
-          )
-          return
-        }
-        if (existing) {
-          await withSupabaseRetry(
-            async () =>
-              supabase
-                .from('person_contract_documents')
-                .update({
-                  signing_body_html: source.signingBodyHtml,
-                  signing_body_format: source.signingBodyFormat,
-                  canonical_document_url: source.canonicalDocumentUrl,
-                  ...(source.kind === 'book'
-                    ? { applied_contract_template_document_id: source.appliedTemplateDocumentId }
-                    : {}),
-                })
-                .eq('id', existing.id),
-            'fill quick send content',
-          )
-          docId = existing.id
-        } else {
-          const inserted = await withSupabaseRetry<{ id: string }>(
-            async () =>
-              supabase
-                .from('person_contract_documents')
-                .insert({
-                  person_name: personName,
-                  document_name: documentName,
-                  contract_lineage_id: globalThis.crypto.randomUUID(),
-                  lineage_version: 1,
-                  supersedes_person_contract_document_id: null,
-                  status: 'unsent',
-                  signing_body_html: source.signingBodyHtml,
-                  signing_body_format: source.signingBodyFormat,
-                  canonical_document_url: source.canonicalDocumentUrl,
-                  applied_contract_template_document_id:
-                    source.kind === 'book' ? source.appliedTemplateDocumentId : null,
-                })
-                .select('id')
-                .single(),
-            'create quick send document',
-          )
-          if (!inserted?.id) {
-            setContractsError('Could not create the document copy.')
-            return
-          }
-          docId = inserted.id
-        }
-      }
-      setQuickSendDocumentName(null)
-      setContractSendDocId(docId)
-      setContractSendEmail(rosterEmailForPersonName(personName))
-      setContractSendSubject('')
-      setContractSendIntro('')
-      setContractSendModalOpen(true)
-      void loadContracts()
-    } catch (e) {
-      setContractsError(e instanceof Error ? e.message : 'Could not prepare the document to send')
-    } finally {
-      setQuickSendBusy(false)
+      }),
+    })
+    if (plan.kind === 'no-content') {
+      setContractsError(
+        `No signable content found for “${documentName}” — add contract text to its Contract Book entry first.`,
+      )
+      return
     }
+    setQuickSendDocumentName(null)
+    setContractSendDocId(plan.kind === 'insert' ? null : plan.docId)
+    setContractSendQuickSend({ personName, documentName, plan })
+    setContractSendEmail(rosterEmailForPersonName(personName))
+    setContractSendSubject('')
+    setContractSendIntro('')
+    setContractSendModalOpen(true)
+  }
+
+  /**
+   * The write a quick-send pick deferred: fill the placeholder or insert the
+   * unsent row, returning the id the send function needs. Called from Send
+   * email only. Throws on failure (the caller shows the message and keeps the
+   * modal open, nothing minted).
+   */
+  async function materializeQuickSendRow(pending: {
+    personName: string
+    documentName: string
+    plan: Extract<QuickSendPlan, { kind: 'fill' | 'insert' }>
+  }): Promise<string> {
+    const { plan } = pending
+    const source = plan.source
+    if (plan.kind === 'fill') {
+      await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('person_contract_documents')
+            .update({
+              signing_body_html: source.signingBodyHtml,
+              signing_body_format: source.signingBodyFormat,
+              canonical_document_url: source.canonicalDocumentUrl,
+              ...(source.kind === 'book'
+                ? { applied_contract_template_document_id: source.appliedTemplateDocumentId }
+                : {}),
+            })
+            .eq('id', plan.docId),
+        'fill quick send content',
+      )
+      return plan.docId
+    }
+    const inserted = await withSupabaseRetry<{ id: string }>(
+      async () =>
+        supabase
+          .from('person_contract_documents')
+          .insert({
+            person_name: pending.personName,
+            document_name: pending.documentName,
+            contract_lineage_id: globalThis.crypto.randomUUID(),
+            lineage_version: 1,
+            supersedes_person_contract_document_id: null,
+            status: 'unsent',
+            signing_body_html: source.signingBodyHtml,
+            signing_body_format: source.signingBodyFormat,
+            canonical_document_url: source.canonicalDocumentUrl,
+            applied_contract_template_document_id:
+              source.kind === 'book' ? source.appliedTemplateDocumentId : null,
+          })
+          .select('id')
+          .single(),
+      'create quick send document',
+    )
+    if (!inserted?.id) throw new Error('Could not create the document copy.')
+    return inserted.id
   }
 
   /** Agreements-panel row click: select the person, un-hide them if the filter would, and scroll their row into view. */
@@ -1270,10 +1291,24 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
 
   // The signer's portal address, read the way the send function reads it: one non-archived
   // roster row with that name, a saved slug, and an unrevoked link. Nothing is minted.
+  /**
+   * Who and what the Send modal is about — from the saved row when there is
+   * one, else from the not-yet-written quick-send pick. Null when the modal is
+   * closed or the row vanished under it.
+   */
+  const contractSendTarget = useMemo<{ personName: string; documentName: string } | null>(() => {
+    if (contractSendDocId) {
+      const doc = personContractDocuments.find((d) => d.id === contractSendDocId)
+      if (doc) return { personName: doc.person_name, documentName: doc.document_name }
+      if (!contractSendQuickSend) return null
+    }
+    if (contractSendQuickSend) return { personName: contractSendQuickSend.personName, documentName: contractSendQuickSend.documentName }
+    return null
+  }, [contractSendDocId, contractSendQuickSend, personContractDocuments])
+
   useEffect(() => {
-    if (!contractSendModalOpen || !contractSendDocId) return
-    const doc = personContractDocuments.find((d) => d.id === contractSendDocId)
-    const wanted = (doc?.person_name ?? '').trim()
+    if (!contractSendModalOpen || !contractSendTarget) return
+    const wanted = contractSendTarget.personName.trim()
     const matches = people.filter((p) => (p.name ?? '').trim() === wanted)
     if (matches.length !== 1) {
       setContractSendPortalUrl(null)
@@ -1298,12 +1333,11 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     return () => {
       cancelled = true
     }
-  }, [contractSendModalOpen, contractSendDocId, personContractDocuments, people])
+  }, [contractSendModalOpen, contractSendTarget, people])
 
   const contractSendEmailPreview = useMemo(() => {
-    if (!contractSendDocId) return null
-    const doc = personContractDocuments.find((d) => d.id === contractSendDocId)
-    if (!doc) return { kind: 'missing' as const }
+    if (!contractSendDocId && !contractSendQuickSend) return null
+    if (!contractSendTarget) return { kind: 'missing' as const }
     const origin =
       typeof window !== 'undefined'
         ? window.location.origin.replace(/\/$/, '')
@@ -1314,8 +1348,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     return {
       kind: 'ok' as const,
       ...buildContractSigningEmail({
-        documentName: doc.document_name,
-        personName: doc.person_name,
+        documentName: contractSendTarget.documentName,
+        personName: contractSendTarget.personName,
         acceptUrl: `${origin}/contract/accept?t=…`,
         expiresYmd: ymdAddDays(sentYmd, 14),
         sentYmd,
@@ -1326,7 +1360,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
         officePhone: PORTAL_COMPANY.phone || null,
       }),
     }
-  }, [contractSendDocId, personContractDocuments, contractSendSubject, contractSendIntro, currentUserId, users, contractSendPortalUrl])
+  }, [contractSendDocId, contractSendQuickSend, contractSendTarget, contractSendSubject, contractSendIntro, currentUserId, users, contractSendPortalUrl])
 
   function getContractDocumentUpsertPayload():
     | { error: string }
@@ -1616,6 +1650,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       setContractDocumentDeleteConfirmOpen(false)
       setContractDocumentDeleteTarget(null)
       setContractSendDocId(row.id)
+      setContractSendQuickSend(null)
       setContractSendEmail(rosterEmailForPersonName(p.person_name))
       setContractSendSubject('')
       setContractSendIntro('')
@@ -1630,7 +1665,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
   }
 
   async function sendContractForSignature() {
-    if (!contractSendDocId || !contractSendEmail.trim()) {
+    if ((!contractSendDocId && !contractSendQuickSend) || !contractSendEmail.trim()) {
       setContractsError('Enter a valid signer email.')
       return
     }
@@ -1648,6 +1683,25 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
         setContractsError('Not signed in.')
         return
       }
+      // The user just committed: this is where a quick-send pick becomes a row.
+      // Pin the id immediately so a failed send retries against the same row
+      // instead of minting a second one.
+      let docId = contractSendDocId
+      if (contractSendQuickSend && quickSendPlanWrites(contractSendQuickSend.plan)) {
+        docId = await materializeQuickSendRow({
+          personName: contractSendQuickSend.personName,
+          documentName: contractSendQuickSend.documentName,
+          plan: contractSendQuickSend.plan,
+        })
+        setContractSendDocId(docId)
+        setContractSendQuickSend({ ...contractSendQuickSend, plan: { kind: 'reuse', docId } })
+        void loadContracts()
+      }
+      if (!docId) {
+        setContractsError('Could not prepare the document to send')
+        return
+      }
+      const quickSendPlanKind = contractSendQuickSend?.plan.kind ?? null
       const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-contract-for-signature`,
@@ -1659,7 +1713,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
             apikey: anon,
           },
           body: JSON.stringify({
-            person_contract_document_id: contractSendDocId,
+            person_contract_document_id: docId,
             signer_email: contractSendEmail.trim(),
             public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
             ...(contractSendSubject.trim()
@@ -1691,8 +1745,10 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
             : 'Signing link created.',
         json.emailed ? 'success' : 'info',
       )
+      if (quickSendPlanKind) recordNavClick(currentUserId, authRole, 'contract_quick_send_committed', `#${quickSendPlanKind}`)
       setContractSendModalOpen(false)
       setContractSendDocId(null)
+      setContractSendQuickSend(null)
       setContractSendEmail('')
       setContractSendSubject('')
       setContractSendIntro('')
@@ -3402,8 +3458,8 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
           documentName={quickSendDocumentName}
           rosterNames={contractsPersonNamesSorted}
           personDocuments={personContractDocuments}
-          busy={quickSendBusy}
-          onPick={(personName) => void openQuickSendForPerson(quickSendDocumentName, personName)}
+          busy={false}
+          onPick={(personName) => openQuickSendForPerson(quickSendDocumentName, personName)}
           onClose={() => setQuickSendDocumentName(null)}
         />
       ) : null}
@@ -3470,7 +3526,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
         />
       )}
 
-      {contractSendModalOpen && contractSendDocId && (
+      {contractSendModalOpen && (contractSendDocId || contractSendQuickSend) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 14 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(640px, 92vw)', maxHeight: '92vh', overflow: 'auto', boxSizing: 'border-box' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Send for signature</h3>
@@ -3491,7 +3547,7 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
                 type="text"
                 value={contractSendSubject}
                 onChange={(e) => setContractSendSubject(e.target.value)}
-                placeholder={`Default: ${contractSigningEmailDefaultSubject(personContractDocuments.find((d) => d.id === contractSendDocId)?.document_name ?? 'your agreement')}`}
+                placeholder={`Default: ${contractSigningEmailDefaultSubject(contractSendTarget?.documentName ?? 'your agreement')}`}
                 maxLength={200}
                 style={{ display: 'block', width: '100%', marginTop: '0.25rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontWeight: 400 }}
               />
@@ -3570,8 +3626,10 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
               <button
                 type="button"
                 onClick={() => {
+                  // Nothing was written for a quick-send pick, so there is nothing to undo.
                   setContractSendModalOpen(false)
                   setContractSendDocId(null)
+                  setContractSendQuickSend(null)
                   setContractSendEmail('')
                   setContractSendSubject('')
                   setContractSendIntro('')

@@ -11,6 +11,8 @@ import type { User } from '@supabase/supabase-js'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { bidDisplayName, formatDateYYMMDD } from '../../lib/bids/bidFormatting'
 import { buildChangeOrderHtml, buildChangeOrderText, type ChangeOrderFormData } from '../../lib/bidDocuments/changeOrder'
+import { buildBridgedChangeOrderDraft, formatSignedDollars, parseCostImpact, sanitizeSignedMoneyTyping, signedMoneyToCents } from '../../lib/bidDocuments/changeOrderBridge'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 import { addressLines } from '../../lib/bidDocuments/htmlDoc'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
@@ -45,7 +47,22 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
   const { role } = useAuth()
   const { showToast } = useToastContext()
 
-  const sendForSignature = async (bid: BidWithBuilder, form: ChangeOrderFormData) => {
+  /**
+   * Confirm sheet for the bridge (decision 17, 2026-09-05; J16-2): "Send for
+   * signature →" opens this instead of inserting. It shows the parsed fields
+   * and asks for the net change to the contract as a number — prefilled when
+   * the free text parses — so the draft is created with a real total and line.
+   * Cancel writes nothing.
+   */
+  const [bridgeSheet, setBridgeSheet] = useState<{ bid: BidWithBuilder; form: ChangeOrderFormData; netChange: string } | null>(null)
+
+  const openBridgeSheet = (bid: BidWithBuilder, form: ChangeOrderFormData) => {
+    if (!authUser?.id || sendingForSignature) return
+    const parsed = parseCostImpact(form.impactOnCost)
+    setBridgeSheet({ bid, form, netChange: parsed === null ? '' : (parsed / 100).toFixed(2) })
+  }
+
+  const sendForSignature = async (bid: BidWithBuilder, form: ChangeOrderFormData, netChangeCents: number) => {
     if (!authUser?.id || sendingForSignature) return
     setSendingForSignature(true)
     try {
@@ -55,15 +72,7 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
         showToast('Could not determine the account owner for this change order.', 'error')
         return
       }
-      const contextNotes = [
-        'Created from Bids → Change Order.',
-        form.impactOnCost.trim()
-          ? `Cost impact (from the Bids form — enter it as line items): ${form.impactOnCost.trim()}`
-          : '',
-        form.submittedTo.trim() ? `Bid submitted to: ${form.submittedTo.trim()}` : '',
-      ]
-        .filter(Boolean)
-        .join('\n')
+      const draft = buildBridgedChangeOrderDraft({ form, netChangeCents })
       const { data, error } = await supabase
         .from('estimates')
         .insert({
@@ -74,22 +83,24 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
           customer_id: bid.customers?.id ?? null,
           title: (bid.project_name ?? '').trim() ? `Change order — ${(bid.project_name ?? '').trim()}` : 'Change order',
           for_address: (bid.address ?? '').trim() || null,
-          line_items_snapshot: [],
+          line_items_snapshot: draft.line_items_snapshot,
           terms_snapshot: '',
-          total_cents: 0,
-          internal_notes: contextNotes,
-          change_order_fields: {
-            description_of_change: form.detailedDescriptionOfChange.trim(),
-            reason_for_change: form.reasonForChange.trim(),
-            impact_on_schedule: form.impactOnSchedule.trim(),
-            response_requested_by: form.responseRequestDate.trim(),
-          },
+          total_cents: draft.total_cents,
+          internal_notes: draft.internal_notes,
+          change_order_fields: draft.change_order_fields,
         })
         .select('estimate_number')
         .single()
       if (error) throw error
       const num = (data as { estimate_number: number } | null)?.estimate_number
-      showToast('Change order draft created — add cost lines, then send for signature.', 'success')
+      setBridgeSheet(null)
+      recordNavClick(authUser.id, role, 'change_order_bridged', num != null ? `/estimates/${num}` : '/estimates')
+      showToast(
+        netChangeCents === 0
+          ? 'Change order draft created at $0 — add cost lines if the price changes, then send for signature.'
+          : `Change order draft created — net change ${formatSignedDollars(netChangeCents)}. Review the line, then send for signature.`,
+        'success',
+      )
       if (num != null) navigate(`/estimates/${num}`)
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not create the change order draft'), 'error')
@@ -333,8 +344,8 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
                 <button
                   type="button"
                   disabled={sendingForSignature}
-                  title="Create a signable change order in Estimates — prefilled from this form; add cost lines there and send it"
-                  onClick={() => void sendForSignature(bid, form)}
+                  title="Review what will be created, enter the net change, then a signable change order draft opens in Estimates"
+                  onClick={() => openBridgeSheet(bid, form)}
                   style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature ? 'wait' : 'pointer' }}
                 >
                   {sendingForSignature ? 'Creating…' : 'Send for signature →'}
@@ -344,6 +355,87 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
           </div>
         )
       })()}
+      {bridgeSheet ? (() => {
+        const cents = signedMoneyToCents(bridgeSheet.netChange)
+        const rowsShown: Array<[string, string]> = [
+          ['Description of change', bridgeSheet.form.detailedDescriptionOfChange.trim() || '—'],
+          ['Reason for change', bridgeSheet.form.reasonForChange.trim() || '—'],
+          ['Impact on schedule', bridgeSheet.form.impactOnSchedule.trim() || '—'],
+          ['Response requested by', bridgeSheet.form.responseRequestDate.trim() || '—'],
+          ['Impact on cost (as typed)', bridgeSheet.form.impactOnCost.trim() || '—'],
+        ]
+        const close = () => {
+          if (!sendingForSignature) setBridgeSheet(null)
+        }
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="co-bridge-sheet-title"
+            onClick={close}
+            style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', boxSizing: 'border-box' }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, width: 'min(560px, 100%)', maxHeight: '92vh', overflow: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', boxShadow: '0 10px 40px rgba(0,0,0,0.25)' }}
+            >
+              <h3 id="co-bridge-sheet-title" style={{ margin: '0 0 0.35rem', fontSize: '1.0625rem' }}>Create a change order draft in Estimates?</h3>
+              <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                Nothing is saved until you confirm. The draft opens in Estimates prefilled from this form and linked to {bidDisplayName(bridgeSheet.bid)}; you can still edit every line there before sending it for signature.
+              </p>
+              <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: '0.75rem', rowGap: '0.4rem', fontSize: '0.8125rem' }}>
+                {rowsShown.map(([k, v]) => (
+                  <div key={k} style={{ display: 'contents' }}>
+                    <dt style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{k}</dt>
+                    <dd style={{ margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-700)' }}>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <label style={{ display: 'block', marginTop: '1rem', fontSize: '0.8125rem' }}>
+                <span style={{ fontWeight: 600 }}>Net change to contract ($)</span>
+                <span style={{ marginLeft: '0.35rem', color: 'var(--text-muted)' }}>increase positive, credit negative; blank = $0 (schedule-only)</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
+                  value={bridgeSheet.netChange}
+                  onChange={(e) => setBridgeSheet((prev) => (prev ? { ...prev, netChange: sanitizeSignedMoneyTyping(e.target.value) } : prev))}
+                  placeholder="e.g. 2450.00 or -390"
+                  style={{ display: 'block', width: '100%', marginTop: '0.35rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.9375rem', boxSizing: 'border-box', background: 'var(--surface)', color: 'var(--text-strong)' }}
+                />
+              </label>
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                {cents === null
+                  ? 'Enter a number, or leave it blank for a $0 draft.'
+                  : cents === 0
+                    ? 'The draft is created at $0 with no cost lines — add them in Estimates if the price changes.'
+                    : `The draft is created with one line for ${formatSignedDollars(cents)}; the typed breakdown rides along as its description.`}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.1rem' }}>
+                <button
+                  type="button"
+                  onClick={close}
+                  disabled={sendingForSignature}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={sendingForSignature || cents === null}
+                  onClick={() => {
+                    if (cents === null) return
+                    void sendForSignature(bridgeSheet.bid, bridgeSheet.form, cents)
+                  }}
+                  style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature || cents === null ? 'not-allowed' : 'pointer' }}
+                >
+                  {sendingForSignature ? 'Creating…' : 'Create draft →'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })() : null}
     </div>
   )
 }
