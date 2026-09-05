@@ -1410,12 +1410,14 @@ export default function Jobs() {
 
   // Job Summary ledger view (v2.2692): prefs + the job day ledger + enriched rows;
   // page-side so the tab stays presentational.
+  const jobSummaryUserNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
   const jobSummaryView = useJobSummaryView({
     enabled: activeTab === 'job-summary',
     userId: authUser?.id,
     rows: jobSummaryData,
     reportPctByJobId: jobSummaryReportPctByJobId,
     search: jobSummarySearch,
+    userNameById: jobSummaryUserNameById,
   })
 
   const subLaborOutstandingByPerson = useMemo(

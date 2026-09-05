@@ -35,8 +35,24 @@ export type JobSummarySortKey =
   | 'overhead'
   | 'trueProfit'
   | 'trueMargin'
+  | 'revPerHour'
   | 'pct'
 export type JobSummarySortDir = 'asc' | 'desc'
+
+/** Cut by (v2.2820): group the Jobs table by one key, subtotal per group, ranked bars beside it. */
+export type JobSummaryCutBy = 'none' | 'gc' | 'trade' | 'tech' | 'accountManager' | 'customer' | 'development' | 'billMonth'
+
+export const JOB_SUMMARY_CUT_OPTIONS: ReadonlyArray<{ key: JobSummaryCutBy; label: string; title: string }> = [
+  { key: 'none', label: 'none', title: 'One flat table' },
+  { key: 'gc', label: 'GC', title: 'Group by the job’s General Contractor' },
+  { key: 'trade', label: 'service type', title: 'Group by service type (plumbing, electrical, …)' },
+  { key: 'tech', label: 'lead tech', title: 'Group by the job’s master technician' },
+  { key: 'accountManager', label: 'account man', title: 'Group by the job’s Account Man' },
+  { key: 'customer', label: 'customer', title: 'Group by customer name' },
+  { key: 'development', label: 'development', title: 'Group by development (a set of jobs at one site)' },
+  { key: 'billMonth', label: 'bill month', title: 'Group by the month the last bill went out (unbilled jobs sit together)' },
+]
+const CUT_KEYS: readonly JobSummaryCutBy[] = JOB_SUMMARY_CUT_OPTIONS.map((o) => o.key)
 
 /** Jobs = the ledger table; Days = jobs carried per day (v2.2695); Timeline = jobs running at once, over time (v2.2711). */
 export type JobSummaryViewMode = 'jobs' | 'days' | 'timeline'
@@ -79,6 +95,8 @@ export type JobSummaryViewPrefs = {
   compareTo: JobSummaryCompareTo
   /** Target true margin in whole percent (v2.2817); 0 = off. Under-target jobs are flagged wherever margin shows. */
   targetTrueMarginPct: number
+  /** Cut by (v2.2820): the grouping key for the Jobs table. */
+  cutBy: JobSummaryCutBy
 }
 
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
@@ -95,6 +113,7 @@ export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
   timelineAsOf: false,
   compareTo: 'none',
   targetTrueMarginPct: 0,
+  cutBy: 'none',
 }
 
 export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewMode; label: string; title: string }> = [
@@ -106,7 +125,7 @@ export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewM
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
 const WINDOW_KEYS: readonly JobSummaryWindowKey[] = ['90d', '6mo', 'ytd', '12mo', 'all']
 const METHOD_KEYS: readonly JobOverheadMethod[] = ['day', 'A', 'B', 'C']
-const SORT_KEYS: readonly JobSummarySortKey[] = ['job', 'revenue', 'labor', 'subs', 'parts', 'gross', 'margin', 'hours', 'overhead', 'trueProfit', 'trueMargin', 'pct']
+const SORT_KEYS: readonly JobSummarySortKey[] = ['job', 'revenue', 'labor', 'subs', 'parts', 'gross', 'margin', 'hours', 'overhead', 'trueProfit', 'trueMargin', 'revPerHour', 'pct']
 
 export const JOB_SUMMARY_STATUS_OPTIONS: ReadonlyArray<{ key: JobSummaryStatusFilter; label: string; title: string }> = [
   { key: 'finished', label: 'Finished (100%)', title: 'Jobs whose % complete resolves to 100 — paid invoices, the latest report, or the job’s own %' },
@@ -141,6 +160,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
       timelineAsOf: p.timelineAsOf === true,
       compareTo: COMPARE_KEYS.includes(p.compareTo as JobSummaryCompareTo) ? (p.compareTo as JobSummaryCompareTo) : 'none',
       targetTrueMarginPct: TARGET_KEYS.includes(p.targetTrueMarginPct as number) ? (p.targetTrueMarginPct as number) : 0,
+      cutBy: CUT_KEYS.includes(p.cutBy as JobSummaryCutBy) ? (p.cutBy as JobSummaryCutBy) : 'none',
     }
   } catch {
     return { ...JOB_SUMMARY_VIEW_DEFAULTS }
@@ -234,6 +254,19 @@ export type JobSummaryLedgerRowInput = {
     invoices?: Array<{ status: string | null; amount: number | null }> | null
     last_work_date?: string | null
     created_at?: string | null
+    /** Cut by keys (v2.2820) — all optional so tests and older callers stay small. */
+    gc_customer_id?: string | null
+    gcCustomer?: { id?: string; name: string | null } | null
+    serviceType?: { name: string } | null
+    service_type_id?: string | null
+    master_user_id?: string | null
+    account_manager_user_id?: string | null
+    account_manager?: { id?: string; name: string | null } | null
+    customer_id?: string | null
+    customer_name?: string | null
+    development_id?: string | null
+    development?: { id?: string; name: string | null } | null
+    last_bill_date?: string | null
   }
   subLaborCost: number
   teamLaborCost: number
@@ -264,6 +297,8 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   overheadLines: JobOverheadDayLine[]
   trueProfitUsd: number | null
   trueMarginPct: number | null
+  /** Revenue ÷ approved field hours in the window (v2.2820); null without hours. */
+  revenuePerHourUsd: number | null
   lastWorkedYmd: string | null
   flags: JobSummaryRowFlag[]
 }
@@ -340,6 +375,7 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       overheadLines,
       trueProfitUsd,
       trueMarginPct,
+      revenuePerHourUsd: hoursInWindow > 0 ? revenueUsd / hoursInWindow : null,
       lastWorkedYmd: jobLastWorkedYmd(job, ledger),
       flags,
     }
@@ -391,6 +427,8 @@ function sortValue(row: JobSummaryEnrichedRow, key: JobSummarySortKey): number |
       return row.trueProfitUsd
     case 'trueMargin':
       return row.trueMarginPct
+    case 'revPerHour':
+      return row.revenuePerHourUsd
     case 'pct':
       return row.pct
     default:
@@ -455,6 +493,8 @@ export type JobSummaryTotals = {
   trueProfitUsd: number | null
   trueMarginPct: number | null
   truePerHourUsd: number | null
+  /** Revenue ÷ field hours over the rows (v2.2820). */
+  revenuePerHourUsd: number | null
   noRevenueJobs: number
   noPctJobs: number
   noHoursJobs: number
@@ -505,6 +545,7 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
     trueProfitUsd,
     trueMarginPct: trueProfitUsd == null || !(revenueUsd > 0) ? null : (trueProfitUsd / revenueUsd) * 100,
     truePerHourUsd: trueProfitUsd == null || !(hours > 0) ? null : trueProfitUsd / hours,
+    revenuePerHourUsd: hours > 0 ? revenueUsd / hours : null,
     noRevenueJobs,
     noPctJobs,
     noHoursJobs,
@@ -524,4 +565,85 @@ export function jobSummaryHygiene(ledger: JobDayLedger | null): JobSummaryHygien
   if (!ledger) return null
   const un = unallocatedJobDayOverhead(ledger)
   return { unallocatedUsd: un.usd, unallocatedDays: un.days, pendingFieldSessions: ledger.pendingFieldSessions, pendingFieldHours: ledger.pendingFieldHours }
+}
+
+// ---- Cut by (v2.2820) ----
+
+export type JobSummaryCutContext = {
+  /** master_user_id → display name (the page's users list). */
+  userNameById?: ReadonlyMap<string, string | null | undefined>
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** The group a row falls in for the chosen cut: a stable key and a label to show. */
+export function jobSummaryCutKey(job: JobSummaryLedgerRowInput['job'], cutBy: JobSummaryCutBy, ctx: JobSummaryCutContext = {}): { key: string; label: string } {
+  const named = (id: string | null | undefined, name: string | null | undefined, none: string) =>
+    id || name ? { key: id ?? `name:${name}`, label: (name ?? '').trim() || '(unnamed)' } : { key: '__none', label: none }
+  switch (cutBy) {
+    case 'gc':
+      return named(job.gc_customer_id, job.gcCustomer?.name, 'No GC (direct)')
+    case 'trade':
+      return named(job.service_type_id, job.serviceType?.name, 'No service type')
+    case 'tech': {
+      const id = job.master_user_id ?? null
+      return named(id, id ? ctx.userNameById?.get(id) ?? id.slice(0, 8) : null, 'No lead tech')
+    }
+    case 'accountManager':
+      return named(job.account_manager_user_id, job.account_manager?.name, 'No Account Man')
+    case 'customer':
+      return named(job.customer_id ?? (job.customer_name ? null : undefined), job.customer_name, 'No customer')
+    case 'development':
+      return named(job.development_id, job.development?.name, 'No development')
+    case 'billMonth': {
+      const d = job.last_bill_date?.slice(0, 10)
+      if (!d) return { key: '__none', label: 'Not billed yet' }
+      return { key: d.slice(0, 7), label: `${MONTHS[Number(d.slice(5, 7)) - 1] ?? d.slice(5, 7)} ${d.slice(0, 4)}` }
+    }
+    default:
+      return { key: '__all', label: 'All jobs' }
+  }
+}
+
+export type JobSummaryGroup<R extends JobSummaryLedgerRowInput = JobSummaryLedgerRowInput> = {
+  key: string
+  label: string
+  rows: JobSummaryEnrichedRow<R>[]
+  totals: JobSummaryTotals
+}
+
+/**
+ * Rows grouped by the cut, each group subtotaled, groups ranked by true profit
+ * (unknown last, then revenue). The "none" bucket sorts with the rest — a set
+ * of jobs with no GC is a finding, not a footnote. Rows inside keep their order.
+ */
+export function groupJobSummaryRows<R extends JobSummaryLedgerRowInput>(rows: readonly JobSummaryEnrichedRow<R>[], cutBy: JobSummaryCutBy, ctx: JobSummaryCutContext = {}): JobSummaryGroup<R>[] {
+  if (cutBy === 'none') return []
+  const byKey = new Map<string, { label: string; rows: JobSummaryEnrichedRow<R>[] }>()
+  for (const r of rows) {
+    const { key, label } = jobSummaryCutKey(r.row.job, cutBy, ctx)
+    const g = byKey.get(key) ?? byKey.set(key, { label, rows: [] }).get(key)!
+    g.rows.push(r)
+  }
+  const groups: JobSummaryGroup<R>[] = [...byKey.entries()].map(([key, g]) => ({ key, label: g.label, rows: g.rows, totals: summarizeJobSummaryRows(g.rows) }))
+  groups.sort((a, b) => {
+    const ta = a.totals.trueProfitUsd
+    const tb = b.totals.trueProfitUsd
+    if (ta == null && tb == null) return b.totals.revenueUsd - a.totals.revenueUsd
+    if (ta == null) return 1
+    if (tb == null) return -1
+    return tb - ta || b.totals.revenueUsd - a.totals.revenueUsd
+  })
+  return groups
+}
+
+export type JobSummaryConcentration = { top: number; sharePct: number | null; labels: string[] }
+
+/** What share of the window's positive true profit the top N groups hold (v2.2820). */
+export function jobSummaryConcentration(groups: readonly JobSummaryGroup[], top = 3): JobSummaryConcentration {
+  const positives = groups.map((g) => Math.max(0, g.totals.trueProfitUsd ?? 0))
+  const total = positives.reduce((a, b) => a + b, 0)
+  const head = groups.slice(0, top)
+  const headSum = head.reduce((a, g) => a + Math.max(0, g.totals.trueProfitUsd ?? 0), 0)
+  return { top: head.length, sharePct: total > 0 && groups.length > top ? (headSum / total) * 100 : null, labels: head.map((g) => g.label) }
 }

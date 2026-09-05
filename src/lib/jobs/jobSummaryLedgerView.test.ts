@@ -4,6 +4,9 @@ import {
   compareJobSummaryTotals,
   countJobSummaryUnderTarget,
   enrichJobSummaryRows,
+  groupJobSummaryRows,
+  jobSummaryConcentration,
+  jobSummaryCutKey,
   jobSummaryCompareWindow,
   jobSummaryRowUnderTarget,
   filterAndSortJobSummaryRows,
@@ -84,7 +87,10 @@ describe('prefs + window', () => {
       timelineAsOf: false,
       compareTo: 'none',
       targetTrueMarginPct: 0,
+      cutBy: 'none',
     })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ cutBy: 'gc' }))).toMatchObject({ cutBy: 'gc' })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ cutBy: 'planet' }))).toMatchObject({ cutBy: 'none' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ compareTo: 'lastYear', targetTrueMarginPct: 35 }))).toMatchObject({ compareTo: 'lastYear', targetTrueMarginPct: 35 })
     expect(readJobSummaryViewPrefs(JSON.stringify({ compareTo: 'yesterday', targetTrueMarginPct: 33 }))).toMatchObject({ compareTo: 'none', targetTrueMarginPct: 0 })
   })
@@ -219,7 +225,7 @@ describe('compare to + target (v2.2817)', () => {
   })
 
   it('compares totals measure by measure and leaves unknowns null', () => {
-    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0 }
+    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0 }
     const prior = { ...base, jobs: 8, revenueUsd: 800, grossUsd: 400, marginPct: 50, trueProfitUsd: 300, trueMarginPct: 37.5, overheadUsd: null, truePerHourUsd: null }
     const c = compareJobSummaryTotals(base, prior)
     expect(c.jobs).toEqual({ now: 10, prior: 8, delta: 2 })
@@ -236,5 +242,63 @@ describe('compare to + target (v2.2817)', () => {
     expect(jobSummaryRowUnderTarget(rows[3]!, 35)).toBe(false)
     expect(jobSummaryRowUnderTarget(rows[0]!, 0)).toBe(false)
     expect(countJobSummaryUnderTarget(rows, 40)).toBe(2)
+  })
+})
+
+describe('cut by (v2.2820)', () => {
+  const mk = (id: string, job: Partial<JobSummaryLedgerRowInput['job']>, totalBill: number, teamLaborCost = 0) => ({
+    job: { id, hcp_number: id, job_name: id, pct_complete: 100, ...job },
+    subLaborCost: 0,
+    teamLaborCost,
+    partsCost: 0,
+    totalBill,
+  })
+  const rows = enrichJobSummaryRows({
+    rows: [
+      mk('a', { gc_customer_id: 'g1', gcCustomer: { name: 'Knight' }, master_user_id: 'u1', last_bill_date: '2026-08-03' }, 1000, 200),
+      mk('b', { gc_customer_id: 'g1', gcCustomer: { name: 'Knight' }, master_user_id: 'u2', last_bill_date: '2026-08-20' }, 500, 100),
+      mk('c', { gc_customer_id: 'g2', gcCustomer: { name: 'RMC' }, master_user_id: 'u1', last_bill_date: '2026-07-30' }, 2000, 1900),
+      mk('d', {}, 300, 0),
+    ],
+    reportPctByJobId: new Map(),
+    ledger: null,
+    method: 'day',
+  })
+
+  it('names the group per cut, with a "none" bucket, and resolves techs through the users map', () => {
+    expect(jobSummaryCutKey(rows[0]!.row.job, 'gc')).toEqual({ key: 'g1', label: 'Knight' })
+    expect(jobSummaryCutKey(rows[3]!.row.job, 'gc')).toEqual({ key: '__none', label: 'No GC (direct)' })
+    expect(jobSummaryCutKey(rows[0]!.row.job, 'tech', { userNameById: new Map([['u1', 'Abraham']]) })).toEqual({ key: 'u1', label: 'Abraham' })
+    expect(jobSummaryCutKey(rows[0]!.row.job, 'billMonth')).toEqual({ key: '2026-08', label: 'Aug 2026' })
+    expect(jobSummaryCutKey(rows[3]!.row.job, 'billMonth')).toEqual({ key: '__none', label: 'Not billed yet' })
+    expect(jobSummaryCutKey(rows[0]!.row.job, 'none')).toEqual({ key: '__all', label: 'All jobs' })
+  })
+
+  it('groups, subtotals, and ranks by true profit — none is an empty list', () => {
+    expect(groupJobSummaryRows(rows, 'none')).toEqual([])
+    const byGc = groupJobSummaryRows(rows, 'gc')
+    // no ledger → true profit unknown everywhere → ranked by revenue
+    expect(byGc.map((g) => [g.label, g.rows.length, g.totals.revenueUsd])).toEqual([
+      ['RMC', 1, 2000],
+      ['Knight', 2, 1500],
+      ['No GC (direct)', 1, 300],
+    ])
+    expect(byGc[1]!.totals.grossUsd).toBe(1200)
+  })
+
+  it('concentration is the top groups’ share of positive true profit, null when there are too few groups', () => {
+    const groups = [
+      { key: 'a', label: 'A', rows: [], totals: { ...rows[0]!, trueProfitUsd: 600 } as never },
+      { key: 'b', label: 'B', rows: [], totals: { trueProfitUsd: 300 } as never },
+      { key: 'c', label: 'C', rows: [], totals: { trueProfitUsd: -50 } as never },
+      { key: 'd', label: 'D', rows: [], totals: { trueProfitUsd: 100 } as never },
+    ]
+    expect(jobSummaryConcentration(groups)).toEqual({ top: 3, sharePct: 90, labels: ['A', 'B', 'C'] })
+    expect(jobSummaryConcentration(groups.slice(0, 2)).sharePct).toBeNull()
+  })
+
+  it('carries revenue per field hour on rows and totals', () => {
+    expect(rows[0]!.revenuePerHourUsd).toBeNull()
+    expect(summarizeJobSummaryRows(rows).revenuePerHourUsd).toBeNull()
   })
 })

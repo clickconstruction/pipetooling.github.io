@@ -3,6 +3,7 @@ import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
 import {
   JOB_SUMMARY_COMPARE_OPTIONS,
+  JOB_SUMMARY_CUT_OPTIONS,
   JOB_SUMMARY_STATUS_OPTIONS,
   JOB_SUMMARY_TARGET_OPTIONS,
   JOB_SUMMARY_VIEW_MODE_OPTIONS,
@@ -139,6 +140,7 @@ export default function JobSummaryLedgerToolbar({
             title={prefs.window === 'all' ? '"All" has no earlier window to compare with — pick a shorter Worked in' : undefined}
           />
         ) : null}
+        {prefs.view === 'jobs' ? <Segmented label="Cut by" value={prefs.cutBy} options={JOB_SUMMARY_CUT_OPTIONS} onChange={(cutBy) => setPrefs({ cutBy })} title="Group the table by one key — every group gets a subtotal and a ranked bar" /> : null}
         {showMoney && prefs.view === 'jobs' ? <Segmented label="Target" value={prefs.targetTrueMarginPct} options={JOB_SUMMARY_TARGET_OPTIONS} onChange={(targetTrueMarginPct) => setPrefs({ targetTrueMarginPct })} title="Target true margin — jobs under it are flagged in the table and counted here" /> : null}
         {compare ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>

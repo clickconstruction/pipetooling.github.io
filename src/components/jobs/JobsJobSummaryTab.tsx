@@ -54,11 +54,12 @@ import {
 } from './JobSummaryCostCellDrilldownModal'
 import JobSummaryChargesTimelineChart from './JobSummaryChargesTimelineChart'
 import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedgerToolbar'
+import JobSummaryCutByPanel, { JobSummaryGroupRow } from './JobSummaryCutByPanel'
 import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
 import JobSummaryTimelineView from './JobSummaryTimelineView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
-import { jobSummaryRowUnderTarget } from '../../lib/jobs/jobSummaryLedgerView'
+import { JOB_SUMMARY_CUT_OPTIONS, jobSummaryRowUnderTarget } from '../../lib/jobs/jobSummaryLedgerView'
 import type { TallyPartRow } from '../../types/tallyPart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
@@ -529,6 +530,8 @@ export default function JobsJobSummaryTab({
               No jobs match — try <strong>All</strong> under Show, a wider window under Worked in, or clear the search.
             </p>
           ) : (
+            <>
+            <JobSummaryCutByPanel groups={view.groups} concentration={view.concentration} targetTrueMarginPct={view.prefs.targetTrueMarginPct} showMoney={showTeamLaborAndProfit} cutLabel={JOB_SUMMARY_CUT_OPTIONS.find((o) => o.key === view.prefs.cutBy)?.label ?? ''} />
             <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: 'var(--bg-subtle)' }}>
@@ -546,6 +549,7 @@ export default function JobsJobSummaryTab({
                     <JobSummarySortHeader label="Overhead" sortKey="overhead" view={view} title={JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.title} />
                     <JobSummarySortHeader label="True profit" sortKey="trueProfit" view={view} title="Gross − overhead share" />
                     <JobSummarySortHeader label="True %" sortKey="trueMargin" view={view} title="True profit ÷ revenue" />
+                    <JobSummarySortHeader label="$/hr" sortKey="revPerHour" view={view} title="Revenue ÷ approved field hours in the window — the realized rate" />
                     <JobSummarySortHeader
                       label="%"
                       sortKey="pct"
@@ -555,8 +559,11 @@ export default function JobsJobSummaryTab({
                   </tr>
                 </thead>
                 <tbody>
-                  {view.rows
-                    .flatMap(
+                  {(view.groups.length > 0 ? view.groups : [{ key: '__all', label: '', rows: view.rows, totals: view.totals }]).flatMap((group) => [
+                    ...(view.groups.length > 0
+                      ? [<JobSummaryGroupRow key={`group:${group.key}`} group={group} compare={view.compare} targetTrueMarginPct={view.prefs.targetTrueMarginPct} showMoney={showTeamLaborAndProfit} ledgerLoaded={view.ledger != null} />]
+                      : []),
+                    ...group.rows.flatMap(
                       (enriched) => {
                         const summaryRow = enriched.row
                         const {
@@ -684,6 +691,9 @@ export default function JobsJobSummaryTab({
                             >
                               {showTeamLaborAndProfit && enriched.trueMarginPct != null ? `${Math.round(enriched.trueMarginPct)}%${jobSummaryRowUnderTarget(enriched, view.prefs.targetTrueMarginPct) ? ' ▾' : ''}` : '—'}
                             </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)', whiteSpace: 'nowrap' }} title="Revenue ÷ approved field hours in the window">
+                              {enriched.revenuePerHourUsd == null ? '—' : `$${Math.round(enriched.revenuePerHourUsd)}`}
+                            </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
                               {formatJobSummaryPercentComplete(enriched.pct)}
                             </td>
@@ -693,7 +703,7 @@ export default function JobsJobSummaryTab({
                         const overheadMethodLabel = JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.label ?? 'Day-share'
                         const detailRow = (
                           <tr key={`${job.id}-summary-detail`}>
-                            <td colSpan={14} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                            <td colSpan={15} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
                               <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
                                 <JobSummaryExpandedHeader
                                   job={job}
@@ -2918,7 +2928,8 @@ export default function JobsJobSummaryTab({
                           </tr>
                         )
                         return [mainRow, detailRow]
-                      })}
+                      }),
+                  ])}
                 </tbody>
                 <tfoot>
                   <tr style={{ background: 'var(--bg-subtle)', fontWeight: 700, borderTop: '2px solid var(--border-strong)' }}>
@@ -2939,11 +2950,13 @@ export default function JobsJobSummaryTab({
                       {showTeamLaborAndProfit && view.totals.trueProfitUsd != null ? `$${formatCurrency(view.totals.trueProfitUsd)}` : '—'}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.trueMarginPct != null ? `${Math.round(view.totals.trueMarginPct)}%` : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{view.totals.revenuePerHourUsd == null ? '—' : `$${Math.round(view.totals.revenuePerHourUsd)}`}</td>
                     <td style={{ padding: '0.6rem 0.75rem' }} />
                   </tr>
                 </tfoot>
               </table>
             </div>
+            </>
           )}
           <div
             style={{
