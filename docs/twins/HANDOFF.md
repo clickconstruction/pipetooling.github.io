@@ -5,7 +5,7 @@ file: HANDOFF.md
 type: Handoff / State of the program
 purpose: Everything a new operator needs to take over the digital-twins program — what is live, the fleet roadmap and its gates, how to run it day-to-day, where the secrets live, and the prioritized open threads
 audience: The incoming twins operator (a dev), AI agents
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 key_sections:
   - name: "What is live today"
   - name: "The fleet roadmap & gates"
@@ -147,6 +147,12 @@ Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
 
 ## Open threads, prioritized
 
+0. **Round 2 — the fresh-robot re-bid of Wendi's decided bids** (kickoff:
+   `docs/twins/kickoffs/2026-09-05-wendi-blind-rebid.md`): wave A = 18 references no
+   robot has seen (blind), wave B = the 14 already backtested, via `open_backtest(round: 2)`
+   (six of them are no longer blind — the doctrine docs quote their values; scored as
+   regression, not gate). Scores land through `score_backtest`; audits open with STG-5
+   pasted. Compare on the Scoreboard against the BT-6..19 rows.
 1. **Paste STG-5 counts on the seven $0 audits** (b422, b424–b429) so the next audit
    pass can judge them — a real twin pipeline session (CT takeoff → Counts tab →
    book assignment); the 2026-09-04 digest itself is done.
