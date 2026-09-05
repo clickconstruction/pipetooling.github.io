@@ -7,6 +7,8 @@
  * back to you", and a scoreboard. Email-safe markup: inline styles, light
  * colors, no scripts.
  */
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+
 export type StatementRoundReadyGc = {
   gc_id: string
   gc_name: string
@@ -47,8 +49,8 @@ function esc(s: unknown): string {
 const usd = (n: number): string => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const usdRound = (n: number): string => `$${Math.round(Number(n || 0)).toLocaleString('en-US')}`
 
-const shortDate = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric' })
-const shortDateTime = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', minute: '2-digit' })
+const shortDate = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric' })
+const shortDateTime = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short', hour: 'numeric', minute: '2-digit' })
 function fmtShort(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
