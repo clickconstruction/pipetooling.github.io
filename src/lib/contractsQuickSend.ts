@@ -172,3 +172,42 @@ export function listQuickAddBookDocuments<T extends QuickSendBookRow>(
   out.sort((a, b) => a.documentName.localeCompare(b.documentName))
   return out
 }
+
+/**
+ * What a quick-send pick will do to `person_contract_documents` — decided at
+ * pick time, EXECUTED at Send (journey-map decision 17, 2026-09-05: nothing
+ * is written until the user commits). The three branches:
+ *
+ * - `reuse`  — the person's best unsent/sent copy already carries signing
+ *              content → the Send modal targets that row; no write ever.
+ * - `fill`   — an empty placeholder exists → Send fills its signing content
+ *              (UPDATE) right before the email goes out.
+ * - `insert` — no non-signed copy → Send creates the `unsent` row (INSERT)
+ *              right before the email goes out.
+ * - `no-content` — nothing anywhere has signable text; the pick shows an
+ *              error and opens nothing.
+ *
+ * Canceling the Send modal on `fill`/`insert` leaves no trace, so abandoned
+ * picks no longer feed "Needs attention · N" or the rail's unsent counts.
+ */
+export type QuickSendPlan =
+  | { kind: 'reuse'; docId: string }
+  | { kind: 'fill'; docId: string; source: QuickSendSource }
+  | { kind: 'insert'; source: QuickSendSource }
+  | { kind: 'no-content' }
+
+export function quickSendPlan(input: {
+  existing: Pick<QuickSendPersonRow, 'id' | 'signing_body_html' | 'canonical_document_url'> | null
+  source: QuickSendSource | null
+}): QuickSendPlan {
+  const { existing, source } = input
+  if (existing && hasContractSigningContent(existing)) return { kind: 'reuse', docId: existing.id }
+  if (!source) return { kind: 'no-content' }
+  if (existing) return { kind: 'fill', docId: existing.id, source }
+  return { kind: 'insert', source }
+}
+
+/** True for the two plans that write a row at Send; false for reuse / no-content. */
+export function quickSendPlanWrites(plan: QuickSendPlan): plan is Extract<QuickSendPlan, { kind: 'fill' | 'insert' }> {
+  return plan.kind === 'fill' || plan.kind === 'insert'
+}

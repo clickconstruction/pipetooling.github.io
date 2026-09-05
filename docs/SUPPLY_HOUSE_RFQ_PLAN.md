@@ -100,9 +100,20 @@ ends with all three fence appliers. Names snapshot as text.
 ## Phase 2 — the quote link lane — SHIPPED v2.2631 (no new migration needed; the Phase 1 store carried the token column)
 
 - Prepare screen (`PrepareFixtureCopyModal`) grows **Copy with quote
-  link**: mints a `bid_rfqs` row (scope = current selection snapshot,
-  token = `gen_random_uuid` text) and appends `Price it here:
-  clicktooling.com/q/<token>` to the copied text. No other habit change.
+  link**: appends `Price it here: clicktooling.com/q/<token>` to the copied
+  text and mints a `bid_rfqs` row (scope = current selection snapshot,
+  token = `gen_random_uuid` text). No other habit change.
+  - **Order of operations (v2.2851, decision 17): clipboard first, insert
+    second.** `src/lib/rfq/rfqCopyLane.ts` is the state machine — `idle →
+    prepared → copied → minted`, `prepared → copy_failed → confirm_copied →
+    copied`, `cancel → idle` — and `rfqCopyLaneMayInsert` is true only in
+    `copied`. A blocked clipboard shows the link in a manual-copy field;
+    the row is written when the user confirms ("Link is ready — I copied
+    it"), never before; Cancel there writes nothing. A failed insert keeps
+    the token so the retry saves the link already on the clipboard. Copy-
+    lane rows stamp `created_by` (they did not before). `onRfqMinted` fires
+    exactly when the row exists. Background: J12-N1 (live orphan on BP398
+    when `writeText` threw after the insert) and J12-N3.
 - Edge functions (deploy manually + `docs/EDGE_FUNCTIONS.md` sections):
   `get-rfq-quote-page` (GET by token → scope lines + job context; 404 on
   closed/revoked) and `submit-rfq-quote` (lines + validity + notes →

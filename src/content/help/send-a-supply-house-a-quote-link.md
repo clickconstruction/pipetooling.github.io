@@ -15,6 +15,8 @@ Texting a parts list works — but then the rep texts prices back and someone re
    - Picking the house also shows what they've quoted before — "Moore Supply has last-quoted prices for 12 of these 63 items · newest 3 days ago" — so you know which vendor already knows this scope.
 4. Paste into your text or email like always. The list now ends with a `Price it here:` link.
 
+The request is made **when you copy it** — the link goes onto your clipboard first, and only then does the request appear on the desk. If your browser blocks the clipboard, the link shows in a box to copy by hand; tap {{button:blue|Link is ready — I copied it}} to save the request, or {{button:outline|Cancel}} and nothing is created. No request ever exists that you didn't get a link for.
+
 The link is addressed to that one house — send a separate link to each vendor you're pricing against.
 
 ## Or let ClickTooling send the emails
