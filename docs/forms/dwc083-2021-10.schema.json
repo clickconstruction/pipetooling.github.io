@@ -1,0 +1,502 @@
+{
+  "version": 1,
+  "pages": [
+    {
+      "width": 612,
+      "height": 792
+    },
+    {
+      "width": 612,
+      "height": 792
+    },
+    {
+      "width": 612,
+      "height": 792
+    },
+    {
+      "width": 612,
+      "height": 792
+    },
+    {
+      "width": 612,
+      "height": 792
+    }
+  ],
+  "boxes": [
+    {
+      "key": "p1_joint",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 22,
+        "y": 502,
+        "w": 11,
+        "h": 11
+      },
+      "order": 10,
+      "label": "Part 1 \u00b7 Joint agreement to affirm independent relationship",
+      "group": "agreement_type",
+      "party": "office",
+      "sample": "true"
+    },
+    {
+      "key": "p1_employer",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 22,
+        "y": 465,
+        "w": 11,
+        "h": 11
+      },
+      "order": 20,
+      "label": "Part 1 \u00b7 Agreement to establish employer-employee relationship",
+      "group": "agreement_type",
+      "party": "office"
+    },
+    {
+      "key": "type_blanket",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 173,
+        "y": 434,
+        "w": 11,
+        "h": 11
+      },
+      "order": 30,
+      "label": "1 \u00b7 Blanket agreement",
+      "group": "agreement_kind",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "type_jobsite",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 305,
+        "y": 434,
+        "w": 11,
+        "h": 11
+      },
+      "order": 40,
+      "label": "1 \u00b7 Job-site specific agreement",
+      "group": "agreement_kind",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "start_date",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 48,
+        "y": 387,
+        "w": 280,
+        "h": 20
+      },
+      "order": 50,
+      "label": "2 \u00b7 Agreement start date",
+      "mask": "##/##/####",
+      "party": "office",
+      "advanced": true,
+      "help": "Only for an employer-employee agreement."
+    },
+    {
+      "key": "end_date",
+      "type": "digits",
+      "page": 1,
+      "rect": {
+        "x": 362,
+        "y": 387,
+        "w": 200,
+        "h": 20
+      },
+      "order": 60,
+      "label": "3 \u00b7 Agreement end date",
+      "mask": "##/##/####",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "employees_affected",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 300,
+        "y": 362,
+        "w": 280,
+        "h": 18
+      },
+      "order": 70,
+      "label": "4 \u00b7 Estimated number of employees affected",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "site_1",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 48,
+        "y": 301,
+        "w": 520,
+        "h": 16
+      },
+      "order": 80,
+      "label": "5 \u00b7 Job site address",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "site_2",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 48,
+        "y": 261,
+        "w": 520,
+        "h": 16
+      },
+      "order": 90,
+      "label": "6 \u00b7 Job site address",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "site_3",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 48,
+        "y": 220,
+        "w": 520,
+        "h": 16
+      },
+      "order": 100,
+      "label": "7 \u00b7 Job site address",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "hc_name",
+      "type": "constant",
+      "page": 1,
+      "rect": {
+        "x": 22,
+        "y": 130,
+        "w": 360,
+        "h": 16
+      },
+      "order": 110,
+      "label": "",
+      "text": "Click Plumbing, LLC",
+      "party": "office"
+    },
+    {
+      "key": "hc_tax_id",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 395,
+        "y": 130,
+        "w": 190,
+        "h": 16
+      },
+      "order": 120,
+      "label": "9 \u00b7 Hiring contractor federal tax ID (Click\u2019s EIN)",
+      "party": "office",
+      "required": true,
+      "help": "Click\u2019s EIN, as on Click\u2019s W-9.",
+      "sample": "12-3456789"
+    },
+    {
+      "key": "hc_address",
+      "type": "constant",
+      "page": 1,
+      "rect": {
+        "x": 22,
+        "y": 89,
+        "w": 360,
+        "h": 16
+      },
+      "order": 130,
+      "label": "",
+      "text": "5501 Balcones Drive, Suite #A-141, Austin, TX 78731",
+      "party": "office"
+    },
+    {
+      "key": "hc_email",
+      "type": "text",
+      "page": 1,
+      "rect": {
+        "x": 395,
+        "y": 89,
+        "w": 190,
+        "h": 16
+      },
+      "order": 140,
+      "label": "11 \u00b7 Hiring contractor email",
+      "party": "office",
+      "required": true,
+      "sample": "office@clickplumbing.com"
+    },
+    {
+      "key": "hc_aff_joint",
+      "type": "checkbox",
+      "page": 2,
+      "rect": {
+        "x": 22,
+        "y": 685,
+        "w": 11,
+        "h": 11
+      },
+      "order": 150,
+      "label": "12 \u00b7 Hiring contractor affirms: joint agreement (independent relationship)",
+      "group": "hc_affirmation",
+      "party": "office",
+      "sample": "true"
+    },
+    {
+      "key": "hc_aff_employer",
+      "type": "checkbox",
+      "page": 2,
+      "rect": {
+        "x": 22,
+        "y": 487,
+        "w": 11,
+        "h": 11
+      },
+      "order": 160,
+      "label": "12 \u00b7 Hiring contractor affirms: employer-employee relationship",
+      "group": "hc_affirmation",
+      "party": "office"
+    },
+    {
+      "key": "hc_withhold",
+      "type": "checkbox",
+      "page": 2,
+      "rect": {
+        "x": 76,
+        "y": 445,
+        "w": 11,
+        "h": 11
+      },
+      "order": 170,
+      "label": "I will withhold the cost of coverage",
+      "group": "hc_withhold",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "hc_not_withhold",
+      "type": "checkbox",
+      "page": 2,
+      "rect": {
+        "x": 148,
+        "y": 445,
+        "w": 11,
+        "h": 11
+      },
+      "order": 180,
+      "label": "I will not withhold the cost of coverage",
+      "group": "hc_withhold",
+      "party": "office",
+      "advanced": true
+    },
+    {
+      "key": "hc_signature",
+      "type": "signature",
+      "page": 2,
+      "rect": {
+        "x": 22,
+        "y": 305,
+        "w": 360,
+        "h": 22
+      },
+      "order": 190,
+      "label": "13 \u00b7 Signature of hiring contractor",
+      "party": "office"
+    },
+    {
+      "key": "hc_date",
+      "type": "date",
+      "page": 2,
+      "rect": {
+        "x": 395,
+        "y": 305,
+        "w": 190,
+        "h": 22
+      },
+      "order": 200,
+      "label": "14 \u00b7 Date of signature (hiring contractor)",
+      "dateMode": "today",
+      "party": "office"
+    },
+    {
+      "key": "ic_name",
+      "type": "text",
+      "page": 2,
+      "rect": {
+        "x": 22,
+        "y": 244,
+        "w": 360,
+        "h": 16
+      },
+      "order": 210,
+      "label": "15 \u00b7 Your name (independent contractor)",
+      "labelEs": "15 \u00b7 Su nombre (contratista independiente)",
+      "required": true,
+      "prefill": "person_name",
+      "sample": "Misses Taunya TESTING"
+    },
+    {
+      "key": "ic_tax_id",
+      "type": "text",
+      "page": 2,
+      "rect": {
+        "x": 395,
+        "y": 244,
+        "w": 190,
+        "h": 16
+      },
+      "order": 220,
+      "label": "16 \u00b7 Your federal tax ID number",
+      "labelEs": "16 \u00b7 Su n\u00famero de identificaci\u00f3n fiscal federal",
+      "required": true,
+      "sensitive": true,
+      "help": "Your EIN, or your SSN if your business has no EIN.",
+      "helpEs": "Su EIN, o su SSN si su negocio no tiene EIN.",
+      "maxLength": 11,
+      "sample": "98-7654321"
+    },
+    {
+      "key": "ic_address",
+      "type": "text",
+      "page": 2,
+      "rect": {
+        "x": 22,
+        "y": 203,
+        "w": 360,
+        "h": 16
+      },
+      "order": 230,
+      "label": "17 \u00b7 Your address (street or PO box, city, state, ZIP)",
+      "labelEs": "17 \u00b7 Su direcci\u00f3n (calle o apartado postal, ciudad, estado, c\u00f3digo postal)",
+      "required": true,
+      "sample": "4410 Oak Hollow Dr, Kyle, TX 78640"
+    },
+    {
+      "key": "ic_email",
+      "type": "text",
+      "page": 2,
+      "rect": {
+        "x": 395,
+        "y": 203,
+        "w": 190,
+        "h": 16
+      },
+      "order": 240,
+      "label": "18 \u00b7 Your email",
+      "labelEs": "18 \u00b7 Su correo electr\u00f3nico",
+      "prefill": "person_email",
+      "sample": "taunya@example.com"
+    },
+    {
+      "key": "ic_aff_joint",
+      "type": "checkbox",
+      "page": 3,
+      "rect": {
+        "x": 22,
+        "y": 685,
+        "w": 11,
+        "h": 11
+      },
+      "order": 250,
+      "label": "19 \u00b7 Joint agreement: I am not an employee of the hiring contractor",
+      "labelEs": "19 \u00b7 Acuerdo conjunto: no soy empleado del contratista",
+      "group": "ic_affirmation",
+      "help": "Click uses the joint agreement (independent relationship). Check this box unless the office told you otherwise.",
+      "helpEs": "Click usa el acuerdo conjunto (relaci\u00f3n independiente). Marque esta casilla a menos que la oficina le indique lo contrario.",
+      "sample": "true"
+    },
+    {
+      "key": "ic_aff_employer",
+      "type": "checkbox",
+      "page": 3,
+      "rect": {
+        "x": 22,
+        "y": 553,
+        "w": 11,
+        "h": 11
+      },
+      "order": 260,
+      "label": "19 \u00b7 Employer-employee agreement: the hiring contractor employs me for workers\u2019 comp coverage only",
+      "labelEs": "19 \u00b7 Acuerdo empleador-empleado: el contratista me emplea solo para la cobertura de compensaci\u00f3n",
+      "group": "ic_affirmation"
+    },
+    {
+      "key": "ic_signature",
+      "type": "signature",
+      "page": 3,
+      "rect": {
+        "x": 22,
+        "y": 445,
+        "w": 360,
+        "h": 22
+      },
+      "order": 270,
+      "label": "20 \u00b7 Signature of independent contractor",
+      "labelEs": "20 \u00b7 Firma del contratista independiente"
+    },
+    {
+      "key": "ic_date",
+      "type": "date",
+      "page": 3,
+      "rect": {
+        "x": 395,
+        "y": 445,
+        "w": 190,
+        "h": 22
+      },
+      "order": 280,
+      "label": "21 \u00b7 Date of signature",
+      "labelEs": "21 \u00b7 Fecha de la firma",
+      "dateMode": "today"
+    }
+  ],
+  "groups": [
+    {
+      "key": "agreement_type",
+      "label": "Part 1 \u00b7 Check only one",
+      "exactlyOne": true,
+      "required": true
+    },
+    {
+      "key": "agreement_kind",
+      "label": "1 \u00b7 Type of agreement",
+      "exactlyOne": true,
+      "required": false
+    },
+    {
+      "key": "hc_affirmation",
+      "label": "12 \u00b7 Hiring contractor\u2019s affirmation",
+      "exactlyOne": true,
+      "required": true
+    },
+    {
+      "key": "hc_withhold",
+      "label": "Withhold the cost of coverage?",
+      "exactlyOne": true,
+      "required": false
+    },
+    {
+      "key": "ic_affirmation",
+      "label": "19 \u00b7 Your affirmation (check only one)",
+      "exactlyOne": true,
+      "required": true
+    }
+  ],
+  "oneOfs": []
+}

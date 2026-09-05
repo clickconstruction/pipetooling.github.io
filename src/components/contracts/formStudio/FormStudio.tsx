@@ -14,6 +14,18 @@ import { FormStudioEditor } from './FormStudioEditor'
  * its fillable fields as boxes), and opens the editor.
  */
 
+/**
+ * Some official PDFs (the Texas DWC-83) ship with a broken cross-reference table that pdf-lib
+ * cannot parse. Re-saving the file produces a clean copy; say so instead of surfacing the parser's words alone.
+ */
+function pdfLoadHint(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e)
+  if (/PDFDict|Expected instance|xref|Failed to parse|Invalid object|Trying to parse/i.test(msg)) {
+    return `This PDF could not be read (${msg}). Re-save it — Print to PDF, or \`pdftocairo -pdf in.pdf out.pdf\` — and upload that copy.`
+  }
+  return msg
+}
+
 const DOC_TYPES: Array<{ v: string; l: string }> = [
   { v: 'w9', l: 'W-9' },
   { v: 'coi', l: 'COI' },
@@ -64,7 +76,7 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
       setNewFieldCount(info.fields.length)
       if (!newName.trim()) setNewName(file.name.replace(/\.pdf$/i, '').replace(/[-_]+/g, ' ').trim())
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(pdfLoadHint(e))
     }
   }
 
@@ -88,7 +100,7 @@ export function FormStudio({ packets, bookEntries, onSaved }: { packets: Contrac
       setNewFieldCount(null)
       setOpen({ row, pdf: bytes })
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(pdfLoadHint(e))
     } finally {
       setBusy(null)
     }
