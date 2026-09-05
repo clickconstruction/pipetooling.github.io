@@ -33,6 +33,8 @@ import {
   type ProspectLastCall,
 } from '../lib/prospects/prospectListGrouping'
 import { findRetaggableNote, withCalledProspect, withLastCall, type CallInteractionType } from '../lib/prospects/callLogState'
+import { callingLockCutoffIso, callingLockDecision, type CallingLockRow, type CallingLockTrigger } from '../lib/prospects/callingLock'
+import { recordNavClick } from '../lib/navClickTelemetry'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
@@ -271,6 +273,13 @@ export default function Prospects() {
   const [saving, setSaving] = useState(false)
   const [scheduledCallback, setScheduledCallback] = useState<{ callback_date: string; note: string | null } | null>(null)
   const [followUpTimerSeconds, setFollowUpTimerSeconds] = useState(0)
+  // Calling lock (v2.2850 — journey-map #14(b)): taken on INTENT, never on
+  // view. `lockTakenForRef` remembers which prospect THIS tab locked so the
+  // release effect only deletes a row we wrote; `lockHeldBy` names a colleague
+  // whose live lock we found (and did not steal) on the displayed prospect.
+  const lockTakenForRef = useRef<string | null>(null)
+  const lockAttemptForRef = useRef<string | null>(null)
+  const [lockHeldBy, setLockHeldBy] = useState<{ prospectId: string; name: string | null } | null>(null)
 
   // Edit form state
   const [editCompanyName, setEditCompanyName] = useState('')
@@ -466,7 +475,13 @@ export default function Prospects() {
     if (!authUser?.id) return
     setFollowUpLoading(true)
     const [{ data: locks }, { data: callRows }] = await Promise.all([
-      supabase.from('prospect_calling_locks').select('prospect_id').neq('user_id', authUser.id),
+      // Only LIVE locks hide a prospect — a row older than the TTL is a closed
+      // tab or a forgotten row, not a colleague on the phone (callingLock.ts).
+      supabase
+        .from('prospect_calling_locks')
+        .select('prospect_id')
+        .neq('user_id', authUser.id)
+        .gte('locked_at', callingLockCutoffIso(Date.now())),
       supabase.from('prospect_comments').select('prospect_id').in('interaction_type', [...CALL_INTERACTION_TYPES]),
     ])
     const called = new Set(((callRows ?? []) as { prospect_id: string }[]).map((r) => r.prospect_id))
@@ -1137,18 +1152,65 @@ export default function Prospects() {
     loadScheduledCallback()
   }, [loadScheduledCallback])
 
-  // Acquire lock when viewing a prospect; release on cleanup (switch prospect/tab)
+  // Calling lock — RELEASE only. Viewing a prospect writes nothing (v2.2850,
+  // journey-map #14(b) / J34-F5): the row is taken by `takeCallingLock` on
+  // the first sign of intent. On prospect change / tab leave, delete the row
+  // only if THIS tab took it.
   useEffect(() => {
     if (topTab !== 'customers' || activeTab !== 'follow-up' || !currentProspect?.id || !authUser?.id) return
     const prospectId = currentProspect.id
-    void supabase.from('prospect_calling_locks').upsert(
-      { prospect_id: prospectId, user_id: authUser.id },
-      { onConflict: 'prospect_id' }
-    )
+    const userId = authUser.id
     return () => {
-      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser!.id)
+      lockAttemptForRef.current = null
+      setLockHeldBy((prev) => (prev?.prospectId === prospectId ? null : prev))
+      if (lockTakenForRef.current !== prospectId) return
+      lockTakenForRef.current = null
+      void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', userId)
     }
   }, [topTab, activeTab, currentProspect?.id, authUser?.id])
+
+  /**
+   * Take the advisory calling lock on the displayed prospect because the
+   * caller showed intent (`trigger`). Once per prospect per tab. Never steals:
+   * a colleague's lock younger than the TTL leaves the row alone and names
+   * them on the card; a stale one (closed tab) is taken over.
+   */
+  const takeCallingLock = useCallback(
+    (trigger: CallingLockTrigger) => {
+      if (!currentProspect?.id || !authUser?.id) return
+      const prospectId = currentProspect.id
+      const me = authUser.id
+      if (lockAttemptForRef.current === prospectId) return
+      lockAttemptForRef.current = prospectId
+      void (async () => {
+        try {
+          const { data } = await supabase
+            .from('prospect_calling_locks')
+            .select('prospect_id, user_id, locked_at')
+            .eq('prospect_id', prospectId)
+            .maybeSingle()
+          const existing = (data ?? null) as CallingLockRow | null
+          const decision = callingLockDecision({ existing, now: Date.now(), me })
+          if (decision === 'held-by-other' && existing) {
+            const { data: holder } = await supabase.from('users').select('name').eq('id', existing.user_id).maybeSingle()
+            setLockHeldBy({ prospectId, name: (holder as { name?: string | null } | null)?.name ?? null })
+            return
+          }
+          const { error } = await supabase
+            .from('prospect_calling_locks')
+            .upsert({ prospect_id: prospectId, user_id: me, locked_at: new Date().toISOString() }, { onConflict: 'prospect_id' })
+          if (error) throw error
+          lockTakenForRef.current = prospectId
+          setLockHeldBy((prev) => (prev?.prospectId === prospectId ? null : prev))
+          recordNavClick(me, authRole, 'prospect_lock_taken', `#${trigger}${decision === 'stale-take' ? '-stale' : ''}`)
+        } catch {
+          // Advisory lock — the call goes on without it; allow a later retry.
+          lockAttemptForRef.current = null
+        }
+      })()
+    },
+    [currentProspect?.id, authUser?.id, authRole],
+  )
 
   // Follow Up timer: counts up while on tab, resets when user leaves and comes back
   useEffect(() => {
@@ -1425,6 +1487,7 @@ export default function Prospects() {
   }
 
   function openCallbackModal() {
+    takeCallingLock('callback')
     const now = new Date()
     setCallbackDate(now.toLocaleDateString('en-CA'))
     setCallbackTime(now.toTimeString().slice(0, 5))
@@ -1646,6 +1709,7 @@ export default function Prospects() {
 
   async function handleDidntAnswer() {
     if (!currentProspect || !authUser?.id || saving) return
+    takeCallingLock('outcome')
     setSaving(true)
     const ok = await writeCallOutcome(currentProspect.id, 'didnt_answer', 'Prospect did not answer')
     if (ok) {
@@ -1666,6 +1730,7 @@ export default function Prospects() {
 
   async function handleAnswered() {
     if (!currentProspect || !authUser?.id || saving) return
+    takeCallingLock('outcome')
     setSaving(true)
     const ok = await writeCallOutcome(currentProspect.id, 'answered', 'Contacted')
     if (ok) {
@@ -2060,9 +2125,18 @@ export default function Prospects() {
                           never called
                         </span>
                       )}
+                      {lockHeldBy?.prospectId === currentProspect.id && (
+                        <span
+                          title="A colleague started working this prospect in the last 30 minutes — you can still call, but you may be doubling up"
+                          style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 4, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}
+                        >
+                          {lockHeldBy.name ?? 'Someone'} is calling this one
+                        </span>
+                      )}
                       {currentProspect.phone_number ? (
                         <a
                           href={`tel:${encodeURIComponent(currentProspect.phone_number)}`}
+                          onClick={() => takeCallingLock('dial')}
                           style={{ ...btnPrimary, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
                         >
                           📞 {currentProspect.phone_number}
@@ -2193,6 +2267,7 @@ export default function Prospects() {
                   ref={setCommentInputRef}
                   placeholder="Type what happened, then click Didn't Answer / Answered above to log the call. Enter saves it as a plain note."
                   value={commentInputValue}
+                  onFocus={() => takeCallingLock('composer')}
                   onChange={(e) => setCommentInputValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {

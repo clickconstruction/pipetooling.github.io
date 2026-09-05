@@ -8,7 +8,7 @@ Every subcontractor can have a private, no-login **Work & pay portal**: their jo
 
 ## Turn it on
 
-Click the **globe icon** 🌐 next to any sub's name on **People → Subs**. The first open mints their private link. The top of the modal is their **portal address**, something like `my.clickplumbing.com/dv-mechanical`:
+Click the **globe icon** 🌐 next to any sub's name on **People → Subs**. A sub who has never had a portal opens to **No portal link yet** — looking creates nothing; click {{button:blue|Create their link}} and their private link is minted (a "Portal link created" toast confirms it). From then on the top of the modal is their **portal address**, something like `my.clickplumbing.com/dv-mechanical`:
 
 - {{button:blue|Copy link}} saves the address and copies it — text it to the sub.
 - **Preview as them** opens exactly what they'll see.

@@ -170,3 +170,27 @@ export function buildPortalTimeline(
   }
   return entries.sort((a, b) => b.at.localeCompare(a.at))
 }
+
+export type PortalGlobeInitialState = 'unminted' | 'active' | 'off' | 'legacy-active'
+
+/**
+ * What the globe modal opens INTO for one customer, from their link rows
+ * (journey-map Tier-1 #14(b), J21-F7 — opening a never-minted customer's
+ * globe used to mint a live portal link with no confirm and no toast):
+ *  - 'active'        an 'all' link is live → show it, mint nothing
+ *  - 'off'           deliberately turned off (kernel above) → show the off state, mint nothing
+ *  - 'legacy-active' only pre-merge scoped rows, at least one live → the merged
+ *                    link is that link's continuation (unchanged behaviour)
+ *  - 'unminted'      no rows at all → "No portal link yet" — the mint waits for
+ *                    an explicit "Create their link"
+ */
+export function portalGlobeInitialState(
+  rows: Array<Pick<PortalLinkRow, 'customer_id' | 'audience' | 'revoked_at'>>,
+  customerId: string,
+): PortalGlobeInitialState {
+  const mine = rows.filter((r) => !r.customer_id || r.customer_id === customerId)
+  if (mine.some((r) => r.audience === 'all' && r.revoked_at === null)) return 'active'
+  if (mine.length === 0) return 'unminted'
+  if (computePortalMainOffCustomerIds(mine.map((r) => ({ ...r, customer_id: r.customer_id ?? customerId }))).includes(customerId)) return 'off'
+  return mine.some((r) => r.revoked_at === null) ? 'legacy-active' : 'unminted'
+}
