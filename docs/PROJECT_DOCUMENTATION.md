@@ -1806,7 +1806,7 @@ pipetooling.github.io/
 │   ├── components/
 │   │   ├── Layout.tsx          # Main layout with navigation
 │   │   ├── map/                # /map: MapPageView, MapGeocodeReviewModal, mapEntitySearch
-│   │   └── NewCustomerForm.tsx # Shared create-only customer form (Bids Add Customer modal, /customers/new)
+│   │   └── NewCustomerForm.tsx # Shared create-only customer form (Bids Add Customer modal, /customers/new); "Started as a prospect?" typeahead marks the prospect converted on Save (v2.2879)
 │   ├── contexts/
 │   │   ├── ToastContext.tsx       # Shared toast notifications; useToastContext()
 │   │   ├── ForceReloadContext.tsx  # Global reload trigger

@@ -18,7 +18,7 @@ Every way a call can end sits in one row:
 - {{button:amber|Didn't Answer}} or {{button:green|Answered}} — logs the call, with whatever you typed in the comment box attached as the note. Pressing **Enter** in the comment box saves a plain note instead — it does not count as a call, so the prospect keeps its {{chip:green|never called}} chip. If you already hit Enter, just click the outcome button next: it turns that fresh note into the call rather than adding a second line.
 - {{button:outline|Can't reach}} — the number's dead or nobody ever picks up; the prospect leaves the queue but stays on the Prospect List.
 - {{button:outline|Not a fit}} — they'll never be a plumbing customer.
-- {{button:purple|Converted ✓}} — they became a customer. The prospect leaves the queue for good and shows up under **Converted** on the Prospect List.
+- {{button:purple|Converted ✓}} — they became a customer: **Add customer** opens prefilled from the card with the prospect already linked, and pressing {{button:blue|Save}} creates the customer and moves the prospect under **Converted** on the Prospect List (Cancel changes nothing). Already added them from the Customers page? Use the **Started as a prospect?** field there instead — same result.
 
 :::example Warmth takes care of itself
 Every **Answered** raises the prospect's warmth by one — the {{chip:yellow|🔥 2}} chip shows it. You only need **Edit prospect** if you want to adjust it by hand.

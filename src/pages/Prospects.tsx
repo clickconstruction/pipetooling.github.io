@@ -40,6 +40,13 @@ import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
 import { useConfirmDialog, usePromptDialog } from '../contexts/ConfirmDialogContext'
 import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
+import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
+import {
+  canAccessProspectPipeline,
+  customerDraftFromProspect,
+  markProspectConverted,
+  recordProspectConverted,
+} from '../lib/prospects/prospectConversion'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 
 const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
@@ -256,6 +263,7 @@ export default function Prospects() {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
+  const newCustomerModal = useNewCustomerModal()
   const [searchParams, setSearchParams] = useSearchParams()
   const [topTab, setTopTab] = useState<ProspectsTopTab>('customers')
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
@@ -898,12 +906,10 @@ export default function Prospects() {
     showToast('Template saved', 'success')
   }
 
-  // When switching to Convert tab, default to current prospect from Follow Up
-  useEffect(() => {
-    if (activeTab === 'convert' && currentProspect?.id) {
-      setConvertProspectId(currentProspect.id)
-    }
-  }, [activeTab, currentProspect?.id])
+  // The Convert tab starts on its search (v2.2879, J34-F6): it used to
+  // pre-select the Follow Up queue head, which hid the tab's own
+  // "recently answered" suggestions and put a never-called company under
+  // "Who are you converting?".
 
   // Load first interaction date for Convert (earliest prospect_comment)
   useEffect(() => {
@@ -1580,36 +1586,53 @@ export default function Prospects() {
     setSaving(false)
   }
 
-  async function handleConverted() {
+  /**
+   * "Converted ✓" (v2.2879, J34-F4): they became a customer — so make one.
+   * Opens the global Add customer modal prefilled from this prospect with the
+   * prospect pre-linked; Save creates the customer, marks the prospect
+   * converted (the shared `markProspectConverted` tail) and hands the new row
+   * back here, where the queue advances. Cancel writes nothing (decision #17).
+   */
+  function handleConverted() {
     if (!currentProspect || !authUser?.id || saving) return
-    setSaving(true)
-    const prospectId = currentProspect.id
-    const { error } = await supabase
-      .from('prospects')
-      .update({ prospect_fit_status: 'converted' })
-      .eq('id', prospectId)
-    if (error) {
-      setSaving(false)
-      return
-    }
-    await saveTimerEvent('converted')
-    void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser.id)
-    loadMyTimeToday()
-    await supabase.from('prospect_comments').insert({
-      prospect_id: prospectId,
-      created_by: authUser.id,
-      comment_text: 'Converted to a customer',
-      interaction_type: 'converted',
+    if (!newCustomerModal) return
+    const prospect = currentProspect
+    newCustomerModal.openNewCustomerModal({
+      initialValues: customerDraftFromProspect(prospect),
+      sourceProspect: {
+        id: prospect.id,
+        company_name: prospect.company_name,
+        contact_name: prospect.contact_name,
+        phone_number: prospect.phone_number,
+        email: prospect.email,
+        address: prospect.address,
+        prospect_fit_status: prospect.prospect_fit_status,
+      },
+      conversionLane: 'follow-up',
+      onCreated: (customer, meta) => {
+        const convertedId = meta?.convertedProspectId ?? null
+        if (convertedId !== prospect.id) {
+          // The user unlinked the prospect (or the mark failed): the customer
+          // exists, the prospect stays in the queue — say so and stop.
+          showToast(`Customer ${customer.name || ''} created — ${prospect.company_name || 'the prospect'} is still in the calling queue`, 'info')
+          return
+        }
+        // saveTimerEvent closes over this render's prospect + timer seconds —
+        // the values as of the click, which is what the ledger wants.
+        void saveTimerEvent('converted')
+        void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospect.id).eq('user_id', authUser.id)
+        loadMyTimeToday()
+        const updated = { ...prospect, prospect_fit_status: 'converted' as const }
+        setProspectListProspects((prev) => prev.map((p) => (p.id === prospect.id ? updated : p)))
+        const nextList = followUpProspects.filter((p) => p.id !== prospect.id)
+        setFollowUpProspects(nextList)
+        const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
+        setCurrentProspectIndex(nextIdx)
+        setFollowUpTimerSeconds(0)
+        updateUrlProspectId(nextList[nextIdx]?.id ?? null)
+        showToast(`${prospect.company_name || 'Prospect'} converted → ${customer.name || 'customer'}`, 'success')
+      },
     })
-    const updated = { ...currentProspect, prospect_fit_status: 'converted' as const }
-    setProspectListProspects((prev) => prev.map((p) => (p.id === prospectId ? updated : p)))
-    const nextList = followUpProspects.filter((p) => p.id !== prospectId)
-    setFollowUpProspects(nextList)
-    const nextIdx = Math.min(currentProspectIndex, Math.max(0, nextList.length - 1))
-    setCurrentProspectIndex(nextIdx)
-    setFollowUpTimerSeconds(0)
-    updateUrlProspectId(nextList[nextIdx]?.id ?? null)
-    setSaving(false)
   }
 
   async function handleSendBack(p: Prospect) {
@@ -1921,22 +1944,15 @@ export default function Prospects() {
         if (bidErr) throw new Error(`Failed to add bid: ${bidErr.message}`)
       }
 
-      // Mark the source prospect converted so it leaves the calling queue.
-      // The customer already exists at this point, so a failure here must not block navigation.
+      // Mark the source prospect converted so it leaves the calling queue
+      // (shared tail with Add customer and Follow Up). The customer already
+      // exists at this point, so a failure here must not block navigation.
       if (convertProspectId) {
-        const { error: markErr } = await supabase
-          .from('prospects')
-          .update({ prospect_fit_status: 'converted' })
-          .eq('id', convertProspectId)
-        if (markErr) {
-          console.error('[Prospects] failed to mark prospect converted:', markErr)
+        const marked = await markProspectConverted(convertProspectId, customerId, payload.name, authUser.id)
+        if (!marked.ok) {
+          console.error('[Prospects] failed to mark prospect converted:', marked.error)
         } else {
-          await supabase.from('prospect_comments').insert({
-            prospect_id: convertProspectId,
-            created_by: authUser.id,
-            comment_text: `Converted to customer ${payload.name.trim() || 'record'}`,
-            interaction_type: 'converted',
-          })
+          recordProspectConverted(authUser.id, authRole, 'convert-tab')
           setProspectListProspects((prev) => prev.map((p) => (p.id === convertProspectId ? { ...p, prospect_fit_status: 'converted' } : p)))
           setFollowUpProspects((prev) => prev.filter((p) => p.id !== convertProspectId))
         }
@@ -1951,11 +1967,7 @@ export default function Prospects() {
     }
   }
 
-  const canAccessFollowUp =
-    authUser &&
-    authRole &&
-    (['dev', 'master_technician', 'assistant', 'controller'].includes(authRole) ||
-      (authRole === 'estimator' && estimatorProspectsAccess))
+  const canAccessFollowUp = !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess)
 
   if (authLoading) {
     return (
@@ -2171,7 +2183,7 @@ export default function Prospects() {
                         onClick={handleConverted}
                         disabled={saving}
                         style={saving ? btnDisabled(btnConverted) : btnConverted}
-                        title="Mark this prospect as converted to a customer — it leaves the calling queue"
+                        title="They became a customer — opens Add customer prefilled from this prospect; Save creates the customer and takes the prospect out of the calling queue"
                       >
                         Converted ✓
                       </button>
