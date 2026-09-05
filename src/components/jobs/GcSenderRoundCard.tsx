@@ -62,6 +62,10 @@ export default function GcSenderRoundCard({
       const when = it.mark ? new Date(it.mark.acted_at).toLocaleDateString('en-US', { weekday: 'short' }) : ''
       return { text: `sent ${when} · ${sendChannelLabel(it.mark?.channel).toLowerCase()}`, color: 'var(--text-green-800)', dot: '#16a34a' }
     }
+    if (it.state === 'contacted') {
+      const when = it.mark ? new Date(it.mark.acted_at).toLocaleDateString('en-US', { weekday: 'short' }) : ''
+      return { text: `spoke ${when} · ${sendChannelLabel(it.mark?.channel).toLowerCase()}${it.mark?.temperature ? ` · ${it.mark.temperature}` : ''}`, color: 'var(--text-teal-800, var(--text-green-800))', dot: '#0d9488' }
+    }
     if (it.state === 'skipped') return { text: 'skipped this week', color: 'var(--text-muted)', dot: 'var(--border-400)' }
     if (it.state === 'needs_sender') return { text: 'needs a sender', color: 'var(--text-red-600)', dot: '#dc2626' }
     const why = heldReason(it.gcId)

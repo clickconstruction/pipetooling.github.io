@@ -36,7 +36,7 @@ const cert = (total: number): GcReviewCertRow => ({
   note: '',
 })
 
-const mark = (gc: string, action: 'sent' | 'skipped', at = '2026-08-20T15:00:00Z'): RoundMarkRow => ({
+const mark = (gc: string, action: 'sent' | 'skipped' | 'contacted', at = '2026-08-20T15:00:00Z'): RoundMarkRow => ({
   gc_customer_id: gc,
   week_start: '2026-08-17',
   action,
@@ -45,6 +45,8 @@ const mark = (gc: string, action: 'sent' | 'skipped', at = '2026-08-20T15:00:00Z
   acted_at: at,
   channel: null,
   note: null,
+  temperature: null,
+  expected_pay_by: null,
 })
 
 describe('buildStatementRound', () => {
@@ -111,8 +113,8 @@ describe('summarizeStatementRound', () => {
     const s = summarizeStatementRound(items, 'u2')
     expect(s.held).toEqual({ count: 1, total: 12000 })
     expect(s.readyForUser.map((i) => i.gcId)).toEqual(['b'])
-    expect(s.senderProgress.get('u2')).toEqual({ sent: 1, total: 2 })
-    expect(s.senderProgress.get('u3')).toEqual({ sent: 0, total: 1 })
+    expect(s.senderProgress.get('u2')).toEqual({ sent: 1, contacted: 0, total: 2 })
+    expect(s.senderProgress.get('u3')).toEqual({ sent: 0, contacted: 0, total: 1 })
   })
 })
 
@@ -193,5 +195,18 @@ describe('senderRoundQueue (v2.2792)', () => {
     expect(q.sent).toBe(1)
     expect(q.assigned).toBe(4)
     expect(senderRoundQueue(items, 'nobody').queue).toEqual([])
+  })
+})
+
+describe('contacted marks (v2.2813)', () => {
+  it('a contacted mark is its own state, never a send, and describes itself with the temperature', () => {
+    const m = { ...mark('a', 'contacted'), channel: 'call', temperature: 'warm', note: 'Dave says the 10th', expected_pay_by: '2026-09-10' }
+    expect(mergeMarksIntoLastSent({}, [m])).toEqual({})
+    const items = buildStatementRound({ groups: [group('a', 46000)], certsByGc: new Map([['a', cert(46000)]]), marks: [m], senders: new Map([['a', 'u2']]), accountMen: new Map() })
+    expect(items[0]?.state).toBe('contacted')
+    const s = summarizeStatementRound(items, 'u2')
+    expect(s.readyForUser).toEqual([])
+    expect(s.senderProgress.get('u2')).toEqual({ sent: 0, contacted: 1, total: 1 })
+    expect(describeRoundMark(m, 'Thu, Sep 4')).toBe("Spoke with them by Malachi · Thu, Sep 4 · call · warm · no statement\nTemperature: Dave says the 10th\nThey said they'd pay by 2026-09-10")
   })
 })

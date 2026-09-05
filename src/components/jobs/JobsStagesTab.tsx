@@ -43,7 +43,8 @@ import {
   summarizeStatementRound,
   type RoundMarkRow,
 } from '../../lib/jobs/gcStatementRounds'
-import { listGcStatementRoundMarks, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
+import { latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
+import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
 import {
   buildGcStatementEmailHtml,
   buildGcStatementEmailText,
@@ -1343,6 +1344,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const roundWeekStart = gcReviewWeekStartYmd()
   const [roundCertRows, setRoundCertRows] = useState<GcReviewCertRow[]>([])
   const [roundMarks, setRoundMarks] = useState<RoundMarkRow[]>([])
+  /** Six weeks of marks for the GC temperature map (v2.2813) — the chase queue sorts cold GCs first. */
+  const [roundTempMarks, setRoundTempMarks] = useState<RoundMarkRow[]>([])
+  const gcTemperatureById = useMemo(() => latestTemperatureByGc(roundTempMarks), [roundTempMarks])
   const [roundSenders, setRoundSenders] = useState<Map<string, string>>(new Map())
   // Full rows once the billed scope merges; the lean spine (first paint, id-only
   // GC stubs) until then — same lean-first pattern as the chase card.
@@ -1365,6 +1369,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     void listGcStatementRoundMarks(roundWeekStart).then(
       (r) => {
         if (!cancelled) setRoundMarks(r)
+      },
+      () => {},
+    )
+    void listGcStatementRoundMarksSince(trailingWeekStarts(roundWeekStart, 6)[0] ?? roundWeekStart).then(
+      (r) => {
+        if (!cancelled) setRoundTempMarks(r)
       },
       () => {},
     )
@@ -1413,9 +1423,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     // card hidden rather than offering call mode whose writes would fail.
     if (!canMarkPromisedPay || !cacheLeanBilledRows || chaseTouches == null) return null
     return summarizePaymentChase(
-      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd),
+      buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById),
     )
-  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
+  }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById])
   const nonPaidScopesMerged = NON_PAID_SCOPES.every((s) => cacheMergedScopes.has(s))
   const chaseFullQueue = useMemo(() => {
     if (!chaseModalOpen || !nonPaidScopesMerged) return null
@@ -1425,8 +1435,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       promisedPayDates,
       chaseTouches,
       chaseTodayYmd,
+      gcTemperatureById,
     )
-  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd])
+  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {

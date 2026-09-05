@@ -75,6 +75,9 @@ when_to_read:
 
 ## User Roles
 
+### Temperature (GC)
+The account man's read of a General Contractor after a contact (v2.2813), recorded on a statement round mark: **Hot** = pay date in hand, **Warm** = fine, no date, **Cool** = dodging the date, **Cold** = disputing or upset. Required, with a sentence, on a *Spoke with them · no statement* mark; optional on a send. Shown on the GC Review header pill, the rounds chip, the sender card, the send history, the round email, and the **Temperature board** (cold first, six-week trend). A contacted mark never counts as a statement sent.
+
 ### dev (Developer/Admin)
 System administrator with complete access to all features, data, and operations. Can create/delete users, manage templates, impersonate users, and access all edge functions. The highest privilege level in the system.
 

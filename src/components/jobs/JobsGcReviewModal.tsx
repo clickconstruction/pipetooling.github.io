@@ -39,12 +39,17 @@ import {
   mergeMarksIntoLastSent,
   sendChannelLabel,
   summarizeStatementRound,
+  type RoundMarkAction,
   type RoundMarkRow,
   type StatementSendChannel,
+  type Temperature,
 } from '../../lib/jobs/gcStatementRounds'
+import { buildTemperatureBoard, latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
+import GcTemperatureBoard, { TEMP_PILL } from './GcTemperatureBoard'
 import {
   deleteGcStatementRoundMark,
   listGcStatementRoundMarks,
+  listGcStatementRoundMarksSince,
   listGcStatementSenders,
   setGcStatementSender,
   upsertGcStatementRoundMark,
@@ -328,6 +333,8 @@ export function JobsGcReviewModal({
   }, [open, refreshCerts])
   /** Personal statement rounds (v2.2072): weekly marks + standing senders. */
   const [roundMarks, setRoundMarks] = useState<RoundMarkRow[]>([])
+  /** Six weeks of marks (v2.2813): the temperature board's trend, the header temperature pills, the guardrail. */
+  const [boardMarks, setBoardMarks] = useState<RoundMarkRow[]>([])
   const [roundSenders, setRoundSenders] = useState<Map<string, string>>(new Map())
   const [roundOpen, setRoundOpen] = useState(false)
   const [roundStartTotal, setRoundStartTotal] = useState(0)
@@ -359,6 +366,7 @@ export function JobsGcReviewModal({
   }, [open, refreshRoundEmailRows])
   const refreshRoundMarks = useCallback(() => {
     void listGcStatementRoundMarks(certWeekStart).then(setRoundMarks, () => setRoundMarks([]))
+    void listGcStatementRoundMarksSince(trailingWeekStarts(certWeekStart, 6)[0] ?? certWeekStart).then(setBoardMarks, () => setBoardMarks([]))
   }, [certWeekStart])
   useEffect(() => {
     if (open) refreshRoundMarks()
@@ -508,6 +516,14 @@ export function JobsGcReviewModal({
     [roundRollup, certRows, roundMarks, roundSenders, accountMen],
   )
   const roundSummary = useMemo(() => summarizeStatementRound(roundItems, authUser?.id ?? null), [roundItems, authUser?.id])
+  /** Temperature board (v2.2813): every round GC, cold first, six-week trend, guardrail. */
+  const boardWeeks = useMemo(() => trailingWeekStarts(certWeekStart, 6), [certWeekStart])
+  const boardRows = useMemo(
+    () => buildTemperatureBoard({ groups: roundRollup.groups, marks: boardMarks, senders: roundSenders, accountMen, weekStarts: boardWeeks, appLastSentByGc: lastSentByGcId, threshold: GC_ROUND_THRESHOLD }),
+    [roundRollup, boardMarks, roundSenders, accountMen, boardWeeks, lastSentByGcId],
+  )
+  const boardRowByGc = useMemo(() => new Map(boardRows.map((r) => [r.gcId, r] as const)), [boardRows])
+  const temperatureByGc = useMemo(() => latestTemperatureByGc(boardMarks), [boardMarks])
   /** The GC the overlay should open on (v2.2812); cleared once the user moves on by marking it. */
   const [roundFocusGcId, setRoundFocusGcId] = useState<string | null>(null)
   useEffect(() => {
@@ -548,7 +564,11 @@ export function JobsGcReviewModal({
   const authUserName = users.find((u) => u.id === authUser?.id)?.name ?? ''
   const userNameById = (id: string | null) => (id ? users.find((u) => u.id === id)?.name || '—' : 'nobody assigned')
   /** Returns true on success so callers can close their form. A sent mark carries how + note (v2.2761); a skip carries neither. */
-  async function markRound(gcId: string, action: 'sent' | 'skipped', how?: { channel: StatementSendChannel; note: string }): Promise<boolean> {
+  async function markRound(
+    gcId: string,
+    action: RoundMarkAction,
+    how?: { channel: StatementSendChannel; note: string; temperature?: Temperature | null; expectedPayBy?: string | null },
+  ): Promise<boolean> {
     if (!authUser?.id) return false
     setRoundBusy(true)
     setRoundError(null)
@@ -560,8 +580,10 @@ export function JobsGcReviewModal({
         action,
         acted_by: authUser.id,
         acted_by_name: authUserName,
-        channel: action === 'sent' ? (how?.channel ?? 'email') : null,
-        note: action === 'sent' ? (how?.note ?? '') : null,
+        channel: action === 'skipped' ? null : (how?.channel ?? 'email'),
+        note: action === 'skipped' ? null : (how?.note ?? ''),
+        temperature: action === 'skipped' ? null : (how?.temperature ?? null),
+        expected_pay_by: action === 'skipped' ? null : (how?.expectedPayBy ?? null),
       })
       refreshRoundMarks()
       ok = true
@@ -861,7 +883,7 @@ export function JobsGcReviewModal({
                           title={`See ${userNameById(uid)}’s round as they see it`}
                           style={{ font: 'inherit', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline dotted' }}
                         >
-                          {userNameById(uid)} {p.sent}/{p.total} sent
+                          {userNameById(uid)} {p.sent}/{p.total} sent{p.contacted > 0 ? ` · ${p.contacted} spoke` : ''}
                         </button>
                       </span>
                     ))}
@@ -945,18 +967,33 @@ export function JobsGcReviewModal({
                     color:
                       it.state === 'sent'
                         ? 'var(--text-green-800)'
-                        : it.state === 'ready'
-                          ? 'var(--text-blue-700)'
-                          : it.state === 'needs_sender'
-                            ? 'var(--text-red-600)'
-                            : it.state === 'skipped'
-                              ? 'var(--text-muted)'
-                              : 'var(--text-amber-800)',
-                    background: it.state === 'sent' ? 'var(--bg-green-tint)' : 'transparent',
+                        : it.state === 'contacted'
+                          ? (boardRowByGc.get(it.gcId)?.contactedOnlyWeeks ?? 0) >= 2
+                            ? 'var(--text-red-700)'
+                            : 'var(--text-green-800)'
+                          : it.state === 'ready'
+                            ? 'var(--text-blue-700)'
+                            : it.state === 'needs_sender'
+                              ? 'var(--text-red-600)'
+                              : it.state === 'skipped'
+                                ? 'var(--text-muted)'
+                                : 'var(--text-amber-800)',
+                    background:
+                      it.state === 'sent'
+                        ? 'var(--bg-green-tint)'
+                        : it.state === 'contacted'
+                          ? (boardRowByGc.get(it.gcId)?.contactedOnlyWeeks ?? 0) >= 2
+                            ? 'var(--bg-orange-tint)'
+                            : 'var(--bg-green-tint)'
+                          : 'transparent',
                   }}
                 >
                   {it.state === 'sent'
                     ? `sent ✓ ${it.mark ? new Date(it.mark.acted_at).toLocaleDateString('en-US', { weekday: 'short' }) : ''} by ${it.mark?.acted_by_name || '—'} · ${sendChannelLabel(it.mark?.channel).toLowerCase()}${it.mark?.note?.trim() ? ' ✎' : ''}`
+                    : it.state === 'contacted'
+                      ? (boardRowByGc.get(it.gcId)?.contactedOnlyWeeks ?? 0) >= 2
+                        ? `⚠ spoke ${boardRowByGc.get(it.gcId)?.contactedOnlyWeeks} wks running · no statement${boardRowByGc.get(it.gcId)?.lastStatementAt ? ` since ${new Date(boardRowByGc.get(it.gcId)!.lastStatementAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`
+                        : `spoke ${it.mark ? new Date(it.mark.acted_at).toLocaleDateString('en-US', { weekday: 'short' }) : ''} · ${sendChannelLabel(it.mark?.channel).toLowerCase()}${it.mark?.temperature ? ` · ${it.mark.temperature}` : ''}`
                     : it.state === 'skipped'
                       ? 'skipped this week'
                       : it.state === 'ready'
@@ -969,8 +1006,8 @@ export function JobsGcReviewModal({
             ))}
             <p style={{ margin: '0.4rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
               Never sent uncertified — a group that changes after sign-off drops back to “certify to release”. “Sent it”
-              stamps the last-sent pill and the week’s progress. Click any chip to see that sender’s round as they see it
-              (undo a mark from there).
+              stamps the last-sent pill and the week’s progress; “Spoke with them” counts for the week but never as a
+              statement. Click any chip to see that sender’s round as they see it (undo a mark from there).
             </p>
             {roundError ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
             {/* Email me my round (v2.2771): the statement_round stream — a morning email of your round, rebuilt at send time. */}
@@ -1116,6 +1153,17 @@ export function JobsGcReviewModal({
             ) : null}
           </div>
         ) : null}
+        {!byDevelopment && boardRows.length > 0 ? (
+          <GcTemperatureBoard
+            rows={boardRows}
+            weekLabels={boardWeeks.map((w) => {
+              const [y, m, d] = w.split('-').map(Number)
+              return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
+            })}
+            userNameById={userNameById}
+            onOpenGc={(gc) => setHistoryGc(gc)}
+          />
+        ) : null}
         {pendingSends.length > 0 ? (
           <div style={{ margin: '0 auto 1rem', maxWidth: 480, border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
             <p style={{ margin: '0 0 0.3rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>
@@ -1217,6 +1265,31 @@ export function JobsGcReviewModal({
                           {thisWeek ? 'Sent' : 'last sent'} {when}
                           {suffix}
                         </button>
+                      )
+                    })()
+                  : null}
+                {!byDevelopment && !g.isNoGc && g.gcId && temperatureByGc.has(g.gcId)
+                  ? (() => {
+                      // Temperature pill (v2.2813): the newest read on record, the sentence on hover; opens the send history.
+                      const t = temperatureByGc.get(g.gcId!)!
+                      const pill = TEMP_PILL[t.temperature]
+                      const row = boardRowByGc.get(g.gcId!)
+                      return (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setHistoryGc({ id: g.gcId!, name: g.gcName })}
+                            title={`${t.temperature} — ${t.by}, ${new Date(t.at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}${t.note ? `\n${t.note}` : ''}`}
+                            style={{ font: 'inherit', display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: pill.bg, color: pill.fg, whiteSpace: 'nowrap', cursor: 'pointer' }}
+                          >
+                            {t.temperature} · {new Date(t.at).toLocaleDateString('en-US', { weekday: 'short' })} · {t.by.split(/\s+/)[0]}
+                          </button>
+                          {row?.expectedPayBy ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', whiteSpace: 'nowrap' }} title="They said they'd pay by this date — hold them to it">
+                              pays by {(() => { const [y, m, d] = row.expectedPayBy.split('-').map(Number); return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }) })()}
+                            </span>
+                          ) : null}
+                        </>
                       )
                     })()
                   : null}
@@ -1365,7 +1438,7 @@ export function JobsGcReviewModal({
                               title={`Record that ${g.gcName} got their statement another way — text, call, in person — with a note for later`}
                               style={gcShareMenuItemStyle}
                             >
-                              Mark sent…
+                              Mark sent / spoke with them…
                             </button>
                           ) : null}
                           {!byDevelopment ? (
@@ -1862,8 +1935,8 @@ export function JobsGcReviewModal({
                             gcName={current.gcName}
                             actorName={authUserName}
                             busy={roundBusy}
-                            onSave={(channel, note) => {
-                              void markRound(current.gcId, 'sent', { channel, note }).then((ok) => {
+                            onSave={(m) => {
+                              void markRound(current.gcId, m.action, { channel: m.channel, note: m.note, temperature: m.temperature, expectedPayBy: m.expectedPayBy }).then((ok) => {
                                 if (ok) setRoundSentFormOpen(false)
                               })
                             }}
@@ -2247,10 +2320,10 @@ export function JobsGcReviewModal({
               actorName={authUserName}
               defaultChannel="text"
               busy={roundBusy}
-              onSave={(channel, note) => {
+              onSave={(m) => {
                 const gcId = markSentGroup.gcId
                 if (!gcId) return
-                void markRound(gcId, 'sent', { channel, note }).then((ok) => {
+                void markRound(gcId, m.action, { channel: m.channel, note: m.note, temperature: m.temperature, expectedPayBy: m.expectedPayBy }).then((ok) => {
                   if (ok) setMarkSentGroup(null)
                 })
               }}

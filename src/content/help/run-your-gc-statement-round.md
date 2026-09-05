@@ -2,7 +2,7 @@
 title: run your weekly GC statement round
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: gc statement, round, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo
+keywords: gc statement, round, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man
 ---
 Every GC that owes **$10,000 or more** joins the weekly **statement round**: a to-do for one person to email that GC their outstanding statement — personally, from their own inbox. The app never emails a GC on its own. Two gates keep it honest: a manager **certifies** each GC's numbers first, and the sender marks **Sent it** so the app knows it happened.
 
@@ -56,6 +56,31 @@ You don't have to go looking for it:
 :::example Nothing waiting?
 The email still comes, saying so — a quiet morning shouldn't look like a broken subscription.
 :::
+
+## Spoke with them, but no statement went out?
+
+Sometimes the right move this week is a conversation, not another statement. Press {{button:blue|Sent it ✓}} (or **Share → Mark sent / spoke with them…** on any GC) and pick **Spoke with them · no statement**. The form asks how (call, text, in person), then the question that matters: **What's their temperature?**
+
+- Pick one: {{chip:green|Hot · pay date in hand}} {{chip:yellow|Warm · fine, no date}} {{chip:blue|Cool · dodging the date}} {{chip:red|Cold · disputing or upset}}
+- Then answer in a sentence — "Warm, Dave says the check run is the 10th" — not a word. The app won't save a blank or a one-worder; the sentence is the whole point.
+- If they gave a date, put it in **They expect to pay by**.
+
+:::example What it counts as
+A "spoke with them" mark clears the GC from your round for the week and shows on the chip as {{chip:green|spoke Thu · call · warm}}. It never counts as a statement sent: the last-statement date keeps aging, and the office's "sent" count doesn't move.
+:::
+
+**The guardrail.** Talk to a GC two weeks running with no statement in between and the chip turns red — {{chip:red|⚠ spoke 2 wks running · no statement since Aug 11}}. Conversations are fine; a GC that never sees a written statement is exactly the surprise the standard exists to prevent.
+
+## Where the temperature shows up
+
+- On the GC's header in GC Review: {{chip:yellow|warm · Thu · Malachi}} with the sentence on hover, next to the last-statement date, and a green **pays by** chip when a date was given.
+- On the rounds chip, the sender card, and the send history (a Temp column).
+- In your morning round email, under each GC, as the last word.
+- On the **Payment chase** list, which now puts cold GCs first.
+
+## Review it: the Temperature board
+
+Under Weekly statement rounds, the **Temperature board** lists every GC in the round, cold first: the account man, the current read, six weeks of dots (grey = nobody talked to them that week), the last word with who said it, and the pay date. Three things to look for: who is going cold, whose dots are drifting the wrong way, and the **no read** rows — GCs that have only ever had statements and nobody has written a word about. Click a GC's name for its full send history.
 
 ## Sent it another way? Mark it from the GC
 

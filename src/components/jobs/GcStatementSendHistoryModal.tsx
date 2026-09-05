@@ -50,7 +50,7 @@ export default function GcStatementSendHistoryModal({
           </button>
         </div>
         <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          Send history — every time someone marked this GC&apos;s statement sent, with how and any note.
+          Send history — every time someone marked this GC&apos;s statement sent or spoke with them, with how, the temperature, and any note.
         </p>
         {rows == null ? (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading…</p>
@@ -61,7 +61,9 @@ export default function GcStatementSendHistoryModal({
             <thead>
               <tr style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'left' }}>
                 <th style={{ padding: '0.2rem 0', fontWeight: 600 }}>When</th>
+                <th style={{ padding: '0.2rem 0.5rem', fontWeight: 600 }}>What</th>
                 <th style={{ padding: '0.2rem 0.5rem', fontWeight: 600 }}>How</th>
+                <th style={{ padding: '0.2rem 0.5rem', fontWeight: 600 }}>Temp</th>
                 <th style={{ padding: '0.2rem 0.5rem', fontWeight: 600 }}>Who</th>
                 <th style={{ padding: '0.2rem 0', fontWeight: 600 }}>Note</th>
               </tr>
@@ -70,7 +72,9 @@ export default function GcStatementSendHistoryModal({
               {rows.map((r) => (
                 <tr key={`${r.week_start}-${r.acted_at}`} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.35rem 0', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{fmtDate(r.acted_at)}</td>
+                  <td style={{ padding: '0.35rem 0.5rem', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{r.action === 'contacted' ? 'Spoke' : 'Statement'}</td>
                   <td style={{ padding: '0.35rem 0.5rem', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{sendChannelLabel(r.channel)}</td>
+                  <td style={{ padding: '0.35rem 0.5rem', whiteSpace: 'nowrap', verticalAlign: 'top', color: r.temperature ? 'inherit' : 'var(--text-muted)' }}>{r.temperature ?? '—'}{r.expected_pay_by ? ` · pays ${r.expected_pay_by}` : ''}</td>
                   <td style={{ padding: '0.35rem 0.5rem', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{r.acted_by_name || '—'}</td>
                   <td style={{ padding: '0.35rem 0', color: r.note ? 'inherit' : 'var(--text-muted)', verticalAlign: 'top' }}>{r.note?.trim() || '—'}</td>
                 </tr>

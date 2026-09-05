@@ -112,6 +112,8 @@ export type ChaseCustomer = {
   /** Promised touches whose date passed while money is still open — the escalation counter. */
   brokenPromiseTouches: number
   waitReason: ChaseWaitReason | null
+  /** Coldest GC temperature read across this customer's late jobs (v2.2813) — cold sorts first. */
+  temperature: 'hot' | 'warm' | 'cool' | 'cold' | null
 }
 
 export type ChaseDispute = {
@@ -143,7 +145,10 @@ export function buildPaymentChaseQueue(
   promises: Record<string, PromisedPayDate> | null,
   touches: ChaseTouch[] | null,
   todayYmd: string,
+  /** Newest temperature read per GC customer id (v2.2813); a cold GC's bills move to the front of the call list. */
+  temperatureByGcId?: ReadonlyMap<string, { temperature: 'hot' | 'warm' | 'cool' | 'cold' }> | null,
 ): PaymentChaseQueue {
+  const tempRank = (t: string | null | undefined) => (t === 'cold' ? 0 : t === 'cool' ? 1 : t === 'warm' ? 2 : t === 'hot' ? 3 : 4)
   const touchesByCustomer = new Map<string, ChaseTouch[]>()
   for (const t of touches ?? []) {
     const list = touchesByCustomer.get(t.customerId)
@@ -168,6 +173,7 @@ export function buildPaymentChaseQueue(
     notLate: ChaseBill[]
     disputed: ChaseBill[]
     broken: boolean
+    temperature: 'hot' | 'warm' | 'cool' | 'cold' | null
   }
   const byCustomer = new Map<string, Bucket>()
 
@@ -220,9 +226,12 @@ export function buildPaymentChaseQueue(
         notLate: [],
         disputed: [],
         broken: false,
+        temperature: null,
       }
       byCustomer.set(customerId, bucket)
     }
+    const gcTemp = (job as { gc_customer_id?: string | null }).gc_customer_id ? temperatureByGcId?.get((job as { gc_customer_id?: string | null }).gc_customer_id!)?.temperature ?? null : null
+    if (gcTemp && tempRank(gcTemp) < tempRank(bucket.temperature)) bucket.temperature = gcTemp
     if (disputedJobIds.has(job.id)) {
       bucket.disputed.push(bill)
       continue
@@ -275,11 +284,13 @@ export function buildPaymentChaseQueue(
       openLate: b.bills.reduce((s, x) => s + x.open, 0),
       brokenPromiseTouches,
       waitReason,
+      temperature: b.temperature,
     }
     if (waitReason) waiting.push(customer)
     else due.push(customer)
   }
-  due.sort((a, z) => z.openLate - a.openLate)
+  // Cold first (v2.2813), then biggest late dollars — a bad temperature read belongs on the call list.
+  due.sort((a, z) => tempRank(a.temperature) - tempRank(z.temperature) || z.openLate - a.openLate)
   waiting.sort((a, z) => z.openLate - a.openLate)
 
   const billByJob = new Map<string, ChaseBill>()

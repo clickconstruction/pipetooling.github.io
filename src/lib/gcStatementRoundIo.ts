@@ -6,9 +6,9 @@
  */
 
 import { supabase } from './supabase'
-import type { RoundMarkRow, StatementSendChannel } from './jobs/gcStatementRounds'
+import type { RoundMarkAction, RoundMarkRow, StatementSendChannel, Temperature } from './jobs/gcStatementRounds'
 
-const MARK_COLUMNS = 'gc_customer_id, week_start, action, acted_by, acted_by_name, acted_at, channel, note'
+const MARK_COLUMNS = 'gc_customer_id, week_start, action, acted_by, acted_by_name, acted_at, channel, note, temperature, expected_pay_by'
 
 export async function listGcStatementRoundMarks(weekStartYmd: string): Promise<RoundMarkRow[]> {
   const { data, error } = await supabase.from('gc_statement_round_marks').select(MARK_COLUMNS).eq('week_start', weekStartYmd)
@@ -16,16 +16,23 @@ export async function listGcStatementRoundMarks(weekStartYmd: string): Promise<R
   return (data ?? []) as RoundMarkRow[]
 }
 
+/** Marks for every week from `sinceWeekStartYmd` on (v2.2813): the temperature board's trend + the header pills. */
+export async function listGcStatementRoundMarksSince(sinceWeekStartYmd: string): Promise<RoundMarkRow[]> {
+  const { data, error } = await supabase.from('gc_statement_round_marks').select(MARK_COLUMNS).gte('week_start', sinceWeekStartYmd)
+  if (error) return []
+  return (data ?? []) as RoundMarkRow[]
+}
+
 /**
- * Send history for one GC (v2.2761): every week's sent mark, newest first —
- * the posterity view behind the last-sent pill. Skips are left out.
+ * Send history for one GC (v2.2761): every week's sent and contacted mark,
+ * newest first — the posterity view behind the last-sent pill. Skips are left out.
  */
 export async function listGcStatementSentHistory(gcCustomerId: string, limit = 60): Promise<RoundMarkRow[]> {
   const { data, error } = await supabase
     .from('gc_statement_round_marks')
     .select(MARK_COLUMNS)
     .eq('gc_customer_id', gcCustomerId)
-    .eq('action', 'sent')
+    .in('action', ['sent', 'contacted'])
     .order('acted_at', { ascending: false })
     .limit(limit)
   if (error) return []
@@ -35,18 +42,25 @@ export async function listGcStatementSentHistory(gcCustomerId: string, limit = 6
 export async function upsertGcStatementRoundMark(row: {
   week_start: string
   gc_customer_id: string
-  action: 'sent' | 'skipped'
+  action: RoundMarkAction
   acted_by: string
   acted_by_name: string
   /** v2.2761 — how it went out; a skip carries no channel. */
   channel?: StatementSendChannel | null
-  /** v2.2761 — optional note, trimmed; empty stores NULL. */
+  /** v2.2761 — optional note, trimmed; empty stores NULL. On contacted: the temperature answer. */
   note?: string | null
+  /** v2.2813 — the temperature read (required by the form on contacted). */
+  temperature?: Temperature | null
+  /** v2.2813 — YYYY-MM-DD when they said they'd pay. */
+  expected_pay_by?: string | null
 }): Promise<void> {
   const note = row.note?.trim() || null
   const { error } = await supabase
     .from('gc_statement_round_marks')
-    .upsert({ ...row, channel: row.channel ?? null, note, acted_at: new Date().toISOString() }, { onConflict: 'week_start,gc_customer_id' })
+    .upsert(
+      { ...row, channel: row.channel ?? null, note, temperature: row.temperature ?? null, expected_pay_by: row.expected_pay_by || null, acted_at: new Date().toISOString() },
+      { onConflict: 'week_start,gc_customer_id' },
+    )
   if (error) throw new Error(error.message)
 }
 
