@@ -6,6 +6,7 @@ const pt = (id: string, revenueUsd: number, trueMarginPct: number | null, trade:
   ({
     row: { job: { id, hcp_number: id, job_name: `Job ${id}`, pct_complete: 100, service_type_id: trade, serviceType: { name: trade } }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: revenueUsd },
     pct: 100,
+    pctSource: 'paid-invoices',
     finished: true,
     contractUsd: revenueUsd,
     revenueUsd,

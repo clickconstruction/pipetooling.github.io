@@ -1,10 +1,7 @@
 /** Quickfill "Complete, no Total Bill" section: non-paid jobs resolved 100% complete
  * (same resolution as the Job Summary % column) whose `jobs_ledger.revenue` is unset or $0.
  * Pure — no React/supabase. */
-import {
-  jobInvoicesAllPaidWithAmount,
-  resolveJobSummaryPercentComplete,
-} from './jobSummaryPercentComplete'
+import { jobSummaryPaidInvoiceOpts, resolveJobSummaryPercentComplete } from './jobSummaryPercentComplete'
 
 export type QuickfillCompleteNoBillJobShape = {
   id: string
@@ -33,7 +30,8 @@ export function quickfillCompleteNoBillCandidates<T extends QuickfillCompleteNoB
   })
 }
 
-/** Candidates whose resolved percent (report % → pct_complete → paid-invoices override) is 100. */
+/** Candidates whose resolved percent is 100. Candidates have no Total Bill, so the paid-invoices
+ * branch keeps its old "fully collected ⇒ done" meaning here — there is no contract to cover. */
 export function buildQuickfillCompleteNoBillList<T extends QuickfillCompleteNoBillJobShape>(
   jobs: T[],
   reportPctByJobId: Map<string, number>,
@@ -41,9 +39,7 @@ export function buildQuickfillCompleteNoBillList<T extends QuickfillCompleteNoBi
 ): T[] {
   return quickfillCompleteNoBillCandidates(jobs, minHcpNumber).filter(
     (j) =>
-      resolveJobSummaryPercentComplete(reportPctByJobId.get(j.id) ?? null, j.pct_complete, {
-        invoicesAllPaidWithAmount: jobInvoicesAllPaidWithAmount(j.invoices),
-      }) === 100,
+      resolveJobSummaryPercentComplete(reportPctByJobId.get(j.id) ?? null, j.pct_complete, jobSummaryPaidInvoiceOpts(j.invoices, j.revenue)) === 100,
   )
 }
 

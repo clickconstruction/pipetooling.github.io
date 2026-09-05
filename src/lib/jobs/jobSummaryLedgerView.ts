@@ -1,4 +1,8 @@
-import { resolveJobSummaryPercentComplete, jobInvoicesAllPaidWithAmount } from '../jobSummaryPercentComplete'
+import {
+  jobSummaryPaidInvoiceOpts,
+  resolveJobSummaryPercentCompleteWithSource,
+  type JobSummaryPercentSource,
+} from '../jobSummaryPercentComplete'
 import type { JobSummaryMonthsBookBy } from './jobSummaryMonths'
 import type { JobSummaryScatterColorBy, JobSummaryScatterSizeBy } from './jobSummaryScatter'
 import {
@@ -143,7 +147,7 @@ const METHOD_KEYS: readonly JobOverheadMethod[] = ['day', 'A', 'B', 'C']
 const SORT_KEYS: readonly JobSummarySortKey[] = ['job', 'revenue', 'labor', 'subs', 'parts', 'gross', 'margin', 'hours', 'overhead', 'trueProfit', 'trueMargin', 'revPerHour', 'pct']
 
 export const JOB_SUMMARY_STATUS_OPTIONS: ReadonlyArray<{ key: JobSummaryStatusFilter; label: string; title: string }> = [
-  { key: 'finished', label: 'Finished (100%)', title: 'Jobs whose % complete resolves to 100 — paid invoices, the latest report, or the job’s own %' },
+  { key: 'finished', label: 'Finished (100%)', title: 'Jobs whose % complete resolves to 100 — the work is done (latest report or the job’s own %) or the whole contract is billed and paid' },
   { key: 'in_progress', label: 'In progress', title: 'Everything under 100% (and jobs with no % yet)' },
   { key: 'all', label: 'All', title: 'Every job on the ledger' },
 ]
@@ -300,6 +304,8 @@ export type JobSummaryRowFlag = 'no-revenue' | 'no-hours' | 'no-pct' | 'assumed-
 export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummaryLedgerRowInput> = {
   row: R
   pct: number | null
+  /** Who said the % (v2.2840): paid invoices covering the contract · crew report · office · none. Not rendered yet — the provenance badge consumes it. */
+  pctSource: JobSummaryPercentSource
   finished: boolean
   /** Contract revenue (`jobs_ledger.revenue`). */
   contractUsd: number
@@ -340,11 +346,16 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
   const { rows, reportPctByJobId, ledger, method } = args
   return rows.map((row) => {
     const job = row.job
-    const pct = resolveJobSummaryPercentComplete(reportPctByJobId.get(job.id) ?? null, job.pct_complete, {
-      invoicesAllPaidWithAmount: jobInvoicesAllPaidWithAmount(job.invoices),
-    })
-    const finished = pct === 100
     const contractUsd = row.totalBill
+    // Paid invoices only say "finished" when they cover the contract (v2.2840) — one paid
+    // progress bill falls through to the crew report / office %, so `finished`, the earned
+    // revenue switch below and every view built on these rows follow the real %.
+    const { pct, source: pctSource } = resolveJobSummaryPercentCompleteWithSource(
+      reportPctByJobId.get(job.id) ?? null,
+      job.pct_complete,
+      jobSummaryPaidInvoiceOpts(job.invoices, contractUsd),
+    )
+    const finished = pct === 100
     const flags: JobSummaryRowFlag[] = []
     let revenueUsd = contractUsd
     if (!finished) {
@@ -381,6 +392,7 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     return {
       row,
       pct,
+      pctSource,
       finished,
       contractUsd,
       revenueUsd,
