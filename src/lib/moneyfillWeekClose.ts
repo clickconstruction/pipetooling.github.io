@@ -9,6 +9,11 @@
  *
  * Week = Mon–Sun Central, matching the report. The close week DEFAULTS to the
  * previous complete week (the week you close Monday morning).
+ *
+ * ONE exception (journey-map Tier-1 #15, J7-2): the people-hours queue
+ * ("Sessions pending approval") is a payroll lens, so it re-anchors onto the
+ * Sun–Sat PAY week that ends inside the close week (`payWeekForCloseWeek`) —
+ * the same week Draft Payroll opens to. Bank-money queues stay Mon–Sun.
  */
 import { supabase } from './supabase'
 import { chicagoYmdOf } from './gcStatementStandingCopies'
@@ -31,6 +36,7 @@ import { resolveBankPaymentsSortingConfigForAr, type BankingSortingConfigV1 } fr
 import { fetchAllRows } from './supabasePaging'
 import { fetchJobAllocationsByMercuryTxIds } from './fetchMercuryRelationsByTxIds'
 import { buildWeeklyMoneyRow, type WeeklyMoneyPayload, type WeeklyMoneyJobRow } from './jobs/weeklyMoneyMovement'
+import { payWeekForCloseWeek, type PayWeek } from './payWeekAnchor'
 
 export type MoneyfillQueueKey =
   | 'bank-transfers'
@@ -365,18 +371,28 @@ export type PendingApprovalSessionRow = {
   jobOrBid: 'job' | 'bid' | null
 }
 
+/** The Sun–Sat pay week the people-hours queue reviews for a Mon–Sun close week (header count + section agree by construction). */
+export function pendingApprovalPayWeek(weekMondayYmd: string): PayWeek {
+  return payWeekForCloseWeek(weekMondayYmd)
+}
+
 /**
- * Queue 3d: closed clock sessions in-week nobody has approved — labor cost not
- * yet booked anywhere (crew rows only sync on approval). Null on error.
+ * Queue 3d: closed clock sessions nobody has approved — labor cost not yet
+ * booked anywhere (crew rows only sync on approval). Null on error.
+ *
+ * Window = the Sun–Sat pay week ending inside the close week (v2 re-anchor,
+ * Tier-1 #15): the Mon–Sun window straddled two pay weeks, so this queue could
+ * read "all clear" while Draft Payroll still listed pending sessions.
  */
 export async function fetchPendingApprovalForWeek(weekMondayYmd: string): Promise<PendingApprovalSessionRow[] | null> {
   try {
+    const payWeek = pendingApprovalPayWeek(weekMondayYmd)
     const [sessRes, wagesRes] = await Promise.all([
       supabase
         .from('clock_sessions')
         .select('id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, users!clock_sessions_user_id_fkey(name)')
-        .gte('work_date', weekMondayYmd)
-        .lt('work_date', addDaysYmd(weekMondayYmd, 7))
+        .gte('work_date', payWeek.start)
+        .lte('work_date', payWeek.end)
         .not('clocked_out_at', 'is', null)
         .is('approved_at', null)
         .is('rejected_at', null)

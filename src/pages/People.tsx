@@ -159,6 +159,8 @@ import {
   summarizePeopleHoursPendingByCell,
   type PeopleHoursPendingCellEntry,
 } from '../lib/peopleHoursPendingByCell'
+import { countClosedPendingSessions, describePendingOutsideVisibleWeek, pendingOutsideVisibleWeek } from '../lib/payWeekAnchor'
+import { denverCalendarDayKey } from '../utils/dateUtils'
 import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
 import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
 import { PeopleHoursApprovalsQueueModal } from '../components/people/PeopleHoursApprovalsQueueModal'
@@ -3043,6 +3045,16 @@ export default function People() {
     () => summarizePeopleHoursPendingByCell(peopleHoursPendingByCellMap),
     [peopleHoursPendingByCellMap],
   )
+  /** "+N sessions in earlier weeks" (Tier-1 #15, J7-2): all-weeks RPC count minus the closed pending sessions loaded for the visible range. */
+  const pendingOutsideWeekLine = useMemo(
+    () =>
+      describePendingOutsideVisibleWeek(
+        pendingOutsideVisibleWeek(pendingApprovalsAllWeeks?.sessions ?? null, countClosedPendingSessions(pendingClockSessions)),
+        hoursDateEnd,
+        denverCalendarDayKey(Date.now()),
+      ),
+    [pendingApprovalsAllWeeks?.sessions, pendingClockSessions, hoursDateEnd],
+  )
 
   /** Refresh / dismiss the per-cell pending popover when the underlying data changes (post-approve / post-reject). */
   useEffect(() => {
@@ -3921,6 +3933,7 @@ export default function People() {
                 canAccessPay={canAccessPay}
                 onReviewApprove={() => setBulkApprovePendingOpen(true)}
                 onOpenQueue={() => setApprovalsQueueOpen(true)}
+                outsideWeekLine={pendingOutsideWeekLine}
               />
               <PeopleHoursGrid
                 hoursTableScrollRef={hoursTableScrollRef}
@@ -4431,6 +4444,7 @@ export default function People() {
       {bulkApprovePendingOpen ? (
         <PeopleHoursBulkApprovePendingModal
           pendingByCellMap={peopleHoursPendingByCellMap}
+          payConfigFor={(name) => payConfig[name]}
           onClose={() => setBulkApprovePendingOpen(false)}
           onApproved={() => {
             loadAllClockSessionsRef.current?.()

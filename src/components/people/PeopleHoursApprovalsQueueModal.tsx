@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { AssignSessionJobPopover } from '../clock-sessions'
 import { approveClockSessions } from '../../lib/approveClockSessions'
+import { recordHoursApproved, type HoursApprovedSurface } from '../../lib/hoursApprovedTelemetry'
+import { sessionApprovalChips } from '../../lib/people/approvalsSessionChips'
+import type { SalariedPayConfigFlags } from '../../lib/salariedEffectiveHours'
+import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -36,6 +40,8 @@ type Props = {
   pinDisplayName?: string | null
   /** Stack above a host that already sits at the default modal rung (the Desk drawer). */
   zIndex?: number
+  /** Which door opened this queue — `hours_approved{surface}` telemetry (Tier-1 #15). */
+  surface?: HoursApprovedSurface
 }
 
 const BTN: CSSProperties = {
@@ -49,6 +55,18 @@ const BTN: CSSProperties = {
 const BTN_APPROVE: CSSProperties = { ...BTN, border: '1px solid #22c55e', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }
 const BTN_REJECT: CSSProperties = { ...BTN, border: '1px solid #dc2626', background: 'var(--bg-red-tint)', color: 'var(--text-red-600)' }
 const BTN_QUIET: CSSProperties = { ...BTN, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 500 }
+/** Neutral context chips (salary / midnight-cap) — information, not a warning, so not amber. */
+const INFO_CHIP: CSSProperties = {
+  fontSize: '0.6875rem',
+  fontWeight: 600,
+  color: 'var(--text-muted)',
+  background: 'var(--bg-subtle)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 999,
+  padding: '0 0.4rem',
+  lineHeight: 1.5,
+  whiteSpace: 'nowrap',
+}
 const FLAG_CHIP: CSSProperties = {
   fontSize: '0.71875rem',
   fontWeight: 700,
@@ -75,11 +93,14 @@ function FlagSummary({ counts, prefix }: { counts: ApprovalsQueueFlagCounts; pre
   )
 }
 
-export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60 }: Props) {
+export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue' }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()
+  const { user: authUser, role } = useAuth()
   const [rows, setRows] = useState<ClockSessionRow[] | null>(null)
+  /** person_name → salary flags for the "salary — counts as flat hours" chip; empty when the read fails (chips are optional). */
+  const [payFlagsByName, setPayFlagsByName] = useState<ReadonlyMap<string, SalariedPayConfigFlags>>(() => new Map())
   const [loadError, setLoadError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [flaggedOnly, setFlaggedOnly] = useState(false)
@@ -89,8 +110,18 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
   const load = useCallback(async () => {
     try {
       setLoadError(null)
-      const data = await fetchAllPendingClockSessions({ userId: pinUserId ?? null })
+      const [data, payRes] = await Promise.all([
+        fetchAllPendingClockSessions({ userId: pinUserId ?? null }),
+        supabase.from('people_pay_config').select('person_name, is_salary, record_hours_but_salary'),
+      ])
       setRows(data)
+      if (!payRes.error) {
+        const next = new Map<string, SalariedPayConfigFlags>()
+        for (const r of (payRes.data ?? []) as Array<{ person_name: string; is_salary: boolean | null; record_hours_but_salary: boolean | null }>) {
+          next.set(r.person_name.trim(), { is_salary: r.is_salary, record_hours_but_salary: r.record_hours_but_salary })
+        }
+        setPayFlagsByName(next)
+      }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Could not load pending sessions')
       setRows((prev) => prev ?? [])
@@ -144,6 +175,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
       return
     }
     const approved = row?.approved_count ?? ids.length
+    recordHoursApproved(authUserId ?? authUser?.id, role, surface, approved)
     const outcome = describeApproveOutcome(ids.length, approved)
     showToast(outcome.message, outcome.variant)
     if (approved >= ids.length) removeLocally(ids)
@@ -252,6 +284,11 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
               ⚠ no job
             </span>
           ) : null}
+          {sessionApprovalChips({ payConfig: payFlagsByName.get((r.users?.name ?? '').trim()), clockedOutAt: r.clocked_out_at }).map((c) => (
+            <span key={c.label} style={INFO_CHIP} title={c.title}>
+              {c.label}
+            </span>
+          ))}
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
             <span style={{ color: jobLabel ? 'var(--text-700)' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '18rem' }} title={jobLabel ?? undefined}>
               {jobLabel ?? 'No job/bid'}

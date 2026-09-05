@@ -423,6 +423,7 @@ export function PeopleUsersTab({
         <PeopleHoursApprovalsQueueModal
           pinUserId={hoursQueueFor.userId}
           pinDisplayName={hoursQueueFor.name}
+          surface="users-row-queue"
           reloadKey={hoursQueueReload}
           authUserId={authUserId ?? undefined}
           onClose={() => setHoursQueueFor(null)}
