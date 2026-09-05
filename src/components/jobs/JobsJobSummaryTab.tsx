@@ -59,6 +59,7 @@ import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDay
 import JobSummaryMonthsView from './JobSummaryMonthsView'
 import JobSummaryCycleView from './JobSummaryCycleView'
 import JobSummaryScatterView from './JobSummaryScatterView'
+import JobSummaryCapacityView from './JobSummaryCapacityView'
 import JobSummaryTimelineView from './JobSummaryTimelineView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
@@ -506,6 +507,8 @@ export default function JobsJobSummaryTab({
               users={users}
               jobs={jobSummaryLedgerAllJobs ?? []}
             />
+          ) : view.prefs.view === 'capacity' ? (
+            <JobSummaryCapacityView ledger={view.ledger} ledgerLoading={view.ledgerLoading} ledgerError={view.ledgerError} />
           ) : view.prefs.view === 'scatter' ? (
             <JobSummaryScatterView
               rows={view.rows}
