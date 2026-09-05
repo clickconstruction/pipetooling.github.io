@@ -115,6 +115,8 @@ Some forms are signed by one person and completed by another (the I-9: employee 
 - **The record** shows an *Office section* line; **Complete the office section** opens `ContractFormOfficeModal` — the filed PDF with only the office boxes over it — and posts to `complete-contract-form-office`, which fills the office boxes (`FillContext.office = { signature, todayLabel }` drives office signature and date boxes), flattens, overwrites `<id>/signed.pdf`, and stores `office_values` + who / when. One-shot.
 - In the **studio**, the inspector's **Filled by** select sets the party; office boxes are hatch-shaded on the layer. `forms:preview` previews both parties (Sample Signer / Office Signer).
 
+**The office flow (v2.2803).** `formParties.ts` (shared with Deno): `partyRegions(schema, party)` (one padded rect per page — the signing page hatches the office's, the office modal shades the signer's as locked), `officeSectionPending(row, twoPartyTemplateIds)`, `officeQueue(rows, ids)` (oldest signature first), `twoPartyTemplateIdSet(templates)`, `OFFICE_ATTESTATION`. People → Contracts loads the referenced templates' schemas once, shows the **Office sections to complete** strip (Complete → office modal), counts pending sections into *Needs attention*, and chips the row; the Person Desk paperwork line says `· office section pending`. `?tab=contracts&doc=<id>` opens a record (the thank-you page's day-one hand-off). The office modal requires the attestation (`attested: true` → `office_attested_at`).
+
 The shipped I-9 schema is `docs/forms/i9-2025-01.schema.json` (Section 1 = signer, Section 2 = office; the employer's business name and address are constants — edit them in the studio if the entity changes).
 
 ## New revisions of a form

@@ -14,8 +14,9 @@ export type ContractsRosterFilter = 'attention' | 'waiting' | 'done' | 'everyone
 
 export const CONTRACTS_ROSTER_FILTER_STORAGE_KEY = 'people_contracts_roster_filter_v1'
 
-export function contractsRosterBucket(counts: PersonContractStatusCounts): ContractsRosterBucket {
-  if (counts.unsent > 0) return 'attention'
+export function contractsRosterBucket(counts: PersonContractStatusCounts, officePending = 0): ContractsRosterBucket {
+  // Two-party forms (v2.2803): a signed form still waiting on the office is the office's to act on.
+  if (counts.unsent > 0 || officePending > 0) return 'attention'
   if (counts.sent > 0) return 'waiting'
   if (counts.signed > 0) return 'done'
   return 'none'
