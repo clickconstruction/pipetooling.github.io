@@ -3,6 +3,7 @@ import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
+  parseEstimateCustomerExperienceSnapshot,
   resolveEstimateCustomerExperience,
   serializableSnapshot,
 } from '../_shared/estimateCustomerExperience.ts'
@@ -12,6 +13,11 @@ import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildCustomerAttachmentSentPayload } from '../_shared/estimateCustomerAttachment.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { normalizeSharedEstimateOptions, sharedEstimateOptionTotalCents } from '../_shared/estimateOptions.ts'
+import {
+  canResendEstimateLink,
+  estimateLinkResendBlockMessage,
+  rewriteEstimateAcceptUrl,
+} from '../_shared/estimateLinkResend.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
   const data = new TextEncoder().encode(value)
@@ -116,19 +122,25 @@ serve(async (req) => {
       })
     }
 
-    const { estimate_id, customer_email, public_origin } = (await req.json()) as {
+    // mode 'resend' (J17-F2/N3): re-mint the token on an already-sent estimate and mail the
+    // stored email again. `customer_email` is optional there — the row's address is the default.
+    const body = (await req.json()) as {
       estimate_id?: string
       customer_email?: string
       public_origin?: string
+      mode?: 'send' | 'resend'
     }
-    if (!estimate_id || !customer_email?.trim()) {
+    const { estimate_id, public_origin } = body
+    const isResend = body.mode === 'resend'
+    const requestedEmail = body.customer_email?.trim() ?? ''
+    if (!estimate_id || (!isResend && !requestedEmail)) {
       return new Response(JSON.stringify({ error: 'estimate_id and customer_email required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(customer_email.trim())) {
+    if (requestedEmail && !emailRegex.test(requestedEmail)) {
       return new Response(JSON.stringify({ error: 'Invalid email' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -138,7 +150,7 @@ serve(async (req) => {
     const { data: est, error: selErr } = await userClient
       .from('estimates')
       .select(
-        'id, title, status, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind, options_snapshot, valid_until, for_address',
+        'id, title, status, sent_at, customer_email, bid_room_id, customer_experience_sent, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind, options_snapshot, valid_until, for_address',
       )
       .eq('id', estimate_id)
       .single()
@@ -149,8 +161,26 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
-    if (est.status !== 'draft') {
+    if (isResend) {
+      const verdict = canResendEstimateLink(est.status, (est as { sent_at?: string | null }).sent_at, new Date(), {
+        validUntil: (est as { valid_until?: string | null }).valid_until ?? null,
+        inBidRoom: Boolean((est as { bid_room_id?: string | null }).bid_room_id),
+      })
+      if (!verdict.ok) {
+        return new Response(JSON.stringify({ error: estimateLinkResendBlockMessage(verdict.reason), code: verdict.reason }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    } else if (est.status !== 'draft') {
       return new Response(JSON.stringify({ error: 'Only draft estimates can be sent' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const customer_email = requestedEmail || String((est as { customer_email?: string | null }).customer_email ?? '').trim()
+    if (!customer_email || !emailRegex.test(customer_email)) {
+      return new Response(JSON.stringify({ error: 'This estimate has no customer email on record to resend to' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -172,16 +202,24 @@ serve(async (req) => {
       .select('key, value_text')
       .in('key', ESTIMATE_EXPERIENCE_APP_KEY_LIST)
 
-    const resolved = resolveEstimateCustomerExperience(
-      appRows ?? [],
-      est.customer_experience_overrides,
-      {
-        acceptUrl,
-        title: String(est.title ?? ''),
-        estimateNumber: Number(est.estimate_number ?? 0),
-      },
-      { docKind: (est as { doc_kind?: string | null }).doc_kind ?? null },
-    )
+    // A resend mails the copy the customer already saw (the stored snapshot) with only the accept
+    // URL swapped — never a rebuild from today's templates. Rows without a parseable snapshot
+    // (pre-snapshot sends) fall back to resolving from current settings, same as a first send.
+    const storedSnapshot = isResend
+      ? parseEstimateCustomerExperienceSnapshot((est as { customer_experience_sent?: unknown }).customer_experience_sent)
+      : null
+    const resolved = storedSnapshot
+      ? { ...storedSnapshot, emailBody: rewriteEstimateAcceptUrl(storedSnapshot.emailBody, acceptUrl) }
+      : resolveEstimateCustomerExperience(
+          appRows ?? [],
+          est.customer_experience_overrides,
+          {
+            acceptUrl,
+            title: String(est.title ?? ''),
+            estimateNumber: Number(est.estimate_number ?? 0),
+          },
+          { docKind: (est as { doc_kind?: string | null }).doc_kind ?? null },
+        )
 
     // The Letterhead email (v2.2747): built once here, previewed by the same builder in the app.
     const { data: me } = await admin.from('users').select('name, email').eq('id', user.id).maybeSingle()
@@ -226,26 +264,41 @@ serve(async (req) => {
       estRow.customer_attachment_label,
     )
 
-    const { error: upErr } = await admin
-      .from('estimates')
-      .update({
-        status: 'sent',
-        sent_at: new Date().toISOString(),
-        customer_email: customer_email.trim(),
-        public_token_hash: tokenHash,
-        public_token_expires_at: expiresAt,
-        line_items_snapshot: est.line_items_snapshot,
-        terms_snapshot: est.terms_snapshot,
-        total_cents: est.total_cents,
-        customer_experience_sent: sentPayload,
-        customer_attachment_sent,
-      })
-      .eq('id', estimate_id)
-      .eq('status', 'draft')
+    // Resend: only the token (and the snapshot's URL) move. `sent_at`, the frozen line items,
+    // terms, total and attachment stay as the first send left them — the customer has been
+    // waiting since then, and the Sent chip's age keeps telling the truth. Overwriting
+    // `public_token_hash` is what retires the old link (lookup is by hash → 404).
+    const { error: upErr } = isResend
+      ? await admin
+          .from('estimates')
+          .update({
+            customer_email,
+            public_token_hash: tokenHash,
+            public_token_expires_at: expiresAt,
+            customer_experience_sent: sentPayload,
+          })
+          .eq('id', estimate_id)
+          .eq('status', 'sent')
+      : await admin
+          .from('estimates')
+          .update({
+            status: 'sent',
+            sent_at: new Date().toISOString(),
+            customer_email,
+            public_token_hash: tokenHash,
+            public_token_expires_at: expiresAt,
+            line_items_snapshot: est.line_items_snapshot,
+            terms_snapshot: est.terms_snapshot,
+            total_cents: est.total_cents,
+            customer_experience_sent: sentPayload,
+            customer_attachment_sent,
+          })
+          .eq('id', estimate_id)
+          .eq('status', 'draft')
 
     if (upErr) {
       console.error(upErr)
-      return new Response(JSON.stringify({ error: 'Could not activate send link' }), {
+      return new Response(JSON.stringify({ error: isResend ? 'Could not refresh the customer link' : 'Could not activate send link' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -257,6 +310,8 @@ serve(async (req) => {
         JSON.stringify({
           ok: true,
           emailed: false,
+          resent: isResend,
+          sent_to: customer_email,
           accept_url: acceptUrl,
           warning: 'RESEND_API_KEY not set; link not emailed',
         }),
@@ -264,12 +319,14 @@ serve(async (req) => {
       )
     }
 
-    const sent = await sendEmailViaResend(customer_email.trim(), mail.subject, mail.text, mail.html, resendApiKey, fromMailbox, mail.replyTo)
+    const sent = await sendEmailViaResend(customer_email, mail.subject, mail.text, mail.html, resendApiKey, fromMailbox, mail.replyTo)
     if (!sent.success) {
       return new Response(
         JSON.stringify({
           ok: true,
           emailed: false,
+          resent: isResend,
+          sent_to: customer_email,
           accept_url: acceptUrl,
           email_error: sent.error,
         }),
@@ -278,7 +335,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, emailed: true, accept_url: acceptUrl }),
+      JSON.stringify({ ok: true, emailed: true, resent: isResend, sent_to: customer_email, accept_url: acceptUrl }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (e) {

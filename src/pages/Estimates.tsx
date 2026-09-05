@@ -91,6 +91,9 @@ import EstimateCustomerDocument, {
   EstimateLineItemsTable,
 } from '../components/estimates/EstimateCustomerDocument'
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
+import EstimateResendLinkPanel from '../components/estimates/EstimateResendLinkPanel'
+import { canResendEstimateLink } from '../../supabase/functions/_shared/estimateLinkResend'
+import { recordNavClick } from '../lib/navClickTelemetry'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import { SearchableMultiSelect } from '../components/SearchableMultiSelect'
 import { SearchableSelect, type SearchableSelectOption } from '../components/SearchableSelect'
@@ -2445,6 +2448,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [unlinkJobConfirmOpen, setUnlinkJobConfirmOpen] = useState(false)
   const [customerPreviewTab, setCustomerPreviewTab] = useState<'email' | 'page' | 'thankyou'>('email')
   const [lastAcceptUrl, setLastAcceptUrl] = useState<string | null>(null)
+  // Resend link (v2.2856, J17-F2/N3): the fresh URL is shown once, in the tab that asked for it.
+  const [resending, setResending] = useState(false)
+  const [resentInfo, setResentInfo] = useState<{ email: string; emailed: boolean; url: string } | null>(null)
   const [appCxSettings, setAppCxSettings] = useState<{ key: string; value_text: string | null }[]>([])
   const [catalogLineItems, setCatalogLineItems] = useState<EstimateCatalogLineItem[]>([])
   const [catalogModalOpen, setCatalogModalOpen] = useState(false)
@@ -3342,6 +3348,96 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (!url) return
     window.open(url, '_blank', 'noopener,noreferrer')
   }, [customerAcceptUrl])
+
+  /** Resend link (v2.2856): can THIS row take a re-mint? Same kernel the edge function enforces. */
+  const resendVerdict = useMemo(
+    () =>
+      canResendEstimateLink(row?.status, row?.sent_at, new Date(), {
+        validUntil: row?.valid_until ?? null,
+        inBidRoom: Boolean(row?.bid_room_id),
+      }),
+    [row?.status, row?.sent_at, row?.valid_until, row?.bid_room_id],
+  )
+
+  // A different estimate → forget the one-time URL panel.
+  useEffect(() => {
+    setResentInfo(null)
+  }, [row?.id])
+
+  const copyResentUrl = useCallback(
+    (url: string) => {
+      void navigator.clipboard.writeText(url).then(
+        () => showToast('Customer link copied.', 'success'),
+        () => showToast('Could not copy link.', 'error'),
+      )
+    },
+    [showToast],
+  )
+
+  /**
+   * Resend link (v2.2856, J17-F2/N3): `send-estimate-to-customer` in `mode: 'resend'` mints a
+   * fresh token (the old link dies), mails the stored email again to the address on the row,
+   * and returns the new URL — kept in this tab like a first send, and shown once below.
+   */
+  async function resendCustomerLink() {
+    if (!row || resending || !user || !resendVerdict.ok) return
+    setResending(true)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        showToast('Not signed in', 'error')
+        return
+      }
+      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-estimate-to-customer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`,
+          apikey: anon,
+        },
+        body: JSON.stringify({
+          mode: 'resend',
+          estimate_id: row.id,
+          public_origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+        }),
+      })
+      const json = (await res.json()) as {
+        ok?: boolean
+        accept_url?: string
+        emailed?: boolean
+        sent_to?: string
+        email_error?: string
+        warning?: string
+        error?: string
+      }
+      if (!res.ok || !json.ok || !json.accept_url) {
+        showToast(json.error || 'Resend failed', 'error')
+        return
+      }
+      const email = json.sent_to?.trim() || row.customer_email?.trim() || ''
+      setLastAcceptUrl(json.accept_url)
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem(`${ESTIMATE_ACCEPT_URL_SESSION_PREFIX}${row.id}`, json.accept_url)
+        }
+      } catch {
+        /* ignore */
+      }
+      setResentInfo({ email, emailed: Boolean(json.emailed), url: json.accept_url })
+      showToast(
+        json.emailed ? `Link resent to ${email}.` : `New link ready — email did not go out. ${json.warning || json.email_error || ''}`.trim(),
+        json.emailed ? 'success' : 'error',
+      )
+      recordNavClick(user.id, role, 'estimate_link_resent', json.emailed ? '#emailed' : '#link-only')
+      await load()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Resend failed'), 'error')
+    } finally {
+      setResending(false)
+    }
+  }
 
   const staffResolvedExperience = useMemo((): EstimateCustomerExperienceResolved | null => {
     if (!row) return null
@@ -6133,13 +6229,19 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   In the bid room — the GC reviews and signs this change order on their room page, alongside the proposal.
                 </p>
               ) : (
-              <p style={{ marginTop: '1rem', color: 'var(--text-amber-800)' }}>
-                Waiting for customer. Contact them with the link from the email we sent (or ask an admin to resend).
-              </p>
+                <EstimateResendLinkPanel
+                  sentTo={row.customer_email?.trim() || null}
+                  verdict={resendVerdict}
+                  busy={resending || loading}
+                  onResend={() => void resendCustomerLink()}
+                  resent={resentInfo}
+                  onCopyUrl={copyResentUrl}
+                />
               )}
               <EstimateCustomerAcceptLinkButtons
                 customerAcceptUrl={customerAcceptUrl}
                 isDraft={isDraft}
+                resendAvailable={resendVerdict.ok}
                 onCopy={copyCustomerAcceptUrl}
                 onOpen={openCustomerAcceptUrl}
                 style={{ marginTop: '0.75rem' }}
@@ -6163,6 +6265,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <EstimateCustomerAcceptLinkButtons
               customerAcceptUrl={customerAcceptUrl}
               isDraft={isDraft}
+              resendAvailable={resendVerdict.ok}
               onCopy={copyCustomerAcceptUrl}
               onOpen={openCustomerAcceptUrl}
               style={{ marginBottom: '1rem' }}
