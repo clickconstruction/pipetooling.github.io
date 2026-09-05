@@ -25,8 +25,10 @@ last_updated: 2026-09-05
 2. If the connector doesn't appear, the agent can still reach the harness over HTTP:
    `POST https://yewfzhbofbbyvkvtaatw.supabase.co/functions/v1/twin-mcp` with header
    `X-Twin-Token: <key>` and a JSON-RPC body `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_brief","arguments":{}}}`.
-3. Confirm twin-mcp is deployed at v2.2800 or later (`score_backtest` must exist:
-   `tools/list` shows it). Then paste the prompt below, whole, as the first message.
+3. Confirm twin-mcp is deployed at v2.2806 or later (`tools/list` shows `score_backtest`
+   and `next_backtest`). Then paste the prompt below, whole, as the first message. To run
+   several agents at once, give each one the same prompt plus one line: "Your axis is
+   <axis>; claim only that axis and stop after one bid." The dispatcher keeps them apart.
 4. While it runs: the Robots pill on the Bids page counts new audits; the Scoreboard's
    unified run ledger shows each `R2-BT-nn` row as it lands. Compare against BT-6..19.
 
@@ -63,11 +65,17 @@ last_updated: 2026-09-05
 >    ledger, drop that bid, and move on — a contaminated run is worth less than no run.
 >
 > **Per bid, the pipeline (stamp every stage with `add_bid_note`):**
-> - STG-0 `open_backtest(reference_bid: 'bNNN', round: 2)`. If it answers `reused: true`
->   with a warning, you are on a round-1 shell — stop, do not read it, and re-call with
->   `round: 2`. Note the `reference_grade`; D or X → skip the bid and say why.
+> - STG-0 **claim through the dispatcher**: `next_backtest(round: 2, candidates: <the wave
+>   table below as [{bid, axis, label}]>, axis: '<your axis>' if you were given one)`. It
+>   opens the first unclaimed reference and returns the shell as yours; `done: true` means
+>   the wave is finished. Never call `open_backtest` directly in this round, and never call
+>   `next_backtest` again while your current bid is unscored. Note the `reference_grade`;
+>   D or X → stamp why on the ledger and claim the next.
 > - STG-1 `file_plans` only if the shell has no plans link.
-> - STG-2 `get_plan_brief(bid)`; set-class triage per the placement guide.
+> - STG-2 **the substrate is yours to make**: `get_plan_brief(bid)` will say none is
+>   attached — fetch the plan set, follow EXTRACTOR.md from the placement guide, insert the
+>   `bids_plan_substrates` row with your own session, then `get_plan_brief` again; set-class
+>   triage per the placement guide.
 > - STG-3 the takeoff in CountTooling (`mint_session` with `app: 'counttooling'`),
 >   counters first, then traced runs; every sheet accounted for; `RFI:` notes at the exact
 >   spot for anything the plans underdetermine. Finish with `ct_finish_takeoff` and

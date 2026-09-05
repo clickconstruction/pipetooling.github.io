@@ -6,7 +6,7 @@ type: Twin brief
 role: estimator
 purpose: Everything a limited-context agent needs to work as an estimator in PipeTooling — including the upstream takeoff in CountTooling (section 5). Pair with docs/twins/APP_DIRECTORY.md for navigation and /help?g=<slug> guides for step-by-step how-tos.
 audience: Digital Twins
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 token_budget: ~4.5k core (incl. the CountTooling cross-app section)
 ---
 
@@ -207,10 +207,13 @@ The stages (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md is authoritative):
 0. **The bid exists** (a human opened it, or you did per a mission). Every artifact of the
    pipeline stamps onto this one record — links, brief, counts, letter.
 1. **Plans filed in Drive** — links land in the bid's Project Folder / Job Plans fields.
-2. **Plan substrate** — the machine-readable read of the set. Fetch it with
-   `get_plan_brief(bid)` (rollup; `full: true` for per-sheet detail). Trust its confidence
-   fields: `illegible`/`needs_crop` facts are unresolved, not answers. Its scope & risk
-   read is a recommendation only — you never set Go/no-go.
+2. **Plan substrate** — the machine-readable read of the set, and **you make it**: when
+   `get_plan_brief(bid)` says none is attached, fetch the plan set, follow EXTRACTOR.md
+   (bundled in `get_placement_guide`), and insert the `bids_plan_substrates` row yourself
+   (bid_id, version, substrate). Then `get_plan_brief(bid)` (rollup; `full: true` for
+   per-sheet detail). Trust its confidence fields: `illegible`/`needs_crop` facts are
+   unresolved, not answers. Its scope & risk read is a recommendation only — you never set
+   Go/no-go.
 3. **Takeoff in CountTooling** — mint with `app: 'counttooling'`. Count what the fixture
    schedule's tags tell you to count. When plans genuinely underdetermine the work, drop a
    note prefixed `RFI:` at the exact spot and keep counting what you can — never guess.

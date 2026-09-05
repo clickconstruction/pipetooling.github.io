@@ -199,6 +199,24 @@ const TOOLS = [
     },
   },
   {
+    name: 'next_backtest',
+    description:
+      "Dispatcher for parallel round runs (v2.2806): hand me the round's candidate list and I open the FIRST reference that has no shell for this round and return it as yours — a claim is the shell itself, so two agents can never land on the same bid (an accidental duplicate deletes itself). Optional axis filter. Returns done: true when every candidate is claimed. Call it once per bid, never while a bid is still unscored.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        round: { type: 'number', description: 'Round number (default 2)' },
+        axis: { type: 'string', description: "Optional substring filter on the candidate axis, e.g. 'proto' or 'institutional'" },
+        candidates: {
+          type: 'array',
+          description: 'Ordered list from the kickoff: [{ bid: "b344", axis: "proto/auto-service", label: "R2-BT-2" }, …]',
+          items: { type: 'object', properties: { bid: { type: 'string' }, axis: { type: 'string' }, label: { type: 'string' } }, required: ['bid'] },
+        },
+      },
+      required: ['candidates'],
+    },
+  },
+  {
     name: 'add_bid_note',
     description:
       "Write one entry to a bid's audit ledger — the pipeline's flight recorder ('[pipeline STG-N] …' stamps, scorecards, run logs). Only on bids you created or are the assigned estimator for. Notes never move the follow-up clock.",
@@ -312,6 +330,96 @@ async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: s
   const { data: user } = await admin.from('users').select('email, is_digital_twin, role').eq('id', cred.twin_user_id).maybeSingle()
   if (!user || user.is_digital_twin !== true || user.role !== 'estimator') return { error: 'Twin account not eligible', status: 403 }
   return { twinUserId: cred.twin_user_id, email: user.email as string, credId: cred.id as string }
+}
+
+// ---------------------------------------------------------------------------
+// Backtest shells (v2.2523 / rounds v2.2800 / dispatcher v2.2806). One creator for
+// open_backtest and next_backtest. Logistics fields ONLY are read from the reference —
+// counts, pricing, bid_value, outcome never reach the caller (blind protocol).
+// ---------------------------------------------------------------------------
+type BacktestShellResult =
+  | { ok: true; reused: boolean; round: number; bid: string; bid_id: string; name: string; reference_grade: string; grade_note: string; reference_bid_number: string | null; logistics?: Record<string, unknown>; warning?: string }
+  | { ok: false; error: string }
+
+async function openBacktestShell(
+  admin: ReturnType<typeof createClient>,
+  twin: { twinUserId: string; email: string },
+  reference: string,
+  opts: { round?: number; dueInDays?: number },
+): Promise<BacktestShellResult> {
+  const ref = reference.trim()
+  if (!ref) return { ok: false, error: 'Missing reference_bid (bid number like b370, or uuid)' }
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  let rq = admin.from('bids').select('id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id')
+  rq = uuidRe.test(ref) ? rq.eq('id', ref) : rq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+  const { data: refBid, error: refErr } = await rq.maybeSingle()
+  if (refErr) return { ok: false, error: `Reference lookup failed: ${refErr.message}` }
+  if (!refBid) return { ok: false, error: `No bid found for "${ref}"` }
+  // Reference data-grade (v2.2545) — PRESENCE booleans only, blind-safe.
+  const [{ count: countRows }, { count: pricingRows }, { data: presence }] = await Promise.all([
+    admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
+    admin.from('bid_pricing_assignments').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
+    admin.from('bids').select('id').eq('id', refBid.id).not('bid_value', 'is', null).maybeSingle(),
+  ])
+  const hasPlans = !!String(refBid.plans_link ?? '').trim()
+  const hasValue = !!presence
+  const hasCounts = (countRows ?? 0) > 0
+  const hasPricing = (pricingRows ?? 0) > 0
+  const referenceGrade = !hasPlans ? 'X' : hasValue && hasCounts && hasPricing ? 'A' : hasValue ? 'B' : hasCounts ? 'C' : 'D'
+  const gradeNote = referenceGrade === 'A' ? 'full scorecard possible'
+    : referenceGrade === 'B' ? 'dollar-level scorecard only (no reference takeoff rows)'
+    : referenceGrade === 'C' ? 'quantity scorecard only (no reliable reference value)'
+    : referenceGrade === 'D' ? 'census reps only — no scorecard'
+    : 'no plans — not backtestable'
+  // v2.2800: a re-run round gets its own shell — a scored round-1 shell carries its
+  // scorecard (reference value, delta) in the ledger and would unblind the run.
+  const roundNum = Math.floor(Number(opts.round ?? 1))
+  const round = Number.isFinite(roundNum) && roundNum >= 2 ? roundNum : 1
+  const roundTag = round >= 2 ? ` R${round}` : ''
+  const ztName = `ZZ Twin ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()} (backtest${roundTag})`
+  const { data: existing } = await admin
+    .from('bids').select('id, bid_number').eq('created_by', twin.twinUserId).eq('project_name', ztName).order('created_at', { ascending: true }).limit(1).maybeSingle()
+  if (existing) {
+    return { ok: true, reused: true, round, bid: `b${existing.bid_number}`, bid_id: existing.id, name: ztName, reference_grade: referenceGrade, grade_note: gradeNote, reference_bid_number: refBid.bid_number ?? null, warning: round >= 2 ? undefined : 'This shell may already carry a scorecard — read its ledger via get_work_state before working it, or open a new round with round: 2.' }
+  }
+  const dueDays = Number(opts.dueInDays ?? 7)
+  const due = ymdAddDays(todayYmdInAppTz(), Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 7)
+  const { data: created, error: insErr } = await admin
+    .from('bids')
+    .insert({
+      project_name: ztName,
+      address: refBid.address,
+      customer_id: refBid.customer_id,
+      service_type_id: refBid.service_type_id,
+      distance_from_office: refBid.distance_from_office,
+      plans_link: refBid.plans_link,
+      gc_builder_id: refBid.gc_builder_id,
+      bid_due_date: due,
+      created_by: twin.twinUserId,
+      estimator_id: twin.twinUserId,
+      twin_source_bid_id: refBid.id,
+      notes: `Blind backtest${roundTag ? ` (round ${round})` : ''} of b${refBid.bid_number}. Reference sealed until the STG-6 scorecard stamp. Opened via twin-mcp.`,
+    })
+    .select('id, bid_number')
+    .single()
+  if (insErr) return { ok: false, error: `Backtest bid not created: ${insErr.message}` }
+  // Race guard (v2.2806): two dispatchers can pass the "existing" check together. The
+  // earliest-created shell wins; a later duplicate deletes itself and reports reused.
+  const { data: winners } = await admin.from('bids').select('id, bid_number').eq('created_by', twin.twinUserId).eq('project_name', ztName).order('created_at', { ascending: true }).limit(1)
+  const winner = winners?.[0]
+  if (winner && winner.id !== created.id) {
+    await admin.from('bids').delete().eq('id', created.id).then(() => {}, () => {})
+    return { ok: true, reused: true, round, bid: `b${winner.bid_number}`, bid_id: winner.id, name: ztName, reference_grade: referenceGrade, grade_note: gradeNote, reference_bid_number: refBid.bid_number ?? null }
+  }
+  await admin.from('bids_submission_entries').insert({
+    bid_id: created.id,
+    notes: `[pipeline STG-0] Blind backtest${roundTag ? ` ROUND ${round}` : ''} of b${refBid.bid_number} (${refBid.project_name}) opened via twin-mcp by ${twin.email}. Logistics copied (address, customer, service type, distance ${refBid.distance_from_office ?? '?'} mi, plans link); reference counts/pricing/outcome SEALED until STG-6${round >= 2 ? '. Prior rounds of this reference are OFF LIMITS until the scorecard stamp' : ''}.`,
+  }).then(() => {}, () => {})
+  return {
+    ok: true, reused: false, round, bid: `b${created.bid_number}`, bid_id: created.id, name: ztName,
+    reference_grade: referenceGrade, grade_note: gradeNote, reference_bid_number: refBid.bid_number ?? null,
+    logistics: { address: refBid.address, distance_from_office: refBid.distance_from_office, plans_link: !!refBid.plans_link, due },
+  }
 }
 
 async function callTool(req: Request, name: string, args: Record<string, unknown>) {
@@ -530,7 +638,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         .limit(1)
         .maybeSingle()
       if (name === 'get_plan_brief') {
-        if (!sub) return textContent(`No plan substrate is attached to bid ${ref} yet. The extractor (or operator) attaches one at pipeline stage 2 — see get_brief.`, true)
+        if (!sub) return textContent(`No plan substrate on bid ${ref} yet — STG-2 is YOURS to do: fetch the plan set (plans link / plan-fetch), follow EXTRACTOR.md (bundled in get_placement_guide) to build the substrate, insert it as a bids_plan_substrates row (bid_id, version, substrate) with your own session, then call get_plan_brief again. Do not skip to the takeoff without it.`, true)
         const s = sub.substrate as Record<string, unknown>
         const payload = args.full === true
           ? s
@@ -623,12 +731,23 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
             })
             const body = await r.json()
             if (!r.ok) return { error: `CT bridge ${r.status}: ${body?.error ?? 'unknown'}` }
-            const projects = body.projects ?? []
-            // Notes-ledger loop (2026-08-30): pull the note ledger of the most
+            const allProjects = (body.projects ?? []) as Array<Record<string, unknown>>
+            // v2.2806: only THIS bid's project(s) — ct_finish_takeoff stamps external_ref
+            // with the bid tag, and the project name carries the ZZ name. A blind
+            // round-2 run must never see another bid's project or notes ledger.
+            const tag = `b${bid.bid_number}`
+            const nameKey = String(bid.project_name ?? '').trim().toLowerCase()
+            const projects = allProjects.filter((p) => {
+              const ext = String(p.external_ref ?? '').trim().toLowerCase()
+              const nm = String(p.name ?? '').trim().toLowerCase()
+              return ext === tag.toLowerCase() || ext === String(bid.bid_number) || (nameKey.length > 0 && nm === nameKey)
+            })
+            // Notes-ledger loop (2026-08-30): pull the note ledger of this bid's most
             // recently touched project — open RFIs are questions still waiting,
             // answered ones carry the reviewer's answer (read before re-asking).
             let rfis: unknown = null
             const newest = projects[0]
+            if (!newest) return { projects: [], notes_ledger: null, note: `No CountTooling project is stamped with ${tag} (external_ref) or named like this bid — ct_finish_takeoff creates one.` }
             if (newest?.id) {
               try {
                 const rr = await fetch(ctUrl, {
@@ -683,79 +802,39 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
-      const ref = String(args.reference_bid ?? '').trim()
-      if (!ref) return textContent('Missing reference_bid (bid number like b370, or uuid)', true)
-      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-      // Logistics fields ONLY — the blind protocol is structural: counts, pricing,
-      // bid_value, and outcome are never selected here and never reach the caller.
-      let rq = admin.from('bids').select('id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id')
-      rq = uuidRe.test(ref) ? rq.eq('id', ref) : rq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
-      const { data: refBid, error: refErr } = await rq.maybeSingle()
-      if (refErr) return textContent(`Reference lookup failed: ${refErr.message}`, true)
-      if (!refBid) return textContent(`No bid found for "${ref}"`, true)
-      // Reference data-grade (v2.2545) — PRESENCE booleans only, blind-safe: says
-      // whether a scorecard will be possible, never what the sealed fields hold.
-      // Quality flags (round value, weak-loss category, staleness) are unseal-time
-      // only — see FEEDBACK_LOOP.md "Reference grading".
-      const [{ count: countRows }, { count: pricingRows }, { data: presence }] = await Promise.all([
-        admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
-        admin.from('bid_pricing_assignments').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
-        admin.from('bids').select('id').eq('id', refBid.id).not('bid_value', 'is', null).maybeSingle(),
-      ])
-      const hasPlans = !!String(refBid.plans_link ?? '').trim()
-      const hasValue = !!presence
-      const hasCounts = (countRows ?? 0) > 0
-      const hasPricing = (pricingRows ?? 0) > 0
-      const referenceGrade = !hasPlans ? 'X' : hasValue && hasCounts && hasPricing ? 'A' : hasValue ? 'B' : hasCounts ? 'C' : 'D'
-      const gradeNote = referenceGrade === 'A' ? 'full scorecard possible'
-        : referenceGrade === 'B' ? 'dollar-level scorecard only (no reference takeoff rows)'
-        : referenceGrade === 'C' ? 'quantity scorecard only (no reliable reference value)'
-        : referenceGrade === 'D' ? 'census reps only — no scorecard'
-        : 'no plans — not backtestable'
-      // v2.2800: a re-run round gets its own shell — a scored round-1 shell carries
-      // its scorecard (reference value, delta) in the ledger and would unblind the run.
-      const roundNum = Math.floor(Number(args.round ?? 1))
-      const round = Number.isFinite(roundNum) && roundNum >= 2 ? roundNum : 1
-      const roundTag = round >= 2 ? ` R${round}` : ''
-      const ztName = `ZZ Twin ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()} (backtest${roundTag})`
-      const { data: existing } = await admin
-        .from('bids').select('id, bid_number').eq('created_by', twin.twinUserId).eq('project_name', ztName).maybeSingle()
-      if (existing) {
-        return textContent(JSON.stringify({ ok: true, reused: true, round, bid: `b${existing.bid_number}`, bid_id: existing.id, name: ztName, reference_grade: referenceGrade, grade_note: gradeNote, warning: round >= 2 ? undefined : 'This shell may already carry a scorecard — read its ledger via get_work_state before working it, or open a new round with round: 2.' }, null, 2))
-      }
-      const dueDays = Number(args.due_in_days ?? 7)
-      const due = ymdAddDays(todayYmdInAppTz(), Number.isFinite(dueDays) && dueDays > 0 ? dueDays : 7)
-      const { data: created, error: insErr } = await admin
-        .from('bids')
-        .insert({
-          project_name: ztName,
-          address: refBid.address,
-          customer_id: refBid.customer_id,
-          service_type_id: refBid.service_type_id,
-          distance_from_office: refBid.distance_from_office,
-          plans_link: refBid.plans_link,
-          gc_builder_id: refBid.gc_builder_id,
-          bid_due_date: due,
-          created_by: twin.twinUserId,
-          estimator_id: twin.twinUserId,
-          // v2.2530: pair the twin copy with its human source — drives the Bid
-          // Board robot-readiness icon's "robot bid exists" state.
-          twin_source_bid_id: refBid.id,
-          notes: `Blind backtest${roundTag ? ` (round ${round})` : ''} of b${refBid.bid_number}. Reference sealed until the STG-6 scorecard stamp. Opened via twin-mcp open_backtest.`,
-        })
-        .select('id, bid_number')
-        .single()
-      if (insErr) return textContent(`Backtest bid not created: ${insErr.message}`, true)
-      await admin.from('bids_submission_entries').insert({
-        bid_id: created.id,
-        notes: `[pipeline STG-0] Blind backtest${roundTag ? ` ROUND ${round}` : ''} of b${refBid.bid_number} (${refBid.project_name}) opened via twin-mcp open_backtest by ${twin.email}. Logistics copied (address, customer, service type, distance ${refBid.distance_from_office ?? '?'} mi, plans link); reference counts/pricing/outcome SEALED until STG-6${round >= 2 ? '. Prior rounds of this reference are OFF LIMITS until the scorecard stamp' : ''}.`,
-      }).then(() => {}, () => {})
+      const r = await openBacktestShell(admin, twin, String(args.reference_bid ?? ''), { round: Number(args.round ?? 1), dueInDays: Number(args.due_in_days ?? 7) })
+      if (!r.ok) return textContent(r.error, true)
       return textContent(JSON.stringify({
-        ok: true, reused: false, round, bid: `b${created.bid_number}`, bid_id: created.id, name: ztName,
-        reference_grade: referenceGrade, grade_note: gradeNote,
-        logistics: { address: refBid.address, distance_from_office: refBid.distance_from_office, plans_link: !!refBid.plans_link, due },
-        next: 'file_plans if plans_link is empty; then substrate (STG-2), takeoff (STG-3), counts+books (STG-5), scorecard (STG-6) — compute quality flags (round value, weak-loss, stale) at unseal and stamp grade+flags on the scorecard; gate denominators take A/B gate-eligible refs only.',
+        ...r,
+        next: r.reused ? undefined : 'STG-2 substrate is yours (get_plan_brief tells you when it is missing); then takeoff (STG-3), counts+books (STG-5) BEFORE the lock, then score_backtest (STG-6) and the audit questions.',
       }, null, 2))
+    }
+    case 'next_backtest': {
+      // Dispatcher (v2.2806): parallel agents each ask for the next unclaimed reference
+      // in a round's list. A claim IS the round's shell, so the harness stays the single
+      // source of truth and two agents can never end up on the same bid.
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const round = Number(args.round ?? 2)
+      const axisFilter = String(args.axis ?? '').trim().toLowerCase()
+      const rawList = Array.isArray(args.candidates) ? (args.candidates as Array<Record<string, unknown>>) : []
+      const candidates = rawList
+        .map((c) => ({ bid: String(c.bid ?? '').trim(), axis: String(c.axis ?? '').trim(), label: String(c.label ?? '').trim() }))
+        .filter((c) => c.bid && (!axisFilter || c.axis.toLowerCase().includes(axisFilter)))
+      if (!candidates.length) return textContent('next_backtest needs candidates: [{ bid, axis, label }] (optionally filtered by axis)', true)
+      const skipped: string[] = []
+      for (const c of candidates) {
+        const r = await openBacktestShell(admin, twin, c.bid, { round })
+        if (!r.ok) { skipped.push(`${c.bid}: ${r.error}`); continue }
+        if (r.reused) { skipped.push(`${c.bid}: already claimed (${r.bid})`); continue }
+        const remaining = candidates.slice(candidates.indexOf(c) + 1).length
+        return textContent(JSON.stringify({
+          ok: true, claimed: { label: c.label, axis: c.axis, reference: c.bid }, ...r, remaining_in_list: remaining, skipped,
+          next: 'This shell is yours alone. STG-2 substrate first (get_plan_brief), then takeoff, counts+books before the lock, score_backtest, audit questions. Do not call next_backtest again until this bid is scored.',
+        }, null, 2))
+      }
+      return textContent(JSON.stringify({ ok: true, done: true, claimed: null, skipped, note: 'Every candidate in the list already has a shell for this round (or could not be opened).' }, null, 2))
     }
     case 'score_backtest': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
