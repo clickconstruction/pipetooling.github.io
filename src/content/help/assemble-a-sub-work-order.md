@@ -9,7 +9,7 @@ A **work order** is the short numbered document a sub signs before they start: w
 
 ## Start one
 
-1. Open **Jobs → Work Orders** and click {{button:blue|+ New work order}} — or use {{button:blue|Draft a work order…}} on a job in the **Needs a work order** list at the top (jobs with an unpaid Sub Labor sheet and nothing signed).
+1. Open **Jobs → Work Orders** and click {{button:blue|+ New work order}} — or use {{button:blue|Draft a work order…}} on a sheet in the **Needs a work order** list at the top — every Sub Labor sheet for a roster sub with money still open (or never priced) and nothing signed, including sheets on jobs that are not in the Pipeline. Crew pay sheets never appear there.
 2. **Job**: pick the job. The document's project block, customer, and trade come from it.
 3. **Sub**: pick the sub from the roster chips, or {{button:outline|Add sub}} for someone new — they get a roster row and a portal.
 4. **Scope and terms**:

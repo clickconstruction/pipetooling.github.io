@@ -1,6 +1,6 @@
 # Work Orders + Sub Labor: one row, with the sub's rail on it
 
-Status: not started · designed 2026-09-05 · mock-up: [`work-orders-one-row-spine.html`](./work-orders-one-row-spine.html) (also published at https://claude.ai/code/artifact/a8ce5a7d-d47a-4e2f-905b-558e9d67e298)
+Status: in progress · PR 1 (derivation fix) shipped as v2.2865 on `claude/work-orders-needs-derivation-304ca9`; PR 2 next · designed 2026-09-05 · mock-up: [`work-orders-one-row-spine.html`](./work-orders-one-row-spine.html) (also published at https://claude.ai/code/artifact/a8ce5a7d-d47a-4e2f-905b-558e9d67e298)
 
 ## The ask, in the owner's words
 
@@ -35,7 +35,7 @@ Verified 2026-09-05 against prod:
 1. **"Needs a work order" reads `people_labor_jobs.paid_at`, which is never set.** Every sheet counts as "unpaid", so job 892's three fully paid Miguel Rodriguez sheets ($1,750 paid) show as needing an order. Derive from items minus payments (`subLaborJobBalance` in `src/lib/subLaborOutstanding.ts` already does this for the ledger).
 2. **It only sees jobs in the Pipeline cache.** `jobsNeedingWorkOrder(jobs, …)` in `src/lib/subWorkOrders/workOrderCoverage.ts` is fed the Jobs page's `jobs` list; sheets whose `job_number` has no `jobs_ledger` row (977 Springtown, 1004 Kane, 931 Heron) never appear. Derive from sheets, and label by the sheet's job number + address when there is no ledger job.
 
-Both live in `src/components/jobs/JobsWorkOrdersTab.tsx` (`needsWorkOrder` memo) and the kernel above. Also exclude crew sheets: a sheet counts only when its assignees (`people_labor_job_assignees` → `people.kind = 'sub'`) are roster subs, or, for legacy sheets with no junction, when `assigned_to_name` matches a `people` row of kind `sub`.
+Both live in `src/components/jobs/JobsWorkOrdersTab.tsx` (`needsWorkOrder` memo) and the kernel above. Also exclude crew sheets: a sheet counts only when its assignees (`people_labor_job_assignees` → `people.kind = 'sub'`) are roster subs, or, for legacy sheets with no junction, when `assigned_to_name` matches a `people` row of kind `sub`. **Learned in PR 1:** teammates carry `kind = 'sub'` too (Abraham is `sub` with a superintendent login), so the rule is kind `sub` AND (no login OR a `subcontractor` login) — `isRosterSub` in `sheetsNeedingWorkOrder.ts`. Reuse it for the *Crew pay* label in PR 4.
 
 ## Where it plugs in (what exists)
 
@@ -62,5 +62,5 @@ Each PR: `npm run claim`, release note + `docs/recent-features/` fragment, guide
 
 - Dev server: `.claude/launch.json` → `dev-alt` (port 5188), sign in at `/dev-login`. Browser-pane clicks do not land while the pane is hidden — drive modals with `javascript_tool` (`li[role=option] > button` for the job picker).
 - Dummy sub **"Claude Test Sub"** is on the roster (person `d64fb9ec-d0dd-448e-9bcd-e874205c60fa`, no email, live portal token in `sub_portal_links`). Draft → send → sign on `/sub?t=<token>` creates the sheet; delete the test rows afterwards (`step_commitments`, the created `people_labor_jobs` + items + assignees, `dispatch_requests` kind `sub_offer_accepted`).
-- Real rows that exercise the story (as of 2026-09-05): 977 Springtown (Texas R & A, $40,000 open, no order), 880 Reliant Health (Airfordable, $4,200 open, no order, job already billed), 273 Dudley (Edgar $8,500 agreed / $500 paid), 892 Megan Connell (three paid-up Miguel sheets — must **not** show as needing an order), 1004 Kane (crew pay sheet at walk-through, no ledger job).
+- Real rows that exercise the story (as of 2026-09-05): 977 Springtown (Texas R & A, $40,000 open, no order), 880 Reliant Health (Airfordable, $4,200 open, no order, job already billed), 273 Dudley (Edgar $8,500 agreed / $4,500 paid / $4,000 back-charge — nets to zero, so it does **not** need an order), 892 Megan Connell (three paid-up Miguel sheets — must **not** show as needing an order), 1004 Kane (crew pay sheet at walk-through, no ledger job).
 - Gotcha met on this train: SECURITY DEFINER RPCs must read the service role from `request.jwt.claims ->> 'role'` (PostgREST no longer sets `request.jwt.claim.role`); see migration `20260905063000_create_sheet_for_work_order_claims.sql`.

@@ -3,12 +3,15 @@
  * a job's outstanding balance, the tab's search predicate, and the per-contractor
  * outstanding rollup shown at the top of the tab. Pure: no React/Supabase.
  */
-import { laborItemsSubtotal } from './peopleLaborJobItemLineCost'
+import { laborItemsSubtotal, type PeopleLaborJobItemLike } from './peopleLaborJobItemLineCost'
 import { normalizePersonNameKey } from './personNameKey'
-import type { LaborJob } from '../types/laborJob'
+import type { LaborJob, LaborJobPayment } from '../types/laborJob'
 
-/** Fields needed to cost a single sub-labor job's balance. */
-export type SubLaborBalanceInput = Pick<LaborJob, 'labor_rate' | 'items' | 'payments'>
+/** Fields needed to cost a single sub-labor job's balance (payments need only their amount). */
+export type SubLaborBalanceInput = Pick<LaborJob, 'labor_rate'> & {
+  items?: PeopleLaborJobItemLike[]
+  payments?: Array<Pick<LaborJobPayment, 'amount'>>
+}
 
 export type SubLaborJobBalance = {
   totalCost: number
