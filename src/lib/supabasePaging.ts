@@ -22,8 +22,17 @@ export async function fetchAllRows<T>(
   buildPage: (from: number, to: number) => PromiseLike<SupabaseClientResult<T[]>>,
   label: string,
   pageSize: number = SUPABASE_PAGE_SIZE,
+  opts?: {
+    /**
+     * Hard ceiling on the rows returned (a *real* cap the caller can detect with
+     * `rows.length >= maxRows`, unlike PostgREST's silent one). Paging stops once
+     * the ceiling is reached; the result is trimmed to exactly `maxRows`.
+     */
+    maxRows?: number
+  },
 ): Promise<T[]> {
   const all: T[] = []
+  const maxRows = opts?.maxRows
   for (let from = 0; ; from += pageSize) {
     const res = await buildPage(from, from + pageSize - 1)
     if (res.error) {
@@ -31,9 +40,39 @@ export async function fetchAllRows<T>(
     }
     const rows = res.data ?? []
     all.push(...rows)
+    if (maxRows != null && all.length >= maxRows) {
+      all.length = maxRows
+      break
+    }
     if (rows.length < pageSize) break
   }
   return all
+}
+
+const rowCapWarned = new Set<string>()
+
+/**
+ * Debug telemetry for reads that are still un-ranged: PostgREST's `max_rows`
+ * cap returns exactly `SUPABASE_PAGE_SIZE` rows with NO error, so a response of
+ * that exact size is the only signal that the table has outgrown the read
+ * (J33-N1: a `.limit(15000)` over 13,065 transactions came back as 1,000).
+ * Warns once per `label` per session so a polling loader can't spam the console.
+ * Returns true when the cap was (probably) hit.
+ */
+export function warnIfRowCapHit(label: string, rowCount: number, pageSize: number = SUPABASE_PAGE_SIZE): boolean {
+  if (rowCount !== pageSize) return false
+  if (!rowCapWarned.has(label)) {
+    rowCapWarned.add(label)
+    console.warn(
+      `[supabasePaging] row_cap_hit ${label}: an un-ranged read returned exactly ${pageSize} rows — PostgREST's max_rows cap was probably hit; page this read with fetchAllRows.`,
+    )
+  }
+  return true
+}
+
+/** Test hook: forget which labels have already warned. */
+export function resetRowCapHitWarningsForTests(): void {
+  rowCapWarned.clear()
 }
 
 /** Splits `ids` into chunks of `size` (last chunk may be shorter). */

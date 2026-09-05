@@ -22,7 +22,7 @@ Tue, Jul 14, 2026 · Highline Property Mgmt · $4,200.00 · External Transfer
 - {{button:outline|Payroll}} — payroll and contract-labor payments. Labor is already counted from hours × wage, so counting the payment too would double-count it.
 - {{button:outline|Card bill}} — credit-card bill payments (like the AMEX bill). The actual spending lives on the card's own transactions, so the bill payment itself isn't an expense here.
 - {{button:outline|Not an expense}} — anything else that isn't a business expense in this system, like owner draws or refunds.
-- {{button:outline|Split across jobs…}} — opens the job-split window to divide the payment across one or more jobs, the same way card transactions are split.
+- {{button:outline|Split across jobs…}} — opens the job-split window to divide the payment across one or more jobs, the same way card transactions are split. The window always opens on the transaction's current splits and person, and if someone else saves a change while you have it open, your save is refused with a **Reload** instead of overwriting theirs.
 
 The row disappears from the queue as soon as it's labeled, and the section's count drops.
 
