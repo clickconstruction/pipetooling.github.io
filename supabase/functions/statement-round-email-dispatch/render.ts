@@ -107,7 +107,7 @@ export function statementRoundText(p: StatementRoundPayload, dateLabel: string, 
   const n = p.ready.length
   L.push(`${dateLabel} · your accounts`)
   L.push(n === 0 ? `${firstName(recipientName)}, nothing is waiting on you today` : `${firstName(recipientName)}, ${n} GC${n === 1 ? ' is' : 's are'} waiting to hear from you`)
-  L.push(`${usd(roundTotal(p))} outstanding across your accounts · ${p.sent_by_me} of ${p.assigned_to_me} sent this week`)
+  L.push(`${usd(p.book_total)} outstanding across your accounts · ${p.sent_by_me} of ${p.assigned_to_me} sent this week`)
   L.push('')
   L.push(`THE STANDARD: ${STANDARD}`)
   for (const r of p.ready) {
@@ -221,7 +221,7 @@ export function renderStatementRoundHtml(p: StatementRoundPayload, dateLabel: st
     <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:20px 24px;">
       <div style="font-size:12px;color:#94a3b8;margin-bottom:4px;">${esc(dateLabel)} · your accounts</div>
       <h1 style="margin:0 0 2px;font-size:22px;color:#0f172a;">${headline}</h1>
-      <div style="font-size:13px;color:#475569;margin-bottom:14px;">${esc(usd(roundTotal(p)))} outstanding across your accounts · ${p.sent_by_me} of ${p.assigned_to_me} sent this week</div>
+      <div style="font-size:13px;color:#475569;margin-bottom:14px;">${esc(usd(p.book_total))} outstanding across your accounts · ${p.sent_by_me} of ${p.assigned_to_me} sent this week</div>
       <div style="border-left:3px solid #BA7517;background:#FAEEDA;padding:10px 14px;margin-bottom:16px;">
         <div style="font-size:13px;font-weight:700;color:#633806;">The standard</div>
         <div style="font-size:14px;color:#854F0B;line-height:1.5;">${esc(STANDARD)}</div>

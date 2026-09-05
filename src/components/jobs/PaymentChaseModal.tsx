@@ -623,7 +623,7 @@ export default function PaymentChaseModal({
                 overflowY: 'auto',
               }}
             >
-              {due.length > 0 && railCap('Owes a call — biggest first')}
+              {due.length > 0 && railCap(due.some((c) => c.temperature === 'cold' || c.temperature === 'cool') ? 'Owes a call — coldest first, then biggest' : 'Owes a call — biggest first')}
               {due.map((c) => railCustomer(c, 'due'))}
               {waiting.length > 0 && railCap('Waiting — not today')}
               {waiting.map((c) => railCustomer(c, 'waiting'))}
