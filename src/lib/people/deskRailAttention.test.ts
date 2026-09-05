@@ -14,8 +14,10 @@ function p(x: Partial<RailPersonInput> & { name: string }): RailPersonInput {
 }
 
 describe('buildRailRow', () => {
-  it('stacks reasons into one badge and escalates to red on expired paperwork', () => {
+  it('stacks reasons into one badge and escalates to red on expired paperwork; hours alone stay green', () => {
     expect(buildRailRow(p({ name: 'Isiah', userId: 'u1' }), facts)).toMatchObject({ attention: 'amber', badge: '23 · doc', reasons: ['23 sessions waiting', '1 document unsent'] })
+    // v2.2818: sessions waiting are a queue, not an alarm — badge and reason, no dot.
+    expect(buildRailRow(p({ name: 'Only Hours', userId: 'u1', personId: 'p-oh' }), { ...facts, unsentDocsByName: {} })).toMatchObject({ attention: 'green', badge: '23', reasons: ['23 sessions waiting'] })
     expect(buildRailRow(p({ name: 'Texas R & A Electrical', kind: 'sub' }), facts)).toMatchObject({ attention: 'red', badge: 'exp!' })
     expect(buildRailRow(p({ name: 'Grace', userId: 'u9', personId: null, kind: 'assistant' }), facts)).toMatchObject({ attention: 'amber', badge: 'id', reasons: ['no roster row'] })
     expect(buildRailRow(p({ name: 'Bryan', userId: 'u8', personId: null, kind: 'primary' }), facts).attention).toBe('green')
@@ -24,7 +26,7 @@ describe('buildRailRow', () => {
   it('emits structured chips, and a live portal is a blue signal that never raises attention', () => {
     const isiah = buildRailRow(p({ name: 'Isiah', userId: 'u1' }), facts)
     expect(isiah.signals).toEqual([
-      { key: 'pending', label: '23 waiting', tone: 'amber' },
+      { key: 'pending', label: '23 waiting', tone: 'gray' },
       { key: 'unsent', label: '1 doc unsent', tone: 'amber' },
     ])
     const dv = buildRailRow(p({ name: 'DV Mechanical', kind: 'sub', personId: 'p-dv' }), facts)

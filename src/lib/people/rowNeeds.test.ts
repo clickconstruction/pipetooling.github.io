@@ -67,7 +67,7 @@ describe('applyRowNeeds + the Hours to approve filter', () => {
   it('the dot follows the needs, not the hours; the hours filter reads hoursWaiting', () => {
     const p = person({ name: 'Grace', userId: 'u-grace', personId: 'p-grace' })
     const legacy = buildRailRow(p, facts)
-    expect(legacy.attention).toBe('amber') // the old rail still counts hours
+    expect(legacy.attention).toBe('green') // v2.2818: the rail agrees — hours never move the dot
     const row = applyRowNeeds(legacy, build({ person: p }))
     expect(row.attention).toBe('green')
     expect(rowMatchesFilter(row, 'attention')).toBe(false)

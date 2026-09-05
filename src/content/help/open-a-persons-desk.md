@@ -13,7 +13,7 @@ Tap a person's **name** anywhere it's underlined with dots — People → Users 
 
 Or press **/** on any page, type a name, and press **Enter**.
 
-Or open the **People → Person** tab: the same desk as a page, with a roster rail on the left. The rail's dots say who needs you — {{chip:yellow|amber}} for sessions waiting, paperwork unsent or expiring, or a missing roster row; {{chip:red|red}} for expired paperwork — and a **Needs attention** group at the top lists them first. On a phone the rail and the desk take turns.
+Or open the **People → Person** tab: the same desk as a page, with a roster rail on the left. The rail's dots say who needs you — {{chip:yellow|amber}} for paperwork unsent or expiring, or a missing roster row; {{chip:red|red}} for expired paperwork — and a **Needs attention** group at the top lists them first. Sessions waiting for approval show as a count on the row but never color the dot: hours are a queue, not an alarm. On a phone the rail and the desk take turns.
 
 ## The header
 
