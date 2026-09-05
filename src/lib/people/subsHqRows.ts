@@ -30,9 +30,9 @@ export type SubsHqSheetInput = Pick<LaborJob, 'id' | 'labor_rate' | 'items' | 'p
   assignedToName?: string | null
   /** Job number (HCP) — surfaced on unattributed entries for the #chip + deep link. */
   jobNumber?: string | null
-  /** v2.2846: the sheet's job date (YYYY-MM-DD) — feeds the sub's "last worked". */
+  /** v2.2853: the sheet's job date (YYYY-MM-DD) — feeds the sub's "last worked". */
   jobDateYmd?: string | null
-  /** v2.2846: when the sheet was paid (YYYY-MM-DD) — also counts as work. */
+  /** v2.2853: when the sheet was paid (YYYY-MM-DD) — also counts as work. */
   paidAtYmd?: string | null
 }
 
@@ -44,7 +44,7 @@ export type SubsHqCommitmentInput = {
   projectName: string | null
   /** v2.2790: sheet work orders (no step) name their sheet instead. */
   sheetLabel?: string | null
-  /** v2.2846: when the sub accepted the offer (YYYY-MM-DD) — counts as work. */
+  /** v2.2853: when the sub accepted the offer (YYYY-MM-DD) — counts as work. */
   acceptedAtYmd?: string | null
 }
 
@@ -74,7 +74,7 @@ export type SubsHqRow = {
   generalConditions: GeneralConditionsStanding
   settledCount: number
   backchargeTotal: number
-  /** v2.2846: newest attributed sheet job date / paid date / accepted work order (YYYY-MM-DD); null = never. */
+  /** v2.2853: newest attributed sheet job date / paid date / accepted work order (YYYY-MM-DD); null = never. */
   lastWorkedYmd: string | null
 }
 

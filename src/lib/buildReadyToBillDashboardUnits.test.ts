@@ -13,6 +13,7 @@ type I = {
   amount: number | null
   status: string
   is_primary_rtb_bundle: boolean | null
+  job_status?: string | null
 }
 
 function job(overrides: Partial<J> & Pick<J, 'id'>): J {
@@ -134,5 +135,39 @@ describe('buildReadyToBillDashboardUnits', () => {
     const units = buildReadyToBillDashboardUnits([j], [line])
     expect(units).toHaveLength(1)
     expect(units[0]?.kind).toBe('job_bundle')
+  })
+
+  describe('bills on paid jobs never make a unit (J3-1 / J3-2, v2.2846)', () => {
+    it('drops a stale never-sent draft whose job is paid (live specimens: 688 $5,500, 903 $185)', () => {
+      const stale688 = inv({ id: 'inv-688', job_id: 'job-688', amount: 5500, job_status: 'paid' })
+      const stale903 = inv({ id: 'inv-903', job_id: 'job-903', amount: 185, job_status: 'paid' })
+      // No RTB-status jobs loaded (the board says Ready to Bill (0)) — the Dashboard must agree.
+      expect(buildReadyToBillDashboardUnits([], [stale688, stale903])).toEqual([])
+    })
+
+    it('keeps a break-off draft on a working job (the board lists working jobs carrying an RTB draft)', () => {
+      const breakOff = inv({ id: 'inv-w', job_id: 'job-working', amount: 1200, job_status: 'working' })
+      expect(buildReadyToBillDashboardUnits([], [breakOff])).toEqual([{ kind: 'invoice', inv: breakOff }])
+    })
+
+    it('keeps drafts on a ready_to_bill job and on a billed job', () => {
+      const j = job({ id: 'job-1', revenue: 10_000, payments_made: 0 })
+      const primary = inv({ id: 'inv-p', job_id: 'job-1', amount: 10_000, is_primary_rtb_bundle: true, job_status: 'ready_to_bill' })
+      expect(buildReadyToBillDashboardUnits([j], [primary])).toEqual([{ kind: 'job_bundle', job: j, inv: primary }])
+      const onBilled = inv({ id: 'inv-b', job_id: 'job-billed', amount: 300, job_status: 'billed' })
+      expect(buildReadyToBillDashboardUnits([], [onBilled])).toEqual([{ kind: 'invoice', inv: onBilled }])
+    })
+
+    it('an unknown job status is not treated as paid (loaders that do not join the job are unaffected)', () => {
+      const noStatus = inv({ id: 'inv-x', job_id: 'job-x', amount: 300 })
+      expect(buildReadyToBillDashboardUnits([], [noStatus])).toEqual([{ kind: 'invoice', inv: noStatus }])
+    })
+
+    it('a paid job\'s draft does not hijack bundling math for a job that is loaded', () => {
+      // A paid job's primary draft must not be found by the bundling scan even if the job row were present.
+      const j = job({ id: 'job-1', revenue: 10_000, payments_made: 10_000 })
+      const stale = inv({ id: 'inv-stale', job_id: 'job-1', amount: 10_000, is_primary_rtb_bundle: true, job_status: 'paid' })
+      expect(buildReadyToBillDashboardUnits([j], [stale])).toEqual([{ kind: 'job', job: j }])
+    })
   })
 })

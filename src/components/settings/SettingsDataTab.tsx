@@ -1,4 +1,4 @@
-/** Settings → Data & migration tab: dev-only JSON backup exporters + the deleted-records archive.
+/** Settings → Data & migration tab: dev-only JSON backup exporters + the draft-bills-on-paid-jobs sweep + the deleted-records archive.
  * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
  * The SettingsGroup wrapper and the `myRole === 'dev'` gate stay in the parent.
  * Exception: DeletedRecordsSection is self-contained (owns its state via useDeletedRecordsArchive) —
@@ -6,6 +6,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import DeletedRecordsSection from './DeletedRecordsSection'
 import BulkDeleteAlertSettingsBlock from './BulkDeleteAlertSettingsBlock'
+import StaleDraftBillsOnPaidJobsSection from './StaleDraftBillsOnPaidJobsSection'
 
 export default function SettingsDataTab({
   dataBackupSectionOpen,
@@ -174,6 +175,7 @@ export default function SettingsDataTab({
         </div>
       )}
     </div>
+    <StaleDraftBillsOnPaidJobsSection />
     <DeletedRecordsSection />
     <BulkDeleteAlertSettingsBlock />
     </>

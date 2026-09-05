@@ -3,12 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.2846',
   date: '2026-09-05',
-  title: 'Subs: Active or on the bench',
-  kind: 'feature',
+  title: 'Ready to Bill never lists a paid job; billing a paid job asks twice',
+  kind: 'fix',
   highlights: [
-    'People → Subs has a Status column: Active with "last worked <date>" beneath it, or Bench since <date> with the reason you typed. Pills switch between Active, On the bench, and All.',
-    'Bench… sets a sub aside without archiving them. Their portal, sheets, balances, and documents stay put, and Reactivate brings them back in one click.',
-    'The app nudges but never moves anyone: an active sub quiet for 90 days gets a Bench… prompt, a benched sub who shows up on a new sheet or accepts a work order gets a Reactivate? prompt.',
+    'The Dashboard\'s Ready to Bill and Billed Waiting for Payment queues no longer show bills on jobs that are already Paid in Full — the counts now match the Pipeline board. If you remember an old draft there, it has been retired.',
+    'Bill Customer on a paid job now says "This job is already paid in full — nothing to bill." instead of a preview claiming $0.00 paid, and the send buttons stay off unless you tick "Bill this job again anyway".',
+    'Stripe bills and physical invoice emails refuse a paid job on the server too, so a stale draft can never become a real invoice by accident.',
+    'Settings → Data & recovery (dev) gets "Draft bills on paid jobs" — lists the leftover drafts and retires each with one click, through the same audited delete as before.',
   ],
 }
 

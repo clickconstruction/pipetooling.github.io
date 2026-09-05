@@ -20,6 +20,12 @@ import {
 } from '../_shared/stripeInvoiceMemoFromStripe.ts'
 import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
 import { buildStripeInvoiceItemsFromFixtures, scopeFixturesToInvoice } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
+import {
+  PAID_JOB_BILL_BLOCKED_MESSAGE,
+  allowRebillFromBody,
+  logPaidJobBillBlockedBestEffort,
+  shouldBlockBillOnPaidJob,
+} from '../_shared/paidJobBillGuard.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,6 +34,12 @@ const corsHeaders = {
 }
 
 interface CreateStripeInvoiceBody {
+  /**
+   * Explicit re-bill of a job that is already `paid` (J3-1 guard). Without
+   * `true`, an invoice whose job is Paid in Full is refused with 409 — a stale
+   * never-sent draft on a paid job must never become a real Stripe invoice.
+   */
+  allow_rebill?: boolean
   jobs_ledger_invoice_id: string
   customer_id: string
   amount_dollars: number
@@ -274,12 +286,24 @@ serve(async (req) => {
 
     const { data: jobRow, error: jobErr } = await admin
       .from('jobs_ledger')
-      .select('id, master_user_id, hcp_number, click_number, job_name, customer_id, job_address')
+      .select('id, master_user_id, hcp_number, click_number, job_name, customer_id, job_address, status')
       .eq('id', invRow.job_id)
       .single()
 
     if (jobErr || !jobRow) {
       return jsonResponse({ error: 'Job not found' }, 400)
+    }
+
+    // Never bill a paid job twice (J3-1): the invoice-status check above is
+    // satisfied by a stale draft; only the JOB knows the customer already paid.
+    if (shouldBlockBillOnPaidJob({ jobStatus: jobRow.status, allowRebill: allowRebillFromBody(body) })) {
+      await logPaidJobBillBlockedBestEffort(admin, {
+        jobId: jobRow.id,
+        invoiceId: invRow.id,
+        actorUserId: user.id,
+        channel: 'stripe',
+      })
+      return jsonResponse({ error: PAID_JOB_BILL_BLOCKED_MESSAGE, code: 'job_already_paid' }, 409)
     }
 
     if (!jobRow.customer_id) {

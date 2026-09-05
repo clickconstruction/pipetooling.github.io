@@ -50,7 +50,7 @@ const BADGE_STYLE: Record<ComplianceBadge['state'], { background: string; color:
 
 const DOC_TYPES = ['agreement', 'coi', 'w9', 'license', 'other'] as const
 
-/** Roster fields the bench reads (v2.2846): dates, notes, and when the row was added. */
+/** Roster fields the bench reads (v2.2853): dates, notes, and when the row was added. */
 type BenchMeta = { startDate: string | null; endDate: string | null; notes: string | null; createdYmd: string | null }
 
 type BenchFilter = 'active' | 'bench' | 'all'
@@ -225,7 +225,7 @@ export default function PeopleSubsTab() {
     void load()
   }, [load])
 
-  // The bench (v2.2846): status per row from the roster dates + last worked; Active first.
+  // The bench (v2.2853): status per row from the roster dates + last worked; Active first.
   const benchRows = useMemo(() => {
     if (!result) return { active: [] as Array<{ row: SubsHqResult['rows'][number]; status: SubBenchStatus }>, bench: [] as Array<{ row: SubsHqResult['rows'][number]; status: SubBenchStatus }> }
     const withStatus = result.rows.map((row) => {
