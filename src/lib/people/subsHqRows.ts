@@ -30,6 +30,10 @@ export type SubsHqSheetInput = Pick<LaborJob, 'id' | 'labor_rate' | 'items' | 'p
   assignedToName?: string | null
   /** Job number (HCP) — surfaced on unattributed entries for the #chip + deep link. */
   jobNumber?: string | null
+  /** v2.2853: the sheet's job date (YYYY-MM-DD) — feeds the sub's "last worked". */
+  jobDateYmd?: string | null
+  /** v2.2853: when the sheet was paid (YYYY-MM-DD) — also counts as work. */
+  paidAtYmd?: string | null
 }
 
 export type SubsHqCommitmentInput = {
@@ -40,6 +44,8 @@ export type SubsHqCommitmentInput = {
   projectName: string | null
   /** v2.2790: sheet work orders (no step) name their sheet instead. */
   sheetLabel?: string | null
+  /** v2.2853: when the sub accepted the offer (YYYY-MM-DD) — counts as work. */
+  acceptedAtYmd?: string | null
 }
 
 export type SubsHqDocInput = ComplianceDocInput & {
@@ -68,6 +74,8 @@ export type SubsHqRow = {
   generalConditions: GeneralConditionsStanding
   settledCount: number
   backchargeTotal: number
+  /** v2.2853: newest attributed sheet job date / paid date / accepted work order (YYYY-MM-DD); null = never. */
+  lastWorkedYmd: string | null
 }
 
 export type UnattributedSheet = {
@@ -90,6 +98,15 @@ export type SubsHqResult = {
 }
 
 const OPEN_COMMITMENT_STATUSES = new Set(['offered', 'accepted', 'approved'])
+
+/** Keep the newest well-formed YYYY-MM-DD on the row. */
+function bumpLastWorked(row: SubsHqRow, ...candidates: Array<string | null | undefined>): void {
+  for (const c of candidates) {
+    const ymd = (c ?? '').trim().slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue
+    if (!row.lastWorkedYmd || ymd > row.lastWorkedYmd) row.lastWorkedYmd = ymd
+  }
+}
 
 export function buildSubsHqRows(input: {
   people: SubsHqPersonInput[]
@@ -131,6 +148,7 @@ export function buildSubsHqRows(input: {
       generalConditions: 'none',
       settledCount: 0,
       backchargeTotal: 0,
+      lastWorkedYmd: null,
     }
     rowByPerson.set(personId, row)
     return row
@@ -160,6 +178,7 @@ export function buildSubsHqRows(input: {
         row.sheetCount += 1
         row.balanceDue += Math.max(0, balance.balance)
         row.backchargeTotal += balance.backcharges
+        bumpLastWorked(row, sheet.jobDateYmd, sheet.paidAtYmd)
         continue
       }
     }
@@ -192,6 +211,7 @@ export function buildSubsHqRows(input: {
   for (const c of input.commitments) {
     const row = ensureRow(c.person_id)
     if (!row) continue
+    bumpLastWorked(row, c.acceptedAtYmd)
     if (OPEN_COMMITMENT_STATUSES.has(c.status)) {
       row.openCommitments.push({ stepName: c.stepName, projectName: c.projectName, sheetLabel: c.sheetLabel ?? null, amount: c.amount, status: c.status })
       row.committedTotal += c.amount

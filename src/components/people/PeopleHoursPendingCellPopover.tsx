@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { approveClockSessions } from '../../lib/approveClockSessions'
+import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
+import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import { shortJobOrBidLabelFromEmbeds } from '../../types/clockSessions'
 import type { ClockSessionRow } from '../../types/clockSessions'
@@ -40,6 +42,7 @@ export function PeopleHoursPendingCellPopover({
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const [busyApprove, setBusyApprove] = useState(false)
+  const { role: viewerRole } = useAuth()
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectConfirmId, setRejectConfirmId] = useState<string | null>(null)
 
@@ -104,6 +107,7 @@ export function PeopleHoursPendingCellPopover({
       onError(row.error_message)
       return
     }
+    recordHoursApproved(authUserId, viewerRole, 'cell-popover', row?.approved_count ?? entry.sessionIds.length)
     onShowToast(
       `Approved ${row?.approved_count ?? entry.sessionIds.length} session(s) — added to payroll`,
       'success',

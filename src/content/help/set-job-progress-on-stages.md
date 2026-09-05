@@ -10,7 +10,7 @@ On the **Jobs → Pipeline** board, each job has a progress percent (the "% done
 ## Set the progress
 
 1. On **Jobs → Pipeline**, click a job's notes icon to expand its **Job activity / notes** panel.
-2. In the action row (next to {{button:green|Schedule}} and {{button:outline|Week dispatch}}), click {{button:outline|Set % complete}}. If the job already has a percent, you'll see **N% complete** shown right there.
+2. In the action row (next to {{button:green|Schedule}} and {{button:outline|Week dispatch}}), click {{button:outline|Set % complete}}. If the job already has a percent, you'll see **N% complete** shown right there, with a small badge saying who set it — {{chip:gray|crew report Aug 27}} when the newest field report said the same number, {{chip:gray|set by office}} otherwise.
 3. The **Add a note** area turns into the slider. Drag it to the progress you want — tick marks, whole percents — or type an exact number in the box.
 4. Add a note in the field on the left. **A note is required for anything under 100%** (100% can be set without one). Then click {{button:blue|Set to N%}}, or {{button:outline|Cancel}} to back out.
 5. Setting it saves the percent **and** posts the note to the activity feed as "**N% complete — your note**", so the change shows up in the job's history.

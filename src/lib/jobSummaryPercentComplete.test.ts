@@ -8,7 +8,9 @@ import {
   resolveJobCurrentPercentFallback,
   resolveJobSummaryPercentComplete,
   resolveJobSummaryPercentCompleteWithSource,
+  type JobSummaryPercentSource,
 } from './jobSummaryPercentComplete'
+import { percentProvenanceLabel } from './jobPercentProvenance'
 
 describe('jobInvoicesAllPaidWithAmount', () => {
   it('is true when every invoice is paid and the total is above zero', () => {
@@ -180,5 +182,30 @@ describe('formatJobSummaryPercentComplete', () => {
     expect(formatJobSummaryPercentComplete(62)).toBe('62%')
     expect(formatJobSummaryPercentComplete(0)).toBe('0%')
     expect(formatJobSummaryPercentComplete(null)).toBe('—')
+  })
+})
+
+describe('every % source has a provenance badge (v2.2852)', () => {
+  it('the resolver’s three real sources map to a badge; "none" maps to no badge', () => {
+    const sources: JobSummaryPercentSource[] = ['paid-invoices', 'crew-report', 'office', 'none']
+    const labels = sources.map((s) => percentProvenanceLabel(s))
+    expect(labels).toEqual(['fully collected', 'crew report', 'set by office', null])
+  })
+  it('a resolved row carries a source the badge can name', () => {
+    const paid = resolveJobSummaryPercentCompleteWithSource(77, 63, {
+      invoicesAllPaidWithAmount: true,
+      invoicedTotalUsd: 10_000,
+      contractRevenueUsd: 10_000,
+    })
+    expect(percentProvenanceLabel(paid.source)).toBe('fully collected')
+    const progressBill = resolveJobSummaryPercentCompleteWithSource(77, 63, {
+      invoicesAllPaidWithAmount: true,
+      invoicedTotalUsd: 6_600,
+      contractRevenueUsd: 10_000,
+    })
+    expect(progressBill.pct).toBe(77)
+    expect(percentProvenanceLabel(progressBill.source, { reportedOn: '2026-08-27T19:00:00Z' })).toBe('crew report Aug 27')
+    expect(percentProvenanceLabel(resolveJobSummaryPercentCompleteWithSource(null, 63).source)).toBe('set by office')
+    expect(percentProvenanceLabel(resolveJobSummaryPercentCompleteWithSource(null, null).source)).toBeNull()
   })
 })

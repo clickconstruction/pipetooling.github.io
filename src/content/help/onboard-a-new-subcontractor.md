@@ -47,9 +47,9 @@ Need one document for one person, or a document that isn't in a packet? See [sen
 
 COIs, W-9s, and waivers aren't signed in the app — they're **filed** against the sub so the app can watch expirations for you.
 
-1. On the sub's row in **People → Contracts**, click {{button:outline|+ Add document}} → **Custom or already-signed**. Name it (*COI 2026*, *W-9*, *DWC-83 waiver*), paste a link to the file, set the **Signed date**, and {{button:blue|Save}}.
-2. Go to **People → Subs** and click **▶ Documents** under the sub — the panel opens **below the table**, so scroll down to it. Set each document's **type** — agreement, COI, W-9, or license — and its **expiry date**.
-3. The compliance badges update immediately: {{chip:green|COI ✓}} when current, {{chip:yellow|COI expiring}} inside 30 days, {{chip:red|COI expired}} when lapsed, {{chip:gray|W-9 missing}} when nothing is filed.
+1. Go to **People → Subs** and click **▶ Documents** under the sub — the panel opens **below the table**, so scroll down to it — then {{button:outline|+ Add document}}. (The same button is on the sub's **Person Desk → Paperwork**.)
+2. Pick the **type** — COI, W-9, license, or a paper-signed agreement — set the **expiration** (required for a COI), paste an optional link to the scan (*Drive*), and {{button:blue|Save}}. A DWC-83 waiver files as *Other* with its annual expiry.
+3. The compliance badges update immediately: {{chip:green|COI ✓}} when current, {{chip:yellow|COI expiring}} inside 30 days, {{chip:red|COI expired}} when lapsed, {{chip:gray|W-9 missing}} when nothing is filed. Details: [keep a sub's paperwork current](?g=keep-a-subs-paperwork-current).
 
 {{gif:onboard-a-new-subcontractor-compliance.gif|People → Subs → Documents: set each document's type and expiry, and the badges update}}
 

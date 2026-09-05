@@ -35,6 +35,8 @@ Identity in the pay/labor domain is keyed by **trimmed name text**: `people_hour
 2. Combine people must keep working at every phase (it already does both id-repoint and name-rewrite).
 3. Every phase-C PR includes a before/after check on the surface's totals (Crew P&L totals must not shift from a pure re-keying).
 
+> Phase E and the remaining name-keyed reads are tracked in [`to-dos/person-identity-phase-e.md`](../to-dos/person-identity-phase-e.md) (2026-09-05 sweep).
+
 ## Status log
 
 - 2026-08-16 — **usePayConfig id-first lookups** (v2.1735, client-only): the hook derives `payConfigById` (`src/lib/people/payConfigLookup.ts` — `buildPayConfigById` + `payConfigForPerson`, kernel + tests) and `PeopleEmploymentTab` resolves every pay-config read through `EmploymentEntry.personId` first. The name-keyed map itself is KEPT by design: it's the roster join for dozens of People.tsx call sites and `people_pay_config`'s PK is `person_name` — re-keying state or `onConflict` is Phase-E (re-PK) work, not a client flip. Answer-preserving today; the win is renames. **Phase E formally scoped + gated** (see the phase line): FKs exist, so E = NOT NULL (blocked by fail-soft invariant), re-PK, cascade retirement — none shippable until name-fallbacks stop earning their keep.

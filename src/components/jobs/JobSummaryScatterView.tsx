@@ -73,8 +73,11 @@ export default function JobSummaryScatterView({ rows, ledgerLoading, colorBy, on
   const ph = H - T - B
   const maxRev = Math.max(1000, ...scatter.points.map((p) => p.revenueUsd))
   const xOf = (v: number) => L + pw * Math.sqrt(Math.max(0, v) / maxRev)
-  const minM = Math.min(-40, ...scatter.points.map((p) => Math.max(-100, p.trueMarginPct)))
+  // Pin deep losses at −50% so the plot's middle — where the decisions are — keeps its room; the axis label counts the pinned.
+  const FLOOR = -50
+  const minM = FLOOR
   const maxM = Math.max(80, ...scatter.points.map((p) => Math.min(100, p.trueMarginPct)))
+  const pinned = scatter.points.filter((p) => p.trueMarginPct < FLOOR).length
   const yOf = (m: number) => T + ph * (1 - (Math.max(minM, Math.min(maxM, m)) - minM) / (maxM - minM))
   const sizeVal = (p: { hours: number; days: number }) => (sizeBy === 'hours' ? p.hours : sizeBy === 'days' ? p.days : 1)
   const maxSize = Math.max(1, ...scatter.points.map(sizeVal))
@@ -102,10 +105,15 @@ export default function JobSummaryScatterView({ rows, ledgerLoading, colorBy, on
               <g key={m}>
                 <line x1={L} x2={W - R} y1={yOf(m)} y2={yOf(m)} stroke={m === 0 ? 'var(--border-strong)' : 'var(--border)'} />
                 <text x={L - 6} y={yOf(m) + 4} textAnchor="end" fontSize={10} fill="var(--text-muted)">
-                  {m}%
+                  {m === FLOOR ? `≤${m}%` : `${m}%`}
                 </text>
               </g>
             ))}
+            {pinned > 0 ? (
+              <text x={L + 4} y={T + ph - 6} fontSize={9.5} fill="var(--text-muted)">
+                {pinned} {pinned === 1 ? 'job' : 'jobs'} under −50% pinned to the floor
+              </text>
+            ) : null}
             {xTicks.map((v) => (
               <g key={v}>
                 <line x1={xOf(v)} x2={xOf(v)} y1={T + ph} y2={T + ph + 4} stroke="var(--border-strong)" />

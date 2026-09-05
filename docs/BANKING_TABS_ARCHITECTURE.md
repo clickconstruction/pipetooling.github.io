@@ -22,7 +22,7 @@ The two biggest extracted tabs have themselves become God components and are map
 
 Other extracted siblings (not re-mapped; healthy sizes): `BankingMercuryUserReviewTab` (1,098), `BankingMercuryCategoryReviewTab` (1,073), `BankingMercuryReconciliationTab` (233, fully self-contained — zero props), `BankingStripeInvoicesPanel` (191), `BankingStripeWebhookEventsPanel` (119).
 
-View routing (see `parseBankingView`): `?product=mercury|stripe` (dev only; non-devs are forced to Mercury), `?tab=`:
+View routing (see `parseBankingView`): `?product=mercury|stripe` (dev only; non-devs are forced to Mercury), `?tab=`: `?q=<text>` (any role) pre-fills the search box on mount (v2.2849).
 
 ```
 mercury: 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'user_review' | 'category_review' | 'reconciliation' | 'visuals'
@@ -144,7 +144,7 @@ All were props-only (no parent closure), so the moves were verbatim cut/paste (~
 - **Handlers:** `handleSync` (edge fn `sync-mercury-transactions`, hardcoded `lookback_days: 90`, bumps `autoApplyResetTick`), `handleBackfill` (same fn with `{start, end}`), `handleImportCsv` (edge fn `import-manual-transactions`), nickname CRUD (see substrate §3).
 - **Supabase:** `mercury_transactions` (via engine), `mercury_account_nicknames`, `mercury_debit_card_nicknames`; edge functions `sync-mercury-transactions`, `import-manual-transactions`.
 - **Sub-components:** `BankingMercuryTable`, `BankingLedgerAdvancedMenu`, `BankingNicknamesMenu` (all extracted, v2.1304); modals `MercuryBackfillModal`, `MercuryImportCsvModal`, `ManualAccountsModal` (all extracted).
-- **External coupling:** none inbound (no deep links carry ids).
+- **External coupling:** no deep links carry ids. One inbound search param: `?q=<text>` seeds `bankingSearchText` once on mount (Moneyfill's card-charges queue opens `/banking?tab=sorting&q=<counterparty>`, v2.2849); it is read-once, not synced back to the URL.
 - **Extraction status + risk + approach:** Inline. **Medium risk.** The tab's JSX is thin once `BankingMercuryTable` is its own file; the weight is that its toolbar owns the page's sync/backfill/import entry points and the nickname CRUD, all of which mutate parent-owned caches. Approach: extract `BankingMercuryLedgerTab` receiving `filteredSorted`, filters + setters, sort + setter, the shared table props, and callbacks (`onSync`, `onOpenBackfill`, `onOpenImportCsv`, `onOpenManualAccounts`, `onReload`); `handleSync`/`handleBackfill`/`handleImportCsv` and the modals **stay in the parent** (backfill/import completion must call `loadRowsForActiveView` + bump `autoApplyResetTick`, which are parent concerns). Stage A: `sortMercuryRowsStable` → lib + tests first.
 
 ### `sorting` — User Sort tab (inline)

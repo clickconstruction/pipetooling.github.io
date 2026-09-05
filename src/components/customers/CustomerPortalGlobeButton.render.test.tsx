@@ -2,8 +2,9 @@
 /**
  * Render-smoke tests for the portal globe button (custom-links rework
  * v2.2009): hero custom address + Copy/Preview, flat gear rows (Direct link /
- * Address / Separate views / Reset / History), merged 'all' audience, and the
- * no-silent-revive rule for turned-off portals.
+ * Address / Separate views / Reset / History), merged 'all' audience, the
+ * no-silent-revive rule for turned-off portals, and (journey-map #14(b)) the
+ * no-mint-on-open rule for never-shared customers.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -54,12 +55,19 @@ import CustomerPortalGlobeButton from './CustomerPortalGlobeButton'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 describe('CustomerPortalGlobeButton', () => {
-  it('never-minted: mints the merged link, prefills the address from the name, gear holds the flat rows', async () => {
+  it('never-minted: opening writes nothing — the link is created on "Create their link", then the hero appears', async () => {
     linkRowsMock.rows = []
     slugRowMock.row = null
     rpcMock.mockClear()
     renderWithProviders(<CustomerPortalGlobeButton customerId="c1" customerName="Knight Contracting" />)
     fireEvent.click(screen.getByLabelText("Open Knight Contracting's customer portal link"))
+    // Journey-map #14(b) / J21-F7: the modal opens into the unminted state and
+    // no RPC has run — "just looking" creates nothing.
+    await waitFor(() => expect(screen.getByText('No portal link yet.')).toBeTruthy())
+    expect(rpcMock).not.toHaveBeenCalled()
+    expect(screen.queryByText('Copy link')).toBeNull()
+    expect(screen.queryByLabelText('Portal address')).toBeNull()
+    fireEvent.click(screen.getByText('Create their link'))
     await waitFor(() =>
       expect(rpcMock).toHaveBeenCalledWith('mint_customer_portal_link', {
         p_customer_id: 'c1',
@@ -67,6 +75,7 @@ describe('CustomerPortalGlobeButton', () => {
         p_rotate: false,
       }),
     )
+    expect(rpcMock).toHaveBeenCalledTimes(1)
     // Hero: editable custom address, prefilled from the customer name.
     const addressInput = (await screen.findByLabelText('Portal address')) as HTMLInputElement
     expect(addressInput.value).toBe('knight-contracting')

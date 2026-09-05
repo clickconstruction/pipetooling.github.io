@@ -1,8 +1,11 @@
 import type { CSSProperties } from 'react'
+import { customerLinkUnavailableTitle } from '../../../supabase/functions/_shared/estimateLinkResend'
 
 export type EstimateCustomerAcceptLinkButtonsProps = {
   customerAcceptUrl: string | null
   isDraft: boolean
+  /** True when the row can take **Resend link** (v2.2856) — the unavailable-tooltip then points at the real recovery. */
+  resendAvailable?: boolean
   onCopy: () => void
   onOpen: () => void
   style?: CSSProperties
@@ -18,10 +21,12 @@ const rowStyleBase: CSSProperties = {
 export default function EstimateCustomerAcceptLinkButtons({
   customerAcceptUrl,
   isDraft,
+  resendAvailable = false,
   onCopy,
   onOpen,
   style,
 }: EstimateCustomerAcceptLinkButtonsProps) {
+  const unavailableTitle = customerLinkUnavailableTitle(resendAvailable)
   return (
     <div style={{ ...rowStyleBase, ...style }}>
       <button
@@ -40,7 +45,7 @@ export default function EstimateCustomerAcceptLinkButtons({
             ? 'Copy the customer acceptance link (with token) to the clipboard.'
             : isDraft
               ? 'Send the estimate to create a customer link.'
-              : 'Customer link is not available in this browser. It appears when you send the estimate, or is restored if this browser previously saved it for this estimate.'
+              : unavailableTitle
         }
       >
         Copy customer link
@@ -61,7 +66,7 @@ export default function EstimateCustomerAcceptLinkButtons({
             ? 'Open the customer acceptance page in a new tab (same as the link you send).'
             : isDraft
               ? 'Send the estimate to create a customer link.'
-              : 'Customer link is not available in this browser. It appears when you send the estimate, or is restored if this browser previously saved it for this estimate.'
+              : unavailableTitle
         }
       >
         Open customer link

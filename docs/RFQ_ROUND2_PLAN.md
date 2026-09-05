@@ -143,6 +143,8 @@ gif standard set in v2.2633).
 
 ## Rung G — "apply picks to bid costs" — OWNER APPROVED option (a) 2026-09-02; next build rung (lot capture office-side first; vendor-page lots later)
 
+> Tracked in [`to-dos/rfq-apply-picks-to-bid-costs.md`](../to-dos/rfq-apply-picks-to-bid-costs.md) (2026-09-05 sweep).
+
 **The problem in plain terms**: the Workbench's COST/UNIT per fixture is
 *derived* — each fixture name maps (via Takeoffs) to an assigned part or
 assembly, and its cost is that takeoff unit price. Quotes are keyed on

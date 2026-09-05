@@ -5,7 +5,7 @@ file: docs/PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two largest already-extracted People tabs — src/components/people/PeopleContractsTab.tsx (~2,981 lines) and src/components/people/PeopleOverheadTab.tsx (~2,510 lines). Inventories every region's state, handlers, supabase tables/RPCs, and coupling so their sub-decomposition (Stage-A lib extraction + modal/section component moves) can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-08-03 (v2.1320 hygiene strip)
+last_updated: 2026-09-05 (v2.2851 quick-send writes at Send)
 ---
 
 ## What this surface is
@@ -226,6 +226,7 @@ Already extracted with tests (do not re-do): `contractBodyFormat`, `contractSign
 1. **Persons are `person_name` strings**, the union of `people` + `users` names — the People-page convention. Renames orphan contract rows; do not introduce an id key during a move.
 2. **80 ms `setTimeout`** before the initial `loadContracts()`.
 3. **UI inserts are always `lineage_version: 1`** with a fresh `crypto.randomUUID()` lineage id; `lineage_version > 1` rows are minted only by the DB function `create_pending_contract_versions_after_book_save` after Contract Book saves. The roster shows **every** version as its own row, newest first.
+   - **Quick-send writes at Send, not at pick** (v2.2851, decision 17): `openQuickSendForPerson` computes a `QuickSendPlan` (`quickSendPlan` in `src/lib/contractsQuickSend.ts` → `reuse | fill | insert | no-content`) and opens the Send modal with `contractSendQuickSend = { personName, documentName, plan }`; `contractSendDocId` stays null for `fill`/`insert`. `sendContractForSignature` calls `materializeQuickSendRow` (the UPDATE/INSERT) immediately before the `send-contract-for-signature` POST, pins the id, and flips the plan to `reuse` so a failed send retries the same row. The modal's preview/portal/subject read `contractSendTarget` (row or pending pick). Cancel resets state only — by design there is nothing to delete. Add document → Save/Send now still saves on purpose before opening the modal.
 4. **Applied-version pin fallback:** a pin only counts if the pinned book row still matches the document name AND a currently-assigned template; otherwise the max `updated_at` among assigned templates is shown.
 5. **Add-tab forcing matrix** (`getContractDocumentUpsertPayload`): Request Signature save forces `status='unsent'` and nulls `url`/`signed_at`/`note`; Upload Signed forces `status='signed'`, nulls signing body + canonical URL, forces `signing_body_format='html'` and dashboard prompt false. Edit mode keeps the chosen status; dashboard prompt is forced false whenever status is `signed`.
 6. **Empty-placeholder deletion guard:** template-remove and unassign delete a person row only when `personContractDocumentHasStaffData` is false (no url/signature/note/body/canonical URL) — signed or in-progress documents always survive.

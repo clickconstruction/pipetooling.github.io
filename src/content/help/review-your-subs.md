@@ -19,12 +19,12 @@ order: 80
   - {{chip:gray|W-9 missing}} — nothing on file
 - **Track record** — sheets settled and total backcharges.
 
-## Classify documents
+## Add or classify documents
 
-Click **▶ Documents** under a sub's name to see their contract documents. Set each one's **type** (agreement, COI, W-9, license) and **expiry date** right there — the badges update immediately. Sending documents for signature stays on the Contracts tab.
+Click **▶ Documents** under a sub's name to see their documents. {{button:outline|+ Add document}} files a COI, W-9, license, or paper-signed agreement right there — pick the type, give a COI its expiration, paste an optional link to the file, {{button:blue|Save}} — and the badge updates as soon as it lands. Each existing row also has a **type** and **expiry date** picker. A row named like a W-9 or COI but still typed as the Agreement shows an amber *Looks like a W-9 — set type* pill; one click fixes it. Sending documents for signature stays on the Contracts tab. Full walkthrough: [keep a sub's paperwork current](?g=keep-a-subs-paperwork-current).
 
 :::example Getting a sub compliant
-Send the COI request from Contracts → when it's on file, open Subs → Documents → set type "coi" and its expiration → the badge flips green until 30 days before it lapses.
+Open Subs → ▶ Documents → + Add document → COI → expires next March → Save → the badge flips green until 30 days before it lapses.
 :::
 
 ## Unattributed sheets

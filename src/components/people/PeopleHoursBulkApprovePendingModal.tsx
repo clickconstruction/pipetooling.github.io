@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { approveClockSessions } from '../../lib/approveClockSessions'
+import { recordHoursApproved } from '../../lib/hoursApprovedTelemetry'
+import { cellApprovalChips } from '../../lib/people/approvalsSessionChips'
+import type { SalariedPayConfigFlags } from '../../lib/salariedEffectiveHours'
+import { useAuth } from '../../hooks/useAuth'
 import { shortJobOrBidLabelFromEmbeds } from '../../types/clockSessions'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -9,6 +13,8 @@ import { summarizePeopleHoursPendingByCell } from '../../lib/peopleHoursPendingB
 
 type Props = {
   pendingByCellMap: PeopleHoursPendingByCellMap
+  /** Pay-config flags by person name — drives the "salary — counts as flat hours" chip (Tier-1 #15, J7-3). */
+  payConfigFor?: (personName: string) => SalariedPayConfigFlags | undefined
   onClose: () => void
   onApproved: () => void
   onError: (message: string) => void
@@ -17,18 +23,24 @@ type Props = {
 
 export function PeopleHoursBulkApprovePendingModal({
   pendingByCellMap,
+  payConfigFor,
   onClose,
   onApproved,
   onError,
   onShowToast,
 }: Props) {
   const prefixMap = useLedgerPrefixMap()
+  const { user: authUser, role } = useAuth()
   const [busy, setBusy] = useState(false)
   const summary = summarizePeopleHoursPendingByCell(pendingByCellMap)
   const entries = Array.from(pendingByCellMap.values()).sort((a, b) => {
     if (a.workDate !== b.workDate) return a.workDate.localeCompare(b.workDate)
     return a.personName.localeCompare(b.personName)
   })
+  const chipsByKey = new Map(
+    entries.map((e) => [`${e.personName}|${e.workDate}`, cellApprovalChips({ payConfig: payConfigFor?.(e.personName), sessions: e.sessions })] as const),
+  )
+  const anySalaryChip = entries.some((e) => payConfigFor?.(e.personName)?.is_salary === true)
 
   async function handleApproveAll() {
     if (busy || summary.allSessionIds.length === 0) return
@@ -45,6 +57,7 @@ export function PeopleHoursBulkApprovePendingModal({
       onError(row.error_message)
       return
     }
+    recordHoursApproved(authUser?.id, role, 'bulk-modal', row?.approved_count ?? summary.allSessionIds.length)
     onShowToast(
       `Approved ${row?.approved_count ?? summary.allSessionIds.length} session(s) — added to payroll`,
       'success',
@@ -120,6 +133,14 @@ export function PeopleHoursBulkApprovePendingModal({
           <strong>{summary.workDates.length}</strong>{' '}
           {summary.workDates.length === 1 ? 'day' : 'days'}.
           Approving adds <strong>{summary.totalDiffHours.toFixed(2)} h</strong> to payroll.
+          {anySalaryChip ? (
+            <>
+              {' '}
+              <span style={{ color: 'var(--text-muted)' }}>
+                Salaried rows are session length here; payroll credits their flat salary hours.
+              </span>
+            </>
+          ) : null}
         </p>
         <div
           style={{
@@ -172,6 +193,27 @@ export function PeopleHoursBulkApprovePendingModal({
                     </td>
                     <td style={{ padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
                       {e.personName}
+                      {(chipsByKey.get(`${e.personName}|${e.workDate}`) ?? []).map((c) => (
+                        <span
+                          key={c.label}
+                          title={c.title}
+                          style={{
+                            display: 'inline-block',
+                            marginLeft: '0.4rem',
+                            padding: '0 0.4rem',
+                            fontSize: '0.6875rem',
+                            fontWeight: 600,
+                            lineHeight: 1.5,
+                            borderRadius: 999,
+                            border: '1px solid var(--border-strong)',
+                            background: 'var(--bg-subtle)',
+                            color: 'var(--text-muted)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {c.label}
+                        </span>
+                      ))}
                     </td>
                     <td
                       style={{

@@ -32,6 +32,9 @@ import { SearchableSelect, type SearchableSelectOption } from '../SearchableSele
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import { buildQuoteLinkPaste, quoteLinkUrl, rfqCopyLaneMayInsert, rfqCopyLaneNext, type RfqCopyLaneState } from '../../lib/rfq/rfqCopyLane'
 
 const MODAL_Z = 10050
 
@@ -110,6 +113,22 @@ export function PrepareFixtureCopyModal({
   const [linkHouseId, setLinkHouseId] = useState('')
   const [linkNeededBy, setLinkNeededBy] = useState('')
   const [minting, setMinting] = useState(false)
+  const { user: authUser, role: authRole } = useAuth()
+  /**
+   * Copy-lane state machine (decision 17, 2026-09-05; J12-N1): the `bid_rfqs`
+   * row is inserted only once the link is in the user's hands — after a
+   * successful clipboard write, or after they confirm they copied it from the
+   * fallback field. `linkDraft` holds the token so a retry after a failed
+   * insert reuses the link already on the clipboard instead of minting twice.
+   */
+  const [lane, setLane] = useState<RfqCopyLaneState>('idle')
+  const [linkDraft, setLinkDraft] = useState<{
+    token: string
+    text: string
+    houseId: string
+    houseName: string | null
+    scopeLines: Array<{ fixture: string | null; count: number; unit: string | null }>
+  } | null>(null)
   // Phase 3 (v2.2632): the picked house's name-keyed price memory — powers the
   // "last quoted N of these items" recency hint under the quote-link strip.
   const [houseMemory, setHouseMemory] = useState<{ keys: Set<string>; newest: string | null } | null>(null)
@@ -310,42 +329,100 @@ export function PrepareFixtureCopyModal({
   }
 
   /**
-   * Copy with quote link: mints a bid_rfqs row whose scope snapshot is the
-   * current selection, then copies the same paste with a public /q/<token>
-   * line appended. The vendor types prices into that page instead of texting
-   * them back.
+   * Copy with quote link, write-after-confirm: build the token and the paste,
+   * put it on the clipboard, and only THEN insert the `bid_rfqs` row (scope =
+   * the current selection snapshot, `created_by` stamped). A failed clipboard
+   * write parks the lane in a fallback panel that shows the link with a
+   * manual-copy field — nothing is written until the user confirms they have
+   * it, and Cancel there leaves no row. Before this the insert ran first, so a
+   * denied clipboard left an orphan `sent` request and a retry minted a
+   * duplicate (live-proved on BP398).
    */
   async function copyWithQuoteLink() {
     if (!quoteLink || !linkHouseId || selected.size === 0) return
     setMinting(true)
     try {
-      const token = crypto.randomUUID().replace(/-/g, '')
-      const scopeLines = rows
-        .filter((r) => selected.has(r.id) && Number.isFinite(r.count) && r.count > 0)
-        .map((r) => ({ fixture: r.fixture, count: r.count, unit: r.unit ?? null }))
-      const houseName = houses.find((h) => h.id === linkHouseId)?.name ?? null
-      const { error } = await supabase.from('bid_rfqs').insert({
-        bid_id: quoteLink.bidId,
-        bid_version_id: quoteLink.bidVersionId,
-        supply_house_id: linkHouseId,
-        sent_to: houseName,
-        scope: { lines: scopeLines },
-        needed_by: linkNeededBy || null,
-        token,
-        status: 'sent',
-      })
-      if (error) throw error
-      const text = `${copyText}\n\nPrice it here: https://clicktooling.com/q/${token}`
-      if (typeof navigator === 'undefined' || !navigator.clipboard) throw new Error('Clipboard unavailable in this browser.')
-      await navigator.clipboard.writeText(text)
-      showToast(`Copied ${selected.size} items + a quote link for ${houseName ?? 'the vendor'} — prices they type land on this bid.`, 'success')
-      onRfqMinted?.()
-      onClose()
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not create the quote link.', 'error')
+      // Snapshot the scope with the token so what the vendor sees is exactly what was copied,
+      // even if boxes get ticked while the lane is parked in the fallback panel.
+      const draft = linkDraft ?? (() => {
+        const token = crypto.randomUUID().replace(/-/g, '')
+        return {
+          token,
+          text: buildQuoteLinkPaste(copyText, token),
+          houseId: linkHouseId,
+          houseName: houses.find((h) => h.id === linkHouseId)?.name ?? null,
+          scopeLines: rows
+            .filter((r) => selected.has(r.id) && Number.isFinite(r.count) && r.count > 0)
+            .map((r) => ({ fixture: r.fixture, count: r.count, unit: r.unit ?? null })),
+        }
+      })()
+      setLinkDraft(draft)
+      // A retry (after a blocked clipboard or a failed insert) keeps its place in the lane.
+      let next: RfqCopyLaneState = lane === 'idle' ? rfqCopyLaneNext('idle', 'prepare') : lane
+      try {
+        if (typeof navigator === 'undefined' || !navigator.clipboard) throw new Error('Clipboard unavailable in this browser.')
+        await navigator.clipboard.writeText(draft.text)
+        next = rfqCopyLaneNext(next, 'clipboard_ok')
+      } catch {
+        next = rfqCopyLaneNext(next, 'clipboard_failed')
+        setLane(next)
+        return
+      }
+      setLane(next)
+      await mintRfqRow(draft, next)
     } finally {
       setMinting(false)
     }
+  }
+
+  /** The fallback panel's confirm: the user says the link is in hand → the row may be written now. */
+  async function confirmCopiedManually() {
+    if (!linkDraft) return
+    const next = rfqCopyLaneNext(lane, 'confirm_copied')
+    setLane(next)
+    setMinting(true)
+    try {
+      await mintRfqRow(linkDraft, next)
+    } finally {
+      setMinting(false)
+    }
+  }
+
+  /** Cancel from the fallback panel: nothing was inserted, nothing to undo. */
+  function cancelQuoteLink() {
+    setLane(rfqCopyLaneNext(lane, 'cancel'))
+    setLinkDraft(null)
+  }
+
+  /** The one place the `bid_rfqs` INSERT lives; legal only in the `copied` state. */
+  async function mintRfqRow(draft: NonNullable<typeof linkDraft>, state: RfqCopyLaneState) {
+    if (!quoteLink || !rfqCopyLaneMayInsert(state)) return
+    try {
+      const { error } = await supabase.from('bid_rfqs').insert({
+        bid_id: quoteLink.bidId,
+        bid_version_id: quoteLink.bidVersionId,
+        supply_house_id: draft.houseId,
+        sent_to: draft.houseName,
+        scope: { lines: draft.scopeLines },
+        needed_by: linkNeededBy || null,
+        token: draft.token,
+        status: 'sent',
+        created_by: authUser?.id ?? null,
+      })
+      if (error) throw error
+    } catch (err) {
+      setLane(rfqCopyLaneNext(state, 'insert_failed'))
+      showToast(
+        `The link is on your clipboard but the request could not be saved — tap Save quote link to try again (same link). ${err instanceof Error ? err.message : ''}`.trim(),
+        'error',
+      )
+      return
+    }
+    setLane(rfqCopyLaneNext(state, 'insert_ok'))
+    recordNavClick(authUser?.id, authRole, 'rfq_link_minted', 'lane:copy')
+    showToast(`Copied ${draft.scopeLines.length} items + a quote link for ${draft.houseName ?? 'the vendor'} — prices they type land on this bid.`, 'success')
+    onRfqMinted?.()
+    onClose()
   }
 
   if (!open || typeof document === 'undefined') return null
@@ -529,7 +606,7 @@ export function PrepareFixtureCopyModal({
                   onClick={() => void copyWithQuoteLink()}
                   style={{ padding: '0.4rem 0.9rem', background: !linkHouseId || selected.size === 0 ? 'var(--bg-200)' : '#2563eb', color: !linkHouseId || selected.size === 0 ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: minting || !linkHouseId || selected.size === 0 ? 'not-allowed' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600 }}
                 >
-                  {minting ? 'Minting link…' : 'Copy with quote link'}
+                  {minting ? 'Copying…' : linkDraft && lane === 'copied' ? 'Save quote link' : 'Copy with quote link'}
                 </button>
                 {onSendByEmail ? (
                   <button
@@ -563,6 +640,41 @@ export function PrepareFixtureCopyModal({
                     </span>
                   )
                 })() : null}
+                {lane === 'copy_failed' && linkDraft ? (
+                  <div
+                    role="status"
+                    style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.6rem 0.75rem', background: 'var(--surface)' }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+                      Your browser blocked the clipboard — the link is ready, copy it by hand. Nothing is saved until you confirm.
+                    </span>
+                    <input
+                      readOnly
+                      value={quoteLinkUrl(linkDraft.token)}
+                      onFocus={(e) => e.currentTarget.select()}
+                      aria-label="Quote link"
+                      style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', fontFamily: 'ui-monospace, Menlo, monospace', background: 'var(--bg-subtle)', color: 'var(--text-strong)', boxSizing: 'border-box' }}
+                    />
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={minting}
+                        onClick={() => void confirmCopiedManually()}
+                        style={{ padding: '0.4rem 0.9rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: minting ? 'not-allowed' : 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600 }}
+                      >
+                        {minting ? 'Saving…' : 'Link is ready — I copied it'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={minting}
+                        onClick={cancelQuoteLink}
+                        style={{ padding: '0.4rem 0.9rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}
+                      >
+                        Cancel — don't create a request
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

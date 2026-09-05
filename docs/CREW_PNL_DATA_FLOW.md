@@ -8,7 +8,7 @@ audience: Developers, AI Agents
 last_updated: 2026-08-02
 ---
 
-Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx) (tab on `/jobs?tab=teams-summary`; the `showTeamsTab` gate in `Jobs.tsx` excludes primary/master_technician/assistant-like/superintendent — in practice dev and estimator see it). Math kernel: [`src/lib/crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (`buildCrewPnlSummary`, fully unit-tested). Per person: **hours, labor cost, billing (revenue credit), profit, billing/hr** + per-job drilldown.
+Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx) (tab on `/jobs?tab=teams-summary`; the `showTeamsTab` gate in `Jobs.tsx` excludes primary/master_technician/assistant-like/superintendent — in practice dev and estimator see it). Math kernel: [`src/lib/crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (`buildCrewPnlSummary`, fully unit-tested). Per person: **hours, labor cost, billing (revenue credit — column header **Billed (gross)** since v2.2852: it splits the job's gross total bill by hours, not cash collected and not revenue before overhead), profit, billing/hr** + per-job drilldown.
 
 ## 1. Inputs (six sources)
 
@@ -42,6 +42,8 @@ Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsC
 Rows table (sortable), totals row, per-job drilldown (`crew` / `sub` / `billing-fallback` lines; missing jobs label "Unknown job", never a raw UUID — v2.976), **≈** on estimated billing, **"$N unlinked"** red badge per affected row, and the audit footer: "Sub labor: $X in range · $Y linked (Z%)" + collapsible unlinked-sheet list (raw job # text, names, $, sorted by cost).
 
 ## 5. Known weaknesses / improvement backlog
+
+> Validated 2026-09-05: item 1 is resolved (`crewPnlSummary.ts` is person-keyed); items 3–6 tracked in [`to-dos/crew-pnl-and-wheels.md`](../to-dos/crew-pnl-and-wheels.md).
 
 1. **Wage name-join** (input #3): a `users.name` ↔ `people_pay_config.person_name` mismatch silently zeroes a person's labor cost (inflating their profit). App-wide issue (`docs/SALARY_CLOCK_SESSIONS.md`).
 2. **`revenue` semantics**: the split uses `jobs_ledger.revenue` (job total), not payments collected — this is a *bid-value* P&L, not cash. Jobs with revenue unset contribute cost-only rows.

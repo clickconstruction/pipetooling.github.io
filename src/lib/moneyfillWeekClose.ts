@@ -9,6 +9,11 @@
  *
  * Week = Mon–Sun Central, matching the report. The close week DEFAULTS to the
  * previous complete week (the week you close Monday morning).
+ *
+ * ONE exception (journey-map Tier-1 #15, J7-2): the people-hours queue
+ * ("Sessions pending approval") is a payroll lens, so it re-anchors onto the
+ * Sun–Sat PAY week that ends inside the close week (`payWeekForCloseWeek`) —
+ * the same week Draft Payroll opens to. Bank-money queues stay Mon–Sun.
  */
 import { supabase } from './supabase'
 import { chicagoYmdOf } from './gcStatementStandingCopies'
@@ -28,7 +33,10 @@ import {
 import type { OverheadClockSessionRow } from './overheadDailyLabor'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from './overheadOfficeJobSettings'
 import { resolveBankPaymentsSortingConfigForAr, type BankingSortingConfigV1 } from './bankingSortingConfig'
+import { fetchAllRows } from './supabasePaging'
+import { fetchJobAllocationsByMercuryTxIds } from './fetchMercuryRelationsByTxIds'
 import { buildWeeklyMoneyRow, type WeeklyMoneyPayload, type WeeklyMoneyJobRow } from './jobs/weeklyMoneyMovement'
+import { payWeekForCloseWeek, type PayWeek } from './payWeekAnchor'
 
 export type MoneyfillQueueKey =
   | 'bank-transfers'
@@ -185,28 +193,51 @@ export function weekUtcBounds(weekMondayYmd: string): { startIso: string; endIso
 }
 
 /**
+ * Where a card charge gets split to jobs: Banking → User Sort (`/banking?tab=sorting`),
+ * the tab's Link… sheet. `q` pre-fills the tab's search with the counterparty so the
+ * charge is on screen when the page opens (Banking reads `?q=` once, on mount).
+ * v2.2849: the button used to `navigate('/quickfill')`, where the Banking-sorting
+ * section is org-hidden — a dead end inside the weekly close (journey map Tier-1 #13).
+ */
+export const MONEYFILL_CARD_CHARGES_SORT_PATH = '/banking?tab=sorting'
+
+export function cardChargeSortHref(counterparty: string | null | undefined): string {
+  const q = (counterparty ?? '').trim()
+  return q === '' ? MONEYFILL_CARD_CHARGES_SORT_PATH : `${MONEYFILL_CARD_CHARGES_SORT_PATH}&q=${encodeURIComponent(q)}`
+}
+
+type UnsplitCardChargeTxLite = { id: string; posted_at: string | null; counterparty_name: string | null; amount: number; raw: Json | null }
+
+/**
  * Card purchases posted in the close week with no job allocations. Null on
  * error / ineligibility (mercury RLS is staff-scoped) — callers report partial.
+ * Both reads are paged: the transactions via `fetchAllRows`, the allocations via
+ * the same chunked `fetchJobAllocationsByMercuryTxIds` Banking's User Sort uses
+ * (v2.2841) — so this queue and the tab's "Not split to jobs" count can never
+ * disagree because one of them hit PostgREST's silent 1000-row cap.
  */
 export async function fetchUnsplitCardChargesForWeek(weekMondayYmd: string): Promise<UnsplitCardChargeRow[] | null> {
   const bounds = weekUtcBounds(weekMondayYmd)
   if (!bounds) return null
   try {
-    const txRes = await supabase
-      .from('mercury_transactions')
-      .select('id, posted_at, counterparty_name, amount, raw')
-      .gte('posted_at', bounds.startIso)
-      .lt('posted_at', bounds.endIso)
-      .order('posted_at', { ascending: true })
-    if (txRes.error) throw txRes.error
-    const txs = (txRes.data ?? []) as Array<{ id: string; posted_at: string | null; counterparty_name: string | null; amount: number; raw: Json | null }>
+    const txs = await fetchAllRows<UnsplitCardChargeTxLite>(
+      (from, to) =>
+        supabase
+          .from('mercury_transactions')
+          .select('id, posted_at, counterparty_name, amount, raw')
+          .gte('posted_at', bounds.startIso)
+          .lt('posted_at', bounds.endIso)
+          .order('posted_at', { ascending: true })
+          .order('id')
+          .range(from, to),
+      'moneyfill card charges mercury_transactions',
+    )
     if (txs.length === 0) return []
-    const allocRes = await supabase
-      .from('mercury_transaction_job_allocations')
-      .select('mercury_transaction_id')
-      .in('mercury_transaction_id', txs.map((t) => t.id))
-    if (allocRes.error) throw allocRes.error
-    const allocated = new Set((allocRes.data ?? []).map((r) => String((r as { mercury_transaction_id: string }).mercury_transaction_id)))
+    const allocRows = await fetchJobAllocationsByMercuryTxIds(
+      txs.map((t) => t.id),
+      'moneyfill card charges',
+    )
+    const allocated = new Set(allocRows.map((r) => String(r.mercury_transaction_id)))
     return unsplitCardChargesFromTxs(txs, allocated)
   } catch {
     return null
@@ -340,18 +371,28 @@ export type PendingApprovalSessionRow = {
   jobOrBid: 'job' | 'bid' | null
 }
 
+/** The Sun–Sat pay week the people-hours queue reviews for a Mon–Sun close week (header count + section agree by construction). */
+export function pendingApprovalPayWeek(weekMondayYmd: string): PayWeek {
+  return payWeekForCloseWeek(weekMondayYmd)
+}
+
 /**
- * Queue 3d: closed clock sessions in-week nobody has approved — labor cost not
- * yet booked anywhere (crew rows only sync on approval). Null on error.
+ * Queue 3d: closed clock sessions nobody has approved — labor cost not yet
+ * booked anywhere (crew rows only sync on approval). Null on error.
+ *
+ * Window = the Sun–Sat pay week ending inside the close week (v2 re-anchor,
+ * Tier-1 #15): the Mon–Sun window straddled two pay weeks, so this queue could
+ * read "all clear" while Draft Payroll still listed pending sessions.
  */
 export async function fetchPendingApprovalForWeek(weekMondayYmd: string): Promise<PendingApprovalSessionRow[] | null> {
   try {
+    const payWeek = pendingApprovalPayWeek(weekMondayYmd)
     const [sessRes, wagesRes] = await Promise.all([
       supabase
         .from('clock_sessions')
         .select('id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, users!clock_sessions_user_id_fkey(name)')
-        .gte('work_date', weekMondayYmd)
-        .lt('work_date', addDaysYmd(weekMondayYmd, 7))
+        .gte('work_date', payWeek.start)
+        .lte('work_date', payWeek.end)
         .not('clocked_out_at', 'is', null)
         .is('approved_at', null)
         .is('rejected_at', null)

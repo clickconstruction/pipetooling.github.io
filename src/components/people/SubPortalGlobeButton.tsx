@@ -7,10 +7,11 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import {
   buildPortalTimeline,
-  computePortalMainOffCustomerIds,
+  portalGlobeInitialState,
   type PortalSlugEventRow,
   type PortalTimelineEntry,
 } from '../../lib/portal/portalLinkState'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 import {
   appendRandomTail,
   isValidSlug,
@@ -28,12 +29,15 @@ import { setSubPortalOff, useSubPortalLinkOff } from '../../hooks/useSubPortalOf
  * hero = the custom address (editable until first shared) + Copy / Preview /
  * gear (Direct link · Address · Reset · History) + a scaled live preview.
  * A turned-off portal paints the globe red app-wide, and opening the modal
- * never silently re-mints a portal that was deliberately turned off.
+ * never silently re-mints a portal that was deliberately turned off — nor
+ * mints one for a never-shared sub (journey-map #14(b)): that opens into
+ * "No portal link yet" and the link is created only on "Create their link".
  * Self-contained; renders nothing for non-office roles.
  */
 
 type MainState =
   | { kind: 'loading' }
+  | { kind: 'unminted' }
   | { kind: 'active'; token: string }
   | { kind: 'off' }
   | { kind: 'error'; message: string }
@@ -60,7 +64,7 @@ export default function SubPortalGlobeButton({
   personName: string
   size?: number
 }) {
-  const { role } = useAuth()
+  const { user, role } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [open, setOpen] = useState(false)
@@ -156,20 +160,20 @@ export default function SubPortalGlobeButton({
       setAddrInput(slugRow?.slug ?? '')
 
       const active = rows.find((r) => r.revoked_at === null)
-      if (active?.token) {
+      const verdict = portalGlobeInitialState(adapted, personId)
+      if (verdict === 'active' && active?.token) {
         setMain({ kind: 'active', token: active.token })
         setSubPortalOff(personId, false)
         return
       }
-      const isOff = computePortalMainOffCustomerIds(adapted).includes(personId)
-      if (isOff) {
+      if (verdict === 'off') {
         setMain({ kind: 'off' })
         setSubPortalOff(personId, true)
         return
       }
-      const token = await mint(false)
-      if (!token) throw new Error('No link returned')
-      setMain({ kind: 'active', token })
+      // Never-minted (the adapter has no legacy audiences, so nothing else is
+      // left): open into the unminted state — the mint waits for a click.
+      setMain({ kind: 'unminted' })
       setSubPortalOff(personId, false)
     } catch (e) {
       setMain({ kind: 'error', message: formatErrorMessage(e, 'Could not load the portal link') })
@@ -337,6 +341,27 @@ export default function SubPortalGlobeButton({
     }
   }
 
+  /** The ONE place a never-shared sub's link comes into being: a click, a toast, a telemetry row. */
+  const createLink = async () => {
+    setBusy(true)
+    try {
+      const token = await mint(false)
+      if (!token) throw new Error('No link returned')
+      setMain({ kind: 'active', token })
+      setSubPortalOff(personId, false)
+      setTimeline((prev) => [
+        { kind: 'link', at: new Date().toISOString(), createdBy: user?.id ?? null, audience: 'all', outcome: 'active', revokedAt: null },
+        ...prev,
+      ])
+      showToast('Portal link created.', 'success')
+      recordNavClick(user?.id, role, 'portal_link_minted', '#sub-globe')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not create the link'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const fmtWhen = (iso: string) =>
     new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
@@ -429,6 +454,23 @@ export default function SubPortalGlobeButton({
                   style={{ padding: '0.45rem 1rem', background: '#059669', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
                 >
                   Turn portal back on
+                </button>
+              </div>
+            )}
+
+            {main.kind === 'unminted' && (
+              <div style={{ marginTop: '0.6rem', border: '1px dashed var(--border-strong)', borderRadius: 7, padding: '0.7rem 0.9rem' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-900)' }}>No portal link yet.</div>
+                <p style={{ margin: '0.3rem 0 0.6rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {personName} has never been given a portal page. Creating the link makes their page live — you decide when to text it. Just looking? Close this and nothing is created.
+                </p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void createLink()}
+                  style={{ padding: '0.45rem 1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}
+                >
+                  {busy ? 'Creating…' : 'Create their link'}
                 </button>
               </div>
             )}

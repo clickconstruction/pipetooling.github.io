@@ -3,6 +3,7 @@
  * fetches the people roster (identity resolution), holds range/search/sort/expand state, and
  * renders. Dev-only tab (gating in Jobs.tsx). */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { CREW_PNL_BILLED_LABEL, CREW_PNL_BILLED_TOOLTIP } from '../../lib/jobs/profitLabels'
 import { supabase } from '../../lib/supabase'
 import {
   buildCrewPnlSummary,
@@ -351,8 +352,8 @@ export default function JobsCrewPnlTab({
                   <th style={{ ...thBase, textAlign: 'right' }} onClick={() => toggleSort('laborCost')}>
                     Labor Cost{sortMark('laborCost')}
                   </th>
-                  <th style={{ ...thBase, textAlign: 'right' }} onClick={() => toggleSort('billing')}>
-                    Billing{sortMark('billing')}
+                  <th style={{ ...thBase, textAlign: 'right' }} onClick={() => toggleSort('billing')} title={CREW_PNL_BILLED_TOOLTIP}>
+                    {CREW_PNL_BILLED_LABEL}{sortMark('billing')}
                   </th>
                   <th style={{ ...thBase, textAlign: 'right' }} onClick={() => toggleSort('profit')}>
                     Profit{sortMark('profit')}
@@ -419,7 +420,8 @@ export default function JobsCrewPnlTab({
             </div>
           )}
           <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.5rem 0 0' }}>
-            Billing credit is hours-weighted: clocked hours for crew, and for sub sheets their cost ÷
+            <strong>Billed (gross)</strong> is the job's gross total bill — not cash collected and not revenue
+            before overhead. Billing credit is hours-weighted: clocked hours for crew, and for sub sheets their cost ÷
             the Sub $/hr rate ("equivalent hours" — always ≈, sheet unit-hours are display-only).
             ≈ also marks equal-split estimates for jobs with no hours at all. Sub-sheet labor and
             credit split evenly across assigned names; unlinked sheets carry cost but no credit.
@@ -499,7 +501,7 @@ function CrewPnlRow({
                   <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Job</th>
                   <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem' }}>Hours</th>
                   <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem' }}>Labor cost</th>
-                  <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem' }}>Billing</th>
+                  <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem' }} title={CREW_PNL_BILLED_TOOLTIP}>{CREW_PNL_BILLED_LABEL}</th>
                 </tr>
               </thead>
               <tbody>

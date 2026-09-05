@@ -73,9 +73,12 @@ export default function JobSummaryCycleView({ rows, ledger, ledgerLoading, start
   const n = Math.max(1, months.length)
   const cw = (W - L - R) / n
   const bw = Math.min(cw * 0.3, 40)
-  const maxY = Math.max(45, ...months.map((m) => Math.max(m.medianWorkToBill ?? 0, m.medianBillToPaid ?? 0))) * 1.15
+  const dataMax = Math.max(0, ...months.map((m) => Math.max(m.medianWorkToBill ?? 0, m.medianBillToPaid ?? 0)))
+  // Fit the data: a company that bills same-day and gets paid in three shouldn't read as a flat line under a 45-day ceiling.
+  const maxY = Math.max(8, dataMax * 1.25)
   const yOf = (v: number) => T + plotH * (1 - v / maxY)
-  const gridStep = maxY <= 60 ? 15 : maxY <= 120 ? 30 : 60
+  const gridStep = maxY <= 12 ? 2 : maxY <= 30 ? 5 : maxY <= 60 ? 15 : maxY <= 120 ? 30 : 60
+  const showThirty = maxY >= 30
   const gridVals: number[] = []
   for (let v = 0; v <= maxY; v += gridStep) gridVals.push(v)
   const maxIdle = Math.max(1, ...stale.map((s) => s.idleDays))
@@ -130,10 +133,14 @@ export default function JobSummaryCycleView({ rows, ledger, ledgerLoading, start
             <text transform={`rotate(-90 11 ${T + plotH / 2})`} x={11} y={T + plotH / 2} textAnchor="middle" fontSize={10} fill="var(--text-muted)" style={{ pointerEvents: 'none' }}>
               median days
             </text>
-            <line x1={L} x2={W - R} y1={yOf(30)} y2={yOf(30)} stroke="var(--text-muted)" strokeDasharray="4 3" />
-            <text x={W - R - 2} y={yOf(30) - 4} textAnchor="end" fontSize={9.5} fill="var(--text-muted)">
-              30 days
-            </text>
+            {showThirty ? (
+              <>
+                <line x1={L} x2={W - R} y1={yOf(30)} y2={yOf(30)} stroke="var(--text-muted)" strokeDasharray="4 3" />
+                <text x={W - R - 2} y={yOf(30) - 4} textAnchor="end" fontSize={9.5} fill="var(--text-muted)">
+                  30 days
+                </text>
+              </>
+            ) : null}
             {hoverIdx != null ? <rect x={L + hoverIdx * cw} y={T} width={cw} height={plotH} fill="var(--text-strong)" opacity={0.06} style={{ pointerEvents: 'none' }} /> : null}
             {months.map((m, i) => {
               const cx = L + i * cw + cw / 2
@@ -171,10 +178,14 @@ export default function JobSummaryCycleView({ rows, ledger, ledgerLoading, start
               <i style={{ display: 'inline-block', width: 12, height: 8, borderRadius: 2, background: BILL_TO_PAID }} />
               bill → paid (median days)
             </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <i style={{ display: 'inline-block', width: 14, height: 0, borderTop: '1px dashed var(--text-muted)' }} />
-              30 days
-            </span>
+            {showThirty ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <i style={{ display: 'inline-block', width: 14, height: 0, borderTop: '1px dashed var(--text-muted)' }} />
+                30 days
+              </span>
+            ) : (
+              <span style={{ color: 'var(--text-green-700)' }}>every month’s medians are under 30 days</span>
+            )}
             <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>by the month the bill went out · hover a month</span>
           </div>
         </div>

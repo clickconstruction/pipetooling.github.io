@@ -1416,6 +1416,7 @@ export default function Jobs() {
   const jobSummaryView = useJobSummaryView({
     enabled: activeTab === 'job-summary',
     userId: authUser?.id,
+    role: authRole,
     rows: jobSummaryData,
     reportPctByJobId: jobSummaryReportPctByJobId,
     search: jobSummarySearch,

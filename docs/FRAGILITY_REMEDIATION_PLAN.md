@@ -75,6 +75,8 @@ Next:      B6 (payments_made hard guard — gated on a fresh audit after B4/B5 b
 Then:      C2 writer flips (D0 unblocked; pending owner roster decisions) → C3 enforcement (audit-gated)
 ```
 
+> Workstreams A and B complete; C rides [`to-dos/person-identity-phase-e.md`](../to-dos/person-identity-phase-e.md) (2026-09-05 sweep).
+
 ## Status log
 
 - 2026-08-11 — **B6 shipped** (v2.1575, migration `20260811200048`) — and the gate worked exactly as designed: the overdue re-audit found **2 drifted jobs** (#925 billed, #921 paid; `payments_made` at exactly half their row sums, $1,530.80 total). Diagnosis from the rows themselves: duplicate Stripe payment rows created **milliseconds apart** (2026-08-04 20:17:22.203/.218 and 2026-08-08 19:09:23.980/.987) — Stripe's dual `invoice.paid`+`invoice.payment_succeeded` events (distinct ids, dedupe passes both) raced `mark_invoice_paid_from_stripe`, and the **B3 recompute trigger itself raced**: each transaction summed on a snapshot that saw only its own row, and the loser's stale half-sum won the pm write. The stored pm values were coincidentally the TRUE amounts; the ROWS were doubled (row-derived surfaces showed doubles). Shipped in one migration: lock-first recompute (job-row `FOR UPDATE` before summing, transaction-local GUC `pipetooling.payments_recompute`), the `jobs_ledger_payments_made_guard` BEFORE-UPDATE trigger, `FOR UPDATE` locks in all five payment RPCs (sourced from the CURRENT bodies — note `apply_mercury_bank_payment_allocations` was redefined by `20260801020903` post-B3), and the repair DELETE of the two duplicate rows. Post-push verification: audit reports all-consistent; guard rejects a direct pm UPDATE (transactional test, rolled back). **Workstream B fully complete.**

@@ -264,7 +264,7 @@ const TOOLS = [
   {
     name: 'paste_counts',
     description:
-      "STG-5 in one call (v2.2849): write count rows into PipeTooling and book-assign every one from the 🤖 Robot Default book, so the Audits tab prices your card. Each row names the book entry to assign (extend the book first when a tag is missing); unit_price_override carries a price the book doesn't (a lump/bucket row, a LOCK-stated all-in) — label such rows transparently. Pass expected_total (your LOCK total) and the call REFUSES when the priced rows don't equal it — the step-0 invariant (tab total = lock) is enforced server-side, not by convention. Refused when the bid already has rows unless replace: true. Do this BEFORE your LOCK note and before the audit exists; an audit with no rows reads draft $0 and cannot be judged (the 2026-09-04 'we will not do this for free' cards).",
+      "STG-5 in one call (v2.2862): write count rows into PipeTooling and book-assign every one from the 🤖 Robot Default book, so the Audits tab prices your card. Each row names the book entry to assign (extend the book first when a tag is missing); unit_price_override carries a price the book doesn't (a lump/bucket row, a LOCK-stated all-in) — label such rows transparently. Pass expected_total (your LOCK total) and the call REFUSES when the priced rows don't equal it — the step-0 invariant (tab total = lock) is enforced server-side, not by convention. Refused when the bid already has rows unless replace: true. Do this BEFORE your LOCK note and before the audit exists; an audit with no rows reads draft $0 and cannot be judged (the 2026-09-04 'we will not do this for free' cards).",
     inputSchema: {
       type: 'object',
       properties: {
@@ -924,7 +924,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // Blindness order is structural: no LOCK note on the ledger, no unseal.
       const { data: lockNotes } = await admin.from('bids_submission_entries').select('id').eq('bid_id', bid.id).ilike('notes', '%LOCK%').limit(1)
       if (!lockNotes?.length) return textContent(`b${bid.bid_number} has no LOCK note on its ledger — add_bid_note your blind total first ("[STG-3..5 + LOCK] $NN,NNN …"), then score.`, true)
-      // STG-5 is structural too (v2.2849): an estimate that lives only in the lock note
+      // STG-5 is structural too (v2.2862): an estimate that lives only in the lock note
       // renders draft $0 on the Audits tab and cannot be judged — seven BT-16..19 cards
       // sat that way for four days. No count rows in PipeTooling, no unseal.
       const { count: twinRowCount } = await admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', bid.id)

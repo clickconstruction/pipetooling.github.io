@@ -179,6 +179,7 @@ export function PersonDeskHoursSection({
         <PeopleHoursApprovalsQueueModal
           pinUserId={userId}
           pinDisplayName={displayName}
+          surface="desk-queue"
           zIndex={DESK_EDITOR_Z}
           reloadKey={queueReload}
           authUserId={viewerUserId ?? undefined}
