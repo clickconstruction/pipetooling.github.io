@@ -66,7 +66,7 @@ export default function PeopleSubsTab() {
   const [error, setError] = useState<string | null>(null)
   const [savingDocId, setSavingDocId] = useState<string | null>(null)
   /** Active sub roster — exactly the population buildSubsHqRows attributes against. */
-  const [roster, setRoster] = useState<Array<{ id: string; name: string }>>([])
+  const [roster, setRoster] = useState<Array<{ id: string; name: string; benched: boolean }>>([])
   const [assignPickerKey, setAssignPickerKey] = useState<string | null>(null)
   const [assignSavingKey, setAssignSavingKey] = useState<string | null>(null)
   const [showAllUnattributed, setShowAllUnattributed] = useState(false)
@@ -158,9 +158,9 @@ export default function PeopleSubsTab() {
     }
     setBenchMeta(meta)
 
-    const activeRoster = ((peopleRes.data ?? []) as Array<{ id: string; name: string; archived_at: string | null }>)
+    const activeRoster = ((peopleRes.data ?? []) as Array<{ id: string; name: string; archived_at: string | null; end_date?: string | null }>)
       .filter((p) => !p.archived_at)
-      .map((p) => ({ id: p.id, name: p.name }))
+      .map((p) => ({ id: p.id, name: p.name, benched: !!p.end_date }))
       .sort((a, b) => a.name.localeCompare(b.name))
     setRoster(activeRoster)
 
@@ -485,11 +485,30 @@ export default function PeopleSubsTab() {
                       <option value="" disabled>
                         {g.reason === 'shared' ? 'Reassign to one sub…' : 'Link these sheets to…'}
                       </option>
-                      {roster.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
+                      {roster.some((r) => r.benched) ? (
+                        <>
+                          <optgroup label="Active">
+                            {roster.filter((r) => !r.benched).map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="On the bench">
+                            {roster.filter((r) => r.benched).map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </>
+                      ) : (
+                        roster.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                     {g.reason === 'shared' && (
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>

@@ -21,13 +21,14 @@ export type RailFactsAccess = {
  */
 export async function loadRailFacts(access: RailFactsAccess, todayYmd: string): Promise<RailFacts> {
   const soon = new Date(Date.parse(`${todayYmd}T12:00:00Z`) + 30 * 86_400_000).toISOString().slice(0, 10)
-  const [pending, docsRes, licRes, portalRes] = await Promise.all([
+  const [pending, docsRes, licRes, portalRes, benchRes] = await Promise.all([
     access.canAccessHours || access.canAccessPay ? fetchAllPendingClockSessions().catch(() => []) : Promise.resolve([]),
     access.canAccessContracts
       ? supabase.from('person_contract_documents').select('person_id, person_name, status, expires_at').or(`status.eq.unsent,expires_at.lte.${soon}`)
       : Promise.resolve({ data: [] }),
     access.canAccessLicenses ? supabase.from('person_licenses').select('person_name, date_of_expiry').lte('date_of_expiry', soon) : Promise.resolve({ data: [] }),
     supabase.from('sub_portal_links').select('person_id').is('revoked_at', null),
+    supabase.from('people').select('id').eq('kind', 'sub').not('end_date', 'is', null),
   ])
   const pendingByUserId: RailFacts['pendingByUserId'] = {}
   const q = buildApprovalsQueue(pending, { todayYmd })
@@ -54,5 +55,7 @@ export async function loadRailFacts(access: RailFactsAccess, todayYmd: string): 
   }
   const portalOnPersonIds = new Set<string>()
   for (const r of (((portalRes as { data: unknown[] | null }).data) ?? []) as Array<{ person_id: string }>) portalOnPersonIds.add(r.person_id)
-  return { pendingByUserId, unsentDocsByName, expiringByName, expiredByName, portalOnPersonIds }
+  const benchPersonIds = new Set<string>()
+  for (const r of (((benchRes as { data: unknown[] | null }).data) ?? []) as Array<{ id: string }>) benchPersonIds.add(r.id)
+  return { pendingByUserId, unsentDocsByName, expiringByName, expiredByName, portalOnPersonIds, benchPersonIds }
 }

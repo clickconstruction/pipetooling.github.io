@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.2837',
+  version: 'v2.2860',
   date: '2026-09-05',
   title: 'The bench reaches the pickers and the nags',
   kind: 'feature',
