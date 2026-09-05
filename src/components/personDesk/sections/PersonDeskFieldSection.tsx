@@ -146,7 +146,7 @@ export function PersonDeskFieldSection({ userId, payName, displayName, viewer, c
   }
 
   return (
-    <DeskSection title="Field">
+    <DeskSection id="field" title="Field">
       {showVehicles ? (
         <DeskRow
           label="Vehicle"

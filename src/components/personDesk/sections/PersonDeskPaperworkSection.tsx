@@ -103,7 +103,7 @@ export function PersonDeskPaperworkSection({ payName, personId, viewer, changeKe
   const unassigned = templates.filter((t) => !assigned.includes(t.id))
 
   return (
-    <DeskSection title="Paperwork" who={canEdit ? undefined : 'contracts roles'}>
+    <DeskSection id="paperwork" title="Paperwork" who={canEdit ? undefined : 'contracts roles'}>
       {!payName && !personId ? (
         <DeskEmpty>Paperwork keys on the pay name — an account or roster row gives them one.</DeskEmpty>
       ) : (

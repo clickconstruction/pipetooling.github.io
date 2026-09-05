@@ -91,7 +91,7 @@ export function PersonDeskHoursSection({
   if (!visible) return null
   if (!userId) {
     return (
-      <DeskSection title="Hours & approvals">
+      <DeskSection id="hours" title="Hours & approvals">
         <DeskEmpty>Clock sessions need a login account.</DeskEmpty>
       </DeskSection>
     )
@@ -116,7 +116,7 @@ export function PersonDeskHoursSection({
   const flagText = formatFlagCounts(queue.flagCounts)
 
   return (
-    <DeskSection title="Hours & approvals">
+    <DeskSection id="hours" title="Hours & approvals">
       {error ? <DeskEmpty>{error}</DeskEmpty> : null}
       <DeskRow
         label="Now"

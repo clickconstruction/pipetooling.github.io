@@ -58,7 +58,7 @@ export function PersonDeskRecordsSection({ userId, personId, viewer, changeKey }
   }, [userId, personId, viewer.isDev, viewer.canAccessContracts, changeKey])
 
   return (
-    <DeskSection title="Records" who={viewer.isDev ? undefined : 'HR file dev-only'} whoTone="dev">
+    <DeskSection id="records" title="Records" who={viewer.isDev ? undefined : 'HR file dev-only'} whoTone="dev">
       <DeskRow
         label="HR file"
         actions={

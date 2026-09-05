@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { deskSectionDomId, type PersonDeskSectionId } from '../../lib/people/personDeskSections'
 
 /** Shared chrome for Person Desk sections (v2.2701): one row grammar so every section reads the same. */
 
@@ -87,15 +88,20 @@ export function DeskSection({
   whoTone = 'muted',
   children,
   wide,
+  id,
 }: {
   title: string
   who?: string
   whoTone?: 'muted' | 'dev'
   children: ReactNode
   wide?: boolean
+  /** v2.2810: the section's anchor — doors and deep links scroll the Desk to it. */
+  id?: PersonDeskSectionId
 }) {
   return (
     <section
+      id={id ? deskSectionDomId(id) : undefined}
+      data-desk-section={id}
       style={{
         background: 'var(--surface)',
         border: '1px solid var(--border)',
@@ -104,6 +110,8 @@ export function DeskSection({
         flexDirection: 'column',
         gridColumn: wide ? '1 / -1' : undefined,
         minWidth: 0,
+        scrollMarginTop: '0.5rem',
+        transition: 'box-shadow 300ms',
       }}
     >
       <div

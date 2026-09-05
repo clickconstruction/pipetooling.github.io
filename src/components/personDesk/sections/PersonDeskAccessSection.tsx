@@ -54,7 +54,7 @@ export function PersonDeskAccessSection({
 
   if (!user) {
     return (
-      <DeskSection title="Access & account">
+      <DeskSection id="access" title="Access & account">
         <DeskEmpty>No login account. The header's "Invite as user" note says where to invite them.</DeskEmpty>
       </DeskSection>
     )
@@ -157,7 +157,7 @@ export function PersonDeskAccessSection({
   }
 
   return (
-    <DeskSection title="Access & account" who={editable ? undefined : 'locked rows say why'} whoTone="dev">
+    <DeskSection id="access" title="Access & account" who={editable ? undefined : 'locked rows say why'} whoTone="dev">
       <DeskRow
         label="Role"
         actions={editable ? null : <LockTag />}

@@ -36,14 +36,14 @@ export function PersonDeskPortalSection({ personId, displayName, changeKey }: { 
 
   if (!personId) {
     return (
-      <DeskSection title="Portal & paperwork">
+      <DeskSection id="portal" title="Portal & paperwork">
         <DeskEmpty>The portal, compliance documents and work orders hang off the roster row. Create it from the header first.</DeskEmpty>
       </DeskSection>
     )
   }
 
   return (
-    <DeskSection title="Portal & paperwork">
+    <DeskSection id="portal" title="Portal & paperwork">
       <DeskRow label="Portal" actions={<SubPortalGlobeButton personId={personId} personName={displayName} size={16} />}>
         {off ? <Chip tone="red">Off</Chip> : <Chip tone="blue">On</Chip>}
         <span style={{ color: 'var(--text-muted)' }}>{off ? 'Nobody can open their page — the globe turns it back on' : 'Copy the link or manage it from the globe'}</span>

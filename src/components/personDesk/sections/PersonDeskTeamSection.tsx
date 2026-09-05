@@ -80,7 +80,7 @@ export function PersonDeskTeamSection({
 
   if (!userId) {
     return (
-      <DeskSection title="Team & alerts">
+      <DeskSection id="team" title="Team & alerts">
         <DeskEmpty>Team leads and clock alerts need a login account.</DeskEmpty>
       </DeskSection>
     )
@@ -152,7 +152,7 @@ export function PersonDeskTeamSection({
     .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
 
   return (
-    <DeskSection title="Team & alerts">
+    <DeskSection id="team" title="Team & alerts">
       {error ? <DeskEmpty>{error}</DeskEmpty> : null}
       {assignments.length === 0 ? (
         <DeskRow

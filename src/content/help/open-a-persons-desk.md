@@ -26,6 +26,7 @@ Or open the **People → Person** tab: the same desk as a page, with a roster ra
 
 - **Hours & approvals** — whether they're clocked in right now (with {{button:red|Force clock out}}), how many sessions are waiting and how old the oldest is, and {{button:green|Open approvals}} — the all-weeks queue pinned to just this person. Also this week's closed hours and the last week you marked reviewed.
 - **Portal & paperwork** (subs only) — the portal on/off state with the globe to manage it, the Agreement / COI / W-9 chips, open work orders, and how many Sub Labor sheets are linked to them.
+- **Push notifications** (office roles) — whether the app can reach their phone: on with the device count, or off with the one step that turns it on.
 - **Team & alerts** — who approves their hours ({{button:outline|Assign a leader}} / Remove; a dev can set Full vs Strip), and, if you are their leader, the **Alert me on in/out** switch. Devs also see their Dispatch and Estimator inbox membership here.
 - **Pay & schedule** (pay roles) — wage and office rate ({{button:outline|Edit}}), the **Salaried** switch (turning it off shows the same warning Employment does: history is safe, pay becomes hours × wage, today's auto-sessions go, and the workday template is cleared), **also record hours** for salaried people, employment start → end, upcoming **time off** with {{button:outline|Add}}, {{button:outline|Workday schedule…}} for salaried people, and Money: the last pay report with a {{chip:green|paid}} or {{chip:yellow|unpaid}} chip, open offsets, and {{button:outline|Ledger}} · {{button:outline|Payroll}} · {{button:outline|Add offset}}.
 - **Field** — the truck they hold with {{button:outline|To motor pool}}, or **Hand off…** any vehicle to them; the housing they occupy with {{button:outline|End occupancy}} or **Assign…** a unit; their licenses with expiry chips and the {{button:outline|Hours log}}.
@@ -33,6 +34,8 @@ Or open the **People → Person** tab: the same desk as a page, with a roster ra
 - **Records** — the HR file's freshness and pending reports with {{button:outline|Open file}} (dev; everyone else sees whether a file exists and how many entries, nothing more), write-ups and attendance incidents in the last 90 days, and {{button:outline|Rate}} into Team → Review.
 - **Schedule** — today's schedule blocks and clock, the same view the Day · week · month button opens.
 - **Access & account** — role, trades, last sign-in with {{button:outline|Send sign-in email}}, training mode, and Active / Archived with {{button:red|Archive…}} (which runs through the Active Accounts row so customers can be reassigned on the way out).
+
+Links can land on one section: add `&section=paperwork` (or `hours`, `pay`, `push`, `access`…) to a `?person=` link and the Desk opens scrolled there.
 
 ## End employment
 
