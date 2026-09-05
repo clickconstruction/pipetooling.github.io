@@ -88,7 +88,7 @@ export default function JobSummaryAheadView({ allRows, totals, ledger, startYmd,
           </div>
         </div>
         <div style={tile}>
-          <div style={tileK}>Won, not started</div>
+          <div style={tileK}>Won, not marked started</div>
           <div style={tileV}>{data ? money(series.wonNotStartedUsd) : '…'}</div>
           <div style={tileS}>
             {series.wonNotStarted} {series.wonNotStarted === 1 ? 'bid' : 'bids'}
@@ -185,7 +185,7 @@ export default function JobSummaryAheadView({ allRows, totals, ledger, startYmd,
         </div>
 
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.65rem', minWidth: 0 }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Won, not started</div>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Won, not marked started</div>
           {!data ? (
             <p style={{ margin: '0.25rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading bids and the schedule…</p>
           ) : series.notStarted.length === 0 ? (
@@ -203,7 +203,7 @@ export default function JobSummaryAheadView({ allRows, totals, ledger, startYmd,
               ))}
             </ul>
           )}
-          <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>A won bid with no job yet. {series.wonNoDate > 0 ? 'Amber = no estimated start date, so it can’t be placed on the chart. ' : ''}Set the date on the bid and it lands in its week.</p>
+          <p style={{ margin: '0.4rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>Bids whose outcome is still “won” — set it to “started or complete” once the job begins and it leaves this list. {series.wonNoDate > 0 ? 'Amber = no estimated start date, so it can’t be placed on the chart. ' : ''}Set the date on the bid and it lands in its week.</p>
         </div>
       </div>
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>

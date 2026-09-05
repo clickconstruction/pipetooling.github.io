@@ -200,6 +200,16 @@ export default function JobSummaryLedgerToolbar({
             {underTarget > 0 ? `▾ ${underTarget} ${underTarget === 1 ? 'job' : 'jobs'} under the ${prefs.targetTrueMarginPct}% target` : `every job clears the ${prefs.targetTrueMarginPct}% target`}
           </span>
         ) : null}
+        {showMoney && totals.writeDownJobs > 0 ? (
+          <span style={chip} title="Agreed write-downs on the bills of these jobs — revenue already reflects them; this names the leak">
+            ✂ {money(totals.writeDownUsd)} written down on {totals.writeDownJobs} {totals.writeDownJobs === 1 ? 'job' : 'jobs'}
+          </span>
+        ) : null}
+        {totals.collectionsJobs > 0 ? (
+          <span style={chipRed} title="Flagged for collections and not yet paid">
+            ⚑ {totals.collectionsJobs} in collections{showMoney ? ` · ${money(totals.collectionsUsd)}` : ''}
+          </span>
+        ) : null}
         {totals.noRevenueJobs > 0 ? <span style={chip}>⚠ {totals.noRevenueJobs} {totals.noRevenueJobs === 1 ? 'job has' : 'jobs have'} no contract $</span> : null}
         {totals.noPctJobs > 0 ? <span style={chip}>⚠ {totals.noPctJobs} {totals.noPctJobs === 1 ? 'job has' : 'jobs have'} no % complete</span> : null}
         {hygiene && hygiene.pendingFieldSessions > 0 ? (

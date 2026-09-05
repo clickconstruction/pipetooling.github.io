@@ -41,6 +41,10 @@ A ranked bar chart sits above the table, one bar per group, green for profit and
 Sorted by true profit, the table says job 812 lost money. Cut by GC says one builder loses money on four jobs out of five. Cut by lead tech says whose jobs run thin. Cut by bill month is a monthly P&L in the same table.
 :::
 
+## Leakage flags
+
+Two chips in the row and a line in the totals strip name money that left after the sale. {{chip:yellow|✂ write-down}} marks a job whose bill was agreed down; the strip totals the dollars across the window. {{chip:red|⚑ collections}} marks a job flagged for collections and not yet paid. Revenue already reflects a write-down, so true profit is honest either way — the flag says why.
+
 ## The columns
 
 Revenue · Labor · Subs · Parts · **Gross** · Margin · Hours · days · **Overhead** · **True profit** · True % · **$/hr** (revenue ÷ approved field hours — the realized rate) · %.

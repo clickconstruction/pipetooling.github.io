@@ -22,6 +22,8 @@ const pt = (id: string, revenueUsd: number, trueMarginPct: number | null, trade:
     trueProfitUsd: trueMarginPct == null ? null : (revenueUsd * trueMarginPct) / 100,
     trueMarginPct,
     revenuePerHourUsd: revenueUsd / hours,
+    writeDownUsd: 0,
+    inCollections: false,
     lastWorkedYmd: null,
     flags: [],
   }) as JobSummaryEnrichedRow
