@@ -48,7 +48,7 @@ Every sub sheet sits at one of three stages, and the portal draws them as a four
 | {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: "Queued for the pay run — the date is right below." |
 | {{chip:green|Paid}} | The card leaves *Your jobs* — Paid sets itself when the balance hits $0. |
 
-Move a sheet from the **Stage** column on **Jobs → Sub Labor**: the **→** on the chip advances one stage, and clicking the chip opens all three so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
+Move a sheet from the **Where it stands** rail on **Jobs → Sub Labor**: the **→** beside the rail advances one stage, and clicking the rail's current dot opens all three so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
 
 :::example The sub tells you first
 While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on walk-through* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 162 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on walk-through · sub* with their note behind ✎.

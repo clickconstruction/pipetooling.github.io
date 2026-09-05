@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { buildJobWorkOrderCoverage, type JobWorkOrderCoverage, type WorkOrderRowLike } from '../../lib/subWorkOrders/workOrderCoverage'
+import { buildSheetRail, sheetNextAction, type SheetNextAction, type SheetRail as SheetRailShape } from '../../lib/subWorkOrders/sheetRail'
+import { isRosterSubSheet, type NeedsWorkOrderRosterPerson } from '../../lib/subWorkOrders/sheetsNeedingWorkOrder'
+import { SHEET_RAIL_GAP } from '../../lib/subWorkOrders/sheetRailTone'
+import { normalizePersonNameKey } from '../../lib/personNameKey'
+import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
+import { emitWorkOrderChanged, WORK_ORDER_CHANGED_EVENT } from '../../hooks/useJobWorkOrderCoverage'
+import { SheetRail } from './SheetRail'
+import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkOrderAssemblerModal'
+import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   SUB_SHEET_STAGES,
   SUB_SHEET_STAGE_HINT,
@@ -20,6 +31,7 @@ import {
   subLaborJobBalance,
   subLaborJobMatchesSearch,
   type SubLaborOutstandingByPerson,
+  type SubLaborSheetAssignee,
 } from '../../lib/subLaborOutstanding'
 import type {
   LaborJob,
@@ -34,6 +46,11 @@ export type JobsSubLaborTabProps = {
   laborJobs: LaborJob[]
   laborJobsLoading: boolean
   laborJobNamesByHcp: Record<string, string>
+  /** Pipeline jobs — job-anchored work orders cover every sheet on their job; the assembler needs the list. */
+  jobs: JobWithDetails[]
+  authUserId: string | undefined
+  /** Junction assignees per sheet — with the roster, tells a crew pay sheet from a sub sheet. */
+  laborJobAssigneesByJobId: ReadonlyMap<string, readonly SubLaborSheetAssignee[]>
   subLaborDueTotal: number
   subLaborOutstandingByPerson: SubLaborOutstandingByPerson
   onNewLaborJob: () => void
@@ -55,6 +72,9 @@ export default function JobsSubLaborTab({
   laborJobs,
   laborJobsLoading,
   laborJobNamesByHcp,
+  jobs,
+  authUserId,
+  laborJobAssigneesByJobId,
   subLaborDueTotal,
   subLaborOutstandingByPerson,
   onNewLaborJob,
@@ -67,36 +87,26 @@ export default function JobsSubLaborTab({
 }: JobsSubLaborTabProps) {
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
   const [stageMenuJobId, setStageMenuJobId] = useState<string | null>(null)
-  /** Sheet-anchored work orders (v2.2786): one chip per sheet under the stage cell. */
-  const [workOrdersBySheet, setWorkOrdersBySheet] = useState<Record<string, SheetWorkOrderChipInfo>>({})
-  const laborJobIdsKey = useMemo(() => laborJobs.map((j) => j.id).sort().join(','), [laborJobs])
+  /** Every live work order (one-row spine, PR 4): sheet-anchored ones cover their sheet, job-anchored ones every sheet on the job. */
+  const [commitments, setCommitments] = useState<WorkOrderRowLike[]>([])
+  const loadCommitments = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('step_commitments')
+      .select('id, status, amount, display_name, job_id, labor_job_id, step_id, record_id, offered_at, offer_expires_at, signed_at, accepted_at, declined_at, decline_reason, created_at, person_id')
+      .neq('status', 'cancelled')
+      .order('created_at', { ascending: false })
+      .limit(1000)
+    if (error) return
+    setCommitments((data ?? []) as WorkOrderRowLike[])
+  }, [])
   useEffect(() => {
-    const ids = laborJobIdsKey ? laborJobIdsKey.split(',') : []
-    if (ids.length === 0) {
-      setWorkOrdersBySheet({})
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      const next: Record<string, SheetWorkOrderChipInfo> = {}
-      for (let i = 0; i < ids.length; i += 300) {
-        const { data, error } = await supabase
-          .from('step_commitments')
-          .select('labor_job_id, status, signed_at, accepted_at, offered_at, amount')
-          .in('labor_job_id', ids.slice(i, i + 300))
-          .is('step_id', null)
-          .neq('status', 'cancelled')
-        if (error) return
-        for (const r of (data ?? []) as Array<{ labor_job_id: string | null; status: string; signed_at: string | null; accepted_at: string | null; offered_at: string | null; amount: number }>) {
-          if (r.labor_job_id) next[r.labor_job_id] = { status: r.status, signedAt: r.signed_at ?? r.accepted_at, offeredAt: r.offered_at, amount: Number(r.amount) }
-        }
-      }
-      if (!cancelled) setWorkOrdersBySheet(next)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [laborJobIdsKey])
+    void loadCommitments()
+    const onChanged = () => void loadCommitments()
+    window.addEventListener(WORK_ORDER_CHANGED_EVENT, onChanged)
+    return () => window.removeEventListener(WORK_ORDER_CHANGED_EVENT, onChanged)
+  }, [loadCommitments])
+  const { roster } = useRosterSubKinds()
+  const [assembler, setAssembler] = useState<WorkOrderAssemblerInitial | null>(null)
   useEffect(() => {
     if (!stageMenuJobId) return
     const close = () => setStageMenuJobId(null)
@@ -105,7 +115,47 @@ export default function JobsSubLaborTab({
   }, [stageMenuJobId])
   const [showAllOutstanding, setShowAllOutstanding] = useState(false)
   const [showOnlyDue, setShowOnlyDue] = useState(true)
-  const [sortBy, setSortBy] = useState<'date' | 'contractor'>('contractor')
+  const [noAgreementOnly, setNoAgreementOnly] = useState(false)
+  const [subsOnly, setSubsOnly] = useState(false)
+  const [sortBy, setSortBy] = useState<'due' | 'date' | 'contractor'>('due')
+  const today = todayYmdInAppTz()
+
+  const spine = useMemo(() => {
+    const personById = new Map(roster.map((p) => [p.id, p]))
+    const personByNameKey = new Map<string, NeedsWorkOrderRosterPerson>()
+    for (const p of roster) {
+      const k = normalizePersonNameKey(p.name)
+      if (k && !personByNameKey.has(k)) personByNameKey.set(k, p)
+    }
+    const jobsByNumber = new Map(jobs.map((j) => [j.hcp_number.trim().toLowerCase(), j]))
+    const bySheet = new Map<string, WorkOrderRowLike[]>()
+    const byJob = new Map<string, WorkOrderRowLike[]>()
+    for (const r of commitments) {
+      if (r.labor_job_id) bySheet.set(r.labor_job_id, [...(bySheet.get(r.labor_job_id) ?? []), r])
+      else if (r.job_id) byJob.set(r.job_id, [...(byJob.get(r.job_id) ?? []), r])
+    }
+    const assigneeIds = new Map<string, string[]>()
+    for (const [id, list] of laborJobAssigneesByJobId) assigneeIds.set(id, list.map((a) => a.personId))
+    return { personById, personByNameKey, jobsByNumber, bySheet, byJob, assigneeIds }
+  }, [roster, jobs, commitments, laborJobAssigneesByJobId])
+
+  /** The rail, the office's next move, and whether the sheet is crew pay — one call per row. */
+  const spineFor = useCallback(
+    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; jobId: string | null; personId: string | null } => {
+      const pipelineJob = spine.jobsByNumber.get((job.job_number ?? '').trim().toLowerCase()) ?? null
+      const covering = [...(spine.bySheet.get(job.id) ?? []), ...(pipelineJob ? (spine.byJob.get(pipelineJob.id) ?? []) : [])]
+      const coverage = buildJobWorkOrderCoverage(covering, today)
+      const crew = roster.length > 0 && !isRosterSubSheet(job, spine.assigneeIds, spine.personById, spine.personByNameKey)
+      const unpriced = bal.totalCost === 0 && bal.paid === 0 && bal.backcharges === 0
+      const open = Math.max(0, bal.balance)
+      const rail = buildSheetRail({ coverage, sheetStage: normalizeSubSheetStage(job.stage), payableAfter: job.payable_after ?? null, agreed: bal.totalCost, open, unpriced, crewPay: crew })
+      const next = sheetNextAction(rail, coverage, { subName: job.assigned_to_name, agreed: bal.totalCost, open, unpriced, todayYmd: today })
+      const ids = spine.assigneeIds.get(job.id) ?? []
+      const personId = ids.length === 1 ? ids[0]! : null
+      return { coverage, rail, next, crew, jobId: pipelineJob?.id ?? null, personId }
+    },
+    [spine, roster.length, today],
+  )
 
   const outstandingRows = subLaborOutstandingByPerson.rows
   const OUTSTANDING_PREVIEW = 8
@@ -118,9 +168,17 @@ export default function JobsSubLaborTab({
   // computed balance so the row render reuses it rather than recomputing.
   const visibleLedgerJobs = laborJobs
     .filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp))
-    .map((job) => ({ job, ...subLaborJobBalance(job) }))
+    .map((job) => {
+      const bal = subLaborJobBalance(job)
+      return { job, ...bal, ...spineFor(job, bal) }
+    })
     .filter((row) => !showOnlyDue || row.balance > 0)
+    .filter((row) => !noAgreementOnly || (!row.crew && row.rail.gap))
+    .filter((row) => !subsOnly || !row.crew)
     .sort((a, b) => {
+      if (sortBy === 'due') {
+        return b.balance - a.balance || (a.job.assigned_to_name ?? '').localeCompare(b.job.assigned_to_name ?? '')
+      }
       if (sortBy === 'contractor') {
         return (a.job.assigned_to_name ?? '').localeCompare(b.job.assigned_to_name ?? '')
       }
@@ -223,7 +281,7 @@ export default function JobsSubLaborTab({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}>
           <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Sort:</span>
           <div style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden' }}>
-            {(['date', 'contractor'] as const).map((key) => {
+            {(['due', 'date', 'contractor'] as const).map((key) => {
               const active = sortBy === key
               return (
                 <button
@@ -241,7 +299,7 @@ export default function JobsSubLaborTab({
                     fontWeight: active ? 600 : 400,
                   }}
                 >
-                  {key === 'date' ? 'Date' : 'Contractor'}
+                  {key === 'due' ? 'Due' : key === 'date' ? 'Date' : 'Contractor'}
                 </button>
               )
             })}
@@ -255,24 +313,34 @@ export default function JobsSubLaborTab({
           />
           Only show due
         </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }} title="Sub sheets with work under way and nothing signed">
+          <input type="checkbox" checked={noAgreementOnly} onChange={(e) => setNoAgreementOnly(e.target.checked)} />
+          No agreement
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }} title="Hide crew pay sheets (a teammate on the sheet)">
+          <input type="checkbox" checked={subsOnly} onChange={(e) => setSubsOnly(e.target.checked)} />
+          Subs only
+        </label>
       </div>
       {laborJobsLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading sub sheet ledger…</p>
       ) : laborJobs.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>No jobs yet. Click New Sub Labor to add one.</p>
       ) : visibleLedgerJobs.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>{showOnlyDue ? 'No payments due.' : 'No matching jobs.'}</p>
+        <p style={{ color: 'var(--text-muted)' }}>{noAgreementOnly ? 'Every sub sheet with money open has an agreement behind it.' : showOnlyDue ? 'No payments due.' : 'No matching jobs.'}</p>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
-          <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          <table style={{ width: '100%', minWidth: 1100, borderCollapse: 'collapse', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}>
             <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
                 <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid var(--border)' }} />
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractor</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Stage</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Agreed</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Paid</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Due</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Where it stands</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Next</th>
                 <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid var(--border)' }} />
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
                 <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid var(--border)' }} />
@@ -280,7 +348,7 @@ export default function JobsSubLaborTab({
             </thead>
             <tbody>
               {visibleLedgerJobs
-                .flatMap(({ job, totalCost, paid, backcharges, balance }) => {
+                .flatMap(({ job, totalCost, paid, backcharges, balance, rail, next, crew, coverage, jobId, personId }) => {
                 const jobRate = job.labor_rate ?? 0
                 const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
                 const expanded = expandedSubLaborJobIds.has(job.id)
@@ -299,8 +367,14 @@ export default function JobsSubLaborTab({
                     onClick={toggle}
                   >
                     <td style={{ padding: '0.75rem', width: 32 }}>{expanded ? '▼' : '▶'}</td>
-                    <td style={{ padding: '0.75rem' }}>{job.assigned_to_name}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? <AmountSmallCents value={totalCost} /> : '—'}</td>
+                    <td style={{ padding: '0.75rem' }}>
+                      {job.assigned_to_name}
+                      {crew ? (
+                        <span title="A teammate is on this sheet — crew pay never needs a work order" style={{ display: 'inline-block', marginLeft: 6, padding: '1px 7px', borderRadius: 999, fontSize: '0.66rem', fontWeight: 700, background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', whiteSpace: 'nowrap' }}>
+                          Crew pay
+                        </span>
+                      ) : null}
+                    </td>
                     <td style={{ padding: '0.75rem', maxWidth: 220 }}>
                       <div style={{ lineHeight: 1.4 }}>
                         <div style={{ fontWeight: 500 }}>
@@ -347,9 +421,23 @@ export default function JobsSubLaborTab({
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? <AmountSmallCents value={totalCost} /> : <span style={{ color: 'var(--text-faint)' }}>unpriced</span>}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>{paid > 0 ? <AmountSmallCents value={paid} /> : '—'}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
+                      {totalCost > 0 ? (
+                        balance > 0 ? (
+                          <span style={{ color: rail.gap ? SHEET_RAIL_GAP : 'var(--text-red-700)', fontWeight: rail.gap ? 700 : 500 }}><AmountSmallCents value={balance} /> due</span>
+                        ) : balance < 0 ? (
+                          <span style={{ color: 'var(--text-green-600)' }}>Over <AmountSmallCents value={-balance} /></span>
+                        ) : (
+                          <span style={{ color: 'var(--text-green-600)' }}>Paid</span>
+                        )
+                      ) : '—'}
+                    </td>
+                    <td style={{ padding: '0.75rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
                       <SubSheetStageCell
                         job={job}
+                        rail={rail}
                         paid={totalCost > 0 && balance <= 0}
                         menuOpen={stageMenuJobId === job.id}
                         onToggleMenu={() => setStageMenuJobId((cur) => (cur === job.id ? null : job.id))}
@@ -358,18 +446,23 @@ export default function JobsSubLaborTab({
                           void onSetLaborJobStage(job.id, stage)
                         }}
                       />
-                      {workOrdersBySheet[job.id] ? <SheetWorkOrderChip info={workOrdersBySheet[job.id]!} /> : null}
                     </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
-                      {totalCost > 0 ? (
-                        balance > 0 ? (
-                          <span style={{ color: 'var(--text-red-700)' }}><AmountSmallCents value={balance} /> due</span>
-                        ) : balance < 0 ? (
-                          <span style={{ color: 'var(--text-green-600)' }}>Over <AmountSmallCents value={-balance} /></span>
-                        ) : (
-                          <span style={{ color: 'var(--text-green-600)' }}>Paid</span>
-                        )
-                      ) : '—'}
+                    <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: next.button === 'reoffer' ? 'var(--text-amber-800)' : 'inherit' }}>{next.label}</div>
+                      {next.hint ? <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{next.hint}</div> : null}
+                      {next.button && next.button !== 'nudge' && next.buttonLabel ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            next.button === 'draft'
+                              ? setAssembler({ jobId, laborJobId: job.id, personId, amount: totalCost > 0 ? totalCost : null })
+                              : setAssembler({ commitmentId: coverage.kind === 'none' ? null : coverage.id })
+                          }
+                          style={{ marginTop: 4, padding: '0.2rem 0.55rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}
+                        >
+                          {next.buttonLabel}
+                        </button>
+                      ) : null}
                     </td>
                     <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'stretch' }}>
@@ -411,7 +504,7 @@ export default function JobsSubLaborTab({
                   ...(expanded
                     ? [
                         <tr key={`${job.id}-expand`}>
-                          <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--surface)', verticalAlign: 'top' }}>
+                          <td colSpan={11} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--surface)', verticalAlign: 'top' }}>
                             <div onClick={(e) => e.stopPropagation()} style={{ padding: '1rem' }}>
                               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 500 }}>
                                 Total cost: <AmountSmallCents value={totalCost} /> · Paid: <AmountSmallCents value={paid} /> · Backcharges: <AmountSmallCents value={backcharges} />
@@ -506,6 +599,10 @@ export default function JobsSubLaborTab({
           </table>
         </div>
       )}
+      <p style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+        The rail is the one the sub sees on their portal — Work · Walk-through · Customer pays · Paid — with the office's Drafted · Sent · Signed in front of it. A dashed red run means work is happening with nothing signed. Click the current dot to move the stage.
+      </p>
+      <WorkOrderAssemblerModal open={assembler != null} onClose={() => setAssembler(null)} jobs={jobs} initial={assembler} authUserId={authUserId} onChanged={() => { void loadCommitments(); emitWorkOrderChanged() }} />
     </div>
   )
 }
@@ -524,12 +621,14 @@ const STAGE_CHIP_TONES: Record<SubSheetStageTone | 'green', { bg: string; fg: st
  */
 function SubSheetStageCell({
   job,
+  rail,
   paid,
   menuOpen,
   onToggleMenu,
   onPick,
 }: {
   job: LaborJob
+  rail: SheetRailShape
   paid: boolean
   menuOpen: boolean
   onToggleMenu: () => void
@@ -548,33 +647,20 @@ function SubSheetStageCell({
     .filter(Boolean)
     .join(' · ')
   if (paid) {
-    return (
-      <span title={title} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.75rem', fontWeight: 700, borderRadius: 999, padding: '3px 10px', background: tone.bg, color: tone.fg, border: `1px solid ${tone.border}`, whiteSpace: 'nowrap' }}>
-        Paid
-      </span>
-    )
+    return <SheetRail rail={rail} title={title} />
   }
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 3px 2px 10px', background: tone.bg, color: tone.fg, border: `1px solid ${tone.border}`, whiteSpace: 'nowrap', fontSize: '0.75rem', fontWeight: 700 }}>
-        <button
-          type="button"
-          title={title}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          onClick={onToggleMenu}
-          style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
-        >
-          {SUB_SHEET_STAGE_LABEL[stage]}
-          {job.stage_source === 'portal' ? <span style={{ fontWeight: 500, opacity: 0.85 }}> · sub</span> : null}
-        </button>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+        <SheetRail rail={rail} title={`${title} · click the current dot to move the stage`} onCurrentClick={onToggleMenu} />
+        {job.stage_source === 'portal' ? <span style={{ fontSize: '0.68rem', fontWeight: 600, color: tone.fg }} title="The sub moved it from their portal">· sub</span> : null}
         {next ? (
           <button
             type="button"
             title={`Move to ${SUB_SHEET_STAGE_LABEL[next]}`}
             aria-label={`Move to ${SUB_SHEET_STAGE_LABEL[next]}`}
             onClick={() => onPick(next)}
-            style={{ background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: 999, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700, color: 'inherit', cursor: 'pointer' }}
+            style={{ background: tone.bg, border: `1px solid ${tone.border}`, borderRadius: 999, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700, color: tone.fg, cursor: 'pointer' }}
           >
             →
           </button>
@@ -611,35 +697,5 @@ function SubSheetStageCell({
         </div>
       )}
     </div>
-  )
-}
-
-type SheetWorkOrderChipInfo = { status: string; signedAt: string | null; offeredAt: string | null; amount: number }
-
-/** "✍ Signed Sep 4" / "Awaiting signature" / "Draft work order" / "Declined" under the stage chip (v2.2786). */
-function SheetWorkOrderChip({ info }: { info: SheetWorkOrderChipInfo }) {
-  const signed = info.status === 'accepted' || info.status === 'approved' || info.status === 'settled'
-  const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '')
-  const label = signed
-    ? `✍ Signed${info.signedAt ? ` ${fmt(info.signedAt)}` : ''}`
-    : info.status === 'offered'
-      ? 'Awaiting signature'
-      : info.status === 'declined'
-        ? 'Declined'
-        : 'Draft work order'
-  const tone = signed
-    ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }
-    : info.status === 'offered'
-      ? { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
-      : info.status === 'declined'
-        ? { background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }
-        : { background: 'var(--bg-muted)', color: 'var(--text-muted)' }
-  return (
-    <span
-      title={`Work order · $${info.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}${info.offeredAt ? ` · sent ${fmt(info.offeredAt)}` : ''}`}
-      style={{ ...tone, display: 'inline-block', marginTop: 4, fontSize: '0.66rem', fontWeight: 650, borderRadius: 999, padding: '0.05rem 0.5rem', whiteSpace: 'nowrap' }}
-    >
-      {label}
-    </span>
   )
 }

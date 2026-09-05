@@ -1,6 +1,6 @@
 # Work Orders + Sub Labor: one row, with the sub's rail on it
 
-Status: in progress · PR 1 (derivation fix) v2.2865 #2607 · PR 2 (rail kernel + `SheetRail`) v2.2866 #2608 · PR 3 (Work Orders rows become sheets, all eight mock-up changes — artifact `1e154fbb`) v2.2867 #2609 · live test passed 2026-09-05, follow-ups v2.2869 #2611 · next: PR 4 (Sub Labor on the same spine) and PR 5 (chips elsewhere) · designed 2026-09-05 · mock-up: [`work-orders-one-row-spine.html`](./work-orders-one-row-spine.html) (also published at https://claude.ai/code/artifact/a8ce5a7d-d47a-4e2f-905b-558e9d67e298)
+Status: in progress · PR 1 (derivation fix) v2.2865 #2607 · PR 2 (rail kernel + `SheetRail`) v2.2866 #2608 · PR 3 (Work Orders rows become sheets, all eight mock-up changes — artifact `1e154fbb`) v2.2867 #2609 · live test passed 2026-09-05, follow-ups v2.2869 #2611 · PR 4 (Sub Labor on the same spine, Crew pay, stage menu on the rail's dot) v2.2871 · next: PR 5 (chips elsewhere) · designed 2026-09-05 · mock-up: [`work-orders-one-row-spine.html`](./work-orders-one-row-spine.html) (also published at https://claude.ai/code/artifact/a8ce5a7d-d47a-4e2f-905b-558e9d67e298)
 
 ## The ask, in the owner's words
 
