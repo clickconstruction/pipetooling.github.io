@@ -87,20 +87,3 @@ export function workOrderBoardBucket(r: WorkOrderRowLike, todayYmd: string): Exc
   if (c.kind === 'signed') return 'signed'
   return 'declined'
 }
-
-/**
- * Jobs that carry sub labor but no live or signed work order — the board's
- * "Needs a work order" rows. `sheetJobNumbers` are the job numbers of
- * unpaid sheets; `coverageByJobId` is what buildJobWorkOrderCoverage gave each job.
- */
-export function jobsNeedingWorkOrder(
-  jobs: Array<{ id: string; hcp_number: string }>,
-  sheetJobNumbers: Set<string>,
-  coverageByJobId: Map<string, JobWorkOrderCoverage>,
-): Array<{ id: string; hcp_number: string }> {
-  return jobs.filter((j) => {
-    if (!sheetJobNumbers.has(j.hcp_number.trim().toLowerCase())) return false
-    const c = coverageByJobId.get(j.id)
-    return !c || c.kind === 'none' || c.kind === 'declined'
-  })
-}

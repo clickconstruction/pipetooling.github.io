@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildJobWorkOrderCoverage, jobsNeedingWorkOrder, workOrderBoardBucket, workOrderChipLabel, type WorkOrderRowLike } from './workOrderCoverage'
+import { buildJobWorkOrderCoverage, workOrderBoardBucket, workOrderChipLabel, type WorkOrderRowLike } from './workOrderCoverage'
 
 const TODAY = '2026-09-05'
 const row = (over: Partial<WorkOrderRowLike> & { id: string; status: string }): WorkOrderRowLike => ({
@@ -47,22 +47,5 @@ describe('buildJobWorkOrderCoverage', () => {
     expect(workOrderBoardBucket(row({ id: 'o', status: 'offered', offer_expires_at: '2026-09-01' }), TODAY)).toBe('expired')
     expect(workOrderBoardBucket(row({ id: 'o2', status: 'offered' }), TODAY)).toBe('awaiting')
     expect(workOrderBoardBucket(row({ id: 'x', status: 'cancelled' }), TODAY)).toBeNull()
-  })
-})
-
-describe('jobsNeedingWorkOrder', () => {
-  it('lists jobs with unpaid sheets and no live or signed order', () => {
-    const jobs = [
-      { id: 'j1', hcp_number: 'J977' },
-      { id: 'j2', hcp_number: 'J1012' },
-      { id: 'j3', hcp_number: 'J880' },
-      { id: 'j4', hcp_number: 'J5' },
-    ]
-    const cov = new Map([
-      ['j1', buildJobWorkOrderCoverage([row({ id: 'a', status: 'accepted' })], TODAY)],
-      ['j3', buildJobWorkOrderCoverage([row({ id: 'd', status: 'declined' })], TODAY)],
-    ])
-    const out = jobsNeedingWorkOrder(jobs, new Set(['j977', 'j1012', 'j880']), cov)
-    expect(out.map((j) => j.id)).toEqual(['j2', 'j3'])
   })
 })

@@ -9,14 +9,8 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import { parseSubWorkOrderSnapshot, sheetWorkOrderLabel } from '../../lib/subWorkOrders/subWorkOrder'
 import { buildWorkOrderDocument, renderWorkOrderDocumentHtml, WORK_ORDER_ISSUER } from '../../lib/subWorkOrders/workOrderDocument'
-import {
-  buildJobWorkOrderCoverage,
-  jobsNeedingWorkOrder,
-  workOrderBoardBucket,
-  type JobWorkOrderCoverage,
-  type WorkOrderBoardFilter,
-  type WorkOrderRowLike,
-} from '../../lib/subWorkOrders/workOrderCoverage'
+import { workOrderBoardBucket, type WorkOrderBoardFilter, type WorkOrderRowLike } from '../../lib/subWorkOrders/workOrderCoverage'
+import { sheetsNeedingWorkOrder, type NeedsWorkOrderRosterPerson, type NeedsWorkOrderSheet } from '../../lib/subWorkOrders/sheetsNeedingWorkOrder'
 import { emitWorkOrderChanged, WORK_ORDER_CHANGED_EVENT } from '../../hooks/useJobWorkOrderCoverage'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
 import { resolveSubPortalUrl } from '../../lib/subPortal/resolveSubPortalUrl'
@@ -31,7 +25,8 @@ import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkO
  * one stands.
  */
 
-type SheetLite = { id: string; job_number: string | null; address: string; assigned_to_name: string; paid_at: string | null }
+/** A sheet with its money and its people — "Needs a work order" is derived from these, never from a paid stamp. */
+type SheetLite = NeedsWorkOrderSheet & { assignees?: Array<{ person_id: string }> | null }
 type StepLite = { id: string; name: string }
 
 export type JobsWorkOrdersTabProps = {
@@ -95,6 +90,7 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
   const confirm = useConfirmDialog()
   const [rows, setRows] = useState<StepCommitmentRow[]>([])
   const [sheets, setSheets] = useState<SheetLite[]>([])
+  const [roster, setRoster] = useState<NeedsWorkOrderRosterPerson[]>([])
   const [steps, setSteps] = useState<Record<string, StepLite>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -106,17 +102,40 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
   const load = useCallback(async () => {
     setError(null)
     try {
-      const [{ data: rowsData, error: rowsErr }, { data: sheetsData, error: sheetsErr }] = await Promise.all([
+      const [{ data: rowsData, error: rowsErr }, { data: sheetsData, error: sheetsErr }, { data: rosterData, error: rosterErr }, { data: usersData, error: usersErr }] = await Promise.all([
         supabase.from('step_commitments').select('*').neq('status', 'cancelled').order('created_at', { ascending: false }).limit(1000),
-        // Every sheet: the board labels sheet-anchored orders by job number + address,
-        // and unpaid sheets are what tell us which jobs still need a work order.
-        supabase.from('people_labor_jobs').select('id, job_number, address, assigned_to_name, paid_at').order('created_at', { ascending: false }).limit(1000),
+        // Every sheet with its items, payments and assignees: the board labels
+        // sheet-anchored orders by job number + address, and the sheets whose
+        // money is still open (items minus payments) are what tell us which
+        // sub sheets still need a work order — including sheets on jobs that
+        // have no Pipeline row.
+        supabase
+          .from('people_labor_jobs')
+          .select('id, job_number, address, assigned_to_name, labor_rate, items:people_labor_job_items(count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount), assignees:people_labor_job_assignees(person_id)')
+          .order('created_at', { ascending: false })
+          .limit(1000),
+        // The roster decides which sheets are sub sheets: teammates carry a
+        // `kind = 'sub'` row too, so the login's role is what tells crew pay
+        // (superintendent, master, helper…) from a sub — crew pay never needs an order.
+        supabase.from('people').select('id, name, kind, account_user_id').order('id').limit(1000),
+        supabase.from('users').select('id, role').order('id').limit(1000),
       ])
       if (rowsErr) throw rowsErr
       if (sheetsErr) throw sheetsErr
+      if (rosterErr) throw rosterErr
+      if (usersErr) throw usersErr
       const list = (rowsData ?? []) as StepCommitmentRow[]
       setRows(list)
       setSheets((sheetsData ?? []) as SheetLite[])
+      const roleByUserId = new Map(((usersData ?? []) as Array<{ id: string; role: string | null }>).map((u) => [u.id, u.role]))
+      setRoster(
+        ((rosterData ?? []) as Array<{ id: string; name: string; kind: string; account_user_id: string | null }>).map((p) => ({
+          id: p.id,
+          name: p.name,
+          kind: p.kind,
+          accountRole: p.account_user_id ? (roleByUserId.get(p.account_user_id) ?? null) : null,
+        })),
+      )
       const stepIds = Array.from(new Set(list.map((r) => r.step_id).filter((s): s is string => !!s)))
       if (stepIds.length > 0) {
         const { data: stepData } = await supabase.from('project_workflow_steps').select('id, name').in('id', stepIds.slice(0, 300))
@@ -204,25 +223,15 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
     })
   }, [bucketed, filter, search])
 
-  /** Jobs with unpaid sub labor and no live or signed work order. */
+  /** Roster-sub sheets with money still open (or never priced) and no live or signed work order — derived from the sheets, not the Pipeline list. */
   const needsWorkOrder = useMemo(() => {
-    const byJob = new Map<string, WorkOrderRowLike[]>()
-    for (const r of rows) {
-      const job = jobForRow(r)
-      if (!job) continue
-      const list = byJob.get(job.id) ?? []
-      list.push(r as WorkOrderRowLike)
-      byJob.set(job.id, list)
+    const assigneesBySheetId = new Map<string, string[]>()
+    for (const s of sheets) {
+      const ids = (s.assignees ?? []).map((a) => a.person_id).filter(Boolean)
+      if (ids.length > 0) assigneesBySheetId.set(s.id, ids)
     }
-    const coverage = new Map<string, JobWorkOrderCoverage>()
-    for (const [id, list] of byJob) coverage.set(id, buildJobWorkOrderCoverage(list, today))
-    const unpaidNumbers = new Set(sheets.filter((s) => !s.paid_at && (s.job_number ?? '').trim()).map((s) => (s.job_number ?? '').trim().toLowerCase()))
-    return jobsNeedingWorkOrder(jobs, unpaidNumbers, coverage).map((j) => {
-      const full = jobsById.get(j.id)
-      const subNames = Array.from(new Set(sheets.filter((s) => (s.job_number ?? '').trim().toLowerCase() === j.hcp_number.trim().toLowerCase() && !s.paid_at).map((s) => s.assigned_to_name.trim()).filter(Boolean)))
-      return { id: j.id, hcp: j.hcp_number, customer: full?.customer_name ?? null, address: full?.job_address ?? null, subNames }
-    })
-  }, [rows, jobs, sheets, jobForRow, today, jobsById])
+    return sheetsNeedingWorkOrder({ sheets, assigneesBySheetId, roster, commitments: rows as WorkOrderRowLike[], jobs, todayYmd: today })
+  }, [rows, jobs, sheets, roster, today])
 
   async function withdraw(r: StepCommitmentRow) {
     const ok = await confirm({ title: 'Withdraw this offer?', message: `${r.record_id ?? 'The work order'} goes back to a draft. ${r.display_name} will no longer see it on their portal.`, confirmLabel: 'Withdraw' })
@@ -408,21 +417,28 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
       {needsWorkOrder.length > 0 && filter === 'all' && !search.trim() ? (
         <div style={{ marginBottom: '1.1rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 6, padding: '0.6rem 0.8rem' }}>
           <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)', marginBottom: '0.35rem' }}>
-            Needs a work order · {needsWorkOrder.length} job{needsWorkOrder.length === 1 ? '' : 's'} with unpaid sub labor and nothing signed
+            Needs a work order · {needsWorkOrder.length} sub sheet{needsWorkOrder.length === 1 ? '' : 's'} with money open and nothing signed
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {needsWorkOrder.slice(0, 12).map((j) => (
-              <div key={j.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.6rem', fontSize: '0.8125rem' }}>
-                <span style={{ fontWeight: 600 }}>#{j.hcp}</span>
-                <span>{j.customer ?? 'No customer'}</span>
-                <span style={{ color: 'var(--text-muted)' }}>{j.address ?? ''}</span>
-                {j.subNames.length > 0 ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sheet: {j.subNames.join(', ')}</span> : null}
-                <button type="button" style={{ ...smallBtn('primary'), marginLeft: 'auto' }} onClick={() => setAssembler({ jobId: j.id })}>
+            {needsWorkOrder.slice(0, 12).map((s) => (
+              <div key={s.sheetId} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.6rem', fontSize: '0.8125rem' }}>
+                <span style={{ fontWeight: 600 }}>{s.primary}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{s.secondary ?? ''}</span>
+                {s.jobId == null ? <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }} title="This sheet's job number has no Pipeline row">not in Pipeline</span> : null}
+                {s.subNames.length > 0 ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sheet: {s.subNames.join(', ')}</span> : null}
+                <span style={{ fontSize: '0.75rem', whiteSpace: 'nowrap' }} title={s.unpriced ? 'No priced items and nothing paid' : `Agreed $${formatCurrency(s.agreed)} · paid $${formatCurrency(s.paid)}`}>
+                  {s.unpriced ? <span style={{ color: 'var(--text-faint)' }}>unpriced</span> : <>${formatCurrency(s.open)} open</>}
+                </span>
+                <button
+                  type="button"
+                  style={{ ...smallBtn('primary'), marginLeft: 'auto' }}
+                  onClick={() => setAssembler({ jobId: s.jobId, laborJobId: s.sheetId, amount: s.agreed > 0 ? s.agreed : null })}
+                >
                   Draft a work order…
                 </button>
               </div>
             ))}
-            {needsWorkOrder.length > 12 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>+ {needsWorkOrder.length - 12} more — search a job number above to find it</div> : null}
+            {needsWorkOrder.length > 12 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>+ {needsWorkOrder.length - 12} more — the Sub Labor tab lists every sheet</div> : null}
           </div>
         </div>
       ) : null}
