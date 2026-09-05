@@ -12,6 +12,8 @@ import {
 } from '../lib/reportTemplateDisplayName'
 import { isTurnawayTemplateName } from '../lib/turnaway'
 import AutoGrowTextarea from './AutoGrowTextarea'
+import OfflineRetryPanel from './OfflineRetryPanel'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { fieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
@@ -78,6 +80,8 @@ export default function AdditionalReportModal({
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Last save failure with its class; the panel offers Retry only for a network failure. */
+  const [submitFailure, setSubmitFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [showJobReportsModal, setShowJobReportsModal] = useState(false)
   const [jobLinksLoading, setJobLinksLoading] = useState(false)
   const [customerFilesUrl, setCustomerFilesUrl] = useState('')
@@ -168,11 +172,17 @@ export default function AdditionalReportModal({
     onClose()
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    void submitReport()
+  }
+
+  /** The save itself, separated from the form event so the offline Retry panel can re-run it (J2-F3). */
+  async function submitReport() {
     if (!authUserId || !selectedTemplateId) return
     setSaving(true)
     setError(null)
+    setSubmitFailure(null)
     const fields = templateFields[selectedTemplateId] ?? []
     for (const f of fields) {
       if ((f.input_type ?? 'long_text') === 'signature_png') {
@@ -239,7 +249,8 @@ export default function AdditionalReportModal({
     }
     setSaving(false)
     if (err) {
-      setError(err.message)
+      // Class-decided (v2.2843): a fetch-layer failure gets Retry; a refused insert says why.
+      setSubmitFailure(recoveryFailureFromError(err, 'Could not save the report'))
       return
     }
     // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
@@ -556,6 +567,13 @@ export default function AdditionalReportModal({
           )}
 
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
+          <OfflineRetryPanel
+            failure={submitFailure}
+            onRetry={submitReport}
+            surface={'additional-report'}
+            busy={saving}
+            style={{ marginBottom: '1rem' }}
+          />
 
           {/* v2.1554: Cancel demoted to quiet text on the left; Save alone on the right. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>

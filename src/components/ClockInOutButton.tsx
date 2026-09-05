@@ -41,6 +41,8 @@ import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
 import AdditionalReportModal from './AdditionalReportModal'
+import OfflineRetryPanel from './OfflineRetryPanel'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import CrewReviewDeck from './team-feedback/CrewReviewDeck'
 import { TallyPreClockOutModal } from './tally/TallyPreClockOutModal'
 import type { Database } from '../types/database'
@@ -179,7 +181,8 @@ export default function ClockInOutButton({
   /** Clock In: show orange summary. Update Focus / clock out: gray chip. Only after unified search tap. */
   const [associationChipFromSearch, setAssociationChipFromSearch] = useState(false)
   const [clockInNotes, setClockInNotes] = useState('')
-  const [clockInError, setClockInError] = useState<string | null>(null)
+  /** Last clock-in failure with its class — Retry only when the network was the problem (J2-F3). */
+  const [clockInFailure, setClockInFailure] = useState<OfflineRecoveryLastError | null>(null)
   const clockInNotesRef = useRef<HTMLTextAreaElement>(null)
   const [updateFocusModalOpen, setUpdateFocusModalOpen] = useState(false)
   const [updateFocusNotes, setUpdateFocusNotes] = useState('')
@@ -188,7 +191,7 @@ export default function ClockInOutButton({
   const updateFocusNotesRef = useRef<HTMLTextAreaElement>(null)
   const [clockOutReviewOpen, setClockOutReviewOpen] = useState(false)
   const [clockOutReviewNotes, setClockOutReviewNotes] = useState('')
-  const [clockOutReviewError, setClockOutReviewError] = useState<string | null>(null)
+  const [clockOutReviewFailure, setClockOutReviewFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [clockOutSaving, setClockOutSaving] = useState(false)
   const clockOutNotesRef = useRef<HTMLTextAreaElement>(null)
   const tallyMinPostedYmdRef = useRef<string | null>(null)
@@ -424,7 +427,7 @@ export default function ClockInOutButton({
   useEffect(() => {
     if (clockInModalOpen) {
       setClockInNotes('')
-      setClockInError(null)
+      setClockInFailure(null)
       setUnifiedSearchText('')
       setUnifiedSearchResults([])
       setSelectedAssociation(null)
@@ -876,7 +879,7 @@ export default function ClockInOutButton({
       return
     }
     setActionLoading(true)
-    setClockInError(null)
+    setClockInFailure(null)
     try {
       const now = new Date()
       const inserted = await withOperationTimeout(
@@ -913,12 +916,16 @@ export default function ClockInOutButton({
     } catch (e) {
       // Timeout: the request wasn't cancelled — the punch may still land when
       // the server recovers, so say so instead of implying failure.
-      setClockInError(
-        e instanceof OperationTimeoutError
-          ? 'The server is not responding. Your clock-in may or may not have saved — close this and check the timer before trying again.'
-          : e instanceof Error
-            ? e.message
-            : 'Failed to clock in',
+      setClockInFailure(
+        recoveryFailureFromError(
+          e,
+          'Failed to clock in',
+          e instanceof OperationTimeoutError
+            ? 'The server is not responding. Your clock-in may or may not have saved — close this and check the timer before trying again.'
+            : e instanceof Error
+              ? e.message
+              : undefined,
+        ),
       )
     } finally {
       setActionLoading(false)
@@ -931,7 +938,7 @@ export default function ClockInOutButton({
     setSelectedAssociation(null)
     setAssociationChipFromSearch(false)
     setClockOutReviewNotes(openSession.notes?.trim() ?? '')
-    setClockOutReviewError(null)
+    setClockOutReviewFailure(null)
     setUnifiedSearchText('')
     setUnifiedSearchResults([])
     setClockOutReviewOpen(true)
@@ -1017,7 +1024,7 @@ export default function ClockInOutButton({
     }
 
     setClockOutSaving(true)
-    setClockOutReviewError(null)
+    setClockOutReviewFailure(null)
     setError(null)
     try {
       const notesTrim = clockOutReviewNotes.trim()
@@ -1052,14 +1059,17 @@ export default function ClockInOutButton({
     } catch (e) {
       // Timeout: the request wasn't cancelled — the punch may still land when
       // the server recovers, so say so instead of implying failure.
-      const msg =
+      const failure = recoveryFailureFromError(
+        e,
+        'Failed to clock out',
         e instanceof OperationTimeoutError
           ? 'The server is not responding. Your clock-out may or may not have saved — check the timer before trying again.'
           : e instanceof Error
             ? e.message
-            : 'Failed to clock out'
-      setClockOutReviewError(msg)
-      setError(msg)
+            : undefined,
+      )
+      setClockOutReviewFailure(failure)
+      setError(failure.message)
     } finally {
       setClockOutSaving(false)
     }
@@ -1806,13 +1816,15 @@ export default function ClockInOutButton({
                 onAssociatePickBefore: () => setAssociationChipFromSearch(false),
               })}
             </div>
-            {clockInError && (
-              <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
-                {clockInError.toLowerCase().includes('network') || clockInError.toLowerCase().includes('fetch')
-                  ? "Something went wrong. Please check your connection and try again."
-                  : clockInError}
-              </p>
-            )}
+            {/* A punch is a write: Retry is a tap, never automatic — the person re-sends it (J2-F3). */}
+            <OfflineRetryPanel
+              failure={clockInFailure}
+              onRetry={handleCompleteClockIn}
+              surface="clock-in"
+              busy={actionLoading}
+              style={{ margin: '0 0 0.75rem 0' }}
+              messageStyle={{ color: 'var(--text-red-600)' }}
+            />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'space-between' }}>
               <button
                 type="button"
@@ -2187,9 +2199,14 @@ export default function ClockInOutButton({
                 </div>
               ) : null}
             </div>
-            {clockOutReviewError && (
-              <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{clockOutReviewError}</p>
-            )}
+            <OfflineRetryPanel
+              failure={clockOutReviewFailure}
+              onRetry={handleCompleteClockOutReview}
+              surface="clock-out"
+              busy={clockOutSaving}
+              style={{ margin: '0 0 0.75rem 0' }}
+              messageStyle={{ color: 'var(--text-red-600)' }}
+            />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'space-between' }}>
               <button
                 type="button"

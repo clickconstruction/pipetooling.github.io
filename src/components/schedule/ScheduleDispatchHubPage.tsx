@@ -3,6 +3,9 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '../../hooks/useAuth'
+import { OPEN_BID_EDIT_QUERY } from '../../contexts/BidPreviewModalContext'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import { bidOpenPath, scheduleBlockTarget } from '../../lib/scheduleBlockTarget'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -2147,6 +2150,15 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   const openJobWeekGrid = useCallback(
     (id: string) => {
+      // A bid block's "open it" gesture opens the BID (Edit Bid on the Bids page),
+      // not a per-job week grid — there is no job to grid (J18-F1, Tier-1 #6c).
+      const target = scheduleBlockTarget(id)
+      recordNavClick(authUser?.id, role, 'schedule_block_opened', `#${target.kind}`)
+      if (target.kind === 'bid') {
+        const path = bidOpenPath(target.id, OPEN_BID_EDIT_QUERY)
+        if (path) navigate(path)
+        return
+      }
       if (isTomorrow) {
         const dayKeep = pickDayForScheduleDispatchUrl(tomorrowYmd, weekStart, hideWeekend)
         const p = new URLSearchParams()
@@ -2161,7 +2173,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       if (dayKeep) p.day = dayKeep
       setSearchParams(p, { replace: false })
     },
-    [isTomorrow, tomorrowYmd, navigate, setSearchParams, weekStart, dayRaw, hideWeekend],
+    [isTomorrow, tomorrowYmd, navigate, setSearchParams, weekStart, dayRaw, hideWeekend, authUser?.id, role],
   )
 
   const openHubJobDetail = useCallback(
