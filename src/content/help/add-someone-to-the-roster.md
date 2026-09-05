@@ -25,7 +25,7 @@ Groups are still by kind. Each header says how many have a login ("Subcontractor
 
 Tap {{button:blue|+ Add to roster}} in the toolbar (or **Add** on a group). Pick what they are, type the name, and add an email and phone if you have them. That makes a roster row with **no login**, which is enough for the portal, paperwork, sub sheets and pay. Two boxes on the same dialog do the usual next steps:
 
-- **Also invite them to sign in** — sends the invite email (needs an email).
+- **Also invite them to sign in** — sends the invite email (needs an email). The link in that email opens a **Welcome to ClickTooling** page where they choose a password once. If they come back to that page later while already signed in, it says **You're already set up** with a {{button:blue|Sign in}} button (and *Not you? Sign out*) — it never asks for a new password, so nobody can reset an account by re-opening the link. There is no self-service sign-up page; everyone joins through this invite or through **Accounts · dev** → Manually add user.
 - **Open their desk after saving** — lands you on their desk, which for a sub is where the portal globe and {{button:blue|Copy link}} are.
 
 :::example A new external sub

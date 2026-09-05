@@ -6,7 +6,6 @@ import Layout from './components/Layout'
 import SignIn from './pages/SignIn'
 import BidRoom from './pages/BidRoom'
 import DevLogin from './pages/DevLogin'
-import SignUp from './pages/SignUp'
 import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 import AcceptInvite from './pages/AcceptInvite'
@@ -205,7 +204,6 @@ function AppContent() {
       <Routes>
         <Route path="/sign-in" element={<SignInRoute />} />
         <Route path="/dev-login" element={<DevLogin />} />
-        <Route path="/sign-up" element={<SignUp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />
