@@ -72,10 +72,12 @@ export function buildRailRow(p: RailPersonInput, f: RailFacts): RailRow {
   let attention: RailAttention = 'green'
   const pending = p.userId ? f.pendingByUserId[p.userId] : undefined
   if (pending && pending.count > 0) {
+    // v2.2818 (owner decision, PR 4 of the Users status column): hours are a queue, not an
+    // alarm — they show in the badge and reasons but never move the dot, on the Person tab
+    // rail as on the Users row.
     reasons.push(`${pending.count} session${pending.count === 1 ? '' : 's'} waiting`)
     badge.push(String(pending.count))
-    signals.push({ key: 'pending', label: `${pending.count} waiting`, tone: 'amber' })
-    attention = 'amber'
+    signals.push({ key: 'pending', label: `${pending.count} waiting`, tone: 'gray' })
   }
   const unsent = f.unsentDocsByName[p.name.trim()] ?? 0
   if (unsent > 0) {
