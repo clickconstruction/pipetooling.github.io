@@ -133,6 +133,14 @@ Press {{button:blue|Bill Customer}}. The modal opens on **Stripe bill** and show
 
 A job needs a linked customer (with an email, for Stripe) before it can be billed — the modal guides you if something's missing.
 
+**Opening Bill Customer changes nothing.** The RTB amount you see is worked out on the spot from the job total, payments made and the invoices already on the job; the bill row itself is written only when you press {{button:blue|Send Stripe invoice}}, {{button:blue|Save}} on HouseCall Pro, or {{button:blue|Send invoice}} on Physical. Press {{button:outline|Cancel}} and the job is exactly as you found it — no draft appears, no draft resizes.
+
+:::example If the remainder moved while the modal was open
+Someone records a $500 payment while you're looking at a $2,630 bill. When you press Send, the modal stops, shows the new **$2,130**, and asks you to look it over and send again — it never bills the new number silently.
+:::
+
+Until the bill row exists, the **Stripe bill** tab shows the draft line the customer will see; Stripe's exact layout appears once the bill exists.
+
 If the job is already {{chip:green|Paid}}, Bill Customer says so instead of showing a preview — **"This job is already paid in full — nothing to bill."** — and all three send buttons stay off. The safe move is Cancel. Only when the customer really does owe more on that job, tick **Bill this job again anyway** to unlock the buttons; the same check runs on the server, so an old browser tab can't slip a bill past it.
 
 :::example Bill Customer on a paid job
