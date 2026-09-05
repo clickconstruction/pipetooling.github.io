@@ -9,6 +9,7 @@ import { groupVersionsByGc } from '../../lib/bids/gcPackets'
 import { setGcPacketOutcome, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import { useToastContext } from '../../contexts/ToastContext'
 import { GcOutcomePill } from './BidBoardGcRows'
+import { BidWonJobActions } from './BidWonJobActions'
 import { formatCurrency } from '../../lib/format'
 
 type VersionRow = { id: string; name: string; sort_order: number; include_in_submission: boolean; is_alternate?: boolean | null; customer_id: string | null; created_at?: string | null; outcome?: string | null }
@@ -71,6 +72,8 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
             <span style={{ fontWeight: 600 }}>{p.name}</span>
             <span style={{ fontSize: '0.75rem', color: p.sentOn ? 'var(--text-green-600)' : 'var(--text-muted)' }}>{p.sentOn ? `sent ${fmtSent(p.sentOn)}` : 'not sent'}{p.sentValue != null ? ` · ★ $${formatCurrency(p.sentValue)}` : ''}</span>
             <GcOutcomePill value={p.outcome === 'won' || p.outcome === 'lost' ? p.outcome : null} gcName={p.name} onChange={(next) => void change(p.key, next)} />
+            {/* Tier-1 #8: the per-GC Won moment offers the job right here. */}
+            {p.outcome === 'won' ? <BidWonJobActions bidId={bidId} compact /> : null}
           </div>
           {p.versions.map((v) => {
             const badge = formatSendBadge(latest[v.id], { money: (n) => `$${formatCurrency(n)}` })

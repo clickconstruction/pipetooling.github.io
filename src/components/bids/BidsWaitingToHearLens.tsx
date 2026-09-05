@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { type BidRoomStateSummary } from '../../lib/bids/bidRoomState'
 import { BidRoomStateChip } from './BidRoomStateChip'
+import { BidWonJobActions } from './BidWonJobActions'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -158,6 +159,9 @@ export function BidsWaitingToHearLens({
   // Optimistic layers over props so taps feel instant while the reload catches up.
   const [localTouches, setLocalTouches] = useState<Record<string, string>>({})
   const [localResolved, setLocalResolved] = useState<Record<string, 'won' | 'lost'>>({})
+  // Tier-1 #8: the one-tap Won leaves the queue instantly — this strip keeps the win on screen with
+  // "Open the job" so the person who recorded it does not have to go hunt for the door.
+  const [justWon, setJustWon] = useState<{ bidId: string; label: string; gcName: string } | null>(null)
   const [chasedThisSession, setChasedThisSession] = useState(0)
 
   // One instant per mount keeps every memo on the same clock.
@@ -348,6 +352,7 @@ export function BidsWaitingToHearLens({
     const localStoryId = `local-${writes.lastContact}`
     if (writes.outcomeUpdate) {
       setLocalResolved((prev) => ({ ...prev, [b.rowKey]: writes.outcomeUpdate!.outcome }))
+      if (writes.outcomeUpdate.outcome === 'won') setJustWon({ bidId: b.id, label: b.label, gcName: b.gc.gcName })
     } else {
       setLocalTouches((prev) => ({ ...prev, [b.id]: writes.lastContact }))
       setStoryByBid((prev) => ({
@@ -417,6 +422,7 @@ export function BidsWaitingToHearLens({
         onReloadBids()
       } catch (err) {
         onError(err instanceof Error ? `Could not log the chase: ${err.message}` : 'Could not log the chase.')
+        setJustWon((prev) => (prev?.bidId === b.id ? null : prev))
         setLocalResolved((prev) => {
           const next = { ...prev }
           delete next[b.rowKey]
@@ -607,6 +613,25 @@ export function BidsWaitingToHearLens({
             })}
           </div>
 
+          {justWon ? (
+            <div
+              role="status"
+              style={{ border: '1px solid var(--border-green)', borderRadius: 8, padding: '0.6rem 0.9rem', marginBottom: '0.75rem', background: 'var(--bg-green-tint)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}
+            >
+              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-green-700)' }}>
+                You won it — {justWon.label} with {justWon.gcName}.
+              </span>
+              <BidWonJobActions bidId={justWon.bidId} won onOpenedForm={() => setJustWon(null)} />
+              <button
+                type="button"
+                aria-label="Dismiss"
+                onClick={() => setJustWon(null)}
+                style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0.1rem 0.3rem' }}
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
           {selectedGroup && selectedBid ? (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem 0.9rem', background: 'var(--bg-muted)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>

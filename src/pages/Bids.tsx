@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { canSeeBidBoardJobLinks, indexJobsByBidId, type BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
+import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
 import { supabase } from '../lib/supabase'
 import { fromDatetimeLocal } from '../utils/datetimeLocal'
 import {
@@ -421,7 +422,15 @@ export default function Bids() {
   // v2.2741: J#### chips on the board — only for roles that can open Jobs (estimators can't).
   const [jobsByBidId, setJobsByBidId] = useState<Map<string, BidBoardJobLink>>(() => new Map())
   const boardBidIdsKey = useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id).sort().join(','), [peopleBids, robotBids])
+  // Tier-1 #8: a job just opened from a bid → refetch the index so the J#### chip appears without a reload.
+  const [jobsByBidGen, setJobsByBidGen] = useState(0)
   useEffect(() => {
+    const bump = () => setJobsByBidGen((n) => n + 1)
+    window.addEventListener(JOB_CREATED_FROM_BID_EVENT, bump)
+    return () => window.removeEventListener(JOB_CREATED_FROM_BID_EVENT, bump)
+  }, [])
+  useEffect(() => {
+    void jobsByBidGen
     if (!canSeeBidBoardJobLinks(myRole) || !boardBidIdsKey) {
       setJobsByBidId(new Map())
       return
@@ -439,7 +448,7 @@ export default function Bids() {
     return () => {
       cancelled = true
     }
-  }, [myRole, boardBidIdsKey])
+  }, [myRole, boardBidIdsKey, jobsByBidGen])
 
   // Robot readiness (v2.2530): source bid id → its twin copy, for the board icon's
   // "robot bid exists" state. Pairing is stamped by twin-mcp at open time.

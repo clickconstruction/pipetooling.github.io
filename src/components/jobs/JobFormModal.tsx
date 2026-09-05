@@ -69,6 +69,10 @@ import { groupVersionsByGc, resolveWinningPacket, type GcPacket } from '../../li
 import { latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
 import { PickWinningGcModal, type WinningGcOption } from './PickWinningGcModal'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import { bidBoardJobLinkLabel } from '../../lib/bids/bidBoardJobLinks'
+import { JOB_CREATED_FROM_BID_EVENT, jobCreatedTelemetryTarget, secondConversionMessage, type JobCreatedFromBidDetail } from '../../lib/bids/wonMomentActions'
 import {
   resolveDevelopmentIdForJobPayload,
   validateNewDevelopmentName,
@@ -266,6 +270,7 @@ export default function JobFormModal({
 }: JobFormModalProps) {
   const embedded = embeddedRegion !== null
   const { user: authUser, role: authRole } = useAuth()
+  const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   /** Phone footer layout (v2.1239): status line above one deliberate button row. */
@@ -413,6 +418,8 @@ export default function JobFormModal({
     bidOutcome: string | null
     agreedValue: number | null
     packets: GcPacket[]
+    /** The form was opened FOR this import (`openNewJob({ prefillBidId })`) — cancelling closes it instead of stranding a blank form. */
+    closeOnCancel: boolean
   } | null>(null)
   /** Auto-picked trade on new-job load; changing away from this counts as “content” for hiding Import. */
   const initialNewJobServiceTypeIdRef = useRef('')
@@ -1565,8 +1572,20 @@ export default function JobFormModal({
     setJobImportSourceOpen(false)
   }
 
+  /**
+   * Tier-1 #8 (J15-F4): an abandoned bid import never strands a blank form — say what happened, and
+   * when this form was opened only for the import, close it too.
+   */
+  const cancelBidImport = useCallback(
+    (closeTheForm: boolean, message: string) => {
+      showToast(message, 'info')
+      if (closeTheForm) void closeFormRef.current?.()
+    },
+    [showToast],
+  )
+
   const applyPrefillFromBid = useCallback(
-    async (bidRowId: string, forcedGc?: WinningGcOption) => {
+    async (bidRowId: string, forcedGc?: WinningGcOption, opts?: { closeOnCancel?: boolean }) => {
       try {
         const row = await withSupabaseRetry(
           async () =>
@@ -1601,6 +1620,30 @@ export default function JobFormModal({
             contact_info: unknown
             date_met: string | null
           } | null
+        }
+        // Tier-1 #8: warn on a second conversion. First pass only — the picker's pick re-enters
+        // with `forcedGc` after this check already ran. Fail-soft: a role that cannot read jobs sees no warning.
+        if (!forcedGc) {
+          const { data: existingRows } = await supabase
+            .from('jobs_ledger')
+            .select('id, hcp_number, created_at')
+            .eq('bid_id', b.id)
+            .order('created_at', { ascending: false })
+            .limit(5)
+          const existing = ((existingRows ?? []) as Array<{ id: string; hcp_number: string | null }>).map((r) => ({ jobId: r.id, hcpNumber: r.hcp_number ?? '' }))
+          if (existing.length > 0) {
+            const bidLabel = [b.bid_number ? `B${String(b.bid_number).trim()}` : null, (b.project_name ?? '').trim() || null].filter(Boolean).join(' · ') || 'this bid'
+            const ok = await confirmDialog({
+              title: 'A job already exists from this bid',
+              message: secondConversionMessage(existing, bidLabel),
+              confirmLabel: 'Create another job',
+              cancelLabel: 'Cancel',
+            })
+            if (!ok) {
+              cancelBidImport(!!opts?.closeOnCancel, `Nothing created — ${bidBoardJobLinkLabel(existing[0]!.hcpNumber)} is on the bid's Job block.`)
+              return
+            }
+          }
         }
         // Per-GC Phase 3: on a multi-GC bid, the job's GC is the WINNING packet's — one recorded
         // winner imports silently; otherwise ask once (the pick records the Won when undecided).
@@ -1648,6 +1691,7 @@ export default function JobFormModal({
                 bidOutcome: b.outcome ?? null,
                 agreedValue: b.agreed_value == null ? null : Number(b.agreed_value),
                 packets,
+                closeOnCancel: !!opts?.closeOnCancel,
               })
               return
             }
@@ -1732,7 +1776,7 @@ export default function JobFormModal({
         showToast(formatPostgrestOrUnknownError(e, 'Could not load bid'), 'error')
       }
     },
-    [customers, meServiceTypeColumns, serviceTypes, showToast],
+    [customers, meServiceTypeColumns, serviceTypes, showToast, confirmDialog, cancelBidImport],
   )
 
   const handleWinningGcPick = useCallback(
@@ -2012,7 +2056,8 @@ export default function JobFormModal({
     if (bidId === pid) return
     if (newJobPrefillBidAppliedRef.current === pid) return
     newJobPrefillBidAppliedRef.current = pid
-    void applyPrefillFromBid(pid)
+    // This form exists only for the import — cancelling the GC picker closes it (Tier-1 #8, J15-F4).
+    void applyPrefillFromBid(pid, undefined, { closeOnCancel: true })
   }, [initDone, mode, newJobPrefillBidId, applyPrefillFromBid, bidId])
 
   useEffect(() => {
@@ -3105,6 +3150,11 @@ export default function JobFormModal({
           await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
         }
         onCreatedJobIdRef.current?.(jobId)
+        // Tier-1 #8: a job's birth is unloggable in job_activity_events without a migration (no client
+        // INSERT policy, no AFTER INSERT trigger on jobs_ledger) — record it as telemetry for now, and
+        // tell the bid surfaces so the "J#### opened from this bid" chip appears without a reload.
+        recordNavClick(authUser?.id, authRole, 'job_created', jobCreatedTelemetryTarget({ bidId, projectId }))
+        if (bidId) window.dispatchEvent(new CustomEvent<JobCreatedFromBidDetail>(JOB_CREATED_FROM_BID_EVENT, { detail: { bidId, jobId } }))
       }
       if (customerId && dateMet.trim()) {
         const c = customers.find((x) => x.id === customerId)
@@ -4461,7 +4511,11 @@ export default function JobFormModal({
           options={winningGcPick.options}
           writesWin={winningGcPick.writesWin}
           onPick={(opt) => void handleWinningGcPick(opt)}
-          onCancel={() => setWinningGcPick(null)}
+          onCancel={() => {
+            const closeTheForm = winningGcPick.closeOnCancel
+            setWinningGcPick(null)
+            cancelBidImport(closeTheForm, 'Import cancelled — nothing was filled in, and the bid is unchanged.')
+          }}
         />
       )}
       {segmentGeneratorOpen && (

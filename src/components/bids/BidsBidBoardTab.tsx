@@ -942,7 +942,7 @@ export function BidsBidBoardTab({
               {renderGcSentBadge(bid.id)}
               {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
                 // Bids by GC (in-cell, v2.2183): one line per GC — name · sent · state pill — in place of the GC name.
-                <div style={{ alignSelf: 'stretch', minWidth: 0 }}><BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} dense /></div>
+                <div style={{ alignSelf: 'stretch', minWidth: 0 }}><BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} jobLink={jobsByBidId?.get(bid.id) ?? null} dense /></div>
               ) : (bid.customers || bid.bids_gc_builders) ? (
                 <button
                   type="button"
@@ -1150,7 +1150,7 @@ export function BidsBidBoardTab({
         {renderGcSentBadge(bid.id)}
         {gcRowsWorthShowing(gcPacketsByBid[bid.id]) ? (
           <div style={{ margin: '0.1rem 0 0.25rem' }}>
-            <BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} />
+            <BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} jobLink={jobsByBidId?.get(bid.id) ?? null} />
           </div>
         ) : null}
         <div
