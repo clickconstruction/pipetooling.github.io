@@ -139,6 +139,43 @@ describe('CustomerPortal render smoke', () => {
     expect(pay?.getAttribute('data-screen-only')).not.toBeNull()
   })
 
+  it('phone layout (J21-F2): ledger has no inline min-width; bills are stacked-card hooks; print still collapses the grid', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    // jsdom has no layout, so this asserts the markup branch the CSS keys on.
+    // The old `style={{ minWidth: 560 }}` was what pushed every amount and PAY
+    // ONLINE off a 375px screen; the stylesheet owns the width now.
+    const ledger = document.querySelector('[data-portal-ledger]') as HTMLElement
+    expect(ledger).toBeTruthy()
+    expect(ledger.style.minWidth).toBe('')
+    const scroll = ledger.closest('[data-portal-ledger-scroll]') as HTMLElement
+    expect(scroll).toBeTruthy()
+    // The sideways-scroll region is stylesheet-owned too, so the phone query
+    // can switch it off (an inline overflow would outrank the rule).
+    expect(scroll.style.overflowX).toBe('')
+    // Every bill row is a restackable card; the pay link and check chip carry
+    // the hooks the phone query targets; the header row is hideable.
+    const rows = document.querySelectorAll('[data-portal-bill]')
+    expect(rows).toHaveLength(2)
+    rows.forEach((row) => expect(row.getAttribute('style') ?? '').not.toMatch(/grid-template-columns/))
+    expect(document.querySelectorAll('[data-portal-bill] [data-bill-amount]')).toHaveLength(2)
+    expect(document.querySelector('a[data-bill-pay]')?.textContent).toBe('PAY ONLINE')
+    expect(document.querySelector('[data-bill-check]')?.textContent).toBe('check · ref 655')
+    expect(document.querySelector('[data-portal-ledger-head]')).toBeTruthy()
+    expect(rows[rows.length - 1]?.hasAttribute('data-last')).toBe(true)
+    // The stylesheet carries the phone restack (screen-only, so paper never
+    // matches it) and still exempts the grid width in print.
+    const css = Array.from(document.querySelectorAll('style')).map((el) => el.textContent ?? '').join('\n')
+    expect(css).toMatch(/\[data-portal-ledger-scroll\]\{overflow-x:auto\}/)
+    expect(css).toMatch(/\[data-portal-ledger\]\{min-width:560px\}/)
+    expect(css).toMatch(/@media screen and \(max-width:559px\)/)
+    expect(css).toMatch(/\[data-portal-ledger-scroll\]\{overflow-x:visible\}/)
+    expect(css).toMatch(/\[data-portal-bill\][^}]*grid-template-columns:1fr/)
+    expect(css).toMatch(/\[data-bill-pay\]\{display:block/)
+    expect(css).toMatch(/@media print \{[\s\S]*\[data-portal-ledger\]\{min-width:0 !important\}/)
+  })
+
   it('all-paid state', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, bills: [], totalDue: 0 }), { status: 200 })))
     mountAt('/portal?t=abcdef1234567890abcdef')
