@@ -495,6 +495,8 @@ export default function JobsJobSummaryTab({
               onColorByChange={(timelineColorBy) => view.setPrefs({ timelineColorBy })}
               granularity={view.prefs.timelineGranularity}
               onGranularityChange={(timelineGranularity) => view.setPrefs({ timelineGranularity })}
+              asOfOn={view.prefs.timelineAsOf}
+              onAsOfOnChange={(timelineAsOf) => view.setPrefs({ timelineAsOf })}
               canOpenSessionNotes={canOpenSessionNotes}
               users={users}
               jobs={jobSummaryLedgerAllJobs ?? []}

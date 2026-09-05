@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { buildJobDayLedger } from './jobDayLedger'
 import {
+  asOfYmdForDaysBack,
+  daysBackLabel,
+  jobRunBucketAsOf,
+  jobRunDeltaSince,
   buildRunningSeries,
   buildRunningSeriesBy,
   bucketRunningWeekly,
@@ -271,5 +275,81 @@ describe('weekly roll-up (v2.2746)', () => {
 
   it('is empty for an empty window', () => {
     expect(bucketRunningWeekly(rows, [], TODAY)).toEqual({ weeks: [], peak: null, currentTotal: 0, averageTotal: 0 })
+  })
+})
+
+describe('as of (v2.2807)', () => {
+  const moves = new Map([
+    ['j1', { startYmd: '2026-07-20', endYmd: '2026-08-04', billedYmd: '2026-08-04', paidYmd: '2026-08-22' }],
+    ['j2', { startYmd: '2026-08-03', endYmd: '2026-08-10', billedYmd: '2026-08-10', paidYmd: '2026-09-01' }],
+  ])
+  const ledgerWithMoves = buildJobDayLedger({
+    startYmd: '2026-08-01',
+    endYmd: '2026-08-31',
+    officeJobLedgerId: 'office',
+    fieldDetailByDay: detail,
+    poolUsdByDay: new Map(),
+    jobLabels: new Map([['j1', { number: 'J1', name: 'One' }]]),
+    statusSpansByJob: moves,
+    addDays: ymdAddDays,
+  })
+
+  it('buckets as the job stood on the as-of day; today (or later) is today’s status', () => {
+    const j1 = moves.get('j1')
+    expect(jobRunBucketAsOf('billed', j1, TODAY, TODAY)).toBe('billed')
+    expect(jobRunBucketAsOf('paid', j1, '2026-09-09', TODAY)).toBe('paid')
+    expect(jobRunBucketAsOf('paid', j1, '2026-08-03', TODAY)).toBe('working')
+    expect(jobRunBucketAsOf('paid', j1, '2026-08-04', TODAY)).toBe('billed')
+    expect(jobRunBucketAsOf('paid', j1, '2026-08-22', TODAY)).toBe('paid')
+    expect(jobRunBucketAsOf('paid', undefined, '2026-08-22', TODAY)).toBe('working')
+  })
+
+  it('worked spans rewind: later days vanish, open jobs run to the as-of day, buckets are as of then', () => {
+    const rows = buildWorkedSpans({ ledger: ledgerWithMoves, statusByJob: status, todayYmd: TODAY, gapDays: 7, asOfYmd: '2026-08-23' })
+    expect(rows.map((r) => r.jobId)).toEqual(['j1', 'j2'])
+    expect(rows[0]).toMatchObject({ bucket: 'paid', open: false })
+    expect(rows[0]!.segments).toEqual([
+      { startYmd: '2026-08-01', endYmd: '2026-08-05' },
+      { startYmd: '2026-08-20', endYmd: '2026-08-23' },
+    ])
+    expect(rows[1]).toMatchObject({ bucket: 'billed', open: false })
+    const earlier = buildWorkedSpans({ ledger: ledgerWithMoves, statusByJob: status, todayYmd: TODAY, gapDays: 7, asOfYmd: '2026-08-21' })
+    expect(earlier[0]).toMatchObject({ bucket: 'billed' })
+    expect(earlier[0]!.segments[1]).toEqual({ startYmd: '2026-08-20', endYmd: '2026-08-21' })
+    const j3Open = buildWorkedSpans({ ledger: ledgerWithMoves, statusByJob: status, todayYmd: TODAY, gapDays: 7, asOfYmd: '2026-08-29' })
+    expect(j3Open.find((r) => r.jobId === 'j3')).toMatchObject({ bucket: 'working', open: true, segments: [{ startYmd: '2026-08-28', endYmd: '2026-08-29' }] })
+  })
+
+  it('status spans rewind: spans that began later drop, the rest clip and read as open', () => {
+    const spans = new Map([
+      ['j1', { startYmd: '2026-07-20', endYmd: '2026-08-26', billedYmd: '2026-08-26', paidYmd: null }],
+      ['j3', { startYmd: '2026-08-27', endYmd: null }],
+    ])
+    const rows = buildStatusSpans({ ledger, statusSpansByJob: spans, statusByJob: status, todayYmd: TODAY, asOfYmd: '2026-08-25' })
+    expect(rows.map((r) => r.jobId)).toEqual(['j1'])
+    expect(rows[0]).toMatchObject({ bucket: 'working', open: true, segments: [{ startYmd: '2026-08-01', endYmd: '2026-08-25' }] })
+    const today = buildStatusSpans({ ledger, statusSpansByJob: spans, statusByJob: status, todayYmd: TODAY })
+    expect(today[0]).toMatchObject({ bucket: 'billed', open: false })
+  })
+
+  it('counts what changed between the as-of day and today over today’s rows', () => {
+    const spans = new Map([
+      ['j1', { startYmd: '2026-07-20', endYmd: '2026-08-26', billedYmd: '2026-08-26', paidYmd: null }],
+      ['j2', { startYmd: '2026-08-03', endYmd: '2026-08-10', billedYmd: '2026-08-10', paidYmd: '2026-08-28' }],
+      ['j3', { startYmd: '2026-08-27', endYmd: null }],
+    ])
+    const rowsToday = buildStatusSpans({ ledger, statusSpansByJob: spans, statusByJob: status, todayYmd: TODAY })
+    expect(jobRunDeltaSince(rowsToday, '2026-08-25', TODAY)).toEqual({ opened: 1, billed: 1, paid: 1, stillOpen: 0 })
+    expect(jobRunDeltaSince(rowsToday, '2026-08-27', TODAY)).toEqual({ opened: 0, billed: 0, paid: 1, stillOpen: 1 })
+    expect(jobRunDeltaSince(rowsToday, TODAY, TODAY)).toEqual({ opened: 0, billed: 0, paid: 0, stillOpen: 1 })
+  })
+
+  it('maps slider positions to days and labels them', () => {
+    expect(asOfYmdForDaysBack('2026-08-31', 0, '2026-08-01')).toBe('2026-08-31')
+    expect(asOfYmdForDaysBack('2026-08-31', 7, '2026-08-01')).toBe('2026-08-24')
+    expect(asOfYmdForDaysBack('2026-08-31', 60, '2026-08-01')).toBe('2026-08-01')
+    expect(daysBackLabel(0)).toBe('')
+    expect(daysBackLabel(7)).toBe('1 wk ago')
+    expect(daysBackLabel(10)).toBe('10 d ago')
   })
 })
