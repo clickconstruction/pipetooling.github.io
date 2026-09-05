@@ -7,7 +7,7 @@ order: 55
 ---
 
 The **Employment** tab on the People page is one place to see and manage each person's employment
-details. Open **People → Employment** (it sits just left of Hours).
+details. Open **People → Pay → Employment** (a view in the Pay row, beside Hours and Payroll).
 
 ## Finding a person
 

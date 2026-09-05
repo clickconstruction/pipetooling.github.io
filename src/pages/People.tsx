@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { pageTabStyle } from '../lib/pageTabStyle'
+import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
+import {
+  PEOPLE_TAB_GROUP_MEMORY_KEY,
+  PEOPLE_TAB_LABELS,
+  groupOfTab,
+  isPeopleTab,
+  landingViewForGroup,
+  parseGroupMemory,
+  rememberTab,
+  visibleTabGroups,
+  type PeopleTab,
+  type PeopleTabGroupId,
+} from '../lib/people/peopleTabGroups'
 import { effectiveHoursForCost, effectiveHoursForDisplay, canEditRecordedHours } from '../lib/salariedEffectiveHours'
 import { type TeamSummaryInlineHandle } from '../components/people/teamSummary/TeamSummaryInline'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
@@ -217,25 +229,7 @@ const tabStyle = pageTabStyle
 /** Active project rows for People Users tab “Active projects” line (workflow links use project id). */
 type PersonActiveProject = { id: string; name: string }
 
-type PeopleTab =
-  | 'scoreboard'
-  | 'review'
-  | 'hr'
-  | 'person'
-  | 'users'
-  | 'subs'
-  | 'overhead'
-  | 'employment'
-  | 'pay_stubs'
-  | 'hours'
-  | 'offsets'
-  | 'vehicles'
-  | 'housing'
-  | 'licenses'
-  | 'contracts'
-  | 'writeups'
-  | 'feedback'
-  | 'activity'
+/** `PeopleTab` (the 18 view keys) and their six groups live in `src/lib/people/peopleTabGroups.ts` (v2.2811). */
 
 /** Users tab: email/phone on its own row below the name line at ≤640px. */
 /** Max UUIDs in Realtime `user_id=in.(...)` for People Hours (avoid oversized filters). */
@@ -323,6 +317,27 @@ export default function People() {
   /** People Users tab: External Subcontractor rows — expanded IDs show Active projects links */
   const [externalSubProjectsExpanded, setExternalSubProjectsExpanded] = useState(() => new Set<string>())
   const [activeTab, setActiveTab] = useState<PeopleTab>('users')
+  /** Per-group last-view memory (v2.2811): clicking a group tab lands on the view you used last there. Device-local. */
+  const [tabGroupMemory, setTabGroupMemory] = useState<Partial<Record<PeopleTabGroupId, PeopleTab>>>(() => {
+    try {
+      return parseGroupMemory(window.localStorage.getItem(PEOPLE_TAB_GROUP_MEMORY_KEY))
+    } catch {
+      return {}
+    }
+  })
+  useEffect(() => {
+    setTabGroupMemory((m) => {
+      const next = rememberTab(m, activeTab)
+      if (next !== m) {
+        try {
+          window.localStorage.setItem(PEOPLE_TAB_GROUP_MEMORY_KEY, JSON.stringify(next))
+        } catch {
+          /* private mode / blocked storage: memory is per-session only */
+        }
+      }
+      return next
+    })
+  }, [activeTab])
 
   // Pay/Hours tab state
   const [hoursTabLoading, setHoursTabLoading] = useState(false)
@@ -818,26 +833,7 @@ export default function People() {
         return next
       }, { replace: true })
       setActiveTab('users')
-    } else if (
-      tab === 'users' ||
-      tab === 'subs' ||
-      tab === 'overhead' ||
-      tab === 'employment' ||
-      tab === 'pay_stubs' ||
-      tab === 'hours' ||
-      tab === 'vehicles' ||
-      tab === 'housing' ||
-      tab === 'offsets' ||
-      tab === 'licenses' ||
-      tab === 'contracts' ||
-      tab === 'writeups' ||
-      tab === 'review' ||
-      tab === 'scoreboard' ||
-      tab === 'hr' ||
-      tab === 'person' ||
-      tab === 'feedback' ||
-      tab === 'activity'
-    ) {
+    } else if (isPeopleTab(tab)) {
       // 'scoreboard' has no URL gate deliberately — isDev resolves async and a
       // gate here bounces dev cold deep links to Users (the activity-tab race).
       // The render site is isDev-gated, matching Review's long-standing pattern.
@@ -3139,331 +3135,91 @@ export default function People() {
     [users]
   )
 
+  // Six top-level groups; every view keeps its own gate (v2.2811). A group shows when any of
+  // its views would have shown as a tab before; the second row lists the active group's views.
+  const visiblePeopleTabs: Partial<Record<PeopleTab, boolean>> = {
+    users: true,
+    subs: true,
+    person: canOpenPersonDesk(authRole),
+    hours: canOpenHoursTab,
+    pay_stubs: canAccessPay,
+    offsets: canAccessPay,
+    employment: canAccessPay,
+    overhead: canAccessOverheadTab,
+    contracts: canAccessContracts,
+    licenses: canAccessLicenses,
+    writeups: canAccessContracts,
+    hr: isDev,
+    vehicles: canAccessVehicles,
+    housing: canAccessPay,
+    review: isDev,
+    scoreboard: isDev,
+    activity: canSeeActivityTab,
+    feedback: isDev,
+  }
+  const tabGroups = visibleTabGroups(visiblePeopleTabs)
+  const activeGroupId = groupOfTab(activeTab)
+  const activeGroup = tabGroups.find((g) => g.id === activeGroupId)
+  /** The second row: only when the active group offers a choice. */
+  const activeSubTabs = activeGroup && activeGroup.views.length > 1 ? activeGroup : null
+  function goToPeopleTab(tab: PeopleTab) {
+    setActiveTab(tab)
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', tab)
+      return next
+    })
+  }
+
   if (loading) return <p>Loading...</p>
 
   return (
     <div>
       {hoursGridFirstColMeasurer}
-      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: activeSubTabs ? 'none' : '1px solid var(--border)', marginBottom: activeSubTabs ? 0 : '1.5rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
-        {isDev && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('scoreboard')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'scoreboard')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'scoreboard')}
-          >
-            Scoreboard
-          </button>
-        )}
-        {isDev && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('review')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'review')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'review')}
-          >
-            Review
-          </button>
-        )}
-        {isDev && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('hr')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'hr')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'hr')}
-          >
-            HR
-          </button>
-        )}
-        {canOpenPersonDesk(authRole) && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('person')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'person')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'person')}
-            title="One person, every control — the Person Desk as a page"
-          >
-            Person
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('users')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'users')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'users')}
-        >
-          Users
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('subs')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'subs')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'subs')}
-        >
-          Subs
-        </button>
-        {canAccessOverheadTab && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('overhead')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'overhead')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'overhead')}
-          >
-            Overhead
-          </button>
-        )}
-        {canAccessOverheadTab && canOpenHoursTab ? (
-          <span
-            aria-hidden
-            style={{
-              flexShrink: 0,
-              color: 'var(--text-faint-300)',
-              fontWeight: 400,
-              padding: '0 0.35rem',
-              userSelect: 'none',
-            }}
-          >
-            |
-          </span>
-        ) : null}
-        {canAccessPay && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('employment')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'employment')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'employment')}
-          >
-            Employment
-          </button>
-        )}
-        {canOpenHoursTab && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('hours')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'hours')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'hours')}
-          >
-            Hours
-          </button>
-        )}
-        {canAccessPay && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('pay_stubs')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'pay_stubs')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'pay_stubs')}
-          >
-            Payroll
-          </button>
-        )}
-        {canAccessPay && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('offsets')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'offsets')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'offsets')}
-          >
-            Offsets
-          </button>
-        )}
-        {canAccessVehicles && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('vehicles')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'vehicles')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'vehicles')}
-          >
-            Vehicles
-          </button>
-        )}
-        {canAccessPay && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('housing')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'housing')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'housing')}
-          >
-            Housing
-          </button>
-        )}
-        {canAccessPay && canAccessLicenses ? (
-          <span
-            aria-hidden
-            style={{
-              flexShrink: 0,
-              color: 'var(--text-faint-300)',
-              fontWeight: 400,
-              padding: '0 0.35rem',
-              userSelect: 'none',
-            }}
-          >
-            |
-          </span>
-        ) : null}
-        {canAccessLicenses && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('licenses')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'licenses')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'licenses')}
-          >
-            Licenses
-          </button>
-        )}
-        {canAccessContracts && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('contracts')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'contracts')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'contracts')}
-          >
-            Contracts
-          </button>
-        )}
-        {canAccessContracts && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('writeups')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'writeups')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'writeups')}
-          >
-            Writeups
-          </button>
-        )}
-        {isDev && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('feedback')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'feedback')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'feedback')}
-          >
-            Feedback
-          </button>
-        )}
-        {canSeeActivityTab && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('activity')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'activity')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'activity')}
-          >
-            Activity
-          </button>
-        )}
+          <div role="tablist" aria-label="People sections" style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
+            {tabGroups.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                role="tab"
+                aria-selected={g.id === activeGroupId}
+                onClick={() => {
+                  const target = landingViewForGroup(g, tabGroupMemory)
+                  if (!target) return
+                  goToPeopleTab(target)
+                }}
+                style={tabStyle(g.id === activeGroupId)}
+              >
+                {g.label}
+              </button>
+            ))}
           </div>
         </div>
         <h1 style={{ flexShrink: 0, margin: 0, marginLeft: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>People</h1>
       </div>
+      {activeSubTabs ? (
+        <div
+          role="tablist"
+          aria-label={`${activeSubTabs.label} views`}
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0 0.75rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}
+        >
+          {activeSubTabs.views.map((v) => (
+            <button
+              key={v}
+              type="button"
+              role="tab"
+              aria-selected={v === activeTab}
+              onClick={() => goToPeopleTab(v)}
+              style={pageSubTabStyle(v === activeTab)}
+              title={v === 'person' ? 'One person, every control — the Person Desk as a page' : undefined}
+            >
+              {PEOPLE_TAB_LABELS[v]}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {activeTab === 'subs' && <PeopleSubsTab />}
 
