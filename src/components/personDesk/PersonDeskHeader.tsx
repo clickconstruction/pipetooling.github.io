@@ -209,7 +209,7 @@ export function PersonDeskHeader({
     const ok = await confirmDialog({ message: `Sign in as ${name}? Your own session ends until you sign back in.`, confirmLabel: 'Imitate' })
     if (!ok) return
     try {
-      await loginAsUser({ email: user.email })
+      await loginAsUser({ email: user.email, role: user.role })
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not imitate', 'error')
     }

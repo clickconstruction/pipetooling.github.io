@@ -1,15 +1,20 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { roleHomePath } from './roleGate'
+import { stampDispatchModeActivity } from './dispatchModeReturnFocus'
 
 export async function loginAsUser(
-  user: { email: string | null },
+  user: { email: string | null; role?: string | null },
   redirectTo?: string
 ): Promise<void> {
   const email = user.email?.trim()
   if (!email) {
     throw new Error('User has no email')
   }
-  const targetRedirect = redirectTo ?? `${window.location.origin}/dashboard`
+  // Land on the imitated role's home (v2.2882, C25 J5-11): the same page
+  // Layout's route guard sends that role to, so "Imitate" arrives where the
+  // button says instead of wherever the operator's own browser state points.
+  const targetRedirect = redirectTo ?? `${window.location.origin}${roleHomePath(user.role)}`
   // Refresh session to ensure we have a valid token before invoking (avoids "Invalid or expired session")
   try {
     await supabase.auth.refreshSession()
@@ -60,9 +65,15 @@ export async function loginAsUser(
   if (tokenHash) {
     const { error: eVerify } = await supabase.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash })
     if (!eVerify) {
+      // The imitated session is active right now. Without this stamp the
+      // operator's browser has no Dispatch Mode activity on record, so an
+      // imitated assistant read as "away 5+ minutes" and Layout jumped them to
+      // /dispatch-mode/schedule instead of the landing above (J5-11).
+      stampDispatchModeActivity(Date.now())
       window.location.assign(targetRedirect)
       return
     }
   }
+  stampDispatchModeActivity(Date.now())
   window.location.href = link
 }

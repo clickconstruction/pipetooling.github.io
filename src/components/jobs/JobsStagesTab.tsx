@@ -3240,9 +3240,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             }}
             onStartContractSweep={() => setContractSweepOpen(true)}
             stats={cacheHeaderStats}
-            canOpenAr={
-              authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
-            }
+            canOpenAr={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
             canSeeCharts={authRole === 'dev' || authRole === 'controller'}
             canSeeCollected={authRole === 'dev' || authRole === 'controller'}
             arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}

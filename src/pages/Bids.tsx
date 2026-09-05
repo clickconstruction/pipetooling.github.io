@@ -20,6 +20,7 @@ import { useBidPricingEngine } from '../hooks/useBidPricingEngine'
 import { useBidPricingRows } from '../hooks/useBidPricingRows'
 import { useBidCustomCosts } from '../hooks/useBidCustomCosts'
 import { useToastContext } from '../contexts/ToastContext'
+import { useRoleGate } from '../hooks/useRoleGate'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import {
   formatBidLedgerNumberLabel,
@@ -217,6 +218,9 @@ export default function Bids() {
   // that the board tabs drop to their own single-row scrollable strip (v2.1331).
   const wideBidsHeader = useMatchMedia('(min-width: 1151px)')
   const [myRole, setMyRole] = useState<UserRole | null>(null)
+  // Role gates that say something (v2.2882): a superintendent's link to an
+  // office-only tab toasts once and lands on the Bid board — not a silent rewrite.
+  const { bounce: roleGateBounce } = useRoleGate(myRole, authUser?.id)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
@@ -1463,6 +1467,8 @@ export default function Bids() {
       return
     }
     if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'call-queue'].includes(tab)) {
+      // v2.2882 (C25 J10-F12): say so, then land on the board.
+      roleGateBounce('bids-office-tab', `/bids?tab=${tab}`)
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
@@ -1614,7 +1620,7 @@ export default function Bids() {
     const pendingBid = bids.find((b) => b.id === deepBidId)
     if (!pendingBid) return
     applyBidBoardDeepLinkToBid(pendingBid)
-  }, [bids, location.search, applyBidBoardDeepLinkToBid])
+  }, [bids, location.search, applyBidBoardDeepLinkToBid, roleGateBounce])
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
