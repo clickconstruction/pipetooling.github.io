@@ -1,4 +1,4 @@
-import { DatabaseError, type SupabaseClientResult } from '../utils/errorHandling'
+import { databaseErrorFromResult, type SupabaseClientResult } from '../utils/errorHandling'
 
 /** PostgREST's configured `max_rows` — responses without `.range()` are silently capped here. */
 export const SUPABASE_PAGE_SIZE = 1000
@@ -36,7 +36,7 @@ export async function fetchAllRows<T>(
   for (let from = 0; ; from += pageSize) {
     const res = await buildPage(from, from + pageSize - 1)
     if (res.error) {
-      throw new DatabaseError(`Failed to ${label}: ${res.error.message}`, res.error.code, res.error.details)
+      throw databaseErrorFromResult(res.error, label, res.status)
     }
     const rows = res.data ?? []
     all.push(...rows)

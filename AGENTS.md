@@ -30,6 +30,8 @@
 
 Full index: [docs/README.md](./docs/README.md). Fast pointers for the most common agent needs:
 
+- **Unfinished, hand-off-ready projects** → [`to-dos/README.md`](./to-dos/README.md) (one file per project: ask, decision, mock-up, plan, verify recipe). Check it before reworking a surface it names.
+
 | Need | Go to |
 |---|---|
 | Database schema, tables, columns | `docs/PROJECT_DOCUMENTATION.md` → Database Schema; generated types `src/types/database.ts` |

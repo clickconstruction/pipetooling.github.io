@@ -41,7 +41,7 @@ Every week (due Wednesday), the office certifies each GC's group before sending 
 
 The group header then shows {{chip:green|✓ Certified · Taunya · 7:02 AM}} — and if a bill lands or a payment posts **after** sign-off, it flips to {{chip:yellow|Changed since certified · +$2,700}} with a Re-certify button, so a sent statement never silently drifts from what was reviewed. Certifications reset each week.
 
-**The Dashboard reminds you**: starting Wednesday, office staff see an amber card — "GC review is due today · 3 of 9 GCs certified" — that opens GC Review in one click. It turns green for the rest of Wednesday once every GC is certified and sent, and stays away until the next week's ritual.
+**The Dashboard reminds you**: starting Wednesday, office staff see an amber card — "GC review is due today · 3 of 9 GCs certified" — that opens GC Review in one click. It turns green for the rest of Wednesday once every GC is certified and sent — by **Draft Message**, a scheduled send to that GC, or a **Sent it ✓** mark from the statement round; a "Spoke with them" mark or an "All GCs" office copy doesn't count — and stays away until the next week's ritual.
 - Every sharing action for one GC lives behind that row's {{button:outline|Share}} dropdown — **Draft Message**, **Copy**, **Print**, and (under *Portal*) **Copy portal link**. The {{icon:help|globe}} next to the GC's name is their portal, same as everywhere else.
 
 ## Send a statement to a GC

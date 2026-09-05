@@ -5,7 +5,7 @@ file: TROUBLESHOOTING.md
 type: Troubleshooting guide
 purpose: Common issues and how to resolve them
 audience: Devs + AI agents
-last_updated: 2026-09-04
+last_updated: 2026-09-05
 ---
 
 Common issues and how to resolve them.
@@ -141,6 +141,23 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 3. **Prove it isn't capped** — `select('…', { count: 'exact' })`: a known total ≤ 1,000 silences the tripwire, because exactly 1,000 real rows is then a fact, not a symptom.
 
 Never raise `max_rows` instead — it moves the cliff and hides it again.
+
+## "No connection — check your signal" vs "You don't have access" / "This link points to something that doesn't exist"
+
+**What the messages mean (since v2.2843)**: every database failure is classified by *class*, never by message text (`src/utils/errorHandling.ts` → `DatabaseError.kind`):
+
+| The user sees | `kind` | What happened | Retried? |
+| --- | --- | --- | --- |
+| "No connection — the app couldn't reach the server, so nothing was saved. Check your signal and try again." | `network` | The browser's `fetch` itself rejected (`TypeError: Failed to fetch` / `Load failed`); supabase-js reports it as `code: ''`, `status: 0`. The request never reached PostgREST. | yes (4 attempts, jittered backoff) |
+| "You don't have access to this <thing>." / "You don't have permission to <operation>." | `server` `42501` | RLS or a grant refused the read/write. Check the role's policies (`docs/ACCESS_CONTROL.md`), not the wifi. | no |
+| "This link points to something that doesn't exist any more." | `server` `22P02` / `PGRST116` | A malformed id reached a uuid column (the week grid's `?jobId=bid:<uuid>`, J18-F1) or `.single()` found no row (deleted record, stale link). | no |
+| "Couldn't load <thing>: <server message>" / "Failed to <operation>: <server message>" | `server` other | PostgREST answered with some other code — missing column, constraint, RPC error. The server message is the lead. | only transient codes (`40001`, `40P01`, `53xxx`, `08xxx`, `PGRST000-003`) or 408/429/5xx with no code |
+
+**If a user reports "No connection" on good wifi**: open the console — every shown error logs one `[error-class] <kind> <code> <operation>` line per (kind, code, operation) per page load (`src/lib/errorClassTelemetry.ts`). `network - <op>` with a working connection means something upstream of PostgREST (Cloudflare, DNS, a service-worker fetch) rejected; `server <code> <op>` rendering the offline copy should be impossible — file it against `errorHandling.ts`.
+
+**Before v2.2843** the offline copy was fabricated for ~100 `fetch…`-named operations: the `Failed to fetch<Op>:` prefix contained the literal `failed to fetch` token, and `isRetryableError` retried on the bare word `fetch`. Any refused or malformed read looked like an outage and was retried four times. If you see that pattern on an old build, it is the message that is wrong, not the connection.
+
+**Adding a new code family**: extend `ACCESS_DENIED_CODES` / `BROKEN_LINK_CODES` / `TRANSIENT_SERVER_CODES` in `errorHandling.ts` and add the case to `src/utils/errorHandling.test.ts`. Never add a message-text token for a server error.
 
 ## RPC returns 404 (e.g. approve_clock_sessions)
 
