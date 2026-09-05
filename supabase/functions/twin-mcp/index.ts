@@ -328,6 +328,58 @@ const TOOLS = [
     },
   },
   {
+    name: 'put_substrate',
+    description:
+      "STG-2 as a verb (v2.2881): attach your plan substrate to YOUR bid — the bids_plan_substrates insert that agent environments kept blocking client-side. Build the substrate per EXTRACTOR.md (get_placement_guide) first; this only stores it. Latest row wins (get_plan_brief reads the newest), so a corrected substrate is just another call. Stamps '[pipeline STG-2]' on the ledger.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your bid (e.g. 'b474' or uuid) — created by / assigned to you" },
+        substrate: { type: 'object', description: 'The substrate JSON per EXTRACTOR.md (carries substrate_version inside)' },
+        version: { type: 'string', description: "Version label for the row (default 'v001', or v<n+1> when rows exist)" },
+      },
+      required: ['bid', 'substrate'],
+    },
+  },
+  {
+    name: 'seed_audit_questions',
+    description:
+      "Seed your open questions onto the bid's audit card (v2.2881) — the bid_audit_notes insert that agent environments kept blocking client-side. Questions land as kind='question' with your authorship; anchor every one you can (sheet_ref + one-line context — an unanchored question makes the auditor hunt). Plain trade words, one ask each, never asking the auditor to grade your number. Finds the bid's audit row (ct_finish_takeoff opens it) or opens one if missing.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your bid (e.g. 'b474' or uuid) — created by / assigned to you" },
+        questions: {
+          type: 'array',
+          description: 'Up to 20: [{ body, section?, sheet_ref?, context? }]',
+          items: {
+            type: 'object',
+            properties: {
+              body: { type: 'string', description: 'The question, plain trade words, one ask' },
+              section: { type: 'string', description: "'counts' | 'footage' | 'pricing' | 'scope' | 'general' (default general)" },
+              sheet_ref: { type: 'string', description: "Plan sheet where you saw it, e.g. 'P2.1'" },
+              context: { type: 'string', description: 'One sentence: what you saw and what rides on the answer' },
+            },
+            required: ['body'],
+          },
+        },
+      },
+      required: ['bid', 'questions'],
+    },
+  },
+  {
+    name: 'get_reference_rows',
+    description:
+      "The post-unseal read for the scope-match line-compare (v2.2881): your backtest bid's REFERENCE rows (fixtures, counts, units, pages, assigned prices). Blind-safe by construction — REFUSED until the shell's scorecard exists (score_backtest, or a scored shadow), the same order-of-operations the LOCK gate enforces on the way in. Use it for the T4 comparison and the amended scope verdict; never for a bid still sealed.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "YOUR twin shell (e.g. 'b475' or uuid), not the reference — the server resolves and checks the pairing" },
+      },
+      required: ['bid'],
+    },
+  },
+  {
     name: 'get_shadow_queue',
     description:
       'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate — created recently, plans present, NOT yet sent (so the shadow is blind by nature), not a ZZ bid, not already shadowed. HUMAN-REQUESTED bids (the green robot icon on the Bid Board) come FIRST, oldest ask on top, and bypass the lookback window — work those before the rest. Returns logistics only. Pick one and open_shadow it.',
@@ -756,7 +808,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         .limit(1)
         .maybeSingle()
       if (name === 'get_plan_brief') {
-        if (!sub) return textContent(`No plan substrate on bid ${ref} yet — STG-2 is YOURS to do: fetch the plan set (plans link / plan-fetch), follow EXTRACTOR.md (bundled in get_placement_guide) to build the substrate, insert it as a bids_plan_substrates row (bid_id, version, substrate) with your own session, then call get_plan_brief again. Do not skip to the takeoff without it.`, true)
+        if (!sub) return textContent(`No plan substrate on bid ${ref} yet — STG-2 is YOURS to do: fetch the plan set (plans link / plan-fetch), follow EXTRACTOR.md (bundled in get_placement_guide) to build the substrate, then attach it with put_substrate and call get_plan_brief again. Do not skip to the takeoff without it.`, true)
         const s = sub.substrate as Record<string, unknown>
         const payload = args.full === true
           ? s
@@ -1425,6 +1477,129 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }
       return textContent(JSON.stringify({ ok: true, added, skipped, note: skipped.length ? 'Skipped names already in the book — existing prices are never changed here; re-mirrors go through the digest.' : undefined }, null, 2))
     }
+    case 'put_substrate': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const substrate = args.substrate
+      if (!ref || !substrate || typeof substrate !== 'object' || Array.isArray(substrate)) {
+        return textContent('put_substrate needs bid + substrate (a JSON object per EXTRACTOR.md)', true)
+      }
+      const size = JSON.stringify(substrate).length
+      if (size > 1_000_000) return textContent(`Substrate too large (${size} chars > 1MB) — trim page-level noise; the substrate is the distilled read, not the plan set.`, true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, created_by, estimator_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — substrates land only on your own bids.`, true)
+      }
+      const { count: existing } = await admin.from('bids_plan_substrates').select('id', { count: 'exact', head: true }).eq('bid_id', bid.id)
+      const version = String(args.version ?? '').trim().slice(0, 20) || `v${String((existing ?? 0) + 1).padStart(3, '0')}`
+      const { error: insErr } = await admin.from('bids_plan_substrates').insert({
+        bid_id: bid.id, version, substrate, created_by: twin.twinUserId,
+      })
+      if (insErr) return textContent(`Substrate not saved: ${insErr.message}`, true)
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[pipeline STG-2] substrate ${version} attached via twin-mcp put_substrate (${size.toLocaleString()} chars${existing ? `, supersedes ${existing} earlier row${existing === 1 ? '' : 's'}` : ''}).`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({ ok: true, bid: `b${bid.bid_number}`, version, next: 'get_plan_brief now reads this substrate; set-class triage per the placement guide, then the takeoff.' }, null, 2))
+    }
+    case 'seed_audit_questions': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const questions = Array.isArray(args.questions) ? args.questions as Record<string, unknown>[] : []
+      if (!ref || !questions.length) return textContent('seed_audit_questions needs bid + questions[]', true)
+      if (questions.length > 20) return textContent('seed_audit_questions takes at most 20 questions per call', true)
+      const SECTIONS = ['counts', 'footage', 'pricing', 'scope', 'general']
+      const parsed = questions.map((q) => ({
+        body: String(q.body ?? '').trim().slice(0, 4000),
+        section: SECTIONS.includes(String(q.section ?? '').trim().toLowerCase()) ? String(q.section).trim().toLowerCase() : 'general',
+        sheet_ref: String(q.sheet_ref ?? '').trim().slice(0, 40) || null,
+        context: String(q.context ?? '').trim().slice(0, 1000) || null,
+      }))
+      if (parsed.some((q) => !q.body)) return textContent('Every question needs a body', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, created_by, estimator_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — audit questions land only on your own bids.`, true)
+      }
+      let { data: audit } = await admin.from('bid_audits').select('id, status').eq('bid_id', bid.id)
+        .order('requested_at', { ascending: false }).limit(1).maybeSingle()
+      if (!audit) {
+        const { data: created, error: audErr } = await admin.from('bid_audits')
+          .insert({ bid_id: bid.id, status: 'pending', created_by: twin.twinUserId }).select('id, status').single()
+        if (audErr) return textContent(`No audit row and could not open one: ${audErr.message}`, true)
+        audit = created
+      }
+      const { data: inserted, error: noteErr } = await admin.from('bid_audit_notes').insert(parsed.map((q) => ({
+        audit_id: audit!.id, bid_id: bid.id, author_id: twin.twinUserId,
+        kind: 'question', section: q.section, body: q.body, sheet_ref: q.sheet_ref, context: q.context,
+      }))).select('id')
+      if (noteErr) return textContent(`Questions not saved: ${noteErr.message}`, true)
+      const unanchored = parsed.filter((q) => !q.sheet_ref).length
+      return textContent(JSON.stringify({
+        ok: true, bid: `b${bid.bid_number}`, audit_id: audit!.id, seeded: inserted?.length ?? 0,
+        ...(unanchored ? { warning: `${unanchored} question${unanchored === 1 ? '' : 's'} carry no sheet_ref — an unanchored question makes the auditor hunt through the whole set.` } : {}),
+      }, null, 2))
+    }
+    case 'get_reference_rows': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      if (!ref) return textContent('get_reference_rows needs bid (YOUR twin shell)', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, created_by, estimator_id, twin_source_bid_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created).`, true)
+      }
+      if (!bid.twin_source_bid_id) return textContent(`b${bid.bid_number} has no reference pairing (twin_source_bid_id) — nothing to compare against.`, true)
+      // The seal check — same doctrine as score_backtest's LOCK gate, in the read direction:
+      // no scorecard, no reference rows. A scored shadow counts too.
+      const [{ data: scored }, { data: shadowScored }] = await Promise.all([
+        admin.from('twin_run_scores').select('run_label').eq('twin_bid_number', String(bid.bid_number)).limit(1),
+        admin.from('twin_shadow_runs').select('id').eq('shadow_bid_id', bid.id).not('scored_at', 'is', null).limit(1),
+      ])
+      if (!scored?.length && !shadowScored?.length) {
+        return textContent(`b${bid.bid_number} is still SEALED — no scorecard on record. score_backtest (or a scored shadow) breaks the seal; only then do the reference rows open.`, true)
+      }
+      const { data: refBid } = await admin.from('bids').select('id, bid_number, project_name').eq('id', bid.twin_source_bid_id).maybeSingle()
+      if (!refBid) return textContent('Reference bid not found', true)
+      const [{ data: rows }, { data: asg }] = await Promise.all([
+        admin.from('bids_count_rows').select('id, fixture, count, unit, page, sequence_order').eq('bid_id', refBid.id).order('sequence_order').limit(500),
+        admin.from('bid_pricing_assignments').select('count_row_id, unit_price_override, price_book_entry_id').eq('bid_id', refBid.id).limit(500),
+      ])
+      const entryIds = [...new Set((asg ?? []).map((a) => a.price_book_entry_id).filter(Boolean))]
+      const priceById: Record<string, number> = {}
+      if (entryIds.length) {
+        const { data: entries } = await admin.from('price_book_entries').select('id, total_price').in('id', entryIds)
+        for (const e of entries ?? []) priceById[e.id as string] = Number(e.total_price)
+      }
+      type RefAsg = { count_row_id: string; unit_price_override: number | null; price_book_entry_id: string }
+      const asgByRow = new Map<string, RefAsg>(((asg ?? []) as RefAsg[]).map((a) => [a.count_row_id, a]))
+      return textContent(JSON.stringify({
+        reference: `b${refBid.bid_number}`,
+        project_name: refBid.project_name,
+        rows: (rows ?? []).map((r) => {
+          const a = asgByRow.get(r.id as string)
+          const unit_price = a ? (a.unit_price_override ?? priceById[a.price_book_entry_id] ?? null) : null
+          return { fixture: r.fixture, count: r.count, unit: r.unit, page: r.page, unit_price }
+        }),
+        next: 'Run the scope-match line-compare, write the T4 scorecard to your ledger, and amend score_backtest with the verdict + counts_note.',
+      }, null, 2))
+    }
     case 'get_shadow_queue': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -1624,7 +1799,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.5' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.6' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
