@@ -8,6 +8,8 @@
  * asGc=true plus the owner's name for the statement's AS GC tag.
  */
 
+import { jobCarriesOpenBills, jobPrintsShellRemainder } from './portalBillMembership.ts'
+
 export type PortalJobRow = {
   id: string
   hcp_number: string | null
@@ -116,8 +118,11 @@ function round2(n: number): number {
 
 /**
  * Open-bill rows for the statement: one row per billed invoice with a
- * remaining balance, plus a job-level remainder row for billed jobs that have
- * no billed line (rare shells). Sorted newest billed first.
+ * remaining balance on any NON-PAID job (progress bills on working jobs
+ * included — membership rule in portalBillMembership.ts, aligned with the GC
+ * statement payload RPC), plus a job-level remainder row for `billed` jobs
+ * that have no billed line (rare shells; never widened past `billed`).
+ * Sorted newest billed first.
  */
 export function buildPortalBills(args: {
   jobs: PortalJobRow[]
@@ -131,8 +136,9 @@ export function buildPortalBills(args: {
 }): PortalBillOut[] {
   const { jobs, invoices, payments, viewerCustomerId, markGcRows, ownerNames = {} } = args
 
-  const billedJobs = jobs.filter((j) => j.status === 'billed')
-  const jobById = new Map(billedJobs.map((j) => [j.id, j]))
+  const openBillJobs = jobs.filter((j) => jobCarriesOpenBills(j.status))
+  const jobById = new Map(openBillJobs.map((j) => [j.id, j]))
+  const shellJobs = openBillJobs.filter((j) => jobPrintsShellRemainder(j.status))
 
   const paymentsByInvoice = new Map<string, number>()
   const paymentRowsByInvoice = new Map<string, PortalBillPaymentOut[]>()
@@ -180,7 +186,7 @@ export function buildPortalBills(args: {
       totalPaid: round2(paymentsByInvoice.get(inv.id) ?? 0),
     })
   }
-  for (const job of billedJobs) {
+  for (const job of shellJobs) {
     if (jobsWithLines.has(job.id)) continue
     const open = round2(Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
     if (open <= 0) continue

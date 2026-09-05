@@ -112,9 +112,18 @@ describe('buildPortalBills', () => {
     expect(bills.map((b) => b.jobNumber)).toEqual(['3', '2', '1'])
   })
 
-  it('ignores non-billed jobs entirely', () => {
+  it('a non-billed job with no billed invoice contributes nothing (no shell remainder)', () => {
     const jobs = [job({ id: 'j1', status: 'in_progress', revenue: 500 })]
     expect(buildPortalBills({ jobs, invoices: [], payments: [], viewerCustomerId: VIEWER, markGcRows: true })).toEqual([])
+  })
+
+  it('a billed invoice on a working job IS a bill (membership rule in portalBillMembership.ts)', () => {
+    const jobs = [job({ id: 'w', hcp_number: '977', status: 'working', revenue: 50000 })]
+    const invoices = [
+      { id: 'i1', job_id: 'w', amount: 5000, status: 'billed', billed_at: '2026-09-01', sequence_order: 1, hosted_invoice_url: 'https://pay.example/i1' },
+    ]
+    const bills = buildPortalBills({ jobs, invoices, payments: [], viewerCustomerId: VIEWER, markGcRows: true })
+    expect(bills.map((b) => [b.jobNumber, b.amount, b.billedOn])).toEqual([['977', 5000, '2026-09-01']])
   })
 })
 

@@ -13,6 +13,7 @@ import {
   type PortalPaymentRow,
 } from '../_shared/portalMergedBills.ts'
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
+import { openBillJobIds, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -162,16 +163,22 @@ serve(async (req) => {
       jobs = (jobsRaw ?? []) as PortalJobRow[]
     }
 
-    const billedJobIds = jobs.filter((j) => j.status === 'billed').map((j) => j.id)
+    // Billed invoices on jobs of ANY non-paid status (working, waiting,
+    // ready_to_bill, billed, collections…) — the same "open bill" rule as the
+    // GC statement email payload RPC. Before this the job itself had to be
+    // `billed`, which hid progress bills on in-progress jobs (J21-F1: ~49% of
+    // the specimen customer's balance). buildPortalBills keeps the
+    // invoice-less shell fallback restricted to `billed` jobs.
+    const billJobIds = openBillJobIds(jobs)
 
     let invoices: PortalInvoiceRow[] = []
     let payments: PortalPaymentRow[] = []
-    if (billedJobIds.length > 0) {
+    if (billJobIds.length > 0) {
       const { data: invRaw } = await admin
         .from('jobs_ledger_invoices')
         .select('id, job_id, amount, status, billed_at, sequence_order, hosted_invoice_url')
-        .in('job_id', billedJobIds)
-        .eq('status', 'billed')
+        .in('job_id', billJobIds)
+        .eq('status', PORTAL_OPEN_INVOICE_STATUS)
       invoices = (invRaw ?? []) as PortalInvoiceRow[]
       if (invoices.length > 0) {
         // paid_on + payment_type feed the statement's per-payment rows
@@ -276,6 +283,22 @@ serve(async (req) => {
       }
     }
 
+    const totalDue = Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100
+
+    // Statement telemetry (J21-F1 follow-up): `public_page_views` has no payload
+    // column, so the rendered total rides the function log as one structured
+    // line — queryable against the office AR figure without DDL.
+    console.log(
+      JSON.stringify({
+        event: 'portal_statement_rendered',
+        customer_id: link.customer_id,
+        audience: link.audience,
+        via: rawToken ? 'token' : 'slug',
+        statement_total_cents: Math.round(totalDue * 100),
+        bill_count: bills.length,
+      }),
+    )
+
     const requestableJobs = jobs
       .filter((j) => j.status !== 'paid')
       .slice(0, 100)
@@ -299,7 +322,7 @@ serve(async (req) => {
       customerName: (customer as { name: string | null }).name ?? 'Customer',
       audience: link.audience,
       bills,
-      totalDue: Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
+      totalDue,
       requestableJobs,
       requestableProperties,
       // Lets the slug-resolved page submit request forms (the slug and the
