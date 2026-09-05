@@ -44,6 +44,8 @@ export type JobSummaryViewBundle<R extends JobSummaryLedgerRowInput> = {
   ledgerError: string | null
   reloadLedger: () => void
   rows: JobSummaryEnrichedRow<R>[]
+  /** Every enriched row before the Show / window / search filters (v2.2830, the Ahead view's open jobs). */
+  allRows: JobSummaryEnrichedRow<R>[]
   totals: JobSummaryTotals
   hygiene: JobSummaryHygiene | null
   /** Compare to (v2.2817): the second window's totals and the deltas; null when the chip is off or the window is "All". */
@@ -223,5 +225,5 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     return { ...compareWindow, rows: visiblePrior, ledger: cmp.ledger, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), trueMarginPctByGroupKey, ledgerLoading: cmp.loading, ledgerError: cmp.error }
   }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals, cutCtx])
 
-  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, totals, hygiene, compare, groups, concentration }
+  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, allRows: enriched, totals, hygiene, compare, groups, concentration }
 }

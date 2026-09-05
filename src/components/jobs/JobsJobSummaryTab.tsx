@@ -60,6 +60,7 @@ import JobSummaryMonthsView from './JobSummaryMonthsView'
 import JobSummaryCycleView from './JobSummaryCycleView'
 import JobSummaryScatterView from './JobSummaryScatterView'
 import JobSummaryCapacityView from './JobSummaryCapacityView'
+import JobSummaryAheadView from './JobSummaryAheadView'
 import JobSummaryTimelineView from './JobSummaryTimelineView'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
@@ -506,6 +507,17 @@ export default function JobsJobSummaryTab({
               canOpenSessionNotes={canOpenSessionNotes}
               users={users}
               jobs={jobSummaryLedgerAllJobs ?? []}
+            />
+          ) : view.prefs.view === 'ahead' ? (
+            <JobSummaryAheadView
+              allRows={view.allRows}
+              totals={view.totals}
+              ledger={view.ledger}
+              startYmd={view.startYmd}
+              endYmd={view.endYmd}
+              todayYmd={view.endYmd}
+              targetTrueMarginPct={view.prefs.targetTrueMarginPct}
+              showMoney={showTeamLaborAndProfit}
             />
           ) : view.prefs.view === 'capacity' ? (
             <JobSummaryCapacityView ledger={view.ledger} ledgerLoading={view.ledgerLoading} ledgerError={view.ledgerError} />
