@@ -82,6 +82,10 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 
 ---
 
+## To-dos (unfinished projects)
+
+[`to-dos/`](./to-dos/README.md) holds projects that were designed or partly built but cannot be completed right away — a decision, a mock-up, the plan, and how to verify — so any editor or agent session can pick one up cold. Check it before starting new work on a surface it names.
+
 ## Documentation
 
 📖 **Main Documentation**:
