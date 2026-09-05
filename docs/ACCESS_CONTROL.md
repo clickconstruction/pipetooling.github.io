@@ -131,11 +131,14 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 - **Scope**: own rows only. On `people_labor_jobs`: the caller is an account-linked assignee of the sheet, OR (legacy fallback) the caller's trimmed `users.name` matches a segment of `assigned_to_name` (`' | '`-separated). Items/payments follow the parent via an EXISTS on the readable `people_labor_jobs` row. Office policies untouched; subs still cannot write anything.
 - **Hotfix (v2.1225)**: the original junction-based policy recursed — `people_labor_jobs`'s new policy queried `people_labor_job_assignees`, whose own `plja_select` policy queries `people_labor_jobs` back (42P17), breaking every Sub Labor ledger read for everyone. `20260802010000` replaces the junction EXISTS with SECURITY DEFINER helper **`user_is_assignee_of_labor_job(uuid)`** (evaluates the assignee link without invoking RLS); same intended grants, name fallback unchanged.
 
-### Sub work orders: `step_commitments` (v2.1208, `20260801150000_step_commitments.sql`)
-- **SELECT**: anyone with project access via the step (`can_access_project_via_step(step_id)` — dev/master/adopted/shared/superintendent), **OR** the sub's own rows (`people.account_user_id` link first, trimmed-name match on `display_name` as fallback).
-- **INSERT**: office roles with project access — dev, master_technician, assistant, controller, estimator (+ `can_access_project_via_step`).
-- **UPDATE**: the office set **plus superintendent** (client limits supers to offered → accepted; the DB grants row access, not transition logic).
-- **DELETE**: dev/master_technician only — money records cancel via status, not deletion.
+### Sub work orders: `step_commitments` (v2.1208, `20260801150000_step_commitments.sql`; anchors v2.2785 / v2.2814; superintendent scope v2.2844)
+- Three anchors: a workflow step (`step_id`), a Sub Labor sheet (`labor_job_id`, v2.2785), or a job (`job_id`, v2.2814). Every policy routes through **`can_access_sub_work_order(step_id, labor_job_id, job_id)`** (`20260905050035`, superintendent branch `20260905120000`):
+  - step-anchored → `can_access_project_via_step(step_id)` (dev/master/adopted-office/shared; superintendents only on assigned projects since v2.2836);
+  - sheet- or job-anchored → the office set (dev, master_technician, assistant, controller, estimator), **or** a superintendent whose job it is: `superintendent_can_access_sub_work_order(labor_job_id, job_id)` → `superintendent_report_job_anchor_allowed(job)` (assigned project via the strict 1-arg `can_access_project_row`, or `jobs_ledger_team_members`), resolving a sheet's job via `job_id`, the sheet's `project_id`, or its `job_number` ↔ `hcp_number`. Before v2.2844 this branch admitted `superintendent` by role literal — every superintendent saw and could edit every non-step work order in the company.
+- **SELECT**: the helper above, **OR** the sub's own rows (`people.account_user_id` link first, trimmed-name match on `display_name` as fallback).
+- **INSERT**: the helper **AND** an office role — dev, master_technician, assistant, controller, estimator.
+- **UPDATE**: the helper **AND** the office set plus superintendent (client limits supers to offered → accepted; the DB grants row access, not transition logic). Because the helper scopes superintendents per row, a superintendent can edit only work orders on their own jobs/projects.
+- **DELETE**: the helper **AND** dev/master_technician only — money records cancel via status, not deletion.
 - New table: ends with both read-only sweep calls (training-mode users blocked).
 
 ### `settle_step_commitment` RPC (v2.1210, `20260801170000_settle_step_commitment_rpc.sql`)
