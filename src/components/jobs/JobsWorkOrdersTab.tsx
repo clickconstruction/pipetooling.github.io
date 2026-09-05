@@ -330,7 +330,7 @@ export function JobsWorkOrdersTab({ jobs, jobsLoading, authUserId, deepLinkWorkO
     if (!b || !row.next.buttonLabel) return null
     const onClick =
       b === 'draft'
-        ? () => setAssembler({ jobId: row.jobId, laborJobId: row.sheetId, amount: row.agreed > 0 ? row.agreed : null })
+        ? () => setAssembler({ jobId: row.jobId, laborJobId: row.sheetId, personId: row.personId, amount: row.agreed > 0 ? row.agreed : null })
         : b === 'nudge'
           ? () => (order ? void nudge(order) : undefined)
           : () => (row.commitmentId ? setAssembler({ commitmentId: row.commitmentId }) : undefined)

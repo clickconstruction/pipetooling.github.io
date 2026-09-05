@@ -20,7 +20,7 @@ describe('buildSheetRail — the gap', () => {
   it('the gap follows the sheet stage — an inspection with no agreement is still a gap', () => {
     const r = rail({ sheetStage: 'walkthrough' })
     expect(states(r)).toBe('gap gap gap done now todo todo')
-    expect(r.label).toBe('Inspection · no agreement')
+    expect(r.label).toBe('Walk-through · no agreement')
     expect(r.position).toBe(0)
   })
   it('an unpriced sheet says so under the label', () => {
@@ -61,8 +61,8 @@ describe('buildSheetRail — signed, the sub’s four', () => {
     expect(states(r)).toBe('done done done now todo todo todo')
     expect(r).toMatchObject({ group: 'signed', position: 3, label: 'Work', sublabel: 'signed 2026-09-05', current: 'work' })
   })
-  it('walk-through reads Inspection (the portal word); customer_pay reads Customer pays', () => {
-    expect(rail({ coverage: signed, sheetStage: 'walkthrough', agreed: 1750, open: 1750 })).toMatchObject({ current: 'inspection', position: 4, label: 'Inspection' })
+  it('walk-through reads Walk-through (the portal word); customer_pay reads Customer pays', () => {
+    expect(rail({ coverage: signed, sheetStage: 'walkthrough', agreed: 1750, open: 1750 })).toMatchObject({ current: 'inspection', position: 4, label: 'Walk-through' })
     expect(rail({ coverage: signed, sheetStage: 'customer_pay', agreed: 1750, open: 1750 })).toMatchObject({ current: 'customer_pays', position: 5, label: 'Customer pays' })
   })
   it('paid: every dot done, the last one current, green tone', () => {
@@ -108,7 +108,7 @@ describe('sheetNextAction', () => {
   it('signed → the sub’s steps, no button', () => {
     const c = { ...ctx, subName: 'Miguel Rodriguez', agreed: 1750, open: 1750 }
     expect(sheetNextAction(rail({ coverage: signed, agreed: 1750, open: 1750 }), signed, c).label).toBe('Wait for “done”')
-    expect(sheetNextAction(rail({ coverage: signed, sheetStage: 'walkthrough', agreed: 1750, open: 1750 }), signed, c).label).toBe('Schedule the inspection')
+    expect(sheetNextAction(rail({ coverage: signed, sheetStage: 'walkthrough', agreed: 1750, open: 1750 }), signed, c).label).toBe('Schedule the walk-through')
     expect(sheetNextAction(rail({ coverage: signed, sheetStage: 'customer_pay', agreed: 1750, open: 1750 }), signed, c)).toMatchObject({ label: 'Bill and collect', hint: 'Miguel Rodriguez is owed $1,750' })
     expect(sheetNextAction(rail({ coverage: signed, sheetStage: 'customer_pay', payableAfter: '2026-09-11', agreed: 1750, open: 1750 }), signed, c).label).toBe('Pay Miguel Rodriguez')
     expect(sheetNextAction(rail({ coverage: signed, sheetStage: 'customer_pay', agreed: 1750, open: 0 }), signed, { ...c, open: 0 }).label).toBe('Nothing — done')

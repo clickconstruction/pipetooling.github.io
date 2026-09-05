@@ -16,7 +16,7 @@ describe('SheetRail', () => {
     const rail = buildSheetRail({ coverage: { kind: 'signed', id: 'o', subName: 'Miguel', amount: 1, signedOn: null, laborJobId: null, recordId: null }, sheetStage: 'walkthrough', agreed: 1, open: 1, unpriced: false })
     let clicks = 0
     const { getByRole } = render(<SheetRail rail={rail} onCurrentClick={() => { clicks += 1 }} showLabel={false} />)
-    getByRole('button', { name: 'Inspection — change stage' }).click()
+    getByRole('button', { name: 'Walk-through — change stage' }).click()
     expect(clicks).toBe(1)
   })
 })
