@@ -22,6 +22,8 @@ import {
 import { isSubPortalSheetQueued, subPortalRailStep } from '../lib/subPortal/subPortalRail'
 import { SUB_PORTAL_FOCUS_PARAM, isSubPortalFocused, parseSubPortalFocus, subPortalFocusDomId, type SubPortalFocus } from '../lib/subPortal/subPortalFocus'
 import { PlansPill, SubPortalGuideButton, SubPortalGuideSheet } from '../components/subPortal/SubPortalGuide'
+import { SubPortalDatePicker } from '../components/subPortal/SubPortalDatePicker'
+import { pickEndFromStart } from '../../supabase/functions/_shared/subPick'
 import { subPortalGuide } from '../lib/subPortal/subPortalGuideStrings'
 import {
   parseSubPortalPayload,
@@ -658,6 +660,42 @@ function SheetCard({
   const [ui, setUi] = useState<WorkDoneUi>({ kind: 'idle' })
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // v2.2928: their dates, movable inside the window until the day before.
+  const [dates, setDates] = useState(sheet.dates)
+  const [dateUi, setDateUi] = useState<{ kind: 'idle' } | { kind: 'picking'; start: string | null } | { kind: 'sending'; start: string } | { kind: 'moved' }>({ kind: 'idle' })
+  const [dateError, setDateError] = useState<string | null>(null)
+
+  async function moveDates(start: string) {
+    if (!dates) return
+    const end = pickEndFromStart(start, dates.workDays)
+    setDateUi({ kind: 'sending', start })
+    setDateError(null)
+    const finish = () => {
+      setDates({ ...dates, start, end })
+      setDateUi({ kind: 'moved' })
+    }
+    if (sampleStateFromToken(submitToken)) {
+      finish()
+      return
+    }
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/submit-sub-portal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: submitToken, kind: 'pick_dates', commitmentId: dates.commitmentId, pickedStart: start, pickedEnd: end }),
+      })
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      if (res.ok && json?.ok) {
+        finish()
+        return
+      }
+      setDateError(json?.error ?? 'Something went wrong. Please try again, or call the office.')
+      setDateUi({ kind: 'picking', start })
+    } catch {
+      setDateError('Something went wrong. Please check your connection.')
+      setDateUi({ kind: 'picking', start })
+    }
+  }
 
   const payWhenParts: string[] = []
   if (sheet.payableAfter) payWhenParts.push(t('payableAfter', { date: formatSubPortalDate(sheet.payableAfter, lang) }))
@@ -758,6 +796,51 @@ function SheetCard({
         </span>
       </div>
       <div style={{ padding: '0.65rem 0.9rem 0.8rem' }}>
+        {dates && (
+          <div style={{ border: `1px solid ${HAIR}`, borderRadius: 8, padding: '8px 10px', marginBottom: 8, background: PAPER }} data-avoid-break>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', borderRadius: 999, padding: '3px 9px', background: '#f6e6d8', color: COPPER }}>{t('yourDates')}</span>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>
+                {formatSubPortalDate(dates.start, lang)}{dates.end !== dates.start ? ` – ${formatSubPortalDate(dates.end, lang)}` : ''}
+              </span>
+            </div>
+            <div style={{ fontSize: 12.5, color: MUTED, marginTop: 4, lineHeight: 1.5 }}>
+              {dateUi.kind === 'moved'
+                ? <strong style={{ color: PAPER_GREEN }}>{t('pickMoved')}</strong>
+                : dates.window
+                  ? dates.changeUntil
+                    ? t('yourDatesMove', { start: formatSubPortalDate(dates.window.start, lang), end: formatSubPortalDate(dates.window.end, lang), date: formatSubPortalDate(dates.changeUntil, lang) })
+                    : t('yourDatesFixed')
+                  : t('yourDatesOffice')}
+            </div>
+            {dates.window && dates.changeUntil && dateUi.kind === 'idle' && stage === 'working' ? (
+              <div data-screen-only style={{ marginTop: 6 }}>
+                <button type="button" onClick={() => setDateUi({ kind: 'picking', start: null })} style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.4rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  {t('change')}
+                </button>
+              </div>
+            ) : null}
+            {dates.window && (dateUi.kind === 'picking' || dateUi.kind === 'sending') ? (
+              <div data-screen-only style={{ marginTop: 8 }}>
+                <SubPortalDatePicker window={dates.window} workDays={dates.workDays} todayYmd={preparedOn} lang={lang} value={dateUi.start} onChange={(start) => setDateUi({ kind: 'picking', start })} disabled={dateUi.kind === 'sending'} />
+                {dateError ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{dateError}</div> : null}
+                <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    disabled={!dateUi.start || dateUi.kind === 'sending'}
+                    onClick={() => dateUi.start && void moveDates(dateUi.start)}
+                    style={{ background: dateUi.start ? COPPER : '#9aa5a1', color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 700, cursor: dateUi.start ? 'pointer' : 'not-allowed' }}
+                  >
+                    {dateUi.kind === 'sending' ? '…' : t('pickConfirm')}{dateUi.start ? ` · ${formatSubPortalDate(dateUi.start, lang)} – ${formatSubPortalDate(pickEndFromStart(dateUi.start, dates.workDays), lang)}` : ''}
+                  </button>
+                  <button type="button" disabled={dateUi.kind === 'sending'} onClick={() => { setDateUi({ kind: 'idle' }); setDateError(null) }} style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    {t('cancel')}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
         {sheet.items.map((item, i) => (
           <div
             key={i}
@@ -892,9 +975,11 @@ type OfferUiState =
   | { kind: 'idle' }
   | { kind: 'signing' }
   | { kind: 'declining' }
+  | { kind: 'cantdo' }
   | { kind: 'submitting' }
-  | { kind: 'accepted' }
+  | { kind: 'accepted'; start?: string | null; end?: string | null }
   | { kind: 'declined' }
+  | { kind: 'askedBack' }
 
 function OfferCard({
   offer,
@@ -916,9 +1001,15 @@ function OfferCard({
   const [printedName, setPrintedName] = useState('')
   const [agreedTerms, setAgreedTerms] = useState(false)
   const [declineReason, setDeclineReason] = useState('')
+  const [cantDoNote, setCantDoNote] = useState('')
+  const [pickStart, setPickStart] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ticked, setTicked] = useState<Set<number>>(new Set())
   const allTicked = offer.acknowledgements.every((_, i) => ticked.has(i))
+  // v2.2928: an offer with a window is signed WITH a start inside it.
+  const pickEnd = pickStart ? pickEndFromStart(pickStart, offer.workDays) : null
+  const needsPick = !!offer.window
+  const pickOk = !needsPick || (!!pickStart && !!pickEnd)
   const bookRefs = offer.references.filter((r) => r.kind === 'book')
   const disclosure =
     bookRefs.length > 0
@@ -964,6 +1055,11 @@ function OfferCard({
       setUi({ kind: 'signing' })
       return
     }
+    if (!pickOk) {
+      setError(t('pickRequired'))
+      setUi({ kind: 'signing' })
+      return
+    }
     setUi({ kind: 'submitting' })
     setError(null)
     const result = await post({
@@ -971,13 +1067,25 @@ function OfferCard({
       printedName: p.printedName,
       agreedTerms: true,
       acknowledgements: offer.acknowledgements,
+      ...(pickStart && pickEnd ? { pickedStart: pickStart, pickedEnd: pickEnd } : {}),
       ...(p.mode === 'draw' ? { signaturePngBase64: p.signaturePngBase64 } : {}),
     })
     if (result.ok) {
-      setUi({ kind: 'accepted' })
+      setUi({ kind: 'accepted', start: pickStart, end: pickEnd })
     } else {
       setError(result.error ?? 'Could not record the signature. Try again, or call the office.')
       setUi({ kind: 'signing' })
+    }
+  }
+
+  async function submitCantDo() {
+    setUi({ kind: 'submitting' })
+    setError(null)
+    const result = await post({ kind: 'cant_do_dates', note: cantDoNote.trim() })
+    if (result.ok) setUi({ kind: 'askedBack' })
+    else {
+      setError(result.error ?? 'Something went wrong. Try again, or call the office.')
+      setUi({ kind: 'cantdo' })
     }
   }
 
@@ -1023,22 +1131,69 @@ function OfferCard({
         </div>
       ) : null}
 
+      {offer.window && (ui.kind === 'idle' || ui.kind === 'signing' || ui.kind === 'submitting') && (
+        <div data-screen-only style={{ marginTop: 12, border: `1px solid ${HAIR}`, borderRadius: 8, padding: '10px 12px', background: PAPER }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5 }}>{t('pickTitle')}</div>
+          <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2, lineHeight: 1.5 }}>
+            {t('pickWindow', { start: formatSubPortalDate(offer.window.start, lang), end: formatSubPortalDate(offer.window.end, lang) })}{' '}
+            {offer.workDays == null ? t('pickAnyDay') : offer.workDays === 1 ? t('pickDaysOne') : t('pickDays', { n: String(offer.workDays) })}
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <SubPortalDatePicker window={offer.window} workDays={offer.workDays} todayYmd={payload.preparedOn} lang={lang} value={pickStart} onChange={setPickStart} disabled={ui.kind === 'submitting'} />
+          </div>
+          <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: pickStart ? COPPER : MUTED }}>
+            {pickStart && pickEnd ? t('pickYours', { start: formatSubPortalDate(pickStart, lang), end: formatSubPortalDate(pickEnd, lang) }) : t('pickRequired')}
+          </div>
+        </div>
+      )}
       {ui.kind === 'accepted' && (
-        <div style={{ marginTop: 12, color: PAPER_GREEN, fontWeight: 700, fontSize: 14 }}>{t('offerAccepted')}</div>
+        <div style={{ marginTop: 12, color: PAPER_GREEN, fontWeight: 700, fontSize: 14 }}>
+          {ui.start && ui.end ? t('offerAcceptedDates', { start: formatSubPortalDate(ui.start, lang), end: formatSubPortalDate(ui.end, lang) }) : t('offerAccepted')}
+        </div>
       )}
       {ui.kind === 'declined' && (
         <div style={{ marginTop: 12, color: MUTED, fontWeight: 600, fontSize: 13.5 }}>{t('offerDeclined')}</div>
+      )}
+      {ui.kind === 'askedBack' && (
+        <div style={{ marginTop: 12, color: MUTED, fontWeight: 600, fontSize: 13.5 }}>{t('cantDoSent')}</div>
+      )}
+      {(ui.kind === 'cantdo' || (ui.kind === 'submitting' && cantDoNote !== '' && !declineReason.trim() && !pickStart)) && (
+        <div style={{ marginTop: 10, borderTop: `1px solid ${HAIR}`, paddingTop: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5 }}>{t('cantDoDays')}</div>
+          <textarea
+            value={cantDoNote}
+            onChange={(e) => setCantDoNote(e.target.value.slice(0, 300))}
+            placeholder={t('cantDoWhy')}
+            disabled={ui.kind === 'submitting'}
+            style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, background: 'var(--surface)', color: INK, padding: '0.5rem 0.6rem', fontSize: 13.5, fontFamily: 'inherit', minHeight: 52, marginTop: 8 }}
+          />
+          {error ? <div style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{error}</div> : null}
+          <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+            <button type="button" disabled={ui.kind === 'submitting'} onClick={() => void submitCantDo()} style={{ background: COPPER, color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {t('cantDoSend')}
+            </button>
+            <button type="button" disabled={ui.kind === 'submitting'} onClick={() => { setUi({ kind: 'idle' }); setError(null) }} style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              {t('cancel')}
+            </button>
+          </div>
+        </div>
       )}
 
       {ui.kind === 'idle' && (
         <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <button
             type="button"
-            onClick={() => setUi({ kind: 'signing' })}
-            style={{ background: PAPER_GREEN, color: '#fff', border: 'none', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+            onClick={() => (pickOk ? setUi({ kind: 'signing' }) : setError(t('pickRequired')))}
+            aria-disabled={!pickOk}
+            style={{ background: pickOk ? PAPER_GREEN : '#9aa5a1', color: '#fff', border: 'none', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: 14, fontWeight: 700, cursor: pickOk ? 'pointer' : 'not-allowed' }}
           >
-            ✍ {t('signToAccept')}
+            ✍ {t('signToAccept')}{pickStart && pickEnd ? ` · ${formatSubPortalDate(pickStart, lang)}` : ''}
           </button>
+          {offer.window ? (
+            <button type="button" onClick={() => setUi({ kind: 'cantdo' })} style={{ background: 'none', border: 'none', color: MUTED, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline' }}>
+              {t('cantDoDays')}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setUi({ kind: 'declining' })}

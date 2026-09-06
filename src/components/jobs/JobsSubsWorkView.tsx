@@ -498,6 +498,18 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       </>
     )
 
+  /** "picked Sep 9 – Sep 10 by the sub · " when the row's order carries a pick (v2.2928). */
+  const pickedLine = (r: SubsRow) => {
+    const order = r.board?.commitmentId ? rowsById.get(r.board.commitmentId) : null
+    if (!order?.picked_start) return null
+    const span = { start: order.picked_start, end: order.picked_end ?? order.picked_start }
+    return (
+      <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
+        picked {stageWindowLabel(span)} {order.picked_by === 'office' ? 'by the office' : 'by the sub'} ·{' '}
+      </span>
+    )
+  }
+
   /** The window column: the span and who set it, or the way to set one. */
   const windowCell = (g: SubsJobGroup, r: SubsRow) => {
     const editing = windowEdit && windowEdit.groupKey === g.key && windowEdit.rowKey === r.key
@@ -510,6 +522,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
             {stageWindowLabel(r.span)}
           </span>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+            {pickedLine(r)}
             {stageWindowByLabel(r.window?.window_by)}{phase === 'past' ? ' · passed' : ''}
             {r.window && g.jobId ? (
               <>

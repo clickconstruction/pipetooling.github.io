@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { parseScopeExtras } from '../_shared/subPortalStatement.ts'
+import { canChangePick, evaluatePick, pickProblemMessage, pickWindowFor } from '../_shared/subPick.ts'
 
 /**
  * Sub portal intake (sub-portal train): everything a sub can DO from the
@@ -84,6 +85,33 @@ function decodeBase64PngBytes(raw: string): Uint8Array | null {
 }
 
 type SubLink = { id: string; person_id: string; created_by: string | null; revoked_at: string | null }
+
+/** The span an order is picked against: its stage's window, else the span the office typed. */
+async function pickWindowForOrder(admin: SupabaseClient, c: { stage_window_id?: string | null; proposed_start: string | null; proposed_end: string | null }) {
+  let window_start: string | null = null, window_end: string | null = null
+  if (c.stage_window_id) {
+    const { data } = await admin.from('job_stage_windows').select('window_start, window_end').eq('id', c.stage_window_id).maybeSingle()
+    const w = data as { window_start: string | null; window_end: string | null } | null
+    window_start = w?.window_start ?? null
+    window_end = w?.window_end ?? null
+  }
+  return pickWindowFor({ window_start, window_end, proposed_start: c.proposed_start, proposed_end: c.proposed_end })
+}
+
+/** Write the pick on the order and mirror it where the office reads dates: the sheet's date, the step's schedule. */
+async function writePick(admin: SupabaseClient, c: { id: string; labor_job_id: string | null; step_id: string | null }, start: string, end: string): Promise<boolean> {
+  const nowIso = new Date().toISOString()
+  const { error } = await admin.from('step_commitments').update({ picked_start: start, picked_end: end, picked_at: nowIso, picked_by: 'sub' }).eq('id', c.id)
+  if (error) {
+    console.error('sub pick write failed', error)
+    return false
+  }
+  if (c.labor_job_id) await admin.from('people_labor_jobs').update({ job_date: start }).eq('id', c.labor_job_id)
+  if (c.step_id) await admin.from('project_workflow_steps').update({ scheduled_start_date: start, scheduled_end_date: end }).eq('id', c.step_id)
+  return true
+}
+
+const ymdField = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)
 
 async function resolveLink(admin: SupabaseClient, token: string): Promise<SubLink | null> {
   let { data: link } = await admin
@@ -305,11 +333,11 @@ serve(async (req) => {
 
       const { data: commitment } = await admin
         .from('step_commitments')
-        .select('id, person_id, status, amount, offer_expires_at, offer_scope_snapshot, labor_job_id, step_id, job_id')
+        .select('id, person_id, status, amount, offer_expires_at, offer_scope_snapshot, labor_job_id, step_id, job_id, proposed_start, proposed_end, stage_window_id, work_days')
         .eq('id', commitmentId)
         .maybeSingle()
       const c = commitment as
-        | { id: string; person_id: string; status: string; amount: number | null; offer_expires_at: string | null; offer_scope_snapshot: unknown; labor_job_id: string | null; step_id: string | null; job_id: string | null }
+        | { id: string; person_id: string; status: string; amount: number | null; offer_expires_at: string | null; offer_scope_snapshot: unknown; labor_job_id: string | null; step_id: string | null; job_id: string | null; proposed_start: string | null; proposed_end: string | null; stage_window_id: string | null; work_days: number | null }
         | null
       if (!c || c.person_id !== link.person_id) return jsonResponse({ error: 'Not found' }, 404)
       if (c.status !== 'offered') {
@@ -349,6 +377,21 @@ serve(async (req) => {
       const hasSig = sigRaw.trim().length > 0
       if (!printedName) return jsonResponse({ error: 'Please enter your full name.' }, 400)
       if (!agreed) return jsonResponse({ error: 'Please confirm that you agree.' }, 400)
+
+      // v2.2928: an order with a window is signed WITH a start inside it.
+      const pickWindow = await pickWindowForOrder(admin, c)
+      const pickedStart = ymdField(body.pickedStart)
+      const pickedEnd = ymdField(body.pickedEnd) ?? pickedStart
+      let pick: { start: string; end: string } | null = null
+      if (pickWindow) {
+        if (!pickedStart || !pickedEnd) return jsonResponse({ error: 'Pick your start day inside the window before signing.' }, 400)
+        const verdict = evaluatePick({ window: pickWindow, start: pickedStart, end: pickedEnd, todayYmd })
+        if (!verdict.ok) return jsonResponse({ error: pickProblemMessage(verdict.reason) }, 400)
+        pick = { start: verdict.start, end: verdict.end }
+      } else if (pickedStart && pickedEnd) {
+        const verdict = evaluatePick({ window: null, start: pickedStart, end: pickedEnd, todayYmd })
+        if (verdict.ok) pick = { start: verdict.start, end: verdict.end }
+      }
 
       // v2.2789: the work order's acknowledgements must all come back ticked.
       const required = parseScopeExtras(c.offer_scope_snapshot).acknowledgements
@@ -419,11 +462,13 @@ serve(async (req) => {
         createdSheetId = cr?.labor_job_id ?? null
       }
 
+      if (pick) await writePick(admin, { id: c.id, labor_job_id: c.labor_job_id ?? createdSheetId, step_id: c.step_id }, pick.start, pick.end)
+
       const sheetLabel = parseScopeExtras(c.offer_scope_snapshot).sheetLabel
       await insertDispatchNote(
         admin,
         link,
-        `Work order signed & accepted — ${personName} ($${Number(c.amount ?? 0).toFixed(2)})${sheetLabel ? ` · ${sheetLabel}` : ''}`,
+        `Work order signed & accepted — ${personName} ($${Number(c.amount ?? 0).toFixed(2)})${sheetLabel ? ` · ${sheetLabel}` : ''}${pick ? ` · picked ${pick.start} → ${pick.end}` : ''}`,
         {
           kind: 'sub_offer_accepted',
           personId: link.person_id,
@@ -432,9 +477,73 @@ serve(async (req) => {
           laborJobId: c.labor_job_id ?? createdSheetId,
           jobId: c.job_id,
           signedAt: nowIso,
+          pickedStart: pick?.start ?? null,
+          pickedEnd: pick?.end ?? null,
         },
       )
-      return jsonResponse({ ok: true })
+      return jsonResponse({ ok: true, pickedStart: pick?.start ?? null, pickedEnd: pick?.end ?? null })
+    }
+
+    // ── pick_dates / cant_do_dates (v2.2928): move a signed order's dates inside its window, or say none fit ──
+    if (kind === 'pick_dates' || kind === 'cant_do_dates') {
+      const commitmentId = typeof body.commitmentId === 'string' && /^[0-9a-f-]{36}$/.test(body.commitmentId) ? body.commitmentId : null
+      if (!commitmentId) return jsonResponse({ error: 'Bad request' }, 400)
+      const { data: commitment } = await admin
+        .from('step_commitments')
+        .select('id, person_id, status, labor_job_id, step_id, job_id, proposed_start, proposed_end, picked_start, picked_end, stage_window_id, work_days, offer_scope_snapshot')
+        .eq('id', commitmentId)
+        .maybeSingle()
+      const c = commitment as
+        | { id: string; person_id: string; status: string; labor_job_id: string | null; step_id: string | null; job_id: string | null; proposed_start: string | null; proposed_end: string | null; picked_start: string | null; picked_end: string | null; stage_window_id: string | null; work_days: number | null; offer_scope_snapshot: unknown }
+        | null
+      if (!c || c.person_id !== link.person_id) return jsonResponse({ error: 'Not found' }, 404)
+      const todayYmd = todayYmdInAppTz()
+      const sheetLabel = parseScopeExtras(c.offer_scope_snapshot).sheetLabel
+      const pickWindow = await pickWindowForOrder(admin, c)
+
+      if (kind === 'cant_do_dates') {
+        if (!['offered', 'accepted', 'approved'].includes(c.status)) return jsonResponse({ error: 'This work order is closed.' }, 409)
+        const note = typeof body.note === 'string' ? body.note.trim().slice(0, 500) : ''
+        const hourAgo = new Date(Date.now() - 3600_000).toISOString()
+        const { count: recent } = await admin.from('dispatch_requests').select('id', { count: 'exact', head: true }).eq('pending_payload->>subPortalLinkId', String(link.id)).gte('created_at', hourAgo)
+        if ((recent ?? 0) >= MAX_PER_HOUR) return jsonResponse({ error: 'That is a lot at once — give us an hour, or call the office.' }, 429)
+        await insertDispatchNote(admin, link, `${personName} can't do ${sheetLabel ?? 'the work order'}${pickWindow ? ` in ${pickWindow.start} → ${pickWindow.end}` : ''}${note ? `: ${note.slice(0, 120)}` : ''}`, {
+          kind: 'sub_dates_askback',
+          personId: link.person_id,
+          personName,
+          commitmentId: c.id,
+          laborJobId: c.labor_job_id,
+          jobId: c.job_id,
+          window: pickWindow,
+          note: note || null,
+        })
+        return jsonResponse({ ok: true })
+      }
+
+      // pick_dates
+      if (!['accepted', 'approved'].includes(c.status)) return jsonResponse({ error: 'Sign the work order first, then pick your days.' }, 409)
+      if (!pickWindow) return jsonResponse({ error: 'These dates were set by the office — call us to move them.' }, 409)
+      if (c.picked_start && !canChangePick(c.picked_start, todayYmd)) return jsonResponse({ error: 'Too close to move it here — call the office.' }, 409)
+      const start = ymdField(body.pickedStart)
+      const end = ymdField(body.pickedEnd) ?? start
+      if (!start || !end) return jsonResponse({ error: 'Pick your start day.' }, 400)
+      const verdict = evaluatePick({ window: pickWindow, start, end, todayYmd })
+      if (!verdict.ok) return jsonResponse({ error: pickProblemMessage(verdict.reason) }, 400)
+      const ok = await writePick(admin, c, verdict.start, verdict.end)
+      if (!ok) return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+      await insertDispatchNote(admin, link, `${personName} ${c.picked_start ? 'moved' : 'picked'} ${verdict.start} → ${verdict.end} for ${sheetLabel ?? 'a work order'}`, {
+        kind: 'sub_dates_picked',
+        personId: link.person_id,
+        personName,
+        commitmentId: c.id,
+        laborJobId: c.labor_job_id,
+        jobId: c.job_id,
+        pickedStart: verdict.start,
+        pickedEnd: verdict.end,
+        previousStart: c.picked_start,
+        window: pickWindow,
+      })
+      return jsonResponse({ ok: true, pickedStart: verdict.start, pickedEnd: verdict.end })
     }
 
     return jsonResponse({ error: 'Bad request' }, 400)

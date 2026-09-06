@@ -155,6 +155,26 @@ const STRINGS = {
   whatYouAgreedTo: { en: 'What you agreed to', es: 'Lo que usted aceptó' },
   signedOnBy: { en: 'Signed {date}', es: 'Firmado el {date}' },
   youConfirmed: { en: 'You confirmed', es: 'Usted confirmó' },
+  // v2.2928 — picking a start inside the window
+  pickTitle: { en: 'Pick your start day', es: 'Elija su día de inicio' },
+  pickWindow: { en: "We'd like this done between {start} and {end}.", es: 'Queremos que se haga entre el {start} y el {end}.' },
+  pickDays: { en: 'It takes about {n} working days — tap the day you can start.', es: 'Toma unos {n} días hábiles — toque el día en que puede empezar.' },
+  pickDaysOne: { en: 'It takes about a day — tap the day you can do it.', es: 'Toma como un día — toque el día en que puede hacerlo.' },
+  pickAnyDay: { en: 'Tap the day you can start.', es: 'Toque el día en que puede empezar.' },
+  pickYours: { en: 'Your pick: {start} – {end}', es: 'Su elección: {start} – {end}' },
+  pickRequired: { en: 'Pick a start day first.', es: 'Primero elija un día de inicio.' },
+  cantDoDays: { en: "Can't do any of these days", es: 'No puedo ninguno de estos días' },
+  cantDoWhy: { en: 'When could you? (optional)', es: '¿Cuándo podría? (opcional)' },
+  cantDoSend: { en: 'Tell the office', es: 'Avisar a la oficina' },
+  cantDoSent: { en: 'Thanks — the office will offer other days.', es: 'Gracias — la oficina le ofrecerá otros días.' },
+  offerAcceptedDates: { en: '✓ Accepted for {start} – {end}. See you then.', es: '✓ Aceptado para el {start} – {end}. Nos vemos.' },
+  yourDates: { en: 'Your dates', es: 'Sus fechas' },
+  yourDatesMove: { en: 'You can move this inside {start} – {end} until {date}.', es: 'Puede moverlo dentro del {start} – {end} hasta el {date}.' },
+  yourDatesFixed: { en: 'Too close to move it here — call us if something changes.', es: 'Ya está muy cerca para moverlo aquí — llámenos si algo cambia.' },
+  yourDatesOffice: { en: 'Set by the office — call us to move it.', es: 'Fijado por la oficina — llámenos para moverlo.' },
+  change: { en: 'Change', es: 'Cambiar' },
+  pickConfirm: { en: 'Confirm new dates', es: 'Confirmar nuevas fechas' },
+  pickMoved: { en: '✓ Moved — the office has your new dates.', es: '✓ Movido — la oficina ya tiene sus nuevas fechas.' },
 } as const
 
 export type SubPortalStringKey = keyof typeof STRINGS

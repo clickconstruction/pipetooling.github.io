@@ -70,3 +70,7 @@ While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here
 :::
 
 Every move, yours or the sub's, writes a **Sub labor** line on the job's Activity feed — who moved it, from what to what, and the note — so the history is always on the job.
+
+## What they see when an offer has a window
+
+A work order drafted from a stage (see *set a window for a sub's stage*) reaches the portal with the window drawn as a calendar. The sub taps a start day, the job's working days fill to the end, and signing carries the pick. You get a dispatch line — *Behar picked Sep 22 → Sep 23 for #1004 · Top-out* — and the Subs → Work row reads *picked Sep 22 – Sep 23 by the sub*. They can move the dates inside the window until the day before the start; after that the card tells them to call.

@@ -14079,6 +14079,10 @@ export type Database = {
           offer_scope_snapshot: Json | null
           offered_at: string | null
           person_id: string
+          picked_at: string | null
+          picked_by: string | null
+          picked_end: string | null
+          picked_start: string | null
           proposed_end: string | null
           proposed_start: string | null
           record_id: string | null
@@ -14096,6 +14100,7 @@ export type Database = {
           stage_window_id: string | null
           step_id: string | null
           updated_at: string
+          work_days: number | null
         }
         Insert: {
           accepted_at?: string | null
@@ -14114,6 +14119,10 @@ export type Database = {
           offer_scope_snapshot?: Json | null
           offered_at?: string | null
           person_id: string
+          picked_at?: string | null
+          picked_by?: string | null
+          picked_end?: string | null
+          picked_start?: string | null
           proposed_end?: string | null
           proposed_start?: string | null
           record_id?: string | null
@@ -14131,6 +14140,7 @@ export type Database = {
           stage_window_id?: string | null
           step_id?: string | null
           updated_at?: string
+          work_days?: number | null
         }
         Update: {
           accepted_at?: string | null
@@ -14149,6 +14159,10 @@ export type Database = {
           offer_scope_snapshot?: Json | null
           offered_at?: string | null
           person_id?: string
+          picked_at?: string | null
+          picked_by?: string | null
+          picked_end?: string | null
+          picked_start?: string | null
           proposed_end?: string | null
           proposed_start?: string | null
           record_id?: string | null
@@ -14166,6 +14180,7 @@ export type Database = {
           stage_window_id?: string | null
           step_id?: string | null
           updated_at?: string
+          work_days?: number | null
         }
         Relationships: [
           {

@@ -36,6 +36,10 @@ A sheet row with no window shows {{button:outline|Set a window…}}. Pick which 
 
 {{button:blue|Draft a work order…}} on a stage row opens the assembler on that job with the window as *Work window from / to* and the line-item amount as the price. Pick the sub, tick the scope, send. From then on the stage rides on that order's sheet row — the stage name sits under the sub's name.
 
+## What happens after you send the offer
+
+The sub's portal shows the window as a calendar. They tap the day they can start, the order's **Takes about (working days)** fills the rest, and they sign with those dates. The row then reads *picked Sep 22 – Sep 23 by the sub* under the window chip, the sheet's date follows, and the Sub Board bar lands on the picked days. If they can't do any of the days, a dispatch line asks you for another window.
+
 ## Remove a stage
 
 **Remove** on a stage row clears its window. The line item stays on the job; an order already written keeps its own dates.

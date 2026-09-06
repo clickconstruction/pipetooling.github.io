@@ -235,13 +235,27 @@ serve(async (req) => {
     if (laborJobIds.length > 0) {
       const { data: agreementsRaw } = await admin
         .from('step_commitments')
-        .select('labor_job_id, amount, signed_at, accepted_at, signer_printed_name, offer_scope_snapshot, signer_acknowledgements')
+        .select('id, labor_job_id, amount, signed_at, accepted_at, signer_printed_name, offer_scope_snapshot, signer_acknowledgements, work_days, picked_start, picked_end, proposed_start, proposed_end, stage_window_id')
         .in('labor_job_id', laborJobIds)
         .is('step_id', null)
         .in('status', ['accepted', 'approved', 'settled'])
-      agreementRows = (agreementsRaw ?? []) as SubAgreementRow[]
+      agreementRows = (agreementsRaw ?? []) as Array<SubAgreementRow & { stage_window_id?: string | null }>
     }
-    const sheets = attachSheetAgreements(buildSubSheets(sheetRows, itemRows, paymentRows), agreementRows)
+    // Stage windows (v2.2928): the span a signed order's dates may move inside, and the span an open offer is picked against.
+    const windowById = new Map<string, { window_start: string | null; window_end: string | null }>()
+    const loadWindows = async (ids: string[]) => {
+      const missing = [...new Set(ids)].filter((id) => id && !windowById.has(id))
+      if (missing.length === 0) return
+      const { data: winRaw } = await admin.from('job_stage_windows').select('id, window_start, window_end').in('id', missing)
+      for (const w of (winRaw ?? []) as Array<{ id: string; window_start: string | null; window_end: string | null }>) windowById.set(w.id, { window_start: w.window_start, window_end: w.window_end })
+    }
+    await loadWindows(agreementRows.map((a) => (a as { stage_window_id?: string | null }).stage_window_id ?? '').filter(Boolean))
+    for (const a of agreementRows as Array<SubAgreementRow & { stage_window_id?: string | null }>) {
+      const w = a.stage_window_id ? windowById.get(a.stage_window_id) : null
+      a.window_start = w?.window_start ?? null
+      a.window_end = w?.window_end ?? null
+    }
+    const sheets = attachSheetAgreements(buildSubSheets(sheetRows, itemRows, paymentRows), agreementRows, todayYmd)
     const totals = buildSubTotals(sheets)
     const openSheets = sheets.filter((s) => s.open > 0)
     const sheetsById = new Map(sheetRows.map((s) => [s.id, s]))
@@ -250,11 +264,17 @@ serve(async (req) => {
     // Open offers with the step name for the card title.
     const { data: offersRaw } = await admin
       .from('step_commitments')
-      .select('id, step_id, labor_job_id, amount, notes, offer_scope_snapshot, offer_expires_at, proposed_start, proposed_end')
+      .select('id, step_id, labor_job_id, amount, notes, offer_scope_snapshot, offer_expires_at, proposed_start, proposed_end, work_days, stage_window_id')
       .eq('person_id', link.person_id)
       .eq('status', 'offered')
       .limit(20)
-    const offerRowsRaw = (offersRaw ?? []) as Array<SubOfferRow & { step_id: string | null }>
+    const offerRowsRaw = (offersRaw ?? []) as Array<SubOfferRow & { step_id: string | null; stage_window_id?: string | null }>
+    await loadWindows(offerRowsRaw.map((o) => o.stage_window_id ?? '').filter(Boolean))
+    for (const o of offerRowsRaw) {
+      const w = o.stage_window_id ? windowById.get(o.stage_window_id) : null
+      o.window_start = w?.window_start ?? null
+      o.window_end = w?.window_end ?? null
+    }
     // Sheet work orders (v2.2789) have no step — their title comes from the snapshot's sheet label.
     const stepIds = [...new Set(offerRowsRaw.map((o) => o.step_id).filter((id): id is string => !!id))]
     const stepNames = new Map<string, string>()
