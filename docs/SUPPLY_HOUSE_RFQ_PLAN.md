@@ -125,6 +125,26 @@ ends with all three fence appliers. Names snapshot as text.
   freight, **draft persistence** (localStorage keyed by token) so a
   10-lines-in interruption loses nothing. Light theme pinned (customer-
   facing convention). Partial quotes allowed.
+  - **Batch B3 (v2.2906, journey-map J23)**: decisions in
+    `src/lib/rfq/quotePageState.ts`. A failed submit keeps the form
+    mounted (notice in the sticky footer, Send → "Try again"); a 410 or
+    a cold-open closed link recaps the typed draft ("Your typed prices
+    stayed on this phone — nothing was sent"); a 404/closed/failed load
+    writes no `rfqQuoteDraft_<token>` key; the footer counts freight and
+    good-until ("No freight quoted · no expiry date" when silent) and
+    carries the save promise.
+  - **Price basis — a known divergence (J23-5).** The `/q/` lane records
+    every vendor line as **per-unit**: `submit-rfq-quote` stamps
+    `price_basis 'each', basis_qty 1, match_confidence 'manual'` on every
+    row, and the page asks "$ each" / "$ per ft" accordingly. The paste
+    lane (`parseVendorReply`, `each|ft|per_100|box` + `basis_qty`) and
+    the file lane (Rung E) keep the vendor's own basis, and Rung G's
+    owner decision adds **lots** (`lot_id` + `lot_total_cents`) — none of
+    which the vendor page can express. Compare is coherent today because
+    every lane normalizes to a per-unit price; provenance is not — a
+    link-lane quote can never show "priced per 100" or "carrier package".
+    Vendor-page basis/lot capture is deliberately deferred (Rung G:
+    office-side first, vendor-page lots later).
 - Quotes-received signal: "Quotes (n)" chip turns green + RFQ status chip
   on the Pricing header (Sent → Quoted). No email/push in this phase.
 - Token hygiene: RFQ `closed` (manual, or bid marked lost/dead) → page
@@ -177,4 +197,4 @@ ends with all three fence appliers. Names snapshot as text.
   baseline column relabeled (cost/last-quoted, not "book price");
   unit-basis column on the Plug-in artboard.
 
-last_updated: 2026-09-01 (phases 1–2 shipped)
+last_updated: 2026-09-05 (phases 1–2 shipped; B3 vendor-page batch + price-basis divergence note)

@@ -36,10 +36,11 @@ A plain page, no login, built for a phone at the counter:
 
 {{gif:supply-house-quote-page.gif|The vendor types prices, taps can't supply where they don't carry it, and hits Send quote}}
 
-- Every part with its count. A price box, a **can't supply** button, and a note field per line — plus the job plans link when you included one.
+- Every part with its count. A price box (it says `$ each`, or `$ per ft` on a footage line), a **can't supply** button, and a note field per line — plus the job plans link when you included one.
 - If they've priced these parts for us before, the page offers **"Fill with last time's prices"** — one tap, then they change what moved. A repeat quote takes about ninety seconds.
-- Their entries **save on their phone as they type** — getting interrupted ten lines in loses nothing.
+- The footer at the bottom keeps score as they type: **"2 of 3 lines answered — partial is fine"**, then whether freight and a good-until date were given (**"No freight quoted · no expiry date"** until they are), then **"Saves on this phone as you go"** — getting interrupted ten lines in loses nothing, and the page says so where their thumb is.
 - Partial answers are fine. They add their name, how long prices are good, freight if any, and hit **Send quote**.
+- If the send fails (bad signal at the counter), their prices stay on the screen and the button reads **Try again** — nothing to retype.
 - They only ever see names and counts — **no prices of yours are on that page**.
 
 :::example The counter guy quotes between customers
@@ -55,4 +56,4 @@ Wendi texts Moore Supply the pipe scope with a quote link. Danny at the counter 
 
 ## When links die
 
-Mark the bid lost and every quote link on it shows "this request has been closed" — a stale text in someone's phone can't collect prices for a job that's gone.
+Mark the bid lost — or tap **Close link** on the desk — and every quote link on it shows **"This pricing request has been closed. Nothing needed — thanks for looking."** A stale text in someone's phone can't collect prices for a job that's gone. If the vendor had already typed prices on that phone, the closed page lists them under **"Your typed prices stayed on this phone — nothing was sent"** so their work never looks thrown away; nothing reaches your bid. Reopening the link from the desk brings the form back with those prices still in it.

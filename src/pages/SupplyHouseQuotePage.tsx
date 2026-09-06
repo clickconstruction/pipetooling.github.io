@@ -6,9 +6,28 @@
  * persist per token in localStorage so an interruption ten lines in loses
  * nothing. Partial quotes are fine; "can't supply" is an answer too.
  * Customer-facing surface → light theme pinned (BidRoom precedent).
+ *
+ * Journey-map J23 / batch B3 (2026-09-05): the render decision, the draft
+ * gate and the footer copy live in `src/lib/rfq/quotePageState.ts`. A failed
+ * submit is a notice in the footer over the still-mounted form (Send becomes
+ * "Try again"); a closed link recaps what was typed; a dead link writes no
+ * draft key; freight / valid-until are counted in the footer.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import {
+  EMPTY_QUOTE_DRAFT,
+  countAnswered,
+  priceBasisHint,
+  quoteFooterLines,
+  quoteFooterVisible,
+  quotePageView,
+  shouldPersistDraft,
+  strToCents,
+  typedQuoteWork,
+  type QuoteDraft,
+  type QuoteDraftLine,
+} from '../lib/rfq/quotePageState'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -24,42 +43,51 @@ type PageData = {
   lines?: Array<{ fixture: string; count: number; unit?: string | null }>
 }
 
-type DraftLine = { price: string; cantSupply: boolean; note: string; fromPrior?: boolean }
-type Draft = { quotedBy: string; validUntil: string; freight: string; lines: Record<string, DraftLine> }
-
-const EMPTY_LINE: DraftLine = { price: '', cantSupply: false, note: '' }
+const EMPTY_LINE: QuoteDraftLine = { price: '', cantSupply: false, note: '' }
 
 function draftKey(token: string) {
   return `rfqQuoteDraft_${token}`
 }
 
-function loadDraft(token: string): Draft {
+function loadDraft(token: string): QuoteDraft {
   try {
     const raw = window.localStorage.getItem(draftKey(token))
-    if (raw) return JSON.parse(raw) as Draft
+    if (raw) return JSON.parse(raw) as QuoteDraft
   } catch {
     /* fresh draft */
   }
-  return { quotedBy: '', validUntil: '', freight: '', lines: {} }
-}
-
-function strToCents(s: string): number | null {
-  const n = Number(s.replace(/[$,\s]/g, ''))
-  return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null
+  return { ...EMPTY_QUOTE_DRAFT, lines: {} }
 }
 
 export default function SupplyHouseQuotePage() {
   const { token = '' } = useParams()
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  /** Load-time failure only (incomplete link, 404, fetch failed). `retryable` shows a Reload button. */
+  const [loadError, setLoadError] = useState<{ message: string; retryable: boolean } | null>(null)
+  /** Submit failure — shown in the footer over the form; cleared on the next attempt. */
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [page, setPage] = useState<PageData | null>(null)
-  const [draft, setDraft] = useState<Draft>(() => loadDraft(token))
+  // The draft carries the token it was loaded for, so a token change (SPA
+  // navigation between two /q/ links) can never write one link's draft under
+  // the other's key while the reload is still in flight.
+  const [draftBox, setDraftBox] = useState<{ token: string; draft: QuoteDraft }>(() => ({ token, draft: loadDraft(token) }))
+  const draft = draftBox.draft
+  const setDraft = (update: QuoteDraft | ((d: QuoteDraft) => QuoteDraft)) =>
+    setDraftBox((b) => ({ token: b.token, draft: typeof update === 'function' ? update(b.draft) : update }))
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState<number | null>(null)
 
   useEffect(() => {
+    // Fresh slate per token: a lingering 404 or closed screen from a previous
+    // token must not mask the new one.
+    setLoading(true)
+    setLoadError(null)
+    setSubmitError(null)
+    setPage(null)
+    setDone(null)
+    setDraftBox((b) => (b.token === token ? b : { token, draft: loadDraft(token) }))
     if (!token) {
-      setError('This link is incomplete.')
+      setLoadError({ message: 'This link is incomplete.', retryable: false })
       setLoading(false)
       return
     }
@@ -71,14 +99,14 @@ export default function SupplyHouseQuotePage() {
           signal: ac.signal,
         })
         if (res.status === 404) {
-          setError('This quote link doesn’t exist — check the link you were sent.')
+          setLoadError({ message: 'This quote link doesn’t exist — check the link you were sent.', retryable: false })
           return
         }
         if (!res.ok) throw new Error('fetch failed')
         setPage((await res.json()) as PageData)
       } catch (err) {
         if (!(err instanceof DOMException && err.name === 'AbortError')) {
-          setError('Couldn’t load the quote request. Check your connection and reload.')
+          setLoadError({ message: 'Couldn’t load the quote request. Check your connection and reload.', retryable: true })
         }
       } finally {
         setLoading(false)
@@ -87,16 +115,21 @@ export default function SupplyHouseQuotePage() {
     return () => ac.abort()
   }, [token])
 
+  const pageStatus = page?.status ?? null
+
+  // J23-4: write the draft only while there is an open form to draft for.
+  // A 404, a closed link or the done screen mints no key; an existing draft
+  // is never deleted here (only a successful submit removes it).
   useEffect(() => {
-    if (!token || done != null) return
+    if (!shouldPersistDraft({ token, pageStatus, done, draftToken: draftBox.token })) return
     try {
-      window.localStorage.setItem(draftKey(token), JSON.stringify(draft))
+      window.localStorage.setItem(draftKey(token), JSON.stringify(draftBox.draft))
     } catch {
       /* draft just won't survive a reload */
     }
-  }, [draft, token, done])
+  }, [draftBox, token, pageStatus, done])
 
-  function patchLine(fixture: string, patch: Partial<DraftLine>) {
+  function patchLine(fixture: string, patch: Partial<QuoteDraftLine>) {
     // Any hand edit clears the "from last time" tag — the vendor owns it now.
     setDraft((d) => ({ ...d, lines: { ...d.lines, [fixture]: { ...(d.lines[fixture] ?? EMPTY_LINE), fromPrior: false, ...patch, ...(patch.fromPrior === undefined ? { fromPrior: false } : {}) } } }))
   }
@@ -121,18 +154,14 @@ export default function SupplyHouseQuotePage() {
   const priorAgeDays = page?.prior?.newestAt ? Math.max(0, Math.floor((Date.now() - new Date(page.prior.newestAt).getTime()) / 86_400_000)) : null
   const priorCount = page?.prior ? (page.lines ?? []).filter((l) => page.prior?.prices[l.fixture.trim().toLowerCase()] != null).length : 0
 
-  const answered = useMemo(
-    () =>
-      (page?.lines ?? []).filter((l) => {
-        const dl = draft.lines[l.fixture]
-        return dl && (dl.cantSupply || strToCents(dl.price) != null)
-      }).length,
-    [page, draft],
-  )
+  const fixtures = useMemo(() => (page?.lines ?? []).map((l) => l.fixture), [page])
+  const answered = useMemo(() => countAnswered(fixtures, draft), [fixtures, draft])
+  const footer = useMemo(() => quoteFooterLines({ answered, total: fixtures.length, draft }), [answered, fixtures, draft])
 
   async function submit() {
     if (!page?.lines || answered === 0) return
     setSubmitting(true)
+    setSubmitError(null)
     try {
       const lines = page.lines
         .map((l) => {
@@ -156,10 +185,14 @@ export default function SupplyHouseQuotePage() {
       })
       const body = (await res.json().catch(() => ({}))) as { ok?: boolean; savedLines?: number; error?: string }
       if (res.status === 410) {
-        setError('This request has been closed — no prices needed anymore.')
+        // Closed under the vendor's thumb (J23-3): flip to the closed screen,
+        // which recaps the typed work — the draft stays on the phone.
+        setPage((p) => (p ? { ...p, status: 'closed' } : p))
         return
       }
-      if (!res.ok || !body.ok) throw new Error(body.error || 'submit failed')
+      // A 4xx carries a sentence meant for the vendor ("Nothing to save — add a
+      // price…"); a 5xx / network failure gets the friendly copy below.
+      if (!res.ok || !body.ok) throw new Error(res.status >= 400 && res.status < 500 && body.error ? body.error : 'submit failed')
       setDone(body.savedLines ?? lines.length)
       try {
         window.localStorage.removeItem(draftKey(token))
@@ -167,7 +200,8 @@ export default function SupplyHouseQuotePage() {
         /* fine */
       }
     } catch (err) {
-      setError(err instanceof Error && err.message !== 'submit failed' ? err.message : 'Couldn’t send the quote. Your entries are saved on this phone — try again in a minute.')
+      // J23-N1: the form stays mounted; this rides the footer next to Send.
+      setSubmitError(err instanceof Error && err.message !== 'submit failed' ? err.message : 'Couldn’t send the quote — check your signal and try again. Your entries are still on this phone.')
     } finally {
       setSubmitting(false)
     }
@@ -185,21 +219,56 @@ export default function SupplyHouseQuotePage() {
     boxSizing: 'border-box',
   }
 
+  const viewState = { loading, loadError: loadError?.message ?? null, pageStatus, done }
+  const view = quotePageView(viewState)
+  // What the vendor typed — shown back on the closed and can't-load screens so
+  // the work never looks discarded (P2). Read-only; nothing is written here.
+  const typed = view === 'closed' || view === 'dead' ? typedQuoteWork(draft, fixtures) : null
+
+  const typedRecap = typed ? (
+    <div style={{ marginTop: '1.5rem', textAlign: 'left', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.8rem 0.9rem' }}>
+      <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600 }}>Your typed prices stayed on this phone — nothing was sent.</p>
+      <ul style={{ margin: '0.6rem 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: '0.35rem' }}>
+        {typed.lines.map((l) => (
+          <li key={l.fixture} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', fontSize: '0.9rem' }}>
+            <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', overflowWrap: 'anywhere' }}>
+              {l.fixture}
+              {l.note ? <span style={{ color: 'var(--text-muted)', fontFamily: 'inherit' }}> · {l.note}</span> : null}
+            </span>
+            {l.answer ? <span style={{ whiteSpace: 'nowrap', color: l.answer === 'can’t supply' ? 'var(--text-amber-700)' : 'var(--text-strong)' }}>{l.answer}</span> : null}
+          </li>
+        ))}
+        {typed.extras.length > 0 ? <li style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{typed.extras.join(' · ')}</li> : null}
+      </ul>
+    </div>
+  ) : null
+
   return (
     <div data-theme="light" style={{ minHeight: '100vh', background: 'var(--bg-subtle)', color: 'var(--text-strong)' }}>
-      <div style={{ maxWidth: 560, margin: '0 auto', padding: '1rem 1rem 6.5rem' }}>
-        {loading ? (
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: '1rem 1rem 9.5rem' }}>
+        {view === 'loading' ? (
           <p style={{ color: 'var(--text-muted)', padding: '3rem 0', textAlign: 'center' }}>Loading…</p>
-        ) : error ? (
+        ) : view === 'dead' ? (
           <div style={{ padding: '3rem 0.5rem', textAlign: 'center' }}>
-            <p style={{ fontSize: '1.05rem', color: 'var(--text-strong)', margin: 0 }}>{error}</p>
+            <p style={{ fontSize: '1.05rem', color: 'var(--text-strong)', margin: 0 }}>{loadError?.message ?? 'Couldn’t load the quote request. Check your connection and reload.'}</p>
+            {loadError == null || loadError.retryable ? (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                style={{ marginTop: '1rem', padding: '0.7rem 1.4rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '1rem', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Reload
+              </button>
+            ) : null}
+            {typedRecap}
           </div>
-        ) : page?.status === 'closed' ? (
+        ) : view === 'closed' ? (
           <div style={{ padding: '3rem 0.5rem', textAlign: 'center' }}>
             <p style={{ fontSize: '1.05rem', margin: 0 }}>This pricing request has been closed.</p>
             <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Nothing needed — thanks for looking.</p>
+            {typedRecap}
           </div>
-        ) : done != null ? (
+        ) : view === 'done' ? (
           <div style={{ padding: '3rem 0.5rem', textAlign: 'center' }}>
             <p style={{ fontSize: '1.4rem', margin: 0 }}>✓ Quote sent</p>
             <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
@@ -216,7 +285,7 @@ export default function SupplyHouseQuotePage() {
                 {page.neededBy ? ` · needed by ${page.neededBy}` : ''}
               </p>
               <p style={{ color: 'var(--text-muted)', margin: '0.3rem 0 0', fontSize: '0.8rem' }}>
-                Price what you can — $ each (or per ft where the line is footage). Skip what you don’t carry, or tap “can’t supply”. Your entries save on this phone as you go.
+                Price what you can — $ each (or per ft where the line is footage). Skip what you don’t carry, or tap “can’t supply”.
               </p>
               {page.plansLink ? (
                 <a href={page.plansLink} target="_blank" rel="noreferrer" style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-link)' }}>
@@ -265,7 +334,7 @@ export default function SupplyHouseQuotePage() {
                       <input
                         style={{ ...input, width: '7.5rem', textAlign: 'right', ...(dl.fromPrior ? { borderColor: '#2563eb' } : {}) }}
                         inputMode="decimal"
-                        placeholder="$"
+                        placeholder={`$ ${priceBasisHint(l.unit)}`}
                         aria-label={`Price for ${l.fixture}`}
                         disabled={dl.cantSupply}
                         value={dl.price}
@@ -305,30 +374,40 @@ export default function SupplyHouseQuotePage() {
         ) : null}
       </div>
 
-      {page && page.status !== 'closed' && done == null && !loading && !error ? (
+      {page && quoteFooterVisible(viewState) ? (
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom))' }}>
-          <div style={{ maxWidth: 560, margin: '0 auto', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', flex: 1 }}>
-              {answered} of {page.lines?.length ?? 0} lines answered{answered > 0 ? ' — partial is fine' : ''}
-            </span>
-            <button
-              type="button"
-              onClick={() => void submit()}
-              disabled={submitting || answered === 0}
-              style={{
-                padding: '0.8rem 1.4rem',
-                background: answered === 0 ? 'var(--bg-200)' : '#16a34a',
-                color: answered === 0 ? 'var(--text-faint)' : 'white',
-                border: 'none',
-                borderRadius: 10,
-                font: 'inherit',
-                fontSize: '1rem',
-                fontWeight: 700,
-                cursor: submitting || answered === 0 ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {submitting ? 'Sending…' : 'Send quote'}
-            </button>
+          <div style={{ maxWidth: 560, margin: '0 auto' }}>
+            {submitError ? (
+              <p role="alert" style={{ margin: '0 0 0.6rem', padding: '0.55rem 0.7rem', borderRadius: 8, background: 'var(--bg-red-tint)', border: '1px solid var(--border-red)', color: 'var(--text-red-800)', fontSize: '0.85rem' }}>
+                {submitError}
+              </p>
+            ) : null}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ flex: 1, minWidth: 0, display: 'grid', gap: '0.15rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-strong)' }}>{footer.count}</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{footer.extras}</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{footer.save}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={submitting || answered === 0}
+                style={{
+                  padding: '0.8rem 1.4rem',
+                  background: answered === 0 ? 'var(--bg-200)' : '#16a34a',
+                  color: answered === 0 ? 'var(--text-faint)' : 'white',
+                  border: 'none',
+                  borderRadius: 10,
+                  font: 'inherit',
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap',
+                  cursor: submitting || answered === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {submitting ? 'Sending…' : submitError ? 'Try again' : 'Send quote'}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
