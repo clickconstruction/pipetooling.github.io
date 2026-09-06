@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
+import { SettingsJobWatchesSection } from './SettingsJobWatchesSection'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { denverWorkDateToday } from '../../lib/salaryScheduleSync'
 import {
@@ -52,6 +54,9 @@ function chicagoPlacement(sendAtIso: string): { ymd: string; minutes: number } |
 }
 
 export default function SettingsMyEmailScheduleSection() {
+  const { user: authUserForWatches } = useAuth()
+  const authUserIdForWatches = authUserForWatches?.id
+
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [payload, setPayload] = useState<MyEmailSchedulePayload | null>(null)
@@ -248,6 +253,7 @@ export default function SettingsMyEmailScheduleSection() {
           ) : null}
         </div>
       )}
+      <SettingsJobWatchesSection userId={authUserIdForWatches} />
     </section>
   )
 }

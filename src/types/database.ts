@@ -7647,6 +7647,90 @@ export type Database = {
           },
         ]
       }
+      job_watcher_notices: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          kind: string
+          sent: boolean
+          subject: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          kind: string
+          sent?: boolean
+          subject?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          kind?: string
+          sent?: boolean
+          subject?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      job_watchers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          hear_dates: boolean
+          hear_done: boolean
+          hear_progress: boolean
+          id: string
+          job_id: string
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          hear_dates?: boolean
+          hear_done?: boolean
+          hear_progress?: boolean
+          id?: string
+          job_id: string
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          hear_dates?: boolean
+          hear_done?: boolean
+          hear_progress?: boolean
+          id?: string
+          job_id?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_watchers_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_watchers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_ledger: {
         Row: {
           account_manager_relationship: string | null

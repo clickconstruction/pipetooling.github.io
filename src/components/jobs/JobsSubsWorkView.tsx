@@ -44,6 +44,7 @@ import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkO
 import { buildSubsTabGroups, subsGroupMatches, type SubsJobGroup, type SubsRow, type SubsStage } from '../../lib/subs/subsTabRows'
 import { stageWindowByLabel, stageWindowLabel, stageWindowPhase, type StageWindowLike, type StageWindowSpan } from '../../lib/subs/stageWindow'
 import { StageWindowEditor } from './StageWindowEditor'
+import { JobWatchersPopover } from './JobWatchersPopover'
 
 /** A sheet with its money, its stage and its people — the board derives everything from these. */
 type SheetLite = WorkOrderBoardSheet & { assignees?: Array<{ person_id: string }> | null; progress_pct?: number | null; progress_at?: string | null }
@@ -634,8 +635,9 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
             {g.rows.length} row{g.rows.length === 1 ? '' : 's'}{g.attention > 0 ? ` · ${g.attention} need${g.attention === 1 ? 's' : ''} you` : ''}
           </span>
         </div>
+        {g.jobId ? <span style={{ marginLeft: 'auto' }}><JobWatchersPopover jobId={g.jobId} authUserId={authUserId} compact /></span> : null}
         {g.jobId && g.freeFixtures.length > 0 && !adding ? (
-          <button type="button" style={{ ...door, marginLeft: 'auto' }} onClick={() => setWindowEdit({ groupKey: g.key, rowKey: null, commitmentId: null, stageId: null, span: null })} title="Read one of this job's line items as a stage and give it a window">
+          <button type="button" style={{ ...door, marginLeft: g.jobId ? 0 : 'auto' }} onClick={() => setWindowEdit({ groupKey: g.key, rowKey: null, commitmentId: null, stageId: null, span: null })} title="Read one of this job's line items as a stage and give it a window">
             + Add a stage…
           </button>
         ) : null}

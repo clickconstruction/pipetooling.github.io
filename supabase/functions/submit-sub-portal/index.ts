@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { parseScopeExtras } from '../_shared/subPortalStatement.ts'
 import { canChangePick, evaluatePick, pickProblemMessage, pickWindowFor } from '../_shared/subPick.ts'
+import { notifyJobWatchers } from '../_shared/jobWatchers.ts'
 
 /**
  * Sub portal intake (sub-portal train): everything a sub can DO from the
@@ -363,6 +364,11 @@ serve(async (req) => {
         return jsonResponse({ error: 'Something went wrong. Please try again.' }, moveErr ? 500 : 409)
       }
       const where = [sheetRow.job_number, sheetRow.address].map((v) => (v ?? '').trim()).filter(Boolean).join(' ')
+      if ((sheetRow.job_number ?? '').trim()) {
+        const { data: jobRow } = await admin.from('jobs_ledger').select('id').eq('hcp_number', sheetRow.job_number!.trim()).maybeSingle()
+        const jobId = (jobRow as { id: string } | null)?.id
+        if (jobId) await notifyJobWatchers(admin, { jobId, kind: 'done', subName: personName, line: `${personName} says their work is done — call it in for inspection`, detail: note || null })
+      }
       await insertDispatchNote(admin, link, `Ready to walk — ${personName} · ${where || 'sub sheet'}`, {
         kind: 'sub_work_done',
         personId: link.person_id,
@@ -413,6 +419,7 @@ serve(async (req) => {
             detail: { laborJobId: sheetRow.id, pct: effectivePct, note: note || null, source: 'portal', address: sheetRow.address },
             financial: false,
           })
+          await notifyJobWatchers(admin, { jobId, kind: 'progress', subName: personName, line: pct != null ? `${personName} · ${pct}% along on their part` : `${personName} sent a note from their portal`, detail: note || null })
         }
       }
       // Dispatch hears a note, never a bare percent.
@@ -569,7 +576,10 @@ serve(async (req) => {
         createdSheetId = cr?.labor_job_id ?? null
       }
 
-      if (pick) await writePick(admin, { id: c.id, labor_job_id: c.labor_job_id ?? createdSheetId, step_id: c.step_id }, pick.start, pick.end)
+      if (pick) {
+        await writePick(admin, { id: c.id, labor_job_id: c.labor_job_id ?? createdSheetId, step_id: c.step_id }, pick.start, pick.end)
+        if (c.job_id) await notifyJobWatchers(admin, { jobId: c.job_id, kind: 'dates', subName: personName, line: `${personName} signed and picked ${pick.start} → ${pick.end}`, detail: parseScopeExtras(c.offer_scope_snapshot).sheetLabel ?? null })
+      }
 
       const sheetLabel = parseScopeExtras(c.offer_scope_snapshot).sheetLabel
       await insertDispatchNote(
@@ -638,6 +648,7 @@ serve(async (req) => {
       if (!verdict.ok) return jsonResponse({ error: pickProblemMessage(verdict.reason) }, 400)
       const ok = await writePick(admin, c, verdict.start, verdict.end)
       if (!ok) return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+      if (c.job_id) await notifyJobWatchers(admin, { jobId: c.job_id, kind: 'dates', subName: personName, line: `${personName} ${c.picked_start ? 'moved to' : 'picked'} ${verdict.start} → ${verdict.end}`, detail: sheetLabel ?? null })
       await insertDispatchNote(admin, link, `${personName} ${c.picked_start ? 'moved' : 'picked'} ${verdict.start} → ${verdict.end} for ${sheetLabel ?? 'a work order'}`, {
         kind: 'sub_dates_picked',
         personId: link.person_id,
