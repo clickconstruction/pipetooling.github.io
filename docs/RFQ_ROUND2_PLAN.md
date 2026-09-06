@@ -164,6 +164,16 @@ proportional to takeoff-derived cost (fallback per-unit), editable
 before writing, group provenance ("Ferguson · carrier package · 9/2"),
 group-level revert only. Rung E's parser must surface lot keywords.
 
+> **Vendor-page divergence (J23-5, noted with batch B3 v2.2906):** the
+> `/q/` link lane flattens every line to `price_basis 'each', basis_qty 1`
+> (`submit-rfq-quote`) — the page has no basis picker and no lot control,
+> only a "$ each" / "$ per ft" placeholder. Paste (Rung E parser) and file
+> replies record `each|ft|per_100|box` + `basis_qty`, and this rung's lot
+> layer adds `lot_id`/`lot_total_cents`. Until "vendor-page lots later"
+> lands, a link-lane quote carries less provenance than the same prices
+> pasted from an email; compare stays coherent because all lanes reduce
+> to a per-unit price. See `docs/SUPPLY_HOUSE_RFQ_PLAN.md` Phase 2.
+
 **Bridge options to put in front of the owner**:
 - **(a) Fixture-level cost override** (recommended shape): a
   `bid_count_row_custom_costs` sibling of the existing sale-side
@@ -199,4 +209,4 @@ group-level revert only. Rung E's parser must surface lot keywords.
   b731a34b-0ba5-4e82-a450-8f2aec1f64e1) or a Round-2 sibling if it
   outgrows it.
 
-last_updated: 2026-09-02
+last_updated: 2026-09-05
