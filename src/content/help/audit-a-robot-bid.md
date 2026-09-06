@@ -2,15 +2,27 @@
 title: audit a robot bid and teach it what you know
 category: Bids
 roles: dev, master_technician, assistant, controller, estimator
-keywords: audit, robot, twin, review, feedback, counts, footage, pricing, scope, receipts, counttooling, takeoff
+keywords: audit, robot, twin, review, feedback, counts, footage, pricing, scope, receipts, counttooling, takeoff, standing rulings, questions
 ---
 When a robot estimator finishes a draft bid, it asks for your audit. Everything happens in one place — the **Audits** tab on the Bids page — and every note you leave teaches the robot for next time.
+
+## Start with the standing rulings
+
+At the top of the tab sits **📜 Standing rulings · N — fifteen minutes here unblocks every robot**: every question the robots have parked while working, from every bid, in one panel. Tap the header to open or collapse it (it starts open whenever questions are waiting).
+
+1. When several robots hit the same issue on different bids — say, whether to carry travel past 200 miles — their questions collapse into **one card**: the issue as a chip (like {{chip:gray|Travel bands}}), the newest phrasing of the question, and a line like *asked 3 times across 2 bids*.
+2. Type your ruling once and hit {{button:blue|Answer all 3}} — it lands on **every** open copy of that question at once, and every robot picks it up on its next run.
+3. Questions without a shared issue list individually below, each with its own {{button:blue|Answer}} box.
+
+:::example Why this panel first
+An hour spent auditing one card yields a handful of verdicts; a few minutes answering standing questions yields doctrine that moves every future robot bid. Highest leverage on the page.
+:::
 
 ## Find your pending audits
 
 1. Your Dashboard tells you first: while robot bids are waiting, the **Needs you** card carries a {{chip:yellow|Robot training}} item with the count remaining — {{button:amber|Open Audits}} takes you straight to the tab. It stays until the queue is empty (locked shadow audits don't count — they aren't workable yet).
 2. Or go to **Bids** yourself. When a robot bid is waiting on you, an {{chip:yellow|Audits · 1}} tab appears near the Bid Board — the number is how many are waiting.
-3. Open it. Audits show as one-line rows — bid, status, draft total, how far the robot landed from our number, question count, and age. **One card is open at a time**; tap any row to open it (finishing an audit opens the next one for you).
+3. Open it. Audits show as one-line rows — bid, status, draft total, how far the robot landed from our number, question count, and age. The waiting ones are **sorted by what your verdict unblocks**: cards with unanswered robot questions first, then the ones that landed furthest from our number, oldest as the tiebreak — so the top row is always the one that teaches the most. **One card is open at a time**; tap any row to open it (finishing an audit opens the next one for you).
 4. The open card starts with the robot's own confession — 🤖 **Where I'm least sure** — so you can check its suspicions first, then a comparison strip (its draft, our number, the difference) and a **system scoreboard**: waste + vent, water, gas, med-gas, and fixtures, robot vs ours with a ratio, so you see *where* the money diverges before touching a row.
 5. A shadow bid shows a {{chip:gray|🔒}} row instead of a card: the whole audit stays locked until our own bid goes out — even seeing the robot's takeoff early could sway your number. It opens by itself once we send.
 6. A {{chip:gray|Robot still working}} row means the robot opened the audit before pasting its counts into the bid, so there is no draft to price yet. It doesn't count toward your pending number; you can still open it to answer its questions, and the verdict rows appear once the counts land.
