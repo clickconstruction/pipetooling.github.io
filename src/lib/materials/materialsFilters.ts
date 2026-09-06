@@ -72,7 +72,7 @@ export function computeLoadAllDisplayParts<T extends LoadAllPartLike>(
     filtered = filtered.filter(part => part.part_type_id === opts.filterPartTypeId)
   }
   if (opts.filterManufacturer) {
-    filtered = filtered.filter(part => part.manufacturer === opts.filterManufacturer)
+    filtered = filtered.filter(part => manufacturerMatches(part.manufacturer, opts.filterManufacturer))
   }
   // Filter by search query
   if (opts.clientSearchQuery) {
@@ -91,4 +91,58 @@ export function computeLoadAllDisplayParts<T extends LoadAllPartLike>(
     })
   }
   return filtered
+}
+
+/** Case-fold + trim key for a manufacturer name; `''` for blank/null. */
+export function manufacturerKey(manufacturer: string | null | undefined): string {
+  return (manufacturer ?? '').trim().toLowerCase()
+}
+
+/** Case-insensitive, whitespace-tolerant equality — "WATTS" is "watts" (v2.2903, J29-adj-2). */
+export function manufacturerMatches(partManufacturer: string | null | undefined, filter: string): boolean {
+  const f = manufacturerKey(filter)
+  if (!f) return true
+  return manufacturerKey(partManufacturer) === f
+}
+
+/**
+ * One option per manufacturer regardless of how the rows spell it. The label is
+ * the most common spelling (ties → first seen), sorted A→Z.
+ */
+export function manufacturerFacetOptions<T extends { manufacturer?: string | null }>(parts: T[]): string[] {
+  const spellings = new Map<string, Map<string, number>>()
+  for (const p of parts) {
+    const raw = (p.manufacturer ?? '').trim()
+    const key = raw.toLowerCase()
+    if (!key) continue
+    let counts = spellings.get(key)
+    if (!counts) {
+      counts = new Map()
+      spellings.set(key, counts)
+    }
+    counts.set(raw, (counts.get(raw) ?? 0) + 1)
+  }
+  const labels: string[] = []
+  for (const counts of spellings.values()) {
+    let best = ''
+    let bestN = -1
+    for (const [spelling, n] of counts) {
+      if (n > bestN) {
+        best = spelling
+        bestN = n
+      }
+    }
+    labels.push(best)
+  }
+  return labels.sort((a, b) => a.localeCompare(b))
+}
+
+/**
+ * PostgREST `ilike` pattern that matches a manufacturer name exactly but
+ * case-insensitively: `%`, `_` and `\` are escaped so they match literally.
+ * (`*` is PostgREST's own wildcard alias and cannot be escaped — a literal `*`
+ * in a name widens the match, which is harmless here.)
+ */
+export function manufacturerIlikePattern(value: string): string {
+  return value.trim().replace(/[\\%_]/g, (ch) => `\\${ch}`)
 }

@@ -688,6 +688,19 @@ export default function Materials() {
   }
 
 
+  // PO-lane signposts (v2.2903): PO Builder / Purchase Orders link to PO Generator for roles that can open it
+  const canOpenPoGenerator = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
+  const openPoGeneratorTab = canOpenPoGenerator
+    ? () => {
+        setActiveTab('po-generator')
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'po-generator')
+          return next
+        })
+      }
+    : undefined
+
   // Supply House Management Functions
   function openSupplyHousesModal() {
     setViewingSupplyHouses(true)
@@ -1702,7 +1715,7 @@ export default function Materials() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0 }}>Supply Houses</h2>
+              <h2 style={{ margin: 0 }}>Price coverage by supply house</h2>
               <button
                 type="button"
                 onClick={() => {
@@ -1924,6 +1937,7 @@ export default function Materials() {
         active={activeTab === 'assemblies-po'}
         setActiveTab={setActiveTab}
         setSearchParams={setSearchParams}
+        onOpenPoGenerator={openPoGeneratorTab}
         selectedTemplate={selectedTemplate}
         setSelectedTemplate={setSelectedTemplate}
         templateItems={templateItems}
@@ -2094,6 +2108,7 @@ export default function Materials() {
       {/* Purchase Orders Tab — always mounted so search/filter/tax state survives tab switches */}
       <MaterialsPurchaseOrdersTab
         active={activeTab === 'purchase-orders'}
+        onOpenPoGenerator={openPoGeneratorTab}
         authUser={authUser}
         supplyHouses={supplyHouses}
         setError={setError}

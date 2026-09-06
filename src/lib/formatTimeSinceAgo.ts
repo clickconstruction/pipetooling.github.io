@@ -19,7 +19,7 @@ export function formatTimeSinceAgo(timestamp: string, now: Date = new Date()): s
   if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
   if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
   if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
-  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''} ago`
+  if (diffDays < 30) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''} ago`
   if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? 's' : ''} ago`
   return `${Math.floor(diffMonths / 12)} year${Math.floor(diffMonths / 12) !== 1 ? 's' : ''} ago`
 }

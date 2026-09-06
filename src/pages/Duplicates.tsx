@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { Database } from '../types/database'
-import { nameSimilarity } from '../utils/nameSimilarity'
 import { loadWholePartPricesCatalog, loadWholePartsCatalog } from '../lib/materials/partsCatalog'
+import { buildDuplicateGroups, isExactGroup } from '../lib/materials/duplicateParts'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
@@ -19,29 +19,8 @@ interface ServiceType {
   name: string
 }
 
-// Union-Find for grouping similar parts
-function find(parent: Map<string, string>, x: string): string {
-  if (!parent.has(x)) parent.set(x, x)
-  if (parent.get(x) !== x) {
-    parent.set(x, find(parent, parent.get(x)!))
-  }
-  return parent.get(x)!
-}
-
-function union(parent: Map<string, string>, x: string, y: string) {
-  const px = find(parent, x)
-  const py = find(parent, y)
-  if (px !== py) parent.set(px, py)
-}
-
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function isExactNameMatch(group: MaterialPart[]): boolean {
-  if (group.length < 2) return false
-  const first = group[0]!.name.trim().toLowerCase()
-  return group.every((p) => p.name.trim().toLowerCase() === first)
 }
 
 export default function Duplicates() {
@@ -50,16 +29,22 @@ export default function Duplicates() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [, setParts] = useState<MaterialPart[]>([])
+  const [parts, setParts] = useState<MaterialPart[]>([])
   const [partTypes, setPartTypes] = useState<PartType[]>([])
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
-  const [duplicateGroups, setDuplicateGroups] = useState<MaterialPart[][]>([])
   const [bestPriceByPartId, setBestPriceByPartId] = useState<Record<string, { price: number; supplyHouseName: string }>>({})
   const [deleteConfirmPart, setDeleteConfirmPart] = useState<MaterialPart | null>(null)
   const [deleteConfirmName, setDeleteConfirmName] = useState('')
   const [deleting, setDeleting] = useState(false)
-  const [onlyExactMatch, setOnlyExactMatch] = useState(false)
+  // Exact-name matches by default (v2.2903, J29-F2): near-matches (80%+ similar, every
+  // number in the name equal) are opt-in, so a size family never reads as "duplicates".
+  const [showNearMatches, setShowNearMatches] = useState(false)
   const [selectedServiceTypeIds, setSelectedServiceTypeIds] = useState<Set<string>>(new Set())
+
+  const duplicateGroups = useMemo(
+    () => buildDuplicateGroups(parts, showNearMatches ? 'near' : 'exact'),
+    [parts, showNearMatches],
+  )
 
   useEffect(() => {
     if (!user?.id) return
@@ -118,26 +103,6 @@ export default function Duplicates() {
         }
       }
       setBestPriceByPartId(bestByPart)
-
-      // Build duplicate groups
-      const all = (partsRes.data as MaterialPart[]) ?? []
-      const parent = new Map<string, string>()
-      for (let i = 0; i < all.length; i++) {
-        for (let j = i + 1; j < all.length; j++) {
-          const sim = nameSimilarity(all[i]!.name, all[j]!.name)
-          if (sim >= 0.8) {
-            union(parent, all[i]!.id, all[j]!.id)
-          }
-        }
-      }
-      const groupsByRoot = new Map<string, MaterialPart[]>()
-      for (const p of all) {
-        const root = find(parent, p.id)
-        if (!groupsByRoot.has(root)) groupsByRoot.set(root, [])
-        groupsByRoot.get(root)!.push(p)
-      }
-      const groups = Array.from(groupsByRoot.values()).filter((g) => g.length >= 2)
-      setDuplicateGroups(groups)
       setLoading(false)
     })
     return () => { cancelled = true }
@@ -164,11 +129,6 @@ export default function Duplicates() {
     setDeleteConfirmPart(null)
     setDeleteConfirmName('')
     setParts((prev) => prev.filter((p) => p.id !== deleteConfirmPart.id))
-    setDuplicateGroups((prev) =>
-      prev
-        .map((g) => g.filter((p) => p.id !== deleteConfirmPart.id))
-        .filter((g) => g.length >= 2)
-    )
   }
 
   useEffect(() => {
@@ -198,18 +158,20 @@ export default function Duplicates() {
       </div>
 
       <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
-        Parts with matching names or 80%+ name similarity are grouped below. Delete duplicates to clean up the Parts Book.
+        {showNearMatches
+          ? 'Parts whose names are the same or 80%+ similar are grouped below — but only when every number in the name (sizes, lengths, model numbers) agrees, so a 1/2" fitting never pairs with the 3/4". Delete true duplicates to clean up the Parts Book.'
+          : 'Parts with the same name (ignoring case and spacing) are grouped below. Delete duplicates to clean up the Parts Book.'}
       </p>
 
-      {!loading && duplicateGroups.length > 0 && (
+      {!loading && (
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
             <input
               type="checkbox"
-              checked={onlyExactMatch}
-              onChange={(e) => setOnlyExactMatch(e.target.checked)}
+              checked={showNearMatches}
+              onChange={(e) => setShowNearMatches(e.target.checked)}
             />
-            Only show 100% name match
+            Show near-matches (80%+ similar, same numbers)
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
             <span>Only show service types:</span>
@@ -243,11 +205,13 @@ export default function Duplicates() {
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : duplicateGroups.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)' }}>No duplicate materials found.</p>
+        <p style={{ color: 'var(--text-muted)' }}>
+          {showNearMatches ? 'No duplicate or near-match materials found.' : 'No parts share a name. Tick "Show near-matches" to look for spelling variants.'}
+        </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {(() => {
-            let filtered = onlyExactMatch ? duplicateGroups.filter(isExactNameMatch) : duplicateGroups
+            let filtered = duplicateGroups
             if (selectedServiceTypeIds.size > 0) {
               filtered = filtered.filter((group) =>
                 group.some((p) => selectedServiceTypeIds.has(p.service_type_id))
@@ -264,7 +228,7 @@ export default function Duplicates() {
               }}
             >
               <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>
-                {group.length} duplicates
+                {isExactGroup(group) ? `${group.length} with the same name` : `${group.length} near-matches`}
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: 'var(--bg-muted)' }}>

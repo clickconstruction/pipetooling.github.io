@@ -18,7 +18,7 @@
  */
 import type { ReactElement, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
@@ -123,9 +123,10 @@ describe('Materials page render smoke — dev sees every tab', () => {
     for (const label of ['Parts Book', 'Assembly Book', 'PO Builder', 'Purchase Orders', 'PO Generator']) {
       expect(screen.getByRole('button', { name: label })).toBeTruthy()
     }
-    // Two "Supply Houses" buttons on this tab: the tab button + the legacy
-    // Parts Book toolbar modal opener (preserve-quirk #16).
-    expect(screen.getAllByRole('button', { name: 'Supply Houses' }).length).toBe(2)
+    // One "Supply Houses" button (the tab); the legacy Parts Book toolbar modal
+    // opener (preserve-quirk #16) is labelled "Price coverage" since v2.2903.
+    expect(screen.getAllByRole('button', { name: 'Supply Houses' }).length).toBe(1)
+    expect(screen.getByRole('button', { name: 'Price coverage' })).toBeTruthy()
   })
 
   it('mounts Assembly Book via ?tab=assembly-book', async () => {
@@ -133,19 +134,26 @@ describe('Materials page render smoke — dev sees every tab', () => {
     expect(await screen.findByPlaceholderText(ASSEMBLY_BOOK_ANCHOR)).toBeTruthy()
   })
 
-  it('mounts PO Builder via ?tab=assemblies-po', async () => {
+  it('mounts PO Builder via ?tab=assemblies-po — with the PO-lane signpost linking to PO Generator (v2.2903)', async () => {
     renderMaterialsAt('/materials?tab=assemblies-po', 'dev')
     expect(await screen.findByPlaceholderText(PO_BUILDER_ANCHOR)).toBeTruthy()
+    const signpost = screen.getByTestId('po-lane-signpost-assemblies-po')
+    expect(signpost.textContent).toMatch(/doesn't mint counter codes/)
+    expect(within(signpost).getByRole('button', { name: 'PO Generator' })).toBeTruthy()
   })
 
-  it('mounts Purchase Orders via ?tab=purchase-orders', async () => {
+  it('mounts Purchase Orders via ?tab=purchase-orders — with the PO-lane signpost (v2.2903)', async () => {
     renderMaterialsAt('/materials?tab=purchase-orders', 'dev')
     expect(await screen.findByPlaceholderText(PURCHASE_ORDERS_ANCHOR)).toBeTruthy()
+    const signpost = screen.getByTestId('po-lane-signpost-purchase-orders')
+    expect(signpost.textContent).toMatch(/Counter PO numbers live in/)
+    expect(within(signpost).getByRole('button', { name: 'PO Generator' })).toBeTruthy()
   })
 
-  it('mounts PO Generator via ?tab=po-generator', async () => {
+  it('mounts PO Generator via ?tab=po-generator — its signpost names the line-item lane (v2.2903)', async () => {
     renderMaterialsAt('/materials?tab=po-generator', 'dev')
     expect(await screen.findByPlaceholderText(PO_GENERATOR_ANCHOR)).toBeTruthy()
+    expect(screen.getByTestId('po-lane-signpost-po-generator').textContent).toMatch(/Counter PO numbers start here/)
   })
 
   it('mounts the extracted Supply Houses tab via ?tab=supply-houses', async () => {
@@ -164,9 +172,18 @@ describe('Materials page render smoke — role gating', () => {
     renderMaterialsAt('/materials', 'estimator')
     expect(await screen.findByPlaceholderText(PARTS_BOOK_ANCHOR)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'PO Generator' })).toBeNull()
-    // Only the legacy toolbar modal opener remains — the tab button is hidden.
-    expect(screen.getAllByRole('button', { name: 'Supply Houses' }).length).toBe(1)
+    // The tab button is hidden; only the legacy toolbar modal opener ("Price coverage") remains.
+    expect(screen.queryByRole('button', { name: 'Supply Houses' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Price coverage' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'PO Builder' })).toBeTruthy()
+  })
+
+  it('estimator: the PO Builder signpost names PO Generator without a link (estimators cannot open that tab)', async () => {
+    renderMaterialsAt('/materials?tab=assemblies-po', 'estimator')
+    expect(await screen.findByPlaceholderText(PO_BUILDER_ANCHOR)).toBeTruthy()
+    const signpost = screen.getByTestId('po-lane-signpost-assemblies-po')
+    expect(signpost.textContent).toMatch(/PO Generator/)
+    expect(within(signpost).queryByRole('button')).toBeNull()
   })
 
   it('estimator: ?tab=supply-houses redirects to Parts Book', async () => {

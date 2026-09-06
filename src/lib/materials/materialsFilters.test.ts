@@ -3,6 +3,9 @@ import {
   computeLoadAllDisplayParts,
   filterPartsByQuery,
   filterTemplatesByQuery,
+  manufacturerFacetOptions,
+  manufacturerIlikePattern,
+  manufacturerMatches,
 } from './materialsFilters'
 
 const parts = [
@@ -84,5 +87,51 @@ describe('computeLoadAllDisplayParts', () => {
   it('sorts by price count ascending with name tiebreak when the flag is on', () => {
     expect(computeLoadAllDisplayParts(loadAllParts, { ...base, sortByPriceCountAsc: true }).map(p => p.name))
       .toEqual(['C part', 'A part', 'B part'])
+  })
+})
+
+describe('manufacturer facet case-fold (v2.2903)', () => {
+  const rows = [
+    { manufacturer: 'WATTS' },
+    { manufacturer: 'watts' },
+    { manufacturer: 'Watts ' },
+    { manufacturer: 'watts' },
+    { manufacturer: 'Zurn' },
+    { manufacturer: null },
+    { manufacturer: '' },
+  ]
+
+  it('manufacturerFacetOptions collapses spellings to one option, labelled by the most common spelling', () => {
+    expect(manufacturerFacetOptions(rows)).toEqual(['watts', 'Zurn'])
+    expect(manufacturerFacetOptions([{ manufacturer: 'Oatey' }, { manufacturer: 'OATEY' }])).toEqual(['Oatey'])
+  })
+
+  it('manufacturerMatches ignores case and surrounding whitespace; blank filter matches everything', () => {
+    expect(manufacturerMatches('WATTS', 'watts')).toBe(true)
+    expect(manufacturerMatches(' Watts ', 'WATTS')).toBe(true)
+    expect(manufacturerMatches('Zurn', 'watts')).toBe(false)
+    expect(manufacturerMatches(null, 'watts')).toBe(false)
+    expect(manufacturerMatches(null, '')).toBe(true)
+  })
+
+  it('computeLoadAllDisplayParts applies the manufacturer filter case-insensitively', () => {
+    const parts = [
+      { name: 'A', manufacturer: 'WATTS', notes: null, part_type: null, part_type_id: null, prices: [] },
+      { name: 'B', manufacturer: 'watts', notes: null, part_type: null, part_type_id: null, prices: [] },
+      { name: 'C', manufacturer: 'Zurn', notes: null, part_type: null, part_type_id: null, prices: [] },
+    ]
+    const out = computeLoadAllDisplayParts(parts, {
+      filterPartTypeId: '',
+      filterManufacturer: 'watts',
+      clientSearchQuery: '',
+      sortByPriceCountAsc: false,
+    })
+    expect(out.map(p => p.name)).toEqual(['A', 'B'])
+  })
+
+  it('manufacturerIlikePattern escapes PostgREST LIKE metacharacters', () => {
+    expect(manufacturerIlikePattern('Watts')).toBe('Watts')
+    expect(manufacturerIlikePattern(' A_B 100% ')).toBe('A\\_B 100\\%')
+    expect(manufacturerIlikePattern('back\\slash')).toBe('back\\\\slash')
   })
 })

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
 import { fetchPricesForParts } from '../lib/materials/partPrices'
 import { loadPartsCatalog } from '../lib/materials/partsCatalog'
+import { manufacturerIlikePattern } from '../lib/materials/materialsFilters'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -239,9 +240,9 @@ export function useMaterialsCatalog({
       query = query.eq('part_type_id', options.partTypeId)
     }
     
-    // Apply manufacturer filter if provided
+    // Apply manufacturer filter if provided — case-insensitive so "WATTS" and "watts" are one facet (v2.2903)
     if (options?.manufacturer) {
-      query = query.eq('manufacturer', options.manufacturer)
+      query = query.ilike('manufacturer', manufacturerIlikePattern(options.manufacturer))
     }
     
     // Apply pagination

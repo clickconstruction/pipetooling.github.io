@@ -5,7 +5,7 @@ file: docs/MATERIALS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Map of the Materials.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — the decomposition is COMPLETE (12-PR train, v2.1275–v2.1293): every tab is an extracted component and src/pages/Materials.tsx is a ~2,123-line orchestration shell. This doc records what each tab owns (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling) and where everything landed.
 audience: Developers, AI Agents
-last_updated: 2026-09-02
+last_updated: 2026-09-05
 ---
 
 ## Overview
@@ -18,7 +18,7 @@ The page is tab-switched on a single `activeTab` state (search `const [activeTab
 'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'job-accounts' | 'po-generator'
 ```
 
-Labels differ from keys: `parts-book` renders as **Parts Book** (the GLOSSARY's "Price Book" — the legacy `?tab=price-book` slug is rewritten to `parts-book` in the URL effect), `assemblies-po` renders as **PO Builder**, `po-generator` renders as **PO Generator**. Tab order in the UI is Supply Houses | Job Accounts | PO Generator ‖ Parts Book | Assembly Book | PO Builder | Purchase Orders. Note: the `assemblies-po` key was `assemblies-po` until v2.1258 (a legacy redirect at `Materials.tsx` ~line 1031 rewrites old `?tab=templates-po` links), and the label was "Assemblies & Purchase Orders" until the v2.1260 rename to **PO Builder**.
+Labels differ from keys: `parts-book` renders as **Parts Book** (the GLOSSARY's "Price Book" — the legacy `?tab=price-book` slug is rewritten to `parts-book` in the URL effect), `assemblies-po` renders as **PO Builder**, `po-generator` renders as **PO Generator**. Tab order in the UI is Supply Houses | Job Accounts | PO Generator ‖ Parts Book | Assembly Book | PO Builder | Purchase Orders. The three PO-named tabs each open with a one-line `MaterialsPoLaneSignpost` (v2.2903): PO Generator mints the **counter code**; PO Builder → Purchase Orders is the **line-item** lane (and feeds bid cost estimates via `cost_estimates.purchase_order_id_*`), so neither tab may be hidden — the signpost is the disambiguation. Note: the `assemblies-po` key was `assemblies-po` until v2.1258 (a legacy redirect at `Materials.tsx` ~line 1031 rewrites old `?tab=templates-po` links), and the label was "Assemblies & Purchase Orders" until the v2.1260 rename to **PO Builder**.
 
 ### Key structural differences from Bids
 
@@ -204,7 +204,7 @@ The URL guard effect rewrites disallowed `?tab=` values to `parts-book` (`replac
 13. **Double-`requestAnimationFrame` scroll** to `selectedPODetailRef` after PO deep-links (lets the tab switch paint first).
 14. **`addItemToTemplate`/`handleAddItemFromModal` merge quantities** when the part already exists in the assembly instead of inserting a duplicate row, and block adding an assembly to itself (direct self-reference only — deeper cycles are handled at cost-calc time by `calculateAssemblyCost`'s `visited` set).
 15. **"Go to Projects to Add"** uses `window.location.href = '/projects'` (full page reload, not router navigation).
-16. **Parts Book toolbar hosts a legacy Supply House Management Modal** whose CRUD + RPC-stats duplicate `SupplyHousesTab`. The button is visible to every role with Parts Book access, so estimators, primaries, and superintendents (who cannot see the Supply Houses tab) reach supply-house editing through this modal — removing it would be a permissions behavior change, not a refactor.
+16. **Parts Book toolbar hosts a legacy Supply House Management Modal** whose CRUD + RPC-stats duplicate `SupplyHousesTab`. The toolbar button is labelled **Price coverage** and the modal heading **Price coverage by supply house** (v2.2903 — the word "Supply Houses" named the tab, the button and the modal; now only the tab). The button is visible to every role with Parts Book access, so estimators, primaries, and superintendents (who cannot see the Supply Houses tab) reach supply-house editing through this modal — removing it would be a permissions behavior change, not a refactor.
 
 ---
 
