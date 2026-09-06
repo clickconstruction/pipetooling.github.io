@@ -1,6 +1,7 @@
 /** Jobs → Job Summary tab: per-job cost rollup ledger with team-labor / parts / Mercury drilldowns.
  * Presentational — all data/state/loaders/modals live in the parent (Jobs.tsx) and arrive as props. */
 import { JobIdentityCell } from '../search/JobIdentityCell'
+import { jobSummaryRowDomId } from '../../lib/jobs/moneyStoryDoor'
 import type { CategoryTagColor } from '../../lib/banking/categoryTags'
 import { Fragment, type CSSProperties, type Dispatch, type KeyboardEvent, type ReactNode, type SetStateAction } from 'react'
 import {
@@ -709,6 +710,7 @@ export default function JobsJobSummaryTab({
                         const mainRow = (
                           <tr
                             key={job.id}
+                            id={jobSummaryRowDomId(job.id)}
                             role="button"
                             tabIndex={0}
                             aria-expanded={expanded}

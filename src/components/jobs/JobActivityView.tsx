@@ -11,6 +11,8 @@ import { clampCompletenessPct } from '../../lib/jobs/jobCompleteness'
 import { pctNoteRequired, validatePctCommit } from '../../lib/jobs/stagesPctNote'
 import { recordedPercentProvenance } from '../../lib/jobPercentProvenance'
 import { PercentProvenanceChip } from './PercentProvenanceChip'
+import { Link } from 'react-router-dom'
+import { canOpenMoneyStory, moneyStoryHref } from '../../lib/jobs/moneyStoryDoor'
 
 /**
  * The unified Job activity body (v2.1673): toolbar, pinned NEXT strip, the
@@ -182,6 +184,22 @@ export function JobActivityView({
             {pctComplete}% complete
             {activity ? <PercentProvenanceChip source={pctProvenance.source} reportedOn={pctProvenance.reportedOn} /> : null}
           </span>
+        ) : null}
+        {/* T5-02 (J6-9): the one door from the daily surface into per-job health. Not for assistants. */}
+        {canOpenMoneyStory(viewerRole) ? (
+          <Link
+            to={moneyStoryHref(job.id)}
+            title="Open this job on Job Summary — revenue, costs, true profit"
+            style={{
+              marginLeft: pctComplete != null ? '0.5rem' : 'auto',
+              fontSize: '0.8125rem',
+              color: 'var(--text-link)',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+            }}
+          >
+            money story →
+          </Link>
         ) : null}
       </div>
 
