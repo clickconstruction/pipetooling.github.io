@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, primary
 keywords: roadmap, stage, group, add stage, add task, sub task, map, connector, prerequisite, plus button, crew, team, assignees
 order: 42
 ---
-On **Checklist → Roadmap → Map**, every box is a **stage** (a numbered group of tasks) and the lines between boxes say which stage must finish before the next unlocks. You need to be an **editor** on the roadmap to add anything — check {{button:outline|Members}} if you don't see the buttons below.
+On **Roadmap → Map** (header → **Roadmap**), every box is a **stage** (a numbered group of tasks) and the lines between boxes say which stage must finish before the next unlocks. You need to be an **editor** on the roadmap to add anything — check {{button:outline|Members}} if you don't see the buttons below.
 
 ## Add a stage
 

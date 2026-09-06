@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, primary
 keywords: roadmap, timeline, gantt, waves, pace, calendar, projection, milestone, front, forecast, finish date
 order: 45
 ---
-**Checklist → Roadmap → Timeline** is the roadmap as a Gantt chart — with one honest twist: the roadmap has no dates, so the chart's columns are **dependency waves**, not calendar months. Everything in the *Now* wave can be worked today; the next wave unlocks when the front clears; and so on to the 🎯 goal.
+**Roadmap → Timeline** (header → **Roadmap**) is the roadmap as a Gantt chart — with one honest twist: the roadmap has no dates, so the chart's columns are **dependency waves**, not calendar months. Everything in the *Now* wave can be worked today; the next wave unlocks when the front clears; and so on to the 🎯 goal.
 
 ## How to read it
 

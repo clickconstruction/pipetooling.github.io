@@ -24,6 +24,8 @@ export const PRIMARY_PATHS = [
   // branch, so /workflows/:id was structurally empty for primaries and nothing linked to it.
   '/calendar',
   '/checklist',
+  // Tier-2 #41: primaries are in the roadmap RLS edit set (is_checklist_tech_tree_staff_or_primary).
+  '/roadmap',
   '/settings',
   '/tally',
   '/help',

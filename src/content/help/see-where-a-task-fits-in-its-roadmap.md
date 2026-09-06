@@ -22,7 +22,7 @@ STAGE 7 · do we have all the tools easily accessible? · 0 of 10 done
 
 ## Jumping to the full picture
 
-Tap {{button:outline|Open full roadmap →}} at the bottom to land on **Checklist → Roadmap** with that roadmap selected. Close with the ✕, the {{button:outline|Close}} button, Esc, or a tap outside.
+Tap {{button:outline|Open full roadmap →}} at the bottom to land on the **Roadmap** page with that roadmap selected. Close with the ✕, the {{button:outline|Close}} button, Esc, or a tap outside.
 
 ## Work on a task from here
 

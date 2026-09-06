@@ -43,6 +43,8 @@ export type RoleGateSurface =
   | 'pipeline-money'
   /** Bids office tabs a superintendent deep-links to (Pricing, Cover letter, …). */
   | 'bids-office-tab'
+  /** The Roadmap page (`/roadmap`, Tier-2 #41) — dev / master / assistant-like / primary; helpers land on Today. */
+  | 'roadmap'
 
 export type RoleGateDecision = {
   /** Where to land — always a path the role can open. */
@@ -75,6 +77,7 @@ const SURFACE_COPY: Record<RoleGateSurface, SurfaceCopy> = {
   hours: { subject: 'Hours', audience: 'the office' },
   'pipeline-money': { subject: 'Weekly money movement', audience: 'the controller' },
   'bids-office-tab': { subject: 'This page', audience: 'the office' },
+  roadmap: { subject: 'The Roadmap', audience: 'the office' },
 }
 
 type Landing = { to: string; toTab: string | null; landingLabel: string }
@@ -83,6 +86,7 @@ const JOBS_REPORTS: Landing = { to: '/jobs?tab=reports', toTab: 'reports', landi
 const JOBS_STAGES: Landing = { to: '/jobs?tab=stages', toTab: 'stages', landingLabel: 'the Pipeline board' }
 const PEOPLE_USERS: Landing = { to: '/people?tab=users', toTab: 'users', landingLabel: 'Users' }
 const BIDS_BOARD: Landing = { to: '/bids?tab=bid-board', toTab: 'bid-board', landingLabel: 'the Bid board' }
+const CHECKLIST_TODAY: Landing = { to: '/checklist?tab=today', toTab: 'today', landingLabel: 'Today' }
 
 /** Where a refused link lands, per surface (and per role where the strips differ). */
 export function roleGateLanding(surface: RoleGateSurface, role: UserRole | string | null | undefined): Landing {
@@ -101,6 +105,9 @@ export function roleGateLanding(surface: RoleGateSurface, role: UserRole | strin
       return JOBS_STAGES
     case 'bids-office-tab':
       return BIDS_BOARD
+    case 'roadmap':
+      // The roadmap's tasks reach everyone else as Today cards — that is their page.
+      return CHECKLIST_TODAY
   }
 }
 

@@ -12,7 +12,7 @@ import {
 import { DatabaseError } from '../utils/errorHandling'
 
 const ALL_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', null] as const
-const ALL_SURFACES: RoleGateSurface[] = ['crew-pnl', 'team-labor', 'jobs-tab', 'payroll', 'hours', 'pipeline-money', 'bids-office-tab']
+const ALL_SURFACES: RoleGateSurface[] = ['crew-pnl', 'team-labor', 'jobs-tab', 'payroll', 'hours', 'pipeline-money', 'bids-office-tab', 'roadmap']
 
 describe('roleGateRedirect — role × surface → landing + sentence (v2.2882, C25)', () => {
   it('an assistant opening the owner\'s Crew P&L link lands on Reports and is told so (J8-F7)', () => {
@@ -63,11 +63,20 @@ describe('roleGateRedirect — role × surface → landing + sentence (v2.2882, 
     )
   })
 
+  it('a helper deep-linking to /roadmap lands quietly on Today; an estimator is told (Tier-2 #41)', () => {
+    const helper = roleGateRedirect({ from: '/roadmap?roadmap=r1', role: 'helpers', surface: 'roadmap' })
+    expect(helper.to).toBe('/checklist?tab=today')
+    expect(helper.quiet).toBe(true)
+    expect(helper.toast).toBeNull()
+    const estimator = roleGateRedirect({ from: '/roadmap', role: 'estimator', surface: 'roadmap' })
+    expect(estimator.toast).toBe("The Roadmap is for the office — you're on Today.")
+  })
+
   it('every landing is a same-page tab and every sentence names the landing', () => {
     for (const surface of ALL_SURFACES) {
       for (const role of ALL_ROLES) {
         const d = roleGateRedirect({ from: '/x', role, surface })
-        expect(d.to).toMatch(/^\/(jobs|people|bids)\?tab=[a-z_-]+$/)
+        expect(d.to).toMatch(/^\/(jobs|people|bids|checklist)\?tab=[a-z_-]+$/)
         expect(d.to.endsWith(`tab=${d.toTab}`)).toBe(true)
         if (!d.quiet) {
           expect(d.toast).toBe(roleGateToastCopy(surface, d.landingLabel))

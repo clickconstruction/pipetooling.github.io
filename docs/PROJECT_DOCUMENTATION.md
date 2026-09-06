@@ -2718,7 +2718,8 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `/duplicates` - Duplicate materials cleanup (dev)
 - `/bids` - Bids management (bid board, counts, takeoffs, cover letter, submission & followup)
 - `/prospects` - Prospects (Customers pipeline + Team hiring board)
-- `/checklist` - Checklist (Today, History, Review, Manage, Roadmap)
+- `/checklist` - Checklist (Today, History, Review, Manage) — the daily list
+- `/roadmap` - Roadmap (Goals strip + Map / Plan / Timeline; v2.2916 — was the Checklist page's Roadmap tab; dev / master / assistant-like / primary via `canOpenRoadmap`)
 - `/tally` - Job parts tally
 - `/help` - Help guides
 - `/templates` - Template management (dev)

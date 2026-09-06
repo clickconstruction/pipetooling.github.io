@@ -1,10 +1,27 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  FARM_MODE_EXIT_CONTROL,
+  FARM_MODE_HOME,
+  farmModeBounceTarget,
   farmModeStorageKey,
   readFarmModeEnabled,
   writeFarmModeEnabled,
 } from './farmModeToggle'
+
+describe('farmModeBounceTarget (journey-map Tier-2 #41)', () => {
+  it('leaves the checklist alone and lands every other route there', () => {
+    expect(farmModeBounceTarget('/checklist')).toBeNull()
+    expect(farmModeBounceTarget('/checklist/')).toBeNull()
+    for (const p of ['/', '/dashboard', '/roadmap', '/roadmap?roadmap=r1', '/people', '/jobs']) {
+      expect(farmModeBounceTarget(p), p).toBe(FARM_MODE_HOME)
+    }
+  })
+
+  it('the exit control name is the telemetry contract', () => {
+    expect(FARM_MODE_EXIT_CONTROL).toBe('farm_mode_exit')
+  })
+})
 
 describe('farmModeToggle', () => {
   beforeEach(() => {

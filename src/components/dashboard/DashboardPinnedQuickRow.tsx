@@ -15,6 +15,7 @@ import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
+import { roadmapPath } from '../../lib/roadmapVisibility'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
 import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
@@ -588,11 +589,7 @@ export function DashboardPinnedQuickRow({
               navigate(`/prospects?tab=team&stage=review${first ? `&rate=${first.id}` : ''}`)
             } else if (item.key === 'roadmap-needs-person') {
               const first = roadmapNudges[0]
-              navigate(
-                first
-                  ? `/checklist?tab=roadmap&roadmap=${encodeURIComponent(first.roadmapId)}&view=plan`
-                  : '/checklist?tab=roadmap',
-              )
+              navigate(roadmapPath(first?.roadmapId, first ? 'plan' : null))
             } else if (item.key === 'gc-review-weekly') {
               navigate('/jobs?tab=stages&gcReview=1')
             } else if (item.key === 'statement-round') {

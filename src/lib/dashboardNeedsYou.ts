@@ -27,6 +27,16 @@ import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDispl
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
 export type NeedsYouSeverity = 'blue' | 'amber' | 'gray' | 'red'
 
+/**
+ * Which product an item belongs to (journey-map Tier-2 #41). `company` is the
+ * default — the office's worst-first stack. `roadmap` is the owner's planning
+ * work (the "N roadmap tasks need a person" card): it never shows to a non-dev
+ * viewer, and for the dev it groups AFTER the company stack instead of ranking
+ * inside it at tier 50 — personal-farm planning was sitting between lien
+ * deadlines and team reviews.
+ */
+export type NeedsYouKind = 'company' | 'roadmap'
+
 export type NeedsYouItem = {
   /** Stable key — also the telemetry target (`#<key>`) and the action-dispatch handle. */
   key:
@@ -57,6 +67,8 @@ export type NeedsYouItem = {
     | 'dispatch-requests-aged'
     | 'hr-reports-pending'
   severity: NeedsYouSeverity
+  /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
+  kind?: NeedsYouKind
   /** Walk-mode eyebrow. */
   kicker: string
   title: string
@@ -122,14 +134,38 @@ function figureValue(figure: string): number {
   return figure.endsWith('+') ? n + 1 : n
 }
 
-/** Stable worst-first sort — exported so surfaces that build items elsewhere can reuse it. */
+/** An item's product; `company` unless it says otherwise. */
+export function needsYouKind(item: Pick<NeedsYouItem, 'kind'>): NeedsYouKind {
+  return item.kind ?? 'company'
+}
+
+const KIND_ORDER: Record<NeedsYouKind, number> = { company: 0, roadmap: 1 }
+
+/**
+ * Stable worst-first sort — exported so surfaces that build items elsewhere can
+ * reuse it. Company items first (by tier, then biggest figure); roadmap items
+ * follow as their own group, ranked the same way among themselves (Tier-2 #41).
+ */
 export function rankNeedsYouItems(items: NeedsYouItem[]): NeedsYouItem[] {
-  // Array.prototype.sort is stable, so equal (rank, figure) pairs keep build order.
+  // Array.prototype.sort is stable, so equal (kind, rank, figure) triples keep build order.
   return [...items].sort((a, b) => {
+    const kind = KIND_ORDER[needsYouKind(a)] - KIND_ORDER[needsYouKind(b)]
+    if (kind !== 0) return kind
     const rank = NEEDS_YOU_RANK[a.key] - NEEDS_YOU_RANK[b.key]
     if (rank !== 0) return rank
     return figureValue(b.figure) - figureValue(a.figure)
   })
+}
+
+/**
+ * The items a viewer may see (Tier-2 #41): roadmap-kind items are the owner's
+ * (dev) — everyone else's stack is company work only. Applied inside
+ * `buildNeedsYouItems`, so a hook that forgets its own gate still cannot put a
+ * roadmap card on an office dashboard.
+ */
+export function visibleNeedsYouItems(items: NeedsYouItem[], role: UserRole | null | undefined): NeedsYouItem[] {
+  if (role === 'dev') return items
+  return items.filter((i) => needsYouKind(i) !== 'roadmap')
 }
 
 export type NeedsYouInputs = {
@@ -154,7 +190,9 @@ export type NeedsYouInputs = {
   teamReviewCadenceDays: number
   /**
    * Roadmap "needs a person" nudges (v2.2489). The hook self-gates (empty
-   * without Roadmap-tab access or under the min-count threshold).
+   * unless `canSeeRoadmapNeedsYou` — dev, not Farm Mode — or under the
+   * min-count threshold); the builder drops the item for non-dev roles anyway
+   * (`kind: 'roadmap'`, Tier-2 #41).
    */
   roadmapNudges: RoadmapNudge[]
   /**
@@ -534,6 +572,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     items.push({
       key: 'roadmap-needs-person',
       severity: 'amber',
+      kind: 'roadmap',
       kicker: 'Roadmap',
       title: single
         ? `${single.title} · ${single.needsName} roadmap task${single.needsName === 1 ? '' : 's'} need${single.needsName === 1 ? 's' : ''} a person`
@@ -753,7 +792,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  return rankNeedsYouItems(items)
+  return rankNeedsYouItems(visibleNeedsYouItems(items, inputs.role))
 }
 
 /**
