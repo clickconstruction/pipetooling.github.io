@@ -2,17 +2,19 @@
  * Math lives in the pure kernel `src/lib/crewPnlSummary.ts` (unit-tested); this component
  * fetches the people roster (identity resolution), holds range/search/sort/expand state, and
  * renders. Dev-only tab (gating in Jobs.tsx). */
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { CREW_PNL_BILLED_LABEL, CREW_PNL_BILLED_TOOLTIP } from '../../lib/jobs/profitLabels'
 import { supabase } from '../../lib/supabase'
 import {
   buildCrewPnlSummary,
+  compareCrewPnlRows,
   crewPnlRangeForPreset,
   type CrewPnlJobInput,
   type CrewPnlPersonRow,
   type CrewPnlRange,
   type CrewPnlRangePreset,
   type CrewPnlRosterPerson,
+  type CrewPnlSortKey,
   type CrewPnlSubLaborInput,
   DEFAULT_SUB_LABOR_EQUIVALENT_RATE,
 } from '../../lib/crewPnlSummary'
@@ -22,16 +24,17 @@ import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHh
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE } from '../../lib/appSettingsKeys'
 import { subRateSaveDecision } from '../../lib/jobs/crewPnlSubRate'
+import { crewPnlJobsUniverseNotice, type CrewPnlJobsUniverseState } from '../../lib/jobs/crewPnlJobsUniverse'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 
 import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
 
-type SortKey = 'name' | 'hours' | 'laborCost' | 'billing' | 'profit' | 'rate'
+type SortKey = CrewPnlSortKey
 
 const thBase: CSSProperties = {
   padding: '0.75rem',
@@ -41,14 +44,11 @@ const thBase: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-function sortValue(row: CrewPnlPersonRow, key: SortKey): number | string {
-  if (key === 'name') return row.displayName.toLowerCase()
-  if (key === 'hours') return row.hours
-  if (key === 'laborCost') return row.laborCost
-  if (key === 'billing') return row.billing
-  if (key === 'rate') return row.billingPerHour ?? -Infinity
-  return row.profit
-}
+const ESTIMATE_LED_TOOLTIP =
+  'Mostly an equal-split estimate: the job had no clocked hours to weight by, so its total was divided evenly among team members. Ranked below fully-weighted rows in every numeric sort.'
+
+const UNMATCHED_TOOLTIP =
+  'Not matched to a roster person — this spelling appears only in free-text fields (sub sheets, sessions) and no single roster name clearly matches it. Fix the spelling at the source, or add the person to People, and the rows merge.'
 
 type CrewPnlAllJobRow = {
   id: string
@@ -81,6 +81,9 @@ export default function JobsCrewPnlTab({
   const [people, setPeople] = useState<CrewPnlRosterPerson[] | null>(null)
   /** Complete jobs list, all statuses (v2.976) — the shared cache lazily omits Paid in Full. */
   const [allJobs, setAllJobs] = useState<CrewPnlAllJobRow[] | null>(null)
+  // B8 (J8-F5): the tab says so whenever the table is computed from the partial cache instead.
+  const [jobsUniverse, setJobsUniverse] = useState<Exclude<CrewPnlJobsUniverseState, { status: 'failed' }> | { status: 'failed'; failedAtMs: number; message: string | null }>({ status: 'loading' })
+  const [jobsReloadToken, setJobsReloadToken] = useState(0)
   const [preset, setPreset] = useState<CrewPnlRangePreset | 'custom'>('all')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
@@ -176,20 +179,24 @@ export default function JobsCrewPnlTab({
           .range(from, from + PAGE - 1)
         if (cancelled) return
         if (error) {
-          // Partial data is WORSE than the cache fallback — discard on any page error.
+          // Partial data is WORSE than the cache fallback — discard on any page error,
+          // and say so above the table (B8, J8-F5) instead of falling back in silence.
           setAllJobs(null)
+          setJobsUniverse({ status: 'failed', failedAtMs: Date.now(), message: formatErrorMessage(error, '') || null })
           return
         }
         const rows = (data ?? []) as unknown as CrewPnlAllJobRow[]
         acc.push(...rows)
         if (rows.length < PAGE) break
       }
-      if (!cancelled) setAllJobs(acc)
+      if (cancelled) return
+      setAllJobs(acc)
+      setJobsUniverse({ status: 'complete', count: acc.length })
     })()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [jobsReloadToken])
 
   const range: CrewPnlRange = useMemo(() => {
     if (preset === 'custom') {
@@ -265,15 +272,22 @@ export default function JobsCrewPnlTab({
     const filtered = q
       ? summary.rows.filter((r) => r.displayName.toLowerCase().includes(q))
       : summary.rows
-    const dir = sortAsc ? 1 : -1
-    return [...filtered].sort((a, b) => {
-      const va = sortValue(a, sortKey)
-      const vb = sortValue(b, sortKey)
-      if (va < vb) return -1 * dir
-      if (va > vb) return 1 * dir
-      return 0
-    })
+    const direction = sortAsc ? 'asc' : 'desc'
+    return [...filtered].sort((a, b) => compareCrewPnlRows(a, b, sortKey, direction))
   }, [summary, search, sortKey, sortAsc])
+
+  // B8 (J8-F1 / N1): numeric sorts keep real rows ahead of estimate-led rows; a divider marks the seam.
+  const firstEstimateLedIndex = useMemo(() => {
+    if (sortKey === 'name') return -1
+    const idx = visibleRows.findIndex((r) => r.estimateLed)
+    return idx > 0 ? idx : -1
+  }, [visibleRows, sortKey])
+
+  // The cached count is read at render so it tracks the shared cache as Stages expands it.
+  const jobsNotice = crewPnlJobsUniverseNotice(
+    jobsUniverse.status === 'failed' ? { ...jobsUniverse, cachedCount: jobs.length } : jobsUniverse,
+    formatDenverTimeOnly,
+  )
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc((v) => !v)
@@ -361,6 +375,32 @@ export default function JobsCrewPnlTab({
         />
       </div>
 
+      {!isLoading && jobsNotice && (
+        <div
+          role="status"
+          data-testid="crew-pnl-jobs-notice"
+          style={
+            jobsNotice.tone === 'warning'
+              ? { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', margin: '0 0 0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 4, color: 'var(--text-amber-800)' }
+              : { margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }
+          }
+        >
+          <span>{jobsNotice.text}</span>
+          {jobsNotice.canRetry && (
+            <button
+              type="button"
+              onClick={() => {
+                setJobsUniverse({ status: 'loading' })
+                setJobsReloadToken((n) => n + 1)
+              }}
+              style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)', borderRadius: 4, cursor: 'pointer' }}
+            >
+              Refresh
+            </button>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading crew P&L…</p>
       ) : !summary || summary.rows.length === 0 ? (
@@ -392,23 +432,31 @@ export default function JobsCrewPnlTab({
                 </tr>
               </thead>
               <tbody>
-                {visibleRows.map((row) => {
+                {visibleRows.map((row, i) => {
                   const expanded = expandedKeys.has(row.key)
                   return (
-                    <CrewPnlRow
-                      key={row.key}
-                      row={row}
-                      expanded={expanded}
-                      onToggle={() =>
-                        setExpandedKeys((prev) => {
-                          const next = new Set(prev)
-                          if (next.has(row.key)) next.delete(row.key)
-                          else next.add(row.key)
-                          return next
-                        })
-                      }
-                      onOpenJobDetail={onOpenJobDetail}
-                    />
+                    <Fragment key={row.key}>
+                      {i === firstEstimateLedIndex && (
+                        <tr data-testid="crew-pnl-estimate-divider">
+                          <td colSpan={6} style={{ padding: '0.4rem 0.75rem', fontSize: '0.6875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderBottom: '1px solid var(--border)' }} title={ESTIMATE_LED_TOOLTIP}>
+                            ≈ Estimated rows — most of their billing is an equal-split guess (jobs with no hours to weight by), so they rank below the real rows.
+                          </td>
+                        </tr>
+                      )}
+                      <CrewPnlRow
+                        row={row}
+                        expanded={expanded}
+                        onToggle={() =>
+                          setExpandedKeys((prev) => {
+                            const next = new Set(prev)
+                            if (next.has(row.key)) next.delete(row.key)
+                            else next.add(row.key)
+                            return next
+                          })
+                        }
+                        onOpenJobDetail={onOpenJobDetail}
+                      />
+                    </Fragment>
                   )
                 })}
                 <tr style={{ borderTop: '1px solid var(--border)', fontWeight: 600, background: 'var(--bg-subtle)' }}>
@@ -451,8 +499,10 @@ export default function JobsCrewPnlTab({
             <strong>Billed (gross)</strong> is the job's gross total bill — not cash collected and not revenue
             before overhead. Billing credit is hours-weighted: clocked hours for crew, and for sub sheets their cost ÷
             the Sub $/hr rate ("equivalent hours" — always ≈, sheet unit-hours are display-only).
-            ≈ also marks equal-split estimates for jobs with no hours at all. Sub-sheet labor and
+            ≈ also marks equal-split estimates for jobs with no hours at all; a row that is mostly such
+            guesses is tagged "≈ estimated" and ranks below the real rows in every numeric sort. Sub-sheet labor and
             credit split evenly across assigned names; unlinked sheets carry cost but no credit.
+            Free-text spellings merge into their roster person when only one name can match; "unmatched" means none did.
             The date range filters work dates; billing follows the hours worked in the range.
           </p>
         </>
@@ -482,9 +532,17 @@ function CrewPnlRow({
         <td style={{ padding: '0.75rem' }}>
           <span style={{ color: 'var(--text-faint)', marginRight: '0.4rem' }}>{expanded ? '▾' : '▸'}</span>
           {row.displayName}
+          {row.estimateLed && (
+            <span
+              title={ESTIMATE_LED_TOOLTIP}
+              style={{ marginLeft: '0.4rem', fontSize: '0.6875rem', color: 'var(--text-amber-700)' }}
+            >
+              ≈ estimated
+            </span>
+          )}
           {row.unmatched && (
             <span
-              title="Not matched to a roster person — name appears only in free-text fields"
+              title={UNMATCHED_TOOLTIP}
               style={{ marginLeft: '0.4rem', fontSize: '0.6875rem', color: 'var(--text-amber-700)' }}
             >
               unmatched
