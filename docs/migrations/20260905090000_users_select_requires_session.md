@@ -1,4 +1,4 @@
-# 20260905090000_users_select_requires_session
+# 20260905090000_users_select_requires_session.sql (2026-09-05, v2.2837)
 
 **`public.users` SELECT requires a signed-in user (v2.2837, journey map J24-N1)** — `DROP POLICY IF EXISTS` + `CREATE POLICY "Users can select users"`.
 

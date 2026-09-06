@@ -1,4 +1,4 @@
-# 20260905100000_project_access_assigned_superintendents
+# 20260905100000_project_access_assigned_superintendents.sql (2026-09-05, v2.2836)
 
 **Superintendents see only their assigned projects (v2.2836)** — `CREATE OR REPLACE` of `can_access_project_row(uuid, uuid, uuid)`, `can_access_project(uuid)`, `can_access_project_via_step(uuid)`, `can_access_step_for_action(uuid)`; COMMENT-only on `master_adopted_current_user(uuid)`. No table, policy or grant changes.
 

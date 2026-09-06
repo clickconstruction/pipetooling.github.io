@@ -1,4 +1,4 @@
-# 20260905120000_sub_work_orders_superintendent_scope
+# 20260905120000_sub_work_orders_superintendent_scope.sql (2026-09-05, v2.2844)
 
 **Superintendents see and edit only the sub work orders on their own jobs and projects (v2.2844)** — `CREATE OR REPLACE` of `can_access_sub_work_order(uuid, uuid, uuid)`; new helper `superintendent_can_access_sub_work_order(uuid, uuid)`. No table, policy or grant changes. Follow-up to `20260905100000_project_access_assigned_superintendents` (v2.2836, PR #2575).
 

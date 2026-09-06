@@ -1,4 +1,4 @@
-# 20260905110000_auto_create_job_guard
+# 20260905110000_auto_create_job_guard.sql (2026-09-05, v2.2838)
 
 **Auto-create-job guard (v2.2838)** — `CREATE OR REPLACE` of `auto_create_job_from_signed_estimate(uuid)`. Same signature, same `uuid` return, same service-role-only grants.
 
